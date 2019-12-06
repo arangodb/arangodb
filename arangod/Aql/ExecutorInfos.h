@@ -27,25 +27,17 @@
 #define ARANGOD_AQL_EXECUTOR_INFOS_H 1
 
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
+#include <memory>
 #include <unordered_set>
 
 namespace arangodb {
 namespace aql {
 
-inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(
-    std::initializer_list<RegisterId> const& list = std::initializer_list<RegisterId>{}) {
-  return std::make_shared<std::unordered_set<RegisterId>>(list);
-}
+std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(
+    std::initializer_list<RegisterId> const& list = std::initializer_list<RegisterId>{});
 
-inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(RegisterId size) {
-  auto set = make_shared_unordered_set();
-  for (RegisterId i = 0; i < size; i++) {
-    set->insert(i);
-  }
-  return set;
-}
+std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(RegisterId size);
 
 template <typename Iterator>
 inline std::shared_ptr<std::unordered_set<RegisterId>> make_shared_unordered_set(Iterator begin,
@@ -97,9 +89,7 @@ class ExecutorInfos {
    *
    * @return The indices of the input registers.
    */
-  std::shared_ptr<std::unordered_set<RegisterId> const> const getInputRegisters() const {
-    return _inRegs;
-  }
+  std::shared_ptr<std::unordered_set<RegisterId> const> getInputRegisters() const;
 
   /**
    * @brief Get the output registers the Executor is allowed to write. This has
@@ -111,31 +101,25 @@ class ExecutorInfos {
    *
    * @return The indices of the output registers.
    */
-  std::shared_ptr<std::unordered_set<RegisterId> const> const getOutputRegisters() const {
-    return _outRegs;
-  }
+  std::shared_ptr<std::unordered_set<RegisterId> const> getOutputRegisters() const;
 
   /**
    * @brief Total number of registers in input AqlItemBlocks. Not to be confused
    *        with the input registers the current Executor actually reads. See
    *        getInputRegisters() for that.
    */
-  RegisterId numberOfInputRegisters() const { return _numInRegs; }
+  RegisterId numberOfInputRegisters() const;
 
   /**
    * @brief Total number of registers in output AqlItemBlocks. Not to be
    * confused with the output registers the current Executor actually writes.
    * See getOutputRegisters() for that.
    */
-  RegisterId numberOfOutputRegisters() const { return _numOutRegs; }
+  RegisterId numberOfOutputRegisters() const;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToKeep() const {
-    return _registersToKeep;
-  }
+  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToKeep() const;
 
-  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToClear() const {
-    return _registersToClear;
-  }
+  std::shared_ptr<std::unordered_set<RegisterId> const> const& registersToClear() const;
 
  protected:
   std::shared_ptr<std::unordered_set<RegisterId> const> _inRegs;

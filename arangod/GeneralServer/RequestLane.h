@@ -23,11 +23,7 @@
 #ifndef ARANGOD_GENERAL_SERVER_LANE_H
 #define ARANGOD_GENERAL_SERVER_LANE_H 1
 
-#include "Basics/Common.h"
-
 namespace arangodb {
-class GeneralRequest;
-
 enum class RequestLane {
   // For requests that do not block or wait for something.
   // This ignores blocks that can occur when delivering
@@ -65,6 +61,11 @@ enum class RequestLane {
   // V8 or having high priority.
   CLUSTER_INTERNAL,
 
+  // For requests from the DBserver to the Coordinator or
+  // from the Coordinator to the DBserver. Using AQL
+  // these have Medium priority.
+  CLUSTER_AQL,
+
   // For requests from the from the Coordinator to the
   // DBserver using V8.
   CLUSTER_V8,
@@ -75,8 +76,13 @@ enum class RequestLane {
   CLUSTER_ADMIN,
 
   // For requests used between leader and follower for
-  // replication.
+  // replication to compare the local states of data.
   SERVER_REPLICATION,
+
+  // For requests used between leader and follower for
+  // replication to go the final mile and get back to
+  // in-sync mode (wal tailing)
+  SERVER_REPLICATION_CATCHUP,
 
   // For periodic or one-off V8-based tasks executed by the
   // Scheduler.
@@ -92,7 +98,11 @@ enum class RequestLane {
   // AGENCY_CALLBACK`
 };
 
-enum class RequestPriority { HIGH, MED, LOW };
+enum class RequestPriority { 
+  HIGH = 0, 
+  MED = 1, 
+  LOW = 2 
+};
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {
@@ -110,10 +120,14 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_INTERNAL:
       return RequestPriority::HIGH;
+    case RequestLane::CLUSTER_AQL:
+      return RequestPriority::MED;
     case RequestLane::CLUSTER_V8:
       return RequestPriority::LOW;
     case RequestLane::CLUSTER_ADMIN:
       return RequestPriority::LOW;
+    case RequestLane::SERVER_REPLICATION_CATCHUP:
+      return RequestPriority::MED;
     case RequestLane::SERVER_REPLICATION:
       return RequestPriority::LOW;
     case RequestLane::TASK_V8:

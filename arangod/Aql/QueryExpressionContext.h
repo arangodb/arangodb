@@ -45,7 +45,6 @@ class QueryExpressionContext : public ExpressionContext {
   icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, transaction::Methods*,
                                        bool& isEmptyExpression) override;
 
-  bool killed() const override final;
   TRI_vocbase_t& vocbase() const override final;
   Query* query() const override final;
 

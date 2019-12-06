@@ -49,10 +49,12 @@ StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;
 StatusCode constexpr StatusNotFound = 404;
 StatusCode constexpr StatusMethodNotAllowed = 405;
+StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
 StatusCode constexpr StatusInternalError = 500;
-StatusCode constexpr StatusUnavailable = 505;
+StatusCode constexpr StatusUnavailable = 503;
+StatusCode constexpr StatusVersionNotSupported = 505;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition
@@ -60,22 +62,24 @@ StatusCode constexpr StatusUnavailable = 505;
 
 enum class Error : uint16_t {
   NoError = 0,
-  
+
   CouldNotConnect = 1000,
   CloseRequested = 1001,
   ConnectionClosed = 1002,
   Timeout = 1003,
   QueueCapacityExceeded = 1004,
-  
+
   ReadError = 1102,
   WriteError = 1103,
-  
+
   Canceled = 1104,
   
+  VstUnauthorized = 2000,
+
   ProtocolError = 3000,
 };
 std::string to_string(Error error);
-  
+
 // RequestCallback is called for finished connection requests.
 // If the given Error is zero, the request succeeded, otherwise an error
 // occurred.
@@ -107,6 +111,7 @@ enum class RestVerb {
   Options = 6
 };
 std::string to_string(RestVerb type);
+RestVerb from_string(std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       MessageType
@@ -122,27 +127,26 @@ enum class MessageType : int {
 MessageType intToMessageType(int integral);
 
 std::string to_string(MessageType type);
-  
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     SocketType
 // -----------------------------------------------------------------------------
 
-enum class SocketType { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
+enum class SocketType : uint8_t { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
 std::string to_string(SocketType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     ProtocolType
 // -----------------------------------------------------------------------------
 
-enum class ProtocolType { Undefined = 0, Http = 1, Vst = 2 };
+enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Vst = 2 };
 std::string to_string(ProtocolType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ContentType
 // -----------------------------------------------------------------------------
 
-enum class ContentType { Unset, Custom, VPack, Dump, Json, Html, Text };
+enum class ContentType : uint8_t { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
 ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
 
@@ -175,7 +179,8 @@ struct ConnectionConfiguration {
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-        _connectionTimeout(60000),
+        _connectTimeout(10000),
+        _idleTimeout(300000),
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),
         _user(""),
@@ -183,17 +188,18 @@ struct ConnectionConfiguration {
         _jwtToken("") {}
 
   ConnectionFailureCallback _onFailure;
-  SocketType _socketType;  // tcp, ssl or unix
+  SocketType _socketType;      // tcp, ssl or unix
   ProtocolType _protocolType;  // vst or http
   vst::VSTVersion _vstVersion;
-  
+
   std::string _host;
   std::string _port;
   bool _verifyHost;
-  
-  std::chrono::milliseconds _connectionTimeout;
+
+  std::chrono::milliseconds _connectTimeout;
+  std::chrono::milliseconds _idleTimeout;
   unsigned _maxConnectRetries;
-  
+
   AuthenticationType _authenticationType;
   std::string _user;
   std::string _password;

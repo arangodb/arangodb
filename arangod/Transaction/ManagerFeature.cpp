@@ -23,7 +23,13 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
+#include "Basics/FunctionUtils.h"
+#include "Basics/application-exit.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -33,6 +39,31 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
+void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
+                            std::function<void(bool)>& gcfunc) {
+  bool queued = false;
+  {
+    std::lock_guard<std::mutex> guard(mutex);
+    std::tie(queued, workItem) =
+        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
+            [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
+              auto off = std::chrono::seconds(1);
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+                                                                       off, gcfunc);
+            },
+            arangodb::Logger::TRANSACTIONS,
+            "queue transaction garbage collection");
+  }
+  if (!queued) {
+    LOG_TOPIC("f8b3d", FATAL, arangodb::Logger::TRANSACTIONS)
+        << "Failed to queue transaction garbage collection, for 5 minutes, "
+           "exiting.";
+    FATAL_ERROR_EXIT();
+  }
+}
+}  // namespace
+
 namespace arangodb {
 namespace transaction {
 
@@ -41,39 +72,36 @@ std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
   setOptional(false);
-  startsAfter("BasicsPhase");
-  startsAfter("EngineSelector");
-  startsAfter("Scheduler");
-  startsBefore("Database");
-      
+  startsAfter<BasicFeaturePhaseServer>();
+
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<SchedulerFeature>();
+
+  startsBefore<DatabaseFeature>();
+
   _gcfunc = [this] (bool canceled) {
     if (canceled) {
       return;
     }
     
     MANAGER->garbageCollect(/*abortAll*/false);
-    
-    auto off = std::chrono::seconds(1);
-    
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    if (!ApplicationServer::isStopping()) {
-      _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+
+    if (!this->server().isStopping()) {
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
     }
   };
 }
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
-  TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
-  MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
+  TRI_ASSERT(server().getFeature<EngineSelectorFeature>().selected());
+  MANAGER = server().getFeature<EngineSelectorFeature>().engine().createTransactionManager(*this);
 }
   
 void ManagerFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
-    auto off = std::chrono::seconds(1);
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+    ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
   }
 }
   

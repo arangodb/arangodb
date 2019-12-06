@@ -59,6 +59,7 @@ class Task : public std::enable_shared_from_this<Task> {
 
  private:
   static Mutex _tasksLock;
+  // id => [ user, task ]
   static std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>> _tasks;
 
  public:
@@ -82,7 +83,7 @@ class Task : public std::enable_shared_from_this<Task> {
  private:
   void toVelocyPack(velocypack::Builder&) const;
   void work(ExecContext const*);
-  void queue(std::chrono::microseconds offset);
+  bool queue(std::chrono::microseconds offset) ADB_WARN_UNUSED_RESULT;
   std::function<void(bool cancelled)> callbackFunction();
   std::string const& name() const { return _name; }
 

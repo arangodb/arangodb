@@ -22,16 +22,24 @@
 
 #include "CheckVersionFeature.h"
 
+#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
@@ -42,19 +50,20 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer& server,
-                                         int* result, std::vector<std::string> const& nonServerFeatures)
+                                         int* result,
+                                         std::vector<std::type_index> const& nonServerFeatures)
     : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("Database");
-  startsAfter("DatabasePath");
-  startsAfter("EngineSelector");
-  startsAfter("ServerId");
-  startsAfter("SystemDatabase");
+  startsAfter<DatabaseFeature>();
+  startsAfter<DatabasePathFeature>();
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<ServerIdFeature>();
+  startsAfter<SystemDatabaseFeature>();
 }
 
 void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -78,23 +87,21 @@ void CheckVersionFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   // noone else will set our role
   ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
-  ApplicationServer::forceDisableFeatures(_nonServerFeatures);
+  server().forceDisableFeatures(_nonServerFeatures);
 
-  LoggerFeature* logger =
-      ApplicationServer::getFeature<LoggerFeature>("Logger");
-  logger->disableThreaded();
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
+  logger.disableThreaded();
 
-  ReplicationFeature* replicationFeature =
-      ApplicationServer::getFeature<ReplicationFeature>("Replication");
-  replicationFeature->disableReplicationApplier();
+  ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
+  replicationFeature.disableReplicationApplier();
 
-  DatabaseFeature* databaseFeature =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-  databaseFeature->enableCheckVersion();
+  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
+  databaseFeature.enableCheckVersion();
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  ApplicationServer::disableFeatures({"Environment"});
+  server().disableFeatures(
+      std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
 }
 
 void CheckVersionFeature::start() {
@@ -113,7 +120,7 @@ void CheckVersionFeature::start() {
   }
 
   // and force shutdown
-  server()->beginShutdown();
+  server().beginShutdown();
 
   std::this_thread::sleep_for(std::chrono::seconds(1));
   TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
@@ -125,21 +132,17 @@ void CheckVersionFeature::checkVersion() {
   // run version check
   LOG_TOPIC("449fd", TRACE, arangodb::Logger::STARTUP) << "starting version check";
 
-  DatabasePathFeature* databasePathFeature =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-          "DatabasePath");
+  DatabasePathFeature& databasePathFeature = server().getFeature<DatabasePathFeature>();
 
   LOG_TOPIC("73006", TRACE, arangodb::Logger::STARTUP)
-      << "database path is: '" << databasePathFeature->directory() << "'";
+      << "database path is: '" << databasePathFeature.directory() << "'";
 
   // can do this without a lock as this is the startup
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
   bool ignoreDatafileErrors = false;
   {
-    VPackBuilder options = server()->options([](std::string const& name) {
+    VPackBuilder options = server().options([](std::string const& name) {
       return (name.find("database.ignore-datafile-errors") != std::string::npos);
     });
     VPackSlice s = options.slice();
@@ -149,8 +152,8 @@ void CheckVersionFeature::checkVersion() {
   }
 
   // iterate over all databases
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
     methods::VersionResult res = methods::Version::check(vocbase);
     TRI_ASSERT(vocbase != nullptr);
 

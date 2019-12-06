@@ -25,7 +25,9 @@
 #define ARANGOD_MMFILES_WAL_LOGFILE_H 1
 
 #include "Basics/Common.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesWalMarker.h"

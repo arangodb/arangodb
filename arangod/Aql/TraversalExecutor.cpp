@@ -21,10 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalExecutor.h"
+
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/system-compiler.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
@@ -52,8 +56,9 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_traverser != nullptr);
   TRI_ASSERT(!_registerMapping.empty());
   // _fixedSource XOR _inputRegister
-  TRI_ASSERT((_fixedSource.empty() && _inputRegister != ExecutionNode::MaxRegisterId) ||
-             (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
+  // note: _fixedSource can be the empty string here
+  TRI_ASSERT(_fixedSource.empty() ||
+             (!_fixedSource.empty() && _inputRegister == RegisterPlan::MaxRegisterId));
 }
 
 TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other) = default;
@@ -82,7 +87,7 @@ bool TraversalExecutorInfos::usePathOutput() const {
 }
 
 static std::string typeToString(TraversalExecutorInfos::OutputName type) {
-  switch(type) {
+  switch (type) {
     case TraversalExecutorInfos::VERTEX:
       return std::string{"VERTEX"};
     case TraversalExecutorInfos::EDGE:
@@ -98,8 +103,8 @@ RegisterId TraversalExecutorInfos::findRegisterChecked(OutputName type) const {
   auto const& it = _registerMapping.find(type);
   if (ADB_UNLIKELY(it == _registerMapping.end())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "Logic error: requested unused register type " + typeToString(type));
+        TRI_ERROR_INTERNAL,
+        "Logic error: requested unused register type " + typeToString(type));
   }
   return it->second;
 }
@@ -122,7 +127,7 @@ RegisterId TraversalExecutorInfos::pathRegister() const {
 }
 
 bool TraversalExecutorInfos::usesFixedSource() const {
-  return !_fixedSource.empty();
+  return _inputRegister == RegisterPlan::MaxRegisterId;
 }
 
 std::string const& TraversalExecutorInfos::getFixedSource() const {
@@ -132,7 +137,7 @@ std::string const& TraversalExecutorInfos::getFixedSource() const {
 
 RegisterId TraversalExecutorInfos::getInputRegister() const {
   TRI_ASSERT(!usesFixedSource());
-  TRI_ASSERT(_inputRegister != ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(_inputRegister != RegisterPlan::MaxRegisterId);
   return _inputRegister;
 }
 
@@ -150,7 +155,7 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
 TraversalExecutor::~TraversalExecutor() {
   auto opts = _traverser.options();
   if (opts != nullptr && opts->usesPrune()) {
-    auto *evaluator = opts->getPruneEvaluator();
+    auto* evaluator = opts->getPruneEvaluator();
     if (evaluator != nullptr) {
       // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
       // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and
@@ -222,7 +227,6 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputA
       }
       if (_infos.usePathOutput()) {
         transaction::BuilderLeaser tmp(_traverser.trx());
-        tmp->clear();
         AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
         AqlValueGuard guard{path, true};
         output.moveValueInto(_infos.pathRegister(), _input, guard);

@@ -25,6 +25,9 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb::consensus;
 

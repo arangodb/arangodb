@@ -50,7 +50,8 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
                              std::unordered_set<RegisterId> registersToKeep,
                              std::vector<SortRegister>&& sortRegister,
                              arangodb::transaction::Methods* trx,
-                             GatherNode::SortMode sortMode);
+                             GatherNode::SortMode sortMode, size_t limit,
+                             GatherNode::Parallelism p);
   SortingGatherExecutorInfos() = delete;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos&&);
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
@@ -60,12 +61,18 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
 
   arangodb::transaction::Methods* trx() { return _trx; }
 
-  GatherNode::SortMode sortMode() { return _sortMode; }
+  GatherNode::SortMode sortMode() const noexcept { return _sortMode; }
+  
+  GatherNode::Parallelism parallelism() const noexcept { return _parallelism; }
+
+  size_t limit() const noexcept { return _limit; }
 
  private:
   std::vector<SortRegister> _sortRegister;
   arangodb::transaction::Methods* _trx;
   GatherNode::SortMode _sortMode;
+  GatherNode::Parallelism _parallelism;
+  size_t _limit;
 };
 
 class SortingGatherExecutor {
@@ -96,16 +103,16 @@ class SortingGatherExecutor {
 
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
 
   using Fetcher = MultiDependencySingleRowFetcher;
   using Infos = SortingGatherExecutorInfos;
   using Stats = NoStats;
 
-  SortingGatherExecutor(Fetcher& fetcher, Infos& unused);
+  SortingGatherExecutor(Fetcher& fetcher, Infos& infos);
   ~SortingGatherExecutor();
 
   /**
@@ -120,8 +127,26 @@ class SortingGatherExecutor {
 
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t atMost);
+
  private:
-  ExecutionState init();
+  void initNumDepsIfNecessary();
+
+  ExecutionState init(size_t atMost);
+
+  std::pair<ExecutionState, InputAqlItemRow> produceNextRow(size_t atMost);
+
+  bool constrainedSort() const noexcept;
+
+  size_t rowsLeftToWrite() const noexcept;
+
+  void assertConstrainedDoesntOverfetch(size_t atMost) const noexcept;
+
+  // This is interesting in case this is a constrained sort and fullCount is
+  // enabled. Then, after the limit is reached, we may pass skipSome through
+  // to our dependencies, and not sort any more.
+  // This also means that we may not produce rows anymore after that point.
+  bool maySkip() const noexcept;
 
  private:
   Fetcher& _fetcher;
@@ -140,6 +165,25 @@ class SortingGatherExecutor {
 
   // Counter for DONE states
   size_t _nrDone;
+  
+  /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise, it's 0.
+  size_t _limit;
+
+  /// @brief Number of rows we've already written or skipped, up to _limit.
+  /// Only after _rowsReturned == _limit we may pass skip through to
+  /// dependencies.
+  size_t _rowsReturned;
+
+  /// @brief When we reached the limit, we once count the rows that are left in
+  /// the heap (in _rowsLeftInHeap), so we can count them for skipping.
+  bool _heapCounted;
+
+  /// @brief See comment for _heapCounted first. At the first real skip, this
+  /// is set to the number of rows left in the heap. It will be reduced while
+  /// skipping.
+  size_t _rowsLeftInHeap;
+
+  size_t _skipped;
 
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;
@@ -147,6 +191,10 @@ class SortingGatherExecutor {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::vector<bool> _flaggedAsDone;
 #endif
+  std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> reallySkipRows(size_t atMost);
+  std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> produceAndSkipRows(size_t atMost);
+  
+  const bool _fetchParallel;
 };
 
 }  // namespace aql

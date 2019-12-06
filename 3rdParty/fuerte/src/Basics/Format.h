@@ -31,16 +31,16 @@ namespace arangodb { namespace fuerte { namespace basics {
  * Alignment aware serialization and deserialization functions
  */
 
-template<typename T> 
-inline T uintFromPersistentLittleEndian(uint8_t const* p) {
+template <typename T>
+inline T uintFromPersistentLE(uint8_t const* p) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   T value;
   memcpy(&value, p, sizeof(T));
   return basics::littleToHost<T>(value);
 }
 
-template<typename T>
-inline void uintToPersistentLittleEndian(uint8_t* p, T value) {
+template <typename T>
+inline void uintToPersistentLE(uint8_t* p, T value) {
   static_assert(std::is_unsigned<T>::value, "type must be unsigned");
   value = basics::hostToLittle(value);
   memcpy(p, &value, sizeof(T));

@@ -23,11 +23,11 @@
 #include "RestPregelHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/HttpRequest.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Utils.h"
 
@@ -36,18 +36,17 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::pregel;
 
-RestPregelHandler::RestPregelHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestPregelHandler::RestPregelHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestPregelHandler::execute() {
   try {
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-    VPackSlice body(parsedBody->start());  // never nullptr
-
+    VPackSlice body = parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {
       LOG_TOPIC("cec03", ERR, Logger::PREGEL) << "Bad request body\n";
-      // error message generated in parseVelocyPackBody
+      // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
     if (_request->requestType() != rest::RequestType::POST) {
@@ -62,7 +61,7 @@ RestStatus RestPregelHandler::execute() {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
-      PregelFeature::handleConductorRequest(suffix[1], body, response);
+      PregelFeature::handleConductorRequest(_vocbase, suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, response.slice());
       /*
        if (buffer.empty()) {

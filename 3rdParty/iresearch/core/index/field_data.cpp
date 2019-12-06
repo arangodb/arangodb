@@ -38,6 +38,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/object_pool.hpp"
@@ -54,6 +55,12 @@ NS_LOCAL
 using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
+
+const column_info NORM_COLUMN{
+  compression::lz4::type(),
+  compression::options(),
+  false
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
@@ -172,7 +179,7 @@ class pos_iterator final: public irs::position {
 
   virtual void clear() NOEXCEPT override {
     pos_ = 0;
-    val_ = pos_limits::invalid();
+    value_ = pos_limits::invalid();
     offs_.clear();
     pay_.clear();
   }
@@ -201,15 +208,11 @@ class pos_iterator final: public irs::position {
     prox_in_ = prox;
   }
 
-  virtual uint32_t value() const NOEXCEPT override {
-    return val_;
-  }
-
   virtual bool next() override {
     assert(freq_);
 
     if (pos_ == freq_->value) {
-      val_ = irs::pos_limits::eof();
+      value_ = irs::pos_limits::eof();
 
       return false;
     }
@@ -222,7 +225,7 @@ class pos_iterator final: public irs::position {
       prox_in_.read(pay_.data(), size);
     }
 
-    val_ += pos;
+    value_ += pos;
 
     if (has_offs_) {
       offs_.start += irs::vread<uint32_t>(prox_in_);
@@ -240,7 +243,6 @@ class pos_iterator final: public irs::position {
   payload pay_{};
   offset offs_{};
   uint32_t pos_{}; // current position
-  uint32_t val_{};
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 }; // pos_iterator
 
@@ -789,7 +791,9 @@ void field_data::reset(doc_id_t doc_id) {
 
 data_output& field_data::norms(columnstore_writer& writer) {
   if (!norms_) {
-    auto handle = writer.push_column();
+    // FIXME encoder for norms???
+    // do not encrypt norms
+    auto handle = writer.push_column(NORM_COLUMN);
     norms_ = std::move(handle.second);
     meta_.norm = handle.first;
   }

@@ -25,6 +25,8 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
@@ -32,12 +34,14 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-#include <iostream>
+
+#include "Mocks/LogLevels.h"
+
 #include "Agency/AddFollower.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
-#include "lib/Basics/StringUtils.h"
-#include "lib/Random/RandomGenerator.h"
+#include "Basics/StringUtils.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -101,7 +105,8 @@ inline static std::string typeName(Slice const& slice) {
   return std::string(slice.typeName());
 }
 
-class AddFollowerTest : public ::testing::Test {
+class AddFollowerTest : public ::testing::Test,
+                        public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
   Node baseStructure;
   Builder builder;
@@ -125,26 +130,26 @@ TEST_F(AddFollowerTest, creating_a_job_should_create_a_job_in_todo) {
 
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
-    EXPECT_TRUE(q->slice()[0][0].length() == 1);  // should ONLY do an entry in todo
-    EXPECT_TRUE(typeName(q->slice()[0][0].get(expectedJobKey)) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
+    EXPECT_EQ(q->slice()[0][0].length(), 1);  // should ONLY do an entry in todo
+    EXPECT_EQ(typeName(q->slice()[0][0].get(expectedJobKey)), "object");
 
     auto job = q->slice()[0][0].get(expectedJobKey);
-    EXPECT_TRUE(typeName(job.get("creator")) == "string");
-    EXPECT_TRUE(typeName(job.get("type")) == "string");
-    EXPECT_TRUE(job.get("type").copyString() == "addFollower");
-    EXPECT_TRUE(typeName(job.get("database")) == "string");
-    EXPECT_TRUE(job.get("database").copyString() == DATABASE);
-    EXPECT_TRUE(typeName(job.get("collection")) == "string");
-    EXPECT_TRUE(job.get("collection").copyString() == COLLECTION);
-    EXPECT_TRUE(typeName(job.get("shard")) == "string");
-    EXPECT_TRUE(job.get("shard").copyString() == SHARD);
-    EXPECT_TRUE(typeName(job.get("jobId")) == "string");
-    EXPECT_TRUE(typeName(job.get("timeCreated")) == "string");
+    EXPECT_EQ(typeName(job.get("creator")), "string");
+    EXPECT_EQ(typeName(job.get("type")), "string");
+    EXPECT_EQ(job.get("type").copyString(), "addFollower");
+    EXPECT_EQ(typeName(job.get("database")), "string");
+    EXPECT_EQ(job.get("database").copyString(), DATABASE);
+    EXPECT_EQ(typeName(job.get("collection")), "string");
+    EXPECT_EQ(job.get("collection").copyString(), COLLECTION);
+    EXPECT_EQ(typeName(job.get("shard")), "string");
+    EXPECT_EQ(job.get("shard").copyString(), SHARD);
+    EXPECT_EQ(typeName(job.get("jobId")), "string");
+    EXPECT_EQ(typeName(job.get("timeCreated")), "string");
 
     return fakeWriteResult;
   });
@@ -167,7 +172,7 @@ TEST_F(AddFollowerTest, collection_still_exists) {
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -190,20 +195,20 @@ TEST_F(AddFollowerTest, collection_still_exists) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
     // we always simply override! no preconditions...
-    EXPECT_TRUE(q->slice()[0].length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(q->slice()[0].length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
     EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                 "string");
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Finished/1")), "object");
     return fakeWriteResult;
   });
 
@@ -217,7 +222,7 @@ TEST_F(AddFollowerTest, collection_has_nonempty_distributeshardslike) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -242,19 +247,19 @@ TEST_F(AddFollowerTest, collection_has_nonempty_distributeshardslike) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
     EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                 "string");
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Failed/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Failed/1")), "object");
     return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
@@ -268,7 +273,7 @@ TEST_F(AddFollowerTest, condition_still_holds) {
 
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -299,22 +304,22 @@ TEST_F(AddFollowerTest, condition_still_holds) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
     EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                 "string");
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(writes.get("/arango/Target/Finished/1").get("collection").copyString() == COLLECTION);
+    EXPECT_EQ(writes.get("/arango/Target/Finished/1").get("collection").copyString(), COLLECTION);
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Failed/1")) == "none");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Failed/1")), "none");
     return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
@@ -327,7 +332,7 @@ TEST_F(AddFollowerTest, if_no_job_under_shard_leave_job_in_todo) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -352,15 +357,15 @@ TEST_F(AddFollowerTest, if_no_job_under_shard_leave_job_in_todo) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-    EXPECT_TRUE(writes.get("/arango/Target/Finished/1").get("collection").copyString() == COLLECTION);
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+    EXPECT_EQ(writes.get("/arango/Target/Finished/1").get("collection").copyString(), COLLECTION);
     return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
@@ -373,7 +378,7 @@ TEST_F(AddFollowerTest, we_can_find_one_with_status_good) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -401,15 +406,15 @@ TEST_F(AddFollowerTest, we_can_find_one_with_status_good) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-    EXPECT_TRUE(writes.get("/arango/Target/Finished/1").get("collection").copyString() == COLLECTION);
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
+    EXPECT_EQ(writes.get("/arango/Target/Finished/1").get("collection").copyString(), COLLECTION);
     return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
@@ -422,7 +427,7 @@ TEST_F(AddFollowerTest, job_performed_immediately_in_a_single_transaction) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -444,21 +449,21 @@ TEST_F(AddFollowerTest, job_performed_immediately_in_a_single_transaction) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 2);  // we always simply override! no preconditions...
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 2);  // we always simply override! no preconditions...
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/ToDo/1")), "object");
     EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                 "string");
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(writes.get("/arango/Target/Finished/1").get("collection").copyString() == COLLECTION);
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Pending/1")) == "none");
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Failed/1")) == "none");
+    EXPECT_EQ(writes.get("/arango/Target/Finished/1").get("collection").copyString(), COLLECTION);
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Pending/1")), "none");
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Failed/1")), "none");
     return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
@@ -471,7 +476,7 @@ TEST_F(AddFollowerTest, job_can_still_be_safely_aborted) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -493,15 +498,15 @@ TEST_F(AddFollowerTest, job_can_still_be_safely_aborted) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Failed/1")) == "object");
-    EXPECT_TRUE(writes.get("/arango/Target/Failed/1").get("collection").copyString() == COLLECTION);
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Failed/1")), "object");
+    EXPECT_EQ(writes.get("/arango/Target/Failed/1").get("collection").copyString(), COLLECTION);
     EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                 "string");
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==
@@ -522,7 +527,7 @@ TEST_F(AddFollowerTest, job_cannot_be_aborted) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -544,15 +549,15 @@ TEST_F(AddFollowerTest, job_cannot_be_aborted) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(typeName(q->slice()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_EQ(typeName(q->slice()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(typeName(q->slice()[0]), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(typeName(q->slice()[0][0]), "object");
 
     auto writes = q->slice()[0][0];
-    EXPECT_TRUE(typeName(writes.get("/arango/Target/Failed/1")) == "object");
-    EXPECT_TRUE(writes.get("/arango/Target/Failed/1").get("collection").copyString() == COLLECTION);
+    EXPECT_EQ(typeName(writes.get("/arango/Target/Failed/1")), "object");
+    EXPECT_EQ(writes.get("/arango/Target/Failed/1").get("collection").copyString(), COLLECTION);
     EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
                 "string");
     EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("op").copyString() ==

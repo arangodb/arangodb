@@ -33,11 +33,16 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -136,6 +141,7 @@ class v8_action_t final : public TRI_action_t {
 
       // and execute it
       {
+        // cppcheck-suppress redundantPointerOp
         MUTEX_LOCKER(mutexLocker, *dataLock);
 
         if (*data != nullptr) {
@@ -160,6 +166,7 @@ class v8_action_t final : public TRI_action_t {
       }
 
       {
+        // cppcheck-suppress redundantPointerOp
         MUTEX_LOCKER(mutexLocker, *dataLock);
         *data = nullptr;
       }
@@ -168,8 +175,9 @@ class v8_action_t final : public TRI_action_t {
     return result;
   }
 
-  bool cancel(Mutex* dataLock, void** data) override {
+  void cancel(Mutex* dataLock, void** data) override {
     {
+      // cppcheck-suppress redundantPointerOp
       MUTEX_LOCKER(mutexLocker, *dataLock);
 
       // either we have not yet reached the execute above or we are already done
@@ -184,8 +192,6 @@ class v8_action_t final : public TRI_action_t {
         }
       }
     }
-
-    return true;
   }
 
  private:
@@ -356,8 +362,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
-    if (user.empty() ||
-        (ExecContext::CURRENT != nullptr && ExecContext::CURRENT->isAdminUser())) {
+    if (user.empty() || ExecContext::current().isAdminUser()) {
       req->Set(IsAdminUser, v8::True(isolate));
     } else {
       req->Set(IsAdminUser, v8::False(isolate));
@@ -380,12 +385,12 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   req->Set(UrlKey, TRI_V8_STD_STRING(isolate, fullUrl));
 
   // set the protocol
-  char const* protocol = request->protocol();
   TRI_GET_GLOBAL_STRING(ProtocolKey);
-  req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, protocol));
-
-  // set the task id
-  std::string const taskId(StringUtils::itoa(request->clientTaskId()));
+  if (request->transportType() == Endpoint::TransportType::HTTP) {
+    req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, "http"));
+  } else if (request->transportType() == Endpoint::TransportType::VST) {
+    req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, "vst"));
+  }
 
   // set the connection info
   const ConnectionInfo& info = request->connectionInfo();
@@ -411,7 +416,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   clientArray->Set(AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress));
   clientArray->Set(PortKey, v8::Number::New(isolate, info.clientPort));
   TRI_GET_GLOBAL_STRING(IdKey);
-  clientArray->Set(IdKey, TRI_V8_STD_STRING(isolate, taskId));
+  clientArray->Set(IdKey, TRI_V8_STD_STRING(isolate, std::string("0")));
   TRI_GET_GLOBAL_STRING(ClientKey);
   req->Set(ClientKey, clientArray);
 
@@ -433,18 +438,38 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
   auto setRequestBodyJsonOrVPack = [&]() {
-    if (rest::ContentType::JSON == request->contentType()) {
-      auto httpreq = dynamic_cast<HttpRequest*>(request);
-      if (httpreq == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid request type");
+    if (rest::ContentType::UNSET == request->contentType()) {
+      bool digesteable = false;
+      try {
+        VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
+        optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+        auto parsed = request->payload(&optionsWithUniquenessCheck);
+        if (parsed.isObject() || parsed.isArray()) {
+          request->setDefaultContentType();
+          digesteable = true;
+        }
+      } catch ( ... ) {}
+      // ok, no json/vpack after all ;-)
+      auto raw = request->rawPayload();
+      headers[StaticStrings::ContentLength] =
+        StringUtils::itoa(raw.size());
+      V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
+      auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+      TRI_GET_GLOBAL_STRING(RawRequestBodyKey);
+      req->Set(RawRequestBodyKey, bufObj);
+      req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, raw.data(), raw.size()));
+      if (!digesteable) {
+        return;
       }
-      std::string const& body = httpreq->body();
-      req->Set(RequestBodyKey, TRI_V8_STD_STRING(isolate, body));
+    }
+
+    if (rest::ContentType::JSON == request->contentType()) {
+      VPackStringRef body = request->rawPayload();
+      req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size()));
       headers[StaticStrings::ContentLength] =
           StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
-      // the VPACK is passed as it is to to Javascript
+      // the VPACK is passed as it is to to JavaScript
       // FIXME not every VPack can be converted to JSON
       VPackSlice slice = request->payload();
       std::string jsonString = slice.toJson();
@@ -456,8 +481,6 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       req->Set(RequestBodyKey, TRI_V8_STD_STRING(isolate, jsonString));
       headers[StaticStrings::ContentLength] = StringUtils::itoa(jsonString.size());
       headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeJson;
-    } else {
-      throw std::logic_error("unhandled request type");
     }
   };
 
@@ -614,13 +637,14 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   response->setResponseCode(code);
 
   // string should not be used
-  std::string contentType = "application/json";
+  std::string contentType = StaticStrings::MimeTypeJsonNoEncoding;
   bool autoContent = true;
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (TRI_HasProperty(context, isolate, res, ContentTypeKey)) {
     contentType = TRI_ObjectToString(isolate, res->Get(ContentTypeKey));
 
-    if (contentType.find("application/json") == std::string::npos) {
+    if ((contentType.find(StaticStrings::MimeTypeJsonNoEncoding) == std::string::npos) &&
+        (contentType.find(StaticStrings::MimeTypeVPack) == std::string::npos)) {
       autoContent = false;
     }
     switch (response->transportType()) {
@@ -633,7 +657,11 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         break;
 
       case Endpoint::TransportType::VST:
-        response->setHeaderNC(arangodb::StaticStrings::ContentTypeHeader, contentType);
+        if (!autoContent) {
+          response->setContentType(contentType);
+        } else {
+          response->setHeaderNC(arangodb::StaticStrings::ContentTypeHeader, contentType);
+        }
         break;
 
       default:
@@ -651,7 +679,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   if (TRI_HasProperty(context, isolate, res, BodyKey)) {
     // check if we should apply result transformations
     // transformations turn the result from one type into another
-    // a Javascript action can request transformations by
+    // a JavaScript action can request transformations by
     // putting a list of transformations into the res.transformations
     // array, e.g. res.transformations = [ "base64encode" ]
     TRI_GET_GLOBAL_STRING(TransformationsKey);
@@ -751,6 +779,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               out = TRI_ObjectToString(isolate, res->Get(BodyKey));  // should get moved
             } else {
               TRI_V8ToVPack(isolate, builder, v8Body, false);
+              response->setContentType(rest::ContentType::VPACK);
             }
           } else if (V8Buffer::hasInstance(isolate,
                                            v8Body)) {  // body form buffer - could
@@ -771,6 +800,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               VPackParser parser(builder);  // add json as vpack to the builder
               parser.parse(out, false);
               gotJson = true;
+              response->setContentType(rest::ContentType::VPACK);
             } catch (...) {  // do nothing
                              // json could not be converted
                              // there was no json - change content type?
@@ -781,11 +811,12 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           }
 
           if (!gotJson) {
-            builder.add(VPackValue(out));  // add output to the builder - when not added via parser
+            // don't go via the builder - when not added via parser
+            buffer.reset();
+            buffer.append(out);
           }
         }
 
-        response->setContentType(rest::ContentType::VPACK);
         response->setPayload(std::move(buffer), true);
         break;
       }
@@ -1012,12 +1043,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "defineAction(<name>, <callback>, <parameter>)");
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
 
-  if (!v8security->isAllowedToDefineHttpAction(isolate)) {
+  if (!v8security.isAllowedToDefineHttpAction(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "operation only allowed for internal scripts");
   }
 
@@ -1148,14 +1177,15 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
         case Endpoint::TransportType::HTTP: {
           auto httpRequest = static_cast<arangodb::HttpRequest*>(e->Value());
           if (httpRequest != nullptr) {
-            std::string bodyStr;
+            V8Buffer* buffer;
             if (rest::ContentType::VPACK == request->contentType()) {
               VPackSlice slice = request->payload();
-              bodyStr = slice.toJson();
+              std::string bodyStr = slice.toJson();
+              buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
             } else {
-              bodyStr = httpRequest->body();
+              auto raw = httpRequest->rawPayload();
+              buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             }
-            V8Buffer* buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
 
             TRI_V8_RETURN(buffer->_handle);
           }
@@ -1163,14 +1193,8 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         case Endpoint::TransportType::VST: {
           if (request != nullptr) {
-            auto slice = request->payload();
-            V8Buffer* buffer = nullptr;
-            if (slice.isNone()) {
-              buffer = V8Buffer::New(isolate, "", 0);
-            } else {
-              std::string bodyStr = slice.toJson();
-              buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
-            }
+            auto raw = request->rawPayload();
+            V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             TRI_V8_RETURN(buffer->_handle);
           }
         } break;
@@ -1207,8 +1231,8 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
       auto request = static_cast<arangodb::HttpRequest*>(e->Value());
 
-      std::string const& bodyStr = request->body();
-      char const* beg = bodyStr.c_str();
+      VPackStringRef bodyStr = request->rawPayload();
+      char const* beg = bodyStr.data();
       char const* end = beg + bodyStr.size();
 
       while (beg < end && (*beg == '\r' || *beg == '\n' || *beg == ' ')) {
@@ -1338,6 +1362,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Handle<v8::Object> partObject = v8::Object::New(isolate);
         partObject->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headersObject);
 
+        // cppcheck-suppress nullPointerArithmetic ; cannot get here, if data is nullptr
         V8Buffer* buffer = V8Buffer::New(isolate, data, end - data);
         auto localHandle = v8::Local<v8::Object>::New(isolate, buffer->_handle);
 
@@ -1417,38 +1442,39 @@ static int clusterSendToAllServers(std::string const& dbname,
                                    std::string const& path,  // Note: Has to be properly encoded!
                                    arangodb::rest::RequestType const& method,
                                    std::string const& body) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
+  auto& server = application_features::ApplicationServer::server();
+  network::ConnectionPool* pool = server.getFeature<NetworkFeature>().pool();
+  if (!pool || !pool->config().clusterInfo) {
+    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION) << "Network pool unavailable.";
     return TRI_ERROR_SHUTTING_DOWN;
   }
-  std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
+  ClusterInfo& ci = *pool->config().clusterInfo;
+  std::vector<ServerID> DBServers = ci.getCurrentDBServers();
+
+  network::Headers headers;
+  fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
+
+  network::RequestOptions reqOpts;
+  reqOpts.database = dbname;
+  reqOpts.timeout = network::Timeout(3600);
+
+  std::vector<futures::Future<network::Response>> futures;
+  futures.reserve(DBServers.size());
 
   // Have to propagate to DB Servers
-  std::vector<ServerID> DBServers;
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  auto reqBodyString = std::make_shared<std::string>(body);
-
-  DBServers = ci->getCurrentDBServers();
-  std::unordered_map<std::string, std::string> headers;
   for (auto const& sid : DBServers) {
-    cc->asyncRequest(coordTransactionID, "server:" + sid, method, url,
-                     reqBodyString, headers, nullptr, 3600.0);
+    VPackBuffer<uint8_t> buffer(body.size());
+    buffer.append(body);
+    auto f = network::sendRequest(pool, "server:" + sid, verb, path,
+                                  std::move(buffer), reqOpts, headers);
+    futures.emplace_back(std::move(f));
   }
 
-  // Now listen to the results:
-  size_t count = DBServers.size();
-
-  for (; count > 0; count--) {
-    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_TIMEOUT) {
-      cc->drop(coordTransactionID, 0, "");
-      return TRI_ERROR_CLUSTER_TIMEOUT;
-    }
-    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
-        res.status == CL_COMM_BACKEND_UNAVAILABLE) {
-      cc->drop(coordTransactionID, 0, "");
-      return TRI_ERROR_INTERNAL;
+  for (auto& f : futures) {
+    network::Response const& res = f.get();  // throws exceptions upwards
+    int commError = network::fuerteToArangoErrorCode(res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      return commError;
     }
   }
   return TRI_ERROR_NO_ERROR;
@@ -1464,18 +1490,18 @@ static int clusterSendToAllServers(std::string const& dbname,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static void JS_DebugSegfault(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_DebugTerminate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // extract arguments
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("debugSegfault(<message>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("debugTerminate(<message>)");
   }
 
   std::string const message = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_SegfaultDebugging(message.c_str());
+  TRI_TerminateDebugging(message.c_str());
 
   // we may get here if we are in non-maintainer mode
 
@@ -1649,11 +1675,9 @@ static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->isFoxxApiDisabled());
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_V8_RETURN_BOOL(security.isFoxxApiDisabled());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1662,11 +1686,9 @@ static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->isFoxxStoreDisabled());
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_V8_RETURN_BOOL(security.isFoxxStoreDisabled());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1724,7 +1746,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_SEGFAULT"), JS_DebugSegfault);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_TERMINATE"), JS_DebugTerminate);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_DEBUG_SET_FAILAT"),
@@ -1738,15 +1760,15 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                                    "SYS_DEBUG_SHOULD_FAILAT"),
                                JS_DebugShouldFailAt);
 #endif
-  
-  // poll interval for Foxx queues
-  FoxxQueuesFeature* foxxQueuesFeature =
-      application_features::ApplicationServer::getFeature<FoxxQueuesFeature>(
-          "FoxxQueues");
 
-  isolate->GetCurrentContext()->Global()
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-                          v8::Number::New(isolate, foxxQueuesFeature->pollInterval()), v8::ReadOnly)
+  // poll interval for Foxx queues
+  auto& server = application_features::ApplicationServer::server();
+  FoxxQueuesFeature& foxxQueuesFeature = server.getFeature<FoxxQueuesFeature>();
+
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
+          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 }

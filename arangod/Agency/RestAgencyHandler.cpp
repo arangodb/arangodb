@@ -30,8 +30,7 @@
 
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Logger/LogMacros.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -46,9 +45,10 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
+RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
-    : RestVocbaseBaseHandler(request, response), _agent(agent) {}
+    : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
@@ -228,7 +228,7 @@ RestStatus RestAgencyHandler::handleWrite() {
 
   // Empty request array
   if (query->slice().length() == 0) {
-    return reportMessage(rest::ResponseCode::BAD, "Empty request.");
+    return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
 
   // Leadership established?
@@ -568,7 +568,7 @@ RestStatus RestAgencyHandler::handleConfig() {
 RestStatus RestAgencyHandler::handleState() {
 
   VPackBuilder body;
-  { 
+  {
     VPackObjectBuilder o(&body);
     _agent->readDB(body);
   }
@@ -583,6 +583,7 @@ RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 }
 
 RestStatus RestAgencyHandler::execute() {
+  response()->setAllowCompression(true);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request

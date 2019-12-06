@@ -381,13 +381,43 @@ function optimizerCountTestSuite () {
       }
     },
 
-    testCollectAggregateUndefined: function () {
-      var randomDocumentID = db["UnitTestsCollection"].any()._id;
-      var query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key for i in [] collect aggregate count = count(i) return {count, start}';
-      var bindParams = {};
-      var options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
+    // This test is not necessary for hashed collect, as hashed collect will not
+    // be used without group variables.
+    testCollectSortedUndefined: function () {
+      const randomDocumentID = db["UnitTestsCollection"].any()._id;
+      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE count = count(i) RETURN {count, start}';
+      const bindParams = {};
+      const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
 
-      var results = db._query(query, bindParams, options).toArray();
+      const planNodes = AQL_EXPLAIN(query, {}, options).plan.nodes;
+      assertEqual(
+        [ "SingletonNode", "CalculationNode", "CalculationNode",
+          "EnumerateListNode", "CollectNode", "CalculationNode", "ReturnNode" ],
+        planNodes.map(n => n.type));
+      assertEqual("sorted", planNodes[4].collectOptions.method);
+
+      const results = db._query(query, bindParams, options).toArray();
+      // expectation is that we exactly get one result
+      // count will be 0, start will be undefined
+      assertEqual(1, results.length);
+      assertEqual(0, results[0].count);
+      assertEqual(undefined, results[0].start);
+    },
+
+    testCollectCountUndefined: function () {
+      const randomDocumentID = db["UnitTestsCollection"].any()._id;
+      const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT WITH COUNT INTO count RETURN {count, start}';
+      const bindParams = {};
+      const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
+
+      const planNodes = AQL_EXPLAIN(query, {}, options).plan.nodes;
+      assertEqual(
+        [ "SingletonNode", "CalculationNode", "CalculationNode",
+          "EnumerateListNode", "CollectNode", "CalculationNode", "ReturnNode" ],
+        planNodes.map(n => n.type));
+      assertEqual("count", planNodes[4].collectOptions.method);
+
+      const results = db._query(query, bindParams, options).toArray();
       // expectation is that we exactly get one result
       // count will be 0, start will be undefined
       assertEqual(1, results.length);

@@ -187,14 +187,30 @@ arangodb::Result applyCollectionDumpMarkerInternal(
           }
         }
 
-        options.indexOperationMode = arangodb::Index::OperationMode::normal;
+        int tries = 0;
+        while (tries++ < 2) {
+          if (useReplace) {
+            // perform a replace
+            opRes = trx.replace(coll->name(), slice, options);
+          } else {
+            // perform a re-insert
+            opRes = trx.insert(coll->name(), slice, options);
+          }
 
-        if (useReplace) {
-          // perform a replace
-          opRes = trx.replace(coll->name(), slice, options);
-        } else {
-          // perform a re-insert
-          opRes = trx.insert(coll->name(), slice, options);
+          if (opRes.ok() || 
+              !opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+              trx.isSingleOperationTransaction()) {
+            break;
+          }
+
+          // in case we get a unique constraint violation in a multi-document transaction,
+          // we can remove the conflicting document and try again
+          options.indexOperationMode = arangodb::Index::OperationMode::normal;
+
+          VPackBuilder tmp;
+          tmp.add(VPackValue(opRes.errorMessage()));
+
+          trx.remove(coll->name(), tmp.slice(), options);
         }
       }
 
@@ -264,9 +280,14 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
 
   // wait until all posted jobs have been completed/canceled
   while (hasJobInFlight()) {
-    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     std::this_thread::yield();
   }
+}
+
+bool Syncer::JobSynchronizer::gotResponse() const noexcept {
+  CONDITION_LOCKER(guard, _condition);
+  return _gotResponse;
 }
 
 /// @brief will be called whenever a response for the job comes in
@@ -340,7 +361,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
   }
 
   try {
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
+    bool queued = SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
       // whatever happens next, when we leave this here, we need to indicate
       // that there is no more posted job.
       // otherwise the calling thread may block forever waiting on the
@@ -349,9 +370,14 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 
       cb();
     });
+
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+    }
   } catch (...) {
     // will get here only if Scheduler::post threw
     jobDone();
+    throw;
   }
 }
 
@@ -397,8 +423,36 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
   return _jobsInFlight > 0;
 }
 
+/**
+ * @brief Generate a new syncer ID, used for the catchup in synchronous replication.
+ *
+ * If we're running in a cluster, we're a DBServer that's using asynchronous
+ * replication to catch up until we can switch to synchronous replication.
+ *
+ * As in this case multiple syncers can run on the same client, syncing from the
+ * same server, the server ID used to identify the client with usual asynchronous
+ * replication on the server is not sufficiently unique. For that case, we use
+ * the syncer ID with a server specific tick.
+ *
+ * Otherwise, we're doing some other kind of asynchronous replication (e.g.
+ * active failover or dc2dc). In that case, the server specific tick would not
+ * be unique among clients, and the server ID will be used instead.
+ *
+ * The server distinguishes between syncer and server IDs, which is why we don't
+ * just return ServerIdFeature::getId() here, so e.g. SyncerId{4} and server ID 4
+ * will be handled as distinct values.
+ */
+SyncerId newSyncerId() {
+  if (ServerState::instance()->isRunningInCluster()) {
+    TRI_ASSERT(ServerState::instance()->getShortId() != 0);
+    return SyncerId{TRI_NewServerSpecificTick()};
+  }
+
+  return SyncerId{0};
+}
+
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : applier{configuration}, connection{syncer, configuration}, master{configuration} {}
+    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, master{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
@@ -485,8 +539,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr) {
-      _state.vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                              std::forward_as_tuple(*vocbase));
+      _state.vocbases.try_emplace(name, *vocbase); //we can not be lazy because of the guard requires a valid ref
     } else {
       LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
@@ -552,7 +605,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
       LOG_TOPIC("569c6", DEBUG, Logger::REPLICATION)
           << "got lock timeout while waiting for lock on collection '"
           << coll->name() << "', retrying...";
-      std::this_thread::sleep_for(std::chrono::microseconds(50000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
       // retry
     }
   } else {
@@ -969,5 +1022,7 @@ void Syncer::reloadUsers() {
     um->triggerLocalReload();
   }
 }
+
+SyncerId Syncer::syncerId() const noexcept { return _state.syncerId; }
 
 }  // namespace arangodb

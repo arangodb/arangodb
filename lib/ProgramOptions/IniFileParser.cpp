@@ -20,15 +20,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Basics/StringUtils.h"
-#include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
-
+#include <stddef.h>
+#include <map>
 #include <sstream>
+#include <vector>
 
 #include <unicode/unistr.h>
-#include "ProgramOptions/IniFileParser.h"
+
+#include "IniFileParser.h"
+
+#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
 namespace options {
@@ -147,7 +156,7 @@ bool IniFileParser::parseContent(std::string const& filename, std::string const&
         // use option prefixed with current section
         option = currentSection + "." + match[1].str();
       }
-
+      
 #ifdef USE_ENTERPRISE
       if (isCommunity) {
         continue;
@@ -167,7 +176,10 @@ bool IniFileParser::parseContent(std::string const& filename, std::string const&
     }
   }
 
-  isCommunity ^= isEnterprise;
+  // make sure the compiler does not complain about these variables
+  // being unused
+  (void) isCommunity;
+  (void) isEnterprise;
 
   // all is well
   if (endPassAfterwards) {

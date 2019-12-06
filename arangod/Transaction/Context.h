@@ -24,8 +24,10 @@
 #ifndef ARANGOD_TRANSACTION_CONTEXT_H
 #define ARANGOD_TRANSACTION_CONTEXT_H 1
 
+#include <memory>
+
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Options.h>
@@ -102,9 +104,10 @@ class Context {
   /// @brief get velocypack options for dumping
   arangodb::velocypack::Options* getVPackOptionsForDump();
 
-  /// @brief save the transaction's id and status locally
+  /// @brief unregister the transaction
+  /// this will save the transaction's id and status locally
   void storeTransactionResult(TRI_voc_tid_t id, bool hasFailedOperations,
-                              bool wasRegistered) noexcept;
+                              bool wasRegistered, bool isReadOnlyTransaction) noexcept;
 
  public:
   /// @brief get a custom type handler
@@ -139,13 +142,13 @@ class Context {
   CollectionNameResolver const* _resolver;
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
-  SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
-  SmallVector<arangodb::velocypack::Builder*, 32> _builders;
-  
+  ::arangodb::containers::SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
+  ::arangodb::containers::SmallVector<arangodb::velocypack::Builder*, 32> _builders;
+
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
-  
-  SmallVector<std::string*, 32>::allocator_type::arena_type _strArena;
-  SmallVector<std::string*, 32> _strings;
+
+  ::arangodb::containers::SmallVector<std::string*, 32>::allocator_type::arena_type _strArena;
+  ::arangodb::containers::SmallVector<std::string*, 32> _strings;
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;
@@ -156,6 +159,7 @@ class Context {
   struct {
     TRI_voc_tid_t id;
     bool hasFailedOperations;
+    bool isReadOnlyTransaction;
   } _transaction;
 
   bool _ownsResolver;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,104 +15,193 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "error/error.hpp"
-#include "compression.hpp"
-#include "utils/string_utils.hpp"
-#include "utils/type_limits.hpp"
+#include "utils/register.hpp"
 
-#include <lz4.h>
+#include "compression.hpp"
+
+// list of statically loaded scorers via init()
+#ifndef IRESEARCH_DLL
+  #include "lz4compression.hpp"
+  #include "delta_compression.hpp"
+#endif
+
+NS_LOCAL
+
+struct value{
+  explicit value(
+      irs::compression::compressor_factory_f compressor_factory = nullptr,
+      irs::compression::decompressor_factory_f decompressor_factory = nullptr)
+    : compressor_factory_(compressor_factory),
+      decompressor_factory_(decompressor_factory) {
+  }
+
+  bool empty() const NOEXCEPT {
+    return !compressor_factory_ || !decompressor_factory_;
+  }
+
+  bool operator==(const value& other) const NOEXCEPT {
+    return compressor_factory_ == other.compressor_factory_ &&
+           decompressor_factory_ == other.decompressor_factory_;
+  }
+
+  bool operator!=(const value& other) const NOEXCEPT {
+    return !(*this == other);
+  }
+
+  const irs::compression::compressor_factory_f compressor_factory_;
+  const irs::compression::decompressor_factory_f decompressor_factory_;
+};
+
+const std::string FILENAME_PREFIX("libcompression-");
+
+class compression_register
+    : public irs::tagged_generic_register<irs::string_ref, value,
+                                          irs::string_ref, compression_register> {
+ protected:
+  virtual std::string key_to_filename(const key_type& key) const override {
+    std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
+
+    std::memcpy(
+      &filename[0],
+      FILENAME_PREFIX.c_str(),
+      FILENAME_PREFIX.size()
+    );
+
+    irs::string_ref::traits_type::copy(
+      &filename[0] + FILENAME_PREFIX.size(),
+      key.c_str(),
+      key.size()
+    );
+
+    return filename;
+  }
+};
+
+NS_END
 
 NS_ROOT
+NS_BEGIN(compression)
 
-void compressor::deleter::operator()(void *p) NOEXCEPT {
-  LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(p));
-}
+compression_registrar::compression_registrar(
+    const type_id& type,
+    compressor_factory_f compressor_factory,
+    decompressor_factory_f decompressor_factory,
+    const char* source /*= nullptr*/) {
+  string_ref const source_ref(source);
+  const auto new_entry = ::value(compressor_factory, decompressor_factory);
 
-compressor::compressor(unsigned int chunk_size):
-  dict_size_(0),
-  stream_(LZ4_createStream()) {
-  string_utils::oversize(buf_, LZ4_COMPRESSBOUND(chunk_size));
-}
+  auto entry = compression_register::instance().set(
+    type.name(),
+    new_entry,
+    source_ref.null() ? nullptr : &source_ref);
 
-void compressor::compress(const char* src, size_t size) {
-  assert(size <= std::numeric_limits<int>::max()); // LZ4 API uses int
-  auto src_size = static_cast<int>(size);
-  auto* stream = reinterpret_cast<LZ4_stream_t*>(stream_.get());
+  registered_ = entry.second;
 
-  // ensure LZ4 dictionary from the previous run is at the start of buf_
-  {
-    auto* dict_store = dict_size_ ? &(buf_[0]) : nullptr;
+  if (!registered_ && new_entry != entry.first) {
+    auto* registered_source = compression_register::instance().tag(type.name());
 
-    // move the LZ4 dictionary from the previous run to the start of buf_
-    if (dict_store) {
-      dict_size_ = LZ4_saveDict(stream, dict_store, dict_size_);
-      assert(dict_size_ >= 0);
+    if (source && registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering compression, ignoring: type '%s' from %s, previously from %s",
+        type.name().c_str(),
+        source,
+        registered_source->c_str()
+      );
+    } else if (source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering compression, ignoring: type '%s' from %s",
+        type.name().c_str(),
+        source
+      );
+    } else if (registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering compression, ignoring: type '%s', previously from %s",
+        type.name().c_str(),
+        registered_source->c_str()
+      );
+    } else {
+      IR_FRMT_WARN(
+        "type name collision detected while registering compression, ignoring: type '%s'",
+        type.name().c_str()
+      );
     }
 
-    string_utils::oversize(buf_, LZ4_compressBound(src_size) + dict_size_);
+    IR_LOG_STACK_TRACE();
+  }
+}
 
-    // reload the LZ4 dictionary if buf_ has changed
-    if (&(buf_[0]) != dict_store) {
-      dict_size_ = LZ4_loadDict(stream, &(buf_[0]), dict_size_);
-      assert(dict_size_ >= 0);
-    }
+bool exists(const string_ref& name, bool load_library /*= true*/ ) {
+  return !compression_register::instance().get(name, load_library).empty();
+}
+
+compressor::ptr get_compressor(
+    const string_ref& name,
+    const options& opts,
+    bool load_library /*= true*/) NOEXCEPT {
+  try {
+    auto* factory = compression_register::instance().get(name, load_library).compressor_factory_;
+
+    return factory ? factory(opts) : nullptr;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
+    IR_LOG_EXCEPTION();
   }
 
-  auto* buf = &(buf_[dict_size_]);
-  auto buf_size = static_cast<int>(std::min(
-    buf_.size() - dict_size_,
-    static_cast<size_t>(std::numeric_limits<int>::max())) // LZ4 API uses int
-  );
+  return nullptr;
+}
 
-  #if defined(LZ4_VERSION_NUMBER) && (LZ4_VERSION_NUMBER >= 10700)
-    auto lz4_size = LZ4_compress_fast_continue(stream, src, buf, src_size, buf_size, 0); // 0 == use default acceleration
-  #else
-    auto lz4_size = LZ4_compress_limitedOutput_continue(stream, src, buf, src_size, buf_size); // use for LZ4 <= v1.6.0
-  #endif
+decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*= true*/) NOEXCEPT {
+  try {
+    auto* factory = compression_register::instance().get(name, load_library).decompressor_factory_;
 
-  if (lz4_size < 0) {
-    this->size_ = 0;
-
-    throw index_error("while compressing, error: LZ4 returned negative size");
+    return factory ? factory() : nullptr;
+  } catch (...) {
+    IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
+    IR_LOG_EXCEPTION();
   }
 
-  this->data_ = reinterpret_cast<const byte_type*>(buf);
-  this->size_ = lz4_size;
+  return nullptr;
 }
 
-void decompressor::deleter::operator()(void *p) NOEXCEPT {
-  LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(p));
+void init() {
+#ifndef IRESEARCH_DLL
+  lz4::init();
+  delta::init();
+  raw::init();
+#endif
 }
 
-decompressor::decompressor()
-  : stream_(LZ4_createStreamDecode()) {
-}
-  
-size_t decompressor::deflate(
-    const char* src, size_t src_size,
-    char* dst, size_t dst_size) const {
-  assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
-  
-  auto& stream = *reinterpret_cast<LZ4_streamDecode_t*>(stream_.get());
-
-  const auto lz4_size = LZ4_decompress_safe_continue(
-    &stream, 
-    src, 
-    dst, 
-    static_cast<int>(src_size),  // LZ4 API uses int
-    static_cast<int>(std::min(dst_size, static_cast<size_t>(integer_traits<int>::const_max))) // LZ4 API uses int
-  );
-
-  return lz4_size < 0 
-    ? type_limits<type_t::address_t>::invalid() // corrupted index
-    : lz4_size;
+void load_all(const std::string& path) {
+  load_libraries(path, FILENAME_PREFIX, "");
 }
 
+bool visit(const std::function<bool(const string_ref&)>& visitor) {
+  compression_register::visitor_t wrapper = [&visitor](const string_ref& key)->bool {
+    return visitor(key);
+  };
+
+  return compression_register::instance().visit(wrapper);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                raw implementation
+// -----------------------------------------------------------------------------
+
+/*static*/ void raw::init() {
+#ifndef IRESEARCH_DLL
+  // match registration below
+  REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
+#endif
+}
+
+DEFINE_COMPRESSION_TYPE(iresearch::compression::raw);
+
+REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
+
+NS_END // compression
 NS_END

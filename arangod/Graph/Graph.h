@@ -162,12 +162,13 @@ class Graph {
 
   bool renameCollections(std::string const& oldName, std::string const& newName);
 
-  boost::optional<EdgeDefinition const&> getEdgeDefinition(std::string const& collectionName) const;
+  std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(std::string const& collectionName) const;
 
   virtual bool isSmart() const;
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
+  uint64_t writeConcern() const;
   std::string const id() const;
   std::string const& rev() const;
 
@@ -231,7 +232,7 @@ class Graph {
   void rebuildOrphans(EdgeDefinition const& oldEdgeDefinition);
 
   /// @brief Removes an orphan vertex collection from the graphs definition
-  Result removeOrphanCollection(std::string&&);
+  Result removeOrphanCollection(std::string const&);
 
   /// @brief Add an orphan vertex collection to this graphs definition
   Result addOrphanCollection(std::string&&);
@@ -252,7 +253,10 @@ class Graph {
   void setNumberOfShards(uint64_t numberOfShards);
 
   /// @brief Set replicationFactor to the graph definition
-  void setReplicationFactor(uint64_t setReplicationFactor);
+  void setReplicationFactor(uint64_t replicationFactor);
+
+  /// @brief Set writeConcern to the graph definition
+  void setWriteConcern(uint64_t writeConcern);
 
   /// @brief Set rev to the graph definition
   void setRev(std::string&& rev);
@@ -284,6 +288,9 @@ class Graph {
 
   /// @brief replication factor of this graph
   uint64_t _replicationFactor;
+
+  /// @brief write concern for this graph
+  uint64_t _writeConcern;
 
   /// @brief revision of this graph
   std::string _rev;

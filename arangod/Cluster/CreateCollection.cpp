@@ -29,6 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -93,13 +96,14 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   TRI_ASSERT(type == TRI_COL_TYPE_DOCUMENT || type == TRI_COL_TYPE_EDGE);
 
   if (!error.str().empty()) {
-    LOG_TOPIC("7c60f", ERR, Logger::MAINTENANCE) << "CreateCollection: " << error.str();
+    LOG_TOPIC("7c60f", ERR, Logger::MAINTENANCE)
+        << "CreateCollection: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
 
-CreateCollection::~CreateCollection() {}
+CreateCollection::~CreateCollection() = default;
 
 bool CreateCollection::first() {
   auto const& database = _description.get(DATABASE);
@@ -117,12 +121,12 @@ bool CreateCollection::first() {
     DatabaseGuard guard(database);
     auto& vocbase = guard.database();
 
-    auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    auto& cluster = _feature.server().getFeature<ClusterFeature>();
 
     bool waitForRepl =
         (props.hasKey(WAIT_FOR_SYNC_REPL) && props.get(WAIT_FOR_SYNC_REPL).isBool())
             ? props.get(WAIT_FOR_SYNC_REPL).getBool()
-            : cluster->createWaitsForSyncReplication();
+            : cluster.createWaitsForSyncReplication();
 
     bool enforceReplFact =
         (props.hasKey(ENF_REPL_FACT) && props.get(ENF_REPL_FACT).isBool())
@@ -149,19 +153,23 @@ bool CreateCollection::first() {
       docket.add("planId", VPackValue(collection));
     }
 
-    _result =
-        Collections::create(vocbase, shard, type, docket.slice(), waitForRepl, enforceReplFact,
-                            [=](std::shared_ptr<LogicalCollection> const& col) -> void {
-                              TRI_ASSERT(col);
-                              LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
-                                  << "local collection " << database << "/"
-                                  << shard << " successfully created";
-                              col->followers()->setTheLeader(leader);
+    std::shared_ptr<LogicalCollection> col;
+    _result = Collections::create(
+        vocbase, shard, type, docket.slice(), waitForRepl,
+        enforceReplFact, false, col);
+    
+    if (col) {
+      LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)
+          << "local collection " << database << "/" << shard
+          << " successfully created";
 
-                              if (leader.empty()) {
-                                col->followers()->clear();
-                              }
-                            });
+      if (leader.empty()) {
+        std::vector<std::string> noFollowers;
+        col->followers()->takeOverLeadership(noFollowers, nullptr);
+      } else {
+        col->followers()->setTheLeader(leader);
+      }
+    }
 
     if (_result.fail()) {
       std::stringstream error;
@@ -186,7 +194,7 @@ bool CreateCollection::first() {
   }
 
   LOG_TOPIC("4562c", DEBUG, Logger::MAINTENANCE)
-    << "Create collection done, notifying Maintenance";
+      << "Create collection done, notifying Maintenance";
 
   notify();
 

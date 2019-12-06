@@ -21,13 +21,21 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <type_traits>
+#include <utility>
+
 #include "ScriptLoader.h"
+
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -151,9 +159,9 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
     // .........................................................................
 
 #ifdef _WIN32
-    std::vector<std::string> parts = basics::StringUtils::split(_directory, ';', '\0');
+    std::vector<std::string> parts = basics::StringUtils::split(_directory, ';');
 #else
-    std::vector<std::string> parts = basics::StringUtils::split(_directory, ":;", '\0');
+    std::vector<std::string> parts = basics::StringUtils::split(_directory, ":;");
 #endif
 
     for (size_t i = 0; i < parts.size(); ++i) {

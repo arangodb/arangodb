@@ -21,8 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdio.h>
+#include <string.h>
+
 #include "RocksDBLogger.h"
+
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <velocypack/StringRef.h>
 
@@ -47,10 +54,17 @@ void RocksDBLogger::Logv(const rocksdb::InfoLogLevel logLevel, char const* forma
          strlen("rocksdb: \0"));  // add trailing \0 byte already for safety
 
   va_list backup;
+
+  // cppcheck-suppress va_list_usedBeforeStarted
   va_copy(backup, ap);
+
   int length = vsnprintf(&buffer[0] + prefixSize,
+  // cppcheck-suppress va_list_usedBeforeStarted
                          sizeof(buffer) - prefixSize - 1, format, backup);
+
+  // cppcheck-suppress va_list_usedBeforeStarted
   va_end(backup);
+
   buffer[sizeof(buffer) - 1] = '\0';  // Windows
 
   if (length == 0) {

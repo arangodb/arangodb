@@ -41,9 +41,9 @@ TEST(ContainersTest, testResourceMutex) {
   {
     int i = 5;
     Value value(&i);
-    EXPECT_TRUE((&i == value.get()));
+    EXPECT_EQ(&i, value.get());
     value.reset();
-    EXPECT_TRUE((nullptr == value.get()));
+    EXPECT_EQ(nullptr, value.get());
   }
 
   // test read lock
@@ -65,7 +65,7 @@ TEST(ContainersTest, testResourceMutex) {
     auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000));  // assume thread finishes in 1000ms
 
     thread.join();
-    EXPECT_TRUE((std::cv_status::no_timeout == result));  // check only after joining with thread to avoid early exit
+    EXPECT_EQ(std::cv_status::no_timeout, result);  // check only after joining with thread to avoid early exit
   }
 
   // test write lock
@@ -84,20 +84,20 @@ TEST(ContainersTest, testResourceMutex) {
       cond.notify_all();
     });
 
-    auto result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
+    auto result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
 
     // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while (!reset && result0 == std::cv_status::no_timeout) result0 =
-                      cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+                      cond.wait_for(cond_lock, std::chrono::milliseconds(50)));
     MSVC2017_ONLY(while (!reset && result0 == std::cv_status::no_timeout) result0 =
-                      cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+                      cond.wait_for(cond_lock, std::chrono::milliseconds(50)));
 
     lock.unlock();
-    auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(100));
+    auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
     cond_lock.unlock();
     thread.join();
-    EXPECT_TRUE((std::cv_status::timeout == result0));  // check only after joining with thread to avoid early exit
-    EXPECT_TRUE((std::cv_status::timeout != result1));  // check only after joining with thread to avoid early exit
+    EXPECT_EQ(std::cv_status::timeout, result0);  // check only after joining with thread to avoid early exit
+    EXPECT_NE(std::cv_status::timeout, result1);  // check only after joining with thread to avoid early exit
   }
 }
 
@@ -108,7 +108,7 @@ TEST(ContainersTest, test_Hasher) {
     Hasher hasher;
     irs::string_ref strRef("abcdefg");
     irs::bytes_ref ref = irs::ref_cast<irs::byte_type>(strRef);
-    EXPECT_TRUE(false == (0 == hasher(ref)));
+    EXPECT_FALSE((0 == hasher(ref)));
   }
 
   // ensure hashing of irs::string_ref is possible
@@ -116,7 +116,7 @@ TEST(ContainersTest, test_Hasher) {
     typedef arangodb::iresearch::UnorderedRefKeyMapBase<char, int>::KeyHasher Hasher;
     Hasher hasher;
     irs::string_ref ref("abcdefg");
-    EXPECT_TRUE(false == (0 == hasher(ref)));
+    EXPECT_FALSE((0 == hasher(ref)));
   }
 }
 
@@ -131,13 +131,13 @@ TEST(ContainersTest, test_UniqueHeapInstance) {
 
       arangodb::iresearch::UniqueHeapInstance<TestStruct> instance1;
       auto* ptr1 = instance1.get();
-      EXPECT_TRUE(false == (ptr == instance1.get()));
+      EXPECT_FALSE((ptr == instance1.get()));
       instance1 = instance;
-      EXPECT_TRUE(false == (ptr1 == instance1.get()));
-      EXPECT_TRUE(false == (ptr == instance1.get()));
+      EXPECT_FALSE((ptr1 == instance1.get()));
+      EXPECT_FALSE((ptr == instance1.get()));
 
       arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(instance);
-      EXPECT_TRUE(false == (ptr == instance2.get()));
+      EXPECT_FALSE((ptr == instance2.get()));
     }
 
     // ensure element copy works (different instance)
@@ -147,13 +147,13 @@ TEST(ContainersTest, test_UniqueHeapInstance) {
 
       arangodb::iresearch::UniqueHeapInstance<TestStruct> instance1;
       auto* ptr1 = instance1.get();
-      EXPECT_TRUE(false == (ptr == instance1.get()));
+      EXPECT_FALSE((ptr == instance1.get()));
       instance1 = *instance;
-      EXPECT_TRUE(true == (ptr1 == instance1.get()));
-      EXPECT_TRUE(false == (ptr == instance1.get()));
+      EXPECT_TRUE((ptr1 == instance1.get()));
+      EXPECT_FALSE((ptr == instance1.get()));
 
       arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(*instance);
-      EXPECT_TRUE(false == (ptr == instance2.get()));
+      EXPECT_FALSE((ptr == instance2.get()));
     }
   }
 
@@ -177,12 +177,12 @@ TEST(ContainersTest, test_UniqueHeapInstance) {
       auto* ptr = instance.get();
 
       arangodb::iresearch::UniqueHeapInstance<TestStruct> instance1;
-      EXPECT_TRUE(false == (ptr == instance1.get()));
+      EXPECT_FALSE((ptr == instance1.get()));
       instance1 = std::move(instance);
-      EXPECT_TRUE(true == (ptr == instance1.get()));
+      EXPECT_TRUE((ptr == instance1.get()));
 
       arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(std::move(instance1));
-      EXPECT_TRUE(true == (ptr == instance2.get()));
+      EXPECT_TRUE((ptr == instance2.get()));
     }
 
     // ensure value move works (same instance)
@@ -192,13 +192,13 @@ TEST(ContainersTest, test_UniqueHeapInstance) {
       auto id = ptr->id;
 
       arangodb::iresearch::UniqueHeapInstance<TestStruct> instance1;
-      EXPECT_TRUE(false == (ptr == instance1.get()));
-      EXPECT_TRUE(false == (id == instance1->id));
+      EXPECT_FALSE((ptr == instance1.get()));
+      EXPECT_FALSE((id == instance1->id));
       instance1 = std::move(*instance);
-      EXPECT_TRUE(true == (id == instance1->id));
+      EXPECT_TRUE((id == instance1->id));
 
       arangodb::iresearch::UniqueHeapInstance<TestStruct> instance2(std::move(*instance1));
-      EXPECT_TRUE(true == (id == instance2->id));
+      EXPECT_TRUE((id == instance2->id));
     }
   }
 }
@@ -213,99 +213,99 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
   };
 
   arangodb::iresearch::UnorderedRefKeyMap<char, TestStruct> map;
-  EXPECT_TRUE(true == (0 == counter));
-  EXPECT_TRUE(true == (map.empty()));
-  EXPECT_TRUE(true == (0 == map.size()));
+  EXPECT_TRUE((0 == counter));
+  EXPECT_TRUE((map.empty()));
+  EXPECT_TRUE((0 == map.size()));
 
   // new element via operator
   {
     auto& value = map["abc"];
-    EXPECT_TRUE(true == (1 == counter));
-    EXPECT_TRUE(false == (map.empty()));
-    EXPECT_TRUE(true == (1 == map.size()));
-    EXPECT_TRUE(true == (1 == value.id));
-    EXPECT_TRUE(true == (-1 == value.value));
+    EXPECT_TRUE((1 == counter));
+    EXPECT_FALSE((map.empty()));
+    EXPECT_TRUE((1 == map.size()));
+    EXPECT_TRUE((1 == value.id));
+    EXPECT_TRUE((-1 == value.value));
   }
 
   // new element via emplace no args
   {
     auto itr = map.emplace("def");
-    EXPECT_TRUE(true == (2 == counter));
-    EXPECT_TRUE(false == (map.empty()));
-    EXPECT_TRUE(true == (2 == map.size()));
-    EXPECT_TRUE(true == (itr.second));
-    EXPECT_TRUE(true == (irs::string_ref("def") == itr.first.key()));
-    EXPECT_TRUE(true == (2 == itr.first.value().id));
-    EXPECT_TRUE(true == (-1 == itr.first.value().value));
+    EXPECT_TRUE((2 == counter));
+    EXPECT_FALSE((map.empty()));
+    EXPECT_TRUE((2 == map.size()));
+    EXPECT_TRUE((itr.second));
+    EXPECT_TRUE((irs::string_ref("def") == itr.first.key()));
+    EXPECT_TRUE((2 == itr.first.value().id));
+    EXPECT_TRUE((-1 == itr.first.value().value));
   }
 
   // new element via emplace with args
   {
     auto itr = map.emplace("ghi", 42);
-    EXPECT_TRUE(true == (3 == counter));
-    EXPECT_TRUE(false == (map.empty()));
-    EXPECT_TRUE(true == (3 == map.size()));
-    EXPECT_TRUE(true == (itr.second));
-    EXPECT_TRUE(true == (irs::string_ref("ghi") == itr.first.key()));
-    EXPECT_TRUE(true == (3 == itr.first.value().id));
-    EXPECT_TRUE(true == (42 == itr.first.value().value));
+    EXPECT_TRUE((3 == counter));
+    EXPECT_FALSE((map.empty()));
+    EXPECT_TRUE((3 == map.size()));
+    EXPECT_TRUE((itr.second));
+    EXPECT_TRUE((irs::string_ref("ghi") == itr.first.key()));
+    EXPECT_TRUE((3 == itr.first.value().id));
+    EXPECT_TRUE((42 == itr.first.value().value));
   }
 
   // duplicate element via operator
   {
     auto& value = map["ghi"];
-    EXPECT_TRUE(true == (3 == counter));
-    EXPECT_TRUE(false == (map.empty()));
-    EXPECT_TRUE(true == (3 == map.size()));
-    EXPECT_TRUE(true == (3 == value.id));
-    EXPECT_TRUE(true == (42 == value.value));
+    EXPECT_TRUE((3 == counter));
+    EXPECT_FALSE((map.empty()));
+    EXPECT_TRUE((3 == map.size()));
+    EXPECT_TRUE((3 == value.id));
+    EXPECT_TRUE((42 == value.value));
   }
 
   // duplicate element via emplace no args
   {
     auto itr = map.emplace("ghi");
-    EXPECT_TRUE(true == (3 == counter));
-    EXPECT_TRUE(false == (map.empty()));
-    EXPECT_TRUE(true == (3 == map.size()));
-    EXPECT_TRUE(false == (itr.second));
-    EXPECT_TRUE(true == (irs::string_ref("ghi") == itr.first.key()));
-    EXPECT_TRUE(true == (3 == itr.first.value().id));
-    EXPECT_TRUE(true == (42 == itr.first.value().value));
+    EXPECT_TRUE((3 == counter));
+    EXPECT_FALSE((map.empty()));
+    EXPECT_TRUE((3 == map.size()));
+    EXPECT_FALSE((itr.second));
+    EXPECT_TRUE((irs::string_ref("ghi") == itr.first.key()));
+    EXPECT_TRUE((3 == itr.first.value().id));
+    EXPECT_TRUE((42 == itr.first.value().value));
   }
 
   // duplicate element via emplace with args
   {
     auto itr = map.emplace("def", 1234);
-    EXPECT_TRUE(true == (3 == counter));
-    EXPECT_TRUE(false == (map.empty()));
-    EXPECT_TRUE(true == (3 == map.size()));
-    EXPECT_TRUE(false == (itr.second));
-    EXPECT_TRUE(true == (irs::string_ref("def") == itr.first.key()));
-    EXPECT_TRUE(true == (2 == itr.first.value().id));
-    EXPECT_TRUE(true == (-1 == itr.first.value().value));
+    EXPECT_TRUE((3 == counter));
+    EXPECT_FALSE((map.empty()));
+    EXPECT_TRUE((3 == map.size()));
+    EXPECT_FALSE((itr.second));
+    EXPECT_TRUE((irs::string_ref("def") == itr.first.key()));
+    EXPECT_TRUE((2 == itr.first.value().id));
+    EXPECT_TRUE((-1 == itr.first.value().value));
   }
 
   // search via iterator
   {
     auto itr = map.find("ghi");
-    EXPECT_TRUE(false == (map.end() == itr));
-    EXPECT_TRUE(true == (irs::string_ref("ghi") == itr.key()));
-    EXPECT_TRUE(true == (3 == itr.value().id));
-    EXPECT_TRUE(true == (42 == itr.value().value));
+    EXPECT_FALSE((map.end() == itr));
+    EXPECT_TRUE((irs::string_ref("ghi") == itr.key()));
+    EXPECT_TRUE((3 == itr.value().id));
+    EXPECT_TRUE((42 == itr.value().value));
 
     itr = map.find("xyz");
-    EXPECT_TRUE(true == (map.end() == itr));
+    EXPECT_TRUE((map.end() == itr));
   }
 
   // search via pointer
   {
     auto ptr = map.findPtr("ghi");
-    EXPECT_TRUE(false == (nullptr == ptr));
-    EXPECT_TRUE(true == (3 == ptr->id));
-    EXPECT_TRUE(true == (42 == ptr->value));
+    EXPECT_FALSE((nullptr == ptr));
+    EXPECT_TRUE((3 == ptr->id));
+    EXPECT_TRUE((42 == ptr->value));
 
     ptr = map.findPtr("xyz");
-    EXPECT_TRUE(true == (nullptr == ptr));
+    EXPECT_TRUE((nullptr == ptr));
   }
 
   // validate iteration
@@ -313,13 +313,13 @@ TEST(ContainersTest, test_UnorderedRefKeyMap) {
     std::set<std::string> expected({"abc", "def", "ghi"});
 
     for (auto& entry : map) {
-      EXPECT_TRUE(true == (1 == expected.erase(entry.key())));
+      EXPECT_TRUE((1 == expected.erase(entry.key())));
     }
 
-    EXPECT_TRUE(true == (expected.empty()));
+    EXPECT_TRUE((expected.empty()));
   }
 
   map.clear();
-  EXPECT_TRUE(true == (0 == map.size()));
-  EXPECT_TRUE(true == (map.begin() == map.end()));
+  EXPECT_TRUE((0 == map.size()));
+  EXPECT_TRUE((map.begin() == map.end()));
 }

@@ -24,7 +24,8 @@
 #include "gtest/gtest.h"
 
 #include "../IResearch/common.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -36,12 +37,12 @@
 #include "velocypack/Parser.h"
 
 namespace {
-
 struct TestView : public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
       : arangodb::LogicalView(vocbase, definition, planVersion) {}
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&,
-                                                bool, bool) const override {
+  virtual arangodb::Result appendVelocyPackImpl(
+      arangodb::velocypack::Builder&,
+      Serialization) const override {
     return arangodb::Result();
   }
   virtual arangodb::Result dropImpl() override {
@@ -85,57 +86,14 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 class CollectionNameResolverTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
   ViewFactory viewFactory;
 
-  CollectionNameResolverTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for TRI_vocbase_t::createView(...)
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
+  CollectionNameResolverTest() {
     // register view factory
-    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>()
-        ->emplace(arangodb::LogicalDataSource::Type::emplace(
-                      arangodb::velocypack::StringRef("testViewType")),
-                  viewFactory);
-  }
-
-  ~CollectionNameResolverTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
+    server.getFeature<arangodb::ViewTypesFeature>().emplace(
+        arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
+        viewFactory);
   }
 };
 
@@ -149,115 +107,115 @@ TEST_F(CollectionNameResolverTest, test_getDataSource) {
       "\"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" }");  // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   arangodb::CollectionNameResolver resolver(vocbase);
 
   // not present collection (no datasource)
   {
-    EXPECT_TRUE((true == !resolver.getDataSource(100)));
-    EXPECT_TRUE((true == !resolver.getDataSource("100")));
-    EXPECT_TRUE((true == !resolver.getDataSource("testCollection")));
-    EXPECT_TRUE((true == !resolver.getDataSource("testCollectionGUID")));
-    EXPECT_TRUE((true == !resolver.getCollection(100)));
-    EXPECT_TRUE((true == !resolver.getCollection("100")));
-    EXPECT_TRUE((true == !resolver.getCollection("testCollection")));
-    EXPECT_TRUE((true == !resolver.getCollection("testCollectionGUID")));
+    EXPECT_FALSE(resolver.getDataSource(100));
+    EXPECT_FALSE(resolver.getDataSource("100"));
+    EXPECT_FALSE(resolver.getDataSource("testCollection"));
+    EXPECT_FALSE(resolver.getDataSource("testCollectionGUID"));
+    EXPECT_FALSE(resolver.getCollection(100));
+    EXPECT_FALSE(resolver.getCollection("100"));
+    EXPECT_FALSE(resolver.getCollection("testCollection"));
+    EXPECT_FALSE(resolver.getCollection("testCollectionGUID"));
   }
 
   // not present view (no datasource)
   {
-    EXPECT_TRUE((true == !resolver.getDataSource(200)));
-    EXPECT_TRUE((true == !resolver.getDataSource("200")));
-    EXPECT_TRUE((true == !resolver.getDataSource("testView")));
-    EXPECT_TRUE((true == !resolver.getDataSource("testViewGUID")));
-    EXPECT_TRUE((true == !resolver.getView(200)));
-    EXPECT_TRUE((true == !resolver.getView("200")));
-    EXPECT_TRUE((true == !resolver.getView("testView")));
-    EXPECT_TRUE((true == !resolver.getView("testViewGUID")));
+    EXPECT_FALSE(resolver.getDataSource(200));
+    EXPECT_FALSE(resolver.getDataSource("200"));
+    EXPECT_FALSE(resolver.getDataSource("testView"));
+    EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
+    EXPECT_FALSE(resolver.getView(200));
+    EXPECT_FALSE(resolver.getView("200"));
+    EXPECT_FALSE(resolver.getView("testView"));
+    EXPECT_FALSE(resolver.getView("testViewGUID"));
   }
 
   auto collection = vocbase.createCollection(collectionJson->slice());
   auto view = vocbase.createView(viewJson->slice());
 
-  EXPECT_TRUE((false == collection->deleted()));
-  EXPECT_TRUE((false == view->deleted()));
+  EXPECT_FALSE(collection->deleted());
+  EXPECT_FALSE(view->deleted());
 
   // not present collection (is view)
   {
-    EXPECT_TRUE((false == !resolver.getDataSource(200)));
-    EXPECT_TRUE((false == !resolver.getDataSource("200")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testView")));
-    EXPECT_TRUE((true == !resolver.getDataSource("testViewGUID")));
-    EXPECT_TRUE((true == !resolver.getCollection(200)));
-    EXPECT_TRUE((true == !resolver.getCollection("200")));
-    EXPECT_TRUE((true == !resolver.getCollection("testView")));
-    EXPECT_TRUE((true == !resolver.getCollection("testViewGUID")));
+    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource("200"));
+    EXPECT_FALSE(!resolver.getDataSource("testView"));
+    EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
+    EXPECT_FALSE(resolver.getCollection(200));
+    EXPECT_FALSE(resolver.getCollection("200"));
+    EXPECT_FALSE(resolver.getCollection("testView"));
+    EXPECT_FALSE(resolver.getCollection("testViewGUID"));
   }
 
   // not preset view (is collection)
   {
-    EXPECT_TRUE((false == !resolver.getDataSource(100)));
-    EXPECT_TRUE((false == !resolver.getDataSource("100")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testCollection")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testCollectionGUID")));
-    EXPECT_TRUE((true == !resolver.getView(100)));
-    EXPECT_TRUE((true == !resolver.getView("100")));
-    EXPECT_TRUE((true == !resolver.getView("testCollection")));
-    EXPECT_TRUE((true == !resolver.getView("testCollectionGUID")));
+    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource("100"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollection"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
+    EXPECT_FALSE(resolver.getView(100));
+    EXPECT_FALSE(resolver.getView("100"));
+    EXPECT_FALSE(resolver.getView("testCollection"));
+    EXPECT_FALSE(resolver.getView("testCollectionGUID"));
   }
 
   // present collection
   {
-    EXPECT_TRUE((false == !resolver.getDataSource(100)));
-    EXPECT_TRUE((false == !resolver.getDataSource("100")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testCollection")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testCollectionGUID")));
-    EXPECT_TRUE((false == !resolver.getCollection(100)));
-    EXPECT_TRUE((false == !resolver.getCollection("100")));
-    EXPECT_TRUE((false == !resolver.getCollection("testCollection")));
-    EXPECT_TRUE((false == !resolver.getCollection("testCollectionGUID")));
+    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource("100"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollection"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
+    EXPECT_FALSE(!resolver.getCollection(100));
+    EXPECT_FALSE(!resolver.getCollection("100"));
+    EXPECT_FALSE(!resolver.getCollection("testCollection"));
+    EXPECT_FALSE(!resolver.getCollection("testCollectionGUID"));
   }
 
   // present view
   {
-    EXPECT_TRUE((false == !resolver.getDataSource(200)));
-    EXPECT_TRUE((false == !resolver.getDataSource("200")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testView")));
-    EXPECT_TRUE((true == !resolver.getDataSource("testViewGUID")));
-    EXPECT_TRUE((false == !resolver.getView(200)));
-    EXPECT_TRUE((false == !resolver.getView("200")));
-    EXPECT_TRUE((false == !resolver.getView("testView")));
-    EXPECT_TRUE((true == !resolver.getView("testViewGUID")));
+    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource("200"));
+    EXPECT_FALSE(!resolver.getDataSource("testView"));
+    EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
+    EXPECT_FALSE(!resolver.getView(200));
+    EXPECT_FALSE(!resolver.getView("200"));
+    EXPECT_FALSE(!resolver.getView("testView"));
+    EXPECT_FALSE(resolver.getView("testViewGUID"));
   }
 
-  EXPECT_TRUE((true == vocbase.dropCollection(collection->id(), true, 0).ok()));
-  EXPECT_TRUE((true == view->drop().ok()));
-  EXPECT_TRUE((true == collection->deleted()));
-  EXPECT_TRUE((true == view->deleted()));
+  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true, 0).ok());
+  EXPECT_TRUE(view->drop().ok());
+  EXPECT_TRUE(collection->deleted());
+  EXPECT_TRUE(view->deleted());
 
   // present collection (deleted, cached)
   {
-    EXPECT_TRUE((false == !resolver.getDataSource(100)));
-    EXPECT_TRUE((false == !resolver.getDataSource("100")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testCollection")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testCollectionGUID")));
-    EXPECT_TRUE((false == !resolver.getCollection(100)));
-    EXPECT_TRUE((false == !resolver.getCollection("100")));
-    EXPECT_TRUE((false == !resolver.getCollection("testCollection")));
-    EXPECT_TRUE((false == !resolver.getCollection("testCollectionGUID")));
-    EXPECT_TRUE((true == resolver.getCollection(100)->deleted()));
+    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource("100"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollection"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
+    EXPECT_FALSE(!resolver.getCollection(100));
+    EXPECT_FALSE(!resolver.getCollection("100"));
+    EXPECT_FALSE(!resolver.getCollection("testCollection"));
+    EXPECT_FALSE(!resolver.getCollection("testCollectionGUID"));
+    EXPECT_TRUE(resolver.getCollection(100)->deleted());
   }
 
   // present view (deleted, cached)
   {
-    EXPECT_TRUE((false == !resolver.getDataSource(200)));
-    EXPECT_TRUE((false == !resolver.getDataSource("200")));
-    EXPECT_TRUE((false == !resolver.getDataSource("testView")));
-    EXPECT_TRUE((true == !resolver.getDataSource("testViewGUID")));
-    EXPECT_TRUE((false == !resolver.getView(200)));
-    EXPECT_TRUE((false == !resolver.getView("200")));
-    EXPECT_TRUE((false == !resolver.getView("testView")));
-    EXPECT_TRUE((true == !resolver.getView("testViewGUID")));
-    EXPECT_TRUE((true == resolver.getView(200)->deleted()));
+    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource("200"));
+    EXPECT_FALSE(!resolver.getDataSource("testView"));
+    EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
+    EXPECT_FALSE(!resolver.getView(200));
+    EXPECT_FALSE(!resolver.getView("200"));
+    EXPECT_FALSE(!resolver.getView("testView"));
+    EXPECT_FALSE(resolver.getView("testViewGUID"));
+    EXPECT_TRUE(resolver.getView(200)->deleted());
   }
 }

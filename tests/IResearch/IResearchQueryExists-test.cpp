@@ -21,53 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-#include "common.h"
+#include "IResearchQueryCommon.h"
 
-#include "../Mocks/StorageEngineMock.h"
-
-#if USE_ENTERPRISE
-  #include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
-#include "Basics/files.h"
-#include "Cluster/ClusterFeature.h"
-#include "V8/v8-globals.h"
-#include "V8Server/V8DealerFeature.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
+#include "IResearch/IResearchView.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchFilterFactory.h"
-#include "IResearch/IResearchView.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "Logger/Logger.h"
-#include "Logger/LogTopic.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "3rdParty/iresearch/tests/tests_config.hpp"
-
-#include "IResearch/VelocyPackHelper.h"
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "utils/utf8_path.hpp"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 
@@ -75,113 +35,13 @@ extern const char* ARGV0; // defined in main.cpp
 
 namespace {
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-class IResearchQueryExistsTest : public ::testing::Test {
-protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-
-  IResearchQueryExistsTest(): engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    arangodb::tests::init(true);
-
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
-    // setup required application features
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required by IResearchFilterFactory::extractAnalyzerFromArg(...) and IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
-    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
-
-    #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
-    #endif
-
-    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
-    arangodb::application_features::ApplicationServer::server->addFeature(
-      new arangodb::ClusterFeature(server)
-    );
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::DatabaseFeature
-    >("Database");
-    dbFeature->loadDatabases(databases->slice());
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::iresearch::IResearchAnalyzerFeature
-    >();
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    TRI_vocbase_t* vocbase;
-
-    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
-    analyzers->emplace(result, "testVocbase::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() }); // cache analyzer
-
-    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
-  }
-
-  ~IResearchQueryExistsTest() {
-    arangodb::AqlFeature(server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-  }
-}; // IResearchQuerySetup
-
+class IResearchQueryExistsTest : public IResearchQueryTest {};
 }
 
 // -----------------------------------------------------------------------------
@@ -193,23 +53,23 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(IResearchQueryExistsTest, test) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
   // create collection0
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -5, \"value\": true }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+      VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
+      VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
+      VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+      VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
+      VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+      VPackParser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
@@ -219,22 +79,22 @@ TEST_F(IResearchQueryExistsTest, test) {
       *collection,
       arangodb::AccessMode::Type::WRITE
     );
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create collection1
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
     resource/=irs::string_ref(arangodb::tests::testResourceDir);
@@ -251,38 +111,38 @@ TEST_F(IResearchQueryExistsTest, test) {
       *collection,
       arangodb::AccessMode::Type::WRITE
     );
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create view
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_TRUE((false == !logicalView));
+    ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_TRUE((false == !impl));
+    ASSERT_FALSE(!impl);
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
+    auto updateJson = VPackParser::fromJson(
       "{ \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"id\"},"
         "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
       "}}"
     );
-    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
-    EXPECT_TRUE((2 == cids.size()));
-    EXPECT_TRUE((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
+    EXPECT_EQ(2, cids.size());
+    EXPECT_TRUE(arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok()); // commit
   }
 
   // test non-existent (any)
@@ -300,11 +160,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (any) via []
@@ -322,11 +182,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (bool)
@@ -344,11 +204,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (bool) via []
@@ -366,11 +226,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (boolean)
@@ -388,11 +248,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (boolean) via []
@@ -410,11 +270,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (numeric)
@@ -432,11 +292,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (numeric) via []
@@ -454,11 +314,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (null)
@@ -476,11 +336,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (null) via []
@@ -498,11 +358,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (string)
@@ -520,11 +380,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (string) via []
@@ -542,11 +402,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (text analyzer)
@@ -564,11 +424,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (text analyzer)
@@ -586,11 +446,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (analyzer) via []
@@ -608,11 +468,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (array)
@@ -630,11 +490,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (array) via []
@@ -652,11 +512,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (object)
@@ -674,11 +534,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (object) via []
@@ -696,11 +556,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (any)
@@ -741,11 +601,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (any) via []
@@ -786,11 +646,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (bool)
@@ -809,11 +669,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (bool) with bound params
@@ -824,7 +684,7 @@ TEST_F(IResearchQueryExistsTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\" }")
     );
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -833,11 +693,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (bool) with bound view name
@@ -848,7 +708,7 @@ TEST_F(IResearchQueryExistsTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN  @@testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
     );
 
     ASSERT_TRUE(result.result.ok());
@@ -858,11 +718,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (bool) with invalid bound view name
@@ -873,7 +733,7 @@ TEST_F(IResearchQueryExistsTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN  @@testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
     );
 
     ASSERT_TRUE(result.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
@@ -895,11 +755,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (boolean)
@@ -918,11 +778,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (boolean) via []
@@ -941,11 +801,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (numeric)
@@ -981,11 +841,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (numeric) via []
@@ -1021,11 +881,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (numeric) via [], limit  5
@@ -1048,11 +908,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (null)
@@ -1071,11 +931,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (null) via []
@@ -1094,11 +954,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (identity analyzer)
@@ -1117,11 +977,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (identity analyzer)
@@ -1140,11 +1000,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (string)
@@ -1163,11 +1023,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (any string)
@@ -1186,11 +1046,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (any string)
@@ -1209,11 +1069,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (any string) via []
@@ -1232,11 +1092,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (identity analyzer)
@@ -1255,11 +1115,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (identity analyzer)
@@ -1278,11 +1138,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (identity analyzer) via []
@@ -1301,11 +1161,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (identity analyzer) via []
@@ -1324,11 +1184,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (identity analyzer) via []
@@ -1347,11 +1207,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (array)
@@ -1370,11 +1230,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (array) via []
@@ -1393,11 +1253,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (object)
@@ -1416,11 +1276,11 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (object) via []
@@ -1439,32 +1299,32 @@ TEST_F(IResearchQueryExistsTest, test) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 }
 
 TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
   // create collection0
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -5, \"value\": true }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+      VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
+      VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
+      VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+      VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
+      VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+      VPackParser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
@@ -1474,22 +1334,22 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
       *collection,
       arangodb::AccessMode::Type::WRITE
     );
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create collection1
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    ASSERT_TRUE((nullptr != collection));
+    ASSERT_NE(nullptr, collection);
 
     irs::utf8_path resource;
     resource/=irs::string_ref(arangodb::tests::testResourceDir);
@@ -1506,38 +1366,38 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
       *collection,
       arangodb::AccessMode::Type::WRITE
     );
-    EXPECT_TRUE((trx.begin().ok()));
+    EXPECT_TRUE(trx.begin().ok());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
-      EXPECT_TRUE((res.ok()));
+      EXPECT_TRUE(res.ok());
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(trx.commit().ok());
   }
 
   // create view
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto createJson = VPackParser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_TRUE((false == !logicalView));
+    ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_TRUE((false == !impl));
+    ASSERT_FALSE(!impl);
 
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
+    auto updateJson = VPackParser::fromJson(
       "{ \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
       "}}"
     );
-    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE(impl->properties(updateJson->slice(), true).ok());
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
-    EXPECT_TRUE((2 == cids.size()));
-    EXPECT_TRUE((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
+    EXPECT_EQ(2, cids.size());
+    EXPECT_TRUE(arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok()); // commit
   }
 
   // test non-existent (any)
@@ -1555,11 +1415,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (any) via []
@@ -1577,11 +1437,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (bool)
@@ -1599,11 +1459,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (bool) via []
@@ -1621,11 +1481,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (boolean)
@@ -1643,11 +1503,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (boolean) via []
@@ -1665,11 +1525,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (numeric)
@@ -1687,11 +1547,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (numeric) via []
@@ -1709,11 +1569,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (null)
@@ -1731,11 +1591,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (null) via []
@@ -1753,11 +1613,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (string)
@@ -1775,11 +1635,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (string) via []
@@ -1797,11 +1657,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (text analyzer)
@@ -1819,11 +1679,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (text analyzer)
@@ -1841,11 +1701,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (analyzer) via []
@@ -1863,11 +1723,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (array)
@@ -1885,11 +1745,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (array) via []
@@ -1907,11 +1767,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (object)
@@ -1929,11 +1789,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test non-existent (object) via []
@@ -1951,11 +1811,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (any)
@@ -1990,11 +1850,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (any) via []
@@ -2029,11 +1889,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (bool)
@@ -2045,7 +1905,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (bool) with bound params
@@ -2053,12 +1913,12 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\" }")
     );
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (bool) with bound view name
@@ -2066,13 +1926,13 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN  @@testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
     );
 
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (bool) with invalid bound view name
@@ -2080,7 +1940,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN  @@testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
+      VPackParser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
     );
 
     ASSERT_TRUE(result.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
@@ -2095,7 +1955,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (boolean)
@@ -2107,7 +1967,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (boolean) via []
@@ -2119,7 +1979,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (numeric)
@@ -2154,11 +2014,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (numeric) via []
@@ -2193,11 +2053,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (numeric) via [], limit  5
@@ -2220,11 +2080,11 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((i < expected.size()));
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true));
     }
 
-    EXPECT_TRUE((i == expected.size()));
+    EXPECT_EQ(i, expected.size());
   }
 
   // test existent (null)
@@ -2236,7 +2096,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (null) via []
@@ -2248,7 +2108,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (identity analyzer)
@@ -2260,7 +2120,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (identity analyzer)
@@ -2272,7 +2132,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (string)
@@ -2284,7 +2144,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (any string)
@@ -2296,7 +2156,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (any string)
@@ -2308,7 +2168,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (any string) via []
@@ -2320,7 +2180,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (identity analyzer)
@@ -2332,7 +2192,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (identity analyzer)
@@ -2344,7 +2204,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (identity analyzer) via []
@@ -2356,7 +2216,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (identity analyzer) via []
@@ -2368,7 +2228,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (identity analyzer) via []
@@ -2380,7 +2240,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (array)
@@ -2392,7 +2252,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (array) via []
@@ -2404,7 +2264,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (object)
@@ -2416,7 +2276,7 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 
   // test existent (object) via []
@@ -2428,6 +2288,6 @@ TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-    EXPECT_TRUE(0 == slice.length());
+    EXPECT_EQ(0, slice.length());
   }
 }

@@ -24,8 +24,11 @@
 #ifndef ARANGODB_GRAPH_SHORTEST_PATH_PRIORITY_QUEUE_H
 #define ARANGODB_GRAPH_SHORTEST_PATH_PRIORITY_QUEUE_H 1
 
-#include "Basics/Common.h"
 #include <deque>
+#include <unordered_map>
+
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace graph {

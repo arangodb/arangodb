@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/SyncerId.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Utils/DatabaseGuard.h"
@@ -35,6 +36,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
@@ -64,6 +68,9 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
     explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer);
     ~JobSynchronizer();
+
+    /// @brief whether or not a response has arrived
+    bool gotResponse() const noexcept;
 
     /// @brief will be called whenever a response for the job comes in
     void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept;
@@ -122,6 +129,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   };
 
   struct SyncerState {
+    SyncerId syncerId;
+
     /// @brief configuration
     ReplicationApplierConfiguration applier;
 
@@ -179,6 +188,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   // TODO worker-safety
   virtual bool isAborted() const;
+
+  SyncerId syncerId() const noexcept;
 
  protected:
   /// @brief reload all users

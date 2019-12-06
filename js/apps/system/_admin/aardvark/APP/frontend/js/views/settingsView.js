@@ -26,7 +26,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + this.collectionName
+        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -157,15 +157,29 @@
               };
 
               var callbackRename = function (error) {
+                var abort = false;
                 if (error) {
                   arangoHelper.arangoError('Collection error: ' + error.responseText);
                 } else {
                   var wfs = $('#change-collection-sync').val();
                   var replicationFactor;
+                  var writeConcern;
+
                   if (frontendConfig.isCluster) {
                     replicationFactor = $('#change-replication-factor').val();
+                    writeConcern = $('#change-write-concern').val();
+                    try {
+                      if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
+                        // validation here, as our Joi integration misses some core features
+                        arangoHelper.arangoError("Change Collection", "Minimum replication factor not allowed to be greater than replication factor");
+                        abort = true;
+                      }
+                    } catch (ignore) {
+                    }
                   }
-                  this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, callbackChange);
+                  if (!abort) {
+                    this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, writeConcern, callbackChange);
+                  }
                 }
               }.bind(this);
 
@@ -412,6 +426,16 @@
                         true
                       )
                     );
+                    tableContent.push(
+                      window.modalView.createReadOnlyEntry(
+                        'change-write-concern',
+                        'Minimum replication factor',
+                        data.writeConcern,
+                        'This collection is a satellite collection. The minimum replication factor is not changeable.',
+                        '',
+                        true
+                      )
+                    );
                   } else {
                     tableContent.push(
                       window.modalView.createTextEntry(
@@ -425,6 +449,22 @@
                           {
                             rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
                             msg: 'Must be a number.'
+                          }
+                        ]
+                      )
+                    );
+                    tableContent.push(
+                      window.modalView.createTextEntry(
+                        'change-write-concern',
+                        'Minimum replication factor',
+                        data.writeConcern,
+                        'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that is required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
+                        '',
+                        true,
+                        [
+                          {
+                            rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                            msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                           }
                         ]
                       )

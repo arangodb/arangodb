@@ -44,9 +44,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestSimpleHandler::RestSimpleHandler(GeneralRequest* request, GeneralResponse* response,
+RestSimpleHandler::RestSimpleHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response,
                                      arangodb::aql::QueryRegistry* queryRegistry)
-    : RestCursorHandler(request, response, queryRegistry), _silent(true) {}
+    : RestCursorHandler(server, request, response, queryRegistry), _silent(true) {}
 
 RestStatus RestSimpleHandler::execute() {
   // extract the request type
@@ -167,7 +168,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 RestStatus RestSimpleHandler::handleQueryResult() {
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
-        (_queryResult.result.is(TRI_ERROR_QUERY_KILLED && wasCanceled()))) {
+        (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
       generateError(GeneralResponse::responseCode(TRI_ERROR_REQUEST_CANCELED),
                     TRI_ERROR_REQUEST_CANCELED);
     } else {

@@ -27,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 
 namespace arangodb {
 
@@ -34,10 +35,10 @@ namespace arangodb {
 // engine (no matter what type) is ready
 class StorageEngineFeature : public application_features::ApplicationFeature {
  public:
-  StorageEngineFeature(application_features::ApplicationServer& server)
+  explicit StorageEngineFeature(application_features::ApplicationServer& server)
       : application_features::ApplicationFeature(server, "StorageEngine") {
     setOptional(false);
-    startsAfter("BasicsPhase");
+    startsAfter<application_features::BasicFeaturePhaseServer>();
   }
 };
 

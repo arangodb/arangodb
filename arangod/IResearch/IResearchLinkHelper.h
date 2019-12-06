@@ -24,6 +24,8 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_LINK_HELPER_H
 #define ARANGODB_IRESEARCH__IRESEARCH_LINK_HELPER_H 1
 
+#include <memory>
+
 #include "Basics/Result.h"
 #include "VocBase/voc-types.h"
 

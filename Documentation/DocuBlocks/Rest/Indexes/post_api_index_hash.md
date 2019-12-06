@@ -6,7 +6,7 @@
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{collection-name,string,required}
+@RESTQUERYPARAM{collection,string,required}
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}
@@ -21,7 +21,7 @@ if *true*, then create a unique index.
 @RESTBODYPARAM{sparse,boolean,required,}
 if *true*, then create a sparse index.
 
-@RESTBODYPARAM{deduplicate,boolean,optional,boolean}
+@RESTBODYPARAM{deduplicate,boolean,optional,}
 if *false*, the deduplication of array values is turned off.
 
 @RESTDESCRIPTION

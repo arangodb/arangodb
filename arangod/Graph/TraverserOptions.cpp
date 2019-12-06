@@ -27,6 +27,8 @@
 #include "Aql/Expression.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
+#include "Basics/StringUtils.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/SingleServerTraverser.h"
@@ -189,13 +191,13 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
     size_t length = collections.length();
     for (auto const& depth : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(depth.key.copyString());
-      auto it = _depthLookupInfo.emplace(d, std::vector<LookupInfo>());
-      TRI_ASSERT(it.second);
+      auto [it, emplaced] = _depthLookupInfo.try_emplace(d, std::vector<LookupInfo>());
+      TRI_ASSERT(emplaced);
       VPackSlice list = depth.value;
       TRI_ASSERT(length == list.length());
-      it.first->second.reserve(length);
+      it->second.reserve(length);
       for (size_t j = 0; j < length; ++j) {
-        it.first->second.emplace_back(query, list.at(j), collections.at(j));
+        it->second.emplace_back(query, list.at(j), collections.at(j));
       }
     }
   }
@@ -211,13 +213,18 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
     _vertexExpressions.reserve(read.length());
     for (auto const& info : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
-#ifdef ARANGODB_ENABLE_MAINAINER_MODE
-      auto it = _vertexExpressions.emplace(d, new aql::Expression(query->plan(),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      bool emplaced = false;
+      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(d, new aql::Expression(query->plan(),
                                                                   query->ast(), info.value));
-      TRI_ASSERT(it.second);
+      TRI_ASSERT(emplaced);
 #else
-      _vertexExpressions.emplace(d, new aql::Expression(query->plan(),
-                                                        query->ast(), info.value));
+      _vertexExpressions.try_emplace(
+        d,
+        arangodb::lazyConstruct([&]{
+          return new aql::Expression(query->plan(), query->ast(), info.value);
+        })
+      );
 #endif
     }
   }
@@ -304,7 +311,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
     }
   }
   builder.close();
@@ -316,7 +323,7 @@ void TraverserOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
     builder.add(VPackValue(VPackValueType::Array));
     for (auto const& it2 : it.second) {
       for (auto const& it3 : it2.idxHandles) {
-        it3.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+        it3->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
       }
     }
     builder.close();
@@ -423,7 +430,7 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
   if (specific != _depthLookupInfo.end()) {
     TRI_ASSERT(!specific->second.empty());
     TRI_ASSERT(specific->second.size() > cursorId);
-    expression = specific->second[cursorId].expression;
+    expression = specific->second[cursorId].expression.get();
   } else {
     bool unused;
     expression = getEdgeExpression(cursorId, unused);
@@ -442,7 +449,7 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
   if (specific != _depthLookupInfo.end()) {
     TRI_ASSERT(!specific->second.empty());
     TRI_ASSERT(specific->second.size() > cursorId);
-    expression = specific->second[cursorId].expression;
+    expression = specific->second[cursorId].expression.get();
     needToInjectVertex = !specific->second[cursorId].conditionNeedUpdate;
   } else {
     expression = getEdgeExpression(cursorId, needToInjectVertex);
@@ -502,7 +509,7 @@ EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
     return nextCursorLocal(vid, specific->second);
-  } 
+  }
   return nextCursorLocal(vid, _baseLookupInfos);
 }
 

@@ -71,6 +71,7 @@ using VPackNormalizedCompare = arangodb::velocypack::NormalizedCompare;
 #ifndef VELOCYPACK_ALIAS_BUFFER
 #define VELOCYPACK_ALIAS_BUFFER
 using VPackCharBuffer = arangodb::velocypack::CharBuffer;
+using VPackBufferUInt8 = arangodb::velocypack::UInt8Buffer;
 template<typename T> using VPackBuffer = arangodb::velocypack::Buffer<T>;
 #endif
 #endif
@@ -132,6 +133,14 @@ using VPackCustomTypeHandler = arangodb::velocypack::CustomTypeHandler;
 #ifndef VELOCYPACK_ALIAS_PARSER
 #define VELOCYPACK_ALIAS_PARSER
 using VPackParser = arangodb::velocypack::Parser;
+#endif
+#endif
+
+#ifdef VELOCYPACK_SERIALIZABLE_H
+#ifndef VELOCYPACK_ALIAS_SERIALIZABLE
+#define VELOCYPACK_ALIAS_SERIALIZABLE
+using VPackSerializable = arangodb::velocypack::Serializable;
+using VPackSerialize = arangodb::velocypack::Serialize;
 #endif
 #endif
 

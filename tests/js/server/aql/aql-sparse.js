@@ -33,18 +33,21 @@ const db = require("@arangodb").db;
 
 function optimizerSparseTestSuite () {
   let c;
+  const opt = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 5 });
 
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i });
+        docs.push({ _key: "test" + i, value1: i });
       }
+      c.insert(docs);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -603,12 +606,37 @@ function optimizerSparseTestSuite () {
       let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
       assertEqual(0, sorts.length);
       
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+      assertNotEqual(-1, plan.rules.indexOf("move-filters-into-enumerate"));
+    },
+    
+    testSparseConditionRemovalCorrectConditionNoMoveFilters1 : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query, null, opt).json;
+      assertEqual(0, results.length);
+
+      let plan = AQL_EXPLAIN(query, null, opt).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, but still post-filter on value1.foobar!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
       let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
       assertEqual(1, filters.length);
 
       assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
       assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
       assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+      assertEqual(-1, plan.rules.indexOf("move-filters-into-enumerate"));
     },
     
     testSparseConditionRemovalCorrectCondition2 : function () {
@@ -630,12 +658,38 @@ function optimizerSparseTestSuite () {
       let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
       assertEqual(0, sorts.length);
       
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+      assertNotEqual(-1, plan.rules.indexOf("move-filters-into-enumerate"));
+    },
+    
+    testSparseConditionRemovalCorrectConditionNoMoveFilters2 : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value1.foobar"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query, null, opt).json;
+      assertEqual(0, results.length);
+
+      let plan = AQL_EXPLAIN(query, null, opt).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, but still post-filter on value1.foobar!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
       let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
       assertEqual(1, filters.length);
 
       assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
       assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
       assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+      assertEqual(-1, plan.rules.indexOf("move-filters-into-enumerate"));
     },
     
     testSparseConditionRemovalCorrectCondition3 : function () {
@@ -656,12 +710,37 @@ function optimizerSparseTestSuite () {
       let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
       assertEqual(0, sorts.length);
       
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+      assertNotEqual(-1, plan.rules.indexOf("move-filters-into-enumerate"));
+    },
+    
+    testSparseConditionRemovalCorrectConditionNoMoveFilters3 : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc._key != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query, null, opt).json;
+      assertEqual(2000, results.length);
+
+      let plan = AQL_EXPLAIN(query, null, opt).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, no post-filter!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
       let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
       assertEqual(1, filters.length);
 
       assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
       assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
       assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+      assertEqual(-1, plan.rules.indexOf("move-filters-into-enumerate"));
     },
     
     testSparseConditionRemovalCorrectConditionDescending : function () {
@@ -682,12 +761,37 @@ function optimizerSparseTestSuite () {
       let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
       assertEqual(0, sorts.length);
       
+      assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
+      assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
+      assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+      assertNotEqual(-1, plan.rules.indexOf("move-filters-into-enumerate"));
+    },
+    
+    testSparseConditionRemovalCorrectConditionDescendingNoMoveFilters : function () {
+      c.ensureIndex({ type: "skiplist", fields: ["value1"], sparse: true });
+        
+      let query = "FOR doc IN " + c.name() + " FILTER doc.value1 != null FILTER doc.value1.foobar != null SORT doc.value1 RETURN doc.value1";
+      let results = AQL_EXECUTE(query, null, opt).json;
+      assertEqual(0, results.length);
+
+      let plan = AQL_EXPLAIN(query, null, opt).plan;
+      let nodes = plan.nodes;
+      // should use the sparse index, no sorting, but still post-filter on value1.foobar!
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      assertEqual(1, indexes.length);
+      assertTrue(indexes[0].indexes[0].sparse);
+      assertTrue(indexes[0].ascending);
+      
+      let sorts = nodes.filter(function(n) { return n.type === 'SortNode'; });
+      assertEqual(0, sorts.length);
+      
       let filters = nodes.filter(function(n) { return n.type === 'FilterNode'; });
       assertEqual(1, filters.length);
 
       assertNotEqual(-1, plan.rules.indexOf("use-indexes"));
       assertNotEqual(-1, plan.rules.indexOf("use-index-for-sort"));
       assertNotEqual(-1, plan.rules.indexOf("remove-filter-covered-by-index"));
+      assertEqual(-1, plan.rules.indexOf("move-filters-into-enumerate"));
     },
 
   };

@@ -112,12 +112,16 @@ actions.defineHttp({
         operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/Coordinators/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
+        operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
 
         try {
           global.ArangoAgency.write([[operations, preconditions]]);
           actions.resultOk(req, res, actions.HTTP_OK, true);
+          console.info("Removed server " + serverId + " from cluster");
           return;
         } catch (e) {
           if (e.code === 412) {
@@ -154,7 +158,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     let role = global.ArangoServerState.role();
-    if (req.requestType !== actions.PUT || 
+    if (req.requestType !== actions.PUT ||
         (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only PUT requests are allowed and only to coordinators or single servers');
@@ -203,7 +207,7 @@ actions.defineHttp({
     while (true) {
       var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
           arango.Supervision.State.Mode;
-      
+
       if (body === "on" && mode === "Maintenance") {
         res.body = JSON.stringify({
           error: false,
@@ -217,7 +221,7 @@ actions.defineHttp({
       }
 
       wait(0.1);
-      
+
       if (new Date().getTime() > waitUntil) {
         res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
         res.body = JSON.stringify({
@@ -227,10 +231,10 @@ actions.defineHttp({
         });
         return;
       }
-      
+
     }
 
-    return ; 
+    return ;
 
   }});
   // //////////////////////////////////////////////////////////////////////////////
@@ -766,7 +770,7 @@ actions.defineHttp({
 
       if (!req.isAdminUser) {
         actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-          'only allowed for admins users');
+          'only allowed for admin users');
         return;
       }
 
@@ -820,6 +824,7 @@ actions.defineHttp({
   }
 });
 
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_postCleanOutServer
 // / (intentionally not in manual)
@@ -867,7 +872,7 @@ actions.defineHttp({
 
     if (!req.isAdminUser) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the _system database');
+        'only allowed for admin users');
       return;
     }
 
@@ -920,6 +925,106 @@ actions.defineHttp({
   }
 });
 
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_postResignLeadership
+// / (intentionally not in manual)
+// / @brief triggers a resignation of the dbserver for all shards
+// /
+// / @ RESTHEADER{POST /_admin/cluster/resignLeadership, Triggers a resignation of the dbserver for all shards.}
+// /
+// / @ RESTQUERYPARAMETERS
+// /
+// / @ RESTDESCRIPTION Triggers a resignation of the dbserver for all shards.
+// / The body must be a JSON object with attribute "server" that is a string
+// / with the ID of the server to be cleaned out.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{202} is returned when everything went well and the
+// / job is scheduled.
+// /
+// / @ RESTRETURNCODE{400} body is not valid JSON.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+// /
+// / @ RESTRETURNCODE{503} the agency operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/resignLeadership',
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only coordinators can serve this request');
+      return;
+    }
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only the POST method is allowed');
+      return;
+    }
+
+    if (!req.isAdminUser) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only allowed for admin users');
+      return;
+    }
+
+    // Now get to work:
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (typeof body !== 'object' ||
+      !body.hasOwnProperty('server') ||
+      typeof body.server !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        "body must be an object with a string attribute 'server'");
+      return;
+    }
+
+    // First translate the server name from short name to long name:
+    var server = body.server;
+    var servers = global.ArangoClusterInfo.getDBServers();
+    for (let i = 0; i < servers.length; i++) {
+      if (servers[i].serverId !== server) {
+        if (servers[i].serverName === server) {
+          server = servers[i].serverId;
+          break;
+        }
+      }
+    }
+
+    var ok = true;
+    var id;
+    try {
+      id = ArangoClusterInfo.uniqid();
+      var todo = {
+        'type': 'resignLeadership',
+        'server': server,
+        'jobId': id,
+        'timeCreated': (new Date()).toISOString(),
+        'creator': ArangoServerState.id()
+      };
+      ArangoAgency.set('Target/ToDo/' + id, todo);
+    } catch (e1) {
+      ok = false;
+    }
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+        {error: true, errorMsg: 'Cannot write to agency.'});
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, {error: false, id: id});
+  }
+});
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_getqueryAgencyJob
 // / (intentionally not in manual)
@@ -931,7 +1036,7 @@ actions.defineHttp({
 // / job being queried.
 // /
 // / @ RESTDESCRIPTION Returns information (if known) about the job with ID
-// / `id`. This can either be a cleanOurServer or a moveShard job at this
+// / `id`. This can either be a cleanOutServer or a moveShard job at this
 // / stage.
 // /
 // / @ RESTRETURNCODES
@@ -1078,7 +1183,7 @@ actions.defineHttp({
     }
 
     // at least RW rights on db to move a shard
-    if (!req.isAdminUser && 
+    if (!req.isAdminUser &&
         users.permission(req.user, body.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'insufficient permissions on database to move shard');

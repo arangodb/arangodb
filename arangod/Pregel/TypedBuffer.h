@@ -29,7 +29,10 @@
 #include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 
 #include <cstddef>
@@ -51,7 +54,7 @@ struct TypedBuffer {
   static_assert(std::is_default_constructible<T>::value, "");
   
   /// close file (see close() )
-  virtual ~TypedBuffer() {}
+  virtual ~TypedBuffer() = default;
   TypedBuffer() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
 
   /// end usage of the structure
@@ -108,7 +111,7 @@ struct TypedBuffer {
 template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
  public:
-  VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
+  explicit VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
     TRI_ASSERT(capacity > 0);
     this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
     this->_end = this->_begin;
@@ -123,6 +126,7 @@ class VectorTypedBuffer : public TypedBuffer<T> {
     close();
   }
 
+  // cppcheck-suppress virtualCallInConstructor
   void close() override {
     if (this->_begin == nullptr) {
       return;
@@ -229,6 +233,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
   }
 
   /// close file
+  // cppcheck-suppress virtualCallInConstructor
   void close() override {
     if (this->_begin == nullptr) {
       // already closed or not opened

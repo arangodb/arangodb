@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_VARIABLE_H
 #define ARANGOD_AQL_VARIABLE_H 1
 
+#include <string>
+
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
@@ -77,6 +79,9 @@ struct Variable {
   /// @brief factory for (optional) variables from VPack
   static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
                                 char const* variableName, bool optional = false);
+
+
+  bool isEqualTo(Variable const& other) const;
 
   /// @brief variable name
   std::string name;

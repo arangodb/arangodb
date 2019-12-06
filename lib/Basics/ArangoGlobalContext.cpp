@@ -20,8 +20,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "ArangoGlobalContext.h"
-#include <sys/types.h>
+
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -39,12 +45,29 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/InitializeRest.h"
 
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#else
+inline void ADB_WindowsEntryFunction() {}
+inline void ADB_WindowsExitFunction(int, void*) {}
+#endif
+
 #include <regex>
+
+#if (_MSC_VER >= 1)
+// Disable a warning caused by the call to ADB_WindowsExitFunction() in
+// ~ArangoGlobalContext().
+#pragma warning(push)
+#pragma warning(disable : 4722)  // destructor never returns, potential memory leak
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -363,3 +386,7 @@ void ArangoGlobalContext::normalizePath(std::string& path, char const* whichPath
     }
   }
 }
+
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif

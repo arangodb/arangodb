@@ -21,18 +21,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TtlFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/Thread.h"
+#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
@@ -146,12 +153,8 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
 
 class TtlThread final : public Thread {
  public:
-  explicit TtlThread(TtlFeature* ttlFeature) 
-       : Thread("TTL"), 
-         _ttlFeature(ttlFeature),
-         _working(false) {
-    TRI_ASSERT(_ttlFeature != nullptr);
-  }
+  explicit TtlThread(application_features::ApplicationServer& server, TtlFeature& ttlFeature)
+      : Thread(server, "TTL"), _ttlFeature(ttlFeature), _working(false) {}
 
   ~TtlThread() { shutdown(); }
 
@@ -180,7 +183,7 @@ class TtlThread final : public Thread {
 
  protected:
   void run() override {
-    TtlProperties properties = _ttlFeature->properties();
+    TtlProperties properties = _ttlFeature.properties();
     setNextStart(properties.frequency); 
 
     LOG_TOPIC("c2be7", TRACE, Logger::TTL) << "starting TTL background thread with interval " << properties.frequency << " milliseconds, max removals per run: " << properties.maxTotalRemoves << ", max removals per collection per run " << properties.maxCollectionRemoves;
@@ -207,7 +210,7 @@ class TtlThread final : public Thread {
       }
       
       // properties may have changed... update them
-      properties = _ttlFeature->properties();
+      properties = _ttlFeature.properties();
       setNextStart(properties.frequency); 
 
       try {
@@ -216,7 +219,7 @@ class TtlThread final : public Thread {
         work(stats, properties);
 
         // merge stats
-        _ttlFeature->updateStats(stats);
+        _ttlFeature.updateStats(stats);
       } catch (std::exception const& ex) {
         LOG_TOPIC("6d28a", WARN, Logger::TTL) << "caught exception in TTL background thread: " << ex.what();
       } catch (...) {
@@ -228,7 +231,7 @@ class TtlThread final : public Thread {
  private:
   /// @brief whether or not the background thread shall continue working
   bool isActive() const {
-    return _ttlFeature->isActive() && !isStopping();
+    return _ttlFeature.isActive() && !isStopping() && !ServerState::readOnly();
   }
 
   void work(TtlStatistics& stats, TtlProperties const& properties) {
@@ -244,24 +247,22 @@ class TtlThread final : public Thread {
 
     stats.runs++;
 
-    auto queryRegistryFeature =
-        application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-            "QueryRegistry");
-    auto queryRegistry = queryRegistryFeature->queryRegistry();
+    auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+    auto queryRegistry = queryRegistryFeature.queryRegistry();
 
     double const stamp = TRI_microtime();
     uint64_t limitLeft = properties.maxTotalRemoves; 
     
-    // iterate over all databases  
-    auto db = DatabaseFeature::DATABASE;
-    for (auto const& name : db->getDatabaseNames()) {
+    // iterate over all databases
+    auto& db = _server.getFeature<DatabaseFeature>();
+    for (auto const& name : db.getDatabaseNames()) {
       if (!isActive()) {
         // feature deactivated (for example, due to running on current follower in
         // active failover setup)
         return;
       }
 
-      TRI_vocbase_t* vocbase = db->useDatabase(name);
+      TRI_vocbase_t* vocbase = db.useDatabase(name);
 
       if (vocbase == nullptr) {
         continue;
@@ -382,7 +383,7 @@ class TtlThread final : public Thread {
   }
 
  private:
-  TtlFeature* _ttlFeature;
+  TtlFeature& _ttlFeature;
 
   arangodb::basics::ConditionVariable _condition;
   
@@ -405,8 +406,8 @@ TtlFeature::TtlFeature(
     : ApplicationFeature(server, "Ttl"), 
       _allowRunning(true),
       _active(true) {
-  startsAfter("DatabasePhase");
-  startsAfter("ServerPhase");
+  startsAfter<application_features::DatabaseFeaturePhase>();
+  startsAfter<application_features::ServerFeaturePhase>();
 }
 
 TtlFeature::~TtlFeature() {
@@ -458,12 +459,9 @@ void TtlFeature::start() {
     LOG_TOPIC("e94bb", DEBUG, Logger::TTL) << "turning off TTL feature because of coordinator / agency";
     return;
   }
-  
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
 
-  if (databaseFeature->checkVersion() || databaseFeature->upgrade()) {
+  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
+  if (databaseFeature.checkVersion() || databaseFeature.upgrade()) {
     LOG_TOPIC("5614a", DEBUG, Logger::TTL) << "turning off TTL feature because of version checking or upgrade procedure";
     return;
   }
@@ -475,12 +473,12 @@ void TtlFeature::start() {
     
   MUTEX_LOCKER(locker, _threadMutex);
 
-  if (application_features::ApplicationServer::isStopping()) {
+  if (server().isStopping()) {
     // don't create the thread if we are already shutting down
     return;
   }
 
-  _thread.reset(new TtlThread(this));
+  _thread.reset(new TtlThread(server(), *this));
 
   if (!_thread->start()) {
     LOG_TOPIC("33c33", FATAL, Logger::TTL) << "could not start ttl background thread";

@@ -129,6 +129,7 @@ class RangeIterator {
     other._beginPtr = nullptr;
     other._currentBufferEnd = nullptr;
     other._size = 0;
+    return *this;
   }
 
 //  iterator begin() { return RangeIterator(_buffers.begin(), _begin, _end); }

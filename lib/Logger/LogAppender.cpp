@@ -22,14 +22,22 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+#include <type_traits>
+
 #include "LogAppender.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/operating-system.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
+#include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -68,7 +76,7 @@ void LogAppender::addAppender(std::string const& definition, std::string const& 
 
 std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     std::string const& definition, std::string const& filter) {
-  std::vector<std::string> v = StringUtils::split(definition, '=', '\0');
+  std::vector<std::string> v = StringUtils::split(definition, '=');
   std::string topicName;
   std::string output;
   std::string contentFilter;

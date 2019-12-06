@@ -20,10 +20,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/core/demangle.hpp>
+
+#include <algorithm>
+#include <chrono>
+#include <thread>
+
 #include "ApplicationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::options;
@@ -34,7 +42,7 @@ namespace application_features {
 ApplicationFeature::ApplicationFeature(ApplicationServer& server, std::string const& name)
     : _server(server),
       _name(name),
-      _state(ApplicationServer::FeatureState::UNINITIALIZED),
+      _state(State::UNINITIALIZED),
       _enabled(true),
       _optional(false),
       _requiresElevatedPrivileges(false),
@@ -81,23 +89,33 @@ void ApplicationFeature::stop() {}
 void ApplicationFeature::unprepare() {}
 
 // determine all direct and indirect ancestors of a feature
-std::unordered_set<std::string> ApplicationFeature::ancestors() const {
+std::unordered_set<std::type_index> ApplicationFeature::ancestors() const {
   TRI_ASSERT(_ancestorsDetermined);
   return _ancestors;
 }
 
-// whether the feature starts before another
-bool ApplicationFeature::doesStartBefore(std::string const& other) const {
-  auto otherAncestors = _server.feature(other)->ancestors();
+void ApplicationFeature::startsAfter(std::type_index type) {
+  _startsAfter.emplace(type);
+}
 
-  if (otherAncestors.find(_name) != otherAncestors.end()) {
+void ApplicationFeature::startsBefore(std::type_index type) {
+  _startsBefore.emplace(type);
+}
+
+bool ApplicationFeature::doesStartBefore(std::type_index type) const {
+  if (!_server.hasFeature(type)) {
+    // no relationship if the feature doesn't exist
+    return false;
+  }
+
+  auto otherAncestors = _server.getFeature<ApplicationFeature>(type).ancestors();
+  if (otherAncestors.find(std::type_index(typeid(*this))) != otherAncestors.end()) {
     // we are an ancestor of the other feature
     return true;
   }
 
   auto ourAncestors = ancestors();
-
-  if (ourAncestors.find(other) != ourAncestors.end()) {
+  if (ourAncestors.find(type) != ourAncestors.end()) {
     // the other feature is an ancestor of us
     return false;
   }
@@ -106,44 +124,85 @@ bool ApplicationFeature::doesStartBefore(std::string const& other) const {
   return false;
 }
 
+void ApplicationFeature::addAncestorToAllInPath(
+    std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
+    std::type_index ancestorType) {
+  std::function<bool(std::pair<size_t, std::reference_wrapper<ApplicationFeature>>&)> typeMatch =
+      [ancestorType](std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair) -> bool {
+    auto& feature = pair.second.get();
+    return std::type_index(typeid(feature)) == ancestorType;
+  };
+
+  if (std::find_if(path.begin(), path.end(), typeMatch) != path.end()) {
+    // dependencies are cyclic
+
+    // build type list to print out error
+    std::vector<std::type_index> pathTypes;
+    for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
+      auto& feature = pair.second.get();
+      pathTypes.emplace_back(std::type_index(typeid(feature)));
+    }
+    pathTypes.emplace_back(ancestorType);  // make sure we show the duplicate
+
+    // helper for string join
+    std::function<std::string(std::type_index)> cb = [](std::type_index type) -> std::string {
+      return boost::core::demangle(type.name());
+    };
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "dependencies for feature '" + boost::core::demangle(pathTypes.begin()->name()) +
+            "' are cyclic: " + basics::StringUtils::join(pathTypes, " <= ", cb));
+  }
+
+  // not cyclic, go ahead and add
+  for (std::pair<size_t, std::reference_wrapper<ApplicationFeature>>& pair : path) {
+    ApplicationFeature& descendant = pair.second;
+    descendant._ancestors.emplace(ancestorType);
+  }
+}
+
 // determine all direct and indirect ancestors of a feature
-void ApplicationFeature::determineAncestors() {
+void ApplicationFeature::determineAncestors(std::type_index rootAsType) {
   if (_ancestorsDetermined) {
     return;
   }
 
-  std::vector<std::string> path;
+  std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>> path;
+  std::vector<std::pair<size_t, std::type_index>> toProcess{{0, rootAsType}};
+  while (!toProcess.empty()) {
+    size_t depth = toProcess.back().first;
+    std::type_index type = toProcess.back().second;
+    toProcess.pop_back();
 
-  std::function<void(std::string const&)> build = [this, &build,
-                                                   &path](std::string const& name) {
-    // lookup the feature first. it may not exist
-    if (!this->server()->exists(name)) {
-      // feature not found. no worries
-      return;
-    }
-
-    ApplicationFeature* other = this->server()->lookupFeature(name);
-
-    if (other != nullptr) {
-      path.emplace_back(name);
-      for (auto& ancestor : other->startsAfter()) {
-        if (_ancestors.emplace(ancestor).second) {
-          if (ancestor == _name) {
-            path.emplace_back(ancestor);
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                "dependencies for feature '" + _name + "' are cyclic: " +
-                    arangodb::basics::StringUtils::join(path, " <= "));
-          }
-          build(ancestor);
+    if (server().hasFeature(type)) {
+      ApplicationFeature& feature = server().getFeature<ApplicationFeature>(type);
+      path.emplace_back(depth, feature);
+      if (feature._ancestorsDetermined) {
+        // short cut, just get the ancestors list and append add it everything
+        // on the path
+        std::unordered_set<std::type_index> ancestors = feature._ancestors;
+        for (std::type_index ancestorType : ancestors) {
+          addAncestorToAllInPath(path, ancestorType);
+        }
+      } else {
+        for (std::type_index ancestorType : feature.startsAfter()) {
+          addAncestorToAllInPath(path, ancestorType);
+          toProcess.emplace_back(depth + 1, ancestorType);
         }
       }
+    }
+
+    // pop any elements off path that have had all their ancestors processed
+    while (!path.empty() &&
+           (toProcess.empty() || toProcess.back().first <= path.back().first)) {
+      ApplicationFeature& finished = path.back().second;
+      finished._ancestorsDetermined = true;
       path.pop_back();
     }
-  };
+  }
 
-  build(_name);
-  _ancestorsDetermined = true;
+  TRI_ASSERT(_ancestorsDetermined);
 }
 
 }  // namespace application_features

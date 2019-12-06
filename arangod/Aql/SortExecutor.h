@@ -31,6 +31,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 
+#include <cstddef>
 #include <memory>
 
 namespace arangodb {
@@ -53,24 +54,27 @@ class SortExecutorInfos : public ExecutorInfos {
                     AqlItemBlockManager& manager, RegisterId nrInputRegisters,
                     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
                     std::unordered_set<RegisterId> registersToKeep,
-                    transaction::Methods* trx, bool stable);
+                    velocypack::Options const*, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
   SortExecutorInfos(SortExecutorInfos const&) = delete;
   ~SortExecutorInfos() = default;
 
-  arangodb::transaction::Methods* trx() const;
+  [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
 
-  std::vector<SortRegister>& sortRegisters();
+  [[nodiscard]] std::vector<SortRegister> const& sortRegisters() const noexcept;
 
-  bool stable() const;
+  [[nodiscard]] bool stable() const;
 
-  std::size_t _limit;
-  AqlItemBlockManager& _manager;
+  [[nodiscard]] size_t limit() const noexcept;
+
+  [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
 
  private:
-  arangodb::transaction::Methods* _trx;
+  std::size_t _limit;
+  AqlItemBlockManager& _manager;
+  velocypack::Options const* _vpackOptions;
   std::vector<SortRegister> _sortRegisters;
   bool _stable;
 };
@@ -81,9 +85,9 @@ class SortExecutorInfos : public ExecutorInfos {
 class SortExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = AllRowsFetcher;
   using Infos = SortExecutorInfos;

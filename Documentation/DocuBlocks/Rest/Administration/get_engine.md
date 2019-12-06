@@ -18,14 +18,25 @@ will be *mmfiles* or *rocksdb*
 
 @EXAMPLES
 
-Return the active storage engine
+Return the active storage engine with the MMFiles storage engine in use:
 
-@EXAMPLE_ARANGOSH_RUN{RestEngine}
+@EXAMPLE_ARANGOSH_RUN{RestEngine_mmfiles}
     var response = logCurlRequest('GET', '/_api/engine');
 
     assert(response.code === 200);
 
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
+
+Return the active storage engine with the RocksDB storage engine in use:
+
+@EXAMPLE_ARANGOSH_RUN{RestEngine_rocksdb}
+    var response = logCurlRequest('GET', '/_api/engine');
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
 

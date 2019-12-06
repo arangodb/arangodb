@@ -25,17 +25,25 @@
 #ifndef ARANGODB_BASICS_UTF8HELPER_H
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
+#include <stddef.h>
+#include <cstdint>
+#include <memory>
 #include <set>
-#include "Basics/Common.h"
-
-#include <velocypack/StringRef.h>
+#include <string>
 
 #include <unicode/coll.h>
-#include <unicode/regex.h>
-#include <unicode/ustring.h>
-#include <unicode/locid.h>
+#include <unicode/umachine.h>
+
+#include "Basics/Common.h"
+
+namespace icu_58 {
+class RegexMatcher;
+}
 
 namespace arangodb {
+namespace velocypack {
+class StringRef;
+}
 namespace basics {
 
 #ifdef _WIN32
@@ -145,7 +153,7 @@ class Utf8Helper {
   /// @brief builds a regex matcher for the specified pattern
   //////////////////////////////////////////////////////////////////////////////
 
-  icu::RegexMatcher* buildMatcher(std::string const&);
+  std::unique_ptr<icu::RegexMatcher> buildMatcher(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not value matches a regex

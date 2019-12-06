@@ -28,19 +28,21 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralRequest.h"
 #include "Logger/Logger.h"
 #include "Rest/CommonDefines.h"
 
+#include <velocypack/Options.h>
+
 namespace arangodb {
 namespace velocypack {
-struct Options;
 class Slice;
 }  // namespace velocypack
 
-using rest::ConnectionType;
 using rest::ContentType;
+using rest::EncodingType;
 using rest::ResponseCode;
 
 class GeneralRequest;
@@ -62,6 +64,7 @@ class GeneralResponse {
 
   /// @brief set content-type this sets the contnt type like you expect it
   void setContentType(ContentType type) { _contentType = type; }
+  ContentType contentType() const { return _contentType; }
 
   /// @brief set content-type from a string. this should only be used in
   /// cases when the content-type is user-defined
@@ -77,10 +80,13 @@ class GeneralResponse {
     _contentType = ContentType::CUSTOM;
   }
 
-  void setConnectionType(ConnectionType type) { _connectionType = type; }
+  void setAllowCompression(bool allowed) { _allowCompression = allowed; }
+  virtual bool isCompressionAllowed() { return _allowCompression; }
+
   void setContentTypeRequested(ContentType type) {
     _contentTypeRequested = type;
   }
+  ContentType contentTypeRequested() const { return _contentTypeRequested; }
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
@@ -88,7 +94,7 @@ class GeneralResponse {
   explicit GeneralResponse(ResponseCode);
 
  public:
-  virtual ~GeneralResponse() {}
+  virtual ~GeneralResponse() = default;
 
  public:
   // response codes are http response codes, but they are used in other
@@ -98,7 +104,7 @@ class GeneralResponse {
     _responseCode = responseCode;
   }
 
-  void setHeaders(std::unordered_map<std::string, std::string>&& headers) {
+  void setHeaders(std::unordered_map<std::string, std::string> headers) {
     _headers = std::move(headers);
   }
 
@@ -108,30 +114,25 @@ class GeneralResponse {
 
   // adds a header. the header field name will be lower-cased
   void setHeader(std::string const& key, std::string const& value) {
-    _headers[basics::StringUtils::tolower(key)] = value;
+    _headers.insert_or_assign(basics::StringUtils::tolower(key), value);
   }
 
   // adds a header. the header field name must be lower-cased
-  void setHeaderNC(std::string const& key, std::string const& value) {
-    _headers[key] = value;
-  }
-
-  // adds a header. the header field name must be lower-cased
-  void setHeaderNC(std::string const& key, std::string&& value) {
-    _headers[key] = std::move(value);
+  void setHeaderNC(std::string const& key, std::string value) {
+    _headers.insert_or_assign(key, std::move(value));
   }
 
   // adds a header if not set. the header field name must be lower-cased
   void setHeaderNCIfNotSet(std::string const& key, std::string const& value) {
-    if (_headers.find(key) != _headers.end()) {
-      // already set
-      return;
-    }
     _headers.emplace(key, value);
   }
 
+  virtual bool isResponseEmpty() const = 0;
+
  public:
   virtual uint64_t messageId() const { return 1; }
+
+  virtual void setMessageId(uint64_t msgId) { }
 
   virtual void reset(ResponseCode) = 0;
 
@@ -139,33 +140,35 @@ class GeneralResponse {
   // or VPackBuffer<uint8_t>&&
   template <typename Payload>
   void setPayload(Payload&& payload, bool generateBody,
-                  VPackOptions const& options = VPackOptions::Options::Defaults,
+                  velocypack::Options const& options = velocypack::Options::Defaults,
                   bool resolveExternals = true) {
+    TRI_ASSERT(isResponseEmpty());
     _generateBody = generateBody;
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
-  virtual void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
+  virtual void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
-  virtual void addPayload(VPackBuffer<uint8_t>&&,
+  virtual void addPayload(velocypack::Buffer<uint8_t>&&,
                           arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
-
+  virtual void addRawPayload(velocypack::StringRef payload) = 0;
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
 
   /// used for head
-  bool generateBody() const { return _generateBody; };
+  bool generateBody() const { return _generateBody; }
   /// used for head
-  virtual bool setGenerateBody(bool) { return _generateBody; };
+  virtual bool setGenerateBody(bool) { return _generateBody; }
+
+  virtual int deflate(size_t size = 16384) = 0;
 
  protected:
-  ResponseCode _responseCode;                             // http response code
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
-
+  ResponseCode _responseCode;                             // http response code
   ContentType _contentType;
-  ConnectionType _connectionType;
-  bool _generateBody;
   ContentType _contentTypeRequested;
+  bool _generateBody;
+  bool _allowCompression;
 };
 }  // namespace arangodb
 

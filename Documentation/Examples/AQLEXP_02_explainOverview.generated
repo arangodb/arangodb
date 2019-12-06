@@ -1,7 +1,0 @@
-arangosh&gt; stmt.explain().plan.nodes.map(<span class="hljs-function"><span class="hljs-keyword">function</span> (<span class="hljs-params">node</span>) </span>{ <span class="hljs-keyword">return</span> node.type; });
-[ 
-  <span class="hljs-string">"SingletonNode"</span>, 
-  <span class="hljs-string">"IndexNode"</span>, 
-  <span class="hljs-string">"CalculationNode"</span>, 
-  <span class="hljs-string">"ReturnNode"</span> 
-]

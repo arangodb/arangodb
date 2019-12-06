@@ -21,13 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeneralClientConnection.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
-#include "Basics/socket-utils.h"
-#include "Logger/Logger.h"
-#include "SimpleHttpClient/ClientConnection.h"
-#include "SimpleHttpClient/SslClientConnection.h"
+#include <errno.h>
+#include <limits.h>
+#include <string.h>
+
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_POLL_H
 #include <poll.h>
@@ -38,7 +37,21 @@
 #include <WinSock2.h>
 #endif
 
-#include <sys/types.h>
+#include "GeneralClientConnection.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/socket-utils.h"
+#include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "SimpleHttpClient/ClientConnection.h"
+#include "SimpleHttpClient/SslClientConnection.h"
 
 #ifdef _WIN32
 #define STR_ERROR()                                                  \
@@ -196,9 +209,8 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   double start = TRI_microtime();
   int res;
 
-  auto comm =
-      application_features::ApplicationServer::getFeature<arangodb::application_features::CommunicationFeaturePhase>(
-          "CommunicationPhase");
+  auto& server = application_features::ApplicationServer::server();
+  auto& comm = server.getFeature<application_features::CommunicationFeaturePhase>();
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
@@ -237,7 +249,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     }
 
     if (res == 0) {
-      if (isInterrupted() || !comm->getCommAllowed()) {
+      if (isInterrupted() || !comm.getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -319,7 +331,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
       timeout = timeout - (end - start);
       start = end;
     } else if (res == 0) {
-      if (isInterrupted() || !comm->getCommAllowed()) {
+      if (isInterrupted() || !comm.getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -336,7 +348,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
 #endif
 
   if (res > 0) {
-    if (isInterrupted() || !comm->getCommAllowed()) {
+    if (isInterrupted() || !comm.getCommAllowed()) {
       _errorDetails = std::string("command locally aborted");
       TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
       return false;
@@ -347,10 +359,10 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   if (res == 0) {
     if (isWrite) {
       _errorDetails = std::string("timeout during write");
-      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_WRITE);
+      TRI_set_errno(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE);
     } else {
       _errorDetails = std::string("timeout during read");
-      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
+      TRI_set_errno(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ);
     }
   } else {  // res < 0
 #ifdef _WIN32

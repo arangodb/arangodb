@@ -28,9 +28,11 @@
 #include <unordered_set>
 
 #include "IResearchViewSort.h"
+
+#include <velocypack/Builder.h>
+
 #include "VocBase/voc-types.h"
 #include "index/index_writer.hpp"
-#include "velocypack/Builder.h"
 
 namespace arangodb {
 namespace velocypack {

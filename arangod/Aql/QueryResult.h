@@ -24,7 +24,10 @@
 #ifndef ARANGOD_AQL_QUERY_RESULT_H
 #define ARANGOD_AQL_QUERY_RESULT_H 1
 
+#include <memory>
 #include <unordered_set>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 
@@ -55,7 +58,7 @@ struct QueryResult {
       : result(std::move(res)),
         cached(false) {}
 
-  virtual ~QueryResult() {}
+  virtual ~QueryResult() = default;
 
   void reset(Result const& res) {
     result.reset(res);

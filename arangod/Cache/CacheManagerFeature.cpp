@@ -30,11 +30,15 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/Scheduler.h"
@@ -60,10 +64,10 @@ CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer
                      : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 }
 
-CacheManagerFeature::~CacheManagerFeature() {}
+CacheManagerFeature::~CacheManagerFeature() = default;
 
 void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("cache", "Configure the hash cache");
@@ -101,12 +105,15 @@ void CacheManagerFeature::start() {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
-    scheduler->queue(RequestLane::INTERNAL_LOW, fn);
-    return true;
+    try {
+      return scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+    } catch (...) {
+      return false;
+    }
   };
   _manager.reset(new Manager(postFn, _cacheSize));
   MANAGER = _manager.get();
-  _rebalancer.reset(new CacheRebalancerThread(_manager.get(), _rebalancingInterval));
+  _rebalancer.reset(new CacheRebalancerThread(server(), _manager.get(), _rebalancingInterval));
   _rebalancer->start();
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }

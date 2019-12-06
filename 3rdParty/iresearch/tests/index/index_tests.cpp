@@ -25,6 +25,8 @@
 #include "iql/query_builder.hpp"
 #include "store/memory_directory.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/lz4compression.hpp"
+#include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
 
 #include "index_tests.hpp"
@@ -1420,6 +1422,11 @@ class index_test_case : public tests::index_test_base {
   }
 
   void read_empty_doc_attributes() {
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
+
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
       &tests::generic_json_field_factory
@@ -1431,7 +1438,7 @@ class index_test_case : public tests::index_test_base {
 
     // write documents without attributes
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
 
       // fields only
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end()));
@@ -1451,6 +1458,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_sparse_mask() {
     // sparse_column<sparse_mask_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
     static const iresearch::string_ref column_name = "id";
@@ -1466,7 +1477,7 @@ class index_test_case : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -2284,6 +2295,11 @@ class index_test_case : public tests::index_test_base {
   void read_write_doc_attributes_dense_column_dense_mask() {
     // dense_fixed_length_column<dense_mask_block>
 
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
+
     static const irs::doc_id_t MAX_DOCS
       = 1024*1024 // full index block
       + 2051;     // tail index block
@@ -2300,7 +2316,7 @@ class index_test_case : public tests::index_test_base {
       } field;
 
       irs::doc_id_t docs_count = 0;
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -2924,6 +2940,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_dense_column_dense_fixed_length() {
     // dense_fixed_length_column<dense_fixed_length_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
     static const iresearch::string_ref column_name = "id";
@@ -2948,7 +2968,7 @@ class index_test_case : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -3703,6 +3723,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_dense_column_dense_variable_length() {
     // sparse_column<dense_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
     static const iresearch::string_ref column_name = "id";
@@ -3729,7 +3753,7 @@ class index_test_case : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -4643,6 +4667,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_dense_variable_length() {
     // sparse_column<dense_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::raw::type(), irs::compression::options{}, true };
+    };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
     static const irs::doc_id_t MAX_DOCS = 1500;
@@ -4674,7 +4702,7 @@ class index_test_case : public tests::index_test_base {
         const irs::string_ref column_name;
       } field(column_name), gap("gap");
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -5788,6 +5816,11 @@ class index_test_case : public tests::index_test_base {
   void read_write_doc_attributes_sparse_column_dense_fixed_offset() {
     // sparse_column<dense_fixed_length_block>
 
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::raw::type(), irs::compression::options{}, false };
+    };
+
     // border case for sparse fixed offset columns, e.g.
     // |--------------|------------|
     // |doc           | value_size |
@@ -6049,6 +6082,11 @@ class index_test_case : public tests::index_test_base {
   void read_write_doc_attributes_dense_column_dense_fixed_offset() {
     // dense_fixed_length_column<dense_fixed_length_block>
 
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
+
     // border case for dense fixed offset columns, e.g.
     // |--------------|------------|
     // |doc           | value_size |
@@ -6089,7 +6127,7 @@ class index_test_case : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -6258,6 +6296,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_dense_fixed_length() {
     // sparse_column<dense_fixed_length_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, false };
+    };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
     static const irs::doc_id_t MAX_DOCS = 1500;
@@ -6289,7 +6331,7 @@ class index_test_case : public tests::index_test_base {
         const irs::string_ref column_name;
       } field(column_name), gap("gap");
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -7259,6 +7301,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_dense_mask() {
     // sparse_column<dense_mask_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
 
     static const irs::doc_id_t BLOCK_SIZE = 1024;
     static const irs::doc_id_t MAX_DOCS
@@ -7281,7 +7327,7 @@ class index_test_case : public tests::index_test_base {
       } field(column_name), gap("gap");
 
       irs::doc_id_t docs_count = 0;
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -8117,6 +8163,10 @@ class index_test_case : public tests::index_test_base {
 
   void read_write_doc_attributes_sparse_column_sparse_variable_length() {
     // sparse_column<sparse_block>
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
 
     static const irs::doc_id_t MAX_DOCS = 1500;
     static const iresearch::string_ref column_name = "id";
@@ -8144,7 +8194,7 @@ class index_test_case : public tests::index_test_base {
         uint64_t value{};
       } field;
 
-      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE, options);
       auto ctx = writer->documents();
 
       do {
@@ -9598,6 +9648,11 @@ class index_test_case : public tests::index_test_base {
   }
 
   void read_write_doc_attributes() {
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
+
     tests::json_doc_generator gen(
       resource("simple_sequential.json"),
       &tests::generic_json_field_factory
@@ -9609,7 +9664,7 @@ class index_test_case : public tests::index_test_base {
 
     // write documents
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
 
       // attributes only
       ASSERT_TRUE(insert(*writer, doc1->indexed.end(), doc1->indexed.end(), doc1->stored.begin(), doc1->stored.end()));
@@ -9917,6 +9972,11 @@ class index_test_case : public tests::index_test_base {
   }
 
   void read_write_doc_attributes_big() {
+    irs::index_writer::init_options options;
+    options.column_info = [](const irs::string_ref&) {
+      return irs::column_info{ irs::compression::lz4::type(), irs::compression::options{}, true };
+    };
+
     struct csv_doc_template_t: public tests::csv_doc_generator::doc_template {
       virtual void init() {
         clear();
@@ -9942,7 +10002,7 @@ class index_test_case : public tests::index_test_base {
 
     // write attributes 
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
 
       const tests::document* doc;
       while ((doc = gen.next())) {
@@ -11014,6 +11074,139 @@ TEST_P(index_test_case, writer_begin_rollback) {
   writer_begin_rollback();
 }
 
+TEST_P(index_test_case, writer_begin_clear_empty_index) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    ASSERT_EQ(1, writer->buffered_docs());
+    writer->clear(); // rollback started transaction and clear index
+    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_FALSE(writer->begin()); // nothing to commit
+
+    // check index, it should be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(0, reader.live_docs_count());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(reader.begin(), reader.end());
+    }
+  }
+}
+
+TEST_P(index_test_case, writer_begin_clear) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    ASSERT_EQ(1, writer->buffered_docs());
+    writer->commit();
+    ASSERT_EQ(0, writer->buffered_docs());
+
+    // check index, it should not be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.live_docs_count());
+      ASSERT_EQ(1, reader.docs_count());
+      ASSERT_EQ(1, reader.size());
+      ASSERT_NE(reader.begin(), reader.end());
+    }
+
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    ASSERT_EQ(1, writer->buffered_docs());
+    ASSERT_TRUE(writer->begin()); // start transaction
+    ASSERT_EQ(0, writer->buffered_docs());
+
+    writer->clear(); // rollback and clear index contents
+    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_FALSE(writer->begin()); // nothing to commit
+
+    // check index, it should be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(0, reader.live_docs_count());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(reader.begin(), reader.end());
+    }
+  }
+}
+
+TEST_P(index_test_case, writer_commit_clear) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory
+  );
+
+  tests::document const* doc1 = gen.next();
+
+  {
+    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+
+    ASSERT_TRUE(
+      insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      )
+    );
+    ASSERT_EQ(1, writer->buffered_docs());
+    writer->commit();
+    ASSERT_EQ(0, writer->buffered_docs());
+
+    // check index, it should not be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(1, reader.live_docs_count());
+      ASSERT_EQ(1, reader.docs_count());
+      ASSERT_EQ(1, reader.size());
+      ASSERT_NE(reader.begin(), reader.end());
+    }
+
+    writer->clear(); // clear index contents
+    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_FALSE(writer->begin()); // nothing to commit
+
+    // check index, it should be empty
+    {
+      auto reader = irs::directory_reader::open(dir(), codec());
+      ASSERT_EQ(0, reader.live_docs_count());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(reader.begin(), reader.end());
+    }
+  }
+}
+
 TEST_P(index_test_case, insert_null_empty_term) {
   insert_doc_with_null_empty_term();
 }
@@ -11230,9 +11423,10 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
       SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
       auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)); // assume thread commits within 100 msec
 
-      // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+      // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
       MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
       MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
+      MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(cond_lock, std::chrono::milliseconds(100)));
 
       // FIXME TODO add once segment_context will not block flush_all()
       //ASSERT_TRUE(stop);
@@ -11355,9 +11549,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100));
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); // verify commit() blocks
     field_lock.unlock();
@@ -11396,9 +11591,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
@@ -11443,9 +11639,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)); // verify commit() blocks
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     field_lock.unlock();
@@ -11520,9 +11717,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -11577,9 +11775,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(10000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     //ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -11637,9 +11836,10 @@ TEST_P(index_test_case, document_context) {
 
     auto result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(1000)); // verify commit() finishes FIXME TODO remove once segment_context will not block flush_all()
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request FIXME TODO remove once segment_context will not block flush_all()
     MSVC2015_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
     MSVC2017_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
+    MSVC2019_ONLY(while(!commit && result == std::cv_status::no_timeout) result = field.cond.wait_for(field_cond_lock, std::chrono::milliseconds(100)));
 
     ASSERT_EQ(std::cv_status::timeout, result); field_cond_lock.unlock(); // verify commit() finishes FIXME TODO use below once segment_context will not block flush_all()
     // ASSERT_EQ(std::cv_status::no_timeout, result); // verify commit() finishes
@@ -16343,78 +16543,83 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
   tests::document const* doc6 = gen.next();
 
   irs::bytes_ref actual_value;
-  auto all_features = irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() };
+  auto const all_features = irs::flags{
+    irs::document::type(),
+    irs::frequency::type(),
+    irs::position::type(),
+    irs::payload::type(),
+    irs::offset::type()
+  };
 
   size_t count = 0;
 
-// FIXME
-//  // 2-phase: clear + consolidate
-//  {
-//    auto writer = open_writer();
-//    ASSERT_NE(nullptr, writer);
-//
-//    // segment 1
-//    ASSERT_TRUE(insert(*writer,
-//      doc1->indexed.begin(), doc1->indexed.end(),
-//      doc1->stored.begin(), doc1->stored.end()
-//    ));
-//    writer->commit();
-//
-//    // segment 2
-//    ASSERT_TRUE(insert(*writer,
-//      doc2->indexed.begin(), doc2->indexed.end(),
-//      doc2->stored.begin(), doc2->stored.end()
-//    ));
-//    writer->commit();
-//
-//    // segment 3
-//    ASSERT_TRUE(insert(*writer,
-//      doc3->indexed.begin(), doc3->indexed.end(),
-//      doc3->stored.begin(), doc3->stored.end()
-//    ));
-//
-//    writer->begin();
-//    writer->clear();
-//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
-//    writer->commit(); // commit transaction
-//
-//    auto reader = iresearch::directory_reader::open(dir(), codec());
-//    ASSERT_EQ(0, reader.size());
-//  }
-//
-//  // 2-phase: consolidate + clear
-//  {
-//    auto writer = open_writer();
-//    ASSERT_NE(nullptr, writer);
-//
-//    // segment 1
-//    ASSERT_TRUE(insert(*writer,
-//      doc1->indexed.begin(), doc1->indexed.end(),
-//      doc1->stored.begin(), doc1->stored.end()
-//    ));
-//    writer->commit();
-//
-//    // segment 2
-//    ASSERT_TRUE(insert(*writer,
-//      doc2->indexed.begin(), doc2->indexed.end(),
-//      doc2->stored.begin(), doc2->stored.end()
-//    ));
-//    writer->commit();
-//
-//    // segment 3
-//    ASSERT_TRUE(insert(*writer,
-//      doc3->indexed.begin(), doc3->indexed.end(),
-//      doc3->stored.begin(), doc3->stored.end()
-//    ));
-//
-//    writer->begin();
-//    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
-//    writer->clear();
-//    writer->commit(); // commit transaction
-//
-//    auto reader = iresearch::directory_reader::open(dir(), codec());
-//    ASSERT_EQ(0, reader.size());
-//  }
+  // 2-phase: clear + consolidate
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+
+    writer->begin();
+    writer->clear();
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
+    writer->commit(); // commit transaction
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+  }
+
+  // 2-phase: consolidate + clear
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    // segment 1
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    ));
+    writer->commit();
+
+    // segment 2
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    ));
+    writer->commit();
+
+    // segment 3
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    ));
+
+    writer->begin();
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
+    writer->clear();
+    writer->commit(); // commit transaction
+
+    auto reader = iresearch::directory_reader::open(dir(), codec());
+    ASSERT_EQ(0, reader.size());
+  }
 
   // consolidate + clear
   {
@@ -21363,9 +21568,10 @@ TEST_P(index_test_case, segment_options) {
 
     auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread blocks in 1000ms
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
+    // MSVC 2015/2017/2019 seems to sporadically notify condition variables without explicit request
     MSVC2015_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
     MSVC2017_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
+    MSVC2019_ONLY(while(!stop && result == std::cv_status::no_timeout) result = cond.wait_for(lock, std::chrono::milliseconds(1000)));
 
     ASSERT_EQ(std::cv_status::timeout, result);
     // ^^^ expecting timeout because pool should block indefinitely
@@ -21601,6 +21807,761 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
     ::testing::Values("1_1")
+  ),
+  tests::to_string
+);
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_12,
+  index_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::rot13_cipher_directory<&tests::memory_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
+      &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
+    ),
+    ::testing::Values("1_2")
+  ),
+  tests::to_string
+);
+
+class index_test_case_10 : public tests::index_test_base { };
+
+TEST_P(index_test_case_10, commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc0 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(writer->begin()); // initial commit
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+
+  // commit with a specified payload
+  {
+    const uint64_t expected_tick = 42;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick-1);
+      ASSERT_EQ(expected_tick-1, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+      reader = new_reader;
+    }
+  }
+
+  // commit with rollback
+  {
+    const uint64_t expected_tick = 42;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick-1);
+      ASSERT_EQ(expected_tick-1, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    writer->rollback();
+
+    // check payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_EQ(reader, new_reader);
+    }
+  }
+
+  // commit with a reverted payload
+  {
+    const uint64_t expected_tick = 0;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return false; // reset payload to 'bytes_ref::NIL'
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+      reader = new_reader;
+    }
+  }
+
+  // commit with empty payload
+  {
+    const uint64_t expected_tick = 0;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    uint64_t actual_tick = 42;
+
+    ASSERT_TRUE(writer->begin([&actual_tick](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.clear();
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+      reader = new_reader;
+    }
+  }
+
+  // commit without payload
+  {
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+    }
+
+    writer->commit();
+  }
+
+  // check written payload
+  {
+    auto new_reader = reader.reopen();
+    ASSERT_NE(reader, new_reader);
+    ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+    reader = new_reader;
+  }
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_10,
+  index_test_case_10,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
+class index_test_case_11 : public tests::index_test_base { };
+
+TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(writer->begin());
+
+  // transaction is already started
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  // no changes
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_commit_no_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  writer->commit();
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  // no changes
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  uint64_t actual_tick = 42;
+  ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+    actual_tick = tick;
+    out.append(payload.c_str(), payload.size());
+    return false; // revert payload
+  }));
+  ASSERT_EQ(0, actual_tick);
+
+  // transaction is already started
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  // no changes
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_commit_payload_revert) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  uint64_t actual_tick = 42;
+  writer->commit([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+    actual_tick = tick;
+    out.append(payload.c_str(), payload.size());
+    return false; // revert payload
+  });
+  ASSERT_EQ(0, actual_tick);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  // no changes
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  uint64_t actual_tick = 42;
+  ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+    actual_tick = tick;
+    out.append(payload.c_str(), payload.size());
+    return true;
+  }));
+  ASSERT_EQ(0, actual_tick);
+
+  // transaction is already started
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t /*tick*/, irs::bstring& /*out*/) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_EQ(payload, reader.meta().meta.payload());
+
+  // no changes
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, initial_commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+
+  auto writer = open_writer();
+
+  auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  uint64_t actual_tick = 42;
+  writer->commit([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+    actual_tick = tick;
+    out.append(payload.c_str(), payload.size());
+    return true;
+  });
+  ASSERT_EQ(0, actual_tick);
+
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_EQ(payload, reader.meta().meta.payload());
+
+  // no changes
+  size_t calls_count = 0;
+  writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+    ++calls_count;
+    return true;
+  });
+  ASSERT_EQ(0, calls_count);
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc0 = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(writer->begin()); // initial commit
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+
+  // commit with a specified payload
+  {
+    const uint64_t expected_tick = 42;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick-1);
+      ASSERT_EQ(expected_tick-1, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_EQ(payload, new_reader.meta().meta.payload());
+      reader = new_reader;
+    }
+  }
+
+  // commit with rollback
+  {
+    const uint64_t expected_tick = 42;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick-1);
+      ASSERT_EQ(expected_tick-1, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    writer->rollback();
+
+    // check payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_EQ(reader, new_reader);
+    }
+  }
+
+  // commit with a reverted payload
+  {
+    const uint64_t expected_tick = 0;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    uint64_t actual_tick = 0;
+
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin([&actual_tick, &payload](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.append(payload.c_str(), payload.size());
+      return false; // reset payload to 'bytes_ref::NIL'
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null());
+      reader = new_reader;
+    }
+  }
+
+  // commit with empty payload
+  {
+    const uint64_t expected_tick = 0;
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    // insert document (trx 1)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      ASSERT_EQ(0, trx.tick());
+      trx.tick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.tick());
+    }
+
+    uint64_t actual_tick = 42;
+
+    ASSERT_TRUE(writer->begin([&actual_tick](uint64_t tick, irs::bstring& out) {
+      actual_tick = tick;
+      out.clear();
+      return true;
+    }));
+    ASSERT_EQ(expected_tick, actual_tick);
+
+    // transaction is already started
+    size_t calls_count = 0;
+    writer->commit([&calls_count](uint64_t tick, irs::bstring& out) {
+      ++calls_count;
+      return true;
+    });
+    ASSERT_EQ(0, calls_count);
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_FALSE(new_reader.meta().meta.payload().null());
+      ASSERT_TRUE(new_reader.meta().meta.payload().empty());
+      ASSERT_EQ(irs::bytes_ref::EMPTY, new_reader.meta().meta.payload());
+      reader = new_reader;
+    }
+  }
+
+  // commit without payload
+  {
+    // insert document (trx 0)
+    {
+      auto trx = writer->documents();
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+    }
+
+    writer->commit();
+  }
+
+  // check written payload
+  {
+    auto new_reader = reader.reopen();
+    ASSERT_NE(reader, new_reader);
+    ASSERT_TRUE(new_reader.meta().meta.payload().null());
+    reader = new_reader;
+  }
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_11,
+  index_test_case_11,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_1", "1_2")
   ),
   tests::to_string
 );

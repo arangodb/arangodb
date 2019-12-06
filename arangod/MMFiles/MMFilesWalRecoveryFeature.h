@@ -39,7 +39,7 @@ class MMFilesWalRecoveryFeature final : public application_features::Application
 
  public:
   explicit MMFilesWalRecoveryFeature(application_features::ApplicationServer& server);
-  ~MMFilesWalRecoveryFeature() {}
+  ~MMFilesWalRecoveryFeature() = default;
 
   void start() override final;
 };

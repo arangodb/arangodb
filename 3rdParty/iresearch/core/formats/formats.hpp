@@ -29,6 +29,7 @@
 #include "store/directory.hpp"
 
 #include "index/index_meta.hpp"
+#include "index/column_info.hpp"
 #include "index/iterators.hpp"
 
 #include "utils/io_utils.hpp"
@@ -247,7 +248,7 @@ struct IRESEARCH_API columnstore_writer {
   virtual ~columnstore_writer() = default;
 
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
-  virtual column_t push_column() = 0;
+  virtual column_t push_column(const column_info& info) = 0;
   virtual void rollback() NOEXCEPT = 0;
   virtual bool commit() = 0; // @return was anything actually flushed
 }; // columnstore_writer
@@ -447,7 +448,8 @@ struct IRESEARCH_API index_meta_reader {
     index_meta& meta,
     uint64_t generation,
     uint64_t counter,
-    index_meta::index_segments_t&& segments
+    index_meta::index_segments_t&& segments,
+    bstring* payload_buf
   );
 }; // index_meta_reader
 

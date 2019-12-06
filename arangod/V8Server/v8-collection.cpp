@@ -24,18 +24,17 @@
 #include "v8-collection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/Query.h"
 #include "Basics/FileUtils.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/FollowerInfo.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Pregel/AggregatorHandler.h"
@@ -63,7 +62,6 @@
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -80,9 +78,12 @@ namespace {
 std::shared_ptr<arangodb::LogicalCollection> GetCollectionFromArgument(
     v8::Isolate* isolate, TRI_vocbase_t& vocbase, v8::Handle<v8::Value> const val) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-
-    return ci ? ci->getCollectionNT(vocbase.name(), TRI_ObjectToString(isolate, val)) : nullptr;
+    return vocbase.server().hasFeature<arangodb::ClusterFeature>()
+               ? vocbase.server()
+                     .getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo()
+                     .getCollectionNT(vocbase.name(), TRI_ObjectToString(isolate, val))
+               : nullptr;
   }
 
   // number
@@ -246,10 +247,12 @@ static int V8ToVPackNoKeyRevId(v8::Isolate* isolate, VPackBuilder& builder,
 
 std::vector<std::shared_ptr<LogicalCollection>> GetCollections(TRI_vocbase_t& vocbase) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto* ci = ClusterInfo::instance();
-
-    return ci ? ci->getCollections(vocbase.name())
-              : std::vector<std::shared_ptr<LogicalCollection>>();
+    return vocbase.server().hasFeature<arangodb::ClusterFeature>()
+               ? vocbase.server()
+                     .getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo()
+                     .getCollections(vocbase.name())
+               : std::vector<std::shared_ptr<LogicalCollection>>();
   }
 
   return vocbase.collections(false);
@@ -263,7 +266,8 @@ static std::vector<std::string> GetCollectionNamesCluster(TRI_vocbase_t* vocbase
   std::vector<std::string> result;
 
   std::vector<std::shared_ptr<LogicalCollection>> const collections =
-      ClusterInfo::instance()->getCollections(vocbase->name());
+      vocbase->server().getFeature<arangodb::ClusterFeature>().clusterInfo().getCollections(
+          vocbase->name());
 
   for (auto& collection : collections) {
     std::string const& name = collection->name();
@@ -830,7 +834,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   {
     VPackObjectBuilder meta(builder.get());
 
-    for (auto const& it : VPackObjectIterator(opResult.slice().resolveExternals())) {
+    for (auto it : VPackObjectIterator(opResult.slice().resolveExternals())) {
       std::string key = it.key.copyString();
 
       if (key == StaticStrings::AttachmentString) {
@@ -960,20 +964,23 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto builder = collection->figures();
+  auto opRes = collection->figures().get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
+  
+  if (opRes.ok()) {
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
+  } else {
+    TRI_V8_RETURN_NULL();
+  }
 
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
-
-  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
 static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   if (!ServerState::instance()->isCoordinator()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
   }
@@ -986,15 +993,29 @@ static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value>
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<data>)");
   }
-  
-  VPackBuilder builder;      
-  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+
+  VPackBuilder builder;
+  if (args[0]->IsNumber() || args[0]->IsNumberObject()) {
+    builder.openObject();
+    builder.add(StaticStrings::KeyString, VPackValue(std::to_string(TRI_ObjectToInt64(isolate, args[0]))));
+    builder.close();
+  } else if (args[0]->IsString() || args[0]->IsStringObject()) {
+    builder.openObject();
+    builder.add(StaticStrings::KeyString, VPackValue(TRI_ObjectToString(isolate, args[0])));
+    builder.close();
+  } else {
+    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+  if (!builder.slice().isObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<object>)");
   }
 
   std::string shardId;
-  res = collection->getResponsibleShard(builder.slice(), false, shardId);
+  TRI_ASSERT(builder.slice().isObject());
+  int res = collection->getResponsibleShard(builder.slice(), false, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1133,9 +1154,7 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
 
       TRI_ASSERT(builder.isClosed());
 
-      auto res = methods::Collections::updateProperties(*consoleColl, builder.slice(), false  // always a full-update
-      );
-
+      auto res = methods::Collections::updateProperties(*consoleColl, builder.slice());
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
@@ -1149,21 +1168,19 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
 
-  methods::Collections::lookup(
-    consoleColl->vocbase(), // vocbase to search
-    consoleColl->name(), // collection to find
-                               [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-                                 TRI_ASSERT(coll);
+  std::shared_ptr<LogicalCollection> coll;
+  methods::Collections::lookup(consoleColl->vocbase(), consoleColl->name(), coll);
+  if (coll) {
 
-                                 VPackObjectBuilder object(&builder, true);
-                                 methods::Collections::Context ctxt(coll->vocbase(), *coll);
-                                 Result res = methods::Collections::properties(ctxt, builder);
+    VPackObjectBuilder object(&builder, true);
+    methods::Collections::Context ctxt(coll->vocbase(), *coll);
+    Result res = methods::Collections::properties(ctxt, builder);
 
-                                 if (res.fail()) {
-                                   TRI_V8_THROW_EXCEPTION(res);
-                                 }
-                               });
-
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+  
   // return the current parameter set
   TRI_V8_RETURN(
       TRI_VPackToV8(isolate, builder.slice())->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
@@ -1694,16 +1711,17 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>]");
   }
-  
+
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (feature == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
-  
+
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
   auto c = feature->conductor(executionNum);
   if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
+                                   "Execution number is invalid");
   }
 
   VPackBuilder builder = c->toVelocyPack();
@@ -1721,16 +1739,17 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelStatus(<executionNum>)");
   }
-  
+
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
   if (feature == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
-  
+
   uint64_t executionNum = TRI_ObjectToUInt64(isolate, args[0], true);
   auto c = feature->conductor(executionNum);
   if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
+                                   "Execution number is invalid");
   }
   c->cancel();
 
@@ -1748,7 +1767,7 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
     // TODO extend this for named graphs, use the Graph class
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>[, <withId])");
   }
-  
+
   bool withId = false;
   if (argLength == 2) {
     withId = TRI_ObjectToBoolean(isolate, args[1]);
@@ -1798,16 +1817,16 @@ static void JS_RevisionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& arg
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_voc_rid_t revisionId;
-
   methods::Collections::Context ctxt(collection->vocbase(), *collection);
-  auto res = methods::Collections::revisionId(ctxt, revisionId);
+  auto res = methods::Collections::revisionId(ctxt).get();
 
   if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
+    TRI_V8_THROW_EXCEPTION(res.result);
   }
 
-  std::string ridString = TRI_RidToString(revisionId);
+  TRI_voc_rid_t rid =
+      res.slice().isNumber() ? res.slice().getNumber<TRI_voc_rid_t>() : 0;
+  std::string ridString = TRI_RidToString(rid);
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ridString));
   TRI_V8_TRY_CATCH_END
 }
@@ -1822,7 +1841,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
   if (!collection) {
@@ -2058,8 +2076,11 @@ static void JS_StatusVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection->vocbase().name();
 
-    auto ci = ClusterInfo::instance()->getCollectionNT(databaseName,
-                                                       std::to_string(collection->id()));
+    auto ci = collection->vocbase()
+                  .server()
+                  .getFeature<arangodb::ClusterFeature>()
+                  .clusterInfo()
+                  .getCollectionNT(databaseName, std::to_string(collection->id()));
     if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
     } else {
@@ -2139,8 +2160,11 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ServerState::instance()->isCoordinator()) {
     auto& databaseName = collection->vocbase().name();
 
-    auto ci = ClusterInfo::instance()->getCollectionNT(databaseName,
-                                                       std::to_string(collection->id()));
+    auto ci = collection->vocbase()
+                  .server()
+                  .getFeature<ClusterFeature>()
+                  .clusterInfo()
+                  .getCollectionNT(databaseName, std::to_string(collection->id()));
     if (ci != nullptr) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
     } else {
@@ -2193,7 +2217,7 @@ static void JS_VersionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_V8_RETURN(v8::Number::New(isolate, collection->version()));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<uint32_t>(collection->version())));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2224,8 +2248,8 @@ static void JS_CollectionVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   }
 
   // check authentication after ensuring the collection exists
-  if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RO)) {
+  auto const& exec = ExecContext::current();
+  if (!exec.canUseCollection(collection->name(), auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    std::string("No access to collection '") +
                                        TRI_ObjectToString(isolate, val) + "'");
@@ -2268,16 +2292,15 @@ static void JS_CollectionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
   size_t const n = colls.size();
   size_t x = 0;
 
+  auto const& exec = ExecContext::current();
   for (size_t i = 0; i < n; ++i) {
-    auto& collection = colls[i];
+    auto& coll = colls[i];
 
-    if (ExecContext::CURRENT != nullptr &&
-        !ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(),
-                                                auth::Level::RO)) {
+    if (!exec.canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
       continue;
     }
 
-    v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
+    v8::Handle<v8::Value> c = WrapCollection(isolate, coll);
     if (c.IsEmpty()) {
       error = true;
       break;
@@ -2311,7 +2334,8 @@ static void JS_CompletionsVocbase(v8::FunctionCallbackInfo<v8::Value> const& arg
   std::vector<std::string> names;
 
   if (ServerState::instance()->isCoordinator()) {
-    if (ClusterInfo::instance()->doesDatabaseExist(vocbase.name())) {
+    if (vocbase.server().getFeature<ClusterFeature>().clusterInfo().doesDatabaseExist(
+            vocbase.name())) {
       names = GetCollectionNamesCluster(&vocbase);
     }
   } else {
@@ -2468,7 +2492,8 @@ static void JS_WarmupVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args)
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = arangodb::methods::Collections::warmup(collection->vocbase(), *collection);
+  auto res =
+      arangodb::methods::Collections::warmup(collection->vocbase(), *collection).get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2518,7 +2543,7 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoCollection"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2); // SLOT_CLASS_TYPE + SLOT_CLASS
+  rt->SetInternalFieldCount(2);  // SLOT_CLASS_TYPE + SLOT_CLASS
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "count"), JS_CountVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"),
@@ -2529,7 +2554,9 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_DropVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "exists"), JS_ExistsVocbaseVPack);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "figures"), JS_FiguresVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getResponsibleShard"), JS_GetResponsibleShardVocbaseCol);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "getResponsibleShard"),
+                       JS_GetResponsibleShardVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "insert"), JS_InsertVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_binaryInsert"),

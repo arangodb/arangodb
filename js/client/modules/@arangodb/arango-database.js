@@ -42,7 +42,7 @@ function ArangoDatabase (connection) {
   this._connection = connection;
   this._collectionConstructor = ArangoCollection;
   this._viewConstructor = ArangoView;
-  this._properties = null;
+  this._dbProperties = null;
 
   this._registerCollection = function (name, obj) {
     // store the collection in our own list
@@ -346,7 +346,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
       'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'shardingStrategy', 'smartGraphAttribute',
+      'replicationFactor', 'minReplicationFactor', 'writeConcern', 'shardingStrategy', 'smartGraphAttribute',
       'smartJoinAttribute', 'avoidServers', 'cacheEnabled'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
@@ -494,7 +494,7 @@ ArangoDatabase.prototype._flushCache = function () {
     this._collections();
   } catch (err) {}
 
-  this._properties = null;
+  this._dbProperties = null;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -502,15 +502,15 @@ ArangoDatabase.prototype._flushCache = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._queryProperties = function (force) {
-  if (force || this._properties === null) {
+  if (force || this._dbProperties === null) {
     var url = '/_api/database/current';
     var requestResult = this._connection.GET(url);
 
     arangosh.checkRequestResult(requestResult);
-    this._properties = requestResult.result;
+    this._dbProperties = requestResult.result;
   }
 
-  return this._properties;
+  return this._dbProperties;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1058,6 +1058,15 @@ ArangoDatabase.prototype._databases = function () {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief show properties
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._properties = function () {
+  return this._queryProperties(true);
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief uses a database
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1184,6 +1193,17 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 
 ArangoDatabase.prototype._createTransaction = function (data) {
   return new ArangoTransaction(this, data);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the currently ongoing managed transactions
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._transactions = function () {
+  var requestResult = this._connection.GET("/_api/transaction");
+
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.transactions;
 };
 
 // //////////////////////////////////////////////////////////////////////////////

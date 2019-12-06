@@ -25,12 +25,16 @@
 
 #include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
 
 // @brief Construct with agent
 Compactor::Compactor(Agent* agent)
-    : Thread("Compactor"), _agent(agent), _wakeupCompactor(false), _waitInterval(1000000) {}
+    : Thread(agent->server(), "Compactor"),
+      _agent(agent),
+      _wakeupCompactor(false),
+      _waitInterval(1000000) {}
 
 /// Dtor shuts down thread
 Compactor::~Compactor() {

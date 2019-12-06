@@ -38,7 +38,7 @@ class MMFilesIndexLookupContext {
   MMFilesIndexLookupContext(LogicalCollection* collection,
                             ManagedDocumentResult* result, size_t numFields);
 
-  ~MMFilesIndexLookupContext() {}
+  ~MMFilesIndexLookupContext() = default;
 
   uint8_t const* lookup(LocalDocumentId token) const;
 

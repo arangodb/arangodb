@@ -137,9 +137,10 @@ index_segment& index_segment::operator=(index_segment&& rhs) NOEXCEPT {
 }
 
 void index_segment::add_sorted(const ifield& f) {
-  irs::bytes_output out;
+  irs::bstring buf;
+  irs::bytes_output out(buf);
   if (f.write(out)) {
-    const irs::bytes_ref value = out;
+    const irs::bytes_ref value = buf;
     const auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
     sort_.emplace_back(std::make_pair(irs::bstring(value.c_str(), value.size()), doc_id));
   }
@@ -378,7 +379,6 @@ class doc_iterator : public irs::doc_iterator {
    public:
     pos_iterator(const doc_iterator& owner, const irs::flags& features)
       : irs::position(2), // offset + payload
-        value_(irs::type_limits<irs::type_t::pos_t>::invalid()),
         owner_(owner) {
       if (features.check<irs::offset>()) {
         attrs_.emplace(offs_);
@@ -410,13 +410,8 @@ class doc_iterator : public irs::doc_iterator {
       return true;
     }
 
-    uint32_t value() const override {
-      return value_;
-    }
-
    private:
     std::set<tests::position>::const_iterator next_;
-    uint32_t value_;
     irs::offset offs_;
     irs::payload pay_;
     const doc_iterator& owner_;

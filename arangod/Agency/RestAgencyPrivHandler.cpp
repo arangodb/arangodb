@@ -31,7 +31,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
 using namespace arangodb;
@@ -44,9 +43,10 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyPrivHandler::RestAgencyPrivHandler(GeneralRequest* request,
+RestAgencyPrivHandler::RestAgencyPrivHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
                                              GeneralResponse* response, Agent* agent)
-    : RestBaseHandler(request, response), _agent(agent) {}
+    : RestBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("53e2d", WARN, Logger::AGENCY) << "Empty request to agency!";
@@ -103,7 +103,7 @@ RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
   LOG_TOPIC("558e5", DEBUG, Logger::AGENCY) << error.toJson();
   rest::ResponseCode code;
   try {
-    code = rest::ResponseCode(error.get(StaticStrings::Code).getNumber<int>());
+    code = GeneralResponse::responseCode(error.get(StaticStrings::Code).getNumber<int>());
     generateResult(code, error);
   } catch (std::exception const& e) {
     std::string errstr("Failure reporting error ");
@@ -185,13 +185,18 @@ RestStatus RestAgencyPrivHandler::execute() {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
-
-        query_t query = _request->toVelocyPackBuilderPtr();
+        
+        bool success = false;
+        VPackSlice const query = this->parseVPackBody(success);
+        if (!success) { // error already written
+          return RestStatus::DONE;
+        }
+        
         try {
           query_t ret = _agent->gossip(query);
           auto slice = ret->slice();
           LOG_TOPIC("bcd46", DEBUG, Logger::AGENCY)
-              << "Responding to gossip request " << query->toJson() << " with "
+              << "Responding to gossip request " << query.toJson() << " with "
               << slice.toJson();
           if (slice.hasKey(StaticStrings::Error)) {
             return reportError(slice);

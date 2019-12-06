@@ -44,7 +44,7 @@ function optimizerCollectInClusterSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 3 });
 
@@ -53,7 +53,7 @@ function optimizerCollectInClusterSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
     
@@ -86,7 +86,7 @@ function optimizerCollectInClusterSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
     testDistinct : function () {
@@ -122,7 +122,7 @@ function optimizerCollectInClusterSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
   };
@@ -130,9 +130,11 @@ function optimizerCollectInClusterSuite () {
 
 function optimizerCollectInClusterSingleShardSuite () {
   let c;
+  let opt = { optimizer: { rules: ["-cluster-one-shard"] } };
+  let opt2 = { optimizer: { rules: ["-cluster-one-shard", "-interchange-adjacent-enumerations"] } };
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 1 });
 
@@ -141,18 +143,18 @@ function optimizerCollectInClusterSingleShardSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
     
     testSingleCount : function () {
       let query = "FOR doc IN " + c.name() + " COLLECT WITH COUNT INTO length RETURN length";
 
-      let results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
       assertEqual(1000, results.json[0]);
        
-      let plan = AQL_EXPLAIN(query).plan;
+      let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function(node) {
         return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
       });
@@ -164,30 +166,30 @@ function optimizerCollectInClusterSingleShardSuite () {
     testSingleCountMulti : function () {
       let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 FOR doc2 IN " + c.name() + " COLLECT WITH COUNT INTO length RETURN length";
 
-      let results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1, results.json.length);
       assertEqual(10000, results.json[0]);
        
-      let plan = AQL_EXPLAIN(query).plan;
+      let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function(node) {
         return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
 
     testSingleDistinct : function () {
       let query = "FOR doc IN " + c.name() + " SORT doc.value RETURN DISTINCT doc.value";
 
-      let results = AQL_EXECUTE(query);
+      let results = AQL_EXECUTE(query, null, opt);
       assertEqual(1000, results.json.length);
       for (let i = 0; i < 1000; ++i) {
         assertEqual(i, results.json[i]);
       }
        
-      let plan = AQL_EXPLAIN(query).plan;
+      let plan = AQL_EXPLAIN(query, null, opt).plan;
       let nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
@@ -199,19 +201,19 @@ function optimizerCollectInClusterSingleShardSuite () {
     testSingleDistinctMulti : function () {
       let query = "FOR doc1 IN " + c.name() + " FILTER doc1.value < 10 FOR doc2 IN " + c.name() + " SORT doc2.value RETURN DISTINCT doc2.value";
 
-      let results = AQL_EXECUTE(query, null, { optimizer: { rules: ["-interchange-adjacent-enumerations"] } });
+      let results = AQL_EXECUTE(query, null, opt2);
       assertEqual(1000, results.json.length);
       for (let i = 0; i < 1000; ++i) {
         assertEqual(i, results.json[i]);
       }
        
-      let plan = AQL_EXPLAIN(query).plan;
+      let plan = AQL_EXPLAIN(query, null, opt2).plan;
       let nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
   };

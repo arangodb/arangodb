@@ -20,15 +20,30 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <cstdint>
+
 #include "SupervisorFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
 #include <sys/prctl.h>
@@ -42,7 +57,6 @@
 #include <signal.h>
 #endif
 
-#include <sys/types.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -159,9 +173,8 @@ static void HUPHandler(int) {
 SupervisorFeature::SupervisorFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
   setOptional(true);
-  startsAfter("GreetingsPhase");
-
-  startsAfter("Daemon");
+  startsAfter<GreetingsFeaturePhase>();
+  startsAfter<DaemonFeature>();
 }
 
 void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -174,14 +187,14 @@ void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 void SupervisorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_supervisor) {
     try {
-      DaemonFeature* daemon =
-          ApplicationServer::getFeature<DaemonFeature>("Daemon");
+      auto& server = ApplicationServer::server();
+      DaemonFeature& daemon = server.getFeature<DaemonFeature>();
 
       // force daemon mode
-      daemon->setDaemon(true);
+      daemon.setDaemon(true);
 
       // revalidate options
-      daemon->validateOptions(options);
+      daemon.validateOptions(options);
     } catch (...) {
       LOG_TOPIC("9207d", FATAL, arangodb::Logger::FIXME)
           << "daemon mode not available, cannot start supervisor";
@@ -205,22 +218,20 @@ void SupervisorFeature::daemonize() {
   // will be reseted in SchedulerFeature
   ArangoGlobalContext::CONTEXT->unmaskStandardSignals();
 
-  LoggerFeature* logger = nullptr;
-
-  try {
-    logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
-  } catch (...) {
+  auto& server = ApplicationServer::server();
+  if (!server.hasFeature<LoggerFeature>()) {
     LOG_TOPIC("4e6ee", FATAL, Logger::STARTUP) << "unknown feature 'Logger', giving up";
     FATAL_ERROR_EXIT();
   }
 
-  logger->setSupervisor(true);
-  logger->prepare();
+  LoggerFeature& logger = server.getFeature<LoggerFeature>();
+  logger.setSupervisor(true);
+  logger.prepare();
 
   LOG_TOPIC("47d80", DEBUG, Logger::STARTUP) << "starting supervisor loop";
 
   while (!done) {
-    logger->setSupervisor(false);
+    logger.setSupervisor(false);
 
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
@@ -377,11 +388,10 @@ void SupervisorFeature::daemonize() {
 #endif
 
       try {
-        DaemonFeature* daemon =
-            ApplicationServer::getFeature<DaemonFeature>("Daemon");
+        DaemonFeature& daemon = server.getFeature<DaemonFeature>();
 
         // disable daemon mode
-        daemon->setDaemon(false);
+        daemon.setDaemon(false);
       } catch (...) {
       }
 

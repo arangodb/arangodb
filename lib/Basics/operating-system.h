@@ -24,10 +24,6 @@
 #ifndef ARANGODB_BASICS_OPERATING__SYSTEM_H
 #define ARANGODB_BASICS_OPERATING__SYSTEM_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -151,7 +147,7 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 // files
 
@@ -287,7 +283,7 @@
 
 #define TRI_OVERLOAD_FUNCS_SIZE_T 1
 
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 #define TRI_SC_NPROCESSORS_ONLN 1
 
@@ -435,8 +431,6 @@
 // available features
 
 #define TRI_HAVE_POSIX 1
-
-#define TRI_GCC_THREAD_LOCAL_STORAGE 1
 
 #define TRI_HAVE_LINUX_PROC 1
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
@@ -587,8 +581,6 @@
 
 // available features
 
-#define TRI_GCC_THREAD_LOCAL_STORAGE 1
-
 #define TRI_HAVE_POSIX 1
 
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
@@ -668,6 +660,7 @@
 
 // user and group types
 
+#include <sys/types.h>
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
 
@@ -705,7 +698,7 @@
 
 //#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
-#include <WinSock2.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <io.h>
 #include <stdio.h>
 // available include files
@@ -737,7 +730,10 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
+#if ( defined(_MSC_VER) && _MSC_VER < 1900 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
 #define snprintf _snprintf
+#endif
+
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 
@@ -752,7 +748,6 @@
 #define YY_NO_UNISTD_H 1
 
 #define TRI_WIN32_CONSOLE 1
-#define TRI_WIN32_THREAD_LOCAL_STORAGE 1
 
 #define TRI_HAVE_WIN32_CLOSE_ON_EXEC 1
 #define TRI_HAVE_WIN32_FILE_LOCKING 1
@@ -766,7 +761,7 @@
 #define TRI_HAVE_WIN32_THREADS 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 typedef int ssize_t;
 

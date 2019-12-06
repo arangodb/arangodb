@@ -60,7 +60,7 @@ function optimizerPlansTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreatePlansOom : function () {
-      if (! internal.debugCanUseFailAt()) {
+      if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugSetFailAt("Optimizer::createPlansOom");

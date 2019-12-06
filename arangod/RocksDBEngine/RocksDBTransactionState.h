@@ -24,17 +24,17 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
 #define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
 
+#include <rocksdb/options.h>
+#include <rocksdb/status.h>
+
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
-
-#include <rocksdb/options.h>
-#include <rocksdb/status.h>
 
 struct TRI_vocbase_t;
 
@@ -146,6 +146,8 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
+  
+  bool isOnlyExclusiveTransaction() const;
 
  private:
   /// @brief create a new rocksdb transaction

@@ -23,9 +23,19 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_CONFIG_FEATURE_H 1
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:

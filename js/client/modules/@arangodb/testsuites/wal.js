@@ -50,7 +50,7 @@ const testPaths = {
 
 function walCleanup (options) {
   print(CYAN + 'WAL cleanup tests...' + RESET);
-  let testCases = tu.scanTestPaths(testPaths.walCleanup);
+  let testCases = tu.scanTestPaths(testPaths.walCleanup, options);
 
   options.extraArgs['rocksdb.wal-file-timeout-initial'] = '3';
 

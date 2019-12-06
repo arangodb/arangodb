@@ -35,6 +35,8 @@ attributes:
 - *clients*: returns the last fetch status by replication clients connected to
   the logger. Each client is returned as a JSON object with the following attributes:
 
+  - *syncerId*: id of the client syncer
+
   - *serverId*: server id of client
 
   - *lastServedTick*: last tick value served to this client via the *logger-follow* API

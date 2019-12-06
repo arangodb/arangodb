@@ -419,8 +419,8 @@ class json_doc_generator: public doc_generator_base {
       return *this;
     }
 
-    operator irs::string_ref() const { return irs::string_ref(data, size); };
-    operator std::string() const { return std::string(data, size); };
+    operator irs::string_ref() const { return irs::string_ref(data, size); }
+    operator std::string() const { return std::string(data, size); }
   };
 
   struct json_value {

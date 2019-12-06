@@ -25,8 +25,9 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Cache/PlainBucket.h"
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include "gtest/gtest.h"
 
@@ -54,24 +55,24 @@ TEST(CachePlainBucketTest, verify_that_insertion_works_correctly) {
   ASSERT_TRUE(success);
 
   // insert ten to fill
-  ASSERT_TRUE(!bucket->isFull());
+  ASSERT_FALSE(bucket->isFull());
   for (size_t i = 0; i < 10; i++) {
     bucket->insert(hashes[i], ptrs[i]);
     if (i < 9) {
-      ASSERT_TRUE(!bucket->isFull());
+      ASSERT_FALSE(bucket->isFull());
     } else {
       ASSERT_TRUE(bucket->isFull());
     }
   }
   for (size_t i = 0; i < 10; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
-    ASSERT_TRUE(res == ptrs[i]);
+    ASSERT_EQ(res, ptrs[i]);
   }
 
   // check that insert is ignored if full
   bucket->insert(hashes[10], ptrs[10]);
   CachedValue* res = bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
-  ASSERT_TRUE(nullptr == res);
+  ASSERT_EQ(nullptr, res);
 
   bucket->unlock();
 
@@ -103,22 +104,22 @@ TEST(CachePlainBucketTest, verify_removal_works_correctly) {
   }
   for (size_t i = 0; i < 3; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
-    ASSERT_TRUE(res == ptrs[i]);
+    ASSERT_EQ(res, ptrs[i]);
   }
 
   CachedValue* res;
   res = bucket->remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
-  ASSERT_TRUE(res == ptrs[1]);
+  ASSERT_EQ(res, ptrs[1]);
   res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
-  ASSERT_TRUE(nullptr == res);
+  ASSERT_EQ(nullptr, res);
   res = bucket->remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
-  ASSERT_TRUE(res == ptrs[0]);
+  ASSERT_EQ(res, ptrs[0]);
   res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
-  ASSERT_TRUE(nullptr == res);
+  ASSERT_EQ(nullptr, res);
   res = bucket->remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
-  ASSERT_TRUE(res == ptrs[2]);
+  ASSERT_EQ(res, ptrs[2]);
   res = bucket->find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
-  ASSERT_TRUE(nullptr == res);
+  ASSERT_EQ(nullptr, res);
 
   bucket->unlock();
 
@@ -147,40 +148,40 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   ASSERT_TRUE(success);
 
   // insert five to fill
-  ASSERT_TRUE(!bucket->isFull());
+  ASSERT_FALSE(bucket->isFull());
   for (size_t i = 0; i < 10; i++) {
     bucket->insert(hashes[i], ptrs[i]);
     if (i < 9) {
-      ASSERT_TRUE(!bucket->isFull());
+      ASSERT_FALSE(bucket->isFull());
     } else {
       ASSERT_TRUE(bucket->isFull());
     }
   }
   for (size_t i = 0; i < 10; i++) {
     CachedValue* res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
-    ASSERT_TRUE(res == ptrs[i]);
+    ASSERT_EQ(res, ptrs[i]);
   }
 
   // check that we get proper eviction candidate
   CachedValue* candidate = bucket->evictionCandidate();
-  ASSERT_TRUE(candidate == ptrs[0]);
+  ASSERT_EQ(candidate, ptrs[0]);
   bucket->evict(candidate, false);
   CachedValue* res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
-  ASSERT_TRUE(nullptr == res);
-  ASSERT_TRUE(!bucket->isFull());
+  ASSERT_EQ(nullptr, res);
+  ASSERT_FALSE(bucket->isFull());
 
   // check that we still find the right candidate if not full
   candidate = bucket->evictionCandidate();
-  ASSERT_TRUE(candidate == ptrs[1]);
+  ASSERT_EQ(candidate, ptrs[1]);
   bucket->evict(candidate, true);
   res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
-  ASSERT_TRUE(nullptr == res);
-  ASSERT_TRUE(!bucket->isFull());
+  ASSERT_EQ(nullptr, res);
+  ASSERT_FALSE(bucket->isFull());
 
   // check that we can insert now after eviction optimized for insertion
   bucket->insert(hashes[10], ptrs[10]);
   res = bucket->find(hashes[10], ptrs[10]->key(), ptrs[10]->keySize());
-  ASSERT_TRUE(res == ptrs[10]);
+  ASSERT_EQ(res, ptrs[10]);
 
   bucket->unlock();
 

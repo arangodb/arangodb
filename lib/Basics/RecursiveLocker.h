@@ -24,7 +24,11 @@
 #ifndef LIB_BASICS_RECURSIVE_LOCKER_H
 #define LIB_BASICS_RECURSIVE_LOCKER_H 1
 
+#include "MutexLocker.h"
+#include "ReadLocker.h"
 #include "WriteLocker.h"
+
+#include "Basics/debugging.h"
 
 namespace arangodb {
 

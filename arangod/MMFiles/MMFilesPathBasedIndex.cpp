@@ -27,7 +27,9 @@
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesIndexElement.h"
 
 #include <velocypack/Iterator.h>

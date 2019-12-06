@@ -254,7 +254,35 @@
 
     console.debug('autoloading actions finished');
   };
-  
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief serverStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_SERVER_STATISTICS) {
+    exports.serverStatistics = global.SYS_SERVER_STATISTICS;
+    delete global.SYS_SERVER_STATISTICS;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief processStatistics
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_PROCESS_STATISTICS) {
+    exports.thisProcessStatistics = global.SYS_PROCESS_STATISTICS;
+    exports.processStatistics = global.SYS_PROCESS_STATISTICS;
+    delete global.SYS_PROCESS_STATISTICS;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not Statistics are enabled
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ENABLED_STATISTICS) {
+    exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
+    delete global.SYS_ENABLED_STATISTICS;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief clientStatistics
   // //////////////////////////////////////////////////////////////////////////////
@@ -360,6 +388,14 @@
   if (global.REPLICATION_SERVER_ID) {
     exports.serverId = global.REPLICATION_SERVER_ID;
     delete global.REPLICATION_SERVER_ID;
+  }
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief wait for index selectivity estimate sync
+  // //////////////////////////////////////////////////////////////////////////////
+  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
+    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
+    delete global.WAIT_FOR_ESTIMATOR_SYNC;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -474,12 +510,12 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief debugSegfault
+  // / @brief debugTerminate
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_DEBUG_SEGFAULT) {
-    exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
-    delete global.SYS_DEBUG_SEGFAULT;
+  if (global.SYS_DEBUG_TERMINATE) {
+    exports.debugTerminate = global.SYS_DEBUG_TERMINATE;
+    delete global.SYS_DEBUG_TERMINATE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -526,5 +562,35 @@
     exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
     delete global.SYS_DEBUG_CAN_USE_FAILAT;
   }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief replicationFactor(s) and number of shards
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.DEFAULT_REPLICATION_FACTOR) {
+    exports.defaultReplicationFactor = global.DEFAULT_REPLICATION_FACTOR;
+    delete global.DEFAULT_REPLICATION_FACTOR;
+  }
+  if (global.MIN_REPLICATION_FACTOR) {
+    exports.minReplicationFactor = global.MIN_REPLICATION_FACTOR;
+    delete global.MIN_REPLICATION_FACTOR;
+  }
+  if (global.MAX_REPLICATION_FACTOR) {
+    exports.maxReplicationFactor = global.MAX_REPLICATION_FACTOR;
+    delete global.MAX_REPLICATION_FACTOR;
+  }
+  if (global.MAX_NUMBER_OF_SHARDS) {
+    exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
+    delete global.MAX_NUMBER_OF_SHARDS;
+  }
+
+  // /////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not clustering is enabled
+  // /////////////////////////////////////////////////////////////////////////////
+
+  exports.isCluster = function () {
+    var role = global.ArangoServerState.role();
+    return (role !== undefined && role !== 'SINGLE' && role !== 'AGENT');
+  };
 
 }());

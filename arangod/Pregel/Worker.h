@@ -47,7 +47,7 @@ namespace pregel {
 
 class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
-  virtual ~IWorker() {}
+  virtual ~IWorker() = default;
   virtual void setupWorker() = 0;
   virtual void prepareGlobalStep(VPackSlice const& data, VPackBuilder& result) = 0;
   virtual void startGlobalStep(VPackSlice const& data) = 0;  // called by coordinator

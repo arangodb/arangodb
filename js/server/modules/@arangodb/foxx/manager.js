@@ -88,6 +88,66 @@ function isClusterReadyForBusiness () {
   }()).every(response => response.statusCode === 200);
 }
 
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief wait for a distributed response
+// /////////////////////////////////////////////////////////////////////////////
+
+var waitForDistributedResponse = function (data, numberOfRequests, ignoreHttpErrors) {
+  const raiseError = function (code, msg) {
+    var err = new ArangoError();
+    err.errorNum = code;
+    err.errorMessage = msg;
+
+    throw err;
+  };
+
+  var received = [];
+  try {
+    while (received.length < numberOfRequests) {
+      var result = global.ArangoClusterComm.wait(data);
+      var status = result.status;
+
+      if (status === 'ERROR') {
+        raiseError(arangodb.errors.ERROR_INTERNAL.code,
+          'received an error from a DB server: ' + JSON.stringify(result));
+      } else if (status === 'TIMEOUT') {
+        raiseError(arangodb.errors.ERROR_CLUSTER_TIMEOUT.code,
+          arangodb.errors.ERROR_CLUSTER_TIMEOUT.message);
+      } else if (status === 'DROPPED') {
+        raiseError(arangodb.errors.ERROR_INTERNAL.code,
+          'the operation was dropped');
+      } else if (status === 'RECEIVED') {
+        received.push(result);
+
+        if (result.headers && result.headers.hasOwnProperty('x-arango-response-code')) {
+          var code = parseInt(result.headers['x-arango-response-code'].substr(0, 3), 10);
+          result.statusCode = code;
+
+          if (code >= 400 && !ignoreHttpErrors) {
+            var body;
+
+            try {
+              body = JSON.parse(result.body);
+            } catch (err) {
+              raiseError(arangodb.errors.ERROR_INTERNAL.code,
+                'error parsing JSON received from a DB server: ' + err.message);
+            }
+
+            raiseError(body.errorNum,
+              body.errorMessage);
+          }
+        }
+      } else {
+        // something else... wait without GC
+        require('internal').wait(0.1, false);
+      }
+    }
+  } finally {
+    global.ArangoClusterComm.drop(data);
+  }
+  return received;
+};
+
 function parallelClusterRequests (requests) {
   let pending = 0;
   const order = [];
@@ -120,7 +180,7 @@ function parallelClusterRequests (requests) {
   if (!pending) {
     return [];
   }
-  const results = ArangoClusterControl.wait(options, pending, true);
+  const results = waitForDistributedResponse(options, pending, true);
   return results.sort(
     (a, b) => order.indexOf(a.coordTransactionID) - order.indexOf(b.coordTransactionID)
   );
@@ -284,48 +344,10 @@ function cleanupOrphanedServices (knownServicePaths, knownBundlePaths) {
 }
 
 function startup () {
-  if (isFoxxmaster()) {
-    const db = require('internal').db;
-    const dbName = db._name();
-    try {
-      db._useDatabase('_system');
-      const databases = db._databases();
-      for (const name of databases) {
-        try {
-          db._useDatabase(name);
-          upsertSystemServices();
-        } catch (e) {
-          console.warnStack(e);
-        }
-      }
-    } finally {
-      db._useDatabase(dbName);
-    }
-  }
   if (global.ArangoServerState.role() === 'SINGLE') {
     commitLocalState(true);
   }
   selfHealAll();
-}
-
-function upsertSystemServices () {
-  const serviceDefinitions = new Map();
-  for (const mount of SYSTEM_SERVICE_MOUNTS) {
-    try {
-      const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
-      const service = FoxxService.create(serviceDefinition);
-      serviceDefinitions.set(mount, service.toJSON());
-    } catch (e) {
-      console.errorStack(e);
-    }
-  }
-  db._query(aql`
-    FOR item IN ${Array.from(serviceDefinitions)}
-    UPSERT {mount: item[0]}
-    INSERT item[1]
-    REPLACE item[1]
-    IN ${utils.getStorage()}
-  `);
 }
 
 function commitLocalState (replace) {

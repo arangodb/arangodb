@@ -37,7 +37,7 @@ MMFilesDocumentOperation::MMFilesDocumentOperation(LogicalCollection* collection
                                                    TRI_voc_document_operation_e type)
     : _collection(collection), _type(type), _status(StatusType::CREATED) {}
 
-MMFilesDocumentOperation::~MMFilesDocumentOperation() {}
+MMFilesDocumentOperation::~MMFilesDocumentOperation() = default;
 
 MMFilesDocumentOperation* MMFilesDocumentOperation::clone() {
   MMFilesDocumentOperation* copy = new MMFilesDocumentOperation(_collection, _type);

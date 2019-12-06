@@ -37,15 +37,24 @@ class text_token_stream : public analyzer, util::noncopyable {
   typedef std::unordered_set<std::string> stopwords_t;
   struct options_t {
     enum case_convert_t { LOWER, NONE, UPPER };
-    // lowercase tokens, mach original implementation
+    // lowercase tokens, match original implementation
     case_convert_t case_convert{case_convert_t::LOWER};
     stopwords_t explicit_stopwords;
-    // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
-    bool explicit_stopwords_set{ false }; 
-    std::string locale;
-    bool no_accent{true}; // remove accents from letters, mach original implementation
-    bool no_stem{false}; // try to stem if possible, mach original implementation
+    std::locale locale;
     std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
+    size_t min_gram{};
+    size_t max_gram{};
+    // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
+    bool explicit_stopwords_set{};
+    bool accent{}; // remove accents from letters, match original implementation
+    bool stemming{true}; // try to stem if possible, match original implementation
+    // needed for mark empty min_gram as valid and prevent loading from defaults
+    bool min_gram_set{};
+    // needed for mark empty max_gram as valid and prevent loading from defaults
+    bool max_gram_set{};
+    bool preserve_original{}; // emit input data as a token
+    // needed for mark empty preserve_original as valid and prevent loading from defaults
+    bool preserve_original_set{};
   };
 
   struct state_t;
@@ -80,14 +89,16 @@ class text_token_stream : public analyzer, util::noncopyable {
   DECLARE_FACTORY(const irs::string_ref& locale);
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
-  static void init(); // for trigering registration in a static build
+  static void init(); // for triggering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
-  virtual bool to_string(const ::irs::text_format::type_id& format,
-                         std::string& definition) const override;
+
+ private:
+  bool next_word();
+  bool next_ngram();
 
  private:
   irs::attribute_view attrs_;

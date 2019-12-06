@@ -26,13 +26,21 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
-#include "Basics/csv.h"
-#include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/csv.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/operating-system.h"
+#include "Basics/tri-strings.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
-#include "V8/v8-json.h"
 #include "V8/v8-utils.h"
+#include "V8/v8-vpack.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 #include <sys/types.h>
@@ -40,6 +48,10 @@
 #include <fcntl.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
 #endif
 
 using namespace arangodb;
@@ -136,12 +148,10 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
 
-  if (!v8security->isAllowedToAccessPath(isolate, *filename, FSAccessType::READ)) {
+  if (!v8security.isAllowedToAccessPath(isolate, *filename, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to read files in this path");
   }
@@ -260,12 +270,10 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
 
-  if (!v8security->isAllowedToAccessPath(isolate, *filename, FSAccessType::READ)) {
+  if (!v8security.isAllowedToAccessPath(isolate, *filename, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to read files in this path");
   }
@@ -283,13 +291,16 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
 #endif
 
 
+  auto builder = std::make_shared<VPackBuilder>();
+  VPackParser parser(builder);
+
   if (file.is_open()) {
     size_t row = 0;
 
     while (file.good()) {
       std::getline(file, line);
 
-      char const* ptr = line.c_str();
+      char const* ptr = line.data();
       char const* end = ptr + line.length();
 
       while (ptr < end && (*ptr == ' ' || *ptr == '\t' || *ptr == '\r')) {
@@ -300,22 +311,14 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
         continue;
       }
 
-      char* error = nullptr;
-      v8::Handle<v8::Value> object =
-          TRI_FromJsonString(isolate, line.c_str(), line.size(), &error);
+      builder->clear();
+      v8::Handle<v8::Value> object;
 
-      if (object->IsUndefined()) {
-        if (error != nullptr) {
-          std::string msg = error;
-          TRI_FreeString(error);
-          TRI_V8_THROW_SYNTAX_ERROR(msg.c_str());
-        } else {
-          TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
-      }
-
-      if (error != nullptr) {
-        TRI_FreeString(error);
+      try {
+        parser.parse(ptr, end - ptr);
+        object = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr); 
+      } catch (std::exception const& ex) {
+        TRI_V8_THROW_SYNTAX_ERROR(ex.what());
       }
 
       v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int)row);

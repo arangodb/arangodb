@@ -22,20 +22,36 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+#include <cstring>
+#include <iosfwd>
+#include <thread>
+#include <type_traits>
+
 #include "Logger.h"
 
-#include <cstring>
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/files.h"
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -301,12 +317,6 @@ void Logger::log(char const* function, char const* file, int line,
   }
 #endif
 
-  if (!_active.load(std::memory_order_relaxed)) {
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, message.data(), message.size(), true);
-    return;
-  }
-
   std::stringstream out;
   LogTimeFormats::writeTime(out, _timeFormat);
   out << ' ';
@@ -369,32 +379,43 @@ void Logger::log(char const* function, char const* file, int line,
   // generate the complete message
   out << message;
   std::string ostreamContent = out.str();
+ 
+  if (!_active.load(std::memory_order_relaxed)) {
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                          level, ostreamContent.data(), ostreamContent.size(), true);
+    return;
+  }
+
   size_t offset = ostreamContent.size() - message.size();
   auto msg = std::make_unique<LogMessage>(level, topicId, std::move(ostreamContent), offset);
 
   // now either queue or output the message
+  bool handled = false;
   if (_threaded) {
     try {
-      _loggingThread->log(msg);
-      bool const isDirectLogLevel =
-          (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
-      if (isDirectLogLevel) {
-        _loggingThread->flush();
+      handled = _loggingThread->log(msg);
+      if (handled) {
+        bool const isDirectLogLevel =
+            (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+        if (isDirectLogLevel) {
+          _loggingThread->flush();
+        }
       }
-      return;
     } catch (...) {
       // fall-through to non-threaded logging
     }
   }
 
-  LogAppender::log(msg.get());
+  if (!handled) {
+    LogAppender::log(msg.get());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(bool threaded) {
+void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
   MUTEX_LOCKER(locker, _initializeMutex);
 
   if (_active) {
@@ -409,7 +430,7 @@ void Logger::initialize(bool threaded) {
   _threaded = threaded;
 
   if (threaded) {
-    _loggingThread = std::make_unique<LogThread>("Logging");
+    _loggingThread = std::make_unique<LogThread>(server, "Logging");
     _loggingThread->start();
   }
 }
@@ -435,7 +456,7 @@ void Logger::shutdown() {
     int tries = 0;
     while (_loggingThread->hasMessages() && ++tries < 1000) {
       _loggingThread->wakeup();
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     _loggingThread->beginShutdown();
     _loggingThread.reset();

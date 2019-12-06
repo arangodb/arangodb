@@ -29,6 +29,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -72,7 +75,7 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
   }
 }
 
-ResignShardLeadership::~ResignShardLeadership(){};
+ResignShardLeadership::~ResignShardLeadership() = default;
 
 bool ResignShardLeadership::first() {
   std::string const& database = _description.get(DATABASE);
@@ -119,9 +122,9 @@ bool ResignShardLeadership::first() {
     // for now but we will not accept any replication operation from any
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
-    col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
+    col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
     trx.abort(); // unlock
-    
+
     transaction::cluster::abortLeaderTransactionsOnShard(col->id());
 
   } catch (std::exception const& e) {
@@ -135,3 +138,5 @@ bool ResignShardLeadership::first() {
   notify();
   return false;
 }
+
+std::string const ResignShardLeadership::LeaderNotYetKnownString = "LEADER_NOT_YET_KNOWN";

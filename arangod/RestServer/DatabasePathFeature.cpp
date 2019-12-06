@@ -23,12 +23,21 @@
 #include "DatabasePathFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/PageSizeFeature.h"
+#include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/files.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/FileDescriptorsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -40,12 +49,12 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
     : ApplicationFeature(server, DatabasePathFeature::name()),
       _requiredDirectoryState("any") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<GreetingsFeaturePhase>();
 
-  startsAfter("FileDescriptors");
-  startsAfter("Language");
-  startsAfter("PageSize");
-  startsAfter("Temp");
+  startsAfter<FileDescriptorsFeature>();
+  startsAfter<LanguageFeature>();
+  startsAfter<PageSizeFeature>();
+  startsAfter<TempFeature>();
 }
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -94,7 +103,7 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   auto ctx = ArangoGlobalContext::CONTEXT;
 
   if (ctx == nullptr) {
-    LOG_TOPIC("19066", ERR, arangodb::Logger::FIXME) << "failed to get global context.";
+    LOG_TOPIC("19066", FATAL, arangodb::Logger::FIXME) << "failed to get global context.";
     FATAL_ERROR_EXIT();
   }
 
@@ -102,6 +111,28 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
 }
 
 void DatabasePathFeature::prepare() {
+  // check if temporary directory and database directory are identical
+  {
+    std::string directoryCopy = _directory;
+    basics::FileUtils::makePathAbsolute(directoryCopy);
+
+    if (server().hasFeature<TempFeature>()) {
+      auto& tf = server().getFeature<TempFeature>();
+      // the feature is not present in unit tests, so make the execution depend
+      // on whether the feature is available
+      std::string tempPathCopy = tf.path();
+      basics::FileUtils::makePathAbsolute(tempPathCopy);
+      tempPathCopy = basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
+
+      if (directoryCopy == tempPathCopy) {
+        LOG_TOPIC("fd70b", FATAL, arangodb::Logger::FIXME) 
+          << "database directory '" << directoryCopy << "' is identical to the temporary directory. "
+          << "This can cause follow-up problems, including data loss. Please review your setup!";
+        FATAL_ERROR_EXIT();
+      }
+    }
+  }
+
   if (_requiredDirectoryState == "any") {
     // database directory can have any state. this is the default
     return;

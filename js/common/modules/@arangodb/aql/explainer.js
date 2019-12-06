@@ -162,17 +162,18 @@ function pad(n) {
 /* print functions */
 
 /* print query string */
-function printQuery(query) {
+function printQuery(query, cacheable) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
-  var maxLength = 4096;
+  var maxLength = 4096, headline = 'Query String (' + query.length + ' chars';
   if (query.length > maxLength) {
-    stringBuilder.appendLine(section('Query String (truncated):'));
+    headline += ' - truncated...';
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
-  } else {
-    stringBuilder.appendLine(section('Query String:'));
   }
+  headline += ', cacheable: ' + (cacheable ? 'true' : 'false');
+  headline += '):';
+  stringBuilder.appendLine(section(headline));
   stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));
   stringBuilder.appendLine();
 }
@@ -303,7 +304,7 @@ function printIndexes(indexes) {
       if (l > maxIdLen) {
         maxIdLen = l;
       }
-      l = index.name.length;
+      l = index.name ? index.name.length : 0;
       if (l > maxNameLen) {
         maxNameLen = l;
       }
@@ -700,7 +701,7 @@ function processQuery(query, explain, planIndex) {
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
-
+  
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
@@ -818,6 +819,11 @@ function processQuery(query, explain, planIndex) {
       usedVariables[node.name] = collectionVariables[node.id];
     }
     return variable(node.name);
+  };
+
+  var lateVariableCallback = function () {
+    require("internal").print("Called");
+    return (node) => variableName(node);
   };
 
   var buildExpression = function (node) {
@@ -1084,6 +1090,7 @@ function processQuery(query, explain, planIndex) {
     var rc, v, e, edgeCols, i, d, directions, isLast;
     var parts = [];
     var types = [];
+    var filter = '';
     // index in this array gives the traversal direction
     const translate = ['ANY', 'INBOUND', 'OUTBOUND'];
     switch (node.type) {
@@ -1093,7 +1100,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`);
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`) + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -1104,24 +1114,55 @@ function processQuery(query, explain, planIndex) {
 
         var sortCondition = '';
         if (node.primarySort && Array.isArray(node.primarySort)) {
-          sortCondition = keyword(' SORT ') + node.primarySort.map(function (element) {
-            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
+          var primarySortBuckets = node.primarySort.length;
+          if (typeof node.primarySortBuckets === 'number') {
+            primarySortBuckets = Math.min(node.primarySortBuckets, primarySortBuckets);
+          }
+
+          sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
+            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
           }).join(', ');
         }
 
         var scorers = '';
         if (node.scorers && node.scorers.length > 0) {
-          scorers = keyword(' LET ') + node.scorers.map(function (scorer) {
-            return variableName(scorer) + ' = ' + buildExpression(scorer.node);
-          }).join(', ');
+          scorers = node.scorers.map(function (scorer) {
+            return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
+          }).join('');
         }
-
-        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
+        let viewAnnotation = '/* view query';
+        let viewVariables = '';
+        if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+          viewAnnotation += ' with late materialization';
+          if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
+            viewVariables = node.viewValuesVars.map(function (viewValuesVar) {
+              return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+            }).join('');
+          }
+        }
+        viewAnnotation += ' */';
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
+               view(node.view) + condition + sortCondition + scorers + viewVariables +
+               '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        let indexAnnotation = '';
+        let indexVariables = '';
+        if (node.hasOwnProperty('outNmDocId')) {
+          indexAnnotation += '/* with late materialization */';
+          if (node.hasOwnProperty('indexValuesVars') && node.indexValuesVars.length > 0) {
+            indexVariables = node.indexValuesVars.map(function (indexValuesVar) {
+              return keyword(' LET ') + variableName(indexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(indexValuesVar.field);
+            }).join('');
+          }
+        }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
-        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */`;
-      //`
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
+          `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          '   ' + annotation(indexAnnotation);
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1445,6 +1486,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
+      case 'SubqueryStartNode':
+        return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
+      case 'SubqueryEndNode':
+        return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1461,7 +1506,7 @@ function processQuery(query, explain, planIndex) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          indexRef = inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `${variableName(node.inDocVariable)}`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
@@ -1478,7 +1523,7 @@ function processQuery(query, explain, planIndex) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          indexRef = inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `${variableName(node.inDocVariable)}`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
@@ -1621,18 +1666,28 @@ function processQuery(query, explain, planIndex) {
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
+        let gatherAnnotations = [];
+        if (node.parallelism === 'parallel') {
+          gatherAnnotations.push('parallel');
+        }
+        if (node.sortmode !== 'unset') {
+          gatherAnnotations.push('sort mode: ' + node.sortmode);
+        } 
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
           if (node.path && node.path.length) {
             return variableName(node.inVariable) + node.path.map(function (n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+        }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
+
+      case 'MaterializeNode':
+      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
     }
 
     return 'unhandled node type (' + node.type + ')';
   };
 
-  var level = 0, subqueries = [];
+  var level = 0, subqueries = [], subqueryCallbacks = [];
   var indent = function (level, isRoot) {
     return pad(1 + level + level) + (isRoot ? '* ' : '- ');
   };
@@ -1641,8 +1696,11 @@ function processQuery(query, explain, planIndex) {
     usedVariables = {};
     currentNode = node.id;
     isConst = true;
-    if (node.type === 'SubqueryNode') {
+    if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
+    }
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
     }
   };
 
@@ -1655,6 +1713,7 @@ function processQuery(query, explain, planIndex) {
       'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
+      'SubqueryStartNode',
       'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {
@@ -1713,7 +1772,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   if (planIndex === undefined) {
-    printQuery(query);
+    printQuery(query, explain.cacheable);
   }
 
   stringBuilder.appendLine(section('Execution plan:'));
@@ -2051,7 +2110,8 @@ function inspectDump(filename, outfile) {
     for (let i = keys.length; i > 0; --i) {
       let collection = keys[i - 1];
       let details = data.collections[collection];
-      if (details.name[0] === '_') {
+      let name = details.name || collection;
+      if (name[0] === '_') {
         // system collection
         print("try { db._drop(" + JSON.stringify(collection) + ", true); } catch (err) { print(String(err)); }");
       } else {

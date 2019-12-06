@@ -22,6 +22,8 @@
 
 #include "ExecutorInfos.h"
 
+#include "Basics/debugging.h"
+
 using namespace arangodb::aql;
 
 ExecutorInfos::ExecutorInfos(
@@ -73,4 +75,39 @@ ExecutorInfos::ExecutorInfos(
     TRI_ASSERT(_registersToClear->find(regToKeep) == _registersToClear->end());
   }
 #endif
+}
+
+std::shared_ptr<std::unordered_set<RegisterId> const> ExecutorInfos::getInputRegisters() const {
+  return _inRegs;
+}
+
+std::shared_ptr<std::unordered_set<RegisterId> const> ExecutorInfos::getOutputRegisters() const {
+  return _outRegs;
+}
+
+RegisterId ExecutorInfos::numberOfInputRegisters() const { return _numInRegs; }
+
+RegisterId ExecutorInfos::numberOfOutputRegisters() const {
+  return _numOutRegs;
+}
+
+std::shared_ptr<std::unordered_set<RegisterId> const> const& ExecutorInfos::registersToKeep() const {
+  return _registersToKeep;
+}
+
+std::shared_ptr<std::unordered_set<RegisterId> const> const& ExecutorInfos::registersToClear() const {
+  return _registersToClear;
+}
+
+std::shared_ptr<std::unordered_set<RegisterId>> arangodb::aql::make_shared_unordered_set(
+    const std::initializer_list<RegisterId>& list) {
+  return std::make_shared<std::unordered_set<RegisterId>>(list);
+}
+
+std::shared_ptr<std::unordered_set<RegisterId>> arangodb::aql::make_shared_unordered_set(RegisterId size) {
+  auto set = make_shared_unordered_set();
+  for (RegisterId i = 0; i < size; i++) {
+    set->insert(i);
+  }
+  return set;
 }

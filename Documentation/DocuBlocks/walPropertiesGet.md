@@ -21,7 +21,7 @@ array with the following attributes:
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesGet}
+@EXAMPLE_ARANGOSH_OUTPUT{WalPropertiesGet_mmfiles}
   require("internal").wal.properties();
 @END_EXAMPLE_ARANGOSH_OUTPUT
 

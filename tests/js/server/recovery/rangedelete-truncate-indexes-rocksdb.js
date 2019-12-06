@@ -54,7 +54,7 @@ function runSetup () {
   c = db._create('UnitTestsRecovery2');
   c.insert({}, { waitForSync: true });
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

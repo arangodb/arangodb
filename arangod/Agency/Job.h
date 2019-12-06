@@ -24,20 +24,29 @@
 #ifndef ARANGOD_CONSENSUS_JOB_H
 #define ARANGOD_CONSENSUS_JOB_H 1
 
-#include "AgentInterface.h"
-#include "Node.h"
-#include "Supervision.h"
+#include <stddef.h>
+#include <algorithm>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
-#include "Basics/Result.h"
-
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <string>
+#include "Agency/AgencyCommon.h"
+#include "Agency/AgentInterface.h"
+#include "Basics/Result.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 namespace consensus {
+class Node;
 
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
@@ -52,6 +61,8 @@ extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
 extern std::string const curColPrefix;
+extern std::string const planDBPrefix;
+extern std::string const curServersKnown;
 extern std::string const blockedServersPrefix;
 extern std::string const blockedShardsPrefix;
 extern std::string const planVersion;
@@ -110,7 +121,7 @@ struct Job {
 
   virtual JOB_STATUS status() = 0;
 
-  virtual bool create(std::shared_ptr<VPackBuilder> b) = 0;
+  virtual bool create(std::shared_ptr<velocypack::Builder> b) = 0;
 
   // Returns if job was actually started (i.e. false if directly failed!)
   virtual bool start(bool& aborts) = 0;
@@ -124,8 +135,10 @@ struct Job {
   ///        excluding "exclude" vector
   static std::string randomIdleAvailableServer(Node const& snap,
                                                    std::vector<std::string> const& exclude);
-  static std::string randomIdleAvailableServer(Node const& snap, VPackSlice const& exclude);
-  static size_t countGoodOrBadServersInList(Node const& snap, VPackSlice const& serverList);
+  static std::string randomIdleAvailableServer(Node const& snap,
+                                               velocypack::Slice const& exclude);
+  static size_t countGoodOrBadServersInList(Node const& snap,
+                                            velocypack::Slice const& serverList);
   static size_t countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList);
   static bool isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray);
 
@@ -151,43 +164,50 @@ struct Job {
 
   static std::string agencyPrefix;  // will be initialized in AgencyFeature
 
-  std::shared_ptr<Builder> _jb;
+  std::shared_ptr<velocypack::Builder> _jb;
 
   static void doForAllShards(
       Node const& snapshot, std::string& database, std::vector<shard_t>& shards,
-      std::function<void(Slice plan, Slice current, std::string& planPath, std::string& curPath)> worker);
+      std::function<void(velocypack::Slice plan, velocypack::Slice current, std::string& planPath, std::string& curPath)> worker);
 
   // The following methods adds an operation to a transaction object or
   // a condition to a precondition object. In all cases, the builder trx
   // or pre must be in the state that an object has been opened, this
   // method adds some attribute/value pairs and leaves the object open:
-  static void addIncreasePlanVersion(Builder& trx);
-  static void addRemoveJobFromSomewhere(Builder& trx, std::string const& where,
+  static void addIncreasePlanVersion(velocypack::Builder& trx);
+  static void addRemoveJobFromSomewhere(velocypack::Builder& trx, std::string const& where,
                                         std::string const& jobId);
-  static void addPutJobIntoSomewhere(Builder& trx, std::string const& where,
-                                     Slice job, std::string const& reason = "");
-  static void addPreconditionCollectionStillThere(Builder& pre, std::string const& database,
+  static void addPutJobIntoSomewhere(velocypack::Builder& trx,
+                                     std::string const& where, velocypack::Slice job,
+                                     std::string const& reason = "");
+  static void addPreconditionCollectionStillThere(velocypack::Builder& pre,
+                                                  std::string const& database,
                                                   std::string const& collection);
-  static void addBlockServer(Builder& trx, std::string const& server,
+  static void addBlockServer(velocypack::Builder& trx, std::string const& server,
                              std::string const& jobId);
-  static void addBlockShard(Builder& trx, std::string const& shard, std::string const& jobId);
-  static void addReleaseServer(Builder& trx, std::string const& server);
-  static void addReleaseShard(Builder& trx, std::string const& shard);
-  static void addPreconditionServerNotBlocked(Builder& pre, std::string const& server);
-  static void addPreconditionServerHealth(Builder& pre, std::string const& server,
+  static void addBlockShard(velocypack::Builder& trx, std::string const& shard,
+                            std::string const& jobId);
+  static void addReleaseServer(velocypack::Builder& trx, std::string const& server);
+  static void addReleaseShard(velocypack::Builder& trx, std::string const& shard);
+  static void addPreconditionServerNotBlocked(velocypack::Builder& pre,
+                                              std::string const& server);
+  static void addPreconditionServerHealth(velocypack::Builder& pre, std::string const& server,
                                           std::string const& health);
-  static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
-  static void addPreconditionUnchanged(Builder& pre, std::string const& key, Slice value);
-  static void addPreconditionJobStillInPending(Builder& pre, std::string const& jobId);
+  static void addPreconditionShardNotBlocked(velocypack::Builder& pre,
+                                             std::string const& shard);
+  static void addPreconditionUnchanged(velocypack::Builder& pre, std::string const& key,
+                                       velocypack::Slice value);
+  static void addPreconditionJobStillInPending(velocypack::Builder& pre,
+                                               std::string const& jobId);
   static std::string checkServerHealth(Node const& snapshot, std::string const& server);
 };
 
 inline arangodb::consensus::write_ret_t singleWriteTransaction(AgentInterface* _agent,
-                                                               Builder const& transaction,
+                                                               velocypack::Builder const& transaction,
                                                                bool waitForCommit = true) {
-  query_t envelope = std::make_shared<Builder>();
+  query_t envelope = std::make_shared<velocypack::Builder>();
 
-  Slice trx = transaction.slice();
+  velocypack::Slice trx = transaction.slice();
   try {
     {
       VPackArrayBuilder listOfTrxs(envelope.get());
@@ -221,9 +241,9 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(AgentInterface* _
 }
 
 inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agent,
-                                                           Builder const& transaction) {
-  query_t envelope = std::make_shared<Builder>();
-  Slice trx = transaction.slice();
+                                                           velocypack::Builder const& transaction) {
+  query_t envelope = std::make_shared<velocypack::Builder>();
+  velocypack::Slice trx = transaction.slice();
 
   try {
     {
@@ -269,10 +289,10 @@ inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agen
 }
 
 inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
-                                                  Builder const& transaction) {
-  query_t envelope = std::make_shared<Builder>();
+                                                  velocypack::Builder const& transaction) {
+  query_t envelope = std::make_shared<velocypack::Builder>();
 
-  Slice trx = transaction.slice();
+  velocypack::Slice trx = transaction.slice();
   try {
     {
       VPackArrayBuilder listOfTrxs(envelope.get());

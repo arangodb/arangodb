@@ -24,12 +24,14 @@
 #ifndef ARANGOD_VOC_BASE_VOC_TYPES_H
 #define ARANGOD_VOC_BASE_VOC_TYPES_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <cstdlib>
+#include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
-
-#include <unordered_set>
 
 /// @brief tick type (56bit)
 typedef uint64_t TRI_voc_tick_t;
@@ -86,6 +88,12 @@ enum TRI_edge_direction_e {
   TRI_EDGE_ANY = 0,  // can only be used for searching
   TRI_EDGE_IN = 1,
   TRI_EDGE_OUT = 2
+};
+
+enum class ShardingPrototype : uint32_t {
+  Undefined = 0,
+  Users = 1,
+  Graphs = 2
 };
 
 /// @brief Hash and Equal comparison for a vector of VPackSlice

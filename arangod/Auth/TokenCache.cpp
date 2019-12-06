@@ -27,23 +27,32 @@
 #include "Agency/AgencyComm.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Ssl/SslInterface.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
+  
+namespace {
+velocypack::StringRef const hs256String("HS256");
+velocypack::StringRef const jwtString("JWT");
+}
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
     : _userManager(um),
@@ -150,17 +159,11 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
     expiry += TRI_microtime();
   }
 
-  auth::TokenCache::Entry entry(username, authorized, expiry);
+  auth::TokenCache::Entry entry(std::move(username), authorized, expiry);
   {
     WRITE_LOCKER(guard, _basicLock);
     if (authorized) {
-      if (!_basicCache.emplace(secret, entry).second) {
-        // insertion did not work - probably another thread did insert the
-        // same data right now
-        // erase it and re-insert our version
-        _basicCache.erase(secret);
-        _basicCache.emplace(secret, entry);
-      }
+      _basicCache.insert_or_assign(std::move(secret), entry);
     } else {
       _basicCache.erase(secret);
     }
@@ -229,7 +232,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
 }
 
 std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str,
-                                                          std::string const& hint) {
+                                                          char const* hint) {
   std::shared_ptr<VPackBuilder> result;
   VPackParser parser;
   try {
@@ -252,7 +255,7 @@ std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str
 bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   std::shared_ptr<VPackBuilder> headerBuilder =
       parseJson(StringUtils::decodeBase64U(header), "jwt header");
-  if (headerBuilder.get() == nullptr) {
+  if (headerBuilder == nullptr) {
     return false;
   }
 
@@ -264,20 +267,15 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
   VPackSlice const algSlice = headerSlice.get("alg");
   VPackSlice const typSlice = headerSlice.get("typ");
 
-  if (!algSlice.isString()) {
+  if (!algSlice.isString() || !typSlice.isString()) {
     return false;
   }
 
-  if (!typSlice.isString()) {
+  if (!algSlice.isEqualString(::hs256String)) {
     return false;
   }
-
-  if (algSlice.copyString() != "HS256") {
-    return false;
-  }
-
-  std::string typ = typSlice.copyString();
-  if (typ != "JWT") {
+  
+  if (!typSlice.isEqualString(::jwtString)) {
     return false;
   }
 
@@ -287,7 +285,7 @@ bool auth::TokenCache::validateJwtHeader(std::string const& header) {
 auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& body) {
   std::shared_ptr<VPackBuilder> bodyBuilder =
       parseJson(StringUtils::decodeBase64U(body), "jwt body");
-  if (bodyBuilder.get() == nullptr) {
+  if (bodyBuilder == nullptr) {
     LOG_TOPIC("99524", TRACE, Logger::AUTHENTICATION) << "invalid JWT body";
     return auth::TokenCache::Entry::Unauthenticated();
   }
@@ -304,14 +302,14 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  if (issSlice.copyString() != "arangodb") {
+  if (!issSlice.isEqualString(velocypack::StringRef("arangodb"))) {
     LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION) << "invalid iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   auth::TokenCache::Entry authResult("", false, 0);
-  if (bodySlice.hasKey("preferred_username")) {
-    VPackSlice const usernameSlice = bodySlice.get("preferred_username");
+  VPackSlice const usernameSlice = bodySlice.get("preferred_username");
+  if (!usernameSlice.isNone()) {
     if (!usernameSlice.isString() || usernameSlice.getStringLength() == 0) {
       return auth::TokenCache::Entry::Unauthenticated();
     }
@@ -327,8 +325,8 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
-  if (bodySlice.hasKey("allowed_paths")) {
-    VPackSlice const paths = bodySlice.get("allowed_paths");
+  VPackSlice const paths = bodySlice.get("allowed_paths");
+  if (!paths.isNone()) {
     if (!paths.isArray()) {
       LOG_TOPIC("89898", TRACE, arangodb::Logger::AUTHENTICATION)
         << "allowed_paths must be an array";
@@ -350,8 +348,8 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
   }
 
   // mop: optional exp (cluster currently uses non expiring jwts)
-  if (bodySlice.hasKey("exp")) {
-    VPackSlice const expSlice = bodySlice.get("exp");
+  VPackSlice const expSlice = bodySlice.get("exp");
+  if (!expSlice.isNone()) {
     if (!expSlice.isNumber()) {
       LOG_TOPIC("74735", TRACE, Logger::AUTHENTICATION) << "invalid exp value";
       return authResult;  // unauthenticated
@@ -414,22 +412,22 @@ std::string auth::TokenCache::generateJwt(VPackSlice const& payload) const {
   bool hasIat = payload.hasKey("iat");
   if (hasIss && hasIat) {
     return generateRawJwt(payload);
-  } else {
-    VPackBuilder bodyBuilder;
-    {
-      VPackObjectBuilder p(&bodyBuilder);
-      if (!hasIss) {
-        bodyBuilder.add("iss", VPackValue("arangodb"));
-      }
-      if (!hasIat) {
-        bodyBuilder.add("iat", VPackValue(TRI_microtime() / 1000));
-      }
-      for (auto const& obj : VPackObjectIterator(payload)) {
-        bodyBuilder.add(obj.key.copyString(), obj.value);
-      }
+  } 
+  
+  VPackBuilder bodyBuilder;
+  {
+    VPackObjectBuilder p(&bodyBuilder);
+    if (!hasIss) {
+      bodyBuilder.add("iss", VPackValue("arangodb"));
     }
-    return generateRawJwt(bodyBuilder.slice());
+    if (!hasIat) {
+      bodyBuilder.add("iat", VPackValue(TRI_microtime() / 1000));
+    }
+    for (auto const& obj : VPackObjectIterator(payload)) {
+      bodyBuilder.add(obj.key.copyString(), obj.value);
+    }
   }
+  return generateRawJwt(bodyBuilder.slice());
 }
 
 /// generate a JWT token for internal cluster communication

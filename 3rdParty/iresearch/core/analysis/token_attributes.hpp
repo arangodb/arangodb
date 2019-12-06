@@ -166,28 +166,35 @@ struct IRESEARCH_API norm : stored_attribute {
 /// @brief iterator represents term positions in a document
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API position
-  : public attribute, public util::const_attribute_view_provider {
+  : public attribute,
+    public util::const_attribute_view_provider {
  public:
   typedef uint32_t value_t;
 
   DECLARE_REFERENCE(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
-  const irs::attribute_view& attributes() const NOEXCEPT override { return attrs_; }
-  virtual void clear() = 0;
-  virtual bool next() = 0;
-
-  value_t seek(value_t target) {
-    irs::seek(*this, target);
-
-    return value();
+  const irs::attribute_view& attributes() const NOEXCEPT override {
+    return attrs_;
   }
 
-  virtual value_t value() const = 0;
+  value_t seek(value_t target) {
+    while ((value_< target) && next());
+    return value_;
+  }
+
+  value_t value() const NOEXCEPT {
+    return value_;
+  }
+
+  virtual void clear() = 0;
+
+  virtual bool next() = 0;
 
  protected:
   position(size_t reserve_attrs) NOEXCEPT;
 
+  value_t value_{ pos_limits::invalid() };
   attribute_view attrs_;
 }; // position
 

@@ -39,7 +39,7 @@ NS_BEGIN(util)
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API const_attribute_store_provider {
  public:
-  virtual ~const_attribute_store_provider() {}
+  virtual ~const_attribute_store_provider() = default;
   virtual const irs::attribute_store& attributes() const NOEXCEPT = 0;
 };
 
@@ -49,7 +49,6 @@ class IRESEARCH_API const_attribute_store_provider {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API attribute_store_provider: public const_attribute_store_provider {
  public:
-  virtual ~attribute_store_provider() {}
   virtual irs::attribute_store& attributes() NOEXCEPT = 0;
   virtual const irs::attribute_store& attributes() const NOEXCEPT override final {
     return const_cast<attribute_store_provider*>(this)->attributes();
@@ -62,7 +61,7 @@ class IRESEARCH_API attribute_store_provider: public const_attribute_store_provi
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API const_attribute_view_provider {
  public:
-  virtual ~const_attribute_view_provider() {}
+  virtual ~const_attribute_view_provider() = default;
   virtual const irs::attribute_view& attributes() const NOEXCEPT = 0;
 };
 
@@ -72,7 +71,6 @@ class IRESEARCH_API const_attribute_view_provider {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API attribute_view_provider: public const_attribute_view_provider {
  public:
-  virtual ~attribute_view_provider() {}
   virtual irs::attribute_view& attributes() NOEXCEPT = 0;
   virtual const irs::attribute_view& attributes() const NOEXCEPT override final {
     return const_cast<attribute_view_provider*>(this)->attributes();

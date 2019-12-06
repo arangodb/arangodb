@@ -157,38 +157,22 @@ class CollectionNameResolver {
                         TRI_voc_cid_t id) const;
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection struct for a collection name
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalCollection> getCollectionStruct(std::string const& name) const;
-
   mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
   mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
 
   std::string lookupName(TRI_voc_cid_t cid) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
-  //////////////////////////////////////////////////////////////////////////////
   TRI_vocbase_t& _vocbase;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief role of server in cluster
-  //////////////////////////////////////////////////////////////////////////////
-  ServerState::RoleEnum _serverRole;
+  ServerState::RoleEnum const _serverRole;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collection id => collection struct map
-  //////////////////////////////////////////////////////////////////////////////
-  mutable std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalCollection>> _resolvedNames;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collection id => collection name map
-  //////////////////////////////////////////////////////////////////////////////
-  mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
-
-  mutable basics::ReadWriteLock _nameLock;
+  /// @brief lock protecting _resolvedIds
   mutable basics::ReadWriteLock _idLock;
+
+  /// @brief collection id => collection name map
+  mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
 };
 
 }  // namespace arangodb

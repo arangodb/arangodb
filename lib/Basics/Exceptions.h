@@ -25,13 +25,14 @@
 #ifndef ARANGODB_BASICS_EXCEPTIONS_H
 #define ARANGODB_BASICS_EXCEPTIONS_H 1
 
-#include "Basics/Common.h"
+#include <exception>
+#include <new>
+#include <string>
+#include <utility>
+
 #include "Basics/Result.h"
-
-#include <errno.h>
-
-/// @brief diagnostic output
-#define DIAGNOSTIC_INFORMATION(e) e.what()
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
 
 /// @brief throws an arango exception with an error code
 #define THROW_ARANGO_EXCEPTION(code) \
@@ -86,7 +87,7 @@ class Exception final : public virtual std::exception {
 
   Exception(int code, char const* errorMessage, char const* file, int line);
 
-  ~Exception();
+  ~Exception() = default;
 
  public:
   char const* what() const noexcept override;

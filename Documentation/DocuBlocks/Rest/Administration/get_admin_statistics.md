@@ -16,6 +16,18 @@ In case of a distribution, the returned object contains the total count in
 *count* and the distribution list in *counts*. The sum (or total) of the
 individual values is returned in *sum*.
 
+The transaction statistics show the local started, committed and aborted
+transactions as well as intermediate commits done for the server queried. The
+intermediate commit count will only take non zero values for the RocksDB
+storage engine. Coordinators do almost no local transactions themselves in
+their local databases, therefor cluster transactions (transactions started on a
+coordinator that require DBServers to finish before the transactions is
+committed cluster wide) are just added to their local statistics. This means
+that the statistics you would see for a single server is roughly what you can
+expect in a cluster setup using a single coordinator querying this coordinator.
+Just with the difference that cluster transactions have no notion of
+intermediate commits and will not increase the value.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -149,6 +161,20 @@ time the server is up and running
 @RESTSTRUCT{physicalMemory,server_statistics_struct,integer,required,}
 available physical memory on the server
 
+@RESTSTRUCT{transactions,server_statistics_struct,object,required,transactions_struct}
+Statistics about transactions
+
+@RESTSTRUCT{started,transactions_struct,integer,required,}
+the number of started transactions
+
+@RESTSTRUCT{committed,transactions_struct,integer,required,}
+the number of committed transactions
+
+@RESTSTRUCT{aborted,transactions_struct,integer,required,}
+the number of aborted transactions
+
+@RESTSTRUCT{intermediateCommits,transactions_struct,integer,required,}
+the number of intermediate commits done
 
 @RESTSTRUCT{v8Context,server_statistics_struct,object,required,v8_context_struct}
 Statistics about the V8 javascript contexts
@@ -167,6 +193,26 @@ the number of V8 contexts that are free to use
 
 @RESTSTRUCT{max,v8_context_struct,integer,required,}
 the total number of V8 contexts we may spawn as configured by --javascript.v8-contexts
+
+
+@RESTSTRUCT{memory,v8_context_struct,array,required,v8_isolate_memory}
+a list of V8 memory / garbage collection watermarks; Refreshed on every garbage collection run;
+Preserves min/max memory used at that time for 10 seconds
+
+@RESTSTRUCT{contextId,v8_isolate_memory,integer,required,}
+ID of the context this set of memory statistics is from
+
+@RESTSTRUCT{tMax,v8_isolate_memory,number,required,}
+the timestamp where the 10 seconds interval started
+
+@RESTSTRUCT{countOfTimes,v8_isolate_memory,integer,required,}
+how many times was the garbage collection run in these 10 seconds
+
+@RESTSTRUCT{heapMax,v8_isolate_memory,integer,required,}
+High watermark of all garbage collection runs in 10 seconds
+
+@RESTSTRUCT{heapMin,v8_isolate_memory,integer,required,}
+Low watermark of all garbage collection runs in these 10 seconds
 
 
 @RESTSTRUCT{threads,server_statistics_struct,object,required,server_threads_struct}

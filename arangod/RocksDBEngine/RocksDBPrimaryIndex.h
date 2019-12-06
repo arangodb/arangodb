@@ -43,8 +43,8 @@ class Methods;
 
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
-  friend class RocksDBPrimaryIndexRangeIterator;
   friend class RocksDBPrimaryIndexInIterator;
+  template<bool reverse> friend class RocksDBPrimaryIndexRangeIterator;
   friend class RocksDBAllIndexIterator;
   friend class RocksDBAnyIndexIterator;
 
@@ -90,14 +90,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   bool lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef key,
                       LocalDocumentId& id, TRI_voc_rid_t& revisionId) const;
 
-  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                            arangodb::aql::AstNode const* node,
-                                            arangodb::aql::Variable const* reference, 
-                                            size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
   
-  Index::UsageCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
-                                          arangodb::aql::Variable const* reference, 
-                                          size_t itemsInIndex) const override;
+  Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
+                                         arangodb::aql::Variable const* reference, 
+                                         size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,
@@ -106,9 +106,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                               arangodb::aql::Variable const* reference) const override;
-
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) const;
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,

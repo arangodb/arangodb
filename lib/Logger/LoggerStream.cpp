@@ -21,12 +21,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-// LoggerStream is just a helper, the LoggerStream.h cannot be included
-// standalone
-#include "Logger.h"
-
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
+#include <string>
+
+#include "LoggerStream.h"
+
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -46,8 +48,6 @@ LoggerStream::~LoggerStream() {
 // print a hex representation of the binary data
 LoggerStream& LoggerStream::operator<<(Logger::BINARY const& binary) {
   try {
-    std::ostringstream tmp;
-
     uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
     uint8_t const* end = ptr + binary.size;
 
@@ -57,11 +57,10 @@ LoggerStream& LoggerStream::operator<<(Logger::BINARY const& binary) {
       uint8_t n1 = n >> 4;
       uint8_t n2 = n & 0x0F;
 
-      tmp << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
-          << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
+      _out << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
+           << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
       ++ptr;
     }
-    _out << tmp.str();
   } catch (...) {
     // ignore any errors here. logging should not have side effects
   }
@@ -82,12 +81,10 @@ LoggerStream& LoggerStream::operator<<(Logger::CHARS const& data) {
 
 LoggerStream& LoggerStream::operator<<(Logger::RANGE const& range) {
   try {
-    std::ostringstream tmp;
-    tmp << range.baseAddress << " - "
-        << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
-                                    range.size)
-        << " (" << range.size << " bytes)";
-    _out << tmp.str();
+    _out << range.baseAddress << " - "
+         << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
+                                     range.size)
+         << " (" << range.size << " bytes)";
   } catch (...) {
     // ignore any errors here. logging should not have side effects
   }

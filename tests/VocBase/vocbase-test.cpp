@@ -24,7 +24,8 @@
 #include "gtest/gtest.h"
 
 #include "../IResearch/common.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -37,12 +38,11 @@
 #include <memory>
 
 namespace {
-
 struct TestView : public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
       : arangodb::LogicalView(vocbase, definition, planVersion) {}
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&,
-                                                bool, bool) const override {
+  virtual arangodb::Result appendVelocyPackImpl(
+      arangodb::velocypack::Builder&, Serialization) const override {
     return arangodb::Result();
   }
   virtual arangodb::Result dropImpl() override {
@@ -86,57 +86,14 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 class VocbaseTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::tests::mocks::MockAqlServer server;
   ViewFactory viewFactory;
 
-  VocbaseTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ViewTypesFeature(server),
-                          false);  // required for TRI_vocbase_t::createView(...)
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
+  VocbaseTest() {
     // register view factory
-    arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>()
-        ->emplace(arangodb::LogicalDataSource::Type::emplace(
-                      arangodb::velocypack::StringRef("testViewType")),
-                  viewFactory);
-  }
-
-  ~VocbaseTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
+    server.getFeature<arangodb::ViewTypesFeature>().emplace(
+        arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
+        viewFactory);
   }
 };
 
@@ -146,145 +103,148 @@ class VocbaseTest : public ::testing::Test {
 
 TEST_F(VocbaseTest, test_isAllowedName) {
   // direct (non-system)
+  std::string const ratherLong(256, 'x');
+  std::string const tooLong(257, 'x');
   {
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(
-                              false, arangodb::velocypack::StringRef(nullptr, 0))));
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(""))));
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(
-                                                                 "abc123"))));
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(
-                                                                  "123abc"))));
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("123"))));
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(
-                                                                  "_123"))));
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(
-                                                                  "_abc"))));
-    EXPECT_TRUE(
-        (false == TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))));  // longer than TRI_COL_NAME_LENGTH
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(nullptr, 0)));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("")));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("abc123")));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("123abc")));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("123")));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("_123")));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("_abc")));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))); 
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(ratherLong)));  
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(tooLong)));  // longer than TRI_COL_NAME_LENGTH
   }
 
   // direct (system)
   {
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(
-                              true, arangodb::velocypack::StringRef(nullptr, 0))));
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(""))));
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(
-                                                                "abc123"))));
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(
-                                                                 "123abc"))));
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("123"))));
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("_123"))));
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("_abc"))));
-    EXPECT_TRUE(
-        (false == TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))));  // longer than TRI_COL_NAME_LENGTH
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(nullptr, 0)));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("")));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("abc123")));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("123abc")));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("123")));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("_123")));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("_abc")));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef("abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"))); 
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(ratherLong)));  
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(tooLong)));  // longer than TRI_COL_NAME_LENGTH
   }
 
   // slice (default)
   {
     auto json0 = arangodb::velocypack::Parser::fromJson("{ }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json0->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json0->slice()));
     auto json1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json1->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json1->slice()));
     auto json2 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"abc123\" }");
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(json2->slice())));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json2->slice()));
     auto json3 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"123abc\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json3->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json3->slice()));
     auto json4 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"123\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json4->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json4->slice()));
     auto json5 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"_123\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json5->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json5->slice()));
     auto json6 =
         arangodb::velocypack::Parser::fromJson("{ \"name\": \"_abc\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json6->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json6->slice()));
     auto json7 = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": "
         "\"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
         "6789\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json7->slice())));  // longer than TRI_COL_NAME_LENGTH
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json7->slice())); 
+    auto json8 = arangodb::velocypack::Parser::fromJson("{\"name\":\"" + tooLong + "\"}");
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json8->slice())); 
   }
 
   // slice (non-system)
   {
     auto json0 =
         arangodb::velocypack::Parser::fromJson("{ \"isSystem\": false }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json0->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json0->slice()));
     auto json1 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json1->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json1->slice()));
     auto json2 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"abc123\" }");
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(json2->slice())));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json2->slice()));
     auto json3 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"123abc\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json3->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json3->slice()));
     auto json4 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"123\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json4->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json4->slice()));
     auto json5 = arangodb::velocypack::Parser::fromJson(
         "{\"isSystem\": false, \"name\": \"_123\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json5->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json5->slice()));
     auto json6 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": \"_abc\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json6->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json6->slice()));
     auto json7 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": 123 }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json7->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json7->slice()));
     auto json8 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": 123, \"name\": \"abc\" }");
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(json8->slice())));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json8->slice()));
     auto json9 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": false, \"name\": "
         "\"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
         "6789\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json9->slice())));  // longer than TRI_COL_NAME_LENGTH
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json9->slice())); 
+    auto json10 = arangodb::velocypack::Parser::fromJson("{\"isSystem\":false, \"name\":\"" + tooLong + "\"}");
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json10->slice())); 
   }
 
   // slice (system)
   {
     auto json0 =
         arangodb::velocypack::Parser::fromJson("{ \"isSystem\": true }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json0->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json0->slice()));
     auto json1 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json1->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json1->slice()));
     auto json2 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"abc123\" }");
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(json2->slice())));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json2->slice()));
     auto json3 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"123abc\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json3->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json3->slice()));
     auto json4 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"123\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json4->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json4->slice()));
     auto json5 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"_123\" }");
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(json5->slice())));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json5->slice()));
     auto json6 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": \"_abc\" }");
-    EXPECT_TRUE((true == TRI_vocbase_t::IsAllowedName(json6->slice())));
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json6->slice()));
     auto json7 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": 123 }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json7->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json7->slice()));
     auto json8 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": 123, \"name\": \"_abc\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json8->slice())));
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json8->slice()));
     auto json9 = arangodb::velocypack::Parser::fromJson(
         "{ \"isSystem\": true, \"name\": "
         "\"abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"
         "6789\" }");
-    EXPECT_TRUE((false == TRI_vocbase_t::IsAllowedName(json9->slice())));  // longer than TRI_COL_NAME_LENGTH
+    EXPECT_TRUE(TRI_vocbase_t::IsAllowedName(json9->slice())); 
+    auto json10 = arangodb::velocypack::Parser::fromJson(
+        "{ \"isSystem\": true, \"name\": \"" + tooLong + "\"}");
+    EXPECT_FALSE(TRI_vocbase_t::IsAllowedName(json10->slice())); 
   }
 }
 
 TEST_F(VocbaseTest, test_isSystemName) {
-  EXPECT_TRUE((false == TRI_vocbase_t::IsSystemName("")));
-  EXPECT_TRUE((true == TRI_vocbase_t::IsSystemName("_")));
-  EXPECT_TRUE((true == TRI_vocbase_t::IsSystemName("_abc")));
-  EXPECT_TRUE((false == TRI_vocbase_t::IsSystemName("abc")));
+  EXPECT_FALSE(TRI_vocbase_t::IsSystemName(""));
+  EXPECT_TRUE(TRI_vocbase_t::IsSystemName("_"));
+  EXPECT_TRUE(TRI_vocbase_t::IsSystemName("_abc"));
+  EXPECT_FALSE(TRI_vocbase_t::IsSystemName("abc"));
 }
 
 TEST_F(VocbaseTest, test_lookupDataSource) {
@@ -293,122 +253,122 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
       "\"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" }");  // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
   // not present collection (no datasource)
   {
-    EXPECT_TRUE((true == !vocbase.lookupDataSource(100)));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("100")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testCollection")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testCollectionGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection(100)));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("100")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("testCollection")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("testCollectionGUID")));
+    EXPECT_FALSE(vocbase.lookupDataSource(100));
+    EXPECT_FALSE(vocbase.lookupDataSource("100"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testCollection"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testCollectionGUID"));
+    EXPECT_FALSE(vocbase.lookupCollection(100));
+    EXPECT_FALSE(vocbase.lookupCollection("100"));
+    EXPECT_FALSE(vocbase.lookupCollection("testCollection"));
+    EXPECT_FALSE(vocbase.lookupCollection("testCollectionGUID"));
   }
 
   // not present view (no datasource)
   {
-    EXPECT_TRUE((true == !vocbase.lookupDataSource(200)));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("200")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testViewGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupView(200)));
-    EXPECT_TRUE((true == !vocbase.lookupView("200")));
-    EXPECT_TRUE((true == !vocbase.lookupView("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupView("testViewGUID")));
+    EXPECT_FALSE(vocbase.lookupDataSource(200));
+    EXPECT_FALSE(vocbase.lookupDataSource("200"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testView"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testViewGUID"));
+    EXPECT_FALSE(vocbase.lookupView(200));
+    EXPECT_FALSE(vocbase.lookupView("200"));
+    EXPECT_FALSE(vocbase.lookupView("testView"));
+    EXPECT_FALSE(vocbase.lookupView("testViewGUID"));
   }
 
   auto collection = vocbase.createCollection(collectionJson->slice());
   auto view = vocbase.createView(viewJson->slice());
 
-  EXPECT_TRUE((false == collection->deleted()));
-  EXPECT_TRUE((false == view->deleted()));
+  EXPECT_FALSE(collection->deleted());
+  EXPECT_FALSE(view->deleted());
 
   // not present collection (is view)
   {
-    EXPECT_TRUE((false == !vocbase.lookupDataSource(200)));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("200")));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testViewGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection(200)));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("200")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("testViewGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupCollectionByUuid("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupCollectionByUuid("testViewGUID")));
+    EXPECT_FALSE(!vocbase.lookupDataSource(200));
+    EXPECT_FALSE(!vocbase.lookupDataSource("200"));
+    EXPECT_FALSE(!vocbase.lookupDataSource("testView"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testViewGUID"));
+    EXPECT_FALSE(vocbase.lookupCollection(200));
+    EXPECT_FALSE(vocbase.lookupCollection("200"));
+    EXPECT_FALSE(vocbase.lookupCollection("testView"));
+    EXPECT_FALSE(vocbase.lookupCollection("testViewGUID"));
+    EXPECT_FALSE(vocbase.lookupCollectionByUuid("testView"));
+    EXPECT_FALSE(vocbase.lookupCollectionByUuid("testViewGUID"));
   }
 
   // not preset view (is collection)
   {
-    EXPECT_TRUE((false == !vocbase.lookupDataSource(100)));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("100")));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("testCollection")));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("testCollectionGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupView(100)));
-    EXPECT_TRUE((true == !vocbase.lookupView("100")));
-    EXPECT_TRUE((true == !vocbase.lookupView("testCollection")));
-    EXPECT_TRUE((true == !vocbase.lookupView("testCollectionGUID")));
+    EXPECT_FALSE(!vocbase.lookupDataSource(100));
+    EXPECT_FALSE(!vocbase.lookupDataSource("100"));
+    EXPECT_FALSE(!vocbase.lookupDataSource("testCollection"));
+    EXPECT_FALSE(!vocbase.lookupDataSource("testCollectionGUID"));
+    EXPECT_FALSE(vocbase.lookupView(100));
+    EXPECT_FALSE(vocbase.lookupView("100"));
+    EXPECT_FALSE(vocbase.lookupView("testCollection"));
+    EXPECT_FALSE(vocbase.lookupView("testCollectionGUID"));
   }
 
   // present collection
   {
-    EXPECT_TRUE((false == !vocbase.lookupDataSource(100)));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("100")));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("testCollection")));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("testCollectionGUID")));
-    EXPECT_TRUE((false == !vocbase.lookupCollection(100)));
-    EXPECT_TRUE((false == !vocbase.lookupCollection("100")));
-    EXPECT_TRUE((false == !vocbase.lookupCollection("testCollection")));
-    EXPECT_TRUE((false == !vocbase.lookupCollection("testCollectionGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupCollectionByUuid("testCollection")));
+    EXPECT_FALSE(!vocbase.lookupDataSource(100));
+    EXPECT_FALSE(!vocbase.lookupDataSource("100"));
+    EXPECT_FALSE(!vocbase.lookupDataSource("testCollection"));
+    EXPECT_FALSE(!vocbase.lookupDataSource("testCollectionGUID"));
+    EXPECT_FALSE(!vocbase.lookupCollection(100));
+    EXPECT_FALSE(!vocbase.lookupCollection("100"));
+    EXPECT_FALSE(!vocbase.lookupCollection("testCollection"));
+    EXPECT_FALSE(!vocbase.lookupCollection("testCollectionGUID"));
+    EXPECT_FALSE(vocbase.lookupCollectionByUuid("testCollection"));
     EXPECT_TRUE(
         (false == !vocbase.lookupCollectionByUuid("testCollectionGUID")));
   }
 
   // present view
   {
-    EXPECT_TRUE((false == !vocbase.lookupDataSource(200)));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("200")));
-    EXPECT_TRUE((false == !vocbase.lookupDataSource("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testViewGUID")));
-    EXPECT_TRUE((false == !vocbase.lookupView(200)));
-    EXPECT_TRUE((false == !vocbase.lookupView("200")));
-    EXPECT_TRUE((false == !vocbase.lookupView("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupView("testViewGUID")));
+    EXPECT_FALSE(!vocbase.lookupDataSource(200));
+    EXPECT_FALSE(!vocbase.lookupDataSource("200"));
+    EXPECT_FALSE(!vocbase.lookupDataSource("testView"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testViewGUID"));
+    EXPECT_FALSE(!vocbase.lookupView(200));
+    EXPECT_FALSE(!vocbase.lookupView("200"));
+    EXPECT_FALSE(!vocbase.lookupView("testView"));
+    EXPECT_FALSE(vocbase.lookupView("testViewGUID"));
   }
 
-  EXPECT_TRUE((true == vocbase.dropCollection(collection->id(), true, 0).ok()));
-  EXPECT_TRUE((true == view->drop().ok()));
-  EXPECT_TRUE((true == collection->deleted()));
-  EXPECT_TRUE((true == view->deleted()));
+  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true, 0).ok());
+  EXPECT_TRUE(view->drop().ok());
+  EXPECT_TRUE(collection->deleted());
+  EXPECT_TRUE(view->deleted());
 
   // not present collection (deleted)
   {
-    EXPECT_TRUE((true == !vocbase.lookupDataSource(100)));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("100")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testCollection")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testCollectionGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection(100)));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("100")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("testCollection")));
-    EXPECT_TRUE((true == !vocbase.lookupCollection("testCollectionGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupCollectionByUuid("testCollection")));
+    EXPECT_FALSE(vocbase.lookupDataSource(100));
+    EXPECT_FALSE(vocbase.lookupDataSource("100"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testCollection"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testCollectionGUID"));
+    EXPECT_FALSE(vocbase.lookupCollection(100));
+    EXPECT_FALSE(vocbase.lookupCollection("100"));
+    EXPECT_FALSE(vocbase.lookupCollection("testCollection"));
+    EXPECT_FALSE(vocbase.lookupCollection("testCollectionGUID"));
+    EXPECT_FALSE(vocbase.lookupCollectionByUuid("testCollection"));
     EXPECT_TRUE(
         (true == !vocbase.lookupCollectionByUuid("testCollectionGUID")));
   }
 
   // not present view (deleted)
   {
-    EXPECT_TRUE((true == !vocbase.lookupDataSource(200)));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("200")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupDataSource("testViewGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupView(200)));
-    EXPECT_TRUE((true == !vocbase.lookupView("200")));
-    EXPECT_TRUE((true == !vocbase.lookupView("testView")));
-    EXPECT_TRUE((true == !vocbase.lookupView("testViewGUID")));
-    EXPECT_TRUE((true == !vocbase.lookupCollectionByUuid("testCollection")));
+    EXPECT_FALSE(vocbase.lookupDataSource(200));
+    EXPECT_FALSE(vocbase.lookupDataSource("200"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testView"));
+    EXPECT_FALSE(vocbase.lookupDataSource("testViewGUID"));
+    EXPECT_FALSE(vocbase.lookupView(200));
+    EXPECT_FALSE(vocbase.lookupView("200"));
+    EXPECT_FALSE(vocbase.lookupView("testView"));
+    EXPECT_FALSE(vocbase.lookupView("testViewGUID"));
+    EXPECT_FALSE(vocbase.lookupCollectionByUuid("testCollection"));
     EXPECT_TRUE(
         (true == !vocbase.lookupCollectionByUuid("testCollectionGUID")));
   }

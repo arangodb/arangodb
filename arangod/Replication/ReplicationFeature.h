@@ -25,12 +25,12 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
+#include "Replication/GlobalReplicationApplier.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class GlobalReplicationApplier;
 class GeneralResponse;
 
 class ReplicationFeature final : public application_features::ApplicationFeature {
@@ -60,8 +60,35 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// @brief stop the replication applier for a single database
   void stopApplier(TRI_vocbase_t* vocbase);
 
+  /// @brief returns the connect timeout for replication requests
+  double connectTimeout() const { return _connectTimeout; }
+  
+  /// @brief returns the request timeout for replication requests
+  double requestTimeout() const { return _requestTimeout; }
+  
+  /// @brief returns the connect timeout for replication requests
+  /// this will return the provided value if the user has not adjusted the
+  /// timeout via configuration. otherwise it will return the configured
+  /// timeout value
+  double checkConnectTimeout(double value) const;
+  
+  /// @brief returns the request timeout for replication requests
+  /// this will return the provided value if the user has not adjusted the
+  /// timeout via configuration. otherwise it will return the configured
+  /// timeout value
+  double checkRequestTimeout(double value) const;
+
   /// @brief automatic failover of replication using the agency
   bool isActiveFailoverEnabled() const { return _enableActiveFailover; }
+
+  /// @brief track the number of (parallel) tailing operations
+  /// will throw an exception if the number of concurrently running operations
+  /// would exceed the configured maximum
+  void trackTailingStart();
+
+  /// @brief count down the number of parallel tailing operations
+  /// must only be called after a successful call to trackTailingstart
+  void trackTailingEnd() noexcept;
 
   /// @brief set the x-arango-endpoint header
   static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
@@ -72,10 +99,30 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   static ReplicationFeature* INSTANCE;
 
  private:
+  /// @brief connection timeout for replication requests
+  double _connectTimeout;
+  
+  /// @brief request timeout for replication requests
+  double _requestTimeout;
+
+  /// @brief whether or not the user-defined connect timeout is forced to be used
+  /// this is true only if the user set the connect timeout at startup
+  bool _forceConnectTimeout;
+  
+  /// @brief whether or not the user-defined request timeout is forced to be used
+  /// this is true only if the user set the request timeout at startup
+  bool _forceRequestTimeout;
+
   bool _replicationApplierAutoStart;
 
   /// Enable the active failover
   bool _enableActiveFailover;
+  
+  /// @brief number of currently operating tailing operations
+  std::atomic<uint64_t> _parallelTailingInvocations;
+
+  /// @brief maximum number of parallel tailing operations invocations
+  uint64_t _maxParallelTailingInvocations;
 
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 };

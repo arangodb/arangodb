@@ -46,7 +46,7 @@ class MMFilesWalMarker {
   MMFilesWalMarker() = default;
 
  public:
-  virtual ~MMFilesWalMarker() {}
+  virtual ~MMFilesWalMarker() = default;
 
   /// @brief returns the marker type
   virtual MMFilesMarkerType type() const = 0;

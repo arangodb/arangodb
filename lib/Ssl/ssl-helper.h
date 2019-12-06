@@ -24,13 +24,15 @@
 #ifndef ARANGODB_BASICS_SSL__HELPER_H
 #define ARANGODB_BASICS_SSL__HELPER_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <string>
+#include <unordered_set>
 
-#include <openssl/err.h>
-#include <openssl/ssl.h>
+#include <boost/asio/ssl/context.hpp>
+
+#include <openssl/opensslv.h>
 
 #include "Basics/asio_ns.h"
-#include <unordered_set>
 
 namespace arangodb {
 // SSL protocol methods
@@ -48,7 +50,10 @@ enum SslProtocol {
   SSL_V3 = 3,
   TLS_V1 = 4,
   TLS_V12 = 5,
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
   TLS_V13 = 6,
+#endif
+  TLS_GENERIC = 9,
 
   SSL_LAST
 };

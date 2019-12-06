@@ -48,7 +48,8 @@ struct index_reader;
 struct sub_reader;
 struct term_reader;
 
-typedef bool (*score_less_f)(const byte_type* lhs, const byte_type* rhs);
+typedef bool(*score_less_f)(const byte_type* lhs, const byte_type* rhs);
+typedef void(*score_f)(const void* ctx, byte_type*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -98,29 +99,23 @@ class IRESEARCH_API sort {
   /// @brief stateful object used for computing the document score based on the
   ///        stored state
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API scorer {
+  class IRESEARCH_API score_ctx {
    public:
-    DECLARE_UNIQUE_PTR(scorer);
-    DEFINE_FACTORY_INLINE(scorer)
+    DECLARE_UNIQUE_PTR(score_ctx);
 
-    virtual ~scorer() = default;
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set the document score based on the stored state
-    ////////////////////////////////////////////////////////////////////////////////
-    virtual void score(byte_type* score_buf) = 0;
+    virtual ~score_ctx() = default;
   }; // scorer
 
-  template <typename T>
-  class scorer_base : public scorer {
-   public:
-    typedef T score_t;
+  template<typename T>
+  FORCE_INLINE static T& score_cast(byte_type* score_buf) NOEXCEPT {
+    assert(score_buf);
+    return *reinterpret_cast<T*>(score_buf);
+  }
 
-    FORCE_INLINE static T& score_cast(byte_type* score_buf) NOEXCEPT {
-      assert(score_buf);
-      return *reinterpret_cast<T*>(score_buf);
-    }
-  }; // scorer_base
+  template<typename T>
+  FORCE_INLINE static const T& score_cast(const byte_type* score_buf) NOEXCEPT {
+    return score_cast<T>(const_cast<byte_type*>(score_buf));
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object used for collecting index statistics, for a specific matched
@@ -164,18 +159,12 @@ class IRESEARCH_API sort {
   /// @class sort::prepared
   /// @brief base class for all prepared(compiled) sort entries
   ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared : public util::attribute_view_provider {
+  class IRESEARCH_API prepared {
    public:
     DECLARE_UNIQUE_PTR(prepared);
 
     prepared() = default;
-    explicit prepared(attribute_view&& attrs) NOEXCEPT;
     virtual ~prepared() = default;
-
-    using util::attribute_view_provider::attributes;
-    virtual attribute_view& attributes() NOEXCEPT override final {
-      return attrs_;
-    }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief store collected index statistics into 'stats' of the
@@ -217,13 +206,12 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create a stateful scorer used for computation of document scores
     ////////////////////////////////////////////////////////////////////////////////
-    virtual scorer::ptr prepare_scorer(
+    virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
       const attribute_view& doc_attrs,
-      boost_t boost
-    ) const = 0;
+      boost_t boost) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create an object to be used for collecting index statistics, one
@@ -630,10 +618,7 @@ class IRESEARCH_API order final {
       /// @note always called on each matched 'field' irrespective of if it
       ///       contains a matching 'term'
       //////////////////////////////////////////////////////////////////////////
-      void collect(
-        const sub_reader& segment,
-        const term_reader& field
-      ) const;
+      void collect(const sub_reader& segment, const term_reader& field) const;
 
       //////////////////////////////////////////////////////////////////////////
       /// @brief collect term related statistics, i.e. term used in the filter
@@ -684,6 +669,18 @@ class IRESEARCH_API order final {
     ////////////////////////////////////////////////////////////////////////////
     class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
      public:
+      struct entry {
+        entry(sort::score_ctx::ptr&& ctx, score_f func, size_t offset)
+          : ctx(std::move(ctx)),
+            func(func),
+            offset(offset) {
+        }
+
+        sort::score_ctx::ptr ctx;
+        score_f func;
+        size_t offset;
+      };
+
       scorers() = default;
       scorers(
         const prepared_order_t& buckets,
@@ -699,7 +696,7 @@ class IRESEARCH_API order final {
 
       void score(byte_type* score) const;
 
-      const std::pair<sort::scorer::ptr, size_t>& operator[](size_t i) const NOEXCEPT {
+      const entry& operator[](size_t i) const NOEXCEPT {
         assert(i < scorers_.size());
         return scorers_[i];
       }
@@ -710,7 +707,7 @@ class IRESEARCH_API order final {
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-      std::vector<std::pair<sort::scorer::ptr, size_t>> scorers_; // scorer + offset
+      std::vector<entry> scorers_; // scorer + offset
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
 

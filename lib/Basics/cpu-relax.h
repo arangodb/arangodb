@@ -25,6 +25,7 @@
 #define ARANGO_CPU_RELAX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #include <thread>
 

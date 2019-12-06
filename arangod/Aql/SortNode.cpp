@@ -21,19 +21,24 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Ast.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/SortRegister.h"
-#include "Aql/SortExecutor.h"
+#include "SortNode.h"
+
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
-#include "Aql/WalkerWorker.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
+#include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SortExecutor.h"
+#include "Aql/SortRegister.h"
+#include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "IResearch/IResearchOrderFactory.h"
-#include "SortNode.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
@@ -63,9 +68,10 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
 
 /// @brief toVelocyPack, for SortNode
-void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           flags);  // call base class method
+void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
+                                  std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
 
   nodes.add(VPackValue("elements"));
   {
@@ -220,27 +226,29 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
-) const {
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
   std::vector<SortRegister> sortRegs;
-  for(auto const& element : _elements){
+  for (auto const& element : _elements) {
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
-    sortRegs.push_back(SortRegister{id, element});
+    sortRegs.emplace_back(id, element);
   }
   SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
                           getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                          calcRegsToKeep(), engine.getQuery()->trx(), _stable);
-  if (sorterType() == SorterType::Standard){
-    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
+                          getRegisterPlan()->nrRegs[getDepth()],
+                          getRegsToClear(), calcRegsToKeep(),
+                          engine.getQuery()->trx()->transactionContextPtr()->getVPackOptions(),
+                          _stable);
+  if (sorterType() == SorterType::Standard) {
+    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,
+                                                              std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this, std::move(infos));
+    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this,
+                                                                         std::move(infos));
   }
 }
 

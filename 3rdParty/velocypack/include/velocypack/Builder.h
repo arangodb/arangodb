@@ -40,6 +40,7 @@
 #include "velocypack/Buffer.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
+#include "velocypack/Serializable.h"
 #include "velocypack/Slice.h"
 #include "velocypack/StringRef.h"
 #include "velocypack/Value.h"
@@ -74,7 +75,7 @@ class Builder {
   // buffer. Whenever the stack is empty, one can use the start,
   // size and slice methods to get out the ready built VPack
   // object(s).
- 
+
  private:
   std::shared_ptr<Buffer<uint8_t>> _buffer;  // Here we collect the result
   Buffer<uint8_t>* _bufferPtr;      // used for quicker access than shared_ptr
@@ -89,38 +90,59 @@ class Builder {
 
  public:
   Options const* options;
- 
-  // create an empty Builder, using default Options 
-  Builder();
+
+  // create an empty Builder, using Options
+  explicit Builder(Options const* options = &Options::Defaults);
   
-  explicit Builder(Options const* options);
+  // create an empty Builder, using an existing buffer
   explicit Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer,
                    Options const* options = &Options::Defaults);
+
+  // create a Builder that uses an existing Buffer. the Builder will not
+  // claim ownership for this Buffer
   explicit Builder(Buffer<uint8_t>& buffer,
                    Options const* options = &Options::Defaults);
+
+  // populate a Builder from a Slice
   explicit Builder(Slice slice, Options const* options = &Options::Defaults);
+
   ~Builder() = default;
 
   Builder(Builder const& that);
   Builder& operator=(Builder const& that);
-  Builder(Builder&& that);
-  Builder& operator=(Builder&& that);
+  Builder(Builder&& that) noexcept;
+  Builder& operator=(Builder&& that) noexcept;
 
-  // get a const reference to the Builder's Buffer object
-  std::shared_ptr<Buffer<uint8_t>> const& buffer() const { return _buffer; }
+  // get a reference to the Builder's Buffer object
+  // note: this object may be a nullptr if the buffer was already stolen
+  // from the Builder, or if the Builder has no ownership for the Buffer
+  std::shared_ptr<Buffer<uint8_t>> const& buffer() const { 
+    return _buffer; 
+  }
+
+  Buffer<uint8_t>& bufferRef() const { 
+    if (_bufferPtr == nullptr) {
+      throw Exception(Exception::InternalError, "Builder has no Buffer");
+    }
+    return *_bufferPtr; 
+  }
 
   // steal the Builder's Buffer object. afterwards the Builder
-  // is unusable
+  // is unusable - note: this may return a nullptr if the Builder does not
+  // own the Buffer!
   std::shared_ptr<Buffer<uint8_t>> steal() {
     // After a steal the Builder is broken!
-    std::shared_ptr<Buffer<uint8_t>> res = _buffer;
-    _buffer.reset();
+    std::shared_ptr<Buffer<uint8_t>> res(std::move(_buffer));
     _bufferPtr = nullptr;
-    _pos = 0;
+    _start = nullptr;
+    clear();
     return res;
   }
 
-  uint8_t const* data() const noexcept { return _bufferPtr->data(); }
+  uint8_t const* data() const noexcept {
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
+    return _bufferPtr->data(); 
+  }
 
   std::string toString() const;
 
@@ -152,6 +174,7 @@ class Builder {
     (void) checkOverflow(_pos + len);
 #endif
 
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->reserve(len);
     _start = _bufferPtr->data();
   }
@@ -160,8 +183,11 @@ class Builder {
   void clear() noexcept {
     _pos = 0;
     _stack.clear();
-    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
-    _bufferPtr->reset();
+    _index.clear();
+    if (_bufferPtr != nullptr) {
+      _bufferPtr->reset();
+      _start = _bufferPtr->data();
+    }
     _keyWritten = false;
   }
 
@@ -208,7 +234,7 @@ class Builder {
     ValueLength const tos = _stack.back();
     return _start[tos] == 0x0b || _start[tos] == 0x14;
   }
-  
+
   inline void openArray(bool unindexed = false) {
     openCompoundValue(unindexed ? 0x13 : 0x06);
   }
@@ -216,7 +242,7 @@ class Builder {
   inline void openObject(bool unindexed = false) {
     openCompoundValue(unindexed ? 0x14 : 0x0b);
   }
-  
+
   template <typename T>
   uint8_t* addUnchecked(char const* attrName, std::size_t attrLength, T const& sub) {
     bool haveReported = false;
@@ -251,7 +277,7 @@ class Builder {
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
     return addInternal<Value>(attrName, attrLength, sub);
   }
- 
+
   // Add a subvalue into an object from a Slice:
   inline uint8_t* add(std::string const& attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, sub);
@@ -265,7 +291,7 @@ class Builder {
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Slice const& sub) {
     return addInternal<Slice>(attrName, attrLength, sub);
   }
- 
+
   // Add a subvalue into an object from a ValuePair:
   inline uint8_t* add(std::string const& attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, sub);
@@ -279,20 +305,39 @@ class Builder {
   inline uint8_t* add(char const* attrName, std::size_t attrLength, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, attrLength, sub);
   }
- 
+
+  // Add a subvalue into an object from a Serializable:
+  inline uint8_t* add(std::string const& attrName, Serialize const& sub) {
+    return addInternal<Serializable>(attrName, sub._sable);
+  }
+  inline uint8_t* add(StringRef const& attrName, Serialize const& sub) {
+    return addInternal<Serializable>(attrName, sub._sable);
+  }
+  inline uint8_t* add(char const* attrName, Serialize const& sub) {
+    return addInternal<Serializable>(attrName, sub._sable);
+  }
+  inline uint8_t* add(char const* attrName, std::size_t attrLength, Serialize const& sub) {
+    return addInternal<Serializable>(attrName, attrLength, sub._sable);
+  }
+
   // Add a subvalue into an array from a Value:
   inline uint8_t* add(Value const& sub) {
-    return addInternal<Value>(sub); 
+    return addInternal<Value>(sub);
   }
-  
+
   // Add a slice to an array
   inline uint8_t* add(Slice const& sub) {
-    return addInternal<Slice>(sub); 
+    return addInternal<Slice>(sub);
   }
 
   // Add a subvalue into an array from a ValuePair:
   inline uint8_t* add(ValuePair const& sub) {
     return addInternal<ValuePair>(sub);
+  }
+
+  // Add a subvalue into an array from a Serializable:
+  inline uint8_t* add(Serialize const& sub) {
+    return addInternal<Serializable>(sub._sable);
   }
 
   // Add an External slice to an array
@@ -327,7 +372,7 @@ class Builder {
       throw;
     }
   }
-  
+
   // Add all subkeys and subvalues into an object from an ObjectIterator
   // and leaves open the object intentionally
   uint8_t* add(ObjectIterator&& sub);
@@ -445,18 +490,23 @@ class Builder {
 
   void addInt(int64_t v) {
     if (v >= 0 && v <= 9) {
+      // SmallInt
       appendByte(static_cast<uint8_t>(0x30 + v));
     } else if (v < 0 && v >= -6) {
+      // SmallInt
       appendByte(static_cast<uint8_t>(0x40 + v));
     } else {
+      // regular int
       appendInt(v, 0x1f);
     }
   }
 
   void addUInt(uint64_t v) {
     if (v <= 9) {
+      // SmallInt
       appendByte(static_cast<uint8_t>(0x30 + v));
     } else {
+      // regular UInt
       appendUInt(v, 0x27);
     }
   }
@@ -524,7 +574,7 @@ class Builder {
   uint8_t* addInternal(std::string const& attrName, T const& sub) {
     return addInternal<T>(attrName.data(), attrName.size(), sub);
   }
-  
+
   template <typename T>
   uint8_t* addInternal(StringRef const& attrName, T const& sub) {
     return addInternal<T>(attrName.data(), attrName.size(), sub);
@@ -539,8 +589,8 @@ class Builder {
   uint8_t* addInternal(char const* attrName, std::size_t attrLength, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
-      ValueLength& tos = _stack.back();
-      if (VELOCYPACK_UNLIKELY(_start[tos] != 0x0b && _start[tos] != 0x14)) {
+      ValueLength const to = _stack.back();
+      if (VELOCYPACK_UNLIKELY(_start[to] != 0x0b && _start[to] != 0x14)) {
         throw Exception(Exception::BuilderNeedOpenObject);
       }
       if (VELOCYPACK_UNLIKELY(_keyWritten)) {
@@ -579,7 +629,7 @@ class Builder {
       throw;
     }
   }
-  
+
   void addCompoundValue(uint8_t type) {
     reserve(9);
     // an Array or Object is started:
@@ -596,9 +646,9 @@ class Builder {
   void openCompoundValue(uint8_t type) {
     bool haveReported = false;
     if (!_stack.empty()) {
-      ValueLength& tos = _stack.back();
+      ValueLength const to = _stack.back();
       if (!_keyWritten) {
-        if (VELOCYPACK_UNLIKELY(_start[tos] != 0x06 && _start[tos] != 0x13)) {
+        if (VELOCYPACK_UNLIKELY(_start[to] != 0x06 && _start[to] != 0x13)) {
           throw Exception(Exception::BuilderNeedOpenArray);
         }
         reportAdd();
@@ -624,6 +674,12 @@ class Builder {
 
   uint8_t* set(Slice const& item);
 
+  uint8_t* set(Serializable const& sable) {
+    auto const oldPos = _pos;
+    sable.toVelocyPack(*this);
+    return _start + oldPos;
+  }
+
   void cleanupAdd() noexcept {
     std::size_t depth = _stack.size() - 1;
     VELOCYPACK_ASSERT(!_index[depth].empty());
@@ -640,7 +696,7 @@ class Builder {
     reserve(n);
     appendLengthUnchecked<n>(v);
   }
-  
+
   template <uint64_t n>
   void appendLengthUnchecked(ValueLength v) {
     for (uint64_t i = 0; i < n; ++i) {
@@ -695,18 +751,18 @@ class Builder {
       x >>= 8;
     }
   }
-  
+
   inline void appendByte(uint8_t value) {
     reserve(1);
     appendByteUnchecked(value);
   }
-  
+
   inline void appendByteUnchecked(uint8_t value) {
     _start[_pos++] = value;
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->advance();
   }
-  
+
   inline void resetTo(std::size_t value) {
     _pos = value;
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
@@ -719,7 +775,7 @@ class Builder {
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->advance(value);
   }
-              
+
   // move byte position x bytes back
   inline void rollback(std::size_t value) noexcept {
     _pos -= value;
@@ -766,9 +822,13 @@ struct ObjectBuilder final : public BuilderContainer,
   }
   ~ObjectBuilder() {
     try {
-      builder->close();
+      if (!builder->isClosed()) {
+        builder->close();
+      }
     } catch (...) {
-      // destructors must not throw
+      // destructors must not throw. however, we can at least
+      // signal something is very wrong in debug mode
+      VELOCYPACK_ASSERT(builder->isClosed());
     }
   }
 };
@@ -793,9 +853,13 @@ struct ArrayBuilder final : public BuilderContainer,
   }
   ~ArrayBuilder() {
     try {
-      builder->close();
+      if (!builder->isClosed()) {
+        builder->close();
+      }
     } catch (...) {
-      // destructors must not throw
+      // destructors must not throw. however, we can at least
+      // signal something is very wrong in debug mode
+      VELOCYPACK_ASSERT(builder->isClosed());
     }
   }
 };

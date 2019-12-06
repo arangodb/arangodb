@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
+#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -111,7 +112,7 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
 
 /// @brief Find index by definition
 /*static*/ std::shared_ptr<Index> PhysicalCollection::findIndex(
-    VPackSlice const& info, std::vector<std::shared_ptr<Index>> const& indexes) {
+    VPackSlice const& info, IndexContainerType const& indexes) {
   TRI_ASSERT(info.isObject());
 
   auto value = info.get(arangodb::StaticStrings::IndexType);  // extract type
@@ -175,7 +176,7 @@ TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(
-    transaction::Methods* trx, VPackSlice const& oldValue,
+    transaction::Methods*, VPackSlice const& oldValue,
     VPackSlice const& newValue, bool isEdgeCollection, bool mergeObjects,
     bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
   b.openObject();
@@ -209,7 +210,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(key, current.value);
+        newValues.try_emplace(key, current.value);
       }
 
       it.next();
@@ -325,7 +326,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 }
 
 /// @brief new object for insert, computes the hash of the key
-Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
+Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
                                               VPackSlice const& value, bool isEdgeCollection,
                                               VPackBuilder& builder, bool isRestore,
                                               TRI_voc_rid_t& revisionId) const {
@@ -348,6 +349,8 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
   } else if (!s.isString()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   } else {
+    TRI_ASSERT(s.isString());
+
     VPackValueLength l;
     char const* p = s.getStringUnchecked(l);
 
@@ -426,7 +429,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
 }
 
 /// @brief new object for remove, must have _key set
-void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
+void PhysicalCollection::newObjectForRemove(transaction::Methods*,
                                             VPackSlice const& oldValue,
                                             VPackBuilder& builder, bool isRestore,
                                             TRI_voc_rid_t& revisionId) const {
@@ -449,7 +452,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
 
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
-Result PhysicalCollection::newObjectForReplace(transaction::Methods* trx,
+Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
                                                VPackSlice const& oldValue,
                                                VPackSlice const& newValue, bool isEdgeCollection,
                                                VPackBuilder& builder, bool isRestore,
@@ -515,7 +518,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods* trx,
 }
 
 /// @brief checks the revision of a document
-int PhysicalCollection::checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
+int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {
   if (expected != 0 && found != expected) {
     return TRI_ERROR_ARANGO_CONFLICT;
@@ -524,28 +527,33 @@ int PhysicalCollection::checkRevision(transaction::Methods* trx, TRI_voc_rid_t e
 }
 
 /// @brief hands out a list of indexes
-std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
   READ_LOCKER(guard, _indexesLock);
-  return _indexes;
+  return { _indexes.begin(), _indexes.end() };
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
-                                         std::function<bool(arangodb::Index const*)> const& filter) const {
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
+                                         std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
-  for (auto const& idx : _indexes) {
-    if (!filter(idx.get())) {
+  for (std::shared_ptr<Index> const& idx : _indexes) {
+    std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
+
+    if (!filter(idx.get(), flags)) {
       continue;
     }
+
     idx->toVelocyPack(result, flags);
   }
   result.close();
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
+futures::Future<OperationResult> PhysicalCollection::figures() {
+  auto buffer = std::make_shared<VPackBufferUInt8>();
+  VPackBuilder builder(buffer);
+  
+  builder.openObject();
 
   // add index information
   size_t sizeIndexes = memory();
@@ -566,15 +574,62 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
     }
   }
 
-  builder->add("indexes", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(numIndexes));
-  builder->add("size", VPackValue(sizeIndexes));
-  builder->close();  // indexes
+  builder.add("indexes", VPackValue(VPackValueType::Object));
+  builder.add("count", VPackValue(numIndexes));
+  builder.add("size", VPackValue(sizeIndexes));
+  builder.close();  // indexes
 
   // add engine-specific figures
   figuresSpecific(builder);
-  builder->close();
-  return builder;
+  builder.close();
+  return OperationResult(Result(), std::move(buffer));
 }
+
+
+bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& left,
+                                                const std::shared_ptr<Index>& right) const {
+  // Primary index always first (but two primary indexes render comparsion
+  // invalid but that`s a bug itself)
+  TRI_ASSERT(!((left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
+               (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)));
+  if (left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return true;
+  }
+  if (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+    return false;
+  }
+
+  // edge indexes should go right after primary
+  if (left->type() != right->type()) {
+    if (right->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      return false;
+    } else if (left->type() == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
+      return true;
+    }
+  }
+
+  // This failpoint allows CRUD tests to trigger reversal
+  // of index operations. Hash index placed always AFTER reversable indexes
+  // could be broken by unique constraint violation or by intentional failpoint.
+  // And this will make possible to deterministically trigger index reversals
+  TRI_IF_FAILURE("HashIndexAlwaysLast") {
+    if (left->type() != right->type()) {
+      if (right->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+        return true;
+      } else if (left->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+        return false;
+      }
+    }
+  }
+
+  // indexes which needs no reverse should be done first to minimize
+  // need for reversal procedures
+  if (left->needsReversal() != right->needsReversal()) {
+    return right->needsReversal();
+  }
+  // use id to make  order of equally-sorted indexes deterministic
+  return left->id() < right->id();
+}
+
 
 }  // namespace arangodb

@@ -33,7 +33,7 @@ is returned when an invalid HTTP method is used.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestWalPropertiesPut}
+@EXAMPLE_ARANGOSH_RUN{RestWalPropertiesPut_mmfiles}
     var url = "/_admin/wal/properties";
     var body = {
       logfileSize: 32 * 1024 * 1024,

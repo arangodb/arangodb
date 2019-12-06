@@ -21,34 +21,28 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "files.h"
+#include <errno.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <algorithm>
+#include <chrono>
+#include <memory>
+#include <thread>
+#include <type_traits>
+#include <utility>
+
+#include "Basics/operating-system.h"
 
 #ifdef _WIN32
 #include <Shlwapi.h>
 #include <tchar.h>
-#include <chrono>
-#include <thread>
+#include <windows.h>
 #endif
-
-#include <algorithm>
-#include <limits.h>
-
-#include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/ReadWriteLock.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "Basics/WriteLocker.h"
-#include "Basics/conversions.h"
-#include "Basics/directories.h"
-#include "Basics/hashes.h"
-#include "Basics/tri-strings.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/ScopeGuard.h"
-#include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
 
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
@@ -62,11 +56,39 @@
 #include <sys/time.h>
 #endif
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
+#endif
+
+#include <zlib.h>
+
+#include "files.h"
+
+#include "Basics/FileUtils.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
+#include "Basics/conversions.h"
+#include "Basics/debugging.h"
+#include "Basics/directories.h"
+#include "Basics/error.h"
+#include "Basics/hashes.h"
+#include "Basics/memory.h"
+#include "Basics/threads.h"
+#include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
 using namespace arangodb::basics;
@@ -662,7 +684,7 @@ int TRI_RemoveDirectoryDeterministic(char const* filename) {
 
 std::string TRI_Dirname(std::string const& path) {
   size_t n = path.size();
-  
+
   if (n == 0) {
     // "" => "."
     return std::string(".");
@@ -742,6 +764,10 @@ std::string TRI_Basename(char const* path) {
       return std::string(p + 1, n - 1);
     }
   }
+}
+
+std::string TRI_Basename(std::string const& path) {
+  return TRI_Basename(path.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1040,6 +1066,184 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
   TRI_CLOSE(fd);
   return result._buffer;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Read a file and pass contents to user function:  true if entire file
+///        processed
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ProcessFile(char const* filename,
+                     std::function<bool(char const* block, size_t size)> const& reader) {
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+  int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
+
+  if (fd == -1) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return false;
+  }
+
+  TRI_string_buffer_t result;
+  TRI_InitStringBuffer(&result, false);
+
+  bool good = true;
+  while (good) {
+    int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_CLOSE(fd);
+      TRI_AnnihilateStringBuffer(&result);
+
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return false;
+    }
+
+    ssize_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+
+    if (n == 0) {
+      break;
+    }
+
+    if (n < 0) {
+      TRI_CLOSE(fd);
+
+      TRI_AnnihilateStringBuffer(&result);
+
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      return false;
+    }
+
+    good = reader(result._buffer, n);
+  }
+
+  TRI_DestroyStringBuffer(&result);
+  TRI_CLOSE(fd);
+  return good;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is compressed and return uncompressed contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+  gzFile gzFd = gzopen(filename,"rb");
+  auto fdGuard = arangodb::scopeGuard([&gzFd]() {
+    if (nullptr != gzFd) {
+      gzclose(gzFd);
+    }
+  });
+
+  char* retPtr = nullptr;
+
+  if (nullptr != gzFd) {
+    TRI_string_buffer_t result;
+    TRI_InitStringBuffer(&result, false);
+
+    while (true) {
+      int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_AnnihilateStringBuffer(&result);
+
+        TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+        return nullptr;
+      }
+
+      ssize_t n = gzread(gzFd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+
+      if (n == 0) {
+        break;
+      }
+
+      if (n < 0) {
+        TRI_AnnihilateStringBuffer(&result);
+
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        return nullptr;
+      }
+
+      TRI_IncreaseLengthStringBuffer(&result, (size_t)n);
+    } // while
+
+    if (length != nullptr) {
+      *length = TRI_LengthStringBuffer(&result);
+    }
+
+    retPtr = result._buffer;
+  } // if
+
+  return retPtr;
+} // TRI_SlurpGzipFile
+
+#ifdef USE_ENTERPRISE
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is encrypted and return unencrypted contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length) {
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+
+  encryptionFeature.setKeyFile(keyfile);
+  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() {
+    encryptionFeature.clearKey();
+  });
+
+  int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
+
+  if (fd == -1) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return nullptr;
+  }
+
+  std::unique_ptr<EncryptionFeature::Context> context;
+  context = encryptionFeature.beginDecryption(fd);
+
+  if (nullptr == context.get() || !context->status().ok()) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return nullptr;
+  }
+
+  TRI_string_buffer_t result;
+  TRI_InitStringBuffer(&result, false);
+
+  while (true) {
+    int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_CLOSE(fd);
+      TRI_AnnihilateStringBuffer(&result);
+
+      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+      return nullptr;
+    }
+
+    ssize_t n = encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+
+    if (n == 0) {
+      break;
+    }
+
+    if (n < 0) {
+      TRI_CLOSE(fd);
+
+      TRI_AnnihilateStringBuffer(&result);
+
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      return nullptr;
+    }
+
+    TRI_IncreaseLengthStringBuffer(&result, (size_t)n);
+  }
+
+  if (length != nullptr) {
+    *length = TRI_LengthStringBuffer(&result);
+  }
+
+  TRI_CLOSE(fd);
+  return result._buffer;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
@@ -1547,7 +1751,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   else {
     std::string pv;
     if (TRI_GETENV("PATH", pv)) {
-      std::vector<std::string> files = basics::StringUtils::split(pv, ':', '\0');
+      std::vector<std::string> files = basics::StringUtils::split(pv, ':');
 
       for (auto const& prefix : files) {
         std::string full;
@@ -1807,6 +2011,27 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
   return true;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hard link; the link target is not altered.
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CreateHardlink(std::string const& existingFile, std::string const& newFile,
+                        std::string& error) {
+#ifndef _WIN32
+  int rc = link(existingFile.c_str(), newFile.c_str());
+
+  if (rc == -1) {
+    error = std::string("failed to create hard link ") + newFile + ": " + strerror(errno);
+  } // if
+
+  return 0 == rc;
+#else
+  error = "Windows TRI_CreateHardlink not written, yet.";
+  return false;
+#endif
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the home directory
 ///
@@ -1848,13 +2073,12 @@ std::string TRI_HomeDirectory() {
 int TRI_Crc32File(char const* path, uint32_t* crc) {
   FILE* fin;
   void* buffer;
-  int bufferSize;
   int res;
   int res2;
 
   *crc = TRI_InitialCrc32();
 
-  bufferSize = 4096;
+  constexpr int bufferSize = 4096;
   buffer = TRI_Allocate((size_t)bufferSize);
 
   if (buffer == nullptr) {
@@ -2034,14 +2258,15 @@ class SystemTempPathSweeper {
   std::string _systemTempPath;
 
  public:
-  SystemTempPathSweeper() : _systemTempPath(){};
+  SystemTempPathSweeper() : _systemTempPath() {}
 
-  ~SystemTempPathSweeper(void) {
+  ~SystemTempPathSweeper() {
     if (!_systemTempPath.empty()) {
       // delete directory iff directory is empty
       TRI_RMDIR(_systemTempPath.c_str());
     }
   }
+
   void init(const char* path) { _systemTempPath = path; }
 };
 
@@ -2099,16 +2324,23 @@ std::string TRI_GetTempPath() {
         // no --temp.path was specified
         // fill template and create directory
         tries = 9;
-  
+
         // create base directories of the new directory (but ignore any failures
         // if they already exist. if this fails, the following mkDTemp will either
         // succeed or fail and return an error
         try {
           long systemError;
           std::string systemErrorStr;
-          TRI_CreateRecursiveDirectory(SystemTempPath.get(), systemError, systemErrorStr);
+          std::string baseDirectory = TRI_Dirname(SystemTempPath.get());
+          if (baseDirectory.size() <= 1) {
+            baseDirectory = SystemTempPath.get();
+          }
+          // create base directory if it does not yet exist
+          TRI_CreateRecursiveDirectory(baseDirectory.data(), systemError, systemErrorStr);
         } catch (...) {}
 
+        // fill template string (XXXXXX) with some pseudo-random value and create
+        // the directory
         res = mkDTemp(SystemTempPath.get(), system.size() + 1);
       }
 
@@ -2213,7 +2445,11 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
 
 std::string TRI_LocateInstallDirectory(char const* argv0, char const* binaryPath) {
   std::string thisPath = TRI_LocateBinaryPath(argv0);
-  return TRI_GetInstallRoot(thisPath, binaryPath) + TRI_DIR_SEPARATOR_CHAR;
+  std::string ret = TRI_GetInstallRoot(thisPath, binaryPath);
+  if (ret.length() != 1 || ret != TRI_DIR_SEPARATOR_STR) {
+    ret += TRI_DIR_SEPARATOR_CHAR;
+  }
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2232,8 +2468,14 @@ std::string TRI_LocateConfigDirectory(char const* binaryPath) {
   }
 
   std::string r = TRI_LocateInstallDirectory(nullptr, binaryPath);
-
-  r += _SYSCONFDIR_;
+  std::string scDir =  _SYSCONFDIR_;
+  if (r.length() == 1 &&
+      r == TRI_DIR_SEPARATOR_STR &&
+      scDir[0] == TRI_DIR_SEPARATOR_CHAR) {
+    r = scDir;
+  } else {
+    r += _SYSCONFDIR_;
+  }
   r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
 
   return r;
@@ -2324,6 +2566,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 #endif
 #endif
 
+  // cppcheck-suppress knownConditionTrueFalse
   if (res != TRI_ERROR_NO_ERROR) {
     // either fallocate failed or it is not there...
 
@@ -2429,3 +2672,4 @@ bool TRI_GETENV(char const* which, std::string& value) {
   return true;
 #endif
 }
+

@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Cluster/ResultT.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -202,10 +203,14 @@ class ServerState {
   void setId(std::string const&);
 
   /// @brief get the short id
-  uint32_t getShortId();
+  uint32_t getShortId() const;
 
   /// @brief set the server short id
   void setShortId(uint32_t);
+
+  uint64_t getRebootId() const;
+
+  void setRebootId(uint64_t rebootId);
 
   /// @brief get the server endpoint
   std::string getEndpoint();
@@ -251,8 +256,8 @@ class ServerState {
   /// @brief sets server mode and propagates new mode to agency
   Result propagateClusterReadOnly(bool);
 
-  /// file where the server persists it's UUID
-  std::string getUuidFilename();
+  /// file where the server persists its UUID
+  std::string getUuidFilename() const;
 
  private:
   /// @brief atomically fetches the server role
@@ -269,13 +274,22 @@ class ServerState {
   /// @brief check equality of engines with other registered servers
   bool checkEngineEquality(AgencyComm&);
 
+  /// @brief try to read the rebootID from the Agency
+  ResultT<uint64_t> readRebootIdFromAgency(AgencyComm& comm);
+
+  /// @brief check whether the agency has been initalized
+  bool checkIfAgencyInitialized(AgencyComm&, RoleEnum const&);
+
   /// @brief register at agency, might already be done
-  bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
+  bool registerAtAgencyPhase1(AgencyComm&, RoleEnum const&);
 
   /// @brief write the Current/ServersRegistered entry
-  bool registerAtAgencyPhase2(AgencyComm&);
+  bool registerAtAgencyPhase2(AgencyComm&, bool hadPersistedId);
 
   void setFoxxmasterSinceNow();
+
+  /// @brief whether or not "value" is a server UUID
+  bool isUuid(std::string const& value) const;
 
  private:
   /// @brief server role
@@ -291,6 +305,21 @@ class ServerState {
 
   /// @brief the server's short id, can be set just once
   std::atomic<uint32_t> _shortId;
+
+  /// @brief the server's rebootId.
+  ///
+  /// A server
+  ///   * ~boots~ if it is started on a new database directory without a UUID persisted
+  ///   * ~reboots~ if it is started on a pre-existing database directory with a UUID present
+  ///
+  /// when integrating into a cluster (via integrateIntoCluster), the server tries to increment
+  /// the agency key Current/KnownServers/_id/rebootId; if this key did not exist it is
+  /// created with the value 1, so a valid rebootId is always >= 1, and if the server booted
+  /// must be 1.
+  ///
+  /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
+  /// can be used through a notification architecture from there
+  uint64_t _rebootId;
 
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;
@@ -310,10 +339,10 @@ class ServerState {
 
   /// @brief whether or not the cluster was initialized
   bool _initialized;
+  
+  bool _foxxmasterQueueupdate;
 
   std::string _foxxmaster;
-
-  bool _foxxmasterQueueupdate;
 
   // @brief point in time since which this server is the Foxxmaster
   TRI_voc_tick_t _foxxmasterSince;

@@ -23,7 +23,9 @@
 
 #include "RocksDBReplicationTailing.h"
 #include "Basics/StaticStrings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/common-defines.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -590,7 +592,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
       auto collection = _vocbase->lookupCollection(cid);
       if (collection) {
-        _collectionCache.emplace(cid, CollectionGuard(_vocbase, collection));
+        _collectionCache.try_emplace(cid, _vocbase, collection);
         return collection.get();
       }
     }
@@ -644,24 +646,26 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   // LOG_TOPIC("89157", WARN, Logger::FIXME) << "1. Starting tailing: tickStart " <<
   // tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
 
-  std::unique_ptr<WALParser> handler(
-      new WALParser(vocbase, includeSystem, collectionId, builder));
-  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
+  auto handler = std::make_unique<WALParser>(vocbase, includeSystem, collectionId, builder);
 
-  rocksdb::Status s;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
   uint64_t since = 0;
   if (tickStart > 0) {
     since = tickStart - 1;
   }
-  s = rocksutils::globalRocksDB()->GetUpdatesSince(since, &iterator, ro);
+
+  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
+  rocksdb::Status s = rocksutils::globalRocksDB()->GetUpdatesSince(since, &iterator, ro);
 
   if (!s.ok()) {
     auto converted = convertStatus(s, rocksutils::StatusHint::wal);
-
-    TRI_ASSERT(converted.fail());
-    TRI_ASSERT(converted.errorNumber() != TRI_ERROR_NO_ERROR);
+    TRI_ASSERT(s.IsNotFound() || converted.fail());
+    TRI_ASSERT(s.IsNotFound() || converted.errorNumber() != TRI_ERROR_NO_ERROR);
+    if (s.IsNotFound()) {
+      // specified from-tick not yet available in DB
+      return {TRI_ERROR_NO_ERROR, 0};
+    }
     return {converted.errorNumber(), lastTick};
   }
 
@@ -669,7 +673,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
-  while (iterator->Valid() && lastTick <= tickEnd && builder.buffer()->size() < chunkSize) {
+  while (iterator->Valid() && lastTick <= tickEnd && builder.bufferRef().size() < chunkSize) {
     s = iterator->status();
     if (!s.ok()) {
       LOG_TOPIC("ed096", ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();

@@ -23,7 +23,12 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_V8SECURITY_FEATURE_H 1
 
+#include <memory>
 #include <regex>
+#include <string>
+#include <unordered_set>
+#include <vector>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace v8 {
@@ -31,6 +36,12 @@ class Isolate;
 }
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 enum class FSAccessType{
   READ,

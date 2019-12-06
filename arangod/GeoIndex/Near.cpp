@@ -37,7 +37,7 @@
 
 #include "Basics/Common.h"
 #include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Utils.h"
 #include "Logger/Logger.h"
 
 namespace arangodb {
@@ -143,9 +143,9 @@ static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
                     (j != cell_ids.begin() && (--j)->range_max() >= id);
     if (!contains) {
       S2CellId child = id.child_begin();
-      for (int i = 0;; ++i) {
+      for (int x = 0;; ++x) {
         GetDifference(cell_ids, child, result);
-        if (i == 3) break;  // Avoid unnecessary next() computation.
+        if (x == 3) break;  // Avoid unnecessary next() computation.
         child = child.next();
       }
     }
@@ -234,7 +234,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
 
   std::vector<geo::Interval> intervals;
   if (!cover.empty()) {
-    geo::GeoUtils::scanIntervals(_params, cover, intervals);
+    geo::utils::scanIntervals(_params, cover, intervals);
     _scannedCells.insert(_scannedCells.end(), cover.begin(), cover.end());
     // needed for difference calculation, will sort the IDs replace
     // 4 child cells with one parent cell and remove duplicates

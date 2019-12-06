@@ -88,6 +88,7 @@ set(IReSearch_tests_sources
   ./utils/async_utils_tests.cpp
   ./utils/bitvector_tests.cpp
   ./utils/container_utils_tests.cpp
+  ./utils/compression_test.cpp
   ./utils/crc_test.cpp
   ./utils/file_utils_tests.cpp
   ./utils/map_utils_tests.cpp
@@ -155,6 +156,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./analysis/text_analyzer_tests.cpp
   ./formats/formats_10_tests.cpp
   ./formats/formats_11_tests.cpp
+  ./formats/formats_12_tests.cpp
   ./iql/parser_test.cpp
 )
 

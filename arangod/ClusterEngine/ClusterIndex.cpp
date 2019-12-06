@@ -75,7 +75,7 @@ ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection,
   }
 }
 
-ClusterIndex::~ClusterIndex() {}
+ClusterIndex::~ClusterIndex() = default;
 
 void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
@@ -185,7 +185,7 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
     // nothing to update here
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     merge.add("cacheEnabled",
-              VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", false)));
+              VPackValue(Helper::getBooleanValue(slice, "cacheEnabled", false)));
 
   } else {
     TRI_ASSERT(false);
@@ -219,37 +219,26 @@ bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   return Index::Compare(_info.slice(), info);
 }
 
-Index::UsageCosts ClusterIndex::supportsFilterCondition(
+Index::FilterCosts ClusterIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   switch (_indexType) {
-    case TRI_IDX_TYPE_PRIMARY_INDEX: {
+    case TRI_IDX_TYPE_PRIMARY_INDEX: { 
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-        std::unordered_set<std::string> nonNullAttributes;
-        std::size_t values = 0;
-        SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                     values, nonNullAttributes,
-                                                     /*skip evaluation (during execution)*/ false);
-        Index::UsageCosts costs;
-        costs.estimatedItems = values;
-        /// TODO: estimatedCost?
-        costs.supportsCondition = !found.empty();
-        return costs;
+        return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
       }
       // MMFiles et al
       SimpleAttributeEqualityMatcher matcher(PrimaryIndexAttributes);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
-    case TRI_IDX_TYPE_GEO_INDEX:
-    case TRI_IDX_TYPE_GEO1_INDEX:
-    case TRI_IDX_TYPE_GEO2_INDEX:
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
-    case TRI_IDX_TYPE_IRESEARCH_LINK:
-    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
-      // should not be called for these indexes
-      return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex);
+    case TRI_IDX_TYPE_EDGE_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+      }
+      // MMFiles et al
+      SimpleAttributeEqualityMatcher matcher(this->_fields);
+      return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_HASH_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine) {
@@ -261,11 +250,6 @@ Index::UsageCosts ClusterIndex::supportsFilterCondition(
       }
       break;
     }
-    case TRI_IDX_TYPE_EDGE_INDEX: {
-      // same for both engines
-      SimpleAttributeEqualityMatcher matcher(this->_fields);
-      return matcher.matchOne(this, node, reference, itemsInIndex);
-    }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX: 
@@ -274,18 +258,27 @@ Index::UsageCosts ClusterIndex::supportsFilterCondition(
       return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
                                                                   node, reference, itemsInIndex);
     }
+    case TRI_IDX_TYPE_GEO_INDEX:
+    case TRI_IDX_TYPE_GEO1_INDEX:
+    case TRI_IDX_TYPE_GEO2_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
+      // should not be called for these indexes
+      return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex);
+    }
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }
     
   TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
-  return Index::UsageCosts();
+  return Index::FilterCosts::defaultCosts(itemsInIndex);
 }
 
-Index::UsageCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                      arangodb::aql::Variable const* reference,
-                                                      size_t itemsInIndex) const {
+Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                     arangodb::aql::Variable const* reference,
+                                                     size_t itemsInIndex) const {
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
     case TRI_IDX_TYPE_HASH_INDEX: {
@@ -321,7 +314,7 @@ Index::UsageCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditi
   }
 
   TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
-  return Index::UsageCosts::defaultsForSorting(itemsInIndex, false);
+  return Index::SortCosts::defaultCosts(itemsInIndex, false);
 }
 
 /// @brief specializes the condition for use with the index
@@ -366,7 +359,7 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
     }
-
+      
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }

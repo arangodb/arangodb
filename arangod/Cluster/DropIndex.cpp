@@ -27,6 +27,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -63,7 +66,7 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
   }
 }
 
-DropIndex::~DropIndex(){};
+DropIndex::~DropIndex() = default;
 
 bool DropIndex::first() {
   auto const& database = _description.get(DATABASE);

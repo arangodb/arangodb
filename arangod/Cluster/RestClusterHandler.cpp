@@ -24,11 +24,11 @@
 #include "RestClusterHandler.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/Supervision.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
@@ -38,8 +38,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestClusterHandler::RestClusterHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestClusterHandler::RestClusterHandler(application_features::ApplicationServer& server,
+                                       GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  _allowDirectExecution = !suffixes.empty() && suffixes[0] == "endpoints";
+}
 
 RestStatus RestClusterHandler::execute() {
   if (_request->requestType() != RequestType::GET) {
@@ -57,8 +61,8 @@ RestStatus RestClusterHandler::execute() {
       handleAgencyDump();
       return RestStatus::DONE;
     }
-  } 
-  
+  }
+
   generateError(
     Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
 
@@ -88,18 +92,18 @@ void RestClusterHandler::handleAgencyDump() {
   }
 
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  ClusterInfo::instance()->agencyDump(body);
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ci.agencyDump(body);
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 
 /// @brief returns information about all coordinator endpoints
 void RestClusterHandler::handleCommandEndpoints() {
-  ClusterInfo* ci = ClusterInfo::instance();
-  TRI_ASSERT(ci != nullptr);
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::vector<ServerID> endpoints;
 
   if (ServerState::instance()->isCoordinator()) {
-    endpoints = ci->getCurrentCoordinators();
+    endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
     if (!replication->isActiveFailoverEnabled() || !AgencyCommManager::isEnabled()) {
@@ -173,8 +177,8 @@ void RestClusterHandler::handleCommandEndpoints() {
 
     for (ServerID const& sid : endpoints) {
       VPackObjectBuilder obj(&builder);
-      std::string advertised = ci->getServerAdvertisedEndpoint(sid);
-      std::string internal = ci->getServerEndpoint(sid);
+      std::string advertised = ci.getServerAdvertisedEndpoint(sid);
+      std::string internal = ci.getServerEndpoint(sid);
       if (!advertised.empty()) {
         builder.add("endpoint", VPackValue(advertised));
         builder.add("internal", VPackValue(internal));

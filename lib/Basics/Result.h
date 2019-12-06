@@ -23,17 +23,19 @@
 #ifndef ARANGODB_BASICS_RESULT_H
 #define ARANGODB_BASICS_RESULT_H 1
 
+#include <iosfwd>
+#include <memory>
 #include <string>
-#include "Basics/voc-errors.h"
 
 namespace arangodb {
 class Result final {
  public:
-  Result();
-
   Result(bool /*avoidCastingErrors*/) = delete;
 
-  Result(int errorNumber);
+  Result() noexcept(noexcept(std::allocator<char>()));
+
+  // cppcheck-suppress noExplicitConstructor
+  /* implicit */ Result(int errorNumber) noexcept(noexcept(std::allocator<char>()));
 
   Result(int errorNumber, std::string const& errorMessage);
 
@@ -101,12 +103,18 @@ class Result final {
   bool isNot(int errorNumber) const;
 
   /**
+   * @brief  Reset to ok, error message is cleared.
+   * @return            Reference to ourselves
+   */
+  Result& reset();
+
+  /**
    * @brief  Reset to specific error number.
    *         If ok, error message is cleared.
    * @param errorNumber Said specific error number
    * @return            Reference to ourselves
    */
-  Result& reset(int errorNumber = TRI_ERROR_NO_ERROR);
+  Result& reset(int errorNumber);
 
   /**
    * @brief  Reset to specific error number with message.
@@ -159,7 +167,7 @@ class Result final {
 
   template <typename S>
   void appendErrorMessage(S&& msg) {
-    if (_errorMessage.empty() && _errorNumber != TRI_ERROR_NO_ERROR) {
+    if (_errorMessage.empty() && fail()) {
       _errorMessage.append(errorMessage());
     }
     _errorMessage.append(std::forward<S>(msg));

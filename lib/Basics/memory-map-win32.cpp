@@ -26,7 +26,9 @@
 #ifdef TRI_HAVE_WIN32_MMAP
 
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Windows.h"
 
 using namespace arangodb;

@@ -53,7 +53,7 @@
 TEST(CVectorTest, tst_length_init) {
   VECTOR_INIT
 
-  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_EQ(0U, TRI_LengthVector(&v1));
 
   VECTOR_DESTROY
 }
@@ -68,13 +68,13 @@ TEST(CVectorTest, tst_length_insert) {
   int p1 = 1;
   int p2 = 2;
   TRI_PushBackVector(&v1, &p1);
-  EXPECT_TRUE((size_t) 1 == TRI_LengthVector(&v1));
+  EXPECT_EQ(1U, TRI_LengthVector(&v1));
 
   TRI_PushBackVector(&v1, &p1);
-  EXPECT_TRUE((size_t) 2 == TRI_LengthVector(&v1));
+  EXPECT_EQ(2U, TRI_LengthVector(&v1));
   
   TRI_PushBackVector(&v1, &p2);
-  EXPECT_TRUE((size_t) 3 == TRI_LengthVector(&v1));
+  EXPECT_EQ(3U, TRI_LengthVector(&v1));
 
   VECTOR_DESTROY
 }
@@ -90,20 +90,20 @@ TEST(CVectorTest, tst_length_insert_remove) {
   int p2 = 2;
   int p3 = 3;
   TRI_PushBackVector(&v1, &p1);
-  EXPECT_TRUE((size_t) 1 == TRI_LengthVector(&v1));
+  EXPECT_EQ(1U, TRI_LengthVector(&v1));
 
   TRI_RemoveVector(&v1, 0);
-  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_EQ(0U, TRI_LengthVector(&v1));
   
   TRI_PushBackVector(&v1, &p2);
   TRI_PushBackVector(&v1, &p3);
-  EXPECT_TRUE((size_t) 2 == TRI_LengthVector(&v1));
+  EXPECT_EQ(2U, TRI_LengthVector(&v1));
   
   TRI_RemoveVector(&v1, 0);
-  EXPECT_TRUE((size_t) 1 == TRI_LengthVector(&v1));
+  EXPECT_EQ(1U, TRI_LengthVector(&v1));
 
   TRI_RemoveVector(&v1, 0);
-  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_EQ(0U, TRI_LengthVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -121,7 +121,7 @@ TEST(CVectorTest, tst_remove_invalid1) {
   TRI_RemoveVector(&v1, -1); // invalid position
   TRI_RemoveVector(&v1, 99); // invalid position
   
-  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_EQ(0U, TRI_LengthVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -159,10 +159,10 @@ TEST(CVectorTest, tst_at_empty) {
 
   void* r = nullptr;
   
-  EXPECT_TRUE(r == TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(r == TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(r == TRI_AtVector(&v1, -1));
-  EXPECT_TRUE(r == TRI_AtVector(&v1, 99));
+  EXPECT_EQ(r, TRI_AtVector(&v1, 0));
+  EXPECT_EQ(r, TRI_AtVector(&v1, 1));
+  EXPECT_EQ(r, TRI_AtVector(&v1, -1));
+  EXPECT_EQ(r, TRI_AtVector(&v1, 99));
 
   VECTOR_DESTROY 
 }
@@ -180,22 +180,22 @@ TEST(CVectorTest, tst_at_insert) {
   int d = 4;
    
   TRI_PushBackVector(&v1, &a);
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
 
   TRI_PushBackVector(&v1, &b);
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
 
   TRI_PushBackVector(&v1, &c);
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 2));
 
   TRI_PushBackVector(&v1, &d);
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 3));
 
   VECTOR_DESTROY 
 }
@@ -214,31 +214,31 @@ TEST(CVectorTest, tst_at_insert_remove) {
   int d = 4;
   
   TRI_PushBackVector(&v1, &a);
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
 
   TRI_RemoveVector(&v1, 0);
-  EXPECT_TRUE(r == TRI_AtVector(&v1, 0));
+  EXPECT_EQ(r, TRI_AtVector(&v1, 0));
 
   TRI_PushBackVector(&v1, &b);
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 0));
 
   TRI_PushBackVector(&v1, &c);
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 1));
   
   TRI_RemoveVector(&v1, 0);
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 0));
   
   TRI_PushBackVector(&v1, &d);
   TRI_PushBackVector(&v1, &a);
   
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 2));
 
   TRI_RemoveVector(&v1, 1);
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 1));
 
   VECTOR_DESTROY 
 }
@@ -259,13 +259,13 @@ TEST(CVectorTest, tst_push_back_duplicate) {
   TRI_PushBackVector(&v1, &b);
   TRI_PushBackVector(&v1, &b);
 
-  EXPECT_TRUE((size_t) 6 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 4));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_EQ(6U, TRI_LengthVector(&v1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 5));
 
   VECTOR_DESTROY
 }
@@ -285,19 +285,19 @@ TEST(CVectorTest, tst_remove_duplicate) {
   TRI_PushBackVector(&v1, &b);
   TRI_PushBackVector(&v1, &b);
 
-  EXPECT_TRUE((size_t) 5 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_EQ(5U, TRI_LengthVector(&v1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 4));
   
   TRI_RemoveVector(&v1, 4); 
   TRI_RemoveVector(&v1, 0); 
   TRI_RemoveVector(&v1, 1); 
-  EXPECT_TRUE((size_t) 2 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(2U, TRI_LengthVector(&v1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
 
   VECTOR_DESTROY
 }
@@ -325,75 +325,75 @@ TEST(CVectorTest, tst_push_back_remove) {
   TRI_PushBackVector(&v1, &a);
   TRI_PushBackVector(&v1, &a);
 
-  EXPECT_TRUE((size_t) 10 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 4));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 5));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 6));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 7));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 8));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 9));
+  EXPECT_EQ(10U, TRI_LengthVector(&v1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 6));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 7));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 8));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 9));
 
   TRI_RemoveVector(&v1, 4); 
-  EXPECT_TRUE((size_t) 9 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 4));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 5));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 6));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 7));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 8));
+  EXPECT_EQ(9U, TRI_LengthVector(&v1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 6));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 7));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 8));
   
   TRI_RemoveVector(&v1, 0); 
-  EXPECT_TRUE((size_t) 8 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 4));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 5));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 6));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 7));
+  EXPECT_EQ(8U, TRI_LengthVector(&v1));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 6));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 7));
   
   TRI_RemoveVector(&v1, 7); 
-  EXPECT_TRUE((size_t) 7 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 4));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 5));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 6));
+  EXPECT_EQ(7U, TRI_LengthVector(&v1));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 6));
 
   TRI_RemoveVector(&v1, 0); 
   TRI_RemoveVector(&v1, 0); 
-  EXPECT_TRUE((size_t) 5 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_EQ(5U, TRI_LengthVector(&v1));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 4));
 
   TRI_RemoveVector(&v1, 1); 
   TRI_RemoveVector(&v1, 1); 
-  EXPECT_TRUE((size_t) 3 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(3U, TRI_LengthVector(&v1));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 2));
   
   TRI_RemoveVector(&v1, 1); 
-  EXPECT_TRUE((size_t) 2 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(2U, TRI_LengthVector(&v1));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 1));
   
   TRI_RemoveVector(&v1, 1); 
   TRI_RemoveVector(&v1, 0); 
-  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_EQ(0U, TRI_LengthVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -415,30 +415,30 @@ TEST(CVectorTest, tst_set) {
   TRI_PushBackVector(&v1, &c);
   TRI_PushBackVector(&v1, &d);
 
-  EXPECT_TRUE((size_t) 4 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(1 == *(int*) TRI_BeginVector(&v1));
-  EXPECT_TRUE(4 == *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
+  EXPECT_EQ(4U, TRI_LengthVector(&v1));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(1, *(int*) TRI_BeginVector(&v1));
+  EXPECT_EQ(4, *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
 
   TRI_SetVector(&v1, 0, &d);
   TRI_SetVector(&v1, 1, &c);
   TRI_SetVector(&v1, 2, &b);
   TRI_SetVector(&v1, 3, &a);
 
-  EXPECT_TRUE((size_t) 4 == TRI_LengthVector(&v1));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 3));
-  EXPECT_TRUE(4 == *(int*) TRI_BeginVector(&v1));
-  EXPECT_TRUE(1 == *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
+  EXPECT_EQ(4U, TRI_LengthVector(&v1));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(4, *(int*) TRI_BeginVector(&v1));
+  EXPECT_EQ(1, *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
 
   TRI_SetVector(&v1, 0, &b);
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_BeginVector(&v1));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_BeginVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -460,20 +460,20 @@ TEST(CVectorTest, tst_value_modifications) {
   TRI_PushBackVector(&v1, &c);
   TRI_PushBackVector(&v1, &d);
 
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 3));
 
   a = 99;
   b = 42;
   c = -1;
   d = 0;
   
-  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
-  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
-  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
-  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_EQ(1, *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_EQ(2, *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_EQ(3, *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_EQ(4, *(int*) TRI_AtVector(&v1, 3));
   
   VECTOR_DESTROY 
 }

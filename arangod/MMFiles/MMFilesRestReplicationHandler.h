@@ -33,14 +33,11 @@ class SingleCollectionTransaction;
 /// @brief replication request handler
 class MMFilesRestReplicationHandler : public RestReplicationHandler {
  public:
-  MMFilesRestReplicationHandler(GeneralRequest*, GeneralResponse*);
+  MMFilesRestReplicationHandler(application_features::ApplicationServer&,
+                                GeneralRequest*, GeneralResponse*);
   ~MMFilesRestReplicationHandler();
 
  public:
-  RequestLane lane() const override final {
-    return RequestLane::SERVER_REPLICATION;
-  }
-
   char const* name() const override final {
     return "MMFilesRestReplicationHandler";
   }

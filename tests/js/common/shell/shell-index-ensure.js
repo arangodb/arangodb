@@ -65,8 +65,7 @@ function ensureIndexSuite() {
       try {
         collection.drop();
         edgeCollection.drop();
-      }
-      catch (err) {
+      } catch (err) {
       }
       collection = null;
       edgeCollection = null;
@@ -243,8 +242,7 @@ function ensureIndexSuite() {
         // invalid type given
         collection.ensureIndex({ type: "foo" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -258,8 +256,7 @@ function ensureIndexSuite() {
         // no type given
         collection.ensureIndex({ something: "foo" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -273,8 +270,35 @@ function ensureIndexSuite() {
         // no type given
         collection.ensureIndex({ type: "hash", fields: [ "_id" ] });
         fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
-      catch (err) {
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure invalid sub-attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureInvalidSubAttributeArray : function () {
+      try {
+        // no type given
+        collection.ensureIndex({ type: "hash", fields: [ "foo[*]._id" ] });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure invalid sub-attribute
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureInvalidSubAttribute : function () {
+      try {
+        // no type given
+        collection.ensureIndex({ type: "hash", fields: [ "foo._id" ] });
+        fail();
+      } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
@@ -288,8 +312,7 @@ function ensureIndexSuite() {
         // no type given
         collection.ensureIndex({ type: "primary" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(errors.ERROR_FORBIDDEN.code, err.errorNum);
       }
     },
@@ -303,8 +326,7 @@ function ensureIndexSuite() {
         // no type given
         collection.ensureIndex({ type: "edge" });
         fail();
-      }
-      catch (err) {
+      }  catch (err) {
         assertEqual(errors.ERROR_FORBIDDEN.code, err.errorNum);
       }
     },

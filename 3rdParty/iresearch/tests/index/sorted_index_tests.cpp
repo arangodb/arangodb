@@ -143,7 +143,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
 
     // check sorted column
     {
-      std::vector<irs::bytes_output> column_payload;
+      std::vector<irs::bstring> column_payload;
       gen.reset();
 
       while (auto* doc = gen.next()) {
@@ -151,14 +151,15 @@ TEST_P(sorted_index_test_case, simple_sequential) {
         ASSERT_NE(nullptr, field);
 
         column_payload.emplace_back();
-        field->write(column_payload.back());
+        irs::bytes_output out(column_payload.back());
+        field->write(out);
       }
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
       std::sort(
         column_payload.begin(), column_payload.end(),
-        [&less](const irs::bytes_output& lhs, const irs::bytes_output& rhs) {
+        [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
           return less(lhs, rhs);
       });
 
@@ -189,8 +190,8 @@ TEST_P(sorted_index_test_case, simple_sequential) {
     for (auto& column_name : column_names) {
       struct doc {
         irs::doc_id_t id{ irs::doc_limits::eof() };
-        irs::bytes_output order;
-        irs::bytes_output value;
+        irs::bstring order;
+        irs::bstring value;
       };
 
       std::vector<doc> column_docs;
@@ -207,11 +208,13 @@ TEST_P(sorted_index_test_case, simple_sequential) {
         auto* column = doc->stored.get(column_name);
 
         auto& value = column_docs.back();
-        sorted->write(value.order);
+        irs::bytes_output order_out(value.order);
+        sorted->write(order_out);
 
         if (column) {
           value.id = id++;
-          column->write(value.value);
+        irs::bytes_output value_out(value.value);
+          column->write(value_out);
         }
       }
 
@@ -325,21 +328,22 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       // check sorted column
       {
         segment_gen.reset();
-        std::vector<irs::bytes_output> column_payload;
+        std::vector<irs::bstring> column_payload;
 
         while (auto* doc = segment_gen.next()) {
           auto* field = doc->stored.get(sorted_column);
           ASSERT_NE(nullptr, field);
 
           column_payload.emplace_back();
-          field->write(column_payload.back());
+          irs::bytes_output out(column_payload.back());
+          field->write(out);
         }
 
         ASSERT_EQ(column_payload.size(), segment.docs_count());
 
         std::sort(
           column_payload.begin(), column_payload.end(),
-          [&less](const irs::bytes_output& lhs, const irs::bytes_output& rhs) {
+          [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
             return less(lhs, rhs);
         });
 
@@ -370,8 +374,8 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       for (auto& column_name : column_names) {
         struct doc {
           irs::doc_id_t id{ irs::doc_limits::eof() };
-          irs::bytes_output order;
-          irs::bytes_output value;
+          irs::bstring order;
+          irs::bstring value;
         };
 
         std::vector<doc> column_docs;
@@ -388,11 +392,13 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
           auto* column = doc->stored.get(column_name);
 
           auto& value = column_docs.back();
-          sorted->write(value.order);
+          irs::bytes_output order_out(value.order);
+          sorted->write(order_out);
 
           if (column) {
             value.id = id++;
-            column->write(value.value);
+            irs::bytes_output value_out(value.value);
+            column->write(value_out);
           }
         }
 
@@ -475,21 +481,22 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
     // check sorted column
     {
       gen.reset();
-      std::vector<irs::bytes_output> column_payload;
+      std::vector<irs::bstring> column_payload;
 
       while (auto* doc = gen.next()) {
         auto* field = doc->stored.get(sorted_column);
         ASSERT_NE(nullptr, field);
 
         column_payload.emplace_back();
-        field->write(column_payload.back());
+        irs::bytes_output out(column_payload.back());
+        field->write(out);
       }
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
       std::sort(
         column_payload.begin(), column_payload.end(),
-        [&less](const irs::bytes_output& lhs, const irs::bytes_output& rhs) {
+        [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
           return less(lhs, rhs);
       });
 
@@ -520,8 +527,8 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
     for (auto& column_name : column_names) {
       struct doc {
         irs::doc_id_t id{ irs::doc_limits::eof() };
-        irs::bytes_output order;
-        irs::bytes_output value;
+        irs::bstring order;
+        irs::bstring value;
       };
 
       std::vector<doc> column_docs;
@@ -538,11 +545,13 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         auto* column = doc->stored.get(column_name);
 
         auto& value = column_docs.back();
-        sorted->write(value.order);
+        irs::bytes_output order_out(value.order);
+        sorted->write(order_out);
 
         if (column) {
           value.id = id++;
-          column->write(value.value);
+          irs::bytes_output value_out(value.value);
+          column->write(value_out);
         }
       }
 
@@ -630,7 +639,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
 
     // check sorted column
     {
-      std::vector<irs::bytes_output> column_payload;
+      std::vector<irs::bstring> column_payload;
       gen.reset();
 
       while (auto* doc = gen.next()) {
@@ -638,14 +647,15 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
         ASSERT_NE(nullptr, field);
 
         column_payload.emplace_back();
-        field->write(column_payload.back());
+        irs::bytes_output out(column_payload.back());
+        field->write(out);
       }
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
       std::sort(
         column_payload.begin(), column_payload.end(),
-        [&less](const irs::bytes_output& lhs, const irs::bytes_output& rhs) {
+        [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
           return less(lhs, rhs);
       });
 
@@ -676,8 +686,8 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
     for (auto& column_name : column_names) {
       struct doc {
         irs::doc_id_t id{ irs::doc_limits::eof() };
-        irs::bytes_output order;
-        irs::bytes_output value;
+        irs::bstring order;
+        irs::bstring value;
       };
 
       std::vector<doc> column_docs;
@@ -694,11 +704,13 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
         auto* column = doc->stored.get(column_name);
 
         auto& value = column_docs.back();
-        sorted->write(value.order);
+        irs::bytes_output order_out(value.order);
+        sorted->write(order_out);
 
         if (column) {
           value.id = id++;
-          column->write(value.value);
+          irs::bytes_output value_out(value.value);
+          column->write(value_out);
         }
       }
 
@@ -1354,7 +1366,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_1")
+    ::testing::Values("1_1", "1_2")
   ),
   tests::to_string
 );

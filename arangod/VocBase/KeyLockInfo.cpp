@@ -23,6 +23,8 @@
 
 #include "KeyLockInfo.h"
 
+#include "Basics/debugging.h"
+
 using namespace arangodb;
 
 KeyLockInfo::~KeyLockInfo() {

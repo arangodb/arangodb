@@ -22,10 +22,20 @@
 
 #ifndef ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_LANGUAGE_FEATURE_H 1
+
 #include <unicode/locid.h>
+#include <memory>
+#include <string>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 class LanguageFeature final : public application_features::ApplicationFeature {
  public:

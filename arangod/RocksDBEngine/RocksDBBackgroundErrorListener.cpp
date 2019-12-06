@@ -22,11 +22,13 @@
 
 #include "RocksDBBackgroundErrorListener.h"
 
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 
-RocksDBBackgroundErrorListener::~RocksDBBackgroundErrorListener() {}
+RocksDBBackgroundErrorListener::~RocksDBBackgroundErrorListener() = default;
 
 void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorReason reason,
                                                        rocksdb::Status* status) {

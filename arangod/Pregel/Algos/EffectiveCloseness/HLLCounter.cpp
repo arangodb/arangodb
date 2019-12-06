@@ -38,7 +38,7 @@ inline uint8_t _get_leading_zero_count(uint32_t x, uint8_t b) {
 
 #if defined(_MSC_VER)
   unsigned long leading_zero_len = 32;
-  ::BitScanReverse(&leading_zero_len, x);
+  _BitScanReverse(&leading_zero_len, x);
   --leading_zero_len;
   return std::min(b, (uint8_t)leading_zero_len);
 #else
@@ -61,10 +61,10 @@ static uint32_t hashPregelId(PregelID const& pregelId) {
 }
 
 void HLLCounter::addNode(PregelID const& pregelId) {
-  uint32_t hash = hashPregelId(pregelId);
+  uint32_t hashid = hashPregelId(pregelId);
   // last 6 bits as bucket index
-  uint32_t index = hash >> (32 - 6);
-  uint8_t rank = _GET_CLZ((hash << 6), 32 - 6);
+  uint32_t index = hashid >> (32 - 6);
+  uint8_t rank = _GET_CLZ((hashid << 6), 32 - 6);
   if (rank > _buckets[index]) {
     _buckets[index] = rank;
   }

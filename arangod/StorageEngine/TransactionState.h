@@ -26,9 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Basics/HashSet.h"
-#include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
+#include "Containers/HashSet.h"
+#include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -55,12 +55,10 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace transaction {
-class Context;
 class Methods;
 struct Options;
 }  // namespace transaction
 
-class ExecContext;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -69,7 +67,7 @@ class TransactionState {
   /// @brief an implementation-dependent structure for storing runtime data
   struct Cookie {
     typedef std::unique_ptr<Cookie> ptr;
-    virtual ~Cookie() {}
+    virtual ~Cookie() = default;
   };
 
   typedef std::function<void(TransactionState& state)> StatusChangeCallback;
@@ -139,6 +137,10 @@ class TransactionState {
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType) const;
+  
+  /// @brief return the collection from a transaction
+  TransactionCollection* collection(std::string const& name,
+                                    AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
@@ -152,7 +154,7 @@ class TransactionState {
 
   /// @brief run a callback on all collections of the transaction
   void allCollections(std::function<bool(TransactionCollection&)> const& cb);
-
+  
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }
 
@@ -198,7 +200,7 @@ class TransactionState {
   bool isOnlyExclusiveTransaction() const;
 
   /// @brief servers already contacted
-  arangodb::HashSet<std::string> const& knownServers() const {
+  ::arangodb::containers::HashSet<std::string> const& knownServers() const {
     return _knownServers;
   }
 
@@ -218,6 +220,13 @@ class TransactionState {
 
   void clearKnownServers() {
     _knownServers.clear();
+  }
+
+  /// @returns tick of last operation in a transaction
+  /// @note the value is guaranteed to be valid only after
+  ///       transaction is committed
+  TRI_voc_tick_t lastOperationTick() const noexcept {
+    return _lastWrittenOperationTick;
   }
 
  protected:
@@ -240,13 +249,17 @@ class TransactionState {
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
   TRI_voc_tid_t const _id;  /// @brief local trx id
 
+  /// @brief tick of last added & written operation
+  TRI_voc_tick_t _lastWrittenOperationTick;
+
   /// @brief access type (read|write)
   AccessMode::Type _type;
   /// @brief current status
   transaction::Status _status;
 
-  SmallVector<TransactionCollection*>::allocator_type::arena_type _arena;  // memory for collections
-  SmallVector<TransactionCollection*> _collections;  // list of participating collections
+  using ListType = arangodb::containers::SmallVector<TransactionCollection*>;
+  ListType::allocator_type::arena_type _arena;  // memory for collections
+  ListType _collections;  // list of participating collections
 
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
@@ -259,7 +272,7 @@ class TransactionState {
   std::map<void const*, Cookie::ptr> _cookies;
 
   /// @brief servers we already talked to for this transactions
-  arangodb::HashSet<std::string> _knownServers;
+  ::arangodb::containers::HashSet<std::string> _knownServers;
 
   /// @brief reference counter of # of 'Methods' instances using this object
   std::atomic<int> _nestingLevel;

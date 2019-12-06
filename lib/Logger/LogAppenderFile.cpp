@@ -21,21 +21,26 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Logger/LogAppenderFile.h"
+#include <fcntl.h>
+#include <stdio.h>
+#include <iostream>
+
+#include "Basics/operating-system.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include "LogAppenderFile.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/debugging.h"
+#include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Logger/Logger.h"
-
-#include <iostream>
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -61,7 +66,7 @@ size_t LogAppenderStream::determineOutputBufferSize(std::string const& message) 
 
 size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
   if (_escape) {
-    size_t escapedLength;
+    size_t escapedLength = 0;
     // this is guaranteed to succeed given that we already have a buffer
     TRI_EscapeControlsCString(message.data(), message.size(), _buffer.get(),
                               &escapedLength, true);

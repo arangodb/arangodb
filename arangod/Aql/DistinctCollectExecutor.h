@@ -26,24 +26,26 @@
 #ifndef ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_DISTINCT_COLLECT_EXECUTOR_H
 
+#include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
 namespace aql {
 
 class InputAqlItemRow;
+class OutputAqlItemRow;
+class NoStats;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class DistinctCollectExecutorInfos : public ExecutorInfos {
@@ -62,10 +64,8 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
   ~DistinctCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const {
-    return _groupRegisters;
-  }
-  transaction::Methods* getTransaction() const { return _trxPtr; }
+  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
+  transaction::Methods* getTransaction() const;
 
  private:
   /// @brief pairs, consisting of out register and in register
@@ -82,9 +82,9 @@ class DistinctCollectExecutorInfos : public ExecutorInfos {
 class DistinctCollectExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = DistinctCollectExecutorInfos;
@@ -96,6 +96,8 @@ class DistinctCollectExecutor {
   DistinctCollectExecutor(Fetcher& fetcher, Infos&);
   ~DistinctCollectExecutor();
 
+  void initializeCursor();
+
   /**
    * @brief produce the next Row of Aql Values.
    *
@@ -106,7 +108,8 @@ class DistinctCollectExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept;
+  void destroyValues();
 
  private:
   Infos const& _infos;

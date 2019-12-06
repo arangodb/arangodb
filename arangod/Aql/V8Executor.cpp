@@ -27,7 +27,11 @@
 #include "Aql/Functions.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -62,9 +66,9 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
 
       v8::Handle<v8::Array> objValue = v8::Handle<v8::Array>::Cast(tryCatch.Exception());
       v8::Handle<v8::String> errorNum =
-          TRI_V8_ASCII_STRING(isolate, "errorNum");
+          TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::ErrorNum);
       v8::Handle<v8::String> errorMessage =
-          TRI_V8_ASCII_STRING(isolate, "errorMessage");
+          TRI_V8_ASCII_STD_STRING(isolate, StaticStrings::ErrorMessage);
 
       TRI_Utf8ValueNFC stacktrace(isolate, tryCatch.StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
 

@@ -33,6 +33,7 @@
 #include "index/comparer.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/lz4compression.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "store/store_utils.hpp"
@@ -42,6 +43,12 @@
 #include <boost/iterator/filter_iterator.hpp>
 
 NS_LOCAL
+
+const irs::column_info NORM_COLUMN{
+  irs::compression::lz4::type(),
+  irs::compression::options(),
+  false
+};
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
@@ -958,8 +965,7 @@ class columnstore {
   bool insert(
       const irs::sub_reader& reader,
       irs::field_id column,
-      const doc_map_f& doc_map
-  ) {
+      const doc_map_f& doc_map) {
     const auto* column_reader = reader.column_reader(column);
 
     if (!column_reader) {
@@ -1010,9 +1016,9 @@ class columnstore {
     return true;
   }
 
-  void reset() {
+  void reset(const irs::column_info& info) {
     if (!empty_) {
-      column_ = writer_->push_column();
+      column_ = writer_->push_column(info);
       empty_ = true;
     }
   }
@@ -1128,10 +1134,10 @@ bool write_columns(
     columnstore& cs,
     CompoundIterator& columns,
     irs::directory& dir,
+    const irs::column_info_provider_t& column_info,
     const irs::segment_meta& meta,
     compound_column_meta_iterator_t& column_meta_itr,
-    const irs::merge_writer::flush_progress_t& progress
-) {
+    const irs::merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
   assert(progress);
@@ -1159,7 +1165,8 @@ bool write_columns(
   column_meta_writer->prepare(dir, meta);
 
   while (column_meta_itr.next()) {
-    cs.reset();
+    const auto& column_name = (*column_meta_itr).name;
+    cs.reset(column_info(column_name));
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment
@@ -1172,7 +1179,7 @@ bool write_columns(
     }
 
     if (!cs.empty()) {
-      column_meta_writer->write((*column_meta_itr).name, cs.id());
+      column_meta_writer->write(column_name, cs.id());
     }
   }
 
@@ -1187,10 +1194,10 @@ bool write_columns(
 bool write_columns(
     columnstore& cs,
     irs::directory& dir,
+    const irs::column_info_provider_t& column_info,
     const irs::segment_meta& meta,
     compound_column_meta_iterator_t& column_itr,
-    const irs::merge_writer::flush_progress_t& progress
-) {
+    const irs::merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(cs);
   assert(progress);
@@ -1207,7 +1214,8 @@ bool write_columns(
   cmw->prepare(dir, meta);
 
   while (column_itr.next()) {
-    cs.reset();  
+    const auto& column_name = (*column_itr).name;
+    cs.reset(column_info(column_name));
 
     // visit matched columns from merging segments and
     // write all survived values to the new segment 
@@ -1216,7 +1224,7 @@ bool write_columns(
     }
 
     if (!cs.empty()) {
-      cmw->write((*column_itr).name, cs.id());
+      cmw->write(column_name, cs.id());
     } 
   }
 
@@ -1262,7 +1270,7 @@ bool write_fields(
   };
 
   while (field_itr.next()) {
-    cs.reset();
+    cs.reset(NORM_COLUMN); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
@@ -1339,7 +1347,7 @@ bool write_fields(
   };
 
   while (field_itr.next()) {
-    cs.reset();
+    cs.reset(NORM_COLUMN); // FIXME encoder for norms???
 
     auto& field_meta = field_itr.meta();
     auto& field_features = field_meta.features;
@@ -1419,7 +1427,9 @@ merge_writer::reader_ctx::reader_ctx(irs::sub_reader::ptr reader) NOEXCEPT
 }
 
 merge_writer::merge_writer() NOEXCEPT
-  : dir_(noop_directory::instance()) {
+  : dir_(noop_directory::instance()),
+    column_info_(nullptr),
+    comparator_(nullptr) {
 }
 
 merge_writer::operator bool() const NOEXCEPT {
@@ -1429,8 +1439,7 @@ merge_writer::operator bool() const NOEXCEPT {
 bool merge_writer::flush(
     tracking_directory& dir,
     index_meta::index_segment_t& segment,
-    const flush_progress_t& progress
-) {
+    const flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(progress);
   assert(!comparator_);
@@ -1500,7 +1509,7 @@ bool merge_writer::flush(
   }
 
   // write columns
-  if (!write_columns(cs, dir, segment.meta, columns_meta_itr, progress)) {
+  if (!write_columns(cs, dir, *column_info_, segment.meta, columns_meta_itr, progress)) {
     return false; // flush failure
   }
 
@@ -1525,11 +1534,11 @@ bool merge_writer::flush(
 bool merge_writer::flush_sorted(
     tracking_directory& dir,
     index_meta::index_segment_t& segment,
-    const flush_progress_t& progress
-) {
+    const flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   assert(progress);
   assert(comparator_);
+  assert(column_info_ && *column_info_);
 
   field_meta_map_t field_meta_map;
   compound_column_meta_iterator_t columns_meta_itr;
@@ -1617,7 +1626,9 @@ bool merge_writer::flush_sorted(
   auto writer = segment.meta.codec->get_columnstore_writer();
   writer->prepare(dir, segment.meta);
 
-  auto column = writer->push_column();
+  // get column info for sorted column
+  const auto info = (*column_info_)(string_ref::NIL);
+  auto column = writer->push_column(info);
 
   irs::doc_id_t next_id = irs::doc_limits::min();
   while (columns_it.next()) {
@@ -1674,7 +1685,7 @@ bool merge_writer::flush_sorted(
   }
 
   // write columns
-  if (!write_columns(cs, sorting_doc_it, dir, segment.meta, columns_meta_itr, progress)) {
+  if (!write_columns(cs, sorting_doc_it, dir, *column_info_, segment.meta, columns_meta_itr, progress)) {
     return false; // flush failure
   }
 

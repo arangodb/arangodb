@@ -94,7 +94,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-MoveShard::~MoveShard() {}
+MoveShard::~MoveShard() = default;
 
 void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 
@@ -240,7 +240,7 @@ bool MoveShard::start(bool&) {
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
-    for (auto const& x : VPackArrayIterator(cleanedServers)) {
+    for (VPackSlice x : VPackArrayIterator(cleanedServers)) {
       if (x.isString() && x.copyString() == _to) {
         finish("", "", false, "toServer must not be in `Target/CleanedServers`");
         return false;
@@ -274,7 +274,7 @@ bool MoveShard::start(bool&) {
   int found = -1;
   int count = 0;
   _toServerIsFollower = false;
-  for (auto const& srv : VPackArrayIterator(planned)) {
+  for (VPackSlice srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
       if (!_isLeader) {
@@ -367,7 +367,7 @@ bool MoveShard::start(bool&) {
                              pending.add(plan[i]);
                            }
                          } else {
-                           for (auto const& srv : VPackArrayIterator(plan)) {
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
                              pending.add(srv);
                              TRI_ASSERT(srv.copyString() != _to);
                            }
@@ -471,7 +471,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     size_t done = 0;  // count the number of shards for which _to is in sync:
     doForAllShards(_snapshot, _database, shardsLikeMe,
                    [this, &done](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-                     for (auto const& s : VPackArrayIterator(current)) {
+                     for (VPackSlice s : VPackArrayIterator(current)) {
                        if (s.copyString() == _to) {
                          ++done;
                          return;
@@ -499,7 +499,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          trx.add(VPackValue(planPath));
                          {
                            VPackArrayBuilder guard(&trx);
-                           for (auto const& srv : VPackArrayIterator(plan)) {
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
                              if (srv.copyString() == _from) {
                                trx.add(VPackValue("_" + srv.copyString()));
                              } else {
@@ -551,7 +551,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          trx.add(VPackValue(planPath));
                          {
                            VPackArrayBuilder guard(&trx);
-                           for (auto const& srv : VPackArrayIterator(plan)) {
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
                              if (srv.copyString() == "_" + _from) {
                                trx.add(VPackValue(_to));
                              } else if (srv.copyString() != _to) {
@@ -594,7 +594,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          for (size_t i = 1; i < plan.length() - 1; ++i) {
                            VPackSlice p = plan[i];
                            for (auto const& c : VPackArrayIterator(current)) {
-                             if (arangodb::basics::VelocyPackHelper::compare(p, c, true) == 0) {
+                             if (arangodb::basics::VelocyPackHelper::equal(p, c, true)) {
                                ++found;
                                break;
                              }
@@ -628,7 +628,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                            trx.add(VPackValue(planPath));
                            {
                              VPackArrayBuilder guard(&trx);
-                             for (auto const& srv : VPackArrayIterator(plan)) {
+                             for (VPackSlice srv : VPackArrayIterator(plan)) {
                                if (!srv.isEqualString(_from)) {
                                  trx.add(srv);
                                }
@@ -737,7 +737,7 @@ JOB_STATUS MoveShard::pendingFollower() {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder guard(&trx);
-                         for (auto const& srv : VPackArrayIterator(plan)) {
+                         for (VPackSlice srv : VPackArrayIterator(plan)) {
                            if (srv.copyString() != _from) {
                              trx.add(srv);
                            }
@@ -840,20 +840,23 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       if (_isLeader) {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-                         // Restore leader to be _from:
-                         trx.add(VPackValue(planPath));
-                         {
-                           VPackArrayBuilder guard(&trx);
-                           trx.add(VPackValue(_from));
-                           VPackArrayIterator iter(plan);
-                           ++iter;  // skip the first
-                           while (iter.valid()) {
-                             trx.add(iter.value());
-                             ++iter;
-                           }
-                         }
-                       });
+                      [this, &trx](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+                        // Restore leader to be _from:
+                        trx.add(VPackValue(planPath));
+                        {
+                          VPackArrayBuilder guard(&trx);
+                          trx.add(VPackValue(_from));
+                          for (VPackSlice srv : VPackArrayIterator(plan)) {
+                            // from could be in plan as <from> or <_from>. Exclude to server always.
+                            if (srv.isEqualString(_from) || srv.isEqualString("_" + _from) || srv.isEqualString(_to)) {
+                              continue ;
+                            }
+                            trx.add(srv);
+                          }
+                          // Add to server last. Will be removed by removeFollower if to much
+                          trx.add(VPackValue(_to));
+                        }
+                      });
       } else {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
@@ -862,8 +865,8 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                          trx.add(VPackValue(planPath));
                          {
                            VPackArrayBuilder guard(&trx);
-                           for (auto const& srv : VPackArrayIterator(plan)) {
-                             if (srv.copyString() != _to) {
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
+                             if (false == srv.isEqualString(_to)) {
                                trx.add(srv);
                              }
                            }
@@ -878,18 +881,22 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       addReleaseServer(trx, _to);
       addIncreasePlanVersion(trx);
     }
-    if (_isLeader) { // Precondition, that current is still as in snapshot
+    {
       VPackObjectBuilder preconditionObj(&trx);
-      // Current preconditions for all shards
-      doForAllShards(
-        _snapshot, _database, shardsLikeMe,
-        [&trx](
-          Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-          // Current still as is
-          trx.add(curPath, current);
-        });
-      addPreconditionJobStillInPending(trx, _jobId);
+      if (_isLeader) { // Precondition, that current is still as in snapshot
+        // Current preconditions for all shards
+        doForAllShards(
+          _snapshot, _database, shardsLikeMe,
+          [&trx](
+            Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+            // Current still as is
+            trx.add(curPath, current);
+          });
+        addPreconditionJobStillInPending(trx, _jobId);
+      }
+      addPreconditionCollectionStillThere(trx, _database, _collection);
     }
+
   }
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 

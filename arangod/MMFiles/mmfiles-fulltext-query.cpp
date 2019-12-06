@@ -23,6 +23,7 @@
 
 #include "mmfiles-fulltext-query.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/memory.h"
 #include "Basics/tri-strings.h"
 #include "Indexes/Index.h"
 #include "MMFiles/mmfiles-fulltext-index.h"

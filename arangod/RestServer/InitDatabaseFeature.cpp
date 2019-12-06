@@ -36,13 +36,19 @@
 #include <iostream>
 #include <thread>
 
+#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
-#include "Basics/exitcodes.h"
-#include "Basics/terminal-utils.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
+#include "Basics/files.h"
+#include "Basics/terminal-utils.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -54,11 +60,11 @@ using namespace arangodb::options;
 namespace arangodb {
 
 InitDatabaseFeature::InitDatabaseFeature(application_features::ApplicationServer& server,
-                                         std::vector<std::string> const& nonServerFeatures)
+                                         std::vector<std::type_index> const& nonServerFeatures)
     : ApplicationFeature(server, "InitDatabase"),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 }
 
 void InitDatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -85,12 +91,13 @@ void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   _seenPassword = result.touched("database.password");
 
   if (_initDatabase || _restoreAdmin) {
-    ApplicationServer::forceDisableFeatures(_nonServerFeatures);
+    server().forceDisableFeatures(_nonServerFeatures);
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
-    ApplicationServer::disableFeatures({"Environment"});
+    server().disableFeatures(
+        std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
   }
 }
 
@@ -164,10 +171,9 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 }
 
 void InitDatabaseFeature::checkEmptyDatabase() {
-  auto database =
-      ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  std::string path = database->directory();
-  std::string serverFile = database->subdirectoryName("SERVER");
+  auto& database = server().getFeature<DatabasePathFeature>();
+  std::string path = database.directory();
+  std::string serverFile = database.subdirectoryName("SERVER");
 
   bool empty = false;
   std::string message;
@@ -204,8 +210,8 @@ void InitDatabaseFeature::checkEmptyDatabase() {
 doexit:
   LOG_TOPIC("a38e6", FATAL, arangodb::Logger::FIXME) << message;
 
-  auto logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
-  logger->unprepare();
+  auto& logger = server().getFeature<LoggerFeature>();
+  logger.unprepare();
 
   TRI_EXIT_FUNCTION(code, nullptr);
   exit(code);

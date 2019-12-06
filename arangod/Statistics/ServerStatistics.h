@@ -24,18 +24,46 @@
 #ifndef ARANGOD_STATISTICS_SERVER_STATISTICS_H
 #define ARANGOD_STATISTICS_SERVER_STATISTICS_H 1
 
-class ServerStatistics {
- public:
-  static ServerStatistics statistics();
+#include <atomic>
+#include <cstdint>
+#include "RestServer/Metrics.h"
 
-  static void initialize();
+namespace arangodb {
+class MetricsFeature;
+}
 
+struct TransactionStatistics {
+
+  TransactionStatistics();
+  TransactionStatistics(TransactionStatistics const&) = delete;
+  TransactionStatistics(TransactionStatistics &&) = delete;
+  TransactionStatistics& operator=(TransactionStatistics const&) = delete;
+  TransactionStatistics& operator=(TransactionStatistics &&) = delete;
+
+  arangodb::MetricsFeature& _metrics;
+  
+  Counter& _transactionsStarted;
+  Counter& _transactionsAborted;
+  Counter& _transactionsCommitted;
+  Counter& _intermediateCommits;
+};
+
+struct ServerStatistics {
+
+  ServerStatistics(ServerStatistics const&) = delete;
+  ServerStatistics(ServerStatistics &&) = delete;
+  ServerStatistics& operator=(ServerStatistics const&) = delete;
+  ServerStatistics& operator=(ServerStatistics &&) = delete;
+
+  ServerStatistics& statistics();
+  void initialize(double);
+
+  TransactionStatistics _transactionsStatistics;
   double _startTime;
-  double _uptime;
+  std::atomic<double> _uptime;
 
- private:
-  static double START_TIME;
-  ServerStatistics() : _startTime(0.0), _uptime(0.0) {}
+  explicit ServerStatistics(double start) :
+    _transactionsStatistics(), _startTime(start), _uptime(0.0) {}
 };
 
 #endif

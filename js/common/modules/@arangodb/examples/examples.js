@@ -37,6 +37,14 @@ exports.Examples = {
       examples.dropGraph("traversalGraph");
     }
   },
+  'kShortestPathsGraph': {
+    createDS: function() {
+      examples.loadGraph("kShortestPathsGraph");
+    },
+    removeDS: function() {
+      examples.dropGraph("kShortestPathsGraph");
+    }
+  },
   'mps_graph': {
     createDS: function() {
       examples.loadGraph("mps_graph");

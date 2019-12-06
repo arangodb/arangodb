@@ -37,7 +37,7 @@ struct QueryResultV8 : public QueryResult {
 
   QueryResultV8(QueryResultV8&& other) = default;
 
-  QueryResultV8(QueryResult&& other)
+  explicit QueryResultV8(QueryResult&& other)
       : QueryResult(std::move(other)) {}
 
   QueryResultV8() : QueryResult() {}
@@ -50,15 +50,15 @@ struct QueryResultV8 : public QueryResult {
   
   void reset(Result const& result) {
     QueryResult::reset(result);
-    data.Clear();
+    v8Data.Clear();
   }
   
   void reset(Result&& result) {
     QueryResult::reset(std::move(result));
-    data.Clear();
+    v8Data.Clear();
   }
   
-  v8::Handle<v8::Array> data;
+  v8::Local<v8::Array> v8Data;
 };
 }  // namespace aql
 }  // namespace arangodb

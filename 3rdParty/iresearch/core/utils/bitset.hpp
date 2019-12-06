@@ -36,7 +36,7 @@
 NS_ROOT
 
 template<typename Alloc>
-class dynamic_bitset_base : irs::compact<0, Alloc>, util::noncopyable {
+class dynamic_bitset_base : irs::compact<0, Alloc> {
  public:
   typedef size_t word_t;
   typedef typename std::allocator_traits<Alloc>::template rebind_alloc<word_t> allocator_type;

@@ -62,7 +62,7 @@ class GraphManager {
 
  public:
   explicit GraphManager(TRI_vocbase_t& vocbase)
-      : GraphManager(vocbase, false){};
+      : GraphManager(vocbase, false) {}
 
   GraphManager(TRI_vocbase_t& vocbase, bool isInTransaction)
       : _vocbase(vocbase), _isInTransaction(isInTransaction) {}

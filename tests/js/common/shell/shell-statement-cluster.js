@@ -33,7 +33,6 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
 ////////////////////////////////////////////////////////////////////////////////
@@ -42,23 +41,14 @@ function StatementSuiteNonCluster () {
   'use strict';
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       db._useDatabase("_system");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
       try {
         db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
         // ignore this error
       }
     },
@@ -68,7 +58,8 @@ function StatementSuiteNonCluster () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainBindCollection : function () {
-      var st = db._createStatement({ query : "FOR i IN @@collection RETURN i" });
+      const options = { optimizer: { rules: ["-cluster-one-shard"] } };
+      var st = db._createStatement({ query : "FOR i IN @@collection RETURN i", options });
       st.bind("@collection", "_users");
       var result = st.explain();
 
@@ -88,11 +79,5 @@ function StatementSuiteNonCluster () {
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(StatementSuiteNonCluster);
 return jsunity.done();
-

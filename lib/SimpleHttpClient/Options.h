@@ -26,7 +26,8 @@
 
 #include <functional>
 #include <memory>
-#include "curl/curl.h"
+
+#include <curl/curl.h>
 
 namespace arangodb {
 namespace communicator {

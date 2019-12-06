@@ -21,7 +21,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
+#include "system-functions.h"
 
 #include <chrono>
 #include <thread>
@@ -32,7 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::utilities;
 
-#ifdef TRI_MISSING_MEMRCHR
+#ifdef ARANGODB_MISSING_MEMRCHR
 void* memrchr(void const* block, int c, size_t size) {
   if (size) {
     unsigned char const* p = static_cast<unsigned char const*>(block);
@@ -115,6 +117,7 @@ void TRI_gmtime(time_t tt, struct tm* tb) {
   struct tm* tp = gmtime(&tt);
 
   if (tp != nullptr) {
+    // cppcheck-suppress uninitvar
     memcpy(tb, tp, sizeof(struct tm));
   }
 #endif
@@ -175,6 +178,7 @@ size_t TRI_numberProcessors() {
 
 std::string arangodb::utilities::timeString(char sep, char fin) {
   time_t tt = time(nullptr);
+  // cppcheck-suppress uninitvar
   struct tm tb;
   TRI_gmtime(tt, &tb);
   char buffer[32];

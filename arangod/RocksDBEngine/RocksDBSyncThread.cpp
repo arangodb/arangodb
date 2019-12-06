@@ -23,7 +23,9 @@
 #include "RocksDBSyncThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/RocksDBUtils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
 #include <rocksdb/status.h>
@@ -31,8 +33,8 @@
 
 using namespace arangodb;
 
-RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine* engine, std::chrono::milliseconds interval)
-    : Thread("RocksDBSync"),
+RocksDBSyncThread::RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval)
+    : Thread(engine.server(), "RocksDBSync"),
       _engine(engine),
       _interval(interval),
       _lastSyncTime(std::chrono::steady_clock::now()),
@@ -43,9 +45,9 @@ RocksDBSyncThread::~RocksDBSyncThread() { shutdown(); }
 Result RocksDBSyncThread::syncWal() {
   // note the following line in RocksDB documentation (rocksdb/db.h):
   // > Currently only works if allow_mmap_writes = false in Options.
-  TRI_ASSERT(!_engine->rocksDBOptions().allow_mmap_writes);
+  TRI_ASSERT(!_engine.rocksDBOptions().allow_mmap_writes);
 
-  auto db = _engine->db()->GetBaseDB();
+  auto db = _engine.db()->GetBaseDB();
 
   // set time of last syncing under the lock
   auto const now = std::chrono::steady_clock::now();
@@ -93,8 +95,7 @@ void RocksDBSyncThread::beginShutdown() {
 }
 
 void RocksDBSyncThread::run() {
-  TRI_ASSERT(_engine != nullptr);
-  auto db = _engine->db()->GetBaseDB();
+  auto db = _engine.db()->GetBaseDB();
 
   LOG_TOPIC("11872", TRACE, Logger::ENGINES)
       << "starting RocksDB sync thread with interval " << _interval.count()

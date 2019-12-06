@@ -24,22 +24,36 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_COMMUNICATOR_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_COMMUNICATOR_H 1
 
+#include <stddef.h>
 #include <chrono>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
-#include "Basics/Common.h"
+#include <curl/curl.h>
+#include <curl/system.h>
+
+#include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/Callbacks.h"
 #include "SimpleHttpClient/Options.h"
-#include "curl/curl.h"
 
 namespace arangodb {
+class GeneralResponse;
+
 namespace communicator {
 typedef std::unordered_map<std::string, std::string> HeadersInProgress;
 typedef uint64_t Ticket;
-  
+
 struct NewRequest {
   std::string _destination;
   std::unique_ptr<GeneralRequest> _request;
@@ -143,7 +157,7 @@ class ConnectionCount {
     }  // for
   };
 
-  virtual ~ConnectionCount(){};
+  virtual ~ConnectionCount() = default;
 
   long newMaxConnections(long newRequestCount) {
     int ret_val(eMinOpenConnects);
@@ -199,11 +213,7 @@ class ConnectionCount {
 namespace arangodb {
 namespace communicator {
 
-#ifdef MAINTAINER_MODE
-const static double CALLBACK_WARN_TIME = 0.01;
-#else
 const static double CALLBACK_WARN_TIME = 0.1;
-#endif
 
 class Communicator {
  public:

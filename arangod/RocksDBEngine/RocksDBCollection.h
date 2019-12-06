@@ -24,12 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
 
-#include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "RocksDBEngine/RocksDBCollectionMeta.h"
-#include "RocksDBEngine/RocksDBCommon.h"
-#include "StorageEngine/PhysicalCollection.h"
-#include "VocBase/LogicalCollection.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 
 namespace rocksdb {
 class PinnableSlice;
@@ -42,17 +37,14 @@ class Cache;
 }
 class LogicalCollection;
 class ManagedDocumentResult;
-class Result;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
 class LocalDocumentId;
 
-class RocksDBCollection final : public PhysicalCollection {
+class RocksDBCollection final : public RocksDBMetaCollection {
   friend class RocksDBEngine;
   friend class RocksDBFulltextIndex;
   friend class RocksDBVPackIndex;
-
-  constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
   explicit RocksDBCollection(LogicalCollection& collection,
@@ -62,11 +54,7 @@ class RocksDBCollection final : public PhysicalCollection {
 
   ~RocksDBCollection();
 
-  std::string const& path() const override;
-  void setPath(std::string const& path) override;
-
   arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
-  virtual arangodb::Result persistProperties() override;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const override;
 
@@ -78,15 +66,9 @@ class RocksDBCollection final : public PhysicalCollection {
   void load() override;
   void unload() override;
 
-  TRI_voc_rid_t revision() const;
-  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
-  uint64_t numberDocuments() const;
-  uint64_t numberDocuments(transaction::Methods* trx) const override;
-
-  /// @brief report extra memory used by indexes etc.
-  size_t memory() const override;
-  void open(bool ignoreErrors) override;
-
+  /// return bounds for all documents
+  RocksDBKeyBounds bounds() const override;
+  
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -101,20 +83,11 @@ class RocksDBCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override;
-
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
-  
-  /// @brief compact-data operation
-  /// triggers rocksdb compaction for documentDB and indexes
-  Result compact() override;
-
-  void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 
@@ -157,30 +130,11 @@ class RocksDBCollection final : public PhysicalCollection {
                 bool lock, KeyLockInfo* keyLockInfo,
                 std::function<void()> const& cbDuringLock) override;
 
-  /// adjust the current number of docs
-  void adjustNumberDocuments(TRI_voc_rid_t revisionId, int64_t adjustment);
-  /// load the number of docs from storage
-  void loadInitialNumberDocuments();
-
-  uint64_t objectId() const { return _objectId; }
-
-  int lockWrite(double timeout = 0.0);
-  void unlockWrite();
-  int lockRead(double timeout = 0.0);
-  void unlockRead();
-
-  /// recalculte counts for collection in case of failure
-  uint64_t recalculateCounts();
-
-  void estimateSize(velocypack::Builder& builder);
-
   inline bool cacheEnabled() const { return _cacheEnabled; }
-
-  RocksDBCollectionMeta& meta() { return _meta; }
 
  private:
   /// @brief return engine-specific figures
-  void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
+  void figuresSpecific(velocypack::Builder&) override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -228,35 +182,22 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// is this collection using a cache
   inline bool useCache() const noexcept {
-    return (_cacheEnabled && _cachePresent);
+    return (_cacheEnabled && _cache);
   }
   
   /// @brief track key in file
   void blackListKey(RocksDBKey const& key) const;
-
-  /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
-
+  
   /// @brief can use non transactional range delete in write ahead log
   bool canUseRangeDeleteInWal() const;
 
  private:
-  uint64_t const _objectId;     // rocksdb-specific object id for collection
-  RocksDBCollectionMeta _meta;  /// collection metadata
-
-  std::atomic<uint64_t> _numberDocuments;
-  std::atomic<TRI_voc_rid_t> _revisionId;
 
   /// @brief cached ptr to primary index for performance, never delete
   RocksDBPrimaryIndex* _primaryIndex;
-  /// @brief collection lock used for write access
-  mutable basics::ReadWriteLock _exclusiveLock;
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  // we use this boolean for testing whether _cache is set.
-  // it's quicker than accessing the shared_ptr each time
-  mutable bool _cachePresent;
   bool _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;

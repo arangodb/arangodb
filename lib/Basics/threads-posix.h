@@ -24,7 +24,8 @@
 #ifndef ARANGODB_BASICS_THREADS__POSIX_H
 #define ARANGODB_BASICS_THREADS__POSIX_H 1
 
-#include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "Basics/system-compiler.h"
 
 // Compatible wth the Windows definition.
 #define INFINITE 0xFFFFFFFF // Infinite timeout
@@ -36,6 +37,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_pid_t pid_t
+
+#define TRI_vpack_pid_t int
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief thread library identifier

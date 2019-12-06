@@ -21,9 +21,14 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <tuple>
+
 #include "v8-globals.h"
 
-TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
+#include "Basics/debugging.h"
+#include "Basics/system-functions.h"
+
+TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
     : AgencyTempl(),
       AgentTempl(),
       ClusterInfoTempl(),
@@ -90,6 +95,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       ProtocolKey(),
       RawSuffixKey(),
       RequestBodyKey(),
+      RawRequestBodyKey(),
       RequestTypeKey(),
       ResponseCodeKey(),
       ReturnNewKey(),
@@ -124,7 +130,13 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       _vocbase(nullptr),
       _activeExternals(0),
       _canceled(false),
-      _securityContext(arangodb::JavaScriptSecurityContext::createRestrictedContext()) {
+      _securityContext(arangodb::JavaScriptSecurityContext::createRestrictedContext()),
+      _inForcedCollect(false),
+      _id(id),
+      _lastMaxTime(TRI_microtime()),
+      _countOfTimes(0),
+      _heapMax(0),
+      _heapLow(0) {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));
@@ -180,6 +192,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "protocol"));
   RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
   RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
+  RawRequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "responseCode"));
   ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "returnNew"));
@@ -249,10 +262,9 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
-  auto entry = v8g->JSSharedPtrs.emplace( // ensure shared_ptr is not deallocated
-    std::piecewise_construct, // piecewise construct
-    std::forward_as_tuple(value.get()), // key
-    std::forward_as_tuple(isolateRef, value) // value
+  auto entry = v8g->JSSharedPtrs.try_emplace( // ensure shared_ptr is not deallocated
+    value.get(), // key
+    isolateRef, value // value
   );
 
   return std::pair<SharedPtrPersistent&, bool>( // result
@@ -263,11 +275,11 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
 TRI_v8_global_t::~TRI_v8_global_t() {}
 
 /// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {
+TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate, size_t id) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g == nullptr);
-  v8g = new TRI_v8_global_t(isolate);
+  v8g = new TRI_v8_global_t(isolate, id);
   isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
 
   return v8g;
@@ -278,7 +290,7 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
 
   if (v8g == nullptr) {
-    v8g = TRI_CreateV8Globals(isolate);
+    v8g = TRI_CreateV8Globals(isolate, 0);
   }
 
   TRI_ASSERT(v8g != nullptr);

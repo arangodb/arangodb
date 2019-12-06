@@ -186,15 +186,13 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::index_writer::ptr open_writer(
       irs::directory& dir,
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& options = {}
-  ) {
+      const irs::index_writer::init_options& options = {}) {
     return irs::index_writer::make(dir, codec_, mode, options);
   }
 
   irs::index_writer::ptr open_writer(
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& options = {}
-  ) {
+      const irs::index_writer::init_options& options = {}) {
     return irs::index_writer::make(*dir_, codec_, mode, options);
   }
 

@@ -6,7 +6,7 @@
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{collection-name,string,required}
+@RESTQUERYPARAM{collection,string,required}
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}

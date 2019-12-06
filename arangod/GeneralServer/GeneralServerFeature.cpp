@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,18 +28,21 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "Graph/Graph.h"
+#include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -57,7 +60,6 @@
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"
-#include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestControlPregelHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
@@ -72,6 +74,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
@@ -93,14 +96,18 @@
 #include "RestHandler/RestWalAccessHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ServerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8Server/V8DealerFeature.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RestHandler/RestHotBackupHandler.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
+#endif
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -119,10 +126,11 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
       _proxyCheck(true),
       _numIoThreads(0) {
   setOptional(true);
-  startsAfter("AQLPhase");
-  startsAfter("Endpoint");
-  startsAfter("Upgrade");
-  startsAfter("SslServer");
+  startsAfter<application_features::AqlFeaturePhase>();
+
+  startsAfter<HttpEndpointProvider>();
+  startsAfter<SslServerFeature>();
+  startsAfter<UpgradeFeature>();
 
   _numIoThreads = (std::max)(static_cast<uint64_t>(1),
                              static_cast<uint64_t>(TRI_numberProcessors() / 4));
@@ -246,10 +254,6 @@ void GeneralServerFeature::beginShutdown() {
 }
 
 void GeneralServerFeature::stop() {
-  for (auto& server : _servers) {
-    server->stopWorking();
-  }
-
   _jobManager->deleteJobs();
 }
 
@@ -268,28 +272,23 @@ void GeneralServerFeature::unprepare() {
 void GeneralServerFeature::buildServers() {
   TRI_ASSERT(_jobManager != nullptr);
 
-  EndpointFeature* endpoint =
-      application_features::ApplicationServer::getFeature<EndpointFeature>(
-          "Endpoint");
-  auto const& endpointList = endpoint->endpointList();
+  EndpointFeature& endpoint =
+      server().getFeature<HttpEndpointProvider, EndpointFeature>();
+  auto const& endpointList = endpoint.endpointList();
 
   // check if endpointList contains ssl featured server
   if (endpointList.hasSsl()) {
-    SslServerFeature* ssl =
-        application_features::ApplicationServer::getFeature<SslServerFeature>(
-            "SslServer");
-
-    if (ssl == nullptr) {
+    if (!server().hasFeature<SslServerFeature>()) {
       LOG_TOPIC("8df10", FATAL, arangodb::Logger::FIXME)
           << "no ssl context is known, cannot create https server, "
              "please enable SSL";
       FATAL_ERROR_EXIT();
     }
-
-    ssl->SSL->verifySslOptions();
+    SslServerFeature& ssl = server().getFeature<SslServerFeature>();
+    ssl.SSL->verifySslOptions();
   }
 
-  auto server = std::make_unique<GeneralServer>(_numIoThreads);
+  auto server = std::make_unique<GeneralServer>(*this, _numIoThreads);
   server->setEndpointList(&endpointList);
   _servers.push_back(std::move(server));
 }
@@ -297,19 +296,13 @@ void GeneralServerFeature::buildServers() {
 void GeneralServerFeature::defineHandlers() {
   TRI_ASSERT(_jobManager != nullptr);
 
-  AgencyFeature* agency = application_features::ApplicationServer::getFeature<AgencyFeature>(
-      "Agency");
-  TRI_ASSERT(agency != nullptr);
+  AgencyFeature& agency = server().getFeature<AgencyFeature>();
+  ClusterFeature& cluster = server().getFeature<ClusterFeature>();
+  AuthenticationFeature& authentication = server().getFeature<AuthenticationFeature>();
+#ifdef USE_ENTERPRISE
+  HotBackupFeature& backup = server().getFeature<HotBackupFeature>();
+#endif
 
-  ClusterFeature* cluster =
-      application_features::ApplicationServer::getFeature<ClusterFeature>(
-          "Cluster");
-  TRI_ASSERT(cluster != nullptr);
-
-  AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
-  TRI_ASSERT(authentication != nullptr);
 
   auto queryRegistry = QueryRegistryFeature::registry();
   auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
@@ -414,7 +407,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler("/_api/aql-builtin",
                                     RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
-  if (server()->isEnabled("V8Dealer")) {
+  if (server().isEnabled<V8DealerFeature>()) {
     _handlerFactory->addPrefixHandler("/_api/aqlfunction",
                                       RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
   }
@@ -434,25 +427,26 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler("/_api/wal",
                                     RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
-  if (agency->isEnabled()) {
+  if (agency.isEnabled()) {
     _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::AGENCY_PATH,
                                       RestHandlerCreator<RestAgencyHandler>::createData<consensus::Agent*>,
-                                      agency->agent());
+                                      agency.agent());
 
     _handlerFactory->addPrefixHandler(
         RestVocbaseBaseHandler::AGENCY_PRIV_PATH,
         RestHandlerCreator<RestAgencyPrivHandler>::createData<consensus::Agent*>,
-        agency->agent());
+        agency.agent());
   }
 
-  if (cluster->isEnabled()) {
+  
+  if (cluster.isEnabled()) {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
-        cluster->agencyCallbacksPath(),
+        cluster.agencyCallbacksPath(),
         RestHandlerCreator<RestAgencyCallbacksHandler>::createData<AgencyCallbackRegistry*>,
-        cluster->agencyCallbackRegistry());
+        cluster.agencyCallbackRegistry());
     // add "_api/cluster" handler
-    _handlerFactory->addPrefixHandler(cluster->clusterRestPath(),
+    _handlerFactory->addPrefixHandler(cluster.clusterRestPath(),
                                       RestHandlerCreator<RestClusterHandler>::createNoData);
   }
   _handlerFactory->addPrefixHandler(
@@ -463,21 +457,21 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
-  
+
   _handlerFactory->addHandler("/_admin/aql/reload",
                               RestHandlerCreator<RestAqlReloadHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/auth/reload",
                               RestHandlerCreator<RestAuthReloadHandler>::createNoData);
-  
+
   if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }
-  
+
   _handlerFactory->addHandler("/_admin/time",
                               RestHandlerCreator<RestTimeHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler("/_api/job",
                                     RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
                                     _jobManager.get());
@@ -515,7 +509,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler("/_admin/log",
                                     RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
-  if (server()->isEnabled("V8Dealer")) {
+  if (server().isEnabled<V8DealerFeature>()) {
     _handlerFactory->addPrefixHandler("/_admin/routing",
                                       RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
   }
@@ -529,7 +523,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler("/_admin/shutdown",
                                     RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
 
-  if (authentication->isActive()) {
+  if (authentication.isActive()) {
     _handlerFactory->addPrefixHandler("/_open/auth",
                                       RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
   }
@@ -540,13 +534,24 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/statistics",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
+  _handlerFactory->addHandler("/_admin/metrics",
+                              RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
-  if (cluster->isEnabled()) {
+  if (cluster.isEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/repair",
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
+
+#ifdef USE_ENTERPRISE
+  if (backup.isAPIEnabled()) {
+    _handlerFactory->addPrefixHandler("/_admin/backup",
+                                    RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+  }
+#endif
+
 
   // ...........................................................................
   // test handler

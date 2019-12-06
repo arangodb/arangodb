@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewSort.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+
 #include "VelocyPackHelper.h"
 #include "Basics/StringUtils.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
 
 #include "utils/math_utils.hpp"
 
@@ -46,7 +48,7 @@ bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
 bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   if (slice.isString()) {
     std::string value = arangodb::iresearch::getStringRef(slice);
-    arangodb::basics::StringUtils::tolowerInPlace(&value);
+    arangodb::basics::StringUtils::tolowerInPlace(value);
 
     if (value == "asc") {
       direction = true;
@@ -117,18 +119,18 @@ bool IResearchViewSort::fromVelocyPack(
     auto const directionSlice = sortSlice.get(directionFieldName);
     if (!directionSlice.isNone()) {
       if (!parseDirectionString(directionSlice, direction)) {
-        error = "[" + std::to_string(size()) + "]=>" + directionFieldName;
+        error = "[" + std::to_string(size()) + "]." + directionFieldName;
         return false;
       }
     } else if (!parseDirectionBool(sortSlice.get(ascFieldName), direction)) {
-      error = "[" + std::to_string(size()) + "]=>" + ascFieldName;
+      error = "[" + std::to_string(size()) + "]." + ascFieldName;
       return false;
     }
 
     auto const fieldSlice = sortSlice.get(fieldName);
 
     if (!fieldSlice.isString()) {
-      error = "[" + std::to_string(size()) + "]=>" + fieldName;
+      error = "[" + std::to_string(size()) + "]." + fieldName;
       return false;
     }
 
@@ -140,7 +142,7 @@ bool IResearchViewSort::fromVelocyPack(
       );
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
-      error = "[" + std::to_string(size()) + "]=>" + fieldName;
+      error = "[" + std::to_string(size()) + "]." + fieldName;
       return false;
     }
 

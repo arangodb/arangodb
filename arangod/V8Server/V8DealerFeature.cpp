@@ -25,23 +25,32 @@
 #include <regex>
 #include <thread>
 
+#include "Actions/ActionFeature.h"
 #include "Actions/actions.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
-#include "Basics/StringUtils.h"
-#include "Basics/TimedAction.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
+#include "Basics/TimedAction.h"
+#include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FrontendFeature.h"
+#include "RestServer/ScriptFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
@@ -51,6 +60,7 @@
 #include "V8/v8-globals.h"
 #include "V8/v8-shell.h"
 #include "V8/v8-utils.h"
+#include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
 #include "V8Server/v8-ttl.h"
@@ -68,15 +78,15 @@ V8DealerFeature* V8DealerFeature::DEALER = nullptr;
 namespace {
 class V8GcThread : public Thread {
  public:
-  explicit V8GcThread(V8DealerFeature* dealer)
-      : Thread("V8GarbageCollector"),
+  explicit V8GcThread(V8DealerFeature& dealer)
+      : Thread(dealer.server(), "V8GarbageCollector"),
         _dealer(dealer),
         _lastGcStamp(static_cast<uint64_t>(TRI_microtime())) {}
 
   ~V8GcThread() { shutdown(); }
 
  public:
-  void run() override { _dealer->collectGarbage(); }
+  void run() override { _dealer.collectGarbage(); }
 
   double getLastGcStamp() {
     return static_cast<double>(_lastGcStamp.load(std::memory_order_acquire));
@@ -87,7 +97,7 @@ class V8GcThread : public Thread {
   }
 
  private:
-  V8DealerFeature* _dealer;
+  V8DealerFeature& _dealer;
   std::atomic<uint64_t> _lastGcStamp;
 };
 }  // namespace
@@ -109,15 +119,15 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
   setOptional(true);
-  startsAfter("ClusterPhase");
+  startsAfter<ClusterFeaturePhase>();
 
-  startsAfter("Action");
-  startsAfter("V8Platform");
-  startsAfter("V8Security");
+  startsAfter<ActionFeature>();
+  startsAfter<V8PlatformFeature>();
+  startsAfter<V8SecurityFeature>();
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption(
       "--javascript.gc-frequency",
@@ -185,10 +195,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
+  V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
 
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
   if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
@@ -201,8 +208,12 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (!_enableJS) {
     disable();
-    application_features::ApplicationServer::disableFeatures(
-        {"V8Platform", "Action", "Script", "FoxxQueues", "Frontend"});
+    server().disableFeatures(
+        std::vector<std::type_index>{std::type_index(typeid(V8PlatformFeature)),
+                                     std::type_index(typeid(ActionFeature)),
+                                     std::type_index(typeid(ScriptFeature)),
+                                     std::type_index(typeid(FoxxQueuesFeature)),
+                                     std::type_index(typeid(FrontendFeature))});
     return;
   }
 
@@ -222,7 +233,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
-  v8security->addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
+  v8security.addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
 
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
@@ -252,7 +263,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       // version-specific js path exists!
       it = versionedPath;
     }
-    v8security->addToInternalWhitelist(it, FSAccessType::READ);
+    v8security.addToInternalWhitelist(it, FSAccessType::READ);
   }
 
   // check whether app-path was specified
@@ -265,9 +276,9 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Tests if this path is either a directory (ok) or does not exist (we create
   // it in ::start) If it is something else this will throw an error.
   ctx->normalizePath(_appPath, "javascript.app-path", false);
-  v8security->addToInternalWhitelist(_appPath, FSAccessType::READ);
-  v8security->addToInternalWhitelist(_appPath, FSAccessType::WRITE);
-  v8security->dumpAccessLists();
+  v8security.addToInternalWhitelist(_appPath, FSAccessType::READ);
+  v8security.addToInternalWhitelist(_appPath, FSAccessType::WRITE);
+  v8security.dumpAccessLists();
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -276,9 +287,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void V8DealerFeature::prepare() {
-  auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  TRI_ASSERT(cluster != nullptr);
-  defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM", cluster->systemReplicationFactor());
+  auto& cluster = server().getFeature<ClusterFeature>();
+  defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM", cluster.systemReplicationFactor());
 }
 
 void V8DealerFeature::start() {
@@ -288,11 +298,9 @@ void V8DealerFeature::start() {
     // don't copy JS files on startup
     // now check if we have a js directory inside the database directory, and if
     // it looks good
-    auto dbPathFeature =
-        application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-            DatabasePathFeature::name());
+    auto& dbPathFeature = server().getFeature<DatabasePathFeature>();
     const std::string dbJSPath =
-        FileUtils::buildFilename(dbPathFeature->directory(), "js");
+        FileUtils::buildFilename(dbPathFeature.directory(), "js");
     const std::string checksumFile =
         FileUtils::buildFilename(dbJSPath, StaticStrings::checksumFileJs);
     const std::string serverPath = FileUtils::buildFilename(dbJSPath, "server");
@@ -410,9 +418,8 @@ void V8DealerFeature::start() {
     }
   }
 
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::SystemDatabaseFeature>();
-  auto database = sysDbFeature->use();
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto database = sysDbFeature.use();
 
   loadJavaScriptFileInAllContexts(database.get(), "server/initialize.js", nullptr);
   startGarbageCollection();
@@ -427,10 +434,9 @@ void V8DealerFeature::copyInstallationFiles() {
   }
 
   // get base path from DatabasePathFeature
-  auto dbPathFeature =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>();
+  auto& dbPathFeature = server().getFeature<DatabasePathFeature>();
   std::string const copyJSPath =
-      FileUtils::buildFilename(dbPathFeature->directory(), "js");
+      FileUtils::buildFilename(dbPathFeature.directory(), "js");
   if (copyJSPath == _startupDirectory) {
     LOG_TOPIC("89fe2", FATAL, arangodb::Logger::V8)
         << "'javascript.startup-directory' cannot be inside "
@@ -499,20 +505,24 @@ void V8DealerFeature::copyInstallationFiles() {
     std::string const nodeModulesPathVersioned =
         basics::FileUtils::buildFilename("js", versionAppendix, "node",
                                          "node_modules");
-    auto filter = [&nodeModulesPath,
-                   &nodeModulesPathVersioned](std::string const& filename) -> bool {
-      if (filename.size() >= nodeModulesPath.size()) {
-        std::string normalized = filename;
-        FileUtils::normalizePath(normalized);
-        if ((!nodeModulesPath.empty() && 
-             normalized.size() >= nodeModulesPath.size() &&
-             normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
-            (!nodeModulesPathVersioned.empty() &&
-             normalized.size() >= nodeModulesPathVersioned.size() &&
-             normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
-          // filter it out!
-          return true;
-        }
+
+    std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
+
+    auto filter = [&nodeModulesPath, &nodeModulesPathVersioned, &binRegex](std::string const& filename) -> bool {
+      if (std::regex_search(filename, binRegex)) {
+        // don't copy files in .bin
+        return true;
+      }
+      std::string normalized = filename;
+      FileUtils::normalizePath(normalized);
+      if ((!nodeModulesPath.empty() && 
+           normalized.size() >= nodeModulesPath.size() &&
+           normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
+          (!nodeModulesPathVersioned.empty() &&
+           normalized.size() >= nodeModulesPathVersioned.size() &&
+           normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
+        // filter it out!
+        return true;
       }
       // let the file/directory pass through
       return false;
@@ -545,7 +555,7 @@ void V8DealerFeature::copyInstallationFiles() {
 }
 
 V8Context* V8DealerFeature::addContext() {
-  if (application_features::ApplicationServer::isStopping()) {
+  if (server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
@@ -556,9 +566,8 @@ V8Context* V8DealerFeature::addContext() {
     // threads can see (yet)
     applyContextUpdate(context);
 
-    auto* sysDbFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::SystemDatabaseFeature>();
-    auto database = sysDbFeature->use();
+    auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+    auto database = sysDbFeature.use();
 
     TRI_ASSERT(database != nullptr);
 
@@ -693,7 +702,9 @@ void V8DealerFeature::collectGarbage() {
             context->assertLocked();
 
             TRI_GET_GLOBALS();
+            v8g->_inForcedCollect = true;
             TRI_RunGarbageCollectionV8(isolate, 1.0);
+            v8g->_inForcedCollect = false;
             hasActiveExternals = v8g->hasActiveExternals();
           }
           localContext->Exit();
@@ -834,7 +845,7 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
 
 void V8DealerFeature::startGarbageCollection() {
   TRI_ASSERT(_gcThread == nullptr);
-  _gcThread.reset(new V8GcThread(this));
+  _gcThread.reset(new V8GcThread(*this));
   _gcThread->start();
 
   _gcFinished = false;
@@ -1016,6 +1027,7 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
   auto isolate = context->_isolate;
   TRI_ASSERT(isolate != nullptr);
+  TRI_GET_GLOBALS();
   context->assertLocked();
 
   bool canceled = false;
@@ -1030,7 +1042,9 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
 
       {
         v8::Context::Scope contextScope(localContext);
+        v8g->_inForcedCollect = true;
         TRI_RunGarbageCollectionV8(isolate, availableTime);
+        v8g->_inForcedCollect = false;
       }
 
       // needs to be reset after the garbage collection
@@ -1167,14 +1181,14 @@ void V8DealerFeature::defineContextUpdate(
 // apply context update is only run on contexts that no other
 // threads can see (yet)
 void V8DealerFeature::applyContextUpdate(V8Context* context) {
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-
   for (auto& p : _contextUpdates) {
     auto vocbase = p.second;
 
     if (vocbase == nullptr) {
-      vocbase = sysDbFeature ? sysDbFeature->use().get() : nullptr;
+      vocbase =
+          server().hasFeature<arangodb::SystemDatabaseFeature>()
+              ? server().getFeature<arangodb::SystemDatabaseFeature>().use().get()
+              : nullptr;
 
       if (!vocbase) {
         continue;
@@ -1267,7 +1281,7 @@ void V8DealerFeature::shutdownContexts() {
 
     // wait until garbage collector thread is done
     while (!_gcFinished) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
     LOG_TOPIC("ea409", DEBUG, arangodb::Logger::V8)
@@ -1350,13 +1364,10 @@ V8Context* V8DealerFeature::pickFreeContextForGc() {
 }
 
 V8Context* V8DealerFeature::buildContext(size_t id) {
-  V8PlatformFeature* v8platform =
-      application_features::ApplicationServer::getFeature<V8PlatformFeature>(
-          "V8Platform");
-  TRI_ASSERT(v8platform != nullptr);
+  V8PlatformFeature& v8platform = server().getFeature<V8PlatformFeature>();
 
   // create isolate
-  v8::Isolate* isolate = v8platform->createIsolate();
+  v8::Isolate* isolate = v8platform.createIsolate();
   TRI_ASSERT(isolate != nullptr);
 
   // pass isolate to a new context
@@ -1380,7 +1391,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
     {
       v8::Context::Scope contextScope(localContext);
 
-      TRI_CreateV8Globals(isolate);
+      TRI_CreateV8Globals(isolate, id);
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {
@@ -1457,7 +1468,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
   } catch (...) {
     LOG_TOPIC("35586", WARN, Logger::V8)
         << "caught exception during context initialization";
-    v8platform->disposeIsolate(isolate);
+    v8platform.disposeIsolate(isolate);
     throw;
   }
 
@@ -1479,6 +1490,27 @@ V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
 
   return {_contexts.size(), _busyContexts.size(), _dirtyContexts.size(),
           _idleContexts.size(), _nrMaxContexts};
+}
+
+std::vector<V8DealerFeature::MemoryStatistics> V8DealerFeature::getCurrentMemoryNumbers() {
+  std::vector<V8DealerFeature::MemoryStatistics> result;
+  {
+    CONDITION_LOCKER(guard, _contextCondition);
+    result.reserve(_contexts.size());
+    for (auto oneCtx : _contexts) {
+      auto isolate = oneCtx->_isolate;
+      TRI_GET_GLOBALS();
+      result.push_back(MemoryStatistics
+                       {
+                        v8g->_id,
+                        v8g->_lastMaxTime,
+                        v8g->_countOfTimes,
+                        v8g->_heapMax,
+                        v8g->_heapLow
+                       });
+    }
+  }
+  return result;
 }
 
 bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
@@ -1541,7 +1573,7 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
 
   localContext->Exit();
 
-  LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file
+  LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8) << "loaded JavaScript file '" << file
                                          << "' for V8 context #" << context->id();
 }
 
@@ -1557,6 +1589,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
     V8ContextEntryGuard contextGuard(context);
 
     v8::HandleScope scope(isolate);
+    TRI_GET_GLOBALS();
 
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
@@ -1567,7 +1600,9 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
       TRI_VisitActions(
           [&isolate](TRI_action_t* action) { action->visit(isolate); });
 
+      v8g->_inForcedCollect = true;
       TRI_RunGarbageCollectionV8(isolate, 30.0);
+      v8g->_inForcedCollect = false;
 
       TRI_GET_GLOBALS();
 
@@ -1585,9 +1620,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
 
   context->_context.Reset();
 
-  application_features::ApplicationServer::getFeature<V8PlatformFeature>(
-      "V8Platform")
-      ->disposeIsolate(isolate);
+  server().getFeature<V8PlatformFeature>().disposeIsolate(isolate);
 
   LOG_TOPIC("34c28", TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->id();
 

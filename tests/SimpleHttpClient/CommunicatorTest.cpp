@@ -27,9 +27,10 @@
 
 #include "gtest/gtest.h"
 
+#include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
-#include "SimpleHttpClient/Communicator.h"
 #include "SimpleHttpClient/Callbacks.h"
+#include "SimpleHttpClient/Communicator.h"
 
 #include <thread>
 #include <chrono>
@@ -46,8 +47,8 @@ TEST(SimpleHttpClientCommunicatorTest, requests_are_properly_aborted) {
     ASSERT_TRUE(false); // it should be aborted?!
     callbacksCalled = true;
   }, [&callbacksCalled](int errorCode, std::unique_ptr<GeneralResponse> response) {
-    ASSERT_TRUE(!response);
-    ASSERT_TRUE(errorCode == TRI_COMMUNICATOR_REQUEST_ABORTED);
+    ASSERT_FALSE(response);
+    ASSERT_EQ(errorCode, TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED);
     callbacksCalled = true;
   });
   auto request = std::unique_ptr<HttpRequest>(HttpRequest::createHttpRequest(rest::ContentType::TEXT, "", 0, {}));
@@ -97,7 +98,7 @@ TEST(SimpleHttpClientCommunicatorTest, requests_will_call_the_progress_callback)
   while (communicator.work_once() > 0) {
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
-  ASSERT_TRUE(curlRc == CURLE_ABORTED_BY_CALLBACK); // curlRcFn was called
+  ASSERT_EQ(curlRc, CURLE_ABORTED_BY_CALLBACK); // curlRcFn was called
 }
 
 
@@ -117,60 +118,60 @@ TEST(SimpleHttpClientCommunicatorTest, connection_count) {
 
   // loop through the coverage minutes, see if minimum is consistent
   for (loop=0; loop<=ConnectionCount::eMinutesTracked; ++loop) {
-    ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+    ASSERT_EQ(ConnectionCount::eMinOpenConnects, tester.newMaxConnections(0));
     tester.moveCursor();
   } // for
 
   // parameter to newMaxConnections() does NOT change history
-  ASSERT_TRUE(ConnectionCount::eMinOpenConnects+10 == tester.newMaxConnections(10));
-  ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
-  ASSERT_TRUE(ConnectionCount::eMinOpenConnects+2 == tester.newMaxConnections(2));
-  ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+  ASSERT_EQ(ConnectionCount::eMinOpenConnects+10, tester.newMaxConnections(10));
+  ASSERT_EQ(ConnectionCount::eMinOpenConnects, tester.newMaxConnections(0));
+  ASSERT_EQ(ConnectionCount::eMinOpenConnects+2, tester.newMaxConnections(2));
+  ASSERT_EQ(ConnectionCount::eMinOpenConnects, tester.newMaxConnections(0));
 
   // parameter to updateMaxConnections() DOES change history if bigger
   tester.updateMaxConnections(10);
-  ASSERT_TRUE(10 == tester.newMaxConnections(0));
-  ASSERT_TRUE(16 == tester.newMaxConnections(6));
+  ASSERT_EQ(10, tester.newMaxConnections(0));
+  ASSERT_EQ(16, tester.newMaxConnections(6));
   tester.updateMaxConnections(7);
-  ASSERT_TRUE(10 == tester.newMaxConnections(0));
-  ASSERT_TRUE(13 == tester.newMaxConnections(3));
+  ASSERT_EQ(10, tester.newMaxConnections(0));
+  ASSERT_EQ(13, tester.newMaxConnections(3));
 
   // simulate time passing and returned max changing ... assumes 6 min history
   //  "10" is still in current minute
-  ASSERT_TRUE(6 == ConnectionCount::eMinutesTracked);
-  ASSERT_TRUE(10 == tester.newMaxConnections(0));
+  ASSERT_EQ(6, ConnectionCount::eMinutesTracked);
+  ASSERT_EQ(10, tester.newMaxConnections(0));
   tester.updateMaxConnections(17);
-  ASSERT_TRUE(17 == tester.newMaxConnections(0));
+  ASSERT_EQ(17, tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(13);
-  ASSERT_TRUE(17 == tester.newMaxConnections(0));
+  ASSERT_EQ(17, tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(11);
-  ASSERT_TRUE(17 == tester.newMaxConnections(0));
+  ASSERT_EQ(17, tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(9);
-  ASSERT_TRUE(17 == tester.newMaxConnections(0));
+  ASSERT_EQ(17, tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(10);
-  ASSERT_TRUE(17 == tester.newMaxConnections(0));
+  ASSERT_EQ(17, tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(7);
-  ASSERT_TRUE(17 == tester.newMaxConnections(0));
+  ASSERT_EQ(17, tester.newMaxConnections(0));
   tester.moveCursor();
 
   // minute history now full ... should see sliding window now
-  ASSERT_TRUE(13 == tester.newMaxConnections(0));
+  ASSERT_EQ(13, tester.newMaxConnections(0));
   tester.moveCursor();
-  ASSERT_TRUE(11 == tester.newMaxConnections(0));
+  ASSERT_EQ(11, tester.newMaxConnections(0));
   tester.moveCursor();
-  ASSERT_TRUE(10 == tester.newMaxConnections(0)); // 9 smaller than 10
+  ASSERT_EQ(10, tester.newMaxConnections(0)); // 9 smaller than 10
   tester.moveCursor();
-  ASSERT_TRUE(10 == tester.newMaxConnections(0));
+  ASSERT_EQ(10, tester.newMaxConnections(0));
   tester.moveCursor();
-  ASSERT_TRUE(7 == tester.newMaxConnections(0));
+  ASSERT_EQ(7, tester.newMaxConnections(0));
   tester.moveCursor();
-  ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+  ASSERT_EQ(ConnectionCount::eMinOpenConnects, tester.newMaxConnections(0));
   tester.moveCursor();
-  ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+  ASSERT_EQ(ConnectionCount::eMinOpenConnects, tester.newMaxConnections(0));
 
 }

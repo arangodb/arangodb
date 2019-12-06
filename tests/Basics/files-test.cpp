@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for filec
+/// @brief test suite for files.c
 ///
 /// @file
 ///
@@ -25,10 +25,12 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/files.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/files.h"
+#include "Basics/operating-system.h"
+#include "Basics/system-functions.h"
 #include "Random/RandomGenerator.h"
 
 #include "gtest/gtest.h"
@@ -49,7 +51,7 @@ protected:
   CFilesTest () : _directory(true) {
     long systemError;
     std::string errorMessage;
-    
+
     if (!Initialized) {
       Initialized = true;
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
@@ -95,6 +97,19 @@ protected:
 
   StringBuffer _directory;
 };
+
+
+struct ByteCountFunctor {
+
+  size_t _byteCount;
+
+  ByteCountFunctor() : _byteCount(0) {};
+
+  bool operator() (const char * data, size_t size) {
+    _byteCount+=size;
+    return true;
+  };
+};// struct ByteCountFunctor
 
 TEST_F(CFilesTest, tst_copyfile) {
   std::ostringstream out;
@@ -231,7 +246,7 @@ TEST_F(CFilesTest, tst_existsfile) {
 
 TEST_F(CFilesTest, tst_filesize_empty) {
   StringBuffer* filename = writeFile("");
-  EXPECT_TRUE(0 == (int) TRI_SizeFile(filename->c_str()));
+  EXPECT_TRUE(0U == TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -245,7 +260,7 @@ TEST_F(CFilesTest, tst_filesize_exists) {
   const char* buffer = "the quick brown fox";
   
   StringBuffer* filename = writeFile(buffer);
-  EXPECT_TRUE((int) strlen(buffer) == (int) TRI_SizeFile(filename->c_str()));
+  EXPECT_TRUE(static_cast<int>(strlen(buffer)) == TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -256,8 +271,8 @@ TEST_F(CFilesTest, tst_filesize_exists) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(CFilesTest, tst_filesize_non) {
-  EXPECT_TRUE((int) -1 == (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
-  EXPECT_TRUE((int) -1 == (int) TRI_SizeFile("dihnui8ngiu54"));
+  EXPECT_TRUE(-1 == (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
+  EXPECT_TRUE(-1 == (int) TRI_SizeFile("dihnui8ngiu54"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,7 +363,7 @@ TEST_F(CFilesTest, tst_normalize) {
 #else
   EXPECT_TRUE(std::string("\\foo\\bar\\baz") == path);
 #endif
-  
+
   path = "/foo/bar\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -356,7 +371,7 @@ TEST_F(CFilesTest, tst_normalize) {
 #else
   EXPECT_TRUE(std::string("/foo/bar\\baz") == path);
 #endif
-  
+
   path = "/foo/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -364,7 +379,7 @@ TEST_F(CFilesTest, tst_normalize) {
 #else
   EXPECT_TRUE(std::string("/foo/bar/\\baz") == path);
 #endif
-  
+
   path = "//foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -372,7 +387,7 @@ TEST_F(CFilesTest, tst_normalize) {
 #else
   EXPECT_TRUE(std::string("//foo\\/bar/\\baz") == path);
 #endif
-  
+
   path = "\\\\foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
@@ -423,3 +438,33 @@ TEST_F(CFilesTest, tst_dirname) {
   EXPECT_EQ("..", TRI_Dirname(".."));
 #endif
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief process data in a file via a functor
+////////////////////////////////////////////////////////////////////////////////
+
+TEST_F(CFilesTest, tst_processFile) {
+  const char* buffer = "the quick brown fox";
+  bool good;
+
+  StringBuffer* filename = writeFile(buffer);
+
+  ByteCountFunctor bcf;
+  auto reader = std::ref(bcf);
+  good = TRI_ProcessFile(filename->c_str(), reader);
+
+  EXPECT_TRUE(good);
+  EXPECT_EQ(strlen(buffer), bcf._byteCount);
+
+  TRI_SHA256Functor sha;
+  auto shaReader = std::ref(sha);
+
+  good = TRI_ProcessFile(filename->c_str(), shaReader);
+
+  EXPECT_TRUE(good);
+  EXPECT_TRUE(sha.final().compare("9ecb36561341d18eb65484e833efea61edc74b84cf5e6ae1b81c63533e25fc8f")==0);
+
+  TRI_UnlinkFile(filename->c_str());
+  delete filename;
+}
+

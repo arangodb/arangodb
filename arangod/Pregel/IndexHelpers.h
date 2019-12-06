@@ -24,6 +24,8 @@
 #ifndef ARANGOD_PREGEL_INDEX_HELPERS_H
 #define ARANGOD_PREGEL_INDEX_HELPERS_H 1
 
+#include <memory>
+
 #include "Aql/Graphs.h"
 
 namespace arangodb {

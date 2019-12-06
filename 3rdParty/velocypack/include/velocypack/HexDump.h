@@ -41,14 +41,15 @@ struct HexDump {
   HexDump() = delete;
 
   HexDump(Slice const& slice, int valuesPerLine = 16,
-          std::string const& separator = " ")
-      : slice(slice), valuesPerLine(valuesPerLine), separator(separator) {}
+          std::string const& separator = " ", std::string const& header = "0x")
+      : slice(slice), valuesPerLine(valuesPerLine), separator(separator), header(header) {}
 
   HexDump(Slice const* slice, int valuesPerLine = 16,
-          std::string const& separator = " ")
-      : HexDump(*slice, valuesPerLine, separator) {}
+          std::string const& separator = " ", std::string const& header = "0x")
+      : HexDump(*slice, valuesPerLine, separator, header) {}
 
-  static std::string toHex(uint8_t value);
+  static std::string toHex(uint8_t value, std::string const& header = "0x");
+  static void appendHex(std::string& result, uint8_t value);
   std::string toString() const;
 
   friend std::ostream& operator<<(std::ostream&, HexDump const&);
@@ -56,6 +57,7 @@ struct HexDump {
   Slice const slice;
   int valuesPerLine;
   std::string separator;
+  std::string header;
 };
 
 }  // namespace arangodb::velocypack

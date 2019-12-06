@@ -23,6 +23,9 @@
 
 #include "ClusterSelectivityEstimates.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
@@ -74,10 +77,11 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TRI_voc_tid_t t
 
         // must fetch estimates from coordinator
         IndexEstMap estimates;
-        int res = selectivityEstimatesOnCoordinator(_collection.vocbase().name(),
-                                                    _collection.name(), estimates, tid);
+        Result res = selectivityEstimatesOnCoordinator(
+            _collection.vocbase().server().getFeature<ClusterFeature>(),
+            _collection.vocbase().name(), _collection.name(), estimates, tid);
 
-        if (res == TRI_ERROR_NO_ERROR) {
+        if (res.ok()) {
           // store the updated estimates and return them
           set(estimates);
           return estimates;

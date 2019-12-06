@@ -71,7 +71,7 @@ using namespace iresearch::analysis;
 TEST_F(TextAnalyzerParserTestSuite, test_nbsp_whitespace) {
   irs::analysis::text_token_stream::options_t options;
 
-  options.locale = "C.UTF-8"; // utf8 encoding used bellow
+  options.locale = irs::locale_utils::locale("C.UTF-8"); // utf8 encoding used bellow
 
   std::string sField = "test field";
   std::wstring sDataUCS2 = L"1,24\u00A0prosenttia"; // 00A0 == non-breaking whitespace
@@ -105,7 +105,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   {
     irs::analysis::text_token_stream::options_t options;
 
-    options.locale = "en_US.UTF-8";
+    options.locale = irs::locale_utils::locale("en_US.UTF-8");
 
     std::string data = " A  hErd of   quIck brown  foXes ran    and Jumped over  a     runninG dog";
     irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
@@ -148,7 +148,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "en_US.UTF-8";
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -185,13 +185,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::LOWER;
-      options.locale = "en_US.UTF-8";
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"lower\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"lower\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -220,13 +220,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::UPPER;
-      options.locale = "en_US.UTF-8";
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"upper\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"upper\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -256,13 +256,13 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.case_convert = irs::analysis::text_token_stream::options_t::case_convert_t::NONE;
-      options.locale = "en_US.UTF-8";
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"none\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -295,7 +295,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
       options.explicit_stopwords = std::unordered_set<std::string>({ "a", "of", "and" });
-      options.locale = "en_US.UTF-8";
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -345,7 +345,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "ru_RU.UTF-8";
+      options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -393,14 +393,14 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     {
       irs::analysis::text_token_stream::options_t options;
 
-      options.locale = "ru_RU.UTF-8";
-      options.no_accent = false;
+      options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
+      options.accent = true;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"noAccent\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"accent\":true}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -440,14 +440,14 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "ru_RU.UTF-8";
-      options.no_stem = true;
+      options.locale = irs::locale_utils::locale("ru_RU.UTF-8");
+      options.stemming = false;
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"noStem\":true}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"stemming\":false}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -477,7 +477,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "tr-TR.UTF-8";
+      options.locale = irs::locale_utils::locale("tr-TR.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -522,7 +522,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.locale = "zh_CN.UTF-8";
+      options.locale = irs::locale_utils::locale("zh_CN.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
     }
@@ -538,20 +538,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
   // invalid
   // ...........................................................................
   {
-    std::string data = "abc";
-    {
-      // ICU locale will fail initialization for an invalid std:locale
-      irs::analysis::text_token_stream::options_t options;
-      options.locale = "invalid12345.UTF-8";
-      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
-      ASSERT_FALSE(stream.reset(data));
-    }
-    {
-      // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"invalid12345.UTF-8\", \"stopwords\":[]}");
-      ASSERT_NE(nullptr, stream);
-      ASSERT_FALSE(stream->reset(data));
-    }
+    // stopwords  should be set to empty - or default values will interfere with test data
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"invalid12345.UTF-8\", \"stopwords\":[]}");
+    ASSERT_EQ(nullptr, stream);
   }
 }
 
@@ -591,8 +580,14 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
       testFunc(sDataASCII, stream);
     }
     {
-
       auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\"}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(sDataASCII, stream);
+    }
+
+    // empty \"edgeNgram\" object
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"edgeNgram\": {}}");
       ASSERT_NE(nullptr, stream);
       testFunc(sDataASCII, stream);
     }
@@ -615,6 +610,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords) {
     }
     {
       auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\"}");
+      ASSERT_EQ(nullptr, stream);
+    }
+    {
+      // min > max
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"edgeNgram\" : {\"min\":2, \"max\":1, \"preserveOriginal\":false}}");
       ASSERT_EQ(nullptr, stream);
     }
   }
@@ -661,7 +661,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath)
     oldCWD.chdir();
   });
 
-  std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"\"}";
+  std::string config = "{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"\"}";
   auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
   ASSERT_NE(nullptr, stream);
 
@@ -683,56 +683,41 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   
   //with unknown parameter
   {
-    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"invalid_parameter\":true,\"stopwords\":[],\"noAccent\":false,\"noStem\":true}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config.c_str());
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"invalid_parameter\":true,\"stopwords\":[],\"accent\":true,\"stemming\":false}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
-    ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false,\"noStem\":true}", actual);
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":false}", actual);
   }
 
   // no case convert in creation. Default value shown
   {
-    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"stopwords\":[],\"noAccent\":false,\"noStem\":true}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"stopwords\":[],\"accent\":true,\"stemming\":false}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
-    ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false,\"noStem\":true}" , actual);
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":false}" , actual);
   }
 
   // no accent in creation. Default value shown
   {
-    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noStem\":true}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"stemming\":false}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
-    ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":true,\"noStem\":true}", actual);
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":false}", actual);
   }
 
   // no stem in creation. Default value shown
   {
-    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
-    ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false,\"noStem\":false}", actual);
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":true}", actual);
   }
 
   // non default values for stem, accent and case
   {
-    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"upper\",\"stopwords\":[],\"noAccent\":false,\"noStem\":true}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"stopwords\":[],\"accent\":true,\"stemming\":false}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
   }
 
@@ -748,34 +733,25 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
 
     iresearch::setenv(text_token_stream::STOPWORD_PATH_ENV_VARIABLE, IResearch_test_resource_dir, true);
 
-    std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":true,\"noStem\":false}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
   }
   
   // empty stopwords, but stopwords path
   {
-    std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"upper\",\"stopwords\":[],\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"upper\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
   }
 
   // no stopwords, but stopwords path
   {
-    std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"upper\",\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"upper\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
   }
 
@@ -788,24 +764,17 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
       oldCWD.chdir();
     });
 
-    std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"\"}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"\"}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
   }
 
-
   // non-empty stopwords with duplicates
   {
-    std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"upper\",\"stopwords\":[\"z\",\"a\",\"b\",\"a\"],\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
-    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
-    ASSERT_NE(nullptr, stream);
-
+    std::string config = "{\"locale\":\"en_US.utf-8\",\"case\":\"upper\",\"stopwords\":[\"z\",\"a\",\"b\",\"a\"],\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
 
     // stopwords order is not guaranteed. Need to deep check json
     rapidjson::Document json;
@@ -823,26 +792,433 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
     }
     ASSERT_TRUE(expected_stopwords.empty());
   }
+
+  // min, max, preserveOriginal
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[], \"edgeNgram\" : { \"min\":1,\"max\":1,\"preserveOriginal\":true }}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"edgeNgram\":{\"min\":1,\"max\":1,\"preserveOriginal\":true}}", actual);
+  }
+
+  // without min (see above for without min, max, and preserveOriginal)
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[], \"edgeNgram\" : {\"max\":2,\"preserveOriginal\":false}}";
+    std::string actual;
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":true,\"edgeNgram\":{\"max\":2,\"preserveOriginal\":false}}", actual);
+  }
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
-  std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false}";
-  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config.c_str());
-  ASSERT_NE(nullptr, stream);
-
+  std::string config = "RU";
   std::string actual;
-  ASSERT_TRUE(stream->to_string(::irs::text_format::text, actual));
-  ASSERT_EQ("ru_RU.UTF-8", actual);
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::text, config));
+  ASSERT_EQ("ru", actual);
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_make_config_invalid_format) {
-  std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false}";
-  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config.c_str());
-  ASSERT_NE(nullptr, stream);
-
+  std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true}";
   std::string actual;
-  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::csv, config));
 }
+
+TEST_F(TextAnalyzerParserTestSuite, test_deterministic_stopwords_order) {
+  std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[ \"ag\",\
+      \"of\", \"plc\", \"the\", \"inc\", \"co\", \"ltd\"], \"accent\":true}";
+  std::string normalized1;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(normalized1, "text", irs::text_format::json, config));
+  std::string normalized2;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(normalized2, "text", irs::text_format::json, normalized1));
+  ASSERT_EQ(normalized1, normalized2);
+}
+
+TEST_F(TextAnalyzerParserTestSuite, test_text_ngrams) {
+  // text ngrams
+
+  // default behaviour
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":2, \"max\":3, \"preserveOriginal\":false}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // min == 0
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("q", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+
+      ASSERT_TRUE(pStream->reset(data));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", std::string(reinterpret_cast<const char*>((pValue->value().c_str())), pValue->value().size()));
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":0, \"max\":3, \"preserveOriginal\":false}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // preserveOriginal == true
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qu", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("quick", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":2, \"max\":3, \"preserveOriginal\":true}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // min == max
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("qui", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":3, \"max\":3, \"preserveOriginal\":false}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // min > max and preserveOriginal == false
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      irs::analysis::text_token_stream::options_t options;
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      options.explicit_stopwords.emplace("a");
+      options.min_gram = 4;
+      options.min_gram_set = 4;
+      options.max_gram = 3;
+      options.max_gram_set = 3;
+      options.preserve_original = false;
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
+
+      testFunc(data, &stream);
+    }
+  }
+
+  // min > max and preserveOriginal == true
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("quick", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      irs::analysis::text_token_stream::options_t options;
+      options.locale = irs::locale_utils::locale("en_US.UTF-8");
+      options.explicit_stopwords.emplace("a");
+      options.min_gram = 4;
+      options.min_gram_set = 4;
+      options.max_gram = 3;
+      options.max_gram_set = 3;
+      options.preserve_original = true;
+      irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
+
+      testFunc(data, &stream);
+    }
+  }
+
+  // min == max == 0 and no preserveOriginal
+  {
+    std::string data = " A  hErd of   quIck ";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":0, \"max\":0}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no min and preserveOriginal == false
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"max\":1, \"preserveOriginal\":false}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no min and preserveOriginal == true
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"max\":1, \"preserveOriginal\":true}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no max
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"min\":1, \"preserveOriginal\":false}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no min and no max and preserveOriginal == false
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"preserveOriginal\":false}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // no min and no max and preserveOriginal == true
+  {
+    std::string data = " A  hErd of";
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("h", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("he", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("her", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("herd", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("o", irs::ref_cast<char>(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ("of", irs::ref_cast<char>(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[\"a\"], \"edgeNgram\" : {\"preserveOriginal\":true}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+
+  // wide symbols
+  {
+    std::wstring sDataUCS2 = L"\u041F\u043E \u0432\u0435\u0447\u0435\u0440\u0430\u043C \u043A \u041C\u0435\u0434\u0432\u0435\u0436\u043E\u043D\u043A\u0443";
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+    std::string data;
+    ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, sDataUCS2, locale));
+
+    auto testFunc = [](const irs::string_ref& data, analyzer* pStream) {
+      ASSERT_TRUE(pStream->reset(data));
+
+      auto& pValue = pStream->attributes().get<iresearch::term_attribute>();
+
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u043F", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u043F\u043E", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u0432", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u0432\u0435", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u043C", utf_to_utf(pValue->value()));
+      ASSERT_TRUE(pStream->next());
+      ASSERT_EQ(L"\u043C\u0435", utf_to_utf(pValue->value()));
+      ASSERT_FALSE(pStream->next());
+    };
+
+    {
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[\"\\u043A\"], \"edgeNgram\" : {\"min\":1, \"max\":2, \"preserveOriginal\":false}}");
+      ASSERT_NE(nullptr, stream);
+      testFunc(data, stream.get());
+    }
+  }
+}
+
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

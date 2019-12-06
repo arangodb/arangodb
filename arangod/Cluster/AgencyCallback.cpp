@@ -26,14 +26,15 @@
 #include <chrono>
 #include <thread>
 
-#include <velocypack/Exception.h>
-#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -41,7 +42,11 @@ using namespace arangodb::application_features;
 AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
-    : key(key), _agency(agency), _cb(cb), _needsValue(needsValue) {
+    : key(key), 
+      _agency(agency), 
+      _cb(cb), 
+      _needsValue(needsValue),
+      _wasSignaled(false) {
   if (_needsValue && needsInitialValue) {
     refetchAndUpdate(true, false);
   }
@@ -62,7 +67,8 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
-    if (!application_features::ApplicationServer::isStopping()) {
+    auto& server = ApplicationServer::server();
+    if (!server.isStopping()) {
       // only log errors if we are not already shutting down...
       // in case of shutdown this error is somewhat expected
       LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
@@ -90,7 +96,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  if (!_lastData || !_lastData->slice().equals(newData->slice()) || forceCheck) {
+  if (!_lastData || !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(), newData->slice(), false) || forceCheck) {
     LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
@@ -109,6 +115,7 @@ bool AgencyCallback::executeEmpty() {
   LOG_TOPIC("96022", DEBUG, Logger::CLUSTER) << "Executing (empty)";
   bool result = _cb(VPackSlice::noneSlice());
   if (result) {
+    _wasSignaled = true;
     _cv.signal();
   }
   return result;
@@ -120,6 +127,7 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
   LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER) << "Executing";
   bool result = _cb(newData->slice());
   if (result) {
+    _wasSignaled = true;
     _cv.signal();
   }
   return result;
@@ -128,13 +136,26 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0)) &&
-      application_features::ApplicationServer::isRetryOK()) {
-    LOG_TOPIC("1514e", DEBUG, Logger::CLUSTER)
-        << "Waiting done and nothing happended. Refetching to be sure";
-    // mop: watches have not triggered during our sleep...recheck to be sure
-    refetchAndUpdate(false, true);  // Force a check
-    return true;
+  auto& server = ApplicationServer::server();
+  if (!server.isStopping()) {
+    if (_wasSignaled) {
+      // ok, we have been signaled already, so there is no need to wait at all
+      // directly refetch the values
+      _wasSignaled = false;
+      LOG_TOPIC("67690", DEBUG, Logger::CLUSTER)
+          << "We were signaled already";
+      return false;
+    }
+
+    // we haven't yet been signaled. so let's wait for a signal or
+    // the timeout to occur
+    if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
+      LOG_TOPIC("1514e", DEBUG, Logger::CLUSTER)
+          << "Waiting done and nothing happended. Refetching to be sure";
+      // mop: watches have not triggered during our sleep...recheck to be sure
+      refetchAndUpdate(false, true);  // Force a check
+      return true;
+    }
   }
   return false;
 }

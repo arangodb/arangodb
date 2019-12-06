@@ -24,6 +24,7 @@
 #include "Cache/BucketState.h"
 #include "Basics/Common.h"
 #include "Basics/cpu-relax.h"
+#include "Basics/debugging.h"
 
 #include <stdint.h>
 #include <atomic>

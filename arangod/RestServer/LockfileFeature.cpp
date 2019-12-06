@@ -23,9 +23,13 @@
 #include "LockfileFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb::basics;
@@ -35,14 +39,13 @@ namespace arangodb {
 LockfileFeature::LockfileFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Lockfile") {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
 void LockfileFeature::start() {
   // build lockfile name
-  auto database = application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-      "DatabasePath");
-  _lockFilename = database->subdirectoryName("LOCK");
+  auto& database = server().getFeature<DatabasePathFeature>();
+  _lockFilename = database.subdirectoryName("LOCK");
 
   TRI_ASSERT(!_lockFilename.empty());
 

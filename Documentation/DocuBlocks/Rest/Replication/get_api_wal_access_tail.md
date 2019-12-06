@@ -20,7 +20,7 @@ Should be set to the value of the *x-arango-replication-lastscanned* header
 or alternatively 0 on first try. This allows the rocksdb engine to break up
 large transactions over multiple responses. 
 
-@RESTQUERYPARAM{global,bool,optional}
+@RESTQUERYPARAM{global,boolean,optional}
 Whether operations for all databases should be included. When set to *false*
 only the operations for the current database are included. The value *true* is
 only valid on the *_system* database. The default is *false*.
@@ -28,10 +28,21 @@ only valid on the *_system* database. The default is *false*.
 @RESTQUERYPARAM{chunkSize,number,optional}
 Approximate maximum size of the returned result.
 
-@RESTQUERYPARAM{serverId,number,optional}
+@RESTQUERYPARAM{syncerId,number,optional}
 Id of the client used to tail results. The server will use this to 
-keep operations until the client has fetched them. **Note** this is required
-to have a chance at fetching reading all operations with the rocksdb storage engine
+keep operations until the client has fetched them. Must be a positive integer.
+**Note** this or serverId is required to have a chance at fetching reading all
+operations with the rocksdb storage engine.
+
+@RESTQUERYPARAM{serverId,number,optional}
+Id of the client machine. If *syncerId* is unset, the server will use
+this to keep operations until the client has fetched them. Must be a positive
+integer.
+**Note** this or syncerId is required to have a chance at fetching reading all
+operations with the rocksdb storage engine.
+
+@RESTQUERYPARAM{clientInfo,string,optional}
+Short description of the client, used for informative purposes only.
 
 @RESTQUERYPARAM{barrierId,number,optional}
 Id of barrier used to keep WAL entries around. **Note** this is only required for the 
@@ -86,7 +97,7 @@ Individual log events will also have additional attributes, depending on the
 event type. A few common attributes which are used for multiple events types
 are:
 
-- *cuid*: globally unique id of the view or collection the event was for
+- *cuid*: globally unique id of the View or collection the event was for
 
 - *db*: the database name the event was for
 

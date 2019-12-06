@@ -29,6 +29,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
+#include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>
@@ -103,7 +105,7 @@ class TokenCache {
   TokenCache::Entry validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
-  std::shared_ptr<velocypack::Builder> parseJson(std::string const&, std::string const&);
+  std::shared_ptr<velocypack::Builder> parseJson(std::string const& str, char const* hint);
 
   /// generate new _jwtToken
   void generateJwtToken();

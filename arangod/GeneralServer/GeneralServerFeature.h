@@ -24,23 +24,13 @@
 #define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Aql/QueryRegistry.h"
+#include "Cluster/TraverserEngineRegistry.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/RestHandlerFactory.h"
 
 namespace arangodb {
-
-namespace aql {
-class QueryRegistry;
-}
-
-namespace traverser {
-class TraverserEngineRegistry;
-}
-
-namespace rest {
-class AsyncJobManager;
-class RestHandlerFactory;
-class GeneralServer;
-}  // namespace rest
-
 class RestServerThread;
 
 class GeneralServerFeature final : public application_features::ApplicationFeature {

@@ -25,11 +25,12 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Cache/Rebalancer.h"
 #include "Basics/Common.h"
+#include "Basics/voc-errors.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
-#include "Cache/Rebalancer.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
@@ -70,9 +71,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
     while (!doneRebalancing) {
       int status = rebalancer.rebalance();
       if (status != TRI_ERROR_ARANGO_BUSY) {
-        std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
       } else {
-        std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
   };
@@ -194,9 +195,9 @@ TEST(CacheRebalancerTest, test_rebalancing_with_transactionalcache_LongRunning) 
     while (!doneRebalancing) {
       int status = rebalancer.rebalance();
       if (status != TRI_ERROR_ARANGO_BUSY) {
-        std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
       } else {
-        std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
   };

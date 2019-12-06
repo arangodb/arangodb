@@ -98,6 +98,22 @@ const htmlAppender = function(text) {
 const rawAppender = function(text) {
   output += text;
 };
+
+const plainAppender = function(text) {
+  // do we have a line that could be json? try to parse & format it.
+  if (text.match(/^{.*}$/) || text.match(/^[.*]$/)) {
+    try {
+      let parsed = JSON.parse(text);
+      output += highlight("js", internal.inspect(parsed)) + "&#x21A9;\n" ;
+    } catch (x) {
+      // fallback to plain text.
+      output += text;
+    }
+  } else {
+    output += text;
+  }
+};
+
 const shellAppender = function(text) {
   output += highlight("shell", text);
 };
@@ -108,6 +124,7 @@ const log = function (a) {
 };
 
 var logCurlRequestRaw = internal.appendCurlRequest(shellAppender, jsonAppender, rawAppender);
+var logCurlRequestPlain = internal.appendCurlRequest(shellAppender, jsonAppender, plainAppender);
 var logCurlRequest = function () {
   if ((arguments.length > 1) &&
       (arguments[1] !== undefined) &&
@@ -139,6 +156,7 @@ var logJsonResponse = internal.appendJsonResponse(rawAppender, jsonAppender);
 var logJsonLResponse = internal.appendJsonLResponse(rawAppender, jsonLAppender);
 var logHtmlResponse = internal.appendRawResponse(rawAppender, htmlAppender);
 var logRawResponse = internal.appendRawResponse(rawAppender, rawAppender);
+var logPlainResponse = internal.appendPlainResponse(plainAppender, plainAppender);
 var logErrorResponse = function (response) {
     allErrors += "Server reply was: " + JSON.stringify(response) + "\n";
 };

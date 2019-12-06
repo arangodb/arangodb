@@ -21,9 +21,14 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string.h>
+
 #include "threads.h"
 
-#include <string.h>
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
 
 #ifdef TRI_HAVE_POSIX_THREADS
 #include <time.h>
@@ -41,7 +46,9 @@
 #endif
 
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief data block for thread starter

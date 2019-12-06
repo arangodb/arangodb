@@ -127,7 +127,6 @@ function runArangodRecovery (params) {
     params.options,
     'recovery',
     params.instanceInfo.rootDir,
-    params.setup,
     !params.setup && params.options.coreCheck);
 }
 
@@ -147,13 +146,13 @@ function recovery (options) {
     status: true
   };
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery);
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
   let count = 0;
   let orgTmp = process.env.TMPDIR;
-  let tempDir = fs.join(fs.getTempPath(), 'crashtmp');
+  let tempDir = fs.join(fs.getTempPath(), 'recovery');
   fs.makeDirectoryRecursive(tempDir);
   process.env.TMPDIR = tempDir;
   pu.cleanupDBDirectoriesAppend(tempDir);
@@ -197,7 +196,8 @@ function recovery (options) {
         params.args['temp.path'],
         {
           status: false
-        }
+        },
+        test
       );
       if (!results[test].status) {
         print("Not cleaning up " + params.testDir);

@@ -38,7 +38,7 @@ struct Transaction {
   bool sensitive;
 
   Transaction();
-  Transaction(bool ro);
+  explicit Transaction(bool ro);
 };
 
 };  // end namespace cache

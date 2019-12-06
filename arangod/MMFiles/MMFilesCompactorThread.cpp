@@ -594,7 +594,9 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   } catch (...) {
   }
 
-  trx.commit();
+  res = trx.commit();
+  // not much we can do about it here
+  (void) res;
 
   // remove all datafile statistics that we don't need anymore
   for (size_t i = 1; i < n; ++i) {
@@ -955,7 +957,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 }
 
 MMFilesCompactorThread::MMFilesCompactorThread(TRI_vocbase_t& vocbase)
-    : Thread("MMFilesCompactor"), _vocbase(vocbase) {}
+    : Thread(vocbase.server(), "MMFilesCompactor"), _vocbase(vocbase) {}
 
 MMFilesCompactorThread::~MMFilesCompactorThread() { shutdown(); }
 
@@ -1098,7 +1100,7 @@ void MMFilesCompactorThread::run() {
       if (numCompacted > 0) {
         // no need to sleep long or go into wait state if we worked.
         // maybe there's still work left
-        std::this_thread::sleep_for(std::chrono::microseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR &&
                  _vocbase.state() == TRI_vocbase_t::State::NORMAL) {
         // only sleep while server is still running

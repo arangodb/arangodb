@@ -28,7 +28,6 @@
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
@@ -50,7 +49,7 @@ struct NearIterator final : public IndexIterator {
     estimateDensity();
   }
 
-  ~NearIterator() {}
+  ~NearIterator() = default;
 
   char const* typeName() const override { return "s2-index-iterator"; }
 
@@ -95,11 +94,12 @@ struct NearIterator final : public IndexIterator {
                       (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                       (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
                     result = false;  // skip
-                    return;
+                    return false;
                   }
                 }
                 cb(gdoc.token, doc);  // return result
                 result = true;
+                return true;
               })) {
             return false;  // skip
           }
@@ -127,6 +127,7 @@ struct NearIterator final : public IndexIterator {
                   } else {
                     result = true;
                   }
+                  return result;
                 })) {
               return false;
             }

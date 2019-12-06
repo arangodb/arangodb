@@ -1,0 +1,5 @@
+Git can not track empty repositories.
+This file ensures that the Examples directory keeps existing
+even with the generated files being in the new docs repository.
+Some of the old documentation building scripts are still used
+by the new system which copies the examples into this folder.

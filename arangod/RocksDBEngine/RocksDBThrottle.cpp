@@ -45,7 +45,9 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 
@@ -85,8 +87,11 @@ namespace arangodb {
 //  base +2 : level 0 compaction to level 1
 //  base +3 : all other compactions
 struct sPriorityInfo {
+  // cppcheck-suppress unusedStructMember
   bool _baseSet;
+  // cppcheck-suppress unusedStructMember
   int _basePriority;
+  // cppcheck-suppress unusedStructMember
   int _currentPriority;
 };
 
@@ -149,9 +154,6 @@ void RocksDBThrottle::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo&
   std::chrono::steady_clock::time_point osx_hack = std::chrono::steady_clock::now();
   memcpy(gFlushStart, &osx_hack, sizeof(std::chrono::steady_clock::time_point));
   AdjustThreadPriority(1);
-
-  return;
-
 }  // RocksDBThrottle::OnFlushBegin
 
 void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db,
@@ -236,8 +238,6 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
   LOG_TOPIC("7afe9", DEBUG, arangodb::Logger::ENGINES)
       << "SetThrottleWriteRate: Micros " << Micros.count() << ", Keys " << Keys
       << ", Bytes " << Bytes << ", IsLevel0 " << IsLevel0;
-
-  return;
 }  // RocksDBThrottle::SetThrottleWriteRate
 
 void RocksDBThrottle::ThreadLoop() {
@@ -503,13 +503,10 @@ void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
 #ifndef _WIN32
   // initialize thread infor if this the first time the thread has ever called
   if (!gThreadPriority._baseSet) {
-    pid_t tid;
-    int ret_val;
-
-    tid = syscall(SYS_gettid);
+    pid_t tid = syscall(SYS_gettid);
     if (-1 != (int)tid) {
       errno = 0;
-      ret_val = getpriority(PRIO_PROCESS, tid);
+      int ret_val = getpriority(PRIO_PROCESS, tid);
       // ret_val could be -1 legally, so double test
       if (-1 != ret_val || 0 == errno) {
         gThreadPriority._baseSet = true;

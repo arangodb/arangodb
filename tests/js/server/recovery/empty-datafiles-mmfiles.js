@@ -23,7 +23,7 @@ function runSetup () {
 
   c.save({ test: 'testValue' }, true); // wait for sync
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

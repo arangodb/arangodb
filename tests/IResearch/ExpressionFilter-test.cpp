@@ -21,14 +21,26 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "common.h"
 #include "gtest/gtest.h"
 
-#include "../Mocks/StorageEngineMock.h"
+#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "analysis/token_attributes.hpp"
+#include "index/directory_reader.hpp"
+#include "search/all_filter.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
+#include "search/scorers.hpp"
+#include "store/memory_directory.hpp"
+#include "store/store_utils.hpp"
+#include "utils/type_limits.hpp"
+#include "utils/utf8_path.hpp"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
+#include "velocypack/Iterator.h"
+
+#include "IResearch/ExpressionContextMock.h"
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -61,21 +73,9 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 
-#include "ExpressionContextMock.h"
-#include "utils/utf8_path.hpp"
-#include "velocypack/Iterator.h"
-
-#include "3rdParty/iresearch/tests/tests_config.hpp"
-#include "IResearch/ExpressionFilter.h"
-#include "analysis/token_attributes.hpp"
-#include "index/directory_reader.hpp"
-#include "search/all_filter.hpp"
-#include "search/cost.hpp"
-#include "search/score.hpp"
-#include "search/scorers.hpp"
-#include "store/memory_directory.hpp"
-#include "store/store_utils.hpp"
-#include "utils/type_limits.hpp"
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -112,22 +112,7 @@ struct custom_sort : public irs::sort {
       const custom_sort& sort_;
     };
 
-    class scorer : public irs::sort::scorer_base<irs::doc_id_t> {
-     public:
-      virtual void score(irs::byte_type* score_buf) override {
-        UNUSED(stats_);
-        UNUSED(segment_reader_);
-        UNUSED(term_reader_);
-        EXPECT_TRUE(score_buf);
-        auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
-
-        doc_id = document_attrs_.get<irs::document>()->value;
-
-        if (sort_.scorer_score) {
-          sort_.scorer_score(doc_id);
-        }
-      }
-
+    struct scorer : public irs::sort::score_ctx {
       scorer(const custom_sort& sort,
              const irs::sub_reader& segment_reader,
              const irs::term_reader& term_reader,
@@ -139,7 +124,6 @@ struct custom_sort : public irs::sort {
             sort_(sort),
             term_reader_(term_reader) {}
 
-     private:
       const irs::attribute_view& document_attrs_;
       const irs::byte_type* stats_;
       const irs::sub_reader& segment_reader_;
@@ -172,19 +156,35 @@ struct custom_sort : public irs::sort {
       return irs::memory::make_unique<custom_sort::prepared::collector>(sort_);
     }
 
-    virtual scorer::ptr prepare_scorer(const irs::sub_reader& segment_reader,
-                                       const irs::term_reader& term_reader,
-                                       const irs::byte_type* filter_node_attrs,
-                                       const irs::attribute_view& document_attrs,
-                                       irs::boost_t) const override {
+    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+        irs::sub_reader const& segment_reader,
+        irs::term_reader const& term_reader,
+        irs::byte_type const* filter_node_attrs,
+        irs::attribute_view const& document_attrs,
+        irs::boost_t boost) const override {
       if (sort_.prepare_scorer) {
-        return sort_.prepare_scorer(segment_reader, term_reader,
-                                    filter_node_attrs, document_attrs);
+        return sort_.prepare_scorer(
+          segment_reader, term_reader,
+          filter_node_attrs, document_attrs, boost);
       }
 
-      return sort::scorer::make<custom_sort::prepared::scorer>(sort_, segment_reader,
-                                                               term_reader, filter_node_attrs,
-                                                               document_attrs);
+      return {
+        std::make_unique<custom_sort::prepared::scorer>(
+          sort_, segment_reader, term_reader,
+          filter_node_attrs, document_attrs),
+        [](const void* ctx, irs::byte_type* score_buf) {
+          auto& ctxImpl = *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
+
+          EXPECT_TRUE(score_buf);
+          auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
+
+          doc_id = ctxImpl.document_attrs_.get<irs::document>()->value;
+
+          if (ctxImpl.sort_.scorer_score) {
+            ctxImpl.sort_.scorer_score(doc_id);
+          }
+        }
+      };
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -217,7 +217,7 @@ struct custom_sort : public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> term_collector_collect;
   std::function<void(irs::byte_type*, const irs::index_reader&)> collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<scorer::ptr(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&)> prepare_scorer;
+  std::function<std::pair<score_ctx::ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&, irs::boost_t)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
@@ -237,70 +237,58 @@ DEFINE_FACTORY_DEFAULT(custom_sort)
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchExpressionFilterSetup {
+struct IResearchExpressionFilterTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
+      public arangodb::tests::LogSuppressor<arangodb::iresearch::TOPIC, arangodb::LogLevel::FATAL>,
+      public arangodb::tests::IResearchLogSuppressor {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
-  IResearchExpressionFilterSetup() : engine(server), server(nullptr, nullptr) {
+  IResearchExpressionFilterTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init(true);
 
-    // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::ERR);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
-
     // setup required application features
-    features.emplace_back(new arangodb::ViewTypesFeature(server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(server), true);
-    features.emplace_back(new arangodb::DatabasePathFeature(server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
+    features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
+    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
+                              system.get()),
                           false);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
+    features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
+                          false);  // must be before AqlFeature
+    features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::ShardingFeature>(), false);
+    features.emplace_back(server.addFeature<arangodb::aql::OptimizerRulesFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::aql::AqlFunctionFeature>(),
                           true);  // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
-    features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
+    features.emplace_back(server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
+                          true);
+    features.emplace_back(server.addFeature<arangodb::iresearch::IResearchFeature>(), true);
 
 #if USE_ENTERPRISE
-    features.emplace_back(new arangodb::LdapFeature(server),
-                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+    features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
+      f.first.prepare();
     }
 
     for (auto& f : features) {
       if (f.second) {
-        f.first->start();
+        f.first.start();
       }
     }
 
     // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
+    server.getFeature<arangodb::aql::AqlFunctionFeature>().add(arangodb::aql::Function{
         "_REFERENCE_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
@@ -311,45 +299,34 @@ struct IResearchExpressionFilterSetup {
           return params[0];
         }});
 
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
+    arangodb::tests::setDatabasePath(dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
-  ~IResearchExpressionFilterSetup() {
+  ~IResearchExpressionFilterTest() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
-                                    arangodb::LogLevel::DEFAULT);
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
       if (f.second) {
-        f.first->stop();
+        f.first.stop();
       }
     }
 
     for (auto& f : features) {
-      f.first->unprepare();
+      f.first.unprepare();
     }
-
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
-                                    arangodb::LogLevel::DEFAULT);
   }
 };  // TestSetup
-
 }  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST(IResearchExpressionFilterTest, test) {
-  IResearchExpressionFilterSetup setup ADB_IGNORE_UNUSED;
-
+TEST_F(IResearchExpressionFilterTest, test) {
   arangodb::velocypack::Builder testData;
   {
     irs::utf8_path resource;
@@ -391,8 +368,7 @@ TEST(IResearchExpressionFilterTest, test) {
   }
 
   // setup ArangoDB database
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   // create view
   {
@@ -405,26 +381,26 @@ TEST(IResearchExpressionFilterTest, test) {
     // add view
     auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
         vocbase.createView(createJson->slice()));
-    ASSERT_TRUE((false == !view));
+    ASSERT_FALSE(!view);
   }
 
   // open reader
   auto reader = irs::directory_reader::open(dir);
   ASSERT_TRUE(reader);
-  ASSERT_TRUE(1 == reader->size());
+  ASSERT_EQ(1, reader->size());
   auto& segment = (*reader)[0];
   EXPECT_TRUE(reader->docs_count() > 0);
 
   // uninitialized query
   {
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
 
     auto prepared = filter.prepare(*reader);
     auto docs = prepared->execute(segment);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 
   // query with false expression without order
@@ -483,7 +459,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -495,9 +471,9 @@ TEST(IResearchExpressionFilterTest, test) {
 
     auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(), queryCtx);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 
   // query with false expression without order (deferred execution)
@@ -556,7 +532,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -568,9 +544,9 @@ TEST(IResearchExpressionFilterTest, test) {
 
     auto prepared = filter.prepare(*reader, irs::order::prepared::unordered());
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 
   // query with true expression without order
@@ -629,7 +605,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -641,16 +617,16 @@ TEST(IResearchExpressionFilterTest, test) {
 
     auto prepared = filter.prepare(*reader, irs::order::prepared::unordered(), queryCtx);
     EXPECT_EQ(irs::no_boost(), prepared->boost());  // no boost set
-    EXPECT_TRUE(typeid(prepared.get()) == typeid(irs::all().prepare(*reader).get()));  // should be same type
+    EXPECT_EQ(typeid(prepared.get()), typeid(irs::all().prepare(*reader).get()));  // should be same type
     auto column = segment.column_reader("name");
     ASSERT_TRUE(column);
     auto columnValues = column->values();
     ASSERT_TRUE(columnValues);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
     auto& cost = docs->attributes().get<irs::cost>();
     ASSERT_TRUE(cost);
-    EXPECT_TRUE(arangodb::velocypack::ArrayIterator(testDataRoot).size() == cost->estimate());
+    EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(), cost->estimate());
 
     irs::bytes_ref value;
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
@@ -659,8 +635,8 @@ TEST(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
                   irs::to_string<irs::string_ref>(value.c_str()));
     }
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 
   // query with true expression without order (deferred execution)
@@ -719,7 +695,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -731,16 +707,16 @@ TEST(IResearchExpressionFilterTest, test) {
 
     auto prepared = filter.prepare(*reader, irs::order::prepared::unordered());  // no context provided
     EXPECT_EQ(irs::no_boost(), prepared->boost());  // no boost set
-    EXPECT_TRUE(typeid(prepared.get()) == typeid(irs::all().prepare(*reader).get()));  // should be same type
+    EXPECT_EQ(typeid(prepared.get()), typeid(irs::all().prepare(*reader).get()));  // should be same type
     auto column = segment.column_reader("name");
     ASSERT_TRUE(column);
     auto columnValues = column->values();
     ASSERT_TRUE(columnValues);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
     auto& cost = docs->attributes().get<irs::cost>();
     ASSERT_TRUE(cost);
-    EXPECT_TRUE(arangodb::velocypack::ArrayIterator(testDataRoot).size() == cost->estimate());
+    EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(), cost->estimate());
 
     irs::bytes_ref value;
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
@@ -749,8 +725,8 @@ TEST(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
                   irs::to_string<irs::string_ref>(value.c_str()));
     }
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 
   // query with true expression without order (deferred execution)
@@ -809,7 +785,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -828,10 +804,10 @@ TEST(IResearchExpressionFilterTest, test) {
     ASSERT_TRUE(columnValues);
     execCtx.ctx = &ctx;  // fix context
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
     auto& cost = docs->attributes().get<irs::cost>();
     ASSERT_TRUE(cost);
-    EXPECT_TRUE(arangodb::velocypack::ArrayIterator(testDataRoot).size() == cost->estimate());
+    EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(), cost->estimate());
 
     irs::bytes_ref value;
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
@@ -840,8 +816,8 @@ TEST(IResearchExpressionFilterTest, test) {
       EXPECT_TRUE(arangodb::iresearch::getStringRef(doc.get("name")) ==
                   irs::to_string<irs::string_ref>(value.c_str()));
     }
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 
   // query with true expression without order (deferred execution with invalid context)
@@ -900,7 +876,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -914,7 +890,7 @@ TEST(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::no_boost(), prepared->boost());  // no boost set
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
     EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
-    EXPECT_TRUE(!docs->next());
+    EXPECT_FALSE(docs->next());
   }
 
   // query with true expression without order (deferred execution with invalid context)
@@ -973,7 +949,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -987,7 +963,7 @@ TEST(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::no_boost(), prepared->boost());  // no boost set
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
     EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value()));
-    EXPECT_TRUE(!docs->next());
+    EXPECT_FALSE(docs->next());
   }
 
   // query with nondeterministic expression without order
@@ -1042,7 +1018,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -1058,8 +1034,8 @@ TEST(IResearchExpressionFilterTest, test) {
     auto columnValues = column->values();
     ASSERT_TRUE(columnValues);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
-    EXPECT_TRUE(!docs->attributes().get<irs::score>());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
+    EXPECT_FALSE(docs->attributes().get<irs::score>());
 
     // set reachable filter condition
     {
@@ -1090,8 +1066,8 @@ TEST(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("c", value);
     }
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 
   // query with nondeterministic expression and custom order
@@ -1178,7 +1154,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -1189,23 +1165,23 @@ TEST(IResearchExpressionFilterTest, test) {
     queryCtx.emplace(execCtx);
 
     filter.boost(1.5f);
-    EXPECT_TRUE(1.5f == filter.boost());
+    EXPECT_EQ(1.5f, filter.boost());
 
     auto prepared = filter.prepare(*reader, preparedOrder, queryCtx);
-    EXPECT_TRUE(1.5f == prepared->boost());
+    EXPECT_EQ(1.5f, prepared->boost());
 
     auto column = segment.column_reader("name");
     ASSERT_TRUE(column);
     auto columnValues = column->values();
     ASSERT_TRUE(columnValues);
     auto docs = prepared->execute(segment, preparedOrder, queryCtx);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
     auto& score = docs->attributes().get<irs::score>();
     EXPECT_TRUE(score);
-    EXPECT_TRUE(!score->empty());
+    EXPECT_FALSE(score->empty());
     auto& cost = docs->attributes().get<irs::cost>();
     ASSERT_TRUE(cost);
-    EXPECT_TRUE(arangodb::velocypack::ArrayIterator(testDataRoot).size() == cost->estimate());
+    EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(), cost->estimate());
 
     // set reachable filter condition
     {
@@ -1237,14 +1213,14 @@ TEST(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("c", value);
     }
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
 
     // check order
-    EXPECT_TRUE(0 == field_collector_collect_count);  // should not be executed
-    EXPECT_TRUE(0 == term_collector_collect_count);   // should not be executed
-    EXPECT_TRUE(1 == collector_finish_count);
-    EXPECT_TRUE(it.size() / 2 == scorer_score_count);
+    EXPECT_EQ(0, field_collector_collect_count);  // should not be executed
+    EXPECT_EQ(0, term_collector_collect_count);   // should not be executed
+    EXPECT_EQ(1, collector_finish_count);
+    EXPECT_EQ(it.size() / 2, scorer_score_count);
   }
 
   // query with nondeterministic expression without order, seek + next
@@ -1299,7 +1275,7 @@ TEST(IResearchExpressionFilterTest, test) {
         arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
 
     arangodb::iresearch::ByExpression filter;
-    EXPECT_TRUE(!filter);
+    EXPECT_FALSE(filter);
     filter.init(*plan, *ast, *expression);
     EXPECT_TRUE(filter);
 
@@ -1315,11 +1291,11 @@ TEST(IResearchExpressionFilterTest, test) {
     auto columnValues = column->values();
     ASSERT_TRUE(columnValues);
     auto docs = prepared->execute(segment, irs::order::prepared::unordered(), queryCtx);
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
-    EXPECT_TRUE(!docs->attributes().get<irs::score>());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
+    EXPECT_FALSE(docs->attributes().get<irs::score>());
     auto& cost = docs->attributes().get<irs::cost>();
     ASSERT_TRUE(cost);
-    EXPECT_TRUE(arangodb::velocypack::ArrayIterator(testDataRoot).size() == cost->estimate());
+    EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(), cost->estimate());
 
     // set reachable filter condition
     {
@@ -1337,7 +1313,7 @@ TEST(IResearchExpressionFilterTest, test) {
       it.next();
       ASSERT_TRUE(it.valid());
     }
-    EXPECT_TRUE(seek_to == docs->seek(seek_to));
+    EXPECT_EQ(seek_to, docs->seek(seek_to));
 
     for (size_t i = seek_to; i < it.size() / 2; ++i) {
       ASSERT_TRUE(it.valid());
@@ -1358,7 +1334,7 @@ TEST(IResearchExpressionFilterTest, test) {
       arangodb::aql::AqlValueGuard guard(value, true);
       ctx.vars.emplace("c", value);
     }
-    EXPECT_TRUE(!docs->next());
-    EXPECT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
+    EXPECT_FALSE(docs->next());
+    EXPECT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
   }
 }

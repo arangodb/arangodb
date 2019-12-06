@@ -24,15 +24,19 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <cstdint>
+#include <memory>
+
+#include <openssl/ossl_typ.h>
 
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
-#include "openssl/bio.h"
-#include "openssl/err.h"
-#include "openssl/ssl.h"
-
 namespace arangodb {
+class Endpoint;
+namespace basics {
+class StringBuffer;
+}
 namespace httpclient {
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -47,11 +47,11 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_0_servers) {
   auto const& slice = transaction->slice();
 
   ASSERT_TRUE(slice.isArray());
-  ASSERT_TRUE(slice.length() == 1);
+  ASSERT_EQ(slice.length(), 1);
   ASSERT_TRUE(slice[0].isArray());
-  ASSERT_TRUE(slice[0].length() == 1);
+  ASSERT_EQ(slice[0].length(), 1);
   ASSERT_TRUE(slice[0][0].isObject());
-  ASSERT_TRUE(slice[0][0].length() == 0);
+  ASSERT_EQ(slice[0][0].length(), 0);
 }
 
 TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
@@ -60,18 +60,18 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
   auto const& slice = transaction->slice();
 
   ASSERT_TRUE(slice.isArray());
-  ASSERT_TRUE(slice.length() == 1);
+  ASSERT_EQ(slice.length(), 1);
   ASSERT_TRUE(slice[0].isArray());
-  ASSERT_TRUE(slice[0].length() == 1);
+  ASSERT_EQ(slice[0].length(), 1);
   ASSERT_TRUE(slice[0][0].isObject());
-  ASSERT_TRUE(slice[0][0].length() == 1);
+  ASSERT_EQ(slice[0][0].length(), 1);
   for (size_t i = 0; i < slice[0][0].length(); ++i) {
     ASSERT_TRUE(slice[0][0].keyAt(i).copyString() ==
                 Supervision::agencyPrefix() +
                     arangodb::consensus::healthPrefix + servers[i]);
     ASSERT_TRUE(slice[0][0].valueAt(i).isObject());
-    ASSERT_TRUE(slice[0][0].valueAt(i).keyAt(0).copyString() == "op");
-    ASSERT_TRUE(slice[0][0].valueAt(i).valueAt(0).copyString() == "delete");
+    ASSERT_EQ(slice[0][0].valueAt(i).keyAt(0).copyString(), "op");
+    ASSERT_EQ(slice[0][0].valueAt(i).valueAt(0).copyString(), "delete");
   }
 }
 
@@ -81,17 +81,17 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_2_servers) {
   auto const& slice = transaction->slice();
 
   ASSERT_TRUE(slice.isArray());
-  ASSERT_TRUE(slice.length() == 1);
+  ASSERT_EQ(slice.length(), 1);
   ASSERT_TRUE(slice[0].isArray());
-  ASSERT_TRUE(slice[0].length() == 1);
+  ASSERT_EQ(slice[0].length(), 1);
   ASSERT_TRUE(slice[0][0].isObject());
-  ASSERT_TRUE(slice[0][0].length() == 2);
+  ASSERT_EQ(slice[0][0].length(), 2);
   for (size_t i = 0; i < slice[0][0].length(); ++i) {
     ASSERT_TRUE(slice[0][0].keyAt(i).copyString() ==
                 Supervision::agencyPrefix() +
                     arangodb::consensus::healthPrefix + servers[i]);
     ASSERT_TRUE(slice[0][0].valueAt(i).isObject());
-    ASSERT_TRUE(slice[0][0].valueAt(i).keyAt(0).copyString() == "op");
-    ASSERT_TRUE(slice[0][0].valueAt(i).valueAt(0).copyString() == "delete");
+    ASSERT_EQ(slice[0][0].valueAt(i).keyAt(0).copyString(), "op");
+    ASSERT_EQ(slice[0][0].valueAt(i).valueAt(0).copyString(), "delete");
   }
 }

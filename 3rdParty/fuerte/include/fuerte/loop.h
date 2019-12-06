@@ -38,7 +38,6 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 
 // need partial rewrite so it can be better integrated in client applications
 
-typedef asio_ns::io_context asio_io_context;
 typedef asio_ns::executor_work_guard<asio_ns::io_context::executor_type>
     asio_work_guard;
 
@@ -59,7 +58,7 @@ class EventLoopService {
   EventLoopService& operator=(EventLoopService const& other) = delete;
 
   // io_service returns a reference to the boost io_service.
-  std::shared_ptr<asio_io_context>& nextIOContext() {
+  std::shared_ptr<asio_ns::io_context>& nextIOContext() {
     return _ioContexts[_lastUsed.fetch_add(1, std::memory_order_relaxed) % _ioContexts.size()];
   }
   
@@ -75,7 +74,7 @@ class EventLoopService {
   std::unique_ptr<asio_ns::ssl::context> _sslContext;
 
   /// io contexts
-  std::vector<std::shared_ptr<asio_io_context>> _ioContexts;
+  std::vector<std::shared_ptr<asio_ns::io_context>> _ioContexts;
   /// Threads powering each io_context
   std::vector<std::thread> _threads;
   /// Used to keep the io-context alive.

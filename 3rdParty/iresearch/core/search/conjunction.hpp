@@ -38,24 +38,29 @@ NS_ROOT
 struct score_iterator_adapter {
   score_iterator_adapter(doc_iterator::ptr&& it) NOEXCEPT
     : it(std::move(it)) {
-    score = &irs::score::extract(this->it->attributes());
+    auto& attrs = this->it->attributes();
+    score = &irs::score::extract(attrs);
+    doc = attrs.get<irs::document>().get();
+    assert(doc);
   }
 
   score_iterator_adapter(const score_iterator_adapter&) = default;
   score_iterator_adapter& operator=(const score_iterator_adapter&) = default;
 
   score_iterator_adapter(score_iterator_adapter&& rhs) NOEXCEPT
-    : it(std::move(rhs.it)), score(rhs.score) {
+    : it(std::move(rhs.it)),
+      doc(rhs.doc),
+      score(rhs.score) {
   }
 
   score_iterator_adapter& operator=(score_iterator_adapter&& rhs) NOEXCEPT {
     if (this != &rhs) {
       it = std::move(rhs.it);
       score = rhs.score;
+      doc = rhs.doc;
     }
     return *this;
   }
-
 
   doc_iterator* operator->() const NOEXCEPT {
     return it.get();
@@ -65,7 +70,13 @@ struct score_iterator_adapter {
     return it;
   }
 
+  // access iterator value without virtual call
+  doc_id_t value() const NOEXCEPT {
+    return doc->value;
+  }
+
   doc_iterator::ptr it;
+  const irs::document* doc;
   const irs::score* score;
 }; // score_iterator_adapter
 
@@ -119,14 +130,15 @@ class conjunction : public doc_iterator_base {
     }
 
     if (scores_.empty()) {
-      prepare_score(ord, [](byte_type*) { /*NOOP*/});
+      prepare_score(ord, nullptr, [](const void*, byte_type*) { /*NOOP*/});
     } else {
       // prepare score
-      prepare_score(ord, [this](byte_type* score) {
-        order_->prepare_score(score);
-        for (auto* it_score : scores_) {
+      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+        auto& self = *static_cast<const conjunction*>(ctx);
+        self.order_->prepare_score(score);
+        for (auto* it_score : self.scores_) {
           it_score->evaluate();
-          order_->add(score, it_score->c_str());
+          self.order_->add(score, it_score->c_str());
         }
       });
     }
@@ -152,7 +164,7 @@ class conjunction : public doc_iterator_base {
 
   virtual doc_id_t seek(doc_id_t target) override {
     if (doc_limits::eof(target = front_->seek(target))) {
-      return target;
+      return doc_limits::eof();
     }
 
     return converge(target);
@@ -162,9 +174,13 @@ class conjunction : public doc_iterator_base {
   // tries to converge front_ and other iterators to the specified target.
   // if it impossible tries to find first convergence place
   doc_id_t converge(doc_id_t target) {
-    for (auto rest = seek_rest(target); target != rest;) {
+    assert(!doc_limits::eof(target));
+
+    for (auto rest = seek_rest(target); target != rest; rest = seek_rest(target)) {
       target = front_->seek(rest);
-      rest = seek_rest(target);
+      if (doc_limits::eof(target)) {
+        break;
+      }
     }
 
     return target;
@@ -173,9 +189,7 @@ class conjunction : public doc_iterator_base {
   // seeks all iterators except the
   // first to the specified target
   doc_id_t seek_rest(doc_id_t target) {
-    if (doc_limits::eof(target)) {
-      return target;
-    }
+    assert(!doc_limits::eof(target));
 
     for (auto it = itrs_.begin()+1, end = itrs_.end(); it != end; ++it) {
       const auto doc = (*it)->seek(target);
@@ -196,7 +210,7 @@ class conjunction : public doc_iterator_base {
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////
-/// @returns conjunction iterator created from the specified sub iterators 
+/// @returns conjunction iterator created from the specified sub iterators
 //////////////////////////////////////////////////////////////////////////////
 template<typename Conjunction, typename... Args>
 doc_iterator::ptr make_conjunction(

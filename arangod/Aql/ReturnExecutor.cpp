@@ -42,6 +42,6 @@ ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nr
       _doCount(doCount) {}
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher){};
+    : _infos(infos), _fetcher(fetcher) {}
 
 ReturnExecutor::~ReturnExecutor() = default;

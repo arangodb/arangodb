@@ -31,13 +31,17 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesAllocatorThread.h"
 #include "MMFiles/MMFilesCollectorThread.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesRemoverThread.h"
 #include "MMFiles/MMFilesSynchronizerThread.h"
 #include "MMFiles/MMFilesWalMarker.h"
@@ -48,10 +52,11 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/ManagerFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/ManagerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -62,7 +67,7 @@ using namespace arangodb::options;
 MMFilesLogfileManager* MMFilesLogfileManager::Instance = nullptr;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool MMFilesLogfileManager::SafeToUseInstance = false;
+std::atomic<bool> MMFilesLogfileManager::SafeToUseInstance{ false };
 #endif
 
 // whether or not there was a SHUTDOWN file with a last tick at
@@ -102,7 +107,8 @@ static constexpr uint32_t MaxSlots() { return 1024 * 1024 * 16; }
 MMFilesLogfileManager::MMFilesLogfileManager(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "MMFilesLogfileManager"),
       _allowWrites(false),  // start in read-only mode
-      _inRecovery(true),
+      _recoveryState(RecoveryState::BEFORE),
+      _recoveryTick(0),
       _logfilesLock(),
       _logfiles(),
       _slots(nullptr),
@@ -122,14 +128,14 @@ MMFilesLogfileManager::MMFilesLogfileManager(application_features::ApplicationSe
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("Database");
-  startsAfter("EngineSelector");
-  startsAfter("MMFilesEngine");
-  startsAfter("SystemDatabase");
+  startsAfter<DatabaseFeature>();
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<MMFilesEngine>();
+  startsAfter<SystemDatabaseFeature>();
 
-  onlyEnabledWith("MMFilesEngine");
+  onlyEnabledWith<MMFilesEngine>();
 }
 
 // destroy the logfile manager
@@ -263,9 +269,8 @@ void MMFilesLogfileManager::prepare() {
   Instance = this;
   FoundLastTick = 0;  // initialize the last found tick value to "not found"
 
-  auto databasePath =
-      ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _databasePath = databasePath->directory();
+  auto& databasePath = server().getFeature<DatabasePathFeature>();
+  _databasePath = databasePath.directory();
 
   _shutdownFile = shutdownFilename();
   bool const shutdownFileExists = basics::FileUtils::exists(_shutdownFile);
@@ -321,8 +326,9 @@ void MMFilesLogfileManager::start() {
   }
 
   // initialize some objects
-  _slots = new MMFilesWalSlots(this, _numberOfSlots, 0);
-  _recoverState.reset(new MMFilesWalRecoverState(_ignoreRecoveryErrors));
+  _slots = new MMFilesWalSlots(*this, _numberOfSlots, 0);
+  _recoverState.reset(new MMFilesWalRecoverState(server().getFeature<DatabaseFeature>(),
+                                                 _ignoreRecoveryErrors, _recoveryTick));
 
   TRI_ASSERT(!_allowWrites);
 
@@ -426,6 +432,12 @@ bool MMFilesLogfileManager::open() {
   // remove usage locks for databases and collections
   _recoverState->releaseResources();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  TRI_ASSERT(engine->recoveryTick() == _recoverState->lastTick);
+#endif
+
   // not needed anymore
   _recoverState.reset();
 
@@ -433,7 +445,7 @@ bool MMFilesLogfileManager::open() {
   writeShutdownInfo(false);
 
   // finished recovery
-  _inRecovery = false;
+  _recoveryState = RecoveryState::DONE;
 
   res = startMMFilesCollectorThread();
 
@@ -502,14 +514,14 @@ void MMFilesLogfileManager::unprepare() {
   if (_allocatorThread != nullptr) {
     LOG_TOPIC("17e47", TRACE, arangodb::Logger::ENGINES) << "stopping allocator thread";
     while (_allocatorThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     delete _allocatorThread;
     _allocatorThread = nullptr;
   }
 
   // do a final flush at shutdown
-  if (!_inRecovery) {
+  if (!isInRecovery()) {
     flush(true, true, false);
   }
 
@@ -524,7 +536,7 @@ void MMFilesLogfileManager::unprepare() {
   if (_removerThread != nullptr) {
     LOG_TOPIC("89e81", TRACE, arangodb::Logger::ENGINES) << "stopping remover thread";
     while (_removerThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     delete _removerThread;
     _removerThread = nullptr;
@@ -539,7 +551,7 @@ void MMFilesLogfileManager::unprepare() {
       _collectorThread->forceStop();
       while (_collectorThread->isRunning()) {
         locker.unlock();
-        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
         locker.lock();
       }
       delete _collectorThread;
@@ -551,7 +563,7 @@ void MMFilesLogfileManager::unprepare() {
     LOG_TOPIC("f4f93", TRACE, arangodb::Logger::ENGINES)
         << "stopping synchronizer thread";
     while (_synchronizerThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     delete _synchronizerThread;
     _synchronizerThread = nullptr;
@@ -563,7 +575,7 @@ void MMFilesLogfileManager::unprepare() {
 
   TRI_IF_FAILURE("LogfileManagerStop") {
     // intentionally kill the server
-    TRI_SegfaultDebugging("MMFilesLogfileManagerStop");
+    TRI_TerminateDebugging("MMFilesLogfileManagerStop");
   }
 
   int res = writeShutdownInfo(true);
@@ -599,7 +611,7 @@ int MMFilesLogfileManager::registerTransaction(TRI_voc_tid_t transactionId,
 
   try {
     auto data = std::make_unique<MMFilesTransactionData>(lastCollectedId, lastSealedId);
-    transaction::ManagerFeature::manager()->registerTransaction(transactionId, std::move(data));
+    transaction::ManagerFeature::manager()->registerTransaction(transactionId, std::move(data), isReadOnlyTransaction);
     return TRI_ERROR_NO_ERROR;
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -832,7 +844,7 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
 
     // sleep without holding the lock
     locker.unlock();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     if (TRI_microtime() > end) {
       return TRI_ERROR_LOCKED;
@@ -849,7 +861,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
                                  double maxWaitTime, bool abortWaitOnShutdown) {
   TRI_IF_FAILURE("LogfileManagerFlush") { return TRI_ERROR_NO_ERROR; }
 
-  TRI_ASSERT(!_inRecovery);
+  TRI_ASSERT(!isInRecovery());
 
   MMFilesWalLogfile::IdType lastOpenLogfileId;
   MMFilesWalLogfile::IdType lastSealedLogfileId;
@@ -931,7 +943,7 @@ int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector, bool w
 
 /// wait until all changes to the current logfile are synced
 bool MMFilesLogfileManager::waitForSync(double maxWait) {
-  TRI_ASSERT(!_inRecovery);
+  TRI_ASSERT(!isInRecovery());
 
   double const end = TRI_microtime() + maxWait;
   TRI_voc_tick_t lastAssignedTick = 0;
@@ -954,7 +966,7 @@ bool MMFilesLogfileManager::waitForSync(double maxWait) {
     }
 
     // not everything was committed yet. wait a bit
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     if (TRI_microtime() >= end) {
       // time's up!
@@ -968,7 +980,7 @@ void MMFilesLogfileManager::relinkLogfile(MMFilesWalLogfile* logfile) {
   MMFilesWalLogfile::IdType const id = logfile->id();
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
-  _logfiles.emplace(id, logfile);
+  _logfiles.try_emplace(id, logfile);
 }
 
 // removes logfiles that are allowed to be removed
@@ -1166,7 +1178,7 @@ TRI_voc_tick_t MMFilesLogfileManager::addLogfileBarrier(TRI_voc_tick_t databaseI
 
   {
     WRITE_LOCKER(barrierLock, _barriersLock);
-    _barriers.emplace(id, logfileBarrier.get());
+    _barriers.try_emplace(id, logfileBarrier.get());
   }
 
   logfileBarrier.release();
@@ -1471,7 +1483,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
 /// if it returns a logfile, the logfile is removed from the list of available
 /// logfiles
 MMFilesWalLogfile* MMFilesLogfileManager::getRemovableLogfile() {
-  TRI_ASSERT(!_inRecovery);
+  TRI_ASSERT(!isInRecovery());
 
   // take all barriers into account
   MMFilesWalLogfile::IdType const minBarrierTick = getMinBarrierTick();
@@ -1557,7 +1569,7 @@ void MMFilesLogfileManager::setCollectionRequested(MMFilesWalLogfile* logfile) {
     logfile->setStatus(MMFilesWalLogfile::StatusType::COLLECTION_REQUESTED);
   }
 
-  if (!_inRecovery) {
+  if (!isInRecovery()) {
     // to start collection
     READ_LOCKER(locker, _collectorThreadLock);
 
@@ -1590,7 +1602,7 @@ void MMFilesLogfileManager::setCollectionDone(MMFilesWalLogfile* logfile) {
     _lastCollectedId = id;
   }
 
-  if (!_inRecovery) {
+  if (!isInRecovery()) {
     // to start removal of unneeded datafiles
     {
       READ_LOCKER(locker, _collectorThreadLock);
@@ -1630,10 +1642,10 @@ MMFilesLogfileManagerState MMFilesLogfileManager::state() {
     }
 
     // don't hang forever on shutdown
-    if (application_features::ApplicationServer::isStopping()) {
+    if (server().isStopping()) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator() ||
              state.lastCommittedTick > 0);
@@ -1765,7 +1777,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       return TRI_ERROR_NO_ERROR;
     }
 
-    if (application_features::ApplicationServer::isStopping()) {
+    if (server().isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
 
@@ -1794,7 +1806,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       break;
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     // try again
   }
 
@@ -1803,7 +1815,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       << ", maxWaitTime: " << maxWaitTime;
   logStatus();
 
-  if (application_features::ApplicationServer::isStopping()) {
+  if (server().isStopping()) {
     return TRI_ERROR_SHUTTING_DOWN;
   }
 
@@ -1830,8 +1842,11 @@ void MMFilesLogfileManager::logStatus() {
 int MMFilesLogfileManager::runRecovery() {
   TRI_ASSERT(!_allowWrites);
 
+  _recoveryState = RecoveryState::IN_PROGRESS;
+
   if (!_recoverState->mustRecover()) {
     // nothing to do
+    _recoveryTick = _recoverState->lastTick;
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -2017,7 +2032,7 @@ int MMFilesLogfileManager::writeShutdownInfo(bool writeShutdownTime) {
 
 // start the synchronizer thread
 int MMFilesLogfileManager::startMMFilesSynchronizerThread() {
-  _synchronizerThread = new MMFilesSynchronizerThread(this, _syncInterval);
+  _synchronizerThread = new MMFilesSynchronizerThread(*this, _syncInterval);
 
   if (!_synchronizerThread->start()) {
     delete _synchronizerThread;
@@ -2039,7 +2054,7 @@ void MMFilesLogfileManager::stopMMFilesSynchronizerThread() {
 
 // start the allocator thread
 int MMFilesLogfileManager::startMMFilesAllocatorThread() {
-  _allocatorThread = new MMFilesAllocatorThread(this);
+  _allocatorThread = new MMFilesAllocatorThread(*this);
 
   if (!_allocatorThread->start()) {
     delete _allocatorThread;
@@ -2063,7 +2078,7 @@ void MMFilesLogfileManager::stopMMFilesAllocatorThread() {
 int MMFilesLogfileManager::startMMFilesCollectorThread() {
   WRITE_LOCKER(locker, _collectorThreadLock);
 
-  _collectorThread = new MMFilesCollectorThread(this);
+  _collectorThread = new MMFilesCollectorThread(*this);
 
   if (!_collectorThread->start()) {
     delete _collectorThread;
@@ -2112,7 +2127,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
   _collectorThread->beginShutdown();
@@ -2120,7 +2135,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
 
 // start the remover thread
 int MMFilesLogfileManager::startMMFilesRemoverThread() {
-  _removerThread = new MMFilesRemoverThread(this);
+  _removerThread = new MMFilesRemoverThread(*this);
 
   if (!_removerThread->start()) {
     delete _removerThread;
@@ -2169,7 +2184,7 @@ int MMFilesLogfileManager::inventory() {
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
         WRITE_LOCKER(writeLocker, _logfilesLock);
-        _logfiles.emplace(id, nullptr);
+        _logfiles.try_emplace(id, nullptr);
       }
     }
   }
@@ -2333,7 +2348,7 @@ int MMFilesLogfileManager::createReserveLogfile(uint32_t size) {
 
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
-    _logfiles.emplace(id, logfile.get());
+    _logfiles.try_emplace(id, logfile.get());
   }
   logfile.release();
 
