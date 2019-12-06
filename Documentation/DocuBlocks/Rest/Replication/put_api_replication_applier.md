@@ -120,4 +120,3 @@ is returned if an error occurred while assembling the response.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

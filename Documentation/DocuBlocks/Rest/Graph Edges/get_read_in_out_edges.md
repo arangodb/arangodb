@@ -112,4 +112,3 @@ Out edges
     db._drop("vertices");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

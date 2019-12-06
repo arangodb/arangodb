@@ -63,6 +63,7 @@ QueryRegistry::~QueryRegistry() {
   // holding the lock
   for (auto& p : toDelete) {
     try {  // just in case
+      //cppcheck-suppress virtualCallInConstructor
       destroy(p.first, p.second, TRI_ERROR_TRANSACTION_ABORTED, false);
     } catch (...) {
     }
@@ -207,6 +208,7 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
 }
 
 /// @brief destroy
+// cppcheck-suppress virtualCallInConstructor
 void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
                             int errorCode, bool ignoreOpened) {
   std::unique_ptr<QueryInfo> queryInfo;

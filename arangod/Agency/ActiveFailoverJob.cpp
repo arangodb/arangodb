@@ -243,15 +243,14 @@ arangodb::Result ActiveFailoverJob::abort(std::string const& reason) {
                   "Failed aborting addFollower job beyond pending stage");
   }
 
-  Result result;
   // Can now only be TODO or PENDING
   if (_status == TODO) {
     finish("", "", false, "job aborted: " + reason);
-    return result;
+    return Result{};
   }
 
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
-  return result;
+  return Result{};
 }
 
 typedef std::pair<std::string, TRI_voc_tick_t> ServerTick;

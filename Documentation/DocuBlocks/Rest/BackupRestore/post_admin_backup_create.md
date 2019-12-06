@@ -20,13 +20,23 @@ UUID is created for this part of the ID.
 
 @RESTBODYPARAM{timeout,number,optional,double}
 The time in seconds that the operation tries to get a consistent
-snapshot. The default is 120 seconds. 
+snapshot. The default is 120 seconds.
 
-@RESTBODYPARAM{allowInconsistent,boolean,optional,boolean}
+@RESTBODYPARAM{allowInconsistent,boolean,optional,}
 If this flag is set to `true` and no global transaction lock can be
 acquired within the given timeout, a possibly inconsistent backup
 is taken. The default for this flag is `false` and in this case
 a timeout results in an HTTP 408 error.
+
+@RESTBODYPARAM{force,boolean,optional,}
+If this flag is set to `true` and no global transaction lock can be acquired
+within the given timeout, all running transactions are forcefully aborted to
+ensure that a consistent backup can be created. This is almost certainly not
+what you want for your application. In the presence of intermediate commits
+it can even destroy the atomicity of your transactions. Use at your own risk,
+and only if you need a consistent backup at all costs. The default and
+recommended value is `false`. If both `allowInconsistent` and `force` are set
+to `true`, then the latter takes precedence and transactions are aborted.
 
 @RESTRETURNCODES
 
