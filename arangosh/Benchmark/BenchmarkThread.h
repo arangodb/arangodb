@@ -622,7 +622,7 @@ public:
 
   double _avgTime;
 
-  double _histogrammScope;
+  double _histogramScope;
   std::vector<size_t> _histogramm;
 };
 }  // namespace arangobench
