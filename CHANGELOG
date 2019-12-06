@@ -1,13 +1,14 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Removed content from Documentation/Books, but keeping the subfolders.
+  The documentation is in a separate repository (except DocuBlocks and Scripts):
+  https://github.com/arangodb/docs.git
+  
 * Fix execution ability in CentOS 6 regarding newer boost.
 
 * Updated arangosync to 0.7.1.
 
-* removed content from Documentation/Books, but keeping the subfolders.
-  The documentation is in a separate repository (except DocuBlocks and Scripts):
-  https://github.com/arangodb/docs.git
 
 v3.5.3 (2019-11-28)
 -------------------
