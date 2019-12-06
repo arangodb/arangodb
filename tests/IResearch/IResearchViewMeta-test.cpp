@@ -610,6 +610,11 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
           arangodb::basics::AttributeName(VPackStringRef("field"))},
       false);
 
+  auto storedValuesJSON = arangodb::velocypack::Parser::fromJson("[[], \"\", [\"\"], \"test.t\", [\"a.a\", \"b.b\"]]");
+  std::string error;
+  meta._storedValues.fromVelocyPack(storedValuesJSON->slice(), error);
+  EXPECT_TRUE(error.empty());
+
   std::unordered_set<TRI_voc_cid_t> expectedCollections = {42, 52, 62};
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::Slice tmpSlice;
@@ -658,10 +663,6 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
   EXPECT_TRUE(true == tmpSlice.isArray());
   EXPECT_TRUE(2 == tmpSlice.length());
 
-  tmpSlice = slice.get("storedValues");
-  EXPECT_TRUE(tmpSlice.isArray());
-  EXPECT_EQ(0, tmpSlice.length());
-
   size_t i = 0;
   for (auto const sortSlice : arangodb::velocypack::ArrayIterator(tmpSlice)) {
     EXPECT_TRUE(sortSlice.isObject());
@@ -677,6 +678,10 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
     EXPECT_TRUE(meta._primarySort.direction(i) == directionSlice.getBoolean());
     ++i;
   }
+
+  tmpSlice = slice.get("storedValues");
+  EXPECT_TRUE(tmpSlice.isArray());
+  EXPECT_EQ(2, tmpSlice.length());
 }
 
 TEST_F(IResearchViewMetaTest, test_readMaskAll) {

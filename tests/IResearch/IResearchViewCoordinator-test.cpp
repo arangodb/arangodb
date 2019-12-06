@@ -990,7 +990,8 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     "      \"id\":1, "
     "      \"includeAllFields\":true, "
     "      \"analyzers\": [\"inPlace\"], "
-    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ]"
+    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
+    "      \"storedValues\":[[], [\"\"], \"\", \"test.t\", [\"a.a\", \"b.b\"]] "
     "    } "
     "  } }");
 

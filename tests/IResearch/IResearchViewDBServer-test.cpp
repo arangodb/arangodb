@@ -791,7 +791,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
-        "\"unusedValue\" }");
+        "\"unusedValue\", \"storedValues\":[[], [\"\"], \"\", \"test.t\", [\"a.a\", \"b.b\"]] }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
@@ -818,6 +818,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
                  arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
                      slice.get("type").copyString()));
+    EXPECT_TRUE(slice.hasKey("storedValues") && 2 == slice.get("storedValues").length());
   }
 
   // persistence
