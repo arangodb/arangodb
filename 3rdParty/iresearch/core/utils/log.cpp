@@ -558,7 +558,7 @@ bool stack_trace_libunwind(iresearch::logger::level_t level); // predeclaration
   }
 
   bool file_line_addr2line(iresearch::logger::level_t level, const char* obj, unw_word_t addr) {
-    size_t addr_size = sizeof(unw_word_t)*3 + 2 + 1; // aproximately 3 chars per byte +2 for 0x, +1 for \0
+    size_t addr_size = sizeof(unw_word_t)*3 + 2 + 1; // approximately 3 chars per byte +2 for 0x, +1 for \0
     char addr_buf[addr_size];
 
     snprintf(addr_buf, addr_size, "0x%lx", addr);

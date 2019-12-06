@@ -33,7 +33,7 @@ NS_BEGIN(bitpack)
 
 // reads block of the specified size from the stream
 // that was previously encoded with the corresponding
-// 'write_block' funcion using low-level optimizations
+// 'write_block' function using low-level optimizations
 IRESEARCH_API void read_block_simd(
   data_input& in,
   uint32_t size,

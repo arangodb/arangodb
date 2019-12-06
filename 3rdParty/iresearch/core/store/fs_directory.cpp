@@ -498,7 +498,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
   if (pos < 0) {
     throw io_error(string_utils::to_string(
-      "Failed to obtain currnt position of input file, error: %d",
+      "Failed to obtain current position of input file, error: %d",
 #ifdef _WIN32
       GetLastError()
 #else
