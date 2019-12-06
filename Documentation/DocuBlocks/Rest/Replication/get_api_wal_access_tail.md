@@ -97,7 +97,7 @@ Individual log events will also have additional attributes, depending on the
 event type. A few common attributes which are used for multiple events types
 are:
 
-- *cuid*: globally unique id of the view or collection the event was for
+- *cuid*: globally unique id of the View or collection the event was for
 
 - *db*: the database name the event was for
 

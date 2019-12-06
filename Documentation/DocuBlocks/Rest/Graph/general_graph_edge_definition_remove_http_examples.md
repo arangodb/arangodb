@@ -1,7 +1,7 @@
 @startDocuBlock general_graph_edge_definition_remove_http_examples
 @brief Remove an edge definition form the graph
 
-@RESTHEADER{DELETE /_api/gharial/{graph}/edge/{definition}, Remove an edge definition from the graph}
+@RESTHEADER{DELETE /_api/gharial/{graph}/edge/{definition}#definition, Remove an edge definition from the graph}
 
 @RESTDESCRIPTION
 Remove one edge definition from the graph.  This will only remove the
@@ -68,7 +68,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -85,7 +85,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.

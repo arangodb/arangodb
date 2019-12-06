@@ -2,15 +2,18 @@
 @startDocuBlock patch_update_document
 @brief updates a document
 
-@RESTHEADER{PATCH /_api/document/{document-handle},Update document, updateDocument}
+@RESTHEADER{PATCH /_api/document/{collection}/{key},Update document,updateDocument}
 
 @RESTALLBODYPARAM{document,json,required}
 A JSON representation of a document update as an object.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{document-handle,string,required}
-This URL parameter must be a document handle.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* in which the document is to be updated.
+
+@RESTURLPARAM{key,string,required}
+The document key.
 
 @RESTQUERYPARAMETERS
 

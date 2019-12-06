@@ -15,7 +15,7 @@ then the password will be set the value stored in the environment variable
 `ARANGODB_DEFAULT_ROOT_PASSWORD`. This can be used to pass an instance
 variable into ArangoDB. For example, the instance identifier from Amazon.
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
@@ -382,14 +382,14 @@ users.remove(theUser);
 @startDocuBlock UserHandling_fetchDatabasePermission
 @brief Get specific database access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{database}, Get the database access level}
+@RESTHEADER{GET /_api/user/{user}/database/{dbname}, Get the database access level}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{user,string,required}
 The name of the user for which you want to query the databases.
 
-@RESTURLPARAM{database,string,required}
+@RESTURLPARAM{dbname,string,required}
 The name of the database to query
 
 @RESTDESCRIPTION
@@ -398,7 +398,7 @@ Fetch the database access level for a specific database
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the acccess level can be returned
+Returned if the access level can be returned
 
 @RESTRETURNCODE{400}
 If the access privileges are not right etc.
@@ -434,14 +434,14 @@ users.remove(theUser);
 @startDocuBlock UserHandling_fetchCollectionPermission
 @brief Get the collection access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{database}/{collection}, Get the specific collection access level}
+@RESTHEADER{GET /_api/user/{user}/database/{dbname}/{collection}, Get the specific collection access level}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{user,string,required}
 The name of the user for which you want to query the databases.
 
-@RESTURLPARAM{database,string,required}
+@RESTURLPARAM{dbname,string,required}
 The name of the database to query
 
 @RESTURLPARAM{collection,string,required}
@@ -453,7 +453,7 @@ Returns the collection access level for a specific collection
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the acccess level can be returned
+Returned if the access level can be returned
 
 @RESTRETURNCODE{400}
 If the access privileges are not right etc.
@@ -500,7 +500,7 @@ The name of the user
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
@@ -565,7 +565,7 @@ The name of the user
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 

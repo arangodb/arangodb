@@ -86,7 +86,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -106,7 +106,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -125,7 +125,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
