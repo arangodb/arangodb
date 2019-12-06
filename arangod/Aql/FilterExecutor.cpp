@@ -146,7 +146,7 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   auto const& clientCall = output.getClientCall();
   // This is a optimistic fetch. We do not do any overfetching here, only if we
   // pass through all rows this fetch is correct, otherwise we have too few rows.
-  upstreamCall.softLimit =
-      clientCall.offset() + (std::min)(clientCall.softLimit, clientCall.hardLimit);
+  upstreamCall.softLimit = clientCall.getOffset() +
+                           (std::min)(clientCall.softLimit, clientCall.hardLimit);
   return {inputRange.state(), stats, upstreamCall};
 }
