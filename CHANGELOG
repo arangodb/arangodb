@@ -1,6 +1,9 @@
 v3.6.0 (XXXX-XX-XX)
 -------------------
 
+* Renamed document / index / vertex "handle" to "identifier" / "id" for
+  consistency in documentation and error messages.
+
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
 
