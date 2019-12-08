@@ -35,7 +35,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
@@ -165,11 +164,9 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
 
     createdCollections.push_back(colToDistributeShardsLike);
     systemCollections.push_back(StaticStrings::GraphsCollection);
-    if (StatisticsFeature::enabled()) {
-      systemCollections.push_back(StaticStrings::StatisticsCollection);
-      systemCollections.push_back(StaticStrings::Statistics15Collection);
-      systemCollections.push_back(StaticStrings::StatisticsRawCollection);
-    }
+    systemCollections.push_back(StaticStrings::StatisticsCollection);
+    systemCollections.push_back(StaticStrings::Statistics15Collection);
+    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
   } else {
     // we will use GraphsCollection for distributeShardsLike
     // this is equal to older versions
@@ -262,7 +259,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
 
 Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
                                          std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
-  if (vocbase.isSystem() && StatisticsFeature::enabled()) {
+  if (vocbase.isSystem()) {
     typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
     FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
 
@@ -337,23 +334,23 @@ static Result createIndex(std::string const& name, Index::IndexType type,
 Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   Result res;
-  if (vocbase.isSystem() && StatisticsFeature::enabled()) {
+  if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::StatisticsCollection,
                         arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
                         false, false, collections);
-    if (!res.ok()) {
+    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
     res = ::createIndex(StaticStrings::Statistics15Collection,
                         arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
                         false, false, collections);
-    if (!res.ok()) {
+    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
     res = ::createIndex(StaticStrings::StatisticsRawCollection,
                         arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
                         false, false, collections);
-    if (!res.ok()) {
+    if (!res.ok() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
   }
