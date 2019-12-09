@@ -156,7 +156,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_junitReportFile));
 
   options->addOption("--json-report-file",
-                     "filename to write a json report to",
+                     "filename to write a report in JSON format to",
                      new StringParameter(&_jsonReportFile));
 
   options->addOption(
