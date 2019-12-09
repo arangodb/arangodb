@@ -486,7 +486,7 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
 Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
                                                         application_features::ApplicationServer const& server) {
   if (slice.isObject()) {
-    auto const& cl = server.getFeature<ClusterFeature>();
+    auto& cl = server.getFeature<ClusterFeature>();
 
     auto numberOfShardsSlice = slice.get(StaticStrings::NumberOfShards);
     if (numberOfShardsSlice.isNumber()) {
@@ -520,6 +520,25 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
           minReplicationFactor > 0) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+      }
+      if (ServerState::instance()->isCoordinator() &&
+          replicationFactor > cl.clusterInfo().getCurrentDBServers().size()) { 
+        return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+      }
+    }
+
+    auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
+    if (writeConcernSlice.isNone()) {
+      writeConcernSlice = slice.get(StaticStrings::MinReplicationFactor);
+    }
+    if (writeConcernSlice.isNumber()) {
+      int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
+      if (writeConcern <= 0) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for writeConcern");
+      }
+      if (ServerState::instance()->isCoordinator() &&
+          static_cast<size_t>(writeConcern) > cl.clusterInfo().getCurrentDBServers().size()) { 
+        return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
       }
     }
   }
