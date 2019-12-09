@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed undefined behaviour on node delete
+
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
 
@@ -18,7 +20,7 @@ devel
 
 * ArangoDB web UI was switched to React from previous framework and rebuilt.
 
-* Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
+* Enable the `parallelize-gather` AQL optimizer rule for certain write queries.
 
   The optimization is turned on by default and can be disabled by setting the
   startup option `--query.parallelize-gather-writes` to `false`.

@@ -189,10 +189,22 @@ class Node {
   /// brief Normalize node URIs
   static std::string normalize(std::string const& key);
  
+  /// brief Normalize node URIs
+  static std::vector<std::string> split(const std::string& str, char separator);
+
+
 private:
 
   /// @brief Get store if it exists:
   Store* getStore();
+
+  /// Hand out sharep ptr to a  child
+  std::shared_ptr<Node> child(std::string const& key);
+
+  /// Remove me from tree, if not root node
+  bool deleteMe();
+
+  friend class Store;
 
 public:
 
