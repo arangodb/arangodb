@@ -108,7 +108,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "number of buckets for the histogram (resolution)",
                      new UInt64Parameter(&_histogramNumIntervals));
   options->addOption("--histogram.percentiles",
-                     "which percentiles to calculate from the histogram",
+                     "which percentiles to calculate",
                      new VectorParameter<DoubleParameter>(&_percentiles),
                      arangodb::options::makeFlags(options::Flags::FlushOnFirst));
   
