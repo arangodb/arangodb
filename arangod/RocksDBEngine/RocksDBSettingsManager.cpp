@@ -43,6 +43,7 @@
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -143,6 +144,11 @@ Result RocksDBSettingsManager::sync(bool force) {
   // make sure we give up our lock when we exit this function
   auto guard =
       scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
+
+  // need superuser scope to ensure we can sync all collections and keep seq
+  // numbers in sync; background index creation will call this function as user,
+  // and can lead to seq numbers getting out of sync
+  ExecContextSuperuserScope superuser;
 
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
