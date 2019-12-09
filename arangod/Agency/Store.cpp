@@ -516,7 +516,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (node->isReadLockable() != op.value.getBool()) {
+          if (!op.value.isString() || !node->isReadLockable(op.value.stringView())) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -528,7 +528,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (node->isWriteLockable() != op.value.getBool()) {
+          if (!op.value.isString() || !node->isWriteLockable(op.value.stringView())) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;

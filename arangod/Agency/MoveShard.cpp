@@ -358,7 +358,8 @@ bool MoveShard::start(bool&) {
       addRemoveJobFromSomewhere(pending, "ToDo", _jobId);
 
       addBlockShard(pending, _shard, _jobId);
-      addBlockServer(pending, _to, _jobId);
+      addMoveShardToServerLock(pending);
+      addMoveShardFromServerLock(pending);
 
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
@@ -395,7 +396,8 @@ bool MoveShard::start(bool&) {
       // --- Check that Planned servers are still as we expect
       addPreconditionUnchanged(pending, planPath, planned);
       addPreconditionShardNotBlocked(pending, _shard);
-      addPreconditionServerNotBlocked(pending, _to);
+      addMoveShardToServerCanLock(pending);
+      addMoveShardFromServerCanLock(pending);
       addPreconditionServerHealth(pending, _to, "GOOD");
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
@@ -404,6 +406,7 @@ bool MoveShard::start(bool&) {
   }  // array for transaction done
 
   // Transact to agency
+  LOG_DEVEL << "move shard " << pending.toJson();
   write_ret_t res = singleWriteTransaction(_agent, pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
@@ -426,7 +429,7 @@ JOB_STATUS MoveShard::status() {
   std::string planPath = planColPrefix + _database + "/" + _collection;
   if (!_snapshot.has(planPath)) {
     // Oops, collection is gone, simple finish job:
-    finish(_to, _shard, true, "collection was dropped");
+    moveShardFinish(true, true, "collection was dropped");
     return FINISHED;
   }
 
@@ -662,7 +665,10 @@ JOB_STATUS MoveShard::pendingLeader() {
         _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
         addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
         addReleaseShard(trx, _shard);
-        addReleaseServer(trx, _to);
+        addMoveShardToServerUnLock(trx);
+        addMoveShardFromServerUnLock(trx);
+        addMoveShardToServerCanUnLock(pre);
+        addMoveShardFromServerCanUnLock(pre);
       }
       // Add precondition to transaction:
       trx.add(pre.slice());
@@ -670,10 +676,12 @@ JOB_STATUS MoveShard::pendingLeader() {
     finishedAfterTransaction = true;
   } else {
     // something seriously wrong here, fail job:
+    // TODO finish for move shard
     finish(_to, _shard, false, "something seriously wrong");
     return FAILED;
   }
 
+  LOG_DEVEL << "move shard " << trx.toJson();
   // Transact to agency:
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
@@ -767,7 +775,10 @@ JOB_STATUS MoveShard::pendingFollower() {
       addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
       addPreconditionCollectionStillThere(precondition, _database, _collection);
       addReleaseShard(trx, _shard);
-      addReleaseServer(trx, _to);
+      addMoveShardToServerUnLock(trx);
+      addMoveShardFromServerUnLock(trx);
+      addMoveShardToServerCanUnLock(precondition);
+      addMoveShardFromServerCanUnLock(precondition);
 
       addIncreasePlanVersion(trx);
     }
@@ -775,6 +786,7 @@ JOB_STATUS MoveShard::pendingFollower() {
     trx.add(precondition.slice());
   }
 
+  LOG_DEVEL << "move shard " << trx.toJson();
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
@@ -887,7 +899,8 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted (3): " + reason);
       addReleaseShard(trx, _shard);
-      addReleaseServer(trx, _to);
+      addMoveShardToServerUnLock(trx);
+      addMoveShardFromServerUnLock(trx);
       addIncreasePlanVersion(trx);
     }
     {
@@ -903,10 +916,13 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
           });
         addPreconditionJobStillInPending(trx, _jobId);
       }
+      addMoveShardToServerCanUnLock(trx);
+      addMoveShardFromServerCanUnLock(trx);
       addPreconditionCollectionStillThere(trx, _database, _collection);
     }
 
   }
+  LOG_DEVEL << "move shard " << trx.toJson();
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (!res.accepted) {
@@ -918,7 +934,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       // Tough luck. Things have changed. We'll move on
       LOG_TOPIC("513e6", INFO, Logger::SUPERVISION) <<
         "MoveShard can no longer abort through reversion to where it started. Flight forward";
-      finish(_to, _shard, true, "job aborted (4) - new leader already in place: " + reason);
+      moveShardFinish(true, true, "job aborted (4) - new leader already in place: " + reason);
       return result;
     }
     result = Result(
@@ -927,4 +943,70 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
   }
 
   return result;
+}
+
+void MoveShard::addMoveShardToServerLock(Builder& ops) const {
+  addReadLockServer(ops, _to, _jobId);
+}
+
+void MoveShard::addMoveShardFromServerLock(Builder& ops) const {
+  if (!isSubJob()) {
+    addReadLockServer(ops, _from, _jobId);
+  }
+}
+
+void MoveShard::addMoveShardToServerUnLock(Builder& ops) const {
+  addReadUnlockServer(ops, _to, _jobId);
+}
+
+void MoveShard::addMoveShardToServerCanLock(Builder& precs) const {
+  addPreconditionServerReadLockable(precs, _to, _jobId);
+}
+
+void MoveShard::addMoveShardFromServerCanLock(Builder& precs) const {
+  if (isSubJob()) {
+    addPreconditionServerWriteLocked(precs, _from, _parentJobId);
+  } else {
+    addPreconditionServerReadLockable(precs, _from, _jobId);
+  }
+}
+
+void MoveShard::addMoveShardFromServerUnLock(Builder& ops) const {
+  if (!isSubJob()) {
+    addReadUnlockServer(ops, _from, _jobId);
+  }
+}
+
+void MoveShard::addMoveShardToServerCanUnLock(Builder& ops) const {
+  addPreconditionServerReadLocked(ops, _to, _jobId);
+}
+
+void MoveShard::addMoveShardFromServerCanUnLock(Builder& ops) const {
+  if (!isSubJob()) {
+    addPreconditionServerReadLocked(ops, _from, _jobId);
+  }
+}
+
+bool MoveShard::moveShardFinish(bool unlock, bool success, std::string const& msg) {
+
+  std::shared_ptr<VPackBuilder> payload;
+
+  if (unlock) {
+    payload = std::make_shared<VPackBuilder>();
+    {
+      VPackArrayBuilder env(payload.get());
+      {
+        VPackObjectBuilder trx(payload.get());
+        addMoveShardToServerUnLock(*payload);
+        addMoveShardFromServerUnLock(*payload);
+      }
+      {
+        VPackObjectBuilder precs(payload.get());
+        addMoveShardFromServerCanUnLock(*payload);
+        addMoveShardToServerCanUnLock(*payload);
+      }
+    }
+  }
+
+  return finish("", "", success, msg, std::move(payload));
 }

@@ -330,10 +330,10 @@ public:
   double getDouble() const;
 
  public:
-  bool isReadLockable() const;
-  bool isReadUnlockable() const;
-  bool isWriteLockable() const;
-  bool isWriteUnlockable() const;
+  bool isReadLockable(std::string_view const& by) const;
+  bool isReadUnlockable(std::string_view const& by) const;
+  bool isWriteLockable(std::string_view const& by) const;
+  bool isWriteUnlockable(std::string_view const& by) const;
 
   /// @brief Clear key value store
   void clear();
@@ -364,6 +364,8 @@ public:
   static Children const dummyChildren;
   static Node const _dummyNode;
 
+ private:
+  bool deleteMe();
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {

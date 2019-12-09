@@ -697,13 +697,24 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
   return true;
 }
 
-// Read locks the given slice
 template<>
 bool Node::handle<READ_LOCK>(VPackSlice const& slice) {
-  // check if it is either an empty string (i.e.) unlocked write lock
-  // or an empty array (unlocked read lock)
-  if (isReadLockable()) {
-    return handle<PUSH>(slice);
+  Slice user = slice.get("by");
+  if (!user.isString()) {
+    return false;
+  }
+
+  if (isReadLockable(user.stringView())) {
+    Builder newValue;
+    {
+      VPackArrayBuilder arr(&newValue);
+      if (this->slice().isArray()) {
+        newValue.add(VPackArrayIterator(this->slice()));
+      }
+      newValue.add(user);
+    }
+    this->operator=(newValue.slice());
+    return true;
   }
 
   return false;
@@ -711,59 +722,113 @@ bool Node::handle<READ_LOCK>(VPackSlice const& slice) {
 
 template <>
 bool Node::handle<READ_UNLOCK>(VPackSlice const& slice) {
-  if (isReadUnlockable()) {
-    return Node::handle<ERASE>(slice);
+  Slice user = slice.get("by");
+  if (!user.isString()) {
+    return false;
   }
+
+  if (isReadUnlockable(user.stringView())) {
+    Builder newValue;
+    {
+      // isReadUnlockable ensured that `this->slice()` is always an array of strings
+      VPackArrayBuilder arr(&newValue);
+      for (auto const& i : VPackArrayIterator(this->slice())) {
+        if (!i.isEqualString(user.stringRef())) {
+          newValue.add(i);
+        }
+      }
+    }
+    Slice newValueSlice = newValue.slice();
+    if (newValueSlice.length() == 0) {
+      return deleteMe();
+    } else {
+      this->operator=(newValue.slice());
+    }
+    return true;
+  }
+  LOG_DEVEL << "READ_UNLOCK failed";
   return false;
 }
 
 template<>
 bool Node::handle<WRITE_LOCK>(VPackSlice const& slice) {
-  if (isWriteLockable()) {
-    return Node::handle<SET>(slice);
+  Slice user = slice.get("by");
+  if (!user.isString()) {
+    return false;
+  }
+
+  if (isWriteLockable(user.stringView())) {
+    this->operator=(user);
+    return true;
   }
   return false;
 }
 
 template<>
 bool Node::handle<WRITE_UNLOCK>(VPackSlice const& slice) {
-  if (isWriteUnlockable()) {
-    this->operator=(Slice::nullSlice());
+  Slice user = slice.get("by");
+  if (!user.isString()) {
+    return false;
+  }
+
+  if (isWriteUnlockable(user.stringView())) {
+    return deleteMe();
+  }
+
+  LOG_DEVEL << "WRITE_UNLOCK failed";
+  return false;
+}
+
+bool Node::isReadLockable(std::string_view const& by) const {
+  Slice slice = this->slice();
+  // the following states are counted as readLockable
+  // array - when read locked or read lock released
+  // empty object - when the node is created
+  if (slice.isArray()) {
+    // check if `by` is not in the array
+    for (auto const& i : VPackArrayIterator(slice)) {
+      if (!i.isString() || i.isEqualString(VPackStringRef(by.data(), by.length()))) {
+        return false;
+      }
+    }
     return true;
+  }
+
+  return slice.isEmptyObject();
+}
+
+bool Node::isReadUnlockable(std::string_view const& by) const {
+  Slice slice = this->slice();
+  // the following states are counted as readUnlockable
+  // array of strings containing the value `by`
+  if (slice.isArray()) {
+    bool valid = false;
+    for (auto const& i : VPackArrayIterator(slice)) {
+      if (!i.isString()) {
+        valid = false;
+        break;
+      }
+      if (i.isEqualString(VPackStringRef(by.data(), by.length()))) {
+        valid = true;
+      }
+    }
+    return valid;
   }
   return false;
 }
 
-bool Node::isReadLockable() const {
-  Slice slice = this->slice();
-  // the following states are counted as readLockable
-  // array - when read locked or read lock released
-  // null - when write lock released
-  // empty object - when the node is created
-  return slice.isArray() || slice.isEmptyObject() || slice.isNull();
-}
-
-bool Node::isReadUnlockable() const {
-  Slice slice = this->slice();
-  // the following states are counted as readUnlockable
-  // array of length > 0 - when it was read locked but not all locks released
-  return slice.isArray() && slice.length() > 0;
-}
-
-bool Node::isWriteLockable() const {
+bool Node::isWriteLockable(std::string_view const& by) const {
   Slice slice = this->slice();
   // the following states are counted as writeLockable
-  //  empty array - when the last read lock was released
   //  empty object - when the node is create
-  //  null - when the write lock was released
-  return slice.isEmptyArray() || slice.isEmptyObject() || slice.isNull();
+  return slice.isEmptyObject();
 }
 
-bool Node::isWriteUnlockable() const {
+bool Node::isWriteUnlockable(std::string_view const& by) const {
   Slice slice = this->slice();
   // the following states are counted as writeLockable
   //  string - when write lock was obtained
-  return slice.isString();
+  return slice.isString() && slice.isEqualString(VPackStringRef(by.data(), by.length()));
 }
 
 }  // namespace consensus
@@ -773,14 +838,7 @@ bool Node::applieOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
 
   if (oper == "delete") {
-    if (_parent == nullptr) {  // root node
-      _children.clear();
-      _value.clear();
-      _vecBufDirty = true;    // just in case there was an array
-      return true;
-    } else {
-      return _parent->removeChild(_nodeName);
-    }
+    return deleteMe();
   } else if (oper == "set") {  // "op":"set"
     return handle<SET>(slice);
   } else if (oper == "increment") {  // "op":"increment"
@@ -1211,4 +1269,15 @@ void Node::clear() {
   _vecBuf.clear();
   _vecBufDirty = true;
   _isArray = false;
+}
+
+bool Node::deleteMe() {
+  if (_parent == nullptr) {  // root node
+    _children.clear();
+    _value.clear();
+    _vecBufDirty = true;  // just in case there was an array
+    return true;
+  } else {
+    return _parent->removeChild(_nodeName);
+  }
 }
