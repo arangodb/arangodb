@@ -97,8 +97,10 @@ class SupervisedScheduler final : public Scheduler {
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
-  // _queueRetryCount is the number of spins this particular thread should perform
-  // before going to sleep.
+  // _queueRetryTime_us is the number of microseconds this particular
+  // thread should spin before going to sleep. Note that this spinning is only
+  // done if the thread has actually started to work on a request less than
+  // 1 seconds ago.
   // _sleepTimeout_ms is the amount of ms the thread should sleep before waking
   // up again. Note that each worker wakes up constantly, even if there is no work.
   //
@@ -112,7 +114,7 @@ class SupervisedScheduler final : public Scheduler {
   //    _working && (now - _lastJobStarted) > eps
 
   struct alignas(64) WorkerState {
-    uint64_t _queueRetryCount;  // t1
+    uint64_t _queueRetryTime_us; // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working;
     // _ready = false means the Worker is not properly initialized

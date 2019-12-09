@@ -337,12 +337,10 @@ void SupervisedScheduler::runWorker() {
       state->_sleepTimeout_ms = 1000;
     }
 
-    if (id < 32U) {
-      // 512 >> 32 => undefined behavior
-      state->_queueRetryCount = (uint64_t(512) >> id) + 3;
+    if (id < 5U) {
+      state->_queueRetryTime_us = (uint64_t(32) >> id) + 1;
     } else {
-      // we want at least 3 retries
-      state->_queueRetryCount = 3;
+      state->_queueRetryTime_us = 0;
     }
     
     // inform the supervisor that this thread is alive
@@ -396,15 +394,28 @@ void SupervisedScheduler::runSupervisor() {
 
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
+    bool sleeperFound = false;
+    {
+      // Now see if anybody is sleeping, if not, we want to start another thread after all:
+      std::unique_lock<std::mutex> guard(_mutexSupervisor);
+      for (auto it = _workerStates.begin(); it != _workerStates.end(); ++it) {
+        WorkerState& state = **it;
+        if (!state._working) {   // a sleeper!
+          sleeperFound = true;
+          break;
+        }
+      }
+    }
+
     bool doStartOneThread = (((queueLength >= 3 * _numWorkers) &&
                               ((lastQueueLength + _numWorkers) < queueLength)) ||
-                             (lastJobsSubmitted > jobsDone)) &&
+                             (lastJobsSubmitted > jobsDone) ||
+                             (!sleeperFound)) &&
                             (queueLength != 0);
-
     bool doStopOneThread = ((((lastQueueLength < 10) || (lastQueueLength >= queueLength)) &&
                              (lastJobsSubmitted <= jobsDone)) ||
                             ((queueLength == 0) && (lastQueueLength == 0))) &&
-                           ((rand() & 0x0F) == 0);
+                           ((rand() & 0x3F) == 0) && sleeperFound;
 
     lastJobsDone = jobsDone;
     lastQueueLength = queueLength;
@@ -521,7 +532,12 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
 
   while (!state->_stop) {
     uint64_t triesCount = 0;
-    while (triesCount < state->_queueRetryCount) {
+    auto loopStart = std::chrono::steady_clock::now();
+    uint64_t timeOutForNow = state->_queueRetryTime_us;
+    if (loopStart - state->_lastJobStarted > std::chrono::seconds(1)) {
+      timeOutForNow = 0;
+    }
+    do {
       // access queue via 0 1 2 0 1 2 0 1 ...
       auto queueIdx = triesCount % 3;
       // Order of this if is important! First check if we are allowed to pull,
@@ -532,7 +548,9 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
 
       triesCount++;
       cpu_relax();
-    }  // while
+    } while (triesCount < 3 ||
+             (std::chrono::steady_clock::now() - loopStart) < std::chrono::microseconds(timeOutForNow));
+
 
     std::unique_lock<std::mutex> guard(_mutex);
 
@@ -617,7 +635,7 @@ void SupervisedScheduler::stopOneThread() {
 }
 
 SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
-    : _queueRetryCount(100),
+    : _queueRetryTime_us(10),
       _sleepTimeout_ms(100),
       _stop(false),
       _working(false),
