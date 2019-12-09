@@ -96,6 +96,10 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
   int* _result;
 
+  size_t _histogramResolution;
+  double _histogramScope;
+  std::vector<double> _percentiles;
+  
   static void updateStartCounter();
   static int getStartCounter();
 

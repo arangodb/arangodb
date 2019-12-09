@@ -87,13 +87,29 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _replicationFactor(1),
       _numberOfShards(1),
       _waitForSync(false),
-      _result(result) {
+      _result(result),
+      _histogramResolution(1000),
+      _histogramScope(0.0),
+      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0})
+{
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("histogram", "how to dimmension the statistics we do");
+  options->addOption("--histogram.scope",
+                     "size of the histogram, 0.0 for 20*fist value",
+                     new DoubleParameter(&_histogramScope));
+  options->addOption("--histogram.resolution",
+                     "number of buckets per histogram",
+                     new UInt64Parameter(&_histogramResolution));
+  options->addOption("--histogram.percentiles",
+                     "which percentiles should be calculated from the histogram?",
+                     new VectorParameter<DoubleParameter>(&_percentiles),
+                     arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+  
   options->addOption("--async", "send asynchronous requests", new BooleanParameter(&_async));
 
   options->addOption("--concurrency",
@@ -191,6 +207,8 @@ void BenchFeature::start() {
   double avgTime = 0.0;
   size_t counter = 0;
 
+  sort(_percentiles.begin(), _percentiles.end());
+  
   if (!_jsonReportFile.empty() && FileUtils::exists(_jsonReportFile)) {
     LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::FIXME)
         << "file already exists: '" << _jsonReportFile << "' - won't overwrite it.";
@@ -237,6 +255,12 @@ void BenchFeature::start() {
   std::string histogramStr;
   bool ok = true;
   std::vector<BenchRunResult> results;
+  histogramStr = "Scope/Percentile:   ";
+  for (auto percentile : _percentiles) {
+    histogramStr += std::to_string(percentile) + "%   ";
+  }
+  histogramStr += "\n";
+
   for (uint64_t j = 0; j < _runs; j++) {
     status("starting threads...");
     BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long)_operations);
@@ -248,7 +272,7 @@ void BenchFeature::start() {
           new BenchmarkThread(server(), benchmark.get(), &startCondition,
                               &BenchFeature::updateStartCounter, static_cast<int>(i),
                               (unsigned long)_batchSize, &operationsCounter,
-                              client, _keepAlive, _async, _verbose);
+                              client, _keepAlive, _async, _verbose, _histogramScope, _histogramResolution);
       thread->setOffset((size_t)(i * realStep));
       thread->start();
       threads.push_back(thread);
@@ -312,16 +336,16 @@ void BenchFeature::start() {
         operationsCounter.incompleteFailures(),
         requestTime,
     });
-    histogramStr = "Percentile: 85%            90%            95%            99%\n";
-    std::vector<uint8_t> percentiles = {85, 90, 95, 99};
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
       threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
-      auto res = threads[i]->getPercentiles(percentiles);
+      double scope;
+      auto res = threads[i]->getPercentiles(_percentiles, scope);
       builder->add(std::to_string(i), VPackValue(VPackValueType::Object));
       size_t j = 0;
+      histogramStr += "         " + std::to_string(threads[i]->_histogramScope);
       for (auto time : res) {
-        builder->add(std::to_string(percentiles[j]), VPackValue(time));
-        histogramStr += "     " + std::to_string(time * 1000) + "ms";
+        builder->add(std::to_string(_percentiles[j]), VPackValue(time));
+        histogramStr += "   " + std::to_string(time * 1000) + "ms";
         j++;
       }
       builder->close();
