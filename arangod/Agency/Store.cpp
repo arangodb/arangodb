@@ -434,7 +434,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               break;
             }
           }
-        } else if (oper == "in" || oper == "is-read-locked") {  // in
+        } else if (oper == "in") {  // in
           if (found) {
             if (node->slice().isArray()) {
               bool found = false;
@@ -492,17 +492,17 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           // array of strings and the value is a string and if the value is
           // contained in the node array.
           if (found && op.value.isString() && node->slice().isArray()) {
-            bool isInArray = false;
+            bool isValid = false;
             for (auto const& i : VPackArrayIterator(node->slice())) {
               if (!i.isString()) {
+                isValid = false;
                 break;  // invalid, only strings allowed
               }
               if (i.isEqualString(op.value.stringRef())) {
-                isInArray = true;
-                break;
+                isValid = true;
               }
             }
-            if (isInArray) {
+            if (isValid) {
               continue;
             }
           }
@@ -774,7 +774,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   });
 
   bool success = true;
-  
+
   for (const auto& i : idx) {
     Slice value = i.second;
 
