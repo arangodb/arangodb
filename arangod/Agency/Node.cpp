@@ -709,14 +709,7 @@ bool Node::applieOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
 
   if (oper == "delete") {
-    if (_parent == nullptr) {  // root node
-      _children.clear();
-      _value.clear();
-      _vecBufDirty = true;    // just in case there was an array
-      return true;
-    } else {
-      return _parent->removeChild(_nodeName);
-    }
+    return deleteMe();
   } else if (oper == "set") {  // "op":"set"
     return handle<SET>(slice);
   } else if (oper == "increment") {  // "op":"increment"
