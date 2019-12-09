@@ -88,7 +88,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _numberOfShards(1),
       _waitForSync(false),
       _result(result),
-      _histogramNoIntervals(1000),
+      _histogramNumIntervals(1000),
       _histogramIntervalSize(0.0),
       _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0})
 {
@@ -98,15 +98,17 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("histogram", "how to dimension the statistics we do");
-  options->addOption("--histogram.intervalSize",
-                     "size of an interval or bucket; Default is calculated: (first measured time * 20) / no-intervals",
-                     new DoubleParameter(&_histogramIntervalSize));
-  options->addOption("--histogram.no-intervals",
-                     "number of buckets per histogram",
-                     new UInt64Parameter(&_histogramNoIntervals));
+  options->addSection("histogram", "how to dimension the statistics");
+  options->addOption("--histogram.interval-size",
+                     "interval size (bucket width), calculated by default: "
+                     "(first measured time * 20) / num-intervals",
+                     new DoubleParameter(&_histogramIntervalSize),
+                     arangodb::options::makeFlags(options::Flags::Dynamic));
+  options->addOption("--histogram.num-intervals",
+                     "number of buckets for the histogram (resolution)",
+                     new UInt64Parameter(&_histogramNumIntervals));
   options->addOption("--histogram.percentiles",
-                     "which percentiles should be calculated from the histogram?",
+                     "which percentiles to calculate for the histogram",
                      new VectorParameter<DoubleParameter>(&_percentiles),
                      arangodb::options::makeFlags(options::Flags::FlushOnFirst));
   
@@ -272,7 +274,7 @@ void BenchFeature::start() {
           new BenchmarkThread(server(), benchmark.get(), &startCondition,
                               &BenchFeature::updateStartCounter, static_cast<int>(i),
                               (unsigned long)_batchSize, &operationsCounter,
-                              client, _keepAlive, _async, _verbose, _histogramIntervalSize, _histogramNoIntervals);
+                              client, _keepAlive, _async, _verbose, _histogramIntervalSize, _histogramNumIntervals);
       thread->setOffset((size_t)(i * realStep));
       thread->start();
       threads.push_back(thread);
