@@ -38,6 +38,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Benchmark/BenchmarkCounter.h"
@@ -189,6 +190,12 @@ void BenchFeature::start() {
   double maxTime = 0.0;
   double avgTime = 0.0;
   size_t counter = 0;
+
+  if (!_jsonReportFile.empty() && FileUtils::exists(_jsonReportFile)) {
+    LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::FIXME)
+        << "file already exists: '" << _jsonReportFile << "' - won't overwrite it.";
+    FATAL_ERROR_EXIT();
+  }
     
   ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   client.setRetries(3);
