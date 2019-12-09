@@ -108,12 +108,10 @@ class BenchmarkThread : public arangodb::Thread {
       _histogramIntervalSize = _histogramScope / _histogramNumIntervals;
     }
 
-    
-    double val = time / _histogramIntervalSize;
-    if (time > _histogramNumIntervals) {
-      val = _histogramNumIntervals - 1;
+    uint16_t bucket = static_cast<uint16_t>(lround(time / _histogramIntervalSize));
+    if (bucket >= _histogramNumIntervals) {
+      bucket = _histogramNumIntervals - 1;
     }
-    uint16_t bucket = static_cast<uint16_t>(lround(val));
     _histogram[bucket] ++;
   }
 
