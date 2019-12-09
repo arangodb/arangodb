@@ -98,7 +98,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("histogram", "how to dimmension the statistics we do");
+  options->addSection("histogram", "how to dimension the statistics we do");
   options->addOption("--histogram.intervalSize",
                      "size of an interval or bucket; Default is calculated: (first measured time * 20) / no-intervals",
                      new DoubleParameter(&_histogramIntervalSize));
