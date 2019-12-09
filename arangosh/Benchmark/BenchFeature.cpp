@@ -343,6 +343,7 @@ void BenchFeature::start() {
       builder->add(std::to_string(i), VPackValue(VPackValueType::Object));
       size_t j = 0;
       histogramStr += "         " + std::to_string(threads[i]->_histogramScope);
+      builder->add("scope", VPackValue(threads[i]->_histogramScope));
       for (auto time : res) {
         builder->add(std::to_string(_percentiles[j]), VPackValue(time));
         histogramStr += "   " + std::to_string(time * 1000) + "ms";
