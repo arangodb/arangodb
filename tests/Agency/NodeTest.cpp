@@ -92,7 +92,6 @@ TEST_F(NodeTest, node_assign_double_slice) {
    
 }
 
-
 }}} //namespace
 
 

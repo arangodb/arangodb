@@ -45,5 +45,5 @@ TransactionStatistics::TransactionStatistics() :
 // -----------------------------------------------------------------------------
 
 void ServerStatistics::initialize(double startTime) {
-    _startTime = startTime;
+  _startTime = startTime;
 }
