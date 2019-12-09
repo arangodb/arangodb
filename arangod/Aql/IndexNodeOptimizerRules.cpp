@@ -176,12 +176,30 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       if (sortNode && !nodesToChange.empty()) {
         auto ast = plan->getAst();
         IndexNode::IndexVarsInfo uniqueVariables;
-        for (auto& node : nodesToChange) {
-          std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-            [ast](auto const& attrAndField) {
-              return std::make_pair(attrAndField.afData.field, IndexNode::IndexVariable{attrAndField.afData.fieldNumber,
+        arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+        // at first use variables from simple expressions
+        for (auto const& node : nodesToChange) {
+          TRI_ASSERT(node.attrs.size() >= 1);
+          auto const& afData = node.attrs[0].afData;
+          if (afData.parentNode == nullptr) {
+            TRI_ASSERT(node.attrs.size() == 1);
+            // we could add one redundant variable only
+            if (uniqueVariables.try_emplace(afData.field, IndexNode::IndexVariable{afData.fieldNumber,
+                                            node.node->outVariable()}).second) {
+              toUnlink.emplace(node.node);
+            }
+          }
+        }
+        // create variables for complex expressions
+        for (auto const& node : nodesToChange) {
+          TRI_ASSERT(node.attrs.size() >= 1);
+          for (auto const& attrAndField : node.attrs) {
+            // create a variable if necessary
+            if (attrAndField.afData.parentNode != nullptr && uniqueVariables.find(attrAndField.afData.field) == uniqueVariables.cend()) {
+              uniqueVariables.emplace(attrAndField.afData.field, IndexNode::IndexVariable{attrAndField.afData.fieldNumber,
                 ast->variables()->createTemporaryVariable()});
-            });
+            }
+          }
         }
         auto localDocIdTmp = ast->variables()->createTemporaryVariable();
         for (auto& node : nodesToChange) {
@@ -197,6 +215,10 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
               node.node->expression()->replaceNode(newNode);
             }
           }
+        }
+        if (!toUnlink.empty()) {
+          plan->unlinkNodes(toUnlink);
+          modified = true;
         }
 
         // we could apply late materialization

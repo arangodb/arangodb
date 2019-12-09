@@ -399,7 +399,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
     auto const& primarySort = ::primarySort(*viewNode.view());
     auto const& storedValues = ::storedValues(*viewNode.view());
     if (primarySort.empty() && storedValues.empty()) {
-      // neither primary sort nor stored value
+      // neither primary sort nor stored values
       continue;
     }
     auto const& var = viewNode.outVariable();
@@ -531,8 +531,13 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         // we could apply late materialization
         // 1. Replace view variables in calculation node if need
         if (!calcNodes.empty()) {
-          auto viewVariables = viewNodeState.replaceViewVariables(calcNodes);
+          ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+          auto viewVariables = viewNodeState.replaceViewVariables(calcNodes, toUnlink);
           viewNode.setViewVariables(viewVariables);
+          if (!toUnlink.empty()) {
+            plan->unlinkNodes(toUnlink);
+            modified = true;
+          }
         }
         // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
         // 3. We need to add materializer after limit node to do materialization
