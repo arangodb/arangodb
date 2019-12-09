@@ -57,7 +57,7 @@ class BenchmarkThread : public arangodb::Thread {
                   void (*callback)(), int threadNumber, const unsigned long batchSize,
                   BenchmarkCounter<unsigned long>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async, bool verbose,
-                  double histogramScope, size_t histogramResolution )
+                  double histogramIntervalSize, size_t histogramNoIntervals )
       : Thread(server, "BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),
@@ -82,9 +82,10 @@ class BenchmarkThread : public arangodb::Thread {
         _minTime(-1.0),
         _maxTime(0.0),
         _avgTime(0.0),
-        _histogramResolution(histogramResolution),
-        _histogramScope(histogramScope),
-        _histogram(histogramResolution, 0) { }
+        _histogramNoIntervals(histogramNoIntervals),
+        _histogramIntervalSize(histogramIntervalSize),
+        _histogramScope(histogramIntervalSize * histogramNoIntervals),
+        _histogram(histogramNoIntervals, 0) { }
 
   ~BenchmarkThread() { shutdown(); }
   //////////////////////////////////////////////////////////////////////////////
@@ -104,12 +105,13 @@ class BenchmarkThread : public arangodb::Thread {
 
     if (_histogramScope == 0.0) {
       _histogramScope = time * 20;
+      _histogramIntervalSize = _histogramScope / _histogramNoIntervals;
     }
 
     
-    double val = _histogramScope / time;
-    if (time > _histogramScope) {
-      val = _histogramResolution - 1;
+    double val = time / _histogramIntervalSize;
+    if (time > _histogramNoIntervals) {
+      val = _histogramNoIntervals - 1;
     }
     uint16_t bucket = static_cast<uint16_t>(lround(val));
     _histogram[bucket] ++;
@@ -133,11 +135,11 @@ class BenchmarkThread : public arangodb::Thread {
       }
   }
   
-  std::vector<double> getPercentiles(std::vector<double> const& which, double &scope) {
+  std::vector<double> getPercentiles(std::vector<double> const& which, double &histogramIntervalSize) {
     std::vector<double> res(which.size(), 0.0);
     std::vector<size_t> counts(which.size());
     size_t i = 0;
-    scope = _histogramScope;
+    histogramIntervalSize = _histogramIntervalSize;
     while (i < which.size()) {
       counts[i] = static_cast<size_t>(lround(_counter * which[i] / 100));
       i++;
@@ -146,10 +148,10 @@ class BenchmarkThread : public arangodb::Thread {
     size_t nextCount = counts[i];
     size_t count = 0;
     size_t vecPos = 0;
-    while (vecPos < _histogramResolution && i < which.size()) {
+    while (vecPos < _histogramNoIntervals && i < which.size()) {
       count += _histogram[vecPos];
       if (count >= nextCount) {
-        res[i] = _histogramScope / _histogramResolution * vecPos;
+        res[i] = _histogramIntervalSize * vecPos;
         i++;
         if (i >= which.size()) {
           return res;
@@ -626,7 +628,8 @@ public:
 
   double _avgTime;
 
-  size_t _histogramResolution;
+  size_t _histogramNoIntervals;
+  double _histogramIntervalSize;
   double _histogramScope;
   std::vector<size_t> _histogram;
 };

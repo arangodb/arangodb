@@ -88,8 +88,8 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _numberOfShards(1),
       _waitForSync(false),
       _result(result),
-      _histogramResolution(1000),
-      _histogramScope(0.0),
+      _histogramNoIntervals(1000),
+      _histogramIntervalSize(0.0),
       _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0})
 {
   requiresElevatedPrivileges(false);
@@ -99,12 +99,12 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("histogram", "how to dimmension the statistics we do");
-  options->addOption("--histogram.scope",
-                     "size of the histogram, 0.0 for 20*fist value",
-                     new DoubleParameter(&_histogramScope));
-  options->addOption("--histogram.resolution",
+  options->addOption("--histogram.intervalSize",
+                     "size of an interval or bucket; Default is calculated: (first measured time * 20) / no-intervals",
+                     new DoubleParameter(&_histogramIntervalSize));
+  options->addOption("--histogram.no-intervals",
                      "number of buckets per histogram",
-                     new UInt64Parameter(&_histogramResolution));
+                     new UInt64Parameter(&_histogramNoIntervals));
   options->addOption("--histogram.percentiles",
                      "which percentiles should be calculated from the histogram?",
                      new VectorParameter<DoubleParameter>(&_percentiles),
@@ -255,7 +255,7 @@ void BenchFeature::start() {
   std::string histogramStr;
   bool ok = true;
   std::vector<BenchRunResult> results;
-  histogramStr = "Scope/Percentile:   ";
+  histogramStr = "Interval/Percentile: ";
   for (auto percentile : _percentiles) {
     histogramStr += std::to_string(percentile) + "%   ";
   }
@@ -272,7 +272,7 @@ void BenchFeature::start() {
           new BenchmarkThread(server(), benchmark.get(), &startCondition,
                               &BenchFeature::updateStartCounter, static_cast<int>(i),
                               (unsigned long)_batchSize, &operationsCounter,
-                              client, _keepAlive, _async, _verbose, _histogramScope, _histogramResolution);
+                              client, _keepAlive, _async, _verbose, _histogramIntervalSize, _histogramNoIntervals);
       thread->setOffset((size_t)(i * realStep));
       thread->start();
       threads.push_back(thread);
@@ -342,8 +342,8 @@ void BenchFeature::start() {
       auto res = threads[i]->getPercentiles(_percentiles, scope);
       builder->add(std::to_string(i), VPackValue(VPackValueType::Object));
       size_t j = 0;
-      histogramStr += "         " + std::to_string(threads[i]->_histogramScope);
-      builder->add("scope", VPackValue(threads[i]->_histogramScope));
+      histogramStr += "        " + std::to_string(threads[i]->_histogramIntervalSize * 1000) + "ms";
+      builder->add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
       for (auto time : res) {
         builder->add(std::to_string(_percentiles[j]), VPackValue(time));
         histogramStr += "   " + std::to_string(time * 1000) + "ms";
