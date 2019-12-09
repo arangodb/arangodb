@@ -1,7 +1,7 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
-* Fix undefined behaviour on agency node delete
+* Fix undefined behaviour on agency node delete.
 
 * Removed content from Documentation/Books, but keeping the subfolders.
   The documentation is in a separate repository (except DocuBlocks and Scripts):
