@@ -188,6 +188,7 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
   systemCollections.push_back(StaticStrings::ModulesCollection);
+  systemCollections.push_back(StaticStrings::FishbowlCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
@@ -211,12 +212,6 @@ Result createSystemCollections(TRI_vocbase_t& vocbase,
                                             colToDistributeShardsLike, cols);
     // capture created collection vector
     createdCollections.insert(std::end(createdCollections), std::begin(cols), std::end(cols));
-  }
-
-  // check wether we need fishbowl collection, or not.
-  ServerSecurityFeature& security = vocbase.server().getFeature<ServerSecurityFeature>();
-  if (!security.isFoxxStoreDisabled()) {
-    systemCollections.push_back(StaticStrings::FishbowlCollection);
   }
 
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
