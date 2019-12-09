@@ -66,7 +66,7 @@ std::string Node::normalize(std::string const& path) {
 }
 
 /// @brief Split strings by separator
-inline static std::vector<std::string> split(const std::string& str, char separator) {
+std::vector<std::string> Node::split(const std::string& str, char separator) {
   std::vector<std::string> result;
   if (str.empty()) {
     return result;
@@ -333,6 +333,11 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 
   return *current;
 }
+
+std::shared_ptr<Node> Node::child (std::string const& name) {
+  return _children.at(name);
+}
+
 
 /// @brief rh-value at path vector. Check if TTL has expired.
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
@@ -711,14 +716,7 @@ bool Node::applieOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
 
   if (oper == "delete") {
-    if (_parent == nullptr) {  // root node
-      _children.clear();
-      _value.clear();
-      _vecBufDirty = true;    // just in case there was an array
-      return true;
-    } else {
-      return _parent->removeChild(_nodeName);
-    }
+    return deleteMe();
   } else if (oper == "set") {  // "op":"set"
     return handle<SET>(slice);
   } else if (oper == "increment") {  // "op":"increment"
@@ -1141,4 +1139,15 @@ void Node::clear() {
   _vecBuf.clear();
   _vecBufDirty = true;
   _isArray = false;
+}
+
+bool Node::deleteMe() {
+  if (_parent == nullptr) {  // root node
+    _children.clear();
+    _value.clear();
+    _vecBufDirty = true;  // just in case there was an array
+    return true;
+  } else {
+    return _parent->removeChild(_nodeName);
+  }
 }

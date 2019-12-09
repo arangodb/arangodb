@@ -694,7 +694,8 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   });
 
   for (const auto& i : idx) {
-    Slice value = i.second; 
+    Slice value = i.second;
+    std::vector<std::shared_ptr<Node>> deleted;
 
     if (value.isObject() && value.hasKey("op")) {
       Slice const op = value.get("op");
@@ -742,6 +743,14 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           }
         }
       } else {
+        if (op.isEqualString("delete")) {
+          auto pathv = Node::split(uri, '/');
+          if (pathv.size() > 0) {
+            auto const last = pathv.back();
+            pathv.pop_back();
+            deleted.emplace_back(_node(pathv).child(last));
+          }
+        }
         _node.hasAsWritableNode(abskeys.at(i.first)).first.applieOp(value);
       }
     } else {
