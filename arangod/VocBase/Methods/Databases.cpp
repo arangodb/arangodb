@@ -308,7 +308,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       createInfo.setId(clusterInfo.uniqid());
     }
 
-    res = ShardingInfo::validateShardsAndReplicationFactor(options, server);
+    res = ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
     if (res.ok()) {
       res = createCoordinator(createInfo);
     }
