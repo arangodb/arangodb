@@ -29,7 +29,6 @@
 #include "Basics/files.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RestServer/SystemDatabaseFeature.h"
