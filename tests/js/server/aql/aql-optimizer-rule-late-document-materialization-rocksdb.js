@@ -212,14 +212,27 @@ function lateDocumentMaterializationRuleTestSuite () {
         assertEqual(-1, plan.rules.indexOf(ruleName));
       }
     },
-    testNotAppliedDueToSubqueryWithDocumentAccessByAttribute() { // should be supported later
+    testQueryResultsWithSubqueryWithDocumentAccessByAttribute() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
                     "LET a = NOOPT(d.obj.b) " +
                     "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d.obj.a, c.obj.a) RETURN p) " +
                     "SORT CONCAT(a, e) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
+        if (!isCluster) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+          let result = AQL_EXECUTE(query);
+          assertEqual(2, result.json.length);
+          let expectedKeys = new Set(['c0', 'c2']);
+          result.json.forEach(function(doc) {
+            assertTrue(expectedKeys.has(doc._key));
+            expectedKeys.delete(doc._key);
+          });
+          assertEqual(0, expectedKeys.size);
+        } else {
+          // on cluster this will not be applied as remote node placed before sort node
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
       }
     },
     testQueryResultsWithSubqueryWithoutDocumentAccess() {
