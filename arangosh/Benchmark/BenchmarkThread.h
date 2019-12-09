@@ -57,7 +57,7 @@ class BenchmarkThread : public arangodb::Thread {
                   void (*callback)(), int threadNumber, const unsigned long batchSize,
                   BenchmarkCounter<unsigned long>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async, bool verbose,
-                  double histogramIntervalSize, size_t histogramNoIntervals )
+                  double histogramIntervalSize, size_t histogramNumIntervals )
       : Thread(server, "BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),
@@ -82,10 +82,10 @@ class BenchmarkThread : public arangodb::Thread {
         _minTime(-1.0),
         _maxTime(0.0),
         _avgTime(0.0),
-        _histogramNoIntervals(histogramNoIntervals),
+        _histogramNumIntervals(histogramNumIntervals),
         _histogramIntervalSize(histogramIntervalSize),
-        _histogramScope(histogramIntervalSize * histogramNoIntervals),
-        _histogram(histogramNoIntervals, 0) { }
+        _histogramScope(histogramIntervalSize * histogramNumIntervals),
+        _histogram(histogramNumIntervals, 0) { }
 
   ~BenchmarkThread() { shutdown(); }
   //////////////////////////////////////////////////////////////////////////////
@@ -105,13 +105,13 @@ class BenchmarkThread : public arangodb::Thread {
 
     if (_histogramScope == 0.0) {
       _histogramScope = time * 20;
-      _histogramIntervalSize = _histogramScope / _histogramNoIntervals;
+      _histogramIntervalSize = _histogramScope / _histogramNumIntervals;
     }
 
     
     double val = time / _histogramIntervalSize;
-    if (time > _histogramNoIntervals) {
-      val = _histogramNoIntervals - 1;
+    if (time > _histogramNumIntervals) {
+      val = _histogramNumIntervals - 1;
     }
     uint16_t bucket = static_cast<uint16_t>(lround(val));
     _histogram[bucket] ++;
@@ -148,7 +148,7 @@ class BenchmarkThread : public arangodb::Thread {
     size_t nextCount = counts[i];
     size_t count = 0;
     size_t vecPos = 0;
-    while (vecPos < _histogramNoIntervals && i < which.size()) {
+    while (vecPos < _histogramNumIntervals && i < which.size()) {
       count += _histogram[vecPos];
       if (count >= nextCount) {
         res[i] = _histogramIntervalSize * vecPos;
@@ -628,7 +628,7 @@ public:
 
   double _avgTime;
 
-  size_t _histogramNoIntervals;
+  size_t _histogramNumIntervals;
   double _histogramIntervalSize;
   double _histogramScope;
   std::vector<size_t> _histogram;
