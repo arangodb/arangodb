@@ -516,6 +516,7 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
           uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
           uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
 
+          // make sure the replicationFactor value is between the configured min and max values
           if (replicationFactor > maxReplicationFactor &&
               maxReplicationFactor > 0) {
             return Result(TRI_ERROR_BAD_PARAMETER,
@@ -526,24 +527,29 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
                           std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
           }
         
+          // make sure we have enough servers available for the replication factor
           if (ServerState::instance()->isCoordinator() &&
               replicationFactor > cl.clusterInfo().getCurrentDBServers().size()) { 
             return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
         }
 
-        auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
-        if (writeConcernSlice.isNone()) {
-          writeConcernSlice = slice.get(StaticStrings::MinReplicationFactor);
-        }
-        if (writeConcernSlice.isNumber()) {
-          int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
-          if (writeConcern <= 0) {
-            return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for writeConcern");
+        if (!replicationFactorSlice.isString()) {
+          // beware: "satellite" replicationFactor
+          auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
+          if (writeConcernSlice.isNone()) {
+            writeConcernSlice = slice.get(StaticStrings::MinReplicationFactor);
           }
-          if (ServerState::instance()->isCoordinator() &&
-              static_cast<size_t>(writeConcern) > cl.clusterInfo().getCurrentDBServers().size()) { 
-            return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+
+          if (writeConcernSlice.isNumber()) {
+            int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
+            if (writeConcern <= 0) {
+              return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for writeConcern");
+            }
+            if (ServerState::instance()->isCoordinator() &&
+                static_cast<size_t>(writeConcern) > cl.clusterInfo().getCurrentDBServers().size()) { 
+              return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+            }
           }
         }
       }
