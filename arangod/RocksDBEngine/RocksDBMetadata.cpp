@@ -137,10 +137,8 @@ rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber 
   return maxCommitSeq;
 }
 
-rocksdb::SequenceNumber RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq,
-                                                          bool& didWork) {
-  rocksdb::SequenceNumber appliedSeq = _count._committedSeq;
-
+bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
+  bool didWork = false;
   decltype(_bufferedAdjs) swapper;
   {
     std::lock_guard<std::mutex> guard(_bufferLock);
@@ -156,7 +154,6 @@ rocksdb::SequenceNumber RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumbe
 
   auto it = _stagedAdjs.begin();
   while (it != _stagedAdjs.end() && it->first <= commitSeq) {
-    appliedSeq = std::max(appliedSeq, it->first);
     if (it->second.adjustment > 0) {
       _count._added += it->second.adjustment;
     } else if (it->second.adjustment < 0) {
@@ -168,12 +165,8 @@ rocksdb::SequenceNumber RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumbe
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
-  if (it == _stagedAdjs.end()) {
-    appliedSeq = commitSeq;
-  }
-  TRI_ASSERT(appliedSeq >= _count._committedSeq);
-  _count._committedSeq = appliedSeq;
-  return appliedSeq;
+  _count._committedSeq = commitSeq;
+  return didWork;
 }
 
 /// @brief buffer a counter adjustment
@@ -208,18 +201,11 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     return res;
   }
 
-  bool didWork = false;
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
-  const rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
-  TRI_ASSERT(commitSeq <= appliedSeq);
-  TRI_ASSERT(commitSeq <= maxCommitSeq);
+  bool didWork = applyAdjustments(maxCommitSeq);
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
   TRI_ASSERT(maxCommitSeq != UINT64_MAX);
-  if (didWork) {
-    appliedSeq = commitSeq;
-  } else {
-    appliedSeq = maxCommitSeq;
-  }
+  appliedSeq = maxCommitSeq;
 
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();

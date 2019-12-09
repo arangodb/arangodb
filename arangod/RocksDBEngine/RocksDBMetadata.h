@@ -134,7 +134,7 @@ public:
 
  private:
   /// @brief apply counter adjustments, only call from sync thread
-  rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq, bool& didWork);
+  bool applyAdjustments(rocksdb::SequenceNumber commitSeq);
 
  private:
   // TODO we should probably use flat_map or abseils Swiss Tables
