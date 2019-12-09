@@ -1,6 +1,8 @@
 v3.6.0 (XXXX-XX-XX)
 -------------------
 
+* Fixed undefined behaviour on node delete
+
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
 
