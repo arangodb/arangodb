@@ -57,7 +57,7 @@ class BenchmarkThread : public arangodb::Thread {
                   void (*callback)(), int threadNumber, const unsigned long batchSize,
                   BenchmarkCounter<unsigned long>* operationsCounter,
                   ClientFeature& client, bool keepAlive, bool async, bool verbose,
-                  double histogramIntervalSize, size_t histogramNumIntervals )
+                  double histogramIntervalSize, uint64_t histogramNumIntervals )
       : Thread(server, "BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),
@@ -108,7 +108,7 @@ class BenchmarkThread : public arangodb::Thread {
       _histogramIntervalSize = _histogramScope / _histogramNumIntervals;
     }
 
-    uint16_t bucket = static_cast<uint16_t>(lround(time / _histogramIntervalSize));
+    uint64_t bucket = static_cast<uint64_t>(lround(time / _histogramIntervalSize));
     if (bucket >= _histogramNumIntervals) {
       bucket = _histogramNumIntervals - 1;
     }
@@ -626,7 +626,7 @@ public:
 
   double _avgTime;
 
-  size_t _histogramNumIntervals;
+  uint64_t _histogramNumIntervals;
   double _histogramIntervalSize;
   double _histogramScope;
   std::vector<size_t> _histogram;

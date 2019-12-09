@@ -96,7 +96,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
   int* _result;
 
-  size_t _histogramNumIntervals;
+  uint64_t _histogramNumIntervals;
   double _histogramIntervalSize;
   std::vector<double> _percentiles;
   
