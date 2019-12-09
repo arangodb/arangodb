@@ -92,10 +92,10 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.startup-directory",
-                     "startup paths containing the Javascript files",
+                     "startup paths containing the JavaScript files",
                      new StringParameter(&_startupDirectory),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
@@ -136,7 +136,7 @@ void V8ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   }
 
   if (!_moduleDirectories.empty()) {
-    LOG_TOPIC("90ca0", DEBUG, Logger::V8) << "using Javascript modules at '"
+    LOG_TOPIC("90ca0", DEBUG, Logger::V8) << "using JavaScript modules at '"
                                  << StringUtils::join(_moduleDirectories, ";") << "'";
   }
 }
@@ -149,7 +149,7 @@ void V8ShellFeature::start() {
   }
 
   LOG_TOPIC("9c2f7", DEBUG, Logger::V8)
-      << "using Javascript startup files at '" << _startupDirectory << "'";
+      << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   _isolate = platform.createIsolate();
 
@@ -400,7 +400,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
   return promptError;
 }
 
-// the result is wrapped in a Javascript variable SYS_ARANGO
+// the result is wrapped in a JavaScript variable SYS_ARANGO
 std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     v8::Local<v8::Context>& context, bool createConnection,
     std::vector<std::string> const& positionals, bool* promptError) {
@@ -602,7 +602,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
   for (auto const& file : files) {
     if (!FileUtils::exists(file)) {
       LOG_TOPIC("4beec", ERR, arangodb::Logger::FIXME)
-          << "error: Javascript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -725,7 +725,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   for (auto& file : files) {
     if (!FileUtils::exists(file)) {
       LOG_TOPIC("4f748", ERR, arangodb::Logger::FIXME)
-          << "error: Javascript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -789,7 +789,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   for (auto const& file : files) {
     if (!FileUtils::exists(file)) {
       LOG_TOPIC("51bdb", ERR, arangodb::Logger::FIXME)
-          << "error: Javascript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -993,7 +993,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes global Javascript variables
+/// @brief initializes global JavaScript variables
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8ShellFeature::initGlobals() {

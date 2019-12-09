@@ -45,4 +45,3 @@ Retrieve an analyzer definition:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

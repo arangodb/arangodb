@@ -58,6 +58,12 @@ RestStatus RestMetricsHandler::execute() {
   }
 
   MetricsFeature& metrics = server.getFeature<MetricsFeature>();
+  if (!metrics.exportAPI()) {
+    // dont export metrics, if so desired
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND); 
+    return RestStatus::DONE;
+  }
+
   std::string result;
   metrics.toPrometheus(result);
   _response->setResponseCode(rest::ResponseCode::OK);

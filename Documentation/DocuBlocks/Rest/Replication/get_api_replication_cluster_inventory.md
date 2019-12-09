@@ -30,4 +30,3 @@ is returned when an invalid HTTP method is used.
 @RESTRETURNCODE{500}
 is returned if an error occurred while assembling the response.
 @endDocuBlock
-
