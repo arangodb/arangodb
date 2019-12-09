@@ -34,7 +34,6 @@ Queries the health of the cluster for monitoring purposes. The response is a JSO
     - `Leading`: Whether this agent is the leader (true) or not (false).
     - `LastAckedTime`: Time since last `acked` in seconds.
 
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200} is returned when everything went well.
