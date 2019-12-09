@@ -96,8 +96,6 @@ struct RocksDBMetadata final {
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
 
-  /// @brief get the current count
-  DocCount loadCount();
   /// @brief get the current count, ONLY use in recovery
   DocCount& countUnsafe() { return _count; }
 

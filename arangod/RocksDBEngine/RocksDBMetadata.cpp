@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -167,23 +168,22 @@ rocksdb::SequenceNumber RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumbe
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
+  if (it == _stagedAdjs.end()) {
+    appliedSeq = commitSeq;
+  }
   TRI_ASSERT(appliedSeq >= _count._committedSeq);
   _count._committedSeq = appliedSeq;
   return appliedSeq;
-}
-
-/// @brief get the current count
-RocksDBMetadata::DocCount RocksDBMetadata::loadCount() {
-  return _count;
 }
 
 /// @brief buffer a counter adjustment
 void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                             TRI_voc_rid_t revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
+  TRI_ASSERT(seq > _count._committedSeq);
   std::lock_guard<std::mutex> guard(_bufferLock);
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
-  
+
   // update immediately to ensure the user sees a correct value
   if (revId != 0) {
     _revisionId.store(revId);
