@@ -130,18 +130,18 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
     auto const indexId = indexIdSlice.getNumber<TRI_idx_iid_t>();
 
-    auto const indexValuesVarsSlice = base.get("IndexValuesVars");
+    auto const indexValuesVarsSlice = base.get("indexValuesVars");
     if (!indexValuesVarsSlice.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "\"IndexValuesVars\" attribute should be an array");
+                                     "\"indexValuesVars\" attribute should be an array");
     }
-    std::unordered_map<size_t, Variable const*> indexValuesVars;
+    std::vector<std::pair<size_t, Variable const*>> indexValuesVars;
     indexValuesVars.reserve(indexValuesVarsSlice.length());
     for (auto const indVar : velocypack::ArrayIterator(indexValuesVarsSlice)) {
       auto const fieldNumberSlice = indVar.get("fieldNumber");
       if (!fieldNumberSlice.isNumber<size_t>()) {
         THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER, "\"IndexValuesVars[*].fieldNumber\" %s should be a number",
+            TRI_ERROR_BAD_PARAMETER, "\"indexValuesVars[*].fieldNumber\" %s should be a number",
               fieldNumberSlice.toString().c_str());
       }
       auto const fieldNumber = fieldNumberSlice.getNumber<size_t>();
@@ -149,7 +149,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       auto const varIdSlice = indVar.get("id");
       if (!varIdSlice.isNumber<aql::VariableId>()) {
         THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER, "\"IndexValuesVars[*].id\" variable id %s should be a number",
+            TRI_ERROR_BAD_PARAMETER, "\"indexValuesVars[*].id\" variable id %s should be a number",
               varIdSlice.toString().c_str());
       }
 
@@ -158,10 +158,10 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
       if (!var) {
         THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER, "\"IndexValuesVars[*].id\" unable to find variable by id %d",
+            TRI_ERROR_BAD_PARAMETER, "\"indexValuesVars[*].id\" unable to find variable by id %d",
               varId);
       }
-      indexValuesVars.emplace(fieldNumber, var);
+      indexValuesVars.emplace_back(fieldNumber, var);
     }
     _outNonMaterializedIndVars.first = indexId;
     _outNonMaterializedIndVars.second = std::move(indexValuesVars);
@@ -240,10 +240,10 @@ void IndexNode::planNodeRegisters(
   if (isLateMaterialized()) {
     varInfo.emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
     // plan registers for index references
-    for (auto const& var : _outNonMaterializedIndVars.second) {
+    for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
       ++nrRegsHere[depth];
       ++nrRegs[depth];
-      varInfo.emplace(var.second->id, aql::VarInfo(depth, totalNrRegs++));
+      varInfo.emplace(fieldVar.second->id, aql::VarInfo(depth, totalNrRegs++));
     }
   } else {
     varInfo.emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
@@ -294,15 +294,15 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
     });
     TRI_ASSERT(indIt != _indexes.cend());
     auto const& fields = (*indIt)->fields();
-    VPackArrayBuilder arrayScope(&builder, "IndexValuesVars");
-    for (auto const& indVar : _outNonMaterializedIndVars.second) {
+    VPackArrayBuilder arrayScope(&builder, "indexValuesVars");
+    for (auto const& fieldVar : _outNonMaterializedIndVars.second) {
       VPackObjectBuilder objectScope(&builder);
-      builder.add("fieldNumber", VPackValue(indVar.first));
-      builder.add("id", VPackValue(indVar.second->id));
-      builder.add("name", VPackValue(indVar.second->name)); // for explainer.js
+      builder.add("fieldNumber", VPackValue(fieldVar.first));
+      builder.add("id", VPackValue(fieldVar.second->id));
+      builder.add("name", VPackValue(fieldVar.second->name)); // for explainer.js
       std::string fieldName;
-      TRI_ASSERT(indVar.first < fields.size());
-      basics::TRI_AttributeNamesToString(fields[indVar.first], fieldName, true);
+      TRI_ASSERT(fieldVar.first < fields.size());
+      basics::TRI_AttributeNamesToString(fields[fieldVar.first], fieldName, true);
       builder.add("field", VPackValue(fieldName)); // for explainer.js
     }
   }
@@ -653,7 +653,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
   _outNonMaterializedIndVars.first = commonIndexId;
   _outNonMaterializedDocId = docIdVariable;
   for (auto& indVars : indexVariables) {
-    _outNonMaterializedIndVars.second[indVars.second.indexFieldNum] = indVars.second.var;
+    _outNonMaterializedIndVars.second.emplace_back(indVars.second.indexFieldNum, indVars.second.var);
   }
 }
 

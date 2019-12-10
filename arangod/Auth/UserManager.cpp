@@ -374,6 +374,8 @@ void auth::UserManager::createRootUser() {
     // No action
     LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
   }
+
+  triggerGlobalReload();
 }
 
 VPackBuilder auth::UserManager::allUsers() {
@@ -391,6 +393,12 @@ VPackBuilder auth::UserManager::allUsers() {
     }
   }
   return result;
+}
+
+void auth::UserManager::triggerCacheRevalidation() {
+  triggerLocalReload();
+  triggerGlobalReload();
+  loadFromDB();
 }
 
 /// Trigger eventual reload, user facing API call

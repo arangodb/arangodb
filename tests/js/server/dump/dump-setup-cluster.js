@@ -144,10 +144,10 @@ function setupSatelliteCollections() {
     } catch (err) {}
   });
 
-  db._createDatabase("UnitTestsDumpProperties1", { replicationFactor: 1, minReplicationFactor: 1 });
-  db._createDatabase("UnitTestsDumpProperties2", { replicationFactor: 2, minReplicationFactor: 2, sharding: "single" });
-  db._createDatabase("UnitTestsDumpSrc", { replicationFactor: 2, minReplicationFactor: 2 });
-  db._createDatabase("UnitTestsDumpDst", { replicationFactor: 2, minReplicationFactor: 2 });
+  db._createDatabase("UnitTestsDumpProperties1", { replicationFactor: 1, writeConcern: 1 });
+  db._createDatabase("UnitTestsDumpProperties2", { replicationFactor: 2, writeConcern: 2, sharding: "single" });
+  db._createDatabase("UnitTestsDumpSrc", { replicationFactor: 2, writeConcern: 2 });
+  db._createDatabase("UnitTestsDumpDst", { replicationFactor: 2, writeConcern: 2 });
 
   db._useDatabase("UnitTestsDumpSrc");
 

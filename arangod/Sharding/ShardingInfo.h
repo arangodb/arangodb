@@ -85,7 +85,8 @@ class ShardingInfo {
   /// @brief validates the number of shards and the replication factor
   /// in slice against the minimum and maximum configured values
   static Result validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
-                                                   application_features::ApplicationServer const& server);
+                                                   application_features::ApplicationServer const& server,
+                                                   bool enforceReplicationFactor);
 
   bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;

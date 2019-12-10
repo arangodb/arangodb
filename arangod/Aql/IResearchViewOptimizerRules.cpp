@@ -64,6 +64,16 @@ inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   return viewImpl.primarySort();
 }
 
+inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const& view) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    return viewImpl.storedValues();
+  }
+
+  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  return viewImpl.storedValues();
+}
+
 bool addView(arangodb::LogicalView const& view, Query& query) {
   auto* collections = query.collections();
 
@@ -263,54 +273,152 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
 }
 
-bool attributesMatch(IResearchViewSort const& primarySort, latematerialized::NodeWithAttrs& node) {
+bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
+              std::vector<arangodb::basics::AttributeName> const& attrs,
+              bool ignoreExpansionInLast,
+              std::vector<std::string>& postfix) {
+  TRI_ASSERT(postfix.empty());
+  if (prefix.size() > attrs.size()) {
+    return false;
+  }
+
+  decltype(prefix.size()) i = 0;
+  for (; i < prefix.size(); ++i) {
+    if (prefix[i].name != attrs[i].name) {
+      return false;
+    }
+    if (prefix[i].shouldExpand != attrs[i].shouldExpand) {
+      if (!ignoreExpansionInLast) {
+        return false;
+      }
+      if (i != prefix.size() - 1) {
+        return false;
+      }
+    }
+  }
+  if (i < attrs.size()) {
+    postfix.reserve(attrs.size() - i);
+    std::transform(prefix.cbegin() + static_cast<decltype(prefix.cbegin())::difference_type>(i),
+                   prefix.cend(), std::back_inserter(postfix), [](auto const& attr) {
+      return attr.name;
+    });
+  }
+
+  return true;
+}
+
+struct ColumnVariant {
+  latematerialized::AstAndColumnFieldData* afData;
+  size_t fieldNum;
+  std::vector<arangodb::basics::AttributeName> const* field;
+  std::vector<std::string> postfix;
+
+  ColumnVariant(latematerialized::AstAndColumnFieldData* afData,
+                size_t fieldNum,
+                std::vector<arangodb::basics::AttributeName> const* field,
+                std::vector<std::string>&& postfix) :
+    afData(afData), fieldNum(fieldNum), field(field), postfix(std::move(postfix)) {
+  }
+};
+
+bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredValues const& storedValues,
+                     latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>& node,
+                     std::unordered_map<int, std::vector<ColumnVariant>>& usedColumnsCounter) {
   // check all node attributes to be in sort
   for (auto& nodeAttr : node.attrs) {
-    size_t sortFieldNum = 0;
+    auto found = false;
+    nodeAttr.afData.field = nullptr;
+    // try to find in the sort column
+    size_t fieldNum = 0;
     for (auto const& field : primarySort.fields()) {
-      if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
-        nodeAttr.afData.number = sortFieldNum;
-        nodeAttr.afData.field = &field;
-        nodeAttr.attr.clear(); // we do not need later
-        nodeAttr.attr.shrink_to_fit();
+      std::vector<std::string> postfix;
+      if (isPrefix(field, nodeAttr.attr, false, postfix)) {
+        usedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field, std::move(postfix)));
+        found = true;
         break;
       }
-      ++sortFieldNum;
+      ++fieldNum;
     }
-    // not found
-    if (nodeAttr.afData.field == nullptr) {
+    // try to find in other columns
+    int columnNum = 0;
+    for (auto const& column : storedValues.columns()) {
+      fieldNum = 0;
+      for (auto const& field : column.fields) {
+        std::vector<std::string> postfix;
+        if (isPrefix(field.second, nodeAttr.attr, false, postfix)) {
+          usedColumnsCounter[columnNum].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix)));
+          nodeAttr.attr.clear(); // we do not need later
+          nodeAttr.attr.shrink_to_fit();
+          found = true;
+          break;
+        }
+        ++fieldNum;
+      }
+      ++columnNum;
+    }
+    // not found value in columns
+    if (!found) {
       return false;
     }
   }
   return true;
 }
 
+void setAttributesMaxMatchedColumns(std::unordered_map<int, std::vector<ColumnVariant>>& usedColumnsCounter) {
+  std::vector<std::pair<int, std::vector<ColumnVariant>>> columnVariants;
+  columnVariants.reserve(usedColumnsCounter.size());
+  columnVariants.assign(std::make_move_iterator(usedColumnsCounter.begin()), std::make_move_iterator(usedColumnsCounter.end()));
+  // first is max size one
+  std::sort(columnVariants.begin(), columnVariants.end(), [](auto const& lhs, auto const& rhs) {
+    auto lSize = lhs.second.size();
+    auto rSize = rhs.second.size();
+    // column contains more fields or
+    // columns sizes == 1 and postfix is less (less column size)
+    return lSize > rSize || (lSize == rSize && lSize == 1 && lhs.second[0].postfix.size() < rhs.second[0].postfix.size());
+  });
+  // get values from columns which contain max number of appropriate values
+  for (auto& cv : columnVariants) {
+    for (auto& f : cv.second) {
+      if (f.afData->field == nullptr) {
+        f.afData->fieldNumber = f.fieldNum;
+        f.afData->field = f.field;
+        f.afData->columnNumber = cv.first;
+        f.afData->postfix = std::move(f.postfix);
+      }
+    }
+  }
+}
+
 void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
                                   arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
-  std::vector<latematerialized::NodeWithAttrs> nodesToChange;
+  std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>> nodesToChange;
+  std::unordered_map<int, std::vector<ColumnVariant>> usedColumnsCounter;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
     auto const& primarySort = ::primarySort(*viewNode.view());
-    if (primarySort.empty()) {
-      // no primary sort
+    auto const& storedValues = ::storedValues(*viewNode.view());
+    if (primarySort.empty() && storedValues.empty()) {
+      // neither primary sort nor stored value
       continue;
     }
     auto const& var = viewNode.outVariable();
     auto& viewNodeState = viewNode.state();
+    usedColumnsCounter.clear();
     for (auto* cNode : calcNodes) {
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
       auto astNode = calcNode.expression()->nodeForModification();
-      latematerialized::NodeWithAttrs node;
+      latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData> node;
       node.node = &calcNode;
       // find attributes referenced to view node out variable
       if (latematerialized::getReferencedAttributes(astNode, &var, node) &&
-          !node.attrs.empty() && attributesMatch(primarySort, node)) {
+          !node.attrs.empty() && attributesMatch(primarySort, storedValues, node, usedColumnsCounter)) {
         nodesToChange.emplace_back(std::move(node));
       }
     }
     if (!nodesToChange.empty()) {
+      setAttributesMaxMatchedColumns(usedColumnsCounter);
       viewNodeState.saveCalcNodesForViewVariables(nodesToChange);
       nodesToChange.clear();
     }
@@ -331,6 +439,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
     opt->addPlan(std::move(plan), rule, modified);
   });
       // arangosearch view node supports late materialization
+  //cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
       !plan->contains(ExecutionNode::SORT) ||
@@ -461,6 +570,7 @@ void handleViewsRule(Optimizer* opt,
     opt->addPlan(std::move(plan), rule, modified);
   });
 
+  //cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW)) {
     // no view present in the query, so no need to do any expensive
     // transformations

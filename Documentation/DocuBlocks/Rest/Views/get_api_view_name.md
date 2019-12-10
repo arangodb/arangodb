@@ -34,7 +34,7 @@ Using an identifier:
     assert(response.code === 200);
 
     logJsonResponse(response);
-    
+
     db._dropView("testView");
 @END_EXAMPLE_ARANGOSH_RUN
 
