@@ -12,12 +12,12 @@ Optional object which can contain the following attributes:
 
 @RESTSTRUCT{sharding,get_api_database_new_USERS,string,optional,string}
 The sharding method to use for new collections in this database. Valid values
-are: "", "flexible", or "single". The first two are equivalent _(cluster only)_
+are: "", "flexible", or "single". The first two are equivalent. _(cluster only)_
 
 @RESTSTRUCT{replicationFactor,get_api_database_new_USERS,string,optional,}
 Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
-every DB-server, and 1, which disables replication _(cluster only)_
+every DB-server, and 1, which disables replication. _(cluster only)_
 
 @RESTSTRUCT{writeConcern,get_api_database_new_USERS,number,optional,}
 Default write concern for new collections created in this database.
