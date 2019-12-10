@@ -81,7 +81,7 @@ one or more of the following attribute(s):
 
 * *replicationFactor*: Change the number of shard copies kept on 
   different DBServers, valid values are  integer numbers
-  in the range of 1-10 *(Cluster only)*
+  in the range of 1-10. _(cluster only)_
 
 * *writeConcern*: change how many copies of each shard are required to be
   in sync on the different DBServers. If there are less then these many copies

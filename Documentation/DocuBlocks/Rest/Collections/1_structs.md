@@ -33,14 +33,15 @@ kept in memory only and ArangoDB will not write or sync the data
 to disk. This option is only present for the MMFiles storage engine.
 
 @RESTSTRUCT{numberOfShards,collection_info,integer,optional,}
-The number of shards of the collection; *Cluster specific attribute.*
+The number of shards of the collection. _(cluster only)_
 
 @RESTSTRUCT{shardKeys,collection_info,array,optional,string}
 contains the names of document attributes that are used to
-determine the target shard for documents; *Cluster specific attribute.*
+determine the target shard for documents. _(cluster only)_
 
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
-contains how many copies of each shard are kept on different DBServers.; *Cluster specific attribute.*
+contains how many copies of each shard are kept on different DBServers.
+_(cluster only)_
 
 @RESTSTRUCT{writeConcern,collection_info,integer,optional,}
 determines how many copies of each shard are required to be
@@ -50,11 +51,11 @@ up-to-date copies will succeed at the same time however. The value of
 *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTSTRUCT{shardingStrategy,collection_info,string,optional,}
-the sharding strategy selected for the collection; *Cluster specific attribute.*
-One of 'hash' or 'enterprise-hash-smart-edge'
+the sharding strategy selected for the collection.
+One of 'hash' or 'enterprise-hash-smart-edge'. _(cluster only)_
 
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
-Attribute that is used in smart graphs, *Cluster specific attribute.*
+Attribute that is used in smart graphs. _(cluster only)_
 
 @RESTSTRUCT{indexBuckets,collection_info,integer,optional,}
 the number of index buckets
