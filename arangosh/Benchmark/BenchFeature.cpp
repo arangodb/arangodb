@@ -388,7 +388,7 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
             << ", database: '" << client.databaseName() << "', collection: '"
             << _collection << "'" << std::endl;
 
-  builder.add("TotalNumberOfOperations", VPackValue(_operations));
+  builder.add("totalNumberOfOperations", VPackValue(_operations));
   builder.add("runs", VPackValue(_runs));
   builder.add("keepAlive", VPackValue(_keepAlive));
   builder.add("async", VPackValue(_async));
@@ -397,7 +397,7 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
   builder.add("numberOfShards", VPackValue(_numberOfShards));
   builder.add("waitForSync", VPackValue(_waitForSync));
   builder.add("concurrencyLevel", VPackValue(_concurrency));
-  builder.add("TestCase", VPackValue(_testCase));
+  builder.add("testCase", VPackValue(_testCase));
   builder.add("complexity", VPackValue(_complexity));
   builder.add("database", VPackValue(client.databaseName()));
   builder.add("collection", VPackValue(_collection));
