@@ -220,7 +220,7 @@ The frontend can also be built using these commands:
     npm run build
 
 For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
-run: 
+run:
 
     npm start
 
@@ -819,10 +819,10 @@ You can later on use Wireshark to inpsect the capture files.
 
 ### Evaluating json test reports from previous testruns
 
-All test results of testruns are dumped to a json file named `UNITTEST_RESULT.json` which can be used 
-for later analyzing of timings etc. 
+All test results of testruns are dumped to a json file named `UNITTEST_RESULT.json` which can be used
+for later analyzing of timings etc.
 
-Currently available analyzers are: 
+Currently available Analyzers are:
 
   - unitTestPrettyPrintResults - Prints a pretty summary and writes an ASCII representation into `out/testfailures.txt` (if any errors)
   - saveToJunitXML - saves jUnit compatible XML files
