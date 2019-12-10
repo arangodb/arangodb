@@ -127,8 +127,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return !_outNonMaterializedIndVars.second.empty();
   }
 
-  bool canApplyLateDocumentMaterializationRule() {
-    return (isVarUsedLater(_outVariable) || _filter != nullptr) && coveringIndexAttributePositions().empty();
+  bool canApplyLateDocumentMaterializationRule() const {
+    return isProduceResult() && coveringIndexAttributePositions().empty();
   }
 
   struct IndexVariable {
@@ -149,6 +149,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                       std::vector<RegisterId>& inRegs,
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                       transaction::Methods* trxPtr) const;
+
+  bool isProduceResult() const {
+    return isVarUsedLater(_outVariable) || _filter != nullptr;
+  }
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*, transaction::Methods* trx) const;

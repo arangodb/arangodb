@@ -34,6 +34,7 @@ let isCluster = require("internal").isCluster();
 
 function lateDocumentMaterializationRuleTestSuite () {
   const ruleName = "late-document-materialization";
+  const projectionRuleName = "reduce-extraction-to-projection";
   const numOfCollectionIndexes = 2;
   const numOfExpCollections = 2;
   let collectionNames = [];
@@ -214,6 +215,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       let query = "FOR d IN " + projectionsCoveredByIndexCollectionName + " FILTER d.a == 'a_val' SORT d.c LIMIT 10 RETURN d.b";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
+      assertNotEqual(-1, plan.rules.indexOf(projectionRuleName));
     },
     testNotAppliedDueToSubqueryWithDocumentAccess() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
