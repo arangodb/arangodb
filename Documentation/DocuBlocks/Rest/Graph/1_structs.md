@@ -26,11 +26,12 @@ concurrent modifications to this graph.
 The replication factor used for every new collection in the graph.
 
 @RESTSTRUCT{writeConcern,graph_representation,integer,optional,}
-how many copies of each shard are required to be in sync on the different
-DBServers for every new collection in the graph. If there are less then these
-many copies in the cluster a shard will refuse to write.  Writes to shards with
-enough up-to-date copies will succeed at the same time however. The value of
-*writeConcern* can not be larger than *replicationFactor*.
+Default write concern for new collections in the graph.
+It determines how many copies of each shard are required to be
+in sync on the different DBServers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
 Flag if the graph is a SmartGraph (Enterprise Edition only) or not.

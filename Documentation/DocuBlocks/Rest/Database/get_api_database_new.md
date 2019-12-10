@@ -20,9 +20,12 @@ Special values include "satellite", which will replicate the collection to
 every DB-server, and 1, which disables replication.
 
 @RESTSTRUCT{writeConcern,get_api_database_new_USERS,number,optional,}
-Default minimum replication factor for new collections created in this database.
-If there are less than minReplicationFactor replicas available the collection
-will become read-only.
+Default write concern for new collections created in this database.
+It determines how many copies of each shard are required to be
+in sync on the different DBServers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 Has to be an array of user objects to initially create for the new database.

@@ -54,9 +54,11 @@ In a cluster setup, the result will also contain the following attributes:
 * *replicationFactor*: determines how many copies of each shard are kept 
   on different DBServers. Has to be in the range of 1-10 *(Cluster only)*
 
-* *writeConcern* : determines the number of minimal shard copies kept on
-  different DBServers, a shard will refuse to write if less than this amount
-  of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
+* *writeConcern*: determines how many copies of each shard are required to be
+  in sync on the different DBServers. If there are less then these many copies
+  in the cluster a shard will refuse to write. Writes to shards with enough
+  up-to-date copies will succeed at the same time however. The value of
+  *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 * *shardingStrategy*: the sharding strategy selected for the collection.
   This attribute will only be populated in cluster mode and is not populated
@@ -81,9 +83,11 @@ one or more of the following attribute(s):
   different DBServers, valid values are  integer numbers
   in the range of 1-10 *(Cluster only)*
 
-* *writeConcern* : Change the number of minimal shard copies to be in sync on 
-  different DBServers, a shard will refuse to write if less than this amount
-  of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
+* *writeConcern*: change how many copies of each shard are required to be
+  in sync on the different DBServers. If there are less then these many copies
+  in the cluster a shard will refuse to write. Writes to shards with enough
+  up-to-date copies will succeed at the same time however. The value of
+  *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 **Note**: some other collection properties, such as *type*, *isVolatile*,
 *keyOptions*, *numberOfShards* or *shardingStrategy* cannot be changed once 
