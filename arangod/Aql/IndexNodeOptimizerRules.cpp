@@ -244,7 +244,6 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         }
         if (!toUnlink.empty()) {
           plan->unlinkNodes(toUnlink);
-          modified = true;
         }
 
         // we could apply late materialization

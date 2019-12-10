@@ -565,7 +565,6 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           viewNode.setViewVariables(viewVariables);
           if (!toUnlink.empty()) {
             plan->unlinkNodes(toUnlink);
-            modified = true;
           }
         }
         // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
