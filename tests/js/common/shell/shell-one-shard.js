@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull */
+/*global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -66,6 +66,122 @@ function OneShardPropertiesSuite () {
       } else {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
+      }
+    },
+    
+    testNormalDBAndTooManyServers : function () {
+      if (!isCluster) {
+        return;
+      }
+      try {
+        db._createDatabase(dn, { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._createDatabase(dn, { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testNormalDBAndTooManyServers2 : function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { replicationFactor : 2 });
+      db._useDatabase(dn);
+      try {
+        db._create("oneshardcol", { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._create("oneshardcol", { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testNormalDBAndTooManyServers3 : function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { writeConcern: 2, replicationFactor : 2 });
+      db._useDatabase(dn);
+      try {
+        db._create("oneshardcol", { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._create("oneshardcol", { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testOneShardDBAndTooManyServers : function () {
+      if (!isCluster) {
+        return;
+      }
+      try {
+        db._createDatabase(dn, { sharding : "single", replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._createDatabase(dn, { sharding : "single", writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testOneShardDBAndTooManyServers2 : function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { sharding : "single", replicationFactor : 2 });
+      db._useDatabase(dn);
+      try {
+        db._create("oneshardcol", { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._create("oneshardcol", { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testOneShardDBAndTooManyServers3 : function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { sharding : "single", writeConcern: 2, replicationFactor : 2 });
+      db._useDatabase(dn);
+      try {
+        db._create("oneshardcol", { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._create("oneshardcol", { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
     },
     

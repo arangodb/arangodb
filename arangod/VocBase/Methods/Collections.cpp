@@ -264,7 +264,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     TRI_ASSERT(builder.isOpenArray());
       
     if (ServerState::instance()->isCoordinator()) {
-      Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server());
+      Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server(), enforceReplicationFactor);
       if (res.fail()) {
         return res;
       }
@@ -639,7 +639,7 @@ Result Collections::updateProperties(LogicalCollection& collection,
       return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
     }
 
-    Result res = ShardingInfo::validateShardsAndReplicationFactor(props, collection.vocbase().server());
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(props, collection.vocbase().server(), false);
     if (res.fail()) {
       return res;
     }
