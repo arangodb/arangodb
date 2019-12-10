@@ -181,7 +181,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     // LOG_TOPIC("55f3b", INFO, Logger::FIXME) << "[Scan] 0 to something";
     S2Cap ob = S2Cap(_origin, _outerAngle);
     //_coverer.GetCovering(ob, &cover);
-    if (_scannedCells.empty() == 0) {
+    if (_scannedCells.empty()) { 
       _coverer.GetFastCovering(ob, &cover);
     } else {
       std::vector<S2CellId> tmpCover;
@@ -204,6 +204,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     } else {
       // expensive exact cover
       std::vector<std::unique_ptr<S2Region>> regions;
+      regions.reserve(2);
       S2Cap ib(_origin, _innerAngle);  // inner ring
       regions.push_back(std::make_unique<S2Cap>(ib.Complement()));
       regions.push_back(std::make_unique<S2Cap>(_origin, _outerAngle));
