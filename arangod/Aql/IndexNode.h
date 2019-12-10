@@ -127,6 +127,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return !_outNonMaterializedIndVars.second.empty();
   }
 
+  bool canApplyLateDocumentMaterializationRule() {
+    return (isVarUsedLater(_outVariable) || _filter != nullptr) && coveringIndexAttributePositions().empty();
+  }
+
   struct IndexVariable {
     size_t indexFieldNum;
     Variable const* var;

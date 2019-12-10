@@ -31,6 +31,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
+#include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
@@ -330,7 +331,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
   auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
-      // arangosearch view node supports late materialization
+  // arangosearch view node supports late materialization
   //cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
@@ -361,7 +362,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       auto& viewNodeState = viewNode.state();
       while (current != loop) {
         auto type = current->getType();
-        switch (current->getType()) {
+        switch (type) {
           case ExecutionNode::SORT:
             if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
               sortNode = current;
@@ -384,20 +385,48 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-            // Currently only calculation and subquery nodes expected to use loop variable.
-            // We successfully replace all references to loop variable in calculation nodes only.
-            // However if some other node types will begin to use loop variable
+            // Currently only calculation and subquery nodes expected to use a loop variable.
+            // We successfully replace all references to the loop variable.
+            // However if some other node types will begin to use the loop variable
             // assertion below will be triggered and this rule should be updated.
-            // Subquery node is planned to be supported later.
             auto invalid = true;
-            if (ExecutionNode::CALCULATION == type) {
+            switch (type) {
+            case ExecutionNode::CALCULATION: {
               auto calcNode = ExecutionNode::castTo<CalculationNode*>(current);
               if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                 calcNodes.emplace_back(calcNode);
                 invalid = false;
               }
-            } else {
-              TRI_ASSERT(ExecutionNode::SUBQUERY == type);
+              break;
+            }
+            case ExecutionNode::SUBQUERY: {
+              auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
+              auto subquery = subqueryNode->getSubquery();
+              ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
+              ::arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
+              // find calculation nodes in the plan of a subquery
+              NodeFinder<ExecutionNode::NodeType> finder(ExecutionNode::CALCULATION, subqueryCalcNodes, true);
+              subquery->walk(finder);
+              for (auto scn : subqueryCalcNodes) {
+                TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
+                currentUsedVars.clear();
+                scn->getVariablesUsedHere(currentUsedVars);
+                if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
+                  auto calcNode = ExecutionNode::castTo<CalculationNode*>(scn);
+                  if (viewNodeState.canVariablesBeReplaced(calcNode)) {
+                    calcNodes.emplace_back(calcNode);
+                    invalid = false;
+                  } else {
+                    invalid = true;
+                    break;
+                  }
+                }
+              }
+              break;
+            }
+            default:
+              TRI_ASSERT(false);
+              break;
             }
             if (invalid) {
               if (sortNode != nullptr) {
@@ -423,8 +452,12 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         // we could apply late materialization
         // 1. Replace view variables in calculation node if need
         if (!calcNodes.empty()) {
-          auto viewVariables = viewNodeState.replaceViewVariables(calcNodes);
+          ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+          auto viewVariables = viewNodeState.replaceViewVariables(calcNodes, toUnlink);
           viewNode.setViewVariables(viewVariables);
+          if (!toUnlink.empty()) {
+            plan->unlinkNodes(toUnlink);
+          }
         }
         // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
         // 3. We need to add materializer after limit node to do materialization
