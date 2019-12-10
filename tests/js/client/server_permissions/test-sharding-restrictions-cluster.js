@@ -91,11 +91,15 @@ function testSuite() {
     
     testCreateCollectionReplicationFactorTooHigh : function() {
       try {
-        db._create(cn, { replicationFactor: 4 }, 2, { enforceReplicationFactor: false });
+        db._create(cn, { replicationFactor: 4 }, 2, { enforceReplicationFactor: true });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
+      
+      let c = db._create(cn, { replicationFactor: 4 }, 2, { enforceReplicationFactor: false });
+      let props = c.properties();
+      assertEqual(4, props.replicationFactor);
     },
     
   };
