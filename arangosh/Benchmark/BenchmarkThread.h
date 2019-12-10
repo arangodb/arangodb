@@ -133,7 +133,7 @@ class BenchmarkThread : public arangodb::Thread {
       }
   }
   
-  std::vector<double> getPercentiles(std::vector<double> const& which, double &histogramIntervalSize) {
+  std::vector<double> getPercentiles(std::vector<double> const& which, double& histogramIntervalSize) {
     std::vector<double> res(which.size(), 0.0);
     std::vector<size_t> counts(which.size());
     size_t i = 0;
