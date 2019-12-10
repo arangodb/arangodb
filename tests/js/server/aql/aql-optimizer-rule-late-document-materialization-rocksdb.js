@@ -41,6 +41,7 @@ function lateDocumentMaterializationRuleTestSuite () {
   let primaryIndexCollectionName = "UnitTestsPrimCollection";
   let edgeIndexCollectionName = "UnitTestsEdgeCollection";
   let severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
+  let projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
   var i;
   var j;
   for (i = 0; i < numOfCollectionIndexes; ++i) {
@@ -60,6 +61,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       db._drop(primaryIndexCollectionName);
       db._drop(edgeIndexCollectionName);
       db._drop(severalIndexesCollectionName);
+      db._drop(projectionsCoveredByIndexCollectionName);
 
       var collections = [];
       var expCollections = [];
@@ -72,6 +74,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       var primCollection = db._create(primaryIndexCollectionName, { numberOfShards: 3 });
       var edgeCollection = db._createEdgeCollection(edgeIndexCollectionName, { numberOfShards: 3 });
       var severalIndexesCollection = db._create(severalIndexesCollectionName, { numberOfShards: 3 });
+      var projectionsCoveredByIndexCollection = db._create(projectionsCoveredByIndexCollectionName, { numberOfShards: 3 });
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let type;
@@ -94,6 +97,8 @@ function lateDocumentMaterializationRuleTestSuite () {
       }
       severalIndexesCollection.ensureIndex({type: "hash", fields: ["a"]});
       severalIndexesCollection.ensureIndex({type: "hash", fields: ["b"]});
+
+      projectionsCoveredByIndexCollection.ensureIndex({type: "hash", fields: ["a", "b", "c"]});
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         collections[i].save({_key: 'c0',  "obj": {"a": "a_val", "b": "b_val", "c": "c_val", "d": "d_val"}});
@@ -119,6 +124,8 @@ function lateDocumentMaterializationRuleTestSuite () {
       edgeCollection.save({_key: "c1", _from: "testVertices/c0", _to: "testVertices/c0"});
 
       severalIndexesCollection.save({_key: "c0", a: "a_val", b: "b_val"});
+
+      projectionsCoveredByIndexCollection.save({_key: "c0", a: "a_val", b: "b_val", c: "c_val"});
     },
 
     tearDownAll : function () {
@@ -131,6 +138,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       try { db._drop(primaryIndexCollectionName); } catch(e) {}
       try { db._drop(edgeIndexCollectionName); } catch(e) {}
       try { db._drop(severalIndexesCollectionName); } catch(e) {}
+      try { db._drop(projectionsCoveredByIndexCollectionName); } catch(e) {}
     },
     testNotAppliedDueToNoFilter() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
@@ -199,6 +207,11 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testNotAppliedDueToSeveralIndexes() {
       let query = "FOR d IN " + severalIndexesCollectionName + " FILTER d.a == 'a_val' OR d.b == 'b_val' SORT NOOPT(d.b) DESC LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
+    testNotAppliedDueToProjectionsCoveredByIndex() {
+      let query = "FOR d IN " + projectionsCoveredByIndexCollectionName + " FILTER d.a == 'a_val' SORT d.c LIMIT 10 RETURN d.b";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },

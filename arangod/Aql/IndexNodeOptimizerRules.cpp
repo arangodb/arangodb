@@ -124,7 +124,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
     auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
     if (ExecutionNode::INDEX == loop->getType()) {
       auto indexNode = ExecutionNode::castTo<IndexNode*>(loop);
-      if (indexNode->isLateMaterialized()) {
+      if (!indexNode->canApplyLateDocumentMaterializationRule() || indexNode->isLateMaterialized()) {
         continue; // loop is already optimized
       }
       auto current = limitNode->getFirstDependency();
