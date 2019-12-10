@@ -98,7 +98,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("histogram", "benchmark statistics configuration");
+  options->addSection("histogram", "Benchmark statistics configuration");
   options->addOption("--histogram.interval-size",
                      "bucket width, dynamically calculated by default: "
                      "(first measured time * 20) / num-intervals",
