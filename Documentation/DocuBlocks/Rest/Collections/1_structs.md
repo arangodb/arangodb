@@ -77,7 +77,7 @@ The type of the collection:
   - 3: edge collection
 
 @RESTSTRUCT{status,collection_info,string,optional,}
-corrosponds to **statusString**; *Only relevant for the MMFiles storage engine*
+corresponds to **statusString**; *Only relevant for the MMFiles storage engine*
   - 0: "unknown" - may be corrupted
   - 1: (deprecated, maps to "unknown")
   - 2: "unloaded"

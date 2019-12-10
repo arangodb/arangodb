@@ -524,7 +524,7 @@ It contains of a list of directories corresponding to the components of ArangoDB
     - arangovpack
 
 In these directories you will find subdirectories with the hash corresponding
-to the id of the binaries. Their date should corrospond to the release date
+to the id of the binaries. Their date should correspond to the release date
 of their respective arango release.
 
 This means i.e. for ArangoDB 3.1.11:
