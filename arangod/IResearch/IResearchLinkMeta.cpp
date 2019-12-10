@@ -545,6 +545,10 @@ bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcep
     return false;
   }
 
+  if (_storedValues != other._storedValues) {
+    return false;
+  }
+
   return true;
 }
 
@@ -577,10 +581,20 @@ bool IResearchLinkMeta::init(velocypack::Slice const& slice,
     auto const field = slice.get(fieldName);
     mask->_sort = field.isArray();
 
-    if (readAnalyzerDefinition && mask->_sort) {
-      if (!_sort.fromVelocyPack(field, errorField)) {
-        return false;
-      }
+    if (readAnalyzerDefinition && mask->_sort && !_sort.fromVelocyPack(field, errorField)) {
+      return false;
+    }
+  }
+
+  {
+    // optional stored values
+    static VPackStringRef const fieldName("storedValues");
+
+    auto const field = slice.get(fieldName);
+    mask->_storedValues = field.isArray();
+
+    if (readAnalyzerDefinition && mask->_storedValues && !_storedValues.fromVelocyPack(field, errorField)) {
+      return false;
     }
   }
 
@@ -756,6 +770,14 @@ bool IResearchLinkMeta::json(velocypack::Builder& builder,
     }
   }
 
+  if (writeAnalyzerDefinition
+      && (!mask || mask->_storedValues)) {
+    velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
+    if (!_storedValues.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition && (!mask || mask->_analyzerDefinitions)) {
@@ -775,6 +797,7 @@ size_t IResearchLinkMeta::memory() const noexcept {
 
   size += _analyzers.size() * sizeof(decltype(_analyzers)::value_type);
   size += _sort.memory();
+  size += _storedValues.memory();
   size += FieldMeta::memory();
 
   return size;
