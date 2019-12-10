@@ -1368,9 +1368,10 @@ actions.defineHttp({
     }
 
     // simon: RO is sufficient to rebalance shards for current db
-    if (req.database !== '_system'/* || !req.isAdminUser*/) {
+    if (!req.isAdminUser &&
+        users.permission(req.user, req.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the _system database');
+          'only allowed for admins on the database');
       return;
     }
 
