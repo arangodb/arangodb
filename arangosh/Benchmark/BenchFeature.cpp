@@ -254,14 +254,14 @@ void BenchFeature::start() {
   builder->openObject();
   builder->add("histogram", VPackValue(VPackValueType::Object));
   std::vector<BenchmarkThread*> threads;
-  std::string histogramStr;
+  std::stringstream pp;
   bool ok = true;
   std::vector<BenchRunResult> results;
-  histogramStr = "Interval/Percentile: ";
+  pp << "Interval/Percentile:";
   for (auto percentile : _percentiles) {
-    histogramStr += std::to_string(percentile) + "%   ";
+    pp << std::fixed << std::right << std::setw(14) << std::setprecision(2) << percentile << "%";
   }
-  histogramStr += "\n";
+  pp << std::endl;
 
   for (uint64_t j = 0; j < _runs; j++) {
     status("starting threads...");
@@ -344,15 +344,15 @@ void BenchFeature::start() {
       auto res = threads[i]->getPercentiles(_percentiles, scope);
       builder->add(std::to_string(i), VPackValue(VPackValueType::Object));
       size_t j = 0;
-      histogramStr += "        " + std::to_string(threads[i]->_histogramIntervalSize * 1000) + "ms";
+      pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(10) << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000) << std::setw(0) <<"ms       ";
       builder->add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
       for (auto time : res) {
         builder->add(std::to_string(_percentiles[j]), VPackValue(time));
-        histogramStr += "   " + std::to_string(time * 1000) + "ms";
+        pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(10) << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
         j++;
       }
       builder->close();
-      histogramStr += "\n";
+      pp << std::endl;
       delete threads[i];
     }
     threads.clear();
@@ -360,7 +360,7 @@ void BenchFeature::start() {
   std::cout << std::endl;
   builder->close();
 
-  report(client, results, minTime, maxTime, avgTime, histogramStr, *builder);
+  report(client, results, minTime, maxTime, avgTime, pp.str(), *builder);
   if (!ok) {
     std::cout << "At least one of the runs produced failures!" << std::endl;
   }
