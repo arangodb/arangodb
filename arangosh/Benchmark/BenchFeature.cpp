@@ -98,14 +98,14 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("histogram", "how to dimension the statistics");
+  options->addSection("histogram", "benchmark statistics configuration");
   options->addOption("--histogram.interval-size",
-                     "interval size (bucket width), calculated by default: "
+                     "bucket width, dynamically calculated by default: "
                      "(first measured time * 20) / num-intervals",
                      new DoubleParameter(&_histogramIntervalSize),
                      arangodb::options::makeFlags(options::Flags::Dynamic));
   options->addOption("--histogram.num-intervals",
-                     "number of buckets for the histogram (resolution)",
+                     "number of buckets (resolution)",
                      new UInt64Parameter(&_histogramNumIntervals));
   options->addOption("--histogram.percentiles",
                      "which percentiles to calculate",
