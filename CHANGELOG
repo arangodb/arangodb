@@ -1,10 +1,12 @@
 devel
 -----
 
-
 * Fixed undefined behavior on node delete.
 
 * Fixed agency invalid operation
+
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
 
 * Fixed uptime in _admin/statistics.
 
