@@ -118,9 +118,9 @@ ArangoCollection.prototype.truncate = function () {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief finds an index of a collection
 // /
-// / @FUN{@FA{collection}.index(@FA{index-handle})}
+// / @FUN{@FA{collection}.index(@FA{index-id})}
 // /
-// / Returns the index with @FA{index-handle} or null if no such index exists.
+// / Returns the index with @FA{index-id} or null if no such index exists.
 // /
 // / *Examples*
 // /
@@ -254,7 +254,7 @@ ArangoCollection.prototype.firstExample = function (example) {
 // / @example remove("{a : 1 }", true)
 // / @example remove("{a : 1 }", false)
 // / @example remove("{a : 1 }", {waitForSync: false, limit: 12})
-// / @throws "too many parameters" when waiitForSyn is a Json object and limit
+// / @throws "too many parameters" when waitForSyn is a Json object and limit
 // /         is given
 // //////////////////////////////////////////////////////////////////////////////
 
