@@ -9,7 +9,7 @@ Returns the currently available ranges of tick values for all WAL files.
 The tick values can be used to determine if certain
 data (identified by tick value) are still available for replication.
 
-The body of the response contains a JSON object. 
+The body of the response contains a JSON object.
 * *tickMin*: minimum tick available
 * *tickMax: maximum tick available
 * *time*: the server time as string in format "YYYY-MM-DDTHH:MM:SSZ"
@@ -43,4 +43,3 @@ Returns the available tick ranges.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

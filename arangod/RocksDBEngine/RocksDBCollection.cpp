@@ -256,6 +256,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   TRI_vocbase_col_status_e status;
+  if (!vocbase.use()) { // someone dropped the database
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
   Result res = vocbase.useCollection(&_logicalCollection, status);
 
   if (res.fail()) {
@@ -265,6 +268,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   auto colGuard = scopeGuard([&] {
     vocbase.releaseCollection(&_logicalCollection);
     _numIndexCreations.fetch_sub(1, std::memory_order_release);
+    vocbase.release();
   });
 
   RocksDBBuilderIndex::Locker locker(this);
@@ -373,10 +377,13 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     }
 
     // Step 4. fill index
-    const bool inBackground =
-    basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
+    bool const inBackground =
+        basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
     if (inBackground) {  // allow concurrent inserts into index
-      _indexes.emplace(buildIdx);
+      {
+        WRITE_LOCKER(guard, _indexesLock);
+        _indexes.emplace(buildIdx);
+      }
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();

@@ -115,7 +115,7 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
     VPackObjectBuilder preconditionDefinition(&builder);
     builder.add(VPackValue(key));
     {
-      VPackObjectBuilder preconditionDefinition(&builder);
+      VPackObjectBuilder preconditionDefinitionGuard(&builder);
       switch (type) {
         case AgencyPrecondition::Type::EMPTY:
           builder.add("oldEmpty", VPackValue(empty));
@@ -369,8 +369,8 @@ AgencyCommResult::AgencyCommResult(int code, std::string const& message,
       _statusCode(code),
       _connected(false),
       _sent(false) {}
-  
-AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept 
+
+AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
     : _location(std::move(other._location)),
       _message(std::move(other._message)),
       _body(std::move(other._body)),
@@ -394,7 +394,7 @@ AgencyCommResult& AgencyCommResult::operator=(AgencyCommResult&& other) noexcept
     _connected = other._connected;
     _sent = other._sent;
     _vpack = std::move(other._vpack);
-    
+
     other._statusCode = 0;
     other._connected = false;
     other._sent = false;
@@ -1641,7 +1641,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
         << " errorCode: " << result.errorCode()
         << " errorMessage: " << result.errorMessage()
         << " errorDetails: " << result.errorDetails();
-  } 
+  }
 
   return result;
 }
@@ -1767,7 +1767,7 @@ bool AgencyComm::tryInitializeStructure() {
       addEmptyVPackObject("Singles", builder);
       builder.add(VPackValue("ServersRegistered"));
       {
-        VPackObjectBuilder c(&builder);
+        VPackObjectBuilder c2(&builder);
         builder.add("Version", VPackValue(1));
       }
       addEmptyVPackObject("Databases", builder);

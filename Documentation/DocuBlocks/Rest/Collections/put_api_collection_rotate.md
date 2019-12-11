@@ -77,4 +77,3 @@ Rotating if no journal exists:
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

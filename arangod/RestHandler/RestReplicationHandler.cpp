@@ -1148,7 +1148,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     return Result();
   }
 
-  Result res = ShardingInfo::validateShardsAndReplicationFactor(parameters, server());
+  Result res = ShardingInfo::validateShardsAndReplicationFactor(parameters, server(), true);
   if (res.fail()) {
     return res;
   }
