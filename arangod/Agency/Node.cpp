@@ -339,7 +339,7 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
   return *current;
 }
 
-std::shared_ptr<Node> Node::child (std::string const& name) {
+std::shared_ptr<Node> Node::child(std::string const& name) {
   return _children.at(name);
 }
 
