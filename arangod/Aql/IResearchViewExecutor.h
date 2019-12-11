@@ -294,6 +294,12 @@ class IResearchViewExecutorBase {
   bool writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues, int columnNum,
                         std::map<size_t, iresearch::IResearchViewNode::ViewVariableRegister> const& fieldsRegs);
 
+  void getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, int index);
+
+  void pushStoredValues(irs::document const* doc);
+
+  bool getStoredValuesReaders(irs::sub_reader const& segmentReader);
+
  private:
   bool next(ReadContext& ctx);
 
@@ -310,6 +316,7 @@ class IResearchViewExecutorBase {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
+  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders; // current stored values readers
   size_t _inflight;  // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
   bool _isInitialized;
@@ -343,8 +350,6 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
 
   void reset();
 
-  void getStoredValue(std::vector<irs::bytes_ref>& storedValues, int max);
-
  private:
   // Returns true unless the iterator is exhausted. documentId will always be
   // written. It will always be unset when readPK returns false, but may also be
@@ -352,7 +357,6 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   bool readPK(LocalDocumentId& documentId);
 
   irs::columnstore_reader::values_reader_f _pkReader;   // current primary key reader
-  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders; // current stored values readers
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;

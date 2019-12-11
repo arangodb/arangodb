@@ -299,8 +299,8 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
   }
   if (i < attrs.size()) {
     postfix.reserve(attrs.size() - i);
-    std::transform(prefix.cbegin() + static_cast<decltype(prefix.cbegin())::difference_type>(i),
-                   prefix.cend(), std::back_inserter(postfix), [](auto const& attr) {
+    std::transform(attrs.cbegin() + static_cast<decltype(attrs.cbegin())::difference_type>(i),
+                   attrs.cend(), std::back_inserter(postfix), [](auto const& attr) {
       return attr.name;
     });
   }
@@ -413,9 +413,16 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData> node;
       node.node = &calcNode;
       // find attributes referenced to view node out variable
-      if (latematerialized::getReferencedAttributes(astNode, &var, node) &&
-          !node.attrs.empty() && attributesMatch(primarySort, storedValues, node, usedColumnsCounter)) {
-        nodesToChange.emplace_back(std::move(node));
+      if (latematerialized::getReferencedAttributes(astNode, &var, node)) {
+        if (!node.attrs.empty()) {
+          if (attributesMatch(primarySort, storedValues, node, usedColumnsCounter)) {
+            nodesToChange.emplace_back(std::move(node));
+          } else {
+            viewNodeState.disableNoDocumentMaterialization();
+          }
+        }
+      } else {
+        viewNodeState.disableNoDocumentMaterialization();
       }
     }
     if (!nodesToChange.empty()) {
@@ -455,8 +462,9 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
   for (auto limitNode : nodes) {
     auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
     if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
-      auto & viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
-      if (viewNode.isLateMaterialized()) {
+      auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
+      auto& viewNodeState = viewNode.state();
+      if (viewNodeState.isNoDocumentMaterializationEnabled() || viewNode.isLateMaterialized()) {
         continue; // loop is already optimized
       }
       ExecutionNode* current = limitNode->getFirstDependency();
@@ -465,9 +473,9 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       // without document body usage before that node.
       // this node could be appended with materializer
       bool stopSearch = false;
-      std::vector<aql::CalculationNode*> calcNodes; // nodes variables can be replaced
       bool stickToSortNode = false;
-      auto& viewNodeState = viewNode.state();
+      auto const& var = viewNode.outVariable();
+      std::vector<aql::CalculationNode*> calcNodes; // nodes variables can be replaced
       while (current != loop) {
         auto type = current->getType();
         switch (type) {
@@ -489,7 +497,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         if (!stopSearch) {
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
-          if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
+          if (currentUsedVars.find(&var) != currentUsedVars.end()) {
             // currently only calculation nodes expected to use a loop variable with attributes
             // we successfully replace all references to the loop variable
             auto valid = false;
@@ -508,14 +516,14 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
               ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
               ::arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
               // find calculation nodes in the plan of a subquery
-              CalculationNodeVarFinder finder(&viewNode.outVariable(), subqueryCalcNodes);
+              CalculationNodeVarFinder finder(&var, &subqueryCalcNodes);
               valid = !subquery->walk(finder);
               if (valid) { // if the finder did not stop
                 for (auto scn : subqueryCalcNodes) {
                   TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
                   currentUsedVars.clear();
                   scn->getVariablesUsedHere(currentUsedVars);
-                  if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
+                  if (currentUsedVars.find(&var) != currentUsedVars.end()) {
                     auto calcNode = ExecutionNode::castTo<CalculationNode*>(scn);
                     if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                       calcNodes.emplace_back(calcNode);
@@ -550,7 +558,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           sortNode = nullptr;
           break;
         }
-        current = current->getFirstDependency();  // inspect next node
+        current = current->getFirstDependency(); // inspect next node
       }
       if (sortNode) {
         // we could apply late materialization
@@ -572,7 +580,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         // insert a materialize node
         auto materializeNode =
             plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
-              plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
+              plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, var));
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible
@@ -584,6 +592,87 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         modified = true;
       }
     }
+  }
+}
+
+void noDocumentMaterializationArangoSearchRule(Optimizer* opt,
+                                               std::unique_ptr<ExecutionPlan> plan,
+                                               OptimizerRule const& rule) {
+  auto modified = false;
+  auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
+    opt->addPlan(std::move(plan), rule, modified);
+  });
+  //cppcheck-suppress accessMoved
+  if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW)) {
+    // no view present in the query, so no need to do any expensive
+    // transformations
+    return;
+  }
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type va;
+  ::arangodb::containers::SmallVector<ExecutionNode*> viewNodes{va};
+  plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+  ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
+  for (auto* node : viewNodes) {
+    auto type = node->getType();
+    TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == type);
+    auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+    auto& viewNodeState = viewNode.state();
+    if (viewNodeState.isNoDocumentMaterializationDisabled()) {
+      continue; // can not optimize
+    }
+    auto current = node;
+    current = current->getFirstParent();
+    TRI_ASSERT(current);
+    auto const& var = viewNode.outVariable();
+    auto isCalcNodesFound = false;
+    auto valid = true;
+    // check if there are any not calculation nodes in the plan referencing to the view variable
+    do {
+      currentUsedVars.clear();
+      current->getVariablesUsedHere(currentUsedVars);
+      if (currentUsedVars.find(&var) != currentUsedVars.end()) {
+        switch (current->getType()) {
+        case ExecutionNode::CALCULATION:
+          isCalcNodesFound = true;
+          break;
+        case ExecutionNode::SUBQUERY: {
+          auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
+          auto subquery = subqueryNode->getSubquery();
+          // check calculation nodes in the plan of a subquery
+          CalculationNodeVarFinder finder(&var);
+          valid = !subquery->walk(finder);
+          isCalcNodesFound |= finder.isCalculationNodesFound();
+          break;
+        }
+        default:
+          valid = false;
+          break;
+        }
+        if (!valid) {
+          break;
+        }
+      }
+      current = current->getFirstParent();
+    } while (current);
+    if (!valid) {
+      continue; // can not optimize
+    }
+    // replace view variables in calculation nodes if need
+    if (isCalcNodesFound) {
+      ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+      auto viewVariables = viewNodeState.replaceAllViewVariables(toUnlink);
+      // if no replacements were found
+      if (viewVariables.empty()) {
+        TRI_ASSERT(toUnlink.empty());
+        continue; // can not optimize
+      }
+      viewNode.setViewVariables(viewVariables);
+      if (!toUnlink.empty()) {
+        plan->unlinkNodes(toUnlink);
+      }
+    }
+    viewNodeState.enableNoDocumentMaterialization();
+    modified = true;
   }
 }
 
@@ -649,8 +738,9 @@ void handleViewsRule(Optimizer* opt,
 
     modified = true;
   }
-  // we can use view variables to replace only if late materialization arangosearch rule is enabled
-  if (!plan->isDisabledRule(OptimizerRule::lateDocumentMaterializationArangoSearchRule)) {
+  // we can use view variables to replace only if late or no materialization arangosearch rule is enabled
+  if (!(plan->isDisabledRule(OptimizerRule::lateDocumentMaterializationArangoSearchRule) &&
+        plan->isDisabledRule(OptimizerRule::noDocumentMaterializationArangoSearchRule))) {
     keepReplacementViewVariables(calcNodes, viewNodes);
   }
 

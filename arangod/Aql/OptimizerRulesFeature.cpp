@@ -410,6 +410,11 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
+  // apply no document materialization for view queries if stored values contain all fields
+  registerRule("no-document-materialization-arangosearch", arangodb::iresearch::noDocumentMaterializationArangoSearchRule,
+               OptimizerRule::noDocumentMaterializationArangoSearchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // apply late materialization for view queries
   registerRule("late-document-materialization-arangosearch", arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,

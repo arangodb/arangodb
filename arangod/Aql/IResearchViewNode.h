@@ -30,6 +30,7 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchViewStoredValues.h"
+#include "utils/bit_utils.hpp"
 
 namespace arangodb {
 class LogicalView;
@@ -44,8 +45,14 @@ struct VarInfo;
 namespace iresearch {
 
 enum class MaterializeType {
-  Materialized, LateMaterialized, LateMaterializedWithVars
+  Zero = 0,
+  NotMaterialize = 1,
+  LateMaterialize = 2,
+  Materialize = 4,
+  UseStoredValues = 8
 };
+
+ENABLE_BITMASK_ENUM(MaterializeType);
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
@@ -213,27 +220,54 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setViewVariables(ViewVarsInfo const& viewVariables) {
     _outNonMaterializedViewVars.clear();
-    for (auto& viewVars : viewVariables) {
+    for (auto const& viewVars : viewVariables) {
       _outNonMaterializedViewVars[viewVars.second.columnNum].emplace_back(ViewVariable{viewVars.second.fieldNum, viewVars.second.postfix, viewVars.second.var});
     }
   }
 
-  // The structure is used for temporary saving of optimization rule data.
-  // It contains document references that could be replaced in late materialization rule.
-  struct OptimizationState {
+  // The class is used for temporary saving of optimization rule data.
+  // It contains document references that could be replaced in late materialization and
+  // no materialization rules.
+  class OptimizationState {
     using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndColumnFieldData>;
 
     /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
     std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
 
+    enum class NoDocumentMaterializationStatus {
+      Unknown, Enabled, Disabled
+    };
+
+    /// @brief is late document materialization enabled (can be disabled by another rule)
+    NoDocumentMaterializationStatus _noDocMaterStatus = NoDocumentMaterializationStatus::Unknown;
+
+   public:
     void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs<aql::latematerialized::AstAndColumnFieldData>> const& nodesToChange);
 
     bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
 
-    IResearchViewNode::ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes, arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
+    ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes, arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
+
+    ViewVarsInfo replaceAllViewVariables(arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
 
     void clearViewVariables() {
       _nodesToChange.clear();
+    }
+
+    bool isNoDocumentMaterializationEnabled() const noexcept {
+      return NoDocumentMaterializationStatus::Enabled == _noDocMaterStatus;
+    }
+
+    bool isNoDocumentMaterializationDisabled() const noexcept {
+      return NoDocumentMaterializationStatus::Disabled == _noDocMaterStatus;
+    }
+
+    void enableNoDocumentMaterialization() noexcept {
+      _noDocMaterStatus = NoDocumentMaterializationStatus::Enabled;
+    }
+
+    void disableNoDocumentMaterialization() noexcept {
+      _noDocMaterStatus = NoDocumentMaterializationStatus::Disabled;
     }
   };
 

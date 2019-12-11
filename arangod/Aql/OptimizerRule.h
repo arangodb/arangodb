@@ -299,6 +299,10 @@ struct OptimizerRule {
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
+    // no document materialization for arango search view
+    // if stored values contain all fields
+    noDocumentMaterializationArangoSearchRule,
+
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
     // needs to take into account query distribution across cluster nodes

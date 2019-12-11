@@ -86,7 +86,7 @@ bool IResearchViewStoredValues::fromVelocyPack(
             clear();
             return false;
           }
-          auto fieldName = arangodb::iresearch::getStringRef(fieldSlice);
+          auto fieldName = getStringRef(fieldSlice);
           // skip empty field
           if (fieldName.empty()) {
             continue;
@@ -94,7 +94,7 @@ bool IResearchViewStoredValues::fromVelocyPack(
           std::vector<basics::AttributeName> field;
           try {
             // no expansions
-            arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
+            basics::TRI_ParseAttributeString(fieldName, field, false);
           } catch (...) {
             errorField = fieldName;
             clear();
@@ -106,7 +106,7 @@ bool IResearchViewStoredValues::fromVelocyPack(
           decltype(fieldNames.size()) i = 0;
           for (auto& f : sc.fields) {
             if (f.second.size() == fieldSize) {
-              if (arangodb::basics::AttributeName::isIdentical(f.second, field, false)) {
+              if (basics::AttributeName::isIdentical(f.second, field, false)) {
                 newField = false;
                 break;
               }
@@ -156,7 +156,7 @@ bool IResearchViewStoredValues::fromVelocyPack(
         sc.name = std::move(columnName);
         _storedColumns.emplace_back(std::move(sc));
       } else if (columnSlice.isString()) {
-        auto fieldName = arangodb::iresearch::getStringRef(columnSlice);
+        auto fieldName = getStringRef(columnSlice);
         // skip empty field
         if (fieldName.empty()) {
           continue;
@@ -164,16 +164,15 @@ bool IResearchViewStoredValues::fromVelocyPack(
         std::vector<basics::AttributeName> field;
         try {
           // no expansions
-          arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
+          basics::TRI_ParseAttributeString(fieldName, field, false);
         } catch (...) {
           errorField = fieldName;
           clear();
           return false;
         }
-        if (uniqueColumns.find(fieldName) != uniqueColumns.cend()) {
+        if (!uniqueColumns.emplace(fieldName).second) {
           continue;
         }
-        uniqueColumns.emplace_hint(uniqueColumns.cend(), fieldName);
         StoredColumn sc;
         sc.fields.emplace_back(fieldName, std::move(field));
         sc.name = std::move(fieldName);

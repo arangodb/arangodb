@@ -126,6 +126,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       // this node could be appended with materializer
       bool stopSearch = false;
       bool stickToSortNode = false;
+      auto const* var = indexNode->outVariable();
       std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>> nodesToChange;
       TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
@@ -155,7 +156,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         if (!stopSearch && valid && type != ExecutionNode::CALCULATION) {
           arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
-          if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
+          if (currentUsedVars.find(var) != currentUsedVars.end()) {
             valid = false;
             if (ExecutionNode::SUBQUERY == type) {
               auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
@@ -163,14 +164,14 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
               arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
               arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
               // find calculation nodes in the plan of a subquery
-              CalculationNodeVarFinder finder(indexNode->outVariable(), subqueryCalcNodes);
+              CalculationNodeVarFinder finder(var, &subqueryCalcNodes);
               valid = !subquery->walk(finder);
               if (valid) { // if the finder did not stop
                 for (auto scn : subqueryCalcNodes) {
                   TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
                   currentUsedVars.clear();
                   scn->getVariablesUsedHere(currentUsedVars);
-                  if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
+                  if (currentUsedVars.find(var) != currentUsedVars.end()) {
                     valid = processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(scn),
                                                    nodesToChange, commonIndexId);
                     if (!valid) {
@@ -257,8 +258,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         // insert a materialize node
         auto materializeNode =
           plan->registerNode(std::make_unique<materialize::MaterializeSingleNode>(
-            plan.get(), plan->nextId(), indexNode->collection(),
-            *localDocIdTmp, *indexNode->outVariable()));
+            plan.get(), plan->nextId(), indexNode->collection(), *localDocIdTmp, *var));
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible

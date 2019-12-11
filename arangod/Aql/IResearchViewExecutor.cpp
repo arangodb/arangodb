@@ -658,16 +658,19 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContex
       slice = VPackSlice(s + slice.byteSize());
       ++i;
     }
+    auto sl = slice;
+    TRI_ASSERT(!sl.isNone());
     if (!postfixAndRegisterId.postfix.empty()) {
       for (auto const& attr : postfixAndRegisterId.postfix) {
-        slice = slice.get(attr);
-        TRI_ASSERT(!slice.isNone());
-        if (slice.isNull() || slice.isNone()) {
+        if (!sl.isObject()) {
+          sl = VPackSlice::nullSlice();
           break;
         }
+        sl = sl.get(attr);
+        TRI_ASSERT(!sl.isNone());
       }
     }
-    AqlValue v(slice);
+    AqlValue v(sl);
     AqlValueGuard guard{v, true};
     ctx.outputRow.moveValueInto(postfixAndRegisterId.registerId, ctx.inputRow, guard);
   }
@@ -680,13 +683,43 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
                                                        LocalDocumentId const& documentId,
                                                        LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
-  bool writeDocOk;
-  if constexpr (Traits::MaterializeType == MaterializeType::Materialized) {
+  auto writeDocOk = false;
+  auto tryWriteDoc = false;
+  if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
+    tryWriteDoc = true;
     // read document from underlying storage engine, if we got an id
     writeDocOk = collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback);
-  } else {
+  } else if ((Traits::MaterializeType & MaterializeType::LateMaterialize) == MaterializeType::LateMaterialize) {
+    tryWriteDoc = true;
     // no need to look into collection. Somebody down the stream will do materialization. Just emit LocalDocumentIds
     writeDocOk = writeLocalDocumentId(ctx, documentId, collection);
+  }
+  if (!tryWriteDoc || writeDocOk) {
+    if constexpr ((Traits::MaterializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
+      auto const& columnsFieldsRegs = infos().getOutNonMaterializedViewRegs();
+      TRI_ASSERT(!columnsFieldsRegs.empty());
+      auto max = (--columnsFieldsRegs.cend())->first;
+      TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
+      auto columnFieldsRegs = columnsFieldsRegs.cbegin();
+      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+        ++max;
+      }
+      auto const& storedValues = _indexReadBuffer.getStoredValue(bufferEntry);
+      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+        if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, max, columnFieldsRegs->second))) {
+          return false;
+        }
+        ++columnFieldsRegs;
+      }
+      for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
+        if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, columnFieldsRegs->first, columnFieldsRegs->second))) {
+          return false;
+        }
+      }
+      if (!tryWriteDoc) {
+        return true;
+      }
+    }
   }
   if (writeDocOk) {
     // in the ordered case we have to write scores as well as a document
@@ -706,33 +739,86 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     } else {
       UNUSED(bufferEntry);
     }
-    if constexpr (Traits::MaterializeType == MaterializeType::LateMaterializedWithVars) {
-      auto const& columnsFieldsRegs = infos().getOutNonMaterializedViewRegs();
-      TRI_ASSERT(!columnsFieldsRegs.empty());
-      auto const& storedValues = _indexReadBuffer.getStoredValue(bufferEntry);
-      int max = (--columnsFieldsRegs.end())->first;
-      TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
-      if (IResearchViewNode::SortColumnNumber == max) {
-        ++max;
-      }
-      auto columnFieldsRegs = columnsFieldsRegs.cbegin();
-      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-        if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, max, columnFieldsRegs->second))) {
-          return false;
-        }
-        ++columnFieldsRegs;
-      }
-      for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-        if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, columnFieldsRegs->first, columnFieldsRegs->second))) {
-          return false;
-        }
-      }
-    }
 
     return true;
   }
 
   return false;
+}
+
+template<typename Impl, typename Traits>
+void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, int index) {
+  irs::columnstore_reader::values_reader_f reader = _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(index)];
+  TRI_ASSERT(reader);
+  irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
+  auto ok = reader(doc->value, value);
+  TRI_ASSERT(ok);
+  storedValue[static_cast<decltype(storedValue.size())>(index)] = std::move(value);
+}
+
+template<typename Impl, typename Traits>
+void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document const* doc) {
+  auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
+  TRI_ASSERT(!columnsFieldsRegs.empty());
+  auto max = (--columnsFieldsRegs.cend())->first;
+  TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
+  auto columnFieldsRegs = columnsFieldsRegs.cbegin();
+  if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+    ++max;
+  }
+  std::vector<irs::bytes_ref> storedValue(static_cast<size_t>(max + 1));
+  if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+    getStoredValue(doc, storedValue, max);
+    ++columnFieldsRegs;
+  }
+  for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
+    getStoredValue(doc, storedValue, columnFieldsRegs->first);
+  }
+  this->_indexReadBuffer.pushStoredValue(std::move(storedValue));
+}
+
+template<typename Impl, typename Traits>
+bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_reader const& segmentReader) {
+  auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
+  if (!columnsFieldsRegs.empty()) {
+    auto max = (--columnsFieldsRegs.cend())->first;
+    TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
+    auto columnFieldsRegs = columnsFieldsRegs.cbegin();
+    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+      ++max;
+    }
+    _storedValuesReaders.resize(static_cast<typename decltype(_storedValuesReaders)::size_type>(max + 1));
+    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+      auto sortReader = ::sortColumn(segmentReader);
+      if (!sortReader) {
+        LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
+            << "encountered a sub-reader without a sort column while "
+               "executing a query, ignoring";
+        return false;
+      }
+      _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(max)] = sortReader;
+      ++columnFieldsRegs;
+    }
+    // if stored values exist
+    if (max > 0) {
+      auto storedValues = this->_infos.storedValues();
+      for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
+        TRI_ASSERT(!storedValues.empty());
+        auto const& columns = storedValues.columns();
+        auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnFieldsRegs->first);
+        TRI_ASSERT(storedColumnNumber < columns.size());
+        auto storedValuesReader = segmentReader.column_reader(columns[storedColumnNumber].name);
+        if (!storedValuesReader) {
+          LOG_TOPIC("af7ec", WARN, arangodb::iresearch::TOPIC)
+              << "encountered a sub-reader without a stored value column while "
+                 "executing a query, ignoring";
+          return false;
+        }
+        _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(columnFieldsRegs->first)] = storedValuesReader->values();
+      }
+    }
+  }
+  return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -790,16 +876,6 @@ bool IResearchViewExecutor<ordered, materializeType>::readPK(LocalDocumentId& do
   }
 
   return false;
-}
-
-template <bool ordered, MaterializeType materializeType>
-inline void IResearchViewExecutor<ordered, materializeType>::getStoredValue(std::vector<irs::bytes_ref>& storedValue, int index) {
-  irs::columnstore_reader::values_reader_f reader = _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(index)];
-  TRI_ASSERT(reader);
-  irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
-  auto ok = reader(_doc->value, value);
-  TRI_ASSERT(ok);
-  storedValue[static_cast<decltype(storedValue.size())>(index)] = std::move(value);
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -877,24 +953,8 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
       evaluateScores(ctx);
     }
 
-    if constexpr (materializeType == MaterializeType::LateMaterializedWithVars) {
-      auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
-      TRI_ASSERT(!columnsFieldsRegs.empty());
-      int max = (--columnsFieldsRegs.end())->first;
-      TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
-      if (IResearchViewNode::SortColumnNumber == max) {
-        ++max;
-      }
-      std::vector<irs::bytes_ref> storedValue(static_cast<size_t>(max + 1));
-      auto columnFieldsRegs = columnsFieldsRegs.cbegin();
-      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-        getStoredValue(storedValue, max);
-        ++columnFieldsRegs;
-      }
-      for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-        getStoredValue(storedValue, columnFieldsRegs->first);
-      }
-      this->_indexReadBuffer.pushStoredValue(std::move(storedValue));
+    if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
+      this->pushStoredValues(_doc);
     }
     // doc and scores are both pushed, sizes must now be coherent
     this->_indexReadBuffer.assertSizeCoherence();
@@ -931,45 +991,9 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
     return false;
   }
 
-  if constexpr (materializeType == MaterializeType::LateMaterializedWithVars) {
-    auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
-    if (!columnsFieldsRegs.empty()) {
-      int max = (--columnsFieldsRegs.cend())->first;
-      TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
-      if (IResearchViewNode::SortColumnNumber == max) {
-        ++max;
-      }
-      _storedValuesReaders.resize(static_cast<typename decltype(_storedValuesReaders)::size_type>(max + 1));
-      auto columnFieldsRegs = columnsFieldsRegs.cbegin();
-      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-        auto sortReader = ::sortColumn(segmentReader);
-        if (!sortReader) {
-          LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
-              << "encountered a sub-reader without a sort column while "
-                 "executing a query, ignoring";
-          return false;
-        }
-        _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(max)] = sortReader;
-        ++columnFieldsRegs;
-      }
-      // if stored values exist
-      if (max > 0) {
-        auto storedValues = this->_infos.storedValues();
-        for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-          TRI_ASSERT(!storedValues.empty());
-          auto const& columns = storedValues.columns();
-          auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnFieldsRegs->first);
-          TRI_ASSERT(storedColumnNumber < columns.size());
-          auto storedValuesReader = segmentReader.column_reader(columns[storedColumnNumber].name);
-          if (!storedValuesReader) {
-            LOG_TOPIC("af7ec", WARN, arangodb::iresearch::TOPIC)
-                << "encountered a sub-reader without a stored value column while "
-                   "executing a query, ignoring";
-            return false;
-          }
-          _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(columnFieldsRegs->first)] = storedValuesReader->values();
-        }
-      }
+  if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
+    if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader))) {
+      return false;
     }
   }
 
@@ -1224,6 +1248,12 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       continue;
     }
 
+    if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
+      if (ADB_UNLIKELY(!this->getStoredValuesReaders(segment))) {
+        continue;
+      }
+    }
+
     _segments.emplace_back(std::move(it), *doc, *score, *collection,
                            std::move(sortReader), std::move(pkReader));
   }
@@ -1282,6 +1312,10 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
       evaluateScores(ctx, *segment.score);
     }
 
+    if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
+      this->pushStoredValues(segment.doc);
+    }
+
     // doc and scores are both pushed, sizes must now be coherent
     this->_indexReadBuffer.assertSizeCoherence();
 
@@ -1322,26 +1356,50 @@ bool IResearchViewMergeExecutor<ordered, materializeType>::writeRow(
 /// --SECTION--                                 explicit template instantiation
 ///////////////////////////////////////////////////////////////////////////////
 
-template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::Materialized>;
-template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialized>;
-template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterializedWithVars>;
-template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::Materialized>;
-template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialized>;
-template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterializedWithVars>;
+template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::NotMaterialize>;
+template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialize>;
+template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::Materialize>;
+template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
 
-template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::Materialized>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialized>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::Materialized>;
-template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialized>;
+template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::NotMaterialize>;
+template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialize>;
+template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::Materialize>;
+template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
 
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::Materialized>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialized>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterializedWithVars>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::Materialized>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialized>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterializedWithVars>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::NotMaterialize>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialize>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::Materialize>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
 
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::Materialized>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialized>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::Materialized>>;
-template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialized>>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::Materialize>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>;
+template class ::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;
+
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::Materialize>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::NotMaterialize | MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::IResearchViewExecutorBase<::arangodb::aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>>;

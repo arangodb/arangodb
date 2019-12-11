@@ -27,8 +27,8 @@ namespace aql {
 
 CalculationNodeVarFinder::CalculationNodeVarFinder(
     Variable const* lookingFor,
-    ::arangodb::containers::SmallVector<ExecutionNode*>& out)
-    : _lookingFor(lookingFor), _out(out) {}
+    ::arangodb::containers::SmallVector<ExecutionNode*>* out /*= nullptr*/) noexcept
+    : _lookingFor(lookingFor), _out(out), _isCalcNodeFound(false) {}
 
 bool CalculationNodeVarFinder::before(ExecutionNode* en) {
   auto type = en->getType();
@@ -40,10 +40,16 @@ bool CalculationNodeVarFinder::before(ExecutionNode* en) {
   en->getVariablesUsedHere(_currentUsedVars);
   if (_currentUsedVars.find(_lookingFor) != _currentUsedVars.end()) {
     if (ExecutionNode::CALCULATION != type) {
-      _out.clear();
+      if (_out) {
+        _out->clear();
+      }
+      _currentUsedVars.clear();
       return true;
     }
-    _out.emplace_back(en);
+    if (_out) {
+      _out->emplace_back(en);
+    }
+    _isCalcNodeFound = true;
   }
   _currentUsedVars.clear();
 

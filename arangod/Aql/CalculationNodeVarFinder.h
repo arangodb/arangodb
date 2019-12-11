@@ -33,14 +33,20 @@ namespace aql {
 class CalculationNodeVarFinder final : public WalkerWorker<ExecutionNode> {
   Variable const* _lookingFor;
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  ::arangodb::containers::SmallVector<ExecutionNode*>* _out;
 
   ::arangodb::containers::HashSet<Variable const*> _currentUsedVars;
 
+  bool _isCalcNodeFound;
+
  public:
-  CalculationNodeVarFinder(Variable const* var, ::arangodb::containers::SmallVector<ExecutionNode*>&);
+  CalculationNodeVarFinder(Variable const* var, ::arangodb::containers::SmallVector<ExecutionNode*>* out = nullptr) noexcept;
 
   bool before(ExecutionNode*) override final;
+
+  bool isCalculationNodesFound() const noexcept {
+    return _isCalcNodeFound;
+  }
 
 };
 }  // namespace aql
