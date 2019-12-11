@@ -10,9 +10,6 @@ v3.6.0-rc.2 (XXXX-XX-XX)
 v3.6.0-rc.1 (2019-12-10)
 ------------------------
 
-* Bugfix: An AQL ternary expression with the condition being true at query
-  compile time would not execute its false branch.
-
 * Renamed document / index / vertex "handle" to "identifier" / "id" for
   consistency in documentation and error messages.
 
@@ -25,7 +22,8 @@ v3.6.0-rc.1 (2019-12-10)
   `--cluster.write-concern` and avoid confusion with
   `--cluster.min-replication-factor`
 
-* ArangoDB web UI was switched to React from previous framework and rebuilt.
+* ArangoDB web UI switched build system from grunt to webpack.
+  It supports React now, but the previous framework is still in use.
 
 * Enable the `parallelize-gather` AQL optimizer rule for certain write queries.
 
