@@ -222,47 +222,26 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
   // PLEASE LEAVE THESE EXPLANATIONS IN THE CODE, SINCE WE HAVE HAD MANY PROBLEMS
   // IN THIS AREA IN THE PAST, AND WE MIGHT FORGET AGAIN WHAT WE INVESTIGATED IF
   // IT IS NOT WRITEN ANYWHERE.
-  // We always notify some potentially sleeping thread without acquiring the mutex.
-  // Here is why:
-  // We have just put something on the queue. Some threads might be sleeping, so we better
-  // wake at least one up to do the work. Let's consider different cases:
-  //  1. Everybody is sleeping: In this case, we have to wake somebody up to
-  //     keep the latency low. This is for the single-threaded customer case.
-  //  2. Some threads are working, some are sleeping: In this case we could
-  //     just let some thread finish its work, after which it will look at the
-  //     queues anyway. However, this could take some time, and since there are
-  //     sleepers, we might as well wake one up.
-  //  3. Everybody is busy: In this case there is no point waking somebody up.
-  //     However, the sleeper's queue is also empty. Measurements have shown that
-  //     the notify_one() will only take a few nanoseconds in this case. Therefore,
-  //     we can afford to do it without slowing down the current thread.
-  // Finally, why do we not (need to) acquire the mutex? First of all, this would be
-  // a possible point of contention on a cache line, and we want to avoid this. Yes,
-  // there is a very small risk that in the case that all threads are working, one thread
-  // finishes its work right at the same time that we put something on the queue. In this
-  // case it is conceivable that this sequence of events happens:
-  //  a) Worker finishes work
-  //  b) Worker checks the queue, finds nothing
-  //  c) Worker acquires the mutex
-  //  d) checks the queue again, finds nothing
-  //  e) IO thread here puts something on the queue
-  //  f) IO thread here calls notify_one(), which has no effect
-  //  g) Worker goes to sleep
-  // Net result: There is something on the queue, and a sleeping thread.
-  // This is extremely unlikely. In this case, either some other worker finishes soon
-  // and will find the work on the queue, or the sleeping worker wakes up after some
-  // time anyway. So the worst that can happen is a tiny bit of additional latency for this
-  // particular request.
-  // On the plus side, we completely eradicate contention on the Mutex. This seems like a
-  // reasonable tradeoff. If we wanted to remove this additional latency in this very unlikely
-  // case, we would have to recognise the danger of this situation here and in this case
-  // acquire the mutex. For example, we could add an atomic counter which counts how many
-  // threads are currently sleeping. If that would be close to zero, we could acquire the
-  // mutex. This would remove the problem at the cost of two additional potentially contented
-  // atomic operations per request plus the fact that we would have to acquire the mutex when
-  // all threads are busy, which is another point of contention for the IO threads. This does
-  // not look like the right choice.
-  _conditionWork.notify_one();
+  // Waking up a sleeping thread is very expensive (order of magnitude of a
+  // microsecond), therefore, we do not want to do it unnecessarily. However,
+  // if we push work to a queue, we do not want a sleeping worker to sleep
+  // for much longer, rather, we would like to have the work done.
+  // Therefore, we follow this algorithm: We walk through the threads, if any is
+  // currently sleeping, we wake it up. However, once we see a thread which is
+  // not sleeping and not working, then it is spinning. In this case we stop our
+  // efforts.
+  std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
+  for (auto it = _workerStates.begin(); it != _workerStates.end(); ++it) {
+    auto& state = *it;
+    if (state->_sleeping) {
+      std::unique_lock<std::mutex> guard2(state->_mutex);
+      state->_conditionWork.notify_one();
+      break;
+    }
+    if (!state->_working) {
+      break;
+    }
+  }
 
   return true;
 }
@@ -282,7 +261,12 @@ void SupervisedScheduler::shutdown() {
   {
     std::unique_lock<std::mutex> guard(_mutex);
     _stopping = true;
-    _conditionWork.notify_all();
+    for (auto it = _workerStates.begin(); it != _workerStates.end(); ++it) {
+      std::shared_ptr<WorkerState>& state = *it;
+      std::unique_lock<std::mutex> guard2(state->_mutex);
+      state->_stop = true;
+      state->_conditionWork.notify_one();
+    }
   }
 
   Scheduler::shutdown();
@@ -326,10 +310,12 @@ void SupervisedScheduler::runWorker() {
   std::shared_ptr<WorkerState> state;
 
   {
-    std::lock_guard<std::mutex> guard(_mutexSupervisor);
-    id = _numWorkers++;  // increase the number of workers here, to obtain the id
-    // copy shared_ptr with worker state
-    state = _workerStates.back();
+    {
+      std::lock_guard<std::mutex> guard1(_mutex);
+      id = _numWorkers++;  // increase the number of workers here, to obtain the id
+      // copy shared_ptr with worker state
+      state = _workerStates.back();
+    }
 
     state->_sleepTimeout_ms = 20 * (id + 1);
     // cap the timeout to some boundary value
@@ -345,6 +331,7 @@ void SupervisedScheduler::runWorker() {
     
     // inform the supervisor that this thread is alive
     state->_ready = true;
+    std::lock_guard<std::mutex> guard(_mutexSupervisor);
     _conditionSupervisor.notify_one();
   }
 
@@ -397,7 +384,7 @@ void SupervisedScheduler::runSupervisor() {
     bool sleeperFound = false;
     {
       // Now see if anybody is sleeping, if not, we want to start another thread after all:
-      std::unique_lock<std::mutex> guard(_mutexSupervisor);
+      std::unique_lock<std::mutex> guard(_mutex);
       for (auto it = _workerStates.begin(); it != _workerStates.end(); ++it) {
         WorkerState& state = **it;
         if (!state._working) {   // a sleeper!
@@ -446,6 +433,7 @@ void SupervisedScheduler::runSupervisor() {
 }
 
 bool SupervisedScheduler::cleanupAbandonedThreads() {
+  std::unique_lock<std::mutex> guard(_mutex);
   auto i = _abandonedWorkerStates.begin();
 
   while (i != _abandonedWorkerStates.end()) {
@@ -464,36 +452,43 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
   // Detaching a thread always implies starting a new thread. Hence check here
   // if we can start a new thread.
 
-  auto now = clock::now();
-  auto i = _workerStates.begin();
+  size_t newThreadsNeeded = 0;
+  {
+    std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
+    auto now = clock::now();
+    auto i = _workerStates.begin();
 
-  while (i != _workerStates.end()) {
-    auto& state = *i;
+    while (i != _workerStates.end()) {
+      auto& state = *i;
 
-    if (!state->_working) {
-      i++;
-      continue;
-    }
-
-    if ((now - state->_lastJobStarted) > std::chrono::seconds(5)) {
-      LOG_TOPIC("efcaa", TRACE, Logger::THREADS)
-          << "Detach long running thread.";
-
-      {
-        std::unique_lock<std::mutex> guard(_mutex);
-        state->_stop = true;
+      if (!state->_working) {
+        i++;
+        continue;
       }
 
-      // Move that thread to the abandoned thread
-      _abandonedWorkerStates.push_back(std::move(state));
-      i = _workerStates.erase(i);
-      _numWorkers--;
+      if ((now - state->_lastJobStarted) > std::chrono::seconds(5)) {
+        LOG_TOPIC("efcaa", TRACE, Logger::THREADS)
+            << "Detach long running thread.";
 
-      // and now start another thread!
-      startOneThread();
-    } else {
-      i++;
+        {
+          std::unique_lock<std::mutex> guard2(state->_mutex);
+          state->_stop = true;
+        }
+
+        // Move that thread to the abandoned thread
+        _abandonedWorkerStates.push_back(std::move(state));
+        i = _workerStates.erase(i);
+        _numWorkers--;
+
+        // and now start another thread!
+        ++newThreadsNeeded;
+      } else {
+        i++;
+      }
     }
+  }
+  while (newThreadsNeeded--) {
+    startOneThread();
   }
 }
 
@@ -552,42 +547,47 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
              (std::chrono::steady_clock::now() - loopStart) < std::chrono::microseconds(timeOutForNow));
 
 
-    std::unique_lock<std::mutex> guard(_mutex);
+    std::unique_lock<std::mutex> guard(state->_mutex);
 
     if (state->_stop) {
       break;
     }
+    state->_sleeping = true;
     if (state->_sleepTimeout_ms == 0) {
-      _conditionWork.wait(guard);
+      state->_conditionWork.wait(guard);
     } else {
-      _conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
+      state->_conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
+    state->_sleeping = false;
   }  // while
 
   return nullptr;
 }
 
 void SupervisedScheduler::startOneThread() {
-  // TRI_ASSERT(_numWorkers < _maxNumWorker);
-  if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
-    return;  // do not add more threads than maximum allows
-  }
+  std::shared_ptr<WorkerState> state;
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
 
-  std::unique_lock<std::mutex> guard(_mutexSupervisor);
+    // TRI_ASSERT(_numWorkers < _maxNumWorker);
+    if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
+      return;  // do not add more threads than maximum allows
+    }
 
-// start a new thread
+    // start a new thread
 
-// wait for windows fix or implement operator new
+    // wait for windows fix or implement operator new
 #if (_MSC_VER >= 1)
 #pragma warning(push)
 #pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
 #endif
-  _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
+    _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
 
-  auto& state = _workerStates.back();
+    state = _workerStates.back();
+  }
 
   if (!state->start()) {
     // failed to start a worker
@@ -597,8 +597,9 @@ void SupervisedScheduler::startOneThread() {
     return;
   }
  
-  // sync with runWorker() 
-  _conditionSupervisor.wait(guard, [&state]() {
+  // sync with runWorker()
+  std::unique_lock<std::mutex> guard2(_mutexSupervisor);
+  _conditionSupervisor.wait(guard2, [&state]() {
     return state->_ready;
   });
   LOG_TOPIC("f9de8", TRACE, Logger::THREADS) << "Started new thread";
@@ -608,26 +609,31 @@ void SupervisedScheduler::stopOneThread() {
   TRI_ASSERT(_numWorkers > 0);
 
   // copy shared_ptr
-  auto state = _workerStates.back();
-  _workerStates.pop_back();
-
+  std::shared_ptr<WorkerState> state;
   {
     std::unique_lock<std::mutex> guard(_mutex);
+    auto state = _workerStates.back();
+    _workerStates.pop_back();
+    // Since the thread is effectively taken out of the pool, decrease the number of worker.
+    _numWorkers--;
+  }
+
+  {
+    std::unique_lock<std::mutex> guard(state->_mutex);
     state->_stop = true;
-    _conditionWork.notify_all();
-    // _stop is set under the mutex, then all worker threads are notified.
-    // in any case, the stopped thread should notice that it is stoped.
+    state->_conditionWork.notify_one();
+    // _stop is set under the mutex, then the worker thread is notified.
   }
 
   // However the thread may be working on a long job. Hence we enqueue it on
   // the cleanup list and wait for its termination.
-  //
-  // Since the thread is effectively taken out of the pool, decrease the number of worker.
-  _numWorkers--;
 
   if (state->_thread->isRunning()) {
     LOG_TOPIC("73365", TRACE, Logger::THREADS) << "Abandon one thread.";
-    _abandonedWorkerStates.push_back(std::move(state));
+    {
+      std::unique_lock<std::mutex> guard(_mutex);
+      _abandonedWorkerStates.push_back(std::move(state));
+    }
   } else {
     state.reset();  // reset the shared_ptr. At this point we delete the thread object
                     // Since the thread is already STOPPED, the join is a no op.
@@ -639,6 +645,7 @@ SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
       _sleepTimeout_ms(100),
       _stop(false),
       _working(false),
+      _sleeping(false),
       _ready(false),
       _thread(new SupervisedSchedulerWorkerThread(scheduler._server, scheduler)) {}
 

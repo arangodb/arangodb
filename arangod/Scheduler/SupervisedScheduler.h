@@ -116,13 +116,15 @@ class SupervisedScheduler final : public Scheduler {
   struct alignas(64) WorkerState {
     uint64_t _queueRetryTime_us; // t1
     uint64_t _sleepTimeout_ms;  // t2
-    std::atomic<bool> _stop, _working;
+    std::atomic<bool> _stop, _working, _sleeping;
     // _ready = false means the Worker is not properly initialized
     // _ready = true means it is initialized and can be used to dispatch tasks to
     // _ready is protected by the Scheduler's condition variable & mutex
     bool _ready;
     clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
+    std::mutex _mutex;
+    std::condition_variable _conditionWork;
 
     // initialize with harmless defaults: spin once, sleep forever
     explicit WorkerState(SupervisedScheduler& scheduler);
@@ -137,8 +139,13 @@ class SupervisedScheduler final : public Scheduler {
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
 
+  // The following mutex protects the lists _workerStates and
+  // _abandonedWorkerStates, whenever one accesses any of these two
+  // lists, this mutex is needed. Note that if you need a mutex of one
+  // of the workers, always acquire _mutex first and then the worker
+  // mutex, never, the other way round. You may acquire only the
+  // worker's mutex.
   std::mutex _mutex;
-  std::condition_variable _conditionWork;
 
   void runWorker();
   void runSupervisor();
