@@ -1,5 +1,5 @@
-v3.6.0 (XXXX-XX-XX)
--------------------
+v3.6.0-rc.1 (2019-12-10)
+------------------------
 
 * Renamed document / index / vertex "handle" to "identifier" / "id" for
   consistency in documentation and error messages.
