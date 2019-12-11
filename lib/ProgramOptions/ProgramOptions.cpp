@@ -178,8 +178,12 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           if (!values.empty()) {
             builder.add("values", VPackValue(values));
           }
-          builder.add(VPackValue("default"));
-          option.toVPack(builder);
+          if (!option.hasFlag(arangodb::options::Flags::Command)) {
+            // command-like options are commands, thus they shouldn't have
+            // a "default" value
+            builder.add(VPackValue("default"));
+            option.toVPack(builder);
+          }
           builder.add("dynamic",
                       VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
           builder.close();
