@@ -169,7 +169,7 @@ bool FailedFollower::start(bool& aborts) {
   // Get proper replacement
   _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
-    // retry later
+    finish("", _shard, false, "No server available.");
     return false;
   }
 
@@ -262,6 +262,19 @@ bool FailedFollower::start(bool& aborts) {
         // toServer in good condition
         addPreconditionServerHealth(job, _to, "GOOD");
       }
+    }
+  }
+
+  // Abort job blocking shard if abortable
+  //  (likely to not exist, avoid warning message by testing first)
+  if (_snapshot.has(blockedShardsPrefix + _shard)) {
+    auto jobId = _snapshot.hasAsString(blockedShardsPrefix + _shard);
+    if (jobId.second && !abortable(_snapshot, jobId.first)) {
+      return false;
+    } else if (jobId.second) {
+      aborts = true;
+      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed follower requests abort");
+      return false;
     }
   }
 
