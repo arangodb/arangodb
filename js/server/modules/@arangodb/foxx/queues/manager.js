@@ -29,6 +29,7 @@ const db = require('@arangodb').db;
 const foxxManager = require('@arangodb/foxx/manager');
 const wait = require('internal').wait;
 const warn = require('console').warn;
+const errors = require('internal').errors;
 
 const coordinatorId = (
   isCluster && cluster.isCoordinator()
@@ -233,10 +234,15 @@ exports.manage = function () {
         runInDatabase();
       }
     } catch (e) {
-      warn("An exception occurred while setting up foxx queue handling in database "
-            + e.message + " "
-            + JSON.stringify(e));
-      // noop
+      // it is possible that the underlying database is deleted while we are in here.
+      // this is not an error
+      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
+        warn("An exception occurred while setting up foxx queue handling in database '"
+              + database + "' "
+              + e.message + " "
+              + JSON.stringify(e));
+        // noop
+      }
     }
   });
 
