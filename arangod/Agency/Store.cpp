@@ -765,12 +765,11 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           }
         }
       } else {
-        auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).first.applieOp(value);
-        success &= ret;
+        auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).first.applyOp(value);
+        success &= ret.ok();
       }
     } else {
-      auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
-      success &= ret;
+      success &= _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
     }
   }
 

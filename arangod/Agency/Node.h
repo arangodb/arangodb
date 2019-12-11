@@ -25,6 +25,7 @@
 #define ARANGOD_CONSENSUS_NODE_H 1
 
 #include "AgencyCommon.h"
+#include "Cluster/ResultT.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
@@ -153,7 +154,7 @@ class Node {
   std::string path();
 
   /// @brief Apply single operation as defined by "op"
-  bool applieOp(arangodb::velocypack::Slice const&);
+  ResultT<std::shared_ptr<Node>> applyOp(arangodb::velocypack::Slice const&);
 
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
@@ -186,13 +187,26 @@ class Node {
   /// @brief Get our container
   Store const& store() const;
 
-  /// brief Normalize node URIs
+  /// @brief Normalize node URIs
   static std::string normalize(std::string const& key);
+
+  /// @brief Split path to path vector
+  static std::vector<std::string> split(const std::string& str, char separator);
  
 private:
 
   /// @brief Get store if it exists:
   Store* getStore();
+
+  /// @brief Hand out sharep ptr to a child
+  std::shared_ptr<Node> child(std::string const& key);
+
+  /// @brief Remove me from tree, if not root node, clear else.
+  /// Shared pointer copy to this node is returned to control life time by caller
+  std::shared_ptr<Node> deleteMe();
+
+  /// @brief Access private methods
+  friend class Store;
 
 public:
 
@@ -312,6 +326,7 @@ public:
   // The protected accessors are the "old" interface.  They throw.
   //  Please use the hasAsXXX replacements.
   //
+ protected:
   /// @brief Get node specified by path string, always throw if not there
   Node const& get(std::string const& path) const;
 
