@@ -1055,8 +1055,6 @@ std::pair<Node const&, bool> Node::hasAsNode(std::string const& url) const {
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC("3e591", DEBUG, Logger::SUPERVISION)
-        << "hasAsNode had exception processing " << url;
   }  // catch
 
   return fail_pair;
@@ -1073,8 +1071,6 @@ std::pair<Node&, bool> Node::hasAsWritableNode(std::string const& url) {
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC("027ed", DEBUG, Logger::SUPERVISION)
-        << "hasAsWritableNode had exception processing " << url;
   }  // catch
 
   return fail_pair;
@@ -1090,8 +1086,6 @@ std::pair<NodeType, bool> Node::hasAsType(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC("7f66c", DEBUG, Logger::SUPERVISION)
-        << "hasAsType had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1108,8 +1102,6 @@ std::pair<Slice, bool> Node::hasAsSlice(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("16f3d", TRACE, Logger::SUPERVISION)
-        << "hasAsSlice had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1127,8 +1119,6 @@ std::pair<uint64_t, bool> Node::hasAsUInt(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("eaa6b", DEBUG, Logger::SUPERVISION)
-        << "hasAsUInt had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1146,8 +1136,6 @@ std::pair<bool, bool> Node::hasAsBool(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("99238", DEBUG, Logger::SUPERVISION)
-        << "hasAsBool had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1167,8 +1155,6 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("fd020", DEBUG, Logger::SUPERVISION)
-        << "hasAsString had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1181,8 +1167,6 @@ std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& ur
     Node const& target(operator()(url));
     return std::pair<Children const&, bool> {target.children(), true};
   } catch (...) {
-    LOG_TOPIC("4e3cb", DEBUG, Logger::SUPERVISION)
-        << "hasAsChildren had exception processing " << url;
   }  // catch
 
   return std::pair<Children const&, bool> {dummyChildren, false};
@@ -1200,8 +1184,6 @@ std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& build
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("fb685", DEBUG, Logger::SUPERVISION)
-        << "hasAsBuilder(1) had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1219,8 +1201,6 @@ std::pair<Builder, bool> Node::hasAsBuilder(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("68a75", DEBUG, Logger::SUPERVISION)
-        << "hasAsBuilder(2) had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1237,8 +1217,6 @@ std::pair<Slice, bool> Node::hasAsArray(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("0a72b", DEBUG, Logger::SUPERVISION)
-        << "hasAsArray had exception processing " << url;
   }  // catch
 
   return ret_pair;

@@ -265,19 +265,6 @@ bool FailedFollower::start(bool& aborts) {
     }
   }
 
-  // Abort job blocking shard if abortable
-  //  (likely to not exist, avoid warning message by testing first)
-  if (_snapshot.has(blockedShardsPrefix + _shard)) {
-    auto jobId = _snapshot.hasAsString(blockedShardsPrefix + _shard);
-    if (jobId.second && !abortable(_snapshot, jobId.first)) {
-      return false;
-    } else if (jobId.second) {
-      aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed follower requests abort");
-      return false;
-    }
-  }
-
   LOG_TOPIC("2b961", DEBUG, Logger::SUPERVISION)
       << "FailedFollower start transaction: " << job.toJson();
 

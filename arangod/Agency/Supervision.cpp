@@ -1260,7 +1260,7 @@ void Supervision::workJobs() {
       }
     }
   }
-  LOG_TOPIC("a55ce", DEBUG, Logger::SUPERVISION) << "Updating snapshot after ToDo";
+  LOG_TOPIC("a55ce", TRACE, Logger::SUPERVISION) << "Updating snapshot after ToDo";
   updateSnapshot();
 
   LOG_TOPIC("08641", TRACE, Logger::SUPERVISION) << "Begin Pendings";
@@ -1367,7 +1367,7 @@ void Supervision::checkBrokenCreatedDatabases() {
   for (auto const& dbpair : databases.first.children()) {
     std::shared_ptr<Node> const& db = dbpair.second;
 
-    LOG_TOPIC("24152", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("24152", TRACE, Logger::SUPERVISION)
       << "checkBrokenDbs: " << *db;
 
     // check if isBuilding is set and it is true
