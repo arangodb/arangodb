@@ -111,8 +111,8 @@ The total filesize of all compactor files (in bytes).
 The number of revisions of this collection stored in the document revisions cache.
 
 @RESTSTRUCT{size,collection_figures_readcache,integer,required,int64}
-The memory used for storing the revisions of this collection in the document 
-revisions cache (in bytes). This figure does not include the document data but 
+The memory used for storing the revisions of this collection in the document
+revisions cache (in bytes). This figure does not include the document data but
 only mappings from document revision ids to cache entry locations.
 
 @RESTSTRUCT{revisions,collection_figures,object,required,collection_figures_revisions}
@@ -121,8 +121,8 @@ only mappings from document revision ids to cache entry locations.
 The number of revisions of this collection managed by the storage engine.
 
 @RESTSTRUCT{size,collection_figures_revisions,integer,required,int64}
-The memory used for storing the revisions of this collection in the storage 
-engine (in bytes). This figure does not include the document data but only mappings 
+The memory used for storing the revisions of this collection in the storage
+engine (in bytes). This figure does not include the document data but only mappings
 from document revision ids to storage engine datafile positions.
 
 @RESTSTRUCT{indexes,collection_figures,object,required,collection_figures_indexes}
@@ -144,23 +144,23 @@ The number of markers in the write-ahead
 log for this collection that have not been transferred to journals or datafiles.
 
 @RESTSTRUCT{documentReferences,collection_figures,integer,optional,int64}
-The number of references to documents in datafiles that JavaScript code 
-currently holds. This information can be used for debugging compaction and 
+The number of references to documents in datafiles that JavaScript code
+currently holds. This information can be used for debugging compaction and
 unload issues.
 
 @RESTSTRUCT{waitingFor,collection_figures,string,optional,string}
-An optional string value that contains information about which object type is at the 
-head of the collection's cleanup queue. This information can be used for debugging 
+An optional string value that contains information about which object type is at the
+head of the collection's cleanup queue. This information can be used for debugging
 compaction and unload issues.
 
 @RESTSTRUCT{compactionStatus,collection_figures,object,optional,compactionStatus_attributes}
 
 @RESTSTRUCT{message,compactionStatus_attributes,string,optional,string}
-The action that was performed when the compaction was last run for the collection. 
+The action that was performed when the compaction was last run for the collection.
 This information can be used for debugging compaction issues.
 
 @RESTSTRUCT{time,compactionStatus_attributes,string,optional,string}
-The point in time the compaction for the collection was last executed. 
+The point in time the compaction for the collection was last executed.
 This information can be used for debugging compaction issues.
 
 @RESTREPLYBODY{journalSize,integer,required,int64}
@@ -213,4 +213,3 @@ Using an identifier and requesting the figures of the collection (RocksDB storag
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

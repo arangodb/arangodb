@@ -25,8 +25,7 @@ This combination was removed. The collection name can be passed to
 The collection that should be queried
 
 @RESTBODYPARAM{type,string,optional,}
-The type of the result. The following values are allowed:
-
+The type of the result. The following values are allowed:<br>
   - *id*: returns an array of document ids (*_id* attributes)
   - *key*: returns an array of document keys (*_key* attributes)
   - *path*: returns an array of document URI paths. This is the default.
@@ -115,4 +114,3 @@ Collection does not exist
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

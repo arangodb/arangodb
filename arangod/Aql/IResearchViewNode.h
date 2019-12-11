@@ -29,6 +29,7 @@
 #include "Aql/types.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
+#include "IResearch/IResearchViewStoredValues.h"
 
 namespace arangodb {
 class LogicalView;
@@ -181,37 +182,55 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
            _outNonMaterializedColPtr != nullptr;
   }
 
+  static const int SortColumnNumber;
+
+  // A variable with a field number in a column and
+  // a postfix to find the field in a stored value (the end of the field path)
   struct ViewVariable {
-    size_t viewFieldNum;
+    size_t fieldNum;
+    std::vector<std::string> postfix;
     aql::Variable const* var;
   };
 
-  using ViewValuesVars = std::unordered_map<size_t, aql::Variable const*>;
+  // A variable with column and field numbers and
+  // a postfix to find the field in a stored value (the end of the field path)
+  struct ViewVariableWithColumn : ViewVariable {
+    int columnNum;
+  };
 
-  using ViewValuesRegisters = std::map<size_t, aql::RegisterId>;
+  // A register id and
+  // a postfix to find the field in a stored value (the end of the field path)
+  struct ViewVariableRegister {
+    std::vector<irs::string_ref> postfix;
+    aql::RegisterId registerId;
+  };
 
-  using ViewVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariable>;
+  using ViewValuesVars = std::unordered_map<int, std::vector<ViewVariable>>;
+
+  using ViewValuesRegisters = std::map<int, std::map<size_t, ViewVariableRegister>>;
+
+  using ViewVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariableWithColumn>;
 
   void setViewVariables(ViewVarsInfo const& viewVariables) {
     _outNonMaterializedViewVars.clear();
     for (auto& viewVars : viewVariables) {
-      _outNonMaterializedViewVars[viewVars.second.viewFieldNum] = viewVars.second.var;
+      _outNonMaterializedViewVars[viewVars.second.columnNum].emplace_back(ViewVariable{viewVars.second.fieldNum, viewVars.second.postfix, viewVars.second.var});
     }
   }
 
   // The structure is used for temporary saving of optimization rule data.
   // It contains document references that could be replaced in late materialization rule.
   struct OptimizationState {
-    using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndFieldData>;
+    using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndColumnFieldData>;
 
     /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
     std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
 
-    void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs> const& nodesToChange);
+    void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs<aql::latematerialized::AstAndColumnFieldData>> const& nodesToChange);
 
     bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
 
-    IResearchViewNode::ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes);
+    IResearchViewNode::ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes, arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
 
     void clearViewVariables() {
       _nodesToChange.clear();

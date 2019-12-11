@@ -381,8 +381,7 @@ JOB_STATUS FailedServer::status() {
 }
 
 arangodb::Result FailedServer::abort(std::string const& reason) {
-  Result result;
-  return result;
+  return Result{};
   // FIXME: No abort procedure, simply throw error or so
   // ??????????????
 }

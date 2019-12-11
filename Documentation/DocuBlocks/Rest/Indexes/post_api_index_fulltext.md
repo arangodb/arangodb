@@ -24,7 +24,6 @@ this value explicitly when creating the index.
 @RESTDESCRIPTION
 **NOTE** Swagger examples won't work due to the anchor.
 
-
 Creates a fulltext index for the collection *collection-name*, if
 it does not already exist. The call expects an object containing the index
 details.
@@ -52,9 +51,9 @@ Creating a fulltext index
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
-    var body = { 
-      type: "fulltext", 
-      fields: [ "text" ] 
+    var body = {
+      type: "fulltext",
+      fields: [ "text" ]
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -65,4 +64,3 @@ Creating a fulltext index
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-
