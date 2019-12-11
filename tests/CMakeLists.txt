@@ -175,6 +175,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryOptions-test.cpp
   IResearch/IResearchQueryOr-test.cpp
   IResearch/IResearchQueryPhrase-test.cpp
+  IResearch/IResearchQueryWildcard-test.cpp
   IResearch/IResearchQueryScorer-test.cpp
   IResearch/IResearchQuerySelectAll-test.cpp
   IResearch/IResearchQueryStartsWith-test.cpp

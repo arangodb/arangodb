@@ -24,8 +24,11 @@
 
 #include "shared.hpp"
 #include "limited_sample_scorer.hpp"
+#include "all_filter.hpp"
+#include "disjunction.hpp"
 #include "multiterm_query.hpp"
 #include "term_query.hpp"
+#include "bitset_doc_iterator.hpp"
 #include "index/index_reader.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"

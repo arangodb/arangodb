@@ -6537,17 +6537,16 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
       ++docs_count;
     }
 
-    ASSERT_EQ(expected.size(), docs_count);
+==== BASE ====
+    // (NOT (NOT (NOT (NOT (NOT name=A)))))
+    {
+      irs::Not not_node;
+      not_node.filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+==== BASE ====
 
-    ASSERT_EQ(0, collector_collect_field_count); // should not be executed (a negated possibly complex filter)
-    ASSERT_EQ(0, collector_collect_term_count); // should not be executed
-    ASSERT_EQ(1, collector_finish_count); // from "all" query
-    ASSERT_EQ(expected.size(), scorer_score_count);
-
-    std::vector<irs::doc_id_t> actual;
-
-    for (auto& entry: scored_result) {
-      actual.emplace_back(entry.second);
+==== BASE ====
+      check_query(not_node, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+==== BASE ====
     }
 
     ASSERT_EQ(expected, actual);

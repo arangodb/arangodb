@@ -91,7 +91,7 @@ bool AlignOutput(std::ostream &strm) {
 int AlignBufferWithOutputStream(std::ostream &strm,
                                 std::ostringstream &buffer) {
   const auto strm_pos = strm.tellp();
-  if (strm_pos == decltype(strm_pos)(-1)) {
+  if (strm_pos == -1) {
     LOG(ERROR) << "Cannot determine stream position";
     return -1;
   }
