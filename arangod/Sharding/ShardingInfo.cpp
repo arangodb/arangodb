@@ -484,9 +484,10 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
 }
 
 Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
-                                                        application_features::ApplicationServer const& server) {
+                                                        application_features::ApplicationServer const& server,
+                                                        bool enforceReplicationFactor) {
   if (slice.isObject()) {
-    auto const& cl = server.getFeature<ClusterFeature>();
+    auto& cl = server.getFeature<ClusterFeature>();
 
     auto numberOfShardsSlice = slice.get(StaticStrings::NumberOfShards);
     if (numberOfShardsSlice.isNumber()) {
@@ -501,25 +502,56 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
       TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) || !cl.forceOneShard()); 
     }
 
-    auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
-    if (replicationFactorSlice.isNumber()) {
-      int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
-      if (replicationFactorProbe <= 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
-      }
+    if (enforceReplicationFactor) {
+      auto enforceSlice = slice.get("enforceReplicationFactor");
+      if (!enforceSlice.isBool() || enforceSlice.getBool()) { 
+        auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
+        if (replicationFactorSlice.isNumber()) {
+          int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
+          if (replicationFactorProbe <= 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
+          }
 
-      uint32_t const minReplicationFactor = cl.minReplicationFactor();
-      uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
-      uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+          uint32_t const minReplicationFactor = cl.minReplicationFactor();
+          uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
+          uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
 
-      if (replicationFactor > maxReplicationFactor &&
-          maxReplicationFactor > 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
-      } else if (replicationFactor < minReplicationFactor &&
-          minReplicationFactor > 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+          // make sure the replicationFactor value is between the configured min and max values
+          if (replicationFactor > maxReplicationFactor &&
+              maxReplicationFactor > 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER,
+                          std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+          } else if (replicationFactor < minReplicationFactor &&
+              minReplicationFactor > 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER,
+                          std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+          }
+        
+          // make sure we have enough servers available for the replication factor
+          if (ServerState::instance()->isCoordinator() &&
+              replicationFactor > cl.clusterInfo().getCurrentDBServers().size()) { 
+            return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+          }
+        }
+
+        if (!replicationFactorSlice.isString()) {
+          // beware: "satellite" replicationFactor
+          auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
+          if (writeConcernSlice.isNone()) {
+            writeConcernSlice = slice.get(StaticStrings::MinReplicationFactor);
+          }
+
+          if (writeConcernSlice.isNumber()) {
+            int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
+            if (writeConcern <= 0) {
+              return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for writeConcern");
+            }
+            if (ServerState::instance()->isCoordinator() &&
+                static_cast<size_t>(writeConcern) > cl.clusterInfo().getCurrentDBServers().size()) { 
+              return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+            }
+          }
+        }
       }
     }
   }
