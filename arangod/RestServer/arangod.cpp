@@ -156,7 +156,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
         std::type_index(typeid(LoggerBufferFeature)),
-        std::type_index(typeid(MetricsFeature)),
         std::type_index(typeid(pregel::PregelFeature)),
         std::type_index(typeid(ServerFeature)),
         std::type_index(typeid(SslServerFeature)),
@@ -210,6 +209,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();
+    server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
     server.addFeature<PageSizeFeature>();
@@ -230,7 +230,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))});
     server.addFeature<SslFeature>();
     server.addFeature<StatisticsFeature>();
-    server.addFeature<MetricsFeature>();
     server.addFeature<StorageEngineFeature>();
     server.addFeature<SystemDatabaseFeature>();
     server.addFeature<TempFeature>(name);

@@ -194,7 +194,8 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   // Prepare a new request
   if (!_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
-    throw std::length_error("connection queue capacity exceeded");
+    item->invokeOnError(Error::QueueCapacityExceeded);
+    return 0;
   }
   item.release();  // queue owns this now
 

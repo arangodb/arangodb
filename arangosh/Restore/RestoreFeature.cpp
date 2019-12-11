@@ -308,9 +308,9 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
     if (properties.isObject()) {
       ObjectBuilder guard(&builder, "options");
       for(auto const& key : std::vector<std::string>{
-        arangodb::StaticStrings::MinReplicationFactor,
         arangodb::StaticStrings::ReplicationFactor,
         arangodb::StaticStrings::Sharding,
+        arangodb::StaticStrings::WriteConcern
       }) {
         VPackSlice slice = properties.get(key);
         if (!slice.isNone()) {
@@ -440,7 +440,7 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
   using arangodb::Logger;
   using arangodb::httpclient::SimpleHttpResult;
 
-  std::string url =
+  const std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
       std::string(options.overwrite ? "true" : "false") +
@@ -623,7 +623,7 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
                                 arangodb::RestoreFeature::JobData& jobData) {
   using arangodb::Logger;
 
-  arangodb::Result result;
+  arangodb::Result result{};
   VPackSlice const parameters = jobData.collection.get("parameters");
   VPackSlice const indexes = jobData.collection.get("indexes");
   // re-create indexes
@@ -656,6 +656,7 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
     }
   }
 
+  // cppcheck-suppress uninitvar ; false positive
   return result;
 }
 
@@ -1141,24 +1142,42 @@ arangodb::Result processInputDirectory(
 arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
                             arangodb::RestoreFeature::JobData& jobData) {
   arangodb::Result result;
-  if (jobData.options.indexesFirst && jobData.options.importStructure) {
-    // restore indexes first if we are using rocksdb
+
+  VPackSlice const parameters = jobData.collection.get("parameters");
+  std::string const cname =
+      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+
+  if (cname == "_users") {
+    // special case: never restore data in the _users collection first as it could
+    // potentially change user permissions. In that case index creation will fail.
     result = ::restoreIndexes(httpClient, jobData);
     if (result.fail()) {
       return result;
     }
-  }
-  if (jobData.options.importData) {
     result = ::restoreData(httpClient, jobData);
     if (result.fail()) {
       return result;
     }
-  }
-  if (!jobData.options.indexesFirst && jobData.options.importStructure) {
-    // restore indexes second if we are using mmfiles
-    result = ::restoreIndexes(httpClient, jobData);
-    if (result.fail()) {
-      return result;
+  } else {
+    if (jobData.options.indexesFirst && jobData.options.importStructure) {
+      // restore indexes first if we are using rocksdb
+      result = ::restoreIndexes(httpClient, jobData);
+      if (result.fail()) {
+        return result;
+      }
+    }
+    if (jobData.options.importData) {
+      result = ::restoreData(httpClient, jobData);
+      if (result.fail()) {
+        return result;
+      }
+    }
+    if (!jobData.options.indexesFirst && jobData.options.importStructure) {
+      // restore indexes second if we are using mmfiles
+      result = ::restoreIndexes(httpClient, jobData);
+      if (result.fail()) {
+        return result;
+      }
     }
   }
 

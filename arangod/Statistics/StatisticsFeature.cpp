@@ -187,7 +187,8 @@ void StatisticsFeature::prepare() {
 
   STATISTICS = this;
 
-  MetricsFeature::metrics()->serverStatistics().initialize(StatisticsFeature::time());
+  server().getFeature<MetricsFeature>().serverStatistics().initialize(
+    StatisticsFeature::time());
   ConnectionStatistics::initialize();
   RequestStatistics::initialize();
 }
