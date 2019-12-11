@@ -1,27 +1,28 @@
 #!/bin/sh
+# Limitation - This script can not work with filenames containing spaces
 
-if [ "x$@" = "x" ] ; then
+if [ -z "$*" ] ; then
   JAVASCRIPT_JSLINT="\
-    `find ./js/actions -name "*.js"` \
-    `find ./js/common/bootstrap -name "*.js"` \
-    `find ./js/client/bootstrap -name "*.js"` \
-    `find ./js/server/bootstrap -name "*.js"` \
+    $(find ./js/actions -name "*.js") \
+    $(find ./js/common/bootstrap -name "*.js") \
+    $(find ./js/client/bootstrap -name "*.js") \
+    $(find ./js/server/bootstrap -name "*.js") \
     \
-    `find ./js/common/modules/@arangodb -name "*.js"` \
-    `find ./js/client/modules/@arangodb -name "*.js"` \
-    `find ./js/server/modules/@arangodb -name "*.js"` \
-    `find ./tests/js/server -name "*.js" | grep -v "ranges-combined"` \
-    `find ./tests/js/common -name "*.js" | grep -v "test-data"` \
-    `find ./tests/js/client -name "*.js"` \
-    `find ./UnitTests -name "*.js"` \
+    $(find ./js/common/modules/@arangodb -name "*.js") \
+    $(find ./js/client/modules/@arangodb -name "*.js") \
+    $(find ./js/server/modules/@arangodb -name "*.js") \
+    $(find ./tests/js/server -name "*.js" | grep -v "ranges-combined") \
+    $(find ./tests/js/common -name "*.js" | grep -v "test-data") \
+    $(find ./tests/js/client -name "*.js") \
+    $(find ./UnitTests -name "*.js") \
     \
-    `find ./js/apps/system/_admin/aardvark/APP/frontend/js/models -name "*.js"` \
-    `find ./js/apps/system/_admin/aardvark/APP/frontend/js/views -name "*.js"` \
-    `find ./js/apps/system/_admin/aardvark/APP/frontend/js/collections -name "*.js"` \
-    `find ./js/apps/system/_admin/aardvark/APP/frontend/js/routers -name "*.js"` \
-    `find ./js/apps/system/_admin/aardvark/APP/frontend/js/arango -name "*.js"` \
+    $(find ./js/apps/system/_admin/aardvark/APP/frontend/js/models -name "*.js") \
+    $(find ./js/apps/system/_admin/aardvark/APP/frontend/js/views -name "*.js") \
+    $(find ./js/apps/system/_admin/aardvark/APP/frontend/js/collections -name "*.js") \
+    $(find ./js/apps/system/_admin/aardvark/APP/frontend/js/routers -name "*.js") \
+    $(find ./js/apps/system/_admin/aardvark/APP/frontend/js/arango -name "*.js") \
     \
-    `find ./scripts -name "*.js"` \
+    $(find ./scripts -name "*.js") \
     \
     ./js/common/modules/jsunity.js \
     ./js/client/client.js \
@@ -34,16 +35,15 @@ if [ "x$@" = "x" ] ; then
   if [ -d ./enterprise ] ; then
     echo Considering enterprise files...
     JAVASCRIPT_JSLINT="$JAVASCRIPT_JSLINT \
-      `find ./enterprise/js -name "*.js"` \
-      `find ./enterprise/tests/js -name "*.js"` \
+      $(find ./enterprise/js -name "*.js") \
+      $(find ./enterprise/tests/js -name "*.js") \
       "
   fi
 else
-  JAVASCRIPT_JSLINT="$@"
+  JAVASCRIPT_JSLINT="$*"
 fi
 
 FILELIST=""
-
 for file in ${JAVASCRIPT_JSLINT}; do
   FILELIST="${FILELIST} --jslint ${file}";
 done
@@ -58,10 +58,12 @@ if [ -z "${ARANGOSH}" ];  then
   fi
 fi
 
+# wordspitting is intentional here - no arrays in POSIX shells
+# shellcheck disable=2086
 exec $ARANGOSH \
     -c none \
     --log.level error \
     --log.file - \
     --server.password "" \
     --javascript.startup-directory ./js \
-    ${FILELIST} "$@"
+    ${FILELIST}
