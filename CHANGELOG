@@ -1,10 +1,14 @@
+v3.6.0-rc.2 (2019-XX-XX)
+------------------------
+
+* Fixed a permissions bug for /_admin/cluster/rebalanceShards.
+
+
 v3.6.0-rc.1 (2019-12-10)
 ------------------------
 
 * Renamed document / index / vertex "handle" to "identifier" / "id" for
   consistency in documentation and error messages.
-
-* Fixed a permissions bug for /_admin/cluster/rebalanceShards.
 
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
