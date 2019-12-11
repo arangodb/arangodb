@@ -62,7 +62,7 @@ TEST_F(NodeTest, node_name) {
   Node n(name);
 
   EXPECT_EQ(n.name(), name);
-  
+
 }
 
 
@@ -71,11 +71,11 @@ TEST_F(NodeTest, node_assign_string_slice) {
   std::string path("/a/b/c"), name("node"), val("test");
   Node n(name);
   auto b = std::make_shared<VPackBuilder>();
-  
+
   b->add(VPackValue(val));
   n(path) = b->slice();
   EXPECT_EQ(n(path).getString(), val);
-   
+
 }
 
 
@@ -85,11 +85,11 @@ TEST_F(NodeTest, node_assign_double_slice) {
   double val(8.1);
   Node n(name);
   auto b = std::make_shared<VPackBuilder>();
-  
+
   b->add(VPackValue(val));
   n(path) = b->slice();
   EXPECT_DOUBLE_EQ(n(path).getDouble(), val);
-   
+
 }
 
 TEST_F(NodeTest, node_assign_int_slice) {
@@ -98,11 +98,11 @@ TEST_F(NodeTest, node_assign_int_slice) {
   int val(8);
   Node n(name);
   auto b = std::make_shared<VPackBuilder>();
-  
+
   b->add(VPackValue(val));
   n(path) = b->slice();
   EXPECT_DOUBLE_EQ(n(path).getInt(), val);
-   
+
 }
 
 TEST_F(NodeTest, node_assign_array_slice) {
@@ -117,7 +117,7 @@ TEST_F(NodeTest, node_assign_array_slice) {
 
   n(path) = b->slice();
   EXPECT_EQ(n(path).getArray().binaryEquals(b->slice()), true);
-   
+
 }
 
 TEST_F(NodeTest, node_applyOp_set) {
@@ -187,10 +187,7 @@ TEST_F(NodeTest, node_applyOp_delete) {
   EXPECT_NE(ret.get(), nullptr);
   EXPECT_EQ(ret.get()->getDouble(), pi);
   EXPECT_NE(ret.get()->has(path), true);
-  
+
 }
 
 }}} //namespace
-
-
-
