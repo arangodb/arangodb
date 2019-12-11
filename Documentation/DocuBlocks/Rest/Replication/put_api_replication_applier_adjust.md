@@ -44,8 +44,7 @@ adaptive polling is thus useful to reduce the amount of work for both the
 applier and the logger server for cases when there are only infrequent
 changes. The downside is that when using adaptive polling, it might take
 longer for the replication applier to detect that there are new replication
-events on the logger server.
-
+events on the logger server.<br>
 Setting *adaptivePolling* to false will make the replication applier
 contact the logger server in a constant interval, regardless of whether
 the logger server provides updates frequently or seldom.
@@ -93,8 +92,8 @@ to the master in case there is no write activity on the master.
 This value will be ignored if set to *0*.
 
 @RESTBODYPARAM{idleMaxWaitTime,integer,optional,int64}
-the maximum wait time (in seconds) that the applier will intentionally idle 
-before fetching more log data from the master in case the master has 
+the maximum wait time (in seconds) that the applier will intentionally idle
+before fetching more log data from the master in case the master has
 already sent all its log data and there have been previous log fetch attempts
 that resulted in no more log data. This wait time can be used to control the
 maximum frequency with which the replication applier sends HTTP log fetch
@@ -106,13 +105,13 @@ This value will be ignored if set to *0*.
 @RESTBODYPARAM{requireFromPresent,boolean,required,}
 if set to *true*, then the replication applier will check
 at start whether the start tick from which it starts or resumes replication is
-still present on the master. If not, then there would be data loss. If 
+still present on the master. If not, then there would be data loss. If
 *requireFromPresent* is *true*, the replication applier will abort with an
 appropriate error message. If set to *false*, then the replication applier will
 still start, and ignore the data loss.
 
 @RESTBODYPARAM{verbose,boolean,required,}
-if set to *true*, then a log line will be emitted for all operations 
+if set to *true*, then a log line will be emitted for all operations
 performed by the replication applier. This should be used for debugging replication
 problems only.
 
@@ -169,4 +168,3 @@ is returned if an error occurred while assembling the response.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-
