@@ -963,8 +963,8 @@ void LogicalCollection::persistPhysicalCollection() {
   getPhysical()->setPath(path);
 }
 
-basics::ReadWriteLock& LogicalCollection::lock() {
-  return _lock;
+basics::ReadWriteLock& LogicalCollection::statusLock() {
+  return _statusLock;
 }
 
 /// @brief Defer a callback to be executed when the collection
