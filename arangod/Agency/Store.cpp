@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
+/// Disclaimer
 ///
 /// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
@@ -426,7 +426,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               }
               if (found) {
                 continue;
-              } 
+              }
               ret.push_back(precond.key);
             }
           }
@@ -437,7 +437,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         } else if (oper == "notin") {  // in
           if (!found) {
             continue;
-          } 
+          }
           if (node->slice().isArray()) {
             bool found = false;
             for (auto const& i : VPackArrayIterator(node->slice())) {
@@ -690,12 +690,12 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   }
 
   std::sort(idx.begin(), idx.end(),
-       [&abskeys](std::pair<size_t, VPackSlice> const& i1, std::pair<size_t, VPackSlice> const& i2) noexcept { 
-    return abskeys[i1.first] < abskeys[i2.first]; 
+       [&abskeys](std::pair<size_t, VPackSlice> const& i1, std::pair<size_t, VPackSlice> const& i2) noexcept {
+    return abskeys[i1.first] < abskeys[i2.first];
   });
 
   bool success = true;
-  
+
   for (const auto& i : idx) {
     Slice value = i.second;
 
