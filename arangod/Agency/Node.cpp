@@ -721,7 +721,7 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
 
   return ResultT<std::shared_ptr<Node>>::error(
     TRI_ERROR_FAILED,
-    std::string("Keyword 'op' without known operation. Handling as regular key: '") + oper + "'")
+    std::string("Unknown operation '") + oper + "'");
   
 }
 
