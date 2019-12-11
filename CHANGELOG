@@ -3,6 +3,8 @@ devel
 
 * Fixes acceptance of incomplete / unknown OP in agency.
 
+* Fixed uptime in _admin/statistics.
+
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
 
