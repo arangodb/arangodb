@@ -25,21 +25,18 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
+
 #include "SupervisedScheduler.h"
 #include "Scheduler.h"
 
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
-#include "Cluster/ServerState.h"
 #include "GeneralServer/Acceptor.h"
-#include "GeneralServer/RestHandler.h"
-#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
@@ -156,8 +153,10 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _wakeupQueueLength(5),
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),
+      _minNumWorker(minThreads),
       _maxNumWorker(maxThreads),
-      _numIdleWorker(minThreads),
+      _nrWorking(0),
+      _nrAwake(0),
       _maxFifoSize(maxQueueSize),
       _fifo1Size(fifo1Size),
       _fifo2Size(fifo2Size) {
@@ -226,19 +225,23 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
   // microsecond), therefore, we do not want to do it unnecessarily. However,
   // if we push work to a queue, we do not want a sleeping worker to sleep
   // for much longer, rather, we would like to have the work done.
-  // Therefore, we follow this algorithm: We walk through the threads, if any is
-  // currently sleeping, we wake it up. However, once we see a thread which is
-  // not sleeping and not working, then it is spinning. In this case we stop our
-  // efforts.
+  // Therefore, we follow this algorithm: If there is a spinning worker
+  // (i.e. _nrAwake > _nrWorking), then we do not try to wake up anybody.
+  // Furthermore, if nobody is sleeping, we also do not wake up anybody
+  // (i.e. _nrAwake >= _numWorker). Otherwise, we walk through the threads, and
+  // wake up the first we see which is sleeping.
+  uint64_t awake = _nrAwake.load(std::memory_order_relaxed);
+  if (awake > _nrWorking.load(std::memory_order_relaxed)) {
+    return true;
+  }
+  if (awake == _numWorkers) {
+    return true;
+  }
   std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
-  for (auto it = _workerStates.begin(); it != _workerStates.end(); ++it) {
-    auto& state = *it;
+  for (auto & state : _workerStates) {
     if (state->_sleeping) {
       std::unique_lock<std::mutex> guard2(state->_mutex);
       state->_conditionWork.notify_one();
-      break;
-    }
-    if (!state->_working) {
       break;
     }
   }
@@ -247,7 +250,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
 }
 
 bool SupervisedScheduler::start() {
-  _manager.reset(new SupervisedSchedulerManagerThread(_server, *this));
+  _manager = std::make_unique<SupervisedSchedulerManagerThread>(_server, *this);
   if (!_manager->start()) {
     LOG_TOPIC("00443", ERR, Logger::THREADS)
         << "could not start supervisor thread";
@@ -261,8 +264,7 @@ void SupervisedScheduler::shutdown() {
   {
     std::unique_lock<std::mutex> guard(_mutex);
     _stopping = true;
-    for (auto it = _workerStates.begin(); it != _workerStates.end(); ++it) {
-      std::shared_ptr<WorkerState>& state = *it;
+    for (auto & state : _workerStates) {
       std::unique_lock<std::mutex> guard2(state->_mutex);
       state->_stop = true;
       state->_conditionWork.notify_one();
@@ -334,7 +336,7 @@ void SupervisedScheduler::runWorker() {
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
     _conditionSupervisor.notify_one();
   }
-
+  _nrAwake.fetch_add(1, std::memory_order_relaxed);
   while (true) {
     try {
       std::unique_ptr<WorkItem> work = getWork(state);
@@ -346,8 +348,10 @@ void SupervisedScheduler::runWorker() {
 
       state->_lastJobStarted = clock::now();
       state->_working = true;
+      _nrWorking.fetch_add(1, std::memory_order_relaxed);
       work->_handler();
       state->_working = false;
+      _nrWorking.fetch_sub(1, std::memory_order_relaxed);
     } catch (std::exception const& ex) {
       LOG_TOPIC("a235e", ERR, Logger::THREADS)
           << "scheduler loop caught exception: " << ex.what();
@@ -358,10 +362,11 @@ void SupervisedScheduler::runWorker() {
 
     _jobsDone.fetch_add(1, std::memory_order_release);
   }
+  _nrAwake.fetch_sub(1, std::memory_order_relaxed);
 }
 
 void SupervisedScheduler::runSupervisor() {
-  while (_numWorkers < _numIdleWorker) {
+  while (_numWorkers < _minNumWorker) {
     startOneThread();
   }
 
@@ -381,18 +386,8 @@ void SupervisedScheduler::runSupervisor() {
 
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
-    bool sleeperFound = false;
-    {
-      // Now see if anybody is sleeping, if not, we want to start another thread after all:
-      std::unique_lock<std::mutex> guard(_mutex);
-      for (auto it = _workerStates.begin(); it != _workerStates.end(); ++it) {
-        WorkerState& state = **it;
-        if (!state._working) {   // a sleeper!
-          sleeperFound = true;
-          break;
-        }
-      }
-    }
+    uint64_t awake = _nrAwake.load(std::memory_order_relaxed);
+    bool sleeperFound = (awake < _numWorkers.load(std::memory_order_relaxed));
 
     bool doStartOneThread = (((queueLength >= 3 * _numWorkers) &&
                               ((lastQueueLength + _numWorkers) < queueLength)) ||
@@ -412,7 +407,7 @@ void SupervisedScheduler::runSupervisor() {
       if (doStartOneThread && _numWorkers < _maxNumWorker) {
         jobsStallingTick = 0;
         startOneThread();
-      } else if (doStopOneThread && _numWorkers > _numIdleWorker) {
+      } else if (doStopOneThread && _numWorkers > _minNumWorker) {
         stopOneThread();
       }
 
@@ -553,12 +548,14 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       break;
     }
     state->_sleeping = true;
+    _nrAwake.fetch_sub(1, std::memory_order_relaxed);
     if (state->_sleepTimeout_ms == 0) {
       state->_conditionWork.wait(guard);
     } else {
       state->_conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
     state->_sleeping = false;
+    _nrAwake.fetch_add(1, std::memory_order_relaxed);
   }  // while
 
   return nullptr;
@@ -612,7 +609,7 @@ void SupervisedScheduler::stopOneThread() {
   std::shared_ptr<WorkerState> state;
   {
     std::unique_lock<std::mutex> guard(_mutex);
-    auto state = _workerStates.back();
+    state = _workerStates.back();
     _workerStates.pop_back();
     // Since the thread is effectively taken out of the pool, decrease the number of worker.
     _numWorkers--;

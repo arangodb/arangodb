@@ -134,10 +134,13 @@ class SupervisedScheduler final : public Scheduler {
     // cppcheck-suppress missingOverride
     bool start();
   };
-  size_t _maxNumWorker;
-  size_t _numIdleWorker;
+  size_t const _minNumWorker;
+  size_t const _maxNumWorker;
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
+  std::atomic<uint64_t> _nrWorking;   // Number of threads actually working
+  std::atomic<uint64_t> _nrAwake;     // Number of threads working or spinning
+                                      // (i.e. not sleeping)
 
   // The following mutex protects the lists _workerStates and
   // _abandonedWorkerStates, whenever one accesses any of these two
