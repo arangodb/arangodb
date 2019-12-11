@@ -1,10 +1,16 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed undefined behavior on node delete.
+
+* Fixed agency invalid operation.
+
+* Added google tests for Node.
+
 * Removed content from Documentation/Books, but keeping the subfolders.
   The documentation is in a separate repository (except DocuBlocks and Scripts):
   https://github.com/arangodb/docs.git
-  
+
 * Fix execution ability in CentOS 6 regarding newer boost.
 
 * Updated arangosync to 0.7.1.
@@ -29,10 +35,10 @@ v3.5.3 (2019-11-28)
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
 
-* Fixed issue #10440: Incorrect sorting with sort criteria partially covered 
+* Fixed issue #10440: Incorrect sorting with sort criteria partially covered
   by index.
 
-* Make the timeouts for replication requests (for active failover and master-slave 
+* Make the timeouts for replication requests (for active failover and master-slave
   replication configurable via startup options:
 
       --replication.connect-timeout
