@@ -27,7 +27,6 @@ of documents is considered an error.
 
 @RESTSTRUCT{lastValue,key_generator_type,integer,required,}
 
-
 @RESTSTRUCT{isVolatile,collection_info,boolean,required,}
 If *true* then the collection data will be
 kept in memory only and ArangoDB will not write or sync the data
@@ -43,9 +42,12 @@ determine the target shard for documents; *Cluster specific attribute.*
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
 contains how many copies of each shard are kept on different DBServers.; *Cluster specific attribute.*
 
-@RESTSTRUCT{minReplicationFactor,collection_info,integer,optional,}
-contains how many minimal copies of each shard need to be in sync on different DBServers.
-The shards will refuse to write, if we have less then these many copies in sync. *Cluster specific attribute.*
+@RESTSTRUCT{writeConcern,collection_info,integer,optional,}
+how many copies of each shard are required to be in sync on the different
+DBServers. If there are less then these many copies in the cluster a shard will
+refuse to write. Writes to shards with enough up-to-date copies will succeed
+at the same time however. The value of *writeConcern* can not be larger than
+*replicationFactor*. *Cluster specific attribute.*
 
 @RESTSTRUCT{shardingStrategy,collection_info,string,optional,}
 the sharding strategy selected for the collection; *Cluster specific attribute.*
@@ -82,8 +84,6 @@ corrosponds to **statusString**; *Only relevant for the MMFiles storage engine*
   - 4: "unloading"
   - 5: "deleted"
   - 6: "loading"
-
-
 
 @RESTSTRUCT{statusString,collection_info,string,optional,}
 any of: ["unloaded", "loading", "loaded", "unloading", "deleted", "unknown"] *Only relevant for the MMFiles storage engine*

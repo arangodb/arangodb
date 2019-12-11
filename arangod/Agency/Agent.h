@@ -188,6 +188,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   index_t index();
 
   /// @brief Start orderly shutdown of threads
+  // cppcheck-suppress virtualCallInConstructor
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
