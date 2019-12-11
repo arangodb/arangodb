@@ -81,10 +81,38 @@ install(
     ${PROJECT_SOURCE_DIR}/js/apps
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-  REGEX       "^.*/aardvark/APP/react/node_modules$"       EXCLUDE
+  REGEX       "^.*/aardvark/APP/frontend.*$"               EXCLUDE
+  REGEX       "^.*/aardvark/APP/react.*$"                  EXCLUDE
   REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
+
+set(APP_FILES
+ "frontend/img"
+ "react/build"
+)
+
+set(app_files_source_dir ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP)
+set(app_files_target_dir ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/apps/system/_admin/aardvark/APP)
+
+foreach (file ${APP_FILES})
+    get_filename_component(parent ${file} DIRECTORY)
+    if(IS_DIRECTORY ${app_files_source_dir}/${file})
+      install(
+        DIRECTORY
+          ${app_files_source_dir}/${file}
+        DESTINATION
+          ${app_files_target_dir}/${parent}
+        )
+    else()
+      install(
+        FILES
+          ${app_files_source_dir}/${file}
+        DESTINATION
+          ${app_files_target_dir}/${parent}
+      )
+    endif()
+endforeach()
 
 install(
   FILES
@@ -151,7 +179,7 @@ if (UNIX)
   # use pkgconfig for systemd detection
   find_package(PkgConfig QUIET)
   if(NOT PKG_CONFIG_FOUND)
-  	message(STATUS "pkg-config not found - skipping systemd detection")
+    message(STATUS "pkg-config not found - skipping systemd detection")
   else()
     set(SYSTEMD_UNIT_DIR "")
     message(STATUS "detecting systemd")

@@ -129,4 +129,3 @@ With some additional indexes:
     db._drop("IndexedCollection2");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

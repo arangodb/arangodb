@@ -58,7 +58,7 @@ std::string ActionDescription::get(std::string const& p) const {
 
 /// @brief Get parameter
 Result ActionDescription::get(std::string const& p, std::string& r) const {
-  Result result;
+  Result result{};
   auto const& it = _description.find(p);
   if (it == _description.end()) {
     result.reset(TRI_ERROR_FAILED);
