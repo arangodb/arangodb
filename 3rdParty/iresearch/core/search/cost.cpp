@@ -18,11 +18,10 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "cost.hpp"
+#include "shared.hpp"
 
 NS_ROOT
 

@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_MMAP_DIRECTORY_H
@@ -38,7 +37,7 @@ class IRESEARCH_API mmap_directory : public fs_directory {
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
-  ) const NOEXCEPT override final;
+  ) const noexcept override final;
 }; // mmap_directory
 
 NS_END // ROOT

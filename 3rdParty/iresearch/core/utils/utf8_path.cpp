@@ -310,44 +310,44 @@ utf8_path& utf8_path::operator/=(const std::wstring &ucs2_name) {
 return *this;
 }
 
-bool utf8_path::absolute(bool& result) const NOEXCEPT {
+bool utf8_path::absolute(bool& result) const noexcept {
   return irs::file_utils::absolute(result, c_str());
 }
 
-bool utf8_path::chdir() const NOEXCEPT {
+bool utf8_path::chdir() const noexcept {
   return irs::file_utils::set_cwd(c_str());
 }
 
-bool utf8_path::exists(bool& result) const NOEXCEPT {
+bool utf8_path::exists(bool& result) const noexcept {
   return irs::file_utils::exists(result, c_str());
 }
 
-bool utf8_path::exists_directory(bool& result) const NOEXCEPT {
+bool utf8_path::exists_directory(bool& result) const noexcept {
   return irs::file_utils::exists_directory(result, c_str());
 }
 
-bool utf8_path::exists_file(bool& result) const NOEXCEPT {
+bool utf8_path::exists_file(bool& result) const noexcept {
   return irs::file_utils::exists_file(result, c_str());
 }
 
-bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
+bool utf8_path::file_size(uint64_t& result) const noexcept {
   return irs::file_utils::byte_size(result, c_str());
 }
 
-bool utf8_path::mtime(time_t& result) const NOEXCEPT {
+bool utf8_path::mtime(time_t& result) const noexcept {
   return irs::file_utils::mtime(result, c_str());
 }
 
 
-bool utf8_path::mkdir(bool createNew /* = true*/) const NOEXCEPT {
+bool utf8_path::mkdir(bool createNew /* = true*/) const noexcept {
   return irs::file_utils::mkdir(c_str(), createNew); 
 }
 
-bool utf8_path::remove() const NOEXCEPT {
+bool utf8_path::remove() const noexcept {
   return irs::file_utils::remove(c_str());
 }
 
-bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {
+bool utf8_path::rename(const utf8_path& destination) const noexcept {
   return irs::file_utils::move(c_str(), destination.c_str());
 }
 
@@ -368,11 +368,11 @@ void utf8_path::clear() {
   path_.clear();
 }
 
-const utf8_path::native_char_t* utf8_path::c_str() const NOEXCEPT {
+const utf8_path::native_char_t* utf8_path::c_str() const noexcept {
   return path_.c_str();
 }
 
-const utf8_path::native_str_t& utf8_path::native() const NOEXCEPT {
+const utf8_path::native_str_t& utf8_path::native() const noexcept {
   return path_;
 }
 
