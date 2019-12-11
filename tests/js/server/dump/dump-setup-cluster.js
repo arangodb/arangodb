@@ -136,18 +136,18 @@ function setupSatelliteCollections() {
   var analyzers = require("@arangodb/analyzers");
   var i, c;
 
-  try {
-    db._dropDatabase("UnitTestsDumpSrc");
-  } catch (err1) {
-  }
-  db._createDatabase("UnitTestsDumpSrc");
+  let createOptions = {};
 
-  try {
-    db._dropDatabase("UnitTestsDumpDst");
-  } catch (err2) {
-  }
-  db._createDatabase("UnitTestsDumpDst");
+  ["UnitTestsDumpSrc", "UnitTestsDumpDst", "UnitTestsDumpProperties1", "UnitTestsDumpProperties2"].forEach(function(name) {
+    try {
+      db._dropDatabase(name);
+    } catch (err) {}
+  });
 
+  db._createDatabase("UnitTestsDumpProperties1", { replicationFactor: 1, writeConcern: 1 });
+  db._createDatabase("UnitTestsDumpProperties2", { replicationFactor: 2, writeConcern: 2, sharding: "single" });
+  db._createDatabase("UnitTestsDumpSrc", { replicationFactor: 2, writeConcern: 2 });
+  db._createDatabase("UnitTestsDumpDst", { replicationFactor: 2, writeConcern: 2 });
 
   db._useDatabase("UnitTestsDumpSrc");
 
@@ -303,7 +303,7 @@ function setupSatelliteCollections() {
   setupSmartArangoSearch();
   setupSatelliteCollections();
 
-  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
+  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 2, numberOfShards: 7 });
   db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
 
   // Install Foxx

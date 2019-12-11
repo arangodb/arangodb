@@ -138,27 +138,28 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   }
 
   if (!isASatellite) {
-    auto writeConcernSlice = info.get(StaticStrings::MinReplicationFactor);
+    auto writeConcernSlice = info.get(StaticStrings::WriteConcern);
+    if (writeConcernSlice.isNone()) { // minReplicationFactor is deprecated in 3.6
+      writeConcernSlice = info.get(StaticStrings::MinReplicationFactor);
+    }
     if (!writeConcernSlice.isNone()) {
       if (writeConcernSlice.isNumber()) {
         _writeConcern = writeConcernSlice.getNumber<size_t>();
         if (!isSatellite() && _writeConcern > _replicationFactor) {
-          // note: writeConcern is named minReplicationFactor in the API for historical reasons
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              "minReplicationFactor cannot be larger than replicationFactor (" +
+              "writeConcern cannot be larger than replicationFactor (" +
                   basics::StringUtils::itoa(_writeConcern) + " > " +
                   basics::StringUtils::itoa(_replicationFactor) + ")");
         }
         if (!isSatellite() && _writeConcern == 0) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "minReplicationFactor cannot be 0");
+                                         "writeConcern cannot be 0");
         }
       } else {
-        // note: writeConcern is named minReplicationFactor in the API for historical reasons
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "minReplicationFactor needs to be an integer number");
+            "writeConcern needs to be an integer number");
       }
     }
   }
@@ -300,6 +301,8 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
     result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
   }
 
+  // minReplicationFactor deprecated in 3.6
+  result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
   result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
 
   if (!_distributeShardsLike.empty() && ServerState::instance()->isCoordinator()) {
@@ -381,10 +384,9 @@ size_t ShardingInfo::replicationFactor() const {
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
   if (!isSatellite() && replicationFactor < _writeConcern) {
-    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "replicationFactor cannot be smaller than minReplicationFactor (" +
+        "replicationFactor cannot be smaller than writeConcern (" +
             basics::StringUtils::itoa(_replicationFactor) + " < " +
             basics::StringUtils::itoa(_writeConcern) + ")");
   }
@@ -398,10 +400,9 @@ size_t ShardingInfo::writeConcern() const {
 
 void ShardingInfo::writeConcern(size_t writeConcern) {
   if (!isSatellite() && writeConcern > _replicationFactor) {
-    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "minReplicationFactor cannot be larger than replicationFactor (" +
+        "writeConcern cannot be larger than replicationFactor (" +
             basics::StringUtils::itoa(_writeConcern) + " > " +
             basics::StringUtils::itoa(_replicationFactor) + ")");
   }
@@ -410,10 +411,9 @@ void ShardingInfo::writeConcern(size_t writeConcern) {
 
 void ShardingInfo::setWriteConcernAndReplicationFactor(size_t writeConcern, size_t replicationFactor) {
   if (writeConcern > replicationFactor) {
-    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "minReplicationFactor cannot be larger than replicationFactor (" +
+        "writeConcern cannot be larger than replicationFactor (" +
             basics::StringUtils::itoa(writeConcern) + " > " +
             basics::StringUtils::itoa(replicationFactor) + ")");
   }
@@ -484,9 +484,10 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
 }
 
 Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
-                                                        application_features::ApplicationServer const& server) {
+                                                        application_features::ApplicationServer const& server,
+                                                        bool enforceReplicationFactor) {
   if (slice.isObject()) {
-    auto const& cl = server.getFeature<ClusterFeature>();
+    auto& cl = server.getFeature<ClusterFeature>();
 
     auto numberOfShardsSlice = slice.get(StaticStrings::NumberOfShards);
     if (numberOfShardsSlice.isNumber()) {
@@ -501,25 +502,56 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
       TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) || !cl.forceOneShard()); 
     }
 
-    auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
-    if (replicationFactorSlice.isNumber()) {
-      int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
-      if (replicationFactorProbe <= 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
-      }
+    if (enforceReplicationFactor) {
+      auto enforceSlice = slice.get("enforceReplicationFactor");
+      if (!enforceSlice.isBool() || enforceSlice.getBool()) { 
+        auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
+        if (replicationFactorSlice.isNumber()) {
+          int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
+          if (replicationFactorProbe <= 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
+          }
 
-      uint32_t const minReplicationFactor = cl.minReplicationFactor();
-      uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
-      uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+          uint32_t const minReplicationFactor = cl.minReplicationFactor();
+          uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
+          uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
 
-      if (replicationFactor > maxReplicationFactor &&
-          maxReplicationFactor > 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
-      } else if (replicationFactor < minReplicationFactor &&
-          minReplicationFactor > 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+          // make sure the replicationFactor value is between the configured min and max values
+          if (replicationFactor > maxReplicationFactor &&
+              maxReplicationFactor > 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER,
+                          std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+          } else if (replicationFactor < minReplicationFactor &&
+              minReplicationFactor > 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER,
+                          std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+          }
+        
+          // make sure we have enough servers available for the replication factor
+          if (ServerState::instance()->isCoordinator() &&
+              replicationFactor > cl.clusterInfo().getCurrentDBServers().size()) { 
+            return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+          }
+        }
+
+        if (!replicationFactorSlice.isString()) {
+          // beware: "satellite" replicationFactor
+          auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
+          if (writeConcernSlice.isNone()) {
+            writeConcernSlice = slice.get(StaticStrings::MinReplicationFactor);
+          }
+
+          if (writeConcernSlice.isNumber()) {
+            int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
+            if (writeConcern <= 0) {
+              return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for writeConcern");
+            }
+            if (ServerState::instance()->isCoordinator() &&
+                static_cast<size_t>(writeConcern) > cl.clusterInfo().getCurrentDBServers().size()) { 
+              return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+            }
+          }
+        }
       }
     }
   }

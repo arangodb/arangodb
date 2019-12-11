@@ -97,27 +97,6 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts))
                      .setIntroducedIn(30600);
-
-  _gcfunc = [this](bool canceled) {
-    if (canceled) {
-      return;
-    }
-
-    _pool->pruneConnections();
-
-    if (server().hasFeature<ClusterFeature>()) {
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto failed = ci.getFailedServers();
-      for (ServerID const& f : failed) {
-        _pool->cancelConnections(f);
-      }
-    }
-
-    if (!server().isStopping() && !canceled) {
-      std::chrono::seconds off(12);
-      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
-    }
-  };
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
@@ -131,17 +110,45 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 }
 
 void NetworkFeature::prepare() {
+  
+  ClusterInfo* ci = nullptr;
+  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
+     ci = &server().getFeature<ClusterFeature>().clusterInfo();
+  }
+
   network::ConnectionPool::Config config;
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
   config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
-  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
-    config.clusterInfo = &server().getFeature<ClusterFeature>().clusterInfo();
-  }
+  config.clusterInfo = ci;
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
+  
+  _gcfunc = [this, ci](bool canceled) {
+    if (canceled) {
+      return;
+    }
+
+    _pool->pruneConnections();
+
+    if (ci != nullptr) {
+      auto failed = ci->getFailedServers();
+      for (ServerID const& srvId : failed) {
+        std::string endpoint = ci->getServerEndpoint(srvId);
+        size_t n = _pool->cancelConnections(endpoint);
+        LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
+            << "canceling " << n << " connection(s) to failed server '"
+            << srvId << "' on endpoint '" << endpoint << "'";
+      }
+    }
+
+    if (!server().isStopping() && !canceled) {
+      std::chrono::seconds off(12);
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
+    }
+  };
 }
 
 void NetworkFeature::start() {

@@ -27,6 +27,9 @@ const isCluster = cluster.isCluster();
 const tasks = require('@arangodb/tasks');
 const db = require('@arangodb').db;
 const foxxManager = require('@arangodb/foxx/manager');
+const wait = require('internal').wait;
+const warn = require('console').warn;
+const errors = require('internal').errors;
 
 const coordinatorId = (
   isCluster && cluster.isCoordinator()
@@ -77,7 +80,14 @@ var runInDatabase = function () {
             if (isCluster) {
               update.startedBy = coordinatorId;
             }
-            db._jobs.update(job, update);
+            const updateQuery = global.aqlQuery`
+            UPDATE ${job} WITH ${update} IN _jobs
+            `;
+            updateQuery.options = { ttl: 5 };
+
+            db._query(updateQuery);
+            // db._jobs.update(job, update);
+
             tasks.register({
               command: function (cfg) {
                 var db = require('@arangodb').db;
@@ -108,22 +118,35 @@ var runInDatabase = function () {
 
 const resetDeadJobs = function () {
   const queues = require('@arangodb/foxx/queues');
+  var query = global.aqlQuery`
+      FOR doc IN _jobs
+        FILTER doc.status == 'progress'
+          UPDATE doc
+        WITH { status: 'pending' }
+        IN _jobs`;
+  query.options = { ttl: 5 };
 
   const initialDatabase = db._name();
   db._databases().forEach(function (name) {
     try {
       db._useDatabase(name);
-      db._jobs.toArray().filter(function (job) {
-        return job.status === 'progress';
-      }).forEach(function (job) {
-        db._jobs.update(job._id, {status: 'pending'});
-      });
+      var ok = false;
+      while (!ok) {
+        try {
+          db._query(query);
+          ok = true;
+        } catch(e) {
+          warn("Exception while resetting dead jobs " + e.message, " retrying in 10s");
+          wait(10);
+        }
+      }
       if (!isCluster) {
         queues._updateQueueDelay();
       } else {
         global.KEYSPACE_CREATE('queue-control', 1, true);
       }
     } catch (e) {
+      warn("Exception while resetting dead jobs " + e.message);
       // noop
     }
   });
@@ -171,8 +194,9 @@ exports.manage = function () {
     resetDeadJobsOnFirstRun();
     if (isCluster) {
       var foxxQueues = require('@arangodb/foxx/queues');
+
       foxxQueues._updateQueueDelay();
-    } 
+    }
     // do not call again immediately
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
   }
@@ -210,7 +234,15 @@ exports.manage = function () {
         runInDatabase();
       }
     } catch (e) {
-      // noop
+      // it is possible that the underlying database is deleted while we are in here.
+      // this is not an error
+      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
+        warn("An exception occurred while setting up foxx queue handling in database '"
+              + database + "' "
+              + e.message + " "
+              + JSON.stringify(e));
+        // noop
+      }
     }
   });
 

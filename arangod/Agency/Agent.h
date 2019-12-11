@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Agency/Supervision.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/MetricsFeature.h"
 
 struct TRI_vocbase_t;
 
@@ -187,6 +188,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   index_t index();
 
   /// @brief Start orderly shutdown of threads
+  // cppcheck-suppress virtualCallInConstructor
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
@@ -475,8 +477,16 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
+  Counter& _write_ok;
+  Counter& _write_no_leader;
+  Counter& _read_ok;
+  Counter& _read_no_leader;
+  Histogram<double>& _write_hist_msec;
+  
 };
 }  // namespace consensus
 }  // namespace arangodb
 
 #endif
+ 

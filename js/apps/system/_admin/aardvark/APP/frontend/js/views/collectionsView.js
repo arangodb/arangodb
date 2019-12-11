@@ -445,7 +445,7 @@
           try {
             if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
               // validation here, as our Joi integration misses some core features
-              arangoHelper.arangoError("New Collection", "Minimum replication factor is not allowed to be greater than replication factor");
+              arangoHelper.arangoError("New Collection", "Write concern is not allowed to be greater than replication factor");
               abort = true;
             }
           } catch (ignore) {
@@ -491,7 +491,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_api/database/properties'), //get default properties of current db
+          url: arangoHelper.databaseUrl('/_api/database/current'), //get default properties of current db
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -646,9 +646,9 @@
             advancedTableContent.push(
               window.modalView.createTextEntry(
                 'new-write-concern',
-                'Minimum replication factor',
+                'Write concern',
                 ['', 'flexible'].indexOf(properties.sharding) !== -1 ? properties.minReplicationFactor : '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+                'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
                 '',
                 false,
                 [

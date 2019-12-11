@@ -154,7 +154,7 @@ TEST_F(ExecutionBlockImplTest,
 }
 
 TEST_F(ExecutionBlockImplTest,
-       there_is_a_block_in_the_upstream_with_now_rows_inside_the_executor_waits_using_skipsome) {
+       there_is_a_block_in_the_upstream_with_no_rows_inside_the_executor_waits_using_skipsome) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
   SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   blockDeque.push_back(std::move(block));

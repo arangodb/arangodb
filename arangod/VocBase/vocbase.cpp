@@ -360,7 +360,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
 /// @brief drops a collection
 /*static */ bool TRI_vocbase_t::DropCollectionCallback(arangodb::LogicalCollection& collection) {
   {
-    WRITE_LOCKER_EVENTUAL(statusLock, collection._lock);
+    WRITE_LOCKER_EVENTUAL(statusLock, collection.statusLock());
 
     if (TRI_VOC_COL_STATUS_DELETED != collection.status()) {
       LOG_TOPIC("57377", ERR, arangodb::Logger::FIXME)
@@ -461,7 +461,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
       return TRI_set_errno(TRI_ERROR_FORBIDDEN);
     }
 
-    READ_LOCKER_EVENTUAL(locker, collection->_lock);
+    READ_LOCKER_EVENTUAL(locker, collection->statusLock());
 
     // return original status to the caller
     if (setStatus) {
@@ -488,7 +488,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // write lock
   // .............................................................................
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
+  WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
 
   // someone else loaded the collection, release the WRITE lock and try again
   if (collection->status() == TRI_VOC_COL_STATUS_LOADED) {
@@ -534,7 +534,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     while (true) {
       TRI_vocbase_col_status_e status;
       {
-        READ_LOCKER_EVENTUAL(readLocker, collection->_lock);
+        READ_LOCKER_EVENTUAL(readLocker, collection->statusLock());
         status = collection->status();
       }
 
@@ -626,7 +626,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   // do not acquire these locks instantly
   RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner,
                                basics::ConditionalLocking::DoNotLock);
-  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, basics::ConditionalLocking::DoNotLock);
+  CONDITIONAL_WRITE_LOCKER(locker, collection->statusLock(), basics::ConditionalLocking::DoNotLock);
 
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
@@ -805,7 +805,7 @@ void TRI_vocbase_t::shutdown() {
   // starts unloading of collections
   for (auto& collection : collections) {
     {
-      WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+      WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
       collection->close();  // required to release indexes
     }
     unloadCollection(collection.get(), true);
@@ -911,10 +911,16 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   }
 
   ExecContext const& exec = ExecContext::current();
+
+  result.add(VPackValue(arangodb::StaticStrings::Properties));
+  result.openObject();
+  _info.toVelocyPack(result);
+  result.close();
+
   result.add("collections", VPackValue(VPackValueType::Array));
   std::string const& dbName = _info.getName();
   for (auto& collection : collections) {
-    READ_LOCKER(readLocker, collection->_lock);
+    READ_LOCKER(readLocker, collection->statusLock());
 
     if (collection->status() == TRI_VOC_COL_STATUS_DELETED ||
         collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
@@ -1152,7 +1158,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
 /// @brief unloads a collection
 int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, bool force) {
   {
-    WRITE_LOCKER_EVENTUAL(locker, collection->_lock);
+    WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
 
     // cannot unload a corrupted collection
     if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
@@ -1179,7 +1185,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection, boo
         TRI_vocbase_col_status_e status;
 
         {
-          READ_LOCKER_EVENTUAL(readLocker, collection->_lock);
+          READ_LOCKER_EVENTUAL(readLocker, collection->statusLock());
           status = collection->status();
         }
 
@@ -1393,7 +1399,7 @@ arangodb::Result TRI_vocbase_t::renameCollection(TRI_voc_cid_t cid,
   READ_LOCKER(readLocker, _inventoryLock);
 
   RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner, false);
-  CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
+  CONDITIONAL_WRITE_LOCKER(locker, collection->statusLock(), false);
 
   while (true) {
     TRI_ASSERT(!writeLocker.isLocked());
@@ -1525,7 +1531,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::useCollectionInterna
 
 /// @brief releases a collection from usage
 void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
-  collection->_lock.unlock();
+  collection->statusLock().unlock();
 }
 
 /// @brief creates a new view from parameter set
@@ -1741,7 +1747,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
   // do a final cleanup of collections
   for (auto& it : _collections) {
-    WRITE_LOCKER_EVENTUAL(locker, it->lock());
+    WRITE_LOCKER_EVENTUAL(locker, it->statusLock());
     it->close();  // required to release indexes
   }
 
@@ -1815,13 +1821,13 @@ void TRI_vocbase_t::addReplicationApplier() {
 }
 
 void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
-    VPackObjectBuilder b(&result);
-    _info.toVelocyPack(result);
-    if (ServerState::instance()->isCoordinator()) {
-      result.add("path", VPackValue(path()));
-    } else {
-      result.add("path", VPackValue("none"));
-    }
+  VPackObjectBuilder b(&result);
+  _info.toVelocyPack(result);
+  if (ServerState::instance()->isCoordinator()) {
+    result.add("path", VPackValue(path()));
+  } else {
+    result.add("path", VPackValue("none"));
+  }
 }
 
 /// @brief sets prototype collection for sharding (_users or _graphs)
@@ -1833,7 +1839,7 @@ void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
 ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
   return _info.shardingPrototype();
 }
-  
+
 /// @brief gets name of prototype collection for sharding (_users or _graphs)
 std::string const& TRI_vocbase_t::shardingPrototypeName() const {
   return _info.shardingPrototype() == ShardingPrototype::Users ? StaticStrings::UsersCollection : StaticStrings::GraphCollection;

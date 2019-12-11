@@ -206,9 +206,17 @@ class AqlItemBlock {
   /// to which our AqlValues point will vanish.
   SharedAqlItemBlockPtr steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
-  /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
-  /// be used to recreate the AqlItemBlock via the Json constructor
+  /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
+  /// can be used to recreate the AqlItemBlock via the Json constructor
   void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  /// @brief toJson, transfer a slice of this AqlItemBlock to Json, the result can
+  /// be used to recreate the AqlItemBlock via the Json constructor
+  /// The slice will be starting at line `from` (including) and end at line `to` (excluding).
+  /// Only calls with 0 <= from < to <= this.size() are allowed.
+  /// If you want to transfer the full block, use from == 0, to == this.size()
+  void toVelocyPack(size_t from, size_t to, velocypack::Options const*,
+                    arangodb::velocypack::Builder&) const;
 
   /// @brief Creates a human-readable velocypack of the block. Adds an object
   /// `{nrItems, nrRegs, matrix}` to the builder.
@@ -250,6 +258,16 @@ class AqlItemBlock {
   /// @brief Quick test if we have any ShadowRows within this block;
   bool hasShadowRows() const noexcept;
 
+  /// @brief Moves all values *from* source *to* this block.
+  /// Returns the row index of the last written row plus one (may equal size()).
+  /// Expects size() - targetRow >= source->size(); and, of course, an equal
+  /// number of registers.
+  /// The source block will be cleared after this.
+  size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
+
+  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
+                                       size_t sourceRow);
+
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
   size_t getRefCount() const noexcept;
@@ -266,9 +284,6 @@ class AqlItemBlock {
   size_t getSubqueryDepthAddress(size_t index) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
-
-  void copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
-                                     size_t sourceRow, size_t targetRow) const;
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems

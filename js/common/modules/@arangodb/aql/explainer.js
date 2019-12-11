@@ -1120,23 +1120,35 @@ function processQuery(query, explain, planIndex) {
           }
 
           sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
-            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
+            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
           }).join(', ');
         }
 
         var scorers = '';
         if (node.scorers && node.scorers.length > 0) {
-          scorers = keyword(' LET ') + node.scorers.map(function (scorer) {
-            return variableName(scorer) + ' = ' + buildExpression(scorer.node);
-          }).join(', ');
+          scorers = node.scorers.map(function (scorer) {
+            return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
+          }).join('');
         }
         let viewAnnotation = '/* view query';
+        let viewVariables = '';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
           viewAnnotation += ' with late materialization';
+          if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
+            viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
+              if (viewValuesColumn.hasOwnProperty('field')) {
+                return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+              } else {
+                return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
+                  return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+                }).join('');
+              }
+            }).join('');
+          }
         }
-        viewAnnotation +=  ' */';
-        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + 
-               view(node.view) + condition + sortCondition + scorers +
+        viewAnnotation += ' */';
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
+               view(node.view) + condition + sortCondition + scorers + viewVariables +
                '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
@@ -1147,9 +1159,9 @@ function processQuery(query, explain, planIndex) {
         let indexVariables = '';
         if (node.hasOwnProperty('outNmDocId')) {
           indexAnnotation += '/* with late materialization */';
-          if (node.hasOwnProperty('IndexValuesVars') && node.IndexValuesVars.length > 0) {
-            indexVariables = node.IndexValuesVars.map(function (IndexValuesVar) {
-              return keyword(' LET ') + variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
+          if (node.hasOwnProperty('indexValuesVars') && node.indexValuesVars.length > 0) {
+            indexVariables = node.indexValuesVars.map(function (indexValuesVar) {
+              return keyword(' LET ') + variableName(indexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(indexValuesVar.field);
             }).join('');
           }
         }
@@ -1483,7 +1495,7 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryStartNode':
         return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
-        return `) ${annotation(`/* subquery end */`)}`;
+        return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';

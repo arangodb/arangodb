@@ -63,10 +63,15 @@ class SortExecutorInfos : public ExecutorInfos {
 
   [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
 
-  std::vector<SortRegister>& sortRegisters();
+  [[nodiscard]] std::vector<SortRegister> const& sortRegisters() const noexcept;
 
-  bool stable() const;
+  [[nodiscard]] bool stable() const;
 
+  [[nodiscard]] size_t limit() const noexcept;
+
+  [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept;
+
+ private:
   std::size_t _limit;
   AqlItemBlockManager& _manager;
   velocypack::Options const* _vpackOptions;

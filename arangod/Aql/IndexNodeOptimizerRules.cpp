@@ -25,30 +25,20 @@
 #include "Aql/Condition.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
+#include "Aql/LateMaterializedOptimizerRulesCommon.h"
+#include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
 #include "IndexNodeOptimizerRules.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"
 
-using EN = arangodb::aql::ExecutionNode;
+using namespace arangodb::aql;
 
 namespace {
-  struct NodeWithAttrs {
-    struct AttributeAndField {
-      std::vector<arangodb::basics::AttributeName> attr;
-      arangodb::aql::AstNode* astNode;
-      size_t astNodeChildNum;
-      size_t indexFieldNum;
-      std::vector<arangodb::basics::AttributeName> const* indexField;
-    };
-
-    std::vector<AttributeAndField> attrs;
-    arangodb::aql::CalculationNode* node;
-  };
-
-  bool attributesMatch(TRI_idx_iid_t& commonIndexId, arangodb::aql::IndexNode const* indexNode, NodeWithAttrs& node) {
+  bool attributesMatch(TRI_idx_iid_t& commonIndexId, IndexNode const* indexNode, latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>& node) {
     // check all node attributes to be in index
     for (auto& nodeAttr : node.attrs) {
+      nodeAttr.afData.field = nullptr;
       for (auto& index : indexNode->getIndexes()) {
         if (!index->hasCoveringIterator()) {
           continue;
@@ -64,143 +54,77 @@ namespace {
             if (commonIndexId == 0) {
               commonIndexId = indexId;
             }
-            nodeAttr.indexFieldNum = indexFieldNum;
-            nodeAttr.indexField = &field;
+            nodeAttr.afData.fieldNumber = indexFieldNum;
+            nodeAttr.afData.field = &field;
             break;
           }
           ++indexFieldNum;
         }
-        if (nodeAttr.indexField != nullptr) {
+        if (commonIndexId != 0 || nodeAttr.afData.field != nullptr) {
           break;
         }
       }
       // not found
-      if (nodeAttr.indexField == nullptr) {
+      if (nodeAttr.afData.field == nullptr) {
         return false;
       }
     }
     return true;
   }
 
-  // traverse the AST, using previsitor
-  void traverseReadOnly(arangodb::aql::AstNode* node, arangodb::aql::AstNode* parentNode, size_t childNumber,
-                        std::function<bool(arangodb::aql::AstNode const*, arangodb::aql::AstNode*, size_t)> const& preVisitor) {
-    if (node == nullptr) {
-      return;
-    }
-
-    if (!preVisitor(node, parentNode, childNumber)) {
-      return;
-    }
-
-    size_t const n = node->numMembers();
-
-    for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMemberUnchecked(i);
-
-      if (member != nullptr) {
-        traverseReadOnly(member, node, i, preVisitor);
-      }
-    }
-  }
-
-  // traversal state
-  struct TraversalState {
-    arangodb::aql::Variable const* variable;
-    NodeWithAttrs& nodeAttrs;
-    bool optimize;
-    bool wasAccess;
-  };
-
-  // determines attributes referenced in an expression for the specified out variable
-  bool getReferencedAttributes(arangodb::aql::AstNode* node,
-                               arangodb::aql::Variable const* variable,
-                               NodeWithAttrs& nodeAttrs) {
-    TraversalState state{variable, nodeAttrs, true, false};
-
-    auto preVisitor = [&state](arangodb::aql::AstNode const* node,
-        arangodb::aql::AstNode* parentNode, size_t childNumber) {
-      if (node == nullptr) {
-        return false;
-      }
-
-      switch (node->type) {
-        case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS:
-          if (!state.wasAccess) {
-            state.nodeAttrs.attrs.emplace_back(
-              NodeWithAttrs::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
-                {std::string(node->getStringValue(), node->getStringLength()), false}}, parentNode, childNumber, 0, nullptr});
-            state.wasAccess = true;
-          } else {
-            state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
-          }
-          return true;
-        case arangodb::aql::NODE_TYPE_REFERENCE: {
-          // reference to a variable
-          auto v = static_cast<arangodb::aql::Variable const*>(node->getData());
-          if (v == state.variable) {
-            if (!state.wasAccess) {
-              // we haven't seen an attribute access directly before
-              state.optimize = false;
-
-              return false;
-            }
-            std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
-          } else {
-            if (state.wasAccess) {
-              state.nodeAttrs.attrs.pop_back();
-            }
-          }
-          // finish an attribute path
-          state.wasAccess = false;
-          return true;
+  void processCalculationNode(IndexNode const* indexNode, CalculationNode* calculationNode,
+                              std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>>& nodesToChange,
+                              bool NoSortNode, TRI_idx_iid_t& commonIndexId, bool& stickToSortNode, bool& stopSearch) {
+    auto astNode = calculationNode->expression()->nodeForModification();
+    latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData> node;
+    node.node = calculationNode;
+    // find attributes referenced to index node out variable
+    if (!latematerialized::getReferencedAttributes(astNode, indexNode->outVariable(), node)) {
+      // is not safe for optimization
+      stopSearch = true;
+    } else if (!node.attrs.empty()) {
+      if (!attributesMatch(commonIndexId, indexNode, node)) {
+        // the node uses attributes which is not in index
+        if (NoSortNode) {
+          // we are between limit and sort nodes.
+          // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
+          stickToSortNode = true;
+        } else {
+          // this limit node affects only closest sort, if this sort is invalid
+          // we need to check other limit node
+          stopSearch = true;
         }
-        default:
-          break;
+      } else {
+        nodesToChange.emplace_back(std::move(node));
       }
-
-      if (state.wasAccess) {
-        // not appropriate node type
-        state.wasAccess = false;
-        state.optimize = false;
-
-        return false;
-      }
-
-      return true;
-    };
-
-    traverseReadOnly(node, nullptr, 0, preVisitor);
-
-    return state.optimize;
+    }
   }
 }
 
-void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
-                                                    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                                                    arangodb::aql::OptimizerRule const& rule) {
+void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
+                                                    std::unique_ptr<ExecutionPlan> plan,
+                                                    OptimizerRule const& rule) {
   auto modified = false;
   auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
   // index node supports late materialization
-  if (!plan->contains(EN::INDEX) ||
+  if (!plan->contains(ExecutionNode::INDEX) ||
       // we need sort node to be present (without sort it will be just skip, nothing to optimize)
-      !plan->contains(EN::SORT) ||
+      !plan->contains(ExecutionNode::SORT) ||
       // limit node is needed as without limit all documents will be returned anyway, nothing to optimize
-      !plan->contains(EN::LIMIT)) {
+      !plan->contains(ExecutionNode::LIMIT)) {
     return;
   }
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-
-  plan->findNodesOfType(nodes, EN::LIMIT, true);
+  arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto limitNode : nodes) {
     auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
-    if (arangodb::aql::ExecutionNode::INDEX == loop->getType()) {
-      auto indexNode = EN::castTo<IndexNode*>(loop);
-      if (indexNode->isLateMaterialized()) {
+    if (ExecutionNode::INDEX == loop->getType()) {
+      auto indexNode = ExecutionNode::castTo<IndexNode*>(loop);
+      if (!indexNode->canApplyLateDocumentMaterializationRule() || indexNode->isLateMaterialized()) {
         continue; // loop is already optimized
       }
       auto current = limitNode->getFirstDependency();
@@ -210,44 +134,21 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
       // this node could be appended with materializer
       bool stopSearch = false;
       bool stickToSortNode = false;
-      std::vector<NodeWithAttrs> nodesToChange;
+      std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>> nodesToChange;
       TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
         auto type = current->getType();
         switch (type) {
-          case arangodb::aql::ExecutionNode::SORT:
+          case ExecutionNode::SORT:
             if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
               sortNode = current;
             }
             break;
-          case arangodb::aql::ExecutionNode::CALCULATION: {
-            auto calculationNode = EN::castTo<CalculationNode*>(current);
-            auto astNode = calculationNode->expression()->nodeForModification();
-            NodeWithAttrs node;
-            node.node = calculationNode;
-            // find attributes referenced to index node out variable
-            if (!getReferencedAttributes(astNode, indexNode->outVariable(), node)) {
-              // is not safe for optimization
-              stopSearch = true;
-            } else if (!node.attrs.empty()) {
-              if (!attributesMatch(commonIndexId, indexNode, node)) {
-                // the node uses attributes which is not in index
-                if (nullptr == sortNode) {
-                  // we are between limit and sort nodes.
-                  // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
-                  stickToSortNode = true;
-                } else {
-                  // this limit node affects only closest sort, if this sort is invalid
-                  // we need to check other limit node
-                  stopSearch = true;
-                }
-              } else {
-                nodesToChange.emplace_back(std::move(node));
-              }
-            }
+          case ExecutionNode::CALCULATION:
+            processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(current), nodesToChange,
+                                   nullptr == sortNode, commonIndexId, stickToSortNode, stopSearch);
             break;
-          }
-          case arangodb::aql::ExecutionNode::REMOTE:
+          case ExecutionNode::REMOTE:
             // REMOTE node is a blocker - we do not want to make materialization calls across cluster!
             if (sortNode != nullptr) {
               stopSearch = true;
@@ -256,17 +157,38 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
           default: // make clang happy
             break;
         }
-        // Currently only calculation and subquery nodes expected to use loop variable.
-        // We successfully replaced all references to loop variable in calculation nodes only.
-        // However if some other node types will begin to use loop variable
+        // Currently only calculation and subquery nodes expected to use a loop variable.
+        // We successfully replaced all references to the loop variable.
+        // However if some other node types will begin to use the loop variable
         // assertion below will be triggered and this rule should be updated.
-        // Subquery node is planned to be supported later.
-        if (!stopSearch && type != arangodb::aql::ExecutionNode::CALCULATION) {
-          ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
+        if (!stopSearch && type != ExecutionNode::CALCULATION) {
+          arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
-            TRI_ASSERT(arangodb::aql::ExecutionNode::SUBQUERY == type);
-            stopSearch = true;
+            if (ExecutionNode::SUBQUERY == type) {
+              auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
+              auto subquery = subqueryNode->getSubquery();
+              arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
+              arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
+              // find calculation nodes in the plan of a subquery
+              NodeFinder<ExecutionNode::NodeType> finder(ExecutionNode::CALCULATION, subqueryCalcNodes, true);
+              subquery->walk(finder);
+              for (auto scn : subqueryCalcNodes) {
+                TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
+                currentUsedVars.clear();
+                scn->getVariablesUsedHere(currentUsedVars);
+                if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
+                  processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(scn), nodesToChange,
+                                         nullptr == sortNode, commonIndexId, stickToSortNode, stopSearch);
+                  if (stopSearch) {
+                    break;
+                  }
+                }
+              }
+            } else {
+              TRI_ASSERT(false);
+              stopSearch = true;
+            }
           }
         }
         if (stopSearch) {
@@ -280,27 +202,48 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
       if (sortNode && !nodesToChange.empty()) {
         auto ast = plan->getAst();
         IndexNode::IndexVarsInfo uniqueVariables;
-        for (auto& node : nodesToChange) {
-          std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-                         [&ast](auto const& attrAndField) {
-                           return std::make_pair(attrAndField.indexField, IndexNode::IndexVariable{attrAndField.indexFieldNum,
-                                                 ast->variables()->createTemporaryVariable()});
-                         });
+        arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+        // at first use variables from simple expressions
+        for (auto const& node : nodesToChange) {
+          TRI_ASSERT(!node.attrs.empty());
+          auto const& afData = node.attrs[0].afData;
+          if (afData.parentNode == nullptr) {
+            TRI_ASSERT(node.attrs.size() == 1);
+            // we could add one redundant variable for each field only
+            if (uniqueVariables.try_emplace(afData.field, IndexNode::IndexVariable{afData.fieldNumber,
+                                            node.node->outVariable()}).second) {
+              toUnlink.emplace(node.node);
+            }
+          }
+        }
+        // create variables for complex expressions
+        for (auto const& node : nodesToChange) {
+          TRI_ASSERT(!node.attrs.empty());
+          for (auto const& attrAndField : node.attrs) {
+            // create a variable if necessary
+            if (attrAndField.afData.parentNode != nullptr && uniqueVariables.find(attrAndField.afData.field) == uniqueVariables.cend()) {
+              uniqueVariables.emplace(attrAndField.afData.field, IndexNode::IndexVariable{attrAndField.afData.fieldNumber,
+                ast->variables()->createTemporaryVariable()});
+            }
+          }
         }
         auto localDocIdTmp = ast->variables()->createTemporaryVariable();
         for (auto& node : nodesToChange) {
           for (auto& attr : node.attrs) {
-            auto it = uniqueVariables.find(attr.indexField);
+            auto it = uniqueVariables.find(attr.afData.field);
             TRI_ASSERT(it != uniqueVariables.cend());
             auto newNode = ast->createNodeReference(it->second.var);
-            if (attr.astNode != nullptr) {
-              TEMPORARILY_UNLOCK_NODE(attr.astNode);
-              attr.astNode->changeMember(attr.astNodeChildNum, newNode);
+            if (attr.afData.parentNode != nullptr) {
+              TEMPORARILY_UNLOCK_NODE(attr.afData.parentNode);
+              attr.afData.parentNode->changeMember(attr.afData.childNumber, newNode);
             } else {
               TRI_ASSERT(node.attrs.size() == 1);
               node.node->expression()->replaceNode(newNode);
             }
           }
+        }
+        if (!toUnlink.empty()) {
+          plan->unlinkNodes(toUnlink);
         }
 
         // we could apply late materialization

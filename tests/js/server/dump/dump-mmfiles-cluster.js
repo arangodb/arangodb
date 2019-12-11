@@ -722,7 +722,7 @@ function dumpTestEnterpriseSuite () {
       let c = db._collection("UnitTestsDumpReplicationFactor1");
       let p = c.properties();
 
-      assertEqual(1, p.replicationFactor);
+      assertEqual(2, p.replicationFactor);
       assertEqual(7, p.numberOfShards);
 
       c = db._collection("UnitTestsDumpReplicationFactor2");

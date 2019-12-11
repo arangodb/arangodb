@@ -65,6 +65,7 @@ add_library(arango_iresearch
   IResearch/IResearchView.cpp IResearch/IResearchView.h
   IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
   IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
+  IResearch/IResearchViewStoredValues.cpp IResearch/IResearchViewStoredValues.h
   IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
@@ -148,6 +149,7 @@ endif ()
 
 set(LIB_ARANGO_GRAPH_SOURCES
   Aql/PruneExpressionEvaluator.cpp
+  Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/TraverserEngine.cpp
@@ -287,6 +289,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
+  Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
@@ -349,8 +352,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
+  Aql/ParallelUnsortedGatherExecutor.cpp
   Aql/UnsortedGatherExecutor.cpp
-  Aql/UnsortingGatherExecutor.cpp
   Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
@@ -459,7 +462,13 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
   Replication/utilities.cpp
-)
+  )
+
+set (LIB_ARANGO_METRICS_SOURCES
+  RestServer/Metrics.cpp
+  RestServer/MetricsFeature.cpp
+  RestHandler/RestMetricsHandler.cpp
+  )
 
 set(LIB_ARANGO_AGENCY_SOURCES
   Agency/AgentConfiguration.cpp
@@ -762,6 +771,10 @@ add_library(arango_replication STATIC
   ${LIB_ARANGO_REPLICATION_SOURCES}
 )
 
+add_library(arango_metrics STATIC
+  ${LIB_ARANGO_METRICS_SOURCES}
+)
+
 add_library(arango_agency STATIC
   ${LIB_ARANGO_AGENCY_SOURCES}
 )
@@ -819,6 +832,7 @@ target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/
 
 target_link_libraries(arango_agency arango)
 target_link_libraries(arango_agency arango_iresearch)
+target_link_libraries(arango_agency arango_metrics)
 
 target_link_libraries(arango_aql arango_geo)
 target_link_libraries(arango_aql arango_graph)
@@ -847,6 +861,8 @@ target_link_libraries(arango_indexes boost_boost)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
+
+target_link_libraries(arango_metrics arango)
 
 target_link_libraries(arango_mmfiles arango_geo)
 target_link_libraries(arango_mmfiles arango_indexes)
@@ -909,6 +925,7 @@ target_link_libraries(arangoserver arango_geo)
 target_link_libraries(arangoserver arango_graph)
 target_link_libraries(arangoserver arango_indexes)
 target_link_libraries(arangoserver arango_iresearch)
+target_link_libraries(arangoserver arango_metrics)
 target_link_libraries(arangoserver arango_network)
 target_link_libraries(arangoserver arango_pregel)
 target_link_libraries(arangoserver arango_replication)
@@ -989,6 +1006,7 @@ foreach(TARGET
   arango_common_rest_handler
   arango_graph
   arango_indexes
+  arango_metrics
   arango_mmfiles
   arango_pregel
   arango_replication
@@ -1007,7 +1025,7 @@ foreach(TARGET
     if (MSVC)
       target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     else ()
-      target_compile_options(${TARGET} PRIVATE -Werror)
+      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
     endif ()
   endif ()
 endforeach()
