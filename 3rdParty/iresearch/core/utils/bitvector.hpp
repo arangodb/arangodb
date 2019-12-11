@@ -38,9 +38,9 @@ class bitvector final {
   bitvector() = default;
   explicit bitvector(size_t bits): size_(bits) { resize(bits); }
   bitvector(const bitvector& other) { *this = other; }
-  bitvector(bitvector&& other) NOEXCEPT { *this = std::move(other); }
+  bitvector(bitvector&& other) noexcept { *this = std::move(other); }
 
-  bool operator==(const bitvector& rhs) const NOEXCEPT {
+  bool operator==(const bitvector& rhs) const noexcept {
     if (this->size() != rhs.size()) {
       return false;
     }
@@ -48,7 +48,7 @@ class bitvector final {
     return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
   }
 
-  bool operator!=(const bitvector& rhs) const NOEXCEPT {
+  bool operator!=(const bitvector& rhs) const noexcept {
     return !(*this == rhs);
   }
 
@@ -72,7 +72,7 @@ class bitvector final {
     return *this;
   }
 
-  bitvector& operator=(bitvector&& other) NOEXCEPT {
+  bitvector& operator=(bitvector&& other) noexcept {
     if (this != &other) {
       set_ = std::move(other.set_);
       size_ = std::move(other.size_);
@@ -189,22 +189,22 @@ class bitvector final {
     return *this;
   }
 
-  bool all() const NOEXCEPT { return set_.count() == size(); }
-  bool any() const NOEXCEPT { return set_.any(); }
-  const word_t* begin() const NOEXCEPT { return set_.data(); }
-  size_t capacity() const NOEXCEPT { return set_.capacity(); }
-  void clear() NOEXCEPT {
+  bool all() const noexcept { return set_.count() == size(); }
+  bool any() const noexcept { return set_.any(); }
+  const word_t* begin() const noexcept { return set_.data(); }
+  size_t capacity() const noexcept { return set_.capacity(); }
+  void clear() noexcept {
     set_.clear();
     size_ = 0;
   }
-  word_t count() const NOEXCEPT { return set_.count(); }
-  const word_t* data() const NOEXCEPT { return set_.data(); }
-  const word_t* end() const NOEXCEPT { return set_.end(); }
+  word_t count() const noexcept { return set_.count(); }
+  const word_t* data() const noexcept { return set_.data(); }
+  const word_t* end() const noexcept { return set_.end(); }
 
   template<typename T>
-  void memset(const T& value) NOEXCEPT { memset(&value, sizeof(value)); }
+  void memset(const T& value) noexcept { memset(&value, sizeof(value)); }
 
-  void memset(const void* src, size_t size) NOEXCEPT {
+  void memset(const void* src, size_t size) noexcept {
     auto bits = bits_required<uint8_t>() * size; // size is in bytes
 
     reserve(bits);
@@ -212,7 +212,7 @@ class bitvector final {
     size_ = std::max(size_, bits);
   }
 
-  bool none() const NOEXCEPT { return set_.none(); }
+  bool none() const noexcept { return set_.none(); }
 
   // reserve at least this many bits
   void reserve(size_t bits) {
@@ -306,16 +306,16 @@ class bitvector final {
   }
 
   void set(size_t i) { reset(i, true); }
-  size_t size() const NOEXCEPT { return size_; }
-  bool empty() const NOEXCEPT { return 0 == size_; }
+  size_t size() const noexcept { return size_; }
+  bool empty() const noexcept { return 0 == size_; }
 
-  bool test(size_t i) const NOEXCEPT {
+  bool test(size_t i) const noexcept {
     return bitset::word(i) < set_.words() && set_.test(i);
   }
 
   void unset(size_t i) { reset(i, false); }
 
-  size_t words() const NOEXCEPT { return set_.words(); }
+  size_t words() const noexcept { return set_.words(); }
 
   template<typename Visitor>
   bool visit(Visitor visitor) const {

@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ENCRYPTION_H
@@ -78,7 +77,7 @@ struct IRESEARCH_API encryption : public stored_attribute {
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
 
-inline irs::encryption* get_encryption(const attribute_store& attrs) NOEXCEPT {
+inline irs::encryption* get_encryption(const attribute_store& attrs) noexcept {
   auto enc = attrs.get<irs::encryption>();
 
   return enc ? enc.get() : nullptr;
@@ -148,11 +147,11 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
     return out_->checksum();
   }
 
-  size_t buffer_size() const NOEXCEPT { return buf_size_; }
+  size_t buffer_size() const noexcept { return buf_size_; }
 
-  const index_output& stream() const NOEXCEPT { return *out_; }
+  const index_output& stream() const noexcept { return *out_; }
 
-  index_output::ptr release() NOEXCEPT {
+  index_output::ptr release() noexcept {
     return std::move(managed_out_);
   }
 
@@ -200,11 +199,11 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
 
   virtual int64_t checksum(size_t offset) const override final;
 
-  const index_input& stream() const NOEXCEPT {
+  const index_input& stream() const noexcept {
     return *in_;
   }
 
-  index_input::ptr release() NOEXCEPT {
+  index_input::ptr release() noexcept {
     return std::move(managed_in_);
   }
 
@@ -214,7 +213,7 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
   virtual size_t read_internal(byte_type* b, size_t count) override final;
 
  private:
-  encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) NOEXCEPT;
+  encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept;
 
   index_input::ptr managed_in_;
   index_input* in_;

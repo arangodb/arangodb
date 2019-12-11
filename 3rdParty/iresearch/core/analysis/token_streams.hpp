@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TOKEN_STREAMS_H
@@ -54,7 +53,7 @@ class IRESEARCH_API boolean_token_stream final
   static const bytes_ref& value(bool val);
 
   explicit boolean_token_stream(bool value = false);
-  boolean_token_stream(boolean_token_stream&& other) NOEXCEPT;
+  boolean_token_stream(boolean_token_stream&& other) noexcept;
 
   virtual bool next() override;
 
@@ -63,7 +62,7 @@ class IRESEARCH_API boolean_token_stream final
     in_use_ = false;
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -93,7 +92,7 @@ class IRESEARCH_API string_token_stream final
       private util::noncopyable { // attrs_ non-copyable
  public:
   string_token_stream();
-  string_token_stream(string_token_stream&& other) NOEXCEPT;
+  string_token_stream(string_token_stream&& other) noexcept;
 
   virtual bool next() override;
 
@@ -107,7 +106,7 @@ class IRESEARCH_API string_token_stream final
     in_use_ = false;
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -145,9 +144,9 @@ class IRESEARCH_API numeric_token_stream final
       private util::noncopyable { // attrs_ non-copyable
  public:
   numeric_token_stream();
-  numeric_token_stream(numeric_token_stream&& other) NOEXCEPT;
+  numeric_token_stream(numeric_token_stream&& other) noexcept;
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
   }
   virtual bool next() override;
@@ -286,7 +285,7 @@ class IRESEARCH_API null_token_stream final
   static const bytes_ref& value_null();
 
   null_token_stream();
-  null_token_stream(null_token_stream&& other) NOEXCEPT;
+  null_token_stream(null_token_stream&& other) noexcept;
 
   virtual bool next() override;
 
@@ -294,7 +293,7 @@ class IRESEARCH_API null_token_stream final
     in_use_ = false; 
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
+  virtual const attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
