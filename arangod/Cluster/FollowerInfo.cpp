@@ -33,6 +33,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include "Basics/ScopeGuard.h"
+#include "ClusterFeature.h"
 
 using namespace arangodb;
 

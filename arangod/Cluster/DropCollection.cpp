@@ -83,6 +83,16 @@ bool DropCollection::first() {
       LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
           << "Dropping local collection " + collection;
       _result = Collections::drop(*coll, false, 2.5);
+
+      if (_result.fail()) {
+        std::stringstream error;
+
+        error << " action " << _description << " failed with error " << _result.errorMessage();
+        LOG_TOPIC("42f9b", ERR, Logger::MAINTENANCE) << error.str();
+        _result.reset(TRI_ERROR_INTERNAL, error.str());
+
+        return false;
+      }
     } else {
       std::stringstream error;
 

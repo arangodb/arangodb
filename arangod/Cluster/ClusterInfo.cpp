@@ -35,6 +35,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
+#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/RebootTracker.h"
@@ -64,6 +65,9 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+
+using namespace arangodb::cluster::paths;
+using namespace arangodb::cluster::paths::aliases;
 
 namespace {
 
@@ -2485,7 +2489,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
-        ac.removeValues("Current/Collections/" + dbName + "/" + collectionID, true);
+        ac.removeValues(
+            current()->collections()->database(dbName)->collection(collectionID)->str(), true);
         loadCurrent();
 
         events::DropCollection(dbName, collectionID, *dbServerResult);

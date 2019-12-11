@@ -49,6 +49,8 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
+
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
@@ -236,7 +238,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
-    _followers.reset(new FollowerInfo(this));
+    _followers = std::make_unique<FollowerInfo>(this);
   }
 
   TRI_ASSERT(_physical != nullptr);
