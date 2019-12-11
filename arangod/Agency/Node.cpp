@@ -339,7 +339,7 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
   return *current;
 }
 
-std::shared_ptr<Node> Node::child(std::string const& name) {
+std::shared_ptr<Node> Node::child (std::string const& name) {
   return _children.at(name);
 }
 
@@ -705,36 +705,39 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
 }  // namespace consensus
 }  // namespace arangodb
 
-bool Node::applieOp(VPackSlice const& slice) {
+arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
-
+  bool ok = false;
+  
   if (oper == "delete") {
-    return deleteMe();
+    return ResultT<std::shared_ptr<Node>>::success(deleteMe());
   } else if (oper == "set") {  // "op":"set"
-    return handle<SET>(slice);
+    ok = handle<SET>(slice);
   } else if (oper == "increment") {  // "op":"increment"
-    return handle<INCREMENT>(slice);
+    ok = handle<INCREMENT>(slice);
   } else if (oper == "decrement") {  // "op":"decrement"
-    return handle<DECREMENT>(slice);
+    ok = handle<DECREMENT>(slice);
   } else if (oper == "push") {  // "op":"push"
-    return handle<PUSH>(slice);
+    ok = handle<PUSH>(slice);
   } else if (oper == "pop") {  // "op":"pop"
-    return handle<POP>(slice);
+    ok = handle<POP>(slice);
   } else if (oper == "prepend") {  // "op":"prepend"
-    return handle<PREPEND>(slice);
+    ok = handle<PREPEND>(slice);
   } else if (oper == "shift") {  // "op":"shift"
-    return handle<SHIFT>(slice);
+    ok = handle<SHIFT>(slice);
   } else if (oper == "erase") {  // "op":"erase"
-    return handle<ERASE>(slice);
+    ok = handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"
-    return handle<REPLACE>(slice);
+    ok = handle<REPLACE>(slice);
   } else {  // "op" might not be a key word after all
     LOG_TOPIC("fb064", WARN, Logger::AGENCY)
         << "Keyword 'op' without known operation. Handling as regular key: \""
         << oper << "\"";
   }
 
-  return false;
+  return ok ? ResultT<std::shared_ptr<Node>>::success(nullptr) :
+    ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+  
 }
 
 // Apply slice to this node
@@ -1134,13 +1137,15 @@ void Node::clear() {
   _isArray = false;
 }
 
-bool Node::deleteMe() {
+std::shared_ptr<Node> Node::deleteMe() {
+  std::shared_ptr<Node> this_ptr = nullptr;
   if (_parent == nullptr) {  // root node
     _children.clear();
     _value.clear();
     _vecBufDirty = true;  // just in case there was an array
-    return true;
   } else {
-    return _parent->removeChild(_nodeName);
+    std::shared_ptr<Node> this_ptr = _parent->child(_nodeName);
+    _parent->removeChild(_nodeName);
   }
+  return this_ptr; 
 }
