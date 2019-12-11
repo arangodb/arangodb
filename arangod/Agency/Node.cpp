@@ -701,7 +701,7 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
   std::string oper = slice.get("op").copyString();
   
   if (oper == "delete") {
-    return ResultT<std::shared_ptr<Node>>::success(deleteMe());
+    return deleteMe();
   } else if (oper == "set") {  // "op":"set"
     return handle<SET>(slice);
   } else if (oper == "increment") {  // "op":"increment"
@@ -1127,15 +1127,13 @@ void Node::clear() {
   _isArray = false;
 }
 
-[[nodiscard]] std::shared_ptr<Node> Node::deleteMe() {
-  std::shared_ptr<Node> this_ptr = nullptr;
+[[nodiscard]] arangodb::ResultT<std::shared_ptr<Node>> Node::deleteMe() {
   if (_parent == nullptr) {  // root node
     _children.clear();
     _value.clear();
     _vecBufDirty = true;  // just in case there was an array
+    return arangodb::ResultT<std::shared_ptr<Node>>::success(nullptr);
   } else {
-    std::shared_ptr<Node> this_ptr = _parent->child(_nodeName);
-    _parent->removeChild(_nodeName);
+    return _parent->removeChild(_nodeName);
   }
-  return this_ptr; 
 }
