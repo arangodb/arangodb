@@ -1601,9 +1601,9 @@ function complexInternaSuite() {
        */
 
       const isValidResult = result => {
-        return
+        return true
           // all results must be depth 1 vertices
-          result.every(v => -1 !== ['0', '1', '2'].indexOf(v))
+          && result.every(v => -1 !== ['0', '1', '2'].indexOf(v))
           // we expect exactly 8 results
           && result.length === 8
           // but only two different vertices (because we skipped one subtree)
