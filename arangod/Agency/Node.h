@@ -135,11 +135,9 @@ class Node {
   /// @brief Get node specified by path vector
   Node const& operator()(std::vector<std::string> const& pv) const;
 
-  /// @brief Remove child by name
-  bool removeChild(std::string const& key);
-
-  /// @brief Remove this node and below from tree
-  bool remove();
+  /// @brief  Remove child by name
+  /// @return shared pointer to removed child
+  arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
 
   /// @brief Get root node
   Node const& root() const;
@@ -161,7 +159,7 @@ class Node {
 
   /// @brief handle "op" keys in write json
   template <Operation Oper>
-  bool handle(arangodb::velocypack::Slice const&);
+  arangodb::ResultT<std::shared_ptr<Node>> handle(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
