@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_RANGE_FILTER_H
@@ -33,18 +32,16 @@ enum class Bound {
   MIN, MAX
 }; 
 
-enum class Bound_Type {
+enum class BoundType {
   UNBOUNDED, INCLUSIVE, EXCLUSIVE
 };
-
-NS_BEGIN(detail)
 
 template<typename T>
 struct range {
   T min{};
   T max{};
-  Bound_Type min_type = Bound_Type::UNBOUNDED;
-  Bound_Type max_type = Bound_Type::UNBOUNDED;
+  BoundType min_type = BoundType::UNBOUNDED;
+  BoundType max_type = BoundType::UNBOUNDED;
 
   bool operator==(const range& rhs) const {
     return min == rhs.min && min_type == rhs.min_type
@@ -56,10 +53,6 @@ struct range {
   }
 }; // range
 
-NS_END // detail
-
-class term_selector;
-
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
 /// @brief user-side term range filter
@@ -69,7 +62,7 @@ class IRESEARCH_API by_range : public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_range() NOEXCEPT;
+  by_range() noexcept;
 
   using filter::prepare;
 
@@ -98,8 +91,8 @@ class IRESEARCH_API by_range : public filter {
   by_range& term(bstring&& term) {
     get<B>::term(rng_) = std::move(term);
 
-    if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
+    if (BoundType::UNBOUNDED == get<B>::type(rng_)) {
+      get<B>::type(rng_) = BoundType::EXCLUSIVE;
     }
 
     return *this;
@@ -110,9 +103,9 @@ class IRESEARCH_API by_range : public filter {
     get<B>::term(rng_) = term;
 
     if (term.null()) {
-      get<B>::type(rng_) = Bound_Type::UNBOUNDED;
-    } else if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
+      get<B>::type(rng_) = BoundType::UNBOUNDED;
+    } else if (BoundType::UNBOUNDED == get<B>::type(rng_)) {
+      get<B>::type(rng_) = BoundType::EXCLUSIVE;
     }
 
     return *this;
@@ -125,13 +118,13 @@ class IRESEARCH_API by_range : public filter {
 
   template<Bound B>
   by_range& include(bool incl) {
-    get<B>::type(rng_) = incl ? Bound_Type::INCLUSIVE : Bound_Type::EXCLUSIVE;
+    get<B>::type(rng_) = incl ? BoundType::INCLUSIVE : BoundType::EXCLUSIVE;
     return *this;
   }
 
   template<Bound B>
   bool include() const {
-    return Bound_Type::INCLUSIVE == get<B>::type(rng_);
+    return BoundType::INCLUSIVE == get<B>::type(rng_);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -149,13 +142,13 @@ class IRESEARCH_API by_range : public filter {
     return scored_terms_limit_;
   }
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private: 
-  typedef detail::range<bstring> range_t;
+  typedef range<bstring> range_t;
   template<Bound B> struct get;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -168,15 +161,15 @@ class IRESEARCH_API by_range : public filter {
 template<> struct by_range::get<Bound::MIN> {
   static bstring& term(range_t& rng) { return rng.min; }
   static const bstring& term(const range_t& rng) { return rng.min; }
-  static Bound_Type& type(range_t& rng) { return rng.min_type; }
-  static const Bound_Type& type(const range_t& rng) { return rng.min_type; }
+  static BoundType& type(range_t& rng) { return rng.min_type; }
+  static const BoundType& type(const range_t& rng) { return rng.min_type; }
 }; // get<Bound::MAX>
 
 template<> struct by_range::get<Bound::MAX> {
   static bstring& term(range_t& rng) { return rng.max; }
   static const bstring& term(const range_t& rng) { return rng.max; }
-  static Bound_Type& type(range_t& rng) { return rng.max_type; }
-  static const Bound_Type& type(const range_t& rng) { return rng.max_type; }
+  static BoundType& type(range_t& rng) { return rng.max_type; }
+  static const BoundType& type(const range_t& rng) { return rng.max_type; }
 }; // get<Bound::MAX>
 
 NS_END // ROOT

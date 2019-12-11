@@ -18,20 +18,20 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "column_existence_filter.hpp"
+
+#include <boost/functional/hash.hpp>
+
 #include "formats/empty_term_reader.hpp"
 #include "index/field_meta.hpp"
 #include "search/score_doc_iterators.hpp"
 #include "search/disjunction.hpp"
 
-#include <boost/functional/hash.hpp>
-
 NS_LOCAL
 
-class column_existence_iterator final : public irs::basic_doc_iterator_base {
+class column_existence_iterator final : public irs::doc_iterator_base {
  public:
   explicit column_existence_iterator(
       const irs::sub_reader& reader,
@@ -75,7 +75,7 @@ class column_existence_iterator final : public irs::basic_doc_iterator_base {
     return value();
   }
 
-  virtual irs::doc_id_t value() const NOEXCEPT override {
+  virtual irs::doc_id_t value() const noexcept override {
     return doc_->value;
   }
 
@@ -90,8 +90,9 @@ class column_existence_query final : public irs::filter::prepared {
       const std::string& field,
       irs::bstring&& stats,
       irs::boost_t boost)
-    : irs::filter::prepared(std::move(stats), boost),
-      field_(field) {
+    : irs::filter::prepared(boost),
+      field_(field),
+      stats_(std::move(stats)) {
   }
 
   virtual irs::doc_iterator::ptr execute(
@@ -107,7 +108,7 @@ class column_existence_query final : public irs::filter::prepared {
 
     return irs::doc_iterator::make<column_existence_iterator>(
       rdr,
-      stats(), // prepared_filter attributes
+      stats_.c_str(),
       column->iterator(),
       ord,
       column->size(),
@@ -117,6 +118,7 @@ class column_existence_query final : public irs::filter::prepared {
 
  private:
   std::string field_;
+  irs::bstring stats_;
 }; // column_existence_query
 
 class column_prefix_existence_query final : public irs::filter::prepared {
@@ -125,8 +127,9 @@ class column_prefix_existence_query final : public irs::filter::prepared {
       const std::string& prefix,
       irs::bstring&& stats,
       irs::boost_t boost)
-    : irs::filter::prepared(std::move(stats), boost),
-      prefix_(prefix) {
+    : irs::filter::prepared(boost),
+      prefix_(prefix),
+      stats_(std::move(stats)) {
   }
 
   virtual irs::doc_iterator::ptr execute(
@@ -141,7 +144,8 @@ class column_prefix_existence_query final : public irs::filter::prepared {
       return irs::doc_iterator::empty();
     }
 
-    irs::disjunction::doc_iterators_t itrs;
+    typedef irs::disjunction<column_existence_iterator::ptr> disjunction_t;
+    disjunction_t::doc_iterators_t itrs;
 
     while (irs::starts_with(it->value().name, prefix_)) {
       const auto* column = rdr.column_reader(it->value().id);
@@ -150,9 +154,9 @@ class column_prefix_existence_query final : public irs::filter::prepared {
         continue;
       }
 
-      auto column_it = irs::memory::make_unique<column_existence_iterator>(
+      auto column_it = irs::memory::make_shared<column_existence_iterator>(
         rdr,
-        stats(), // prepared_filter attributes
+        stats_.c_str(),
         column->iterator(),
         ord,
         column->size(),
@@ -166,13 +170,12 @@ class column_prefix_existence_query final : public irs::filter::prepared {
       }
     }
 
-    return irs::make_disjunction<irs::disjunction>(
-      std::move(itrs), ord
-    );
+    return irs::make_disjunction<disjunction_t>(std::move(itrs), ord);
   }
 
  private:
   std::string prefix_;
+  irs::bstring stats_;
 }; // column_prefix_existence_query
 
 NS_END
@@ -186,11 +189,11 @@ NS_ROOT
 DEFINE_FILTER_TYPE(by_column_existence)
 DEFINE_FACTORY_DEFAULT(by_column_existence)
 
-by_column_existence::by_column_existence() NOEXCEPT
+by_column_existence::by_column_existence() noexcept
   : filter(by_column_existence::type()) {
 }
 
-bool by_column_existence::equals(const filter& rhs) const NOEXCEPT {
+bool by_column_existence::equals(const filter& rhs) const noexcept {
   const auto& trhs = static_cast<const by_column_existence&>(rhs);
 
   return filter::equals(rhs)
@@ -198,7 +201,7 @@ bool by_column_existence::equals(const filter& rhs) const NOEXCEPT {
     && prefix_match_ == trhs.prefix_match_;
 }
 
-size_t by_column_existence::hash() const NOEXCEPT {
+size_t by_column_existence::hash() const noexcept {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, field_);
