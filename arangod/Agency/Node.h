@@ -202,7 +202,8 @@ private:
   std::shared_ptr<Node> child(std::string const& key);
 
   /// @brief Remove me from tree, if not root node, clear else.
-  /// Shared pointer copy to this node is returned to control life time by caller
+  /// @return If not root node, shared pointer copy to this node is returned
+  ///         to control life time by caller; else nullptr.
   std::shared_ptr<Node> deleteMe();
 
   /// @brief Access private methods
