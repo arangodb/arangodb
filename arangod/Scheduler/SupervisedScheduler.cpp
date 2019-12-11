@@ -225,17 +225,30 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
   // microsecond), therefore, we do not want to do it unnecessarily. However,
   // if we push work to a queue, we do not want a sleeping worker to sleep
   // for much longer, rather, we would like to have the work done.
-  // Therefore, we follow this algorithm: If there is a spinning worker
-  // (i.e. _nrAwake > _nrWorking), then we do not try to wake up anybody.
-  // Furthermore, if nobody is sleeping, we also do not wake up anybody
-  // (i.e. _nrAwake >= _numWorker). Otherwise, we walk through the threads, and
-  // wake up the first we see which is sleeping.
+  // Therefore, we follow this algorithm:
+  // If nobody is sleeping, we also do not wake up anybody
+  // (i.e. _nrAwake >= _numWorker).
+  // If there is a spinning worker
+  // (i.e. _nrAwake > _nrWorking), then we do not try to wake up anybody,
+  // however, we need to actually see a spinning worker in this case.
+  // Otherwise, we walk through the threads, and wake up the first we
+  // see which is sleeping.
   uint64_t awake = _nrAwake.load(std::memory_order_relaxed);
-  if (awake > _nrWorking.load(std::memory_order_relaxed)) {
+  if (awake == _numWorkers) {
+    // Everybody labouring away, no need to wake nobody up.
     return true;
   }
-  if (awake == _numWorkers) {
-    return true;
+  if (awake > _nrWorking.load(std::memory_order_relaxed)) {
+    // This indicates that one is spinning, let's actually see this
+    // one with out own eyes, if not, go on.
+    // Without this additional
+    std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
+    for (auto & state : _workerStates) {
+      if (!state->_sleeping && !state->_working) {
+        // Got the spinning one, good:
+        return true;
+      }
+    }
   }
   std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
   for (auto & state : _workerStates) {
