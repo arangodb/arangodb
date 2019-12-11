@@ -286,14 +286,13 @@ bool Node::operator!=(VPackSlice const& rhs) const { return !(*this == rhs); }
 
 /// @brief Remove child by name
 arangodb::ResultT<std::shared_ptr<Node>> Node::removeChild(std::string const& key) {
-  auto found = _children.find(key);
-  if (found == _children.end()) {
+  auto it = _children.find(key);
+  if (it == _children.end()) {
     return arangodb::ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
   }
-  
-  auto ret = found->second;
+  auto ret = it->second;
   ret->removeTimeToLive();
-  _children.erase(found);
+  _children.erase(it);
   return arangodb::ResultT<std::shared_ptr<Node>>::success(std::move(ret));
 }
 
@@ -454,9 +453,9 @@ template <>
 ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 
   if (!slice.hasKey("new")) {
-    LOG_TOPIC("ad662", WARN, Logger::AGENCY)
-        << "Operator set without new value: " << slice.toJson();
-    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Operator set without new value: ") + slice.toJson());
   }
   Slice val = slice.get("new");
 
@@ -494,9 +493,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) {
   size_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
-                   ? slice.get("step").getUInt()
-                   : 1;
-
+                   ? slice.get("step").getUInt() : 1;
   Builder tmp;
   {
     VPackObjectBuilder t(&tmp);
@@ -530,9 +527,9 @@ ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) 
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC("a9481", WARN, Logger::AGENCY)
-        << "Operator push without new value: " << slice.toJson();
-    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Operator push without new value: ") + slice.toJson());
   }
   Builder tmp;
   {
@@ -553,19 +550,17 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
   bool havePos = slice.hasKey("pos");
 
   if (!haveVal && !havePos) {
-    LOG_TOPIC("b5eaa", WARN, Logger::AGENCY)
-        << "Operator erase without value or position to be erased is illegal: "
-        << slice.toJson();
-    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Erase without value or position to be erased is illegal: ") + slice.toJson());
   } else if (haveVal && havePos) {
-    LOG_TOPIC("c2756", WARN, Logger::AGENCY)
-        << "Operator erase with value and position to be erased is illegal: "
-        << slice.toJson();
-    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Erase without value or position to be erased is illegal: ") + slice.toJson());
   } else if (havePos && (!slice.get("pos").isUInt() && !slice.get("pos").isSmallInt())) {
-    LOG_TOPIC("d6648", WARN, Logger::AGENCY)
-        << "Operator erase with non-positive integer position is illegal: "
-        << slice.toJson();
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Erase with non-positive integer position is illegal: ") + slice.toJson());
   }
 
   Builder tmp;
@@ -583,7 +578,9 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
       } else {
         size_t pos = slice.get("pos").getNumber<size_t>();
         if (pos >= this->slice().length()) {
-          return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+          return ResultT<std::shared_ptr<Node>>::error(
+            TRI_ERROR_FAILED, std::string(
+              "Erase with position out of range: ") + slice.toJson());
         }
         size_t n = 0;
         for (const auto& old : VPackArrayIterator(this->slice())) {
@@ -604,14 +601,14 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<REPLACE>(VPackSlice const& slice) {
   if (!slice.hasKey("val")) {
-    LOG_TOPIC("27763", WARN, Logger::AGENCY)
-        << "Operator erase without value to be erased: " << slice.toJson();
-    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Operator erase without value to be erased: ")
+      + slice.toJson());
   }
   if (!slice.hasKey("new")) {
-    LOG_TOPIC("28331", WARN, Logger::AGENCY)
-        << "Operator replace without new value: " << slice.toJson();
-    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Operator replace without new value: ")
+      + slice.toJson());
   }
   Builder tmp;
   {
@@ -656,9 +653,9 @@ ResultT<std::shared_ptr<Node>> Node::handle<POP>(VPackSlice const& slice) {
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC("5ecb0", WARN, Logger::AGENCY)
-        << "Operator prepend without new value: " << slice.toJson();
-    return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Operator prepend without new value: ")
+      + slice.toJson());
   }
   Builder tmp;
   {

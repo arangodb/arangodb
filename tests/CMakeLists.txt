@@ -20,6 +20,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
+  Agency/NodeTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp

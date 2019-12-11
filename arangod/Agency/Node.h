@@ -321,11 +321,6 @@ public:
   /// @brief Get insigned value (throws if type NODE or if conversion fails)
   uint64_t getUInt() const;
 
-  //
-  // The protected accessors are the "old" interface.  They throw.
-  //  Please use the hasAsXXX replacements.
-  //
- protected:
   /// @brief Get node specified by path string, always throw if not there
   Node const& get(std::string const& path) const;
 
