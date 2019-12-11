@@ -119,7 +119,7 @@ void InitDatabaseFeature::prepare() {
   if (!_seenPassword) {
     while (true) {
       std::string password1 =
-          readPassword("Please enter password for root user");
+          readPassword("Please enter a new password for the ArangoDB root user");
 
       if (!password1.empty()) {
         std::string password2 = readPassword("Repeat password");
