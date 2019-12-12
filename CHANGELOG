@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #4748: Editing a single edgeDefinition using the graph
+  API failed if it was not shared between all available graphs.
+
 * The _users collection is now properly restored when using arangorestore.
 
 * Updated arangosync to 0.7.1.
