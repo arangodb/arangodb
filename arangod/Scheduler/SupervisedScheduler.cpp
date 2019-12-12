@@ -241,9 +241,14 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
   if (awake > _nrWorking.load(std::memory_order_relaxed)) {
     // This indicates that one is spinning, let's actually see this
     // one with out own eyes, if not, go on.
-    // Without this additional
+    // Without this additional loop we run the risk that a thread which
+    // is currently spinning has already decided to go to sleep and will
+    // not look at the queue again before doing so. Since we check the
+    // _sleeping state under the mutex and the worker checks the queues
+    // again after having indicates that it sleeps, we are good.
     std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
     for (auto & state : _workerStates) {
+      std::unique_lock<std::mutex> guard2(state->_mutex);
       if (!state->_sleeping && !state->_working) {
         // Got the spinning one, good:
         return true;
@@ -252,8 +257,8 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
   }
   std::unique_lock<std::mutex> guard(_mutex);  // protect _workerStates
   for (auto & state : _workerStates) {
+    std::unique_lock<std::mutex> guard2(state->_mutex);
     if (state->_sleeping) {
-      std::unique_lock<std::mutex> guard2(state->_mutex);
       state->_conditionWork.notify_one();
       break;
     }
@@ -533,6 +538,19 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
   WorkItem* work;
 
+#define KNORKE 1
+#ifdef KNORKE
+  auto checkAllQueues = [&]() -> WorkItem* {
+    WorkItem* res = nullptr;
+    for (uint64_t i = 0; i < 3; ++i) {
+      if (canPullFromQueue(i) && _queues[i].pop(res)) {
+        return res;
+      }
+    }
+    return res;
+  };
+#endif
+
   while (!state->_stop) {
     uint64_t triesCount = 0;
     auto loopStart = std::chrono::steady_clock::now();
@@ -541,27 +559,55 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       timeOutForNow = 0;
     }
     do {
-      // access queue via 0 1 2 0 1 2 0 1 ...
-      auto queueIdx = triesCount % 3;
-      // Order of this if is important! First check if we are allowed to pull,
-      // then really pull from queue
-      if (canPullFromQueue(queueIdx) && _queues[queueIdx].pop(work)) {
+#ifdef KNORKE
+      work = checkAllQueues();
+      if (work != nullptr) {
         return std::unique_ptr<WorkItem>(work);
       }
-
+#else
+      for (uint64_t i = 0; i < 3; ++i) {
+        if (canPullFromQueue(i) && _queues[i].pop(work)) {
+          return std::unique_ptr<WorkItem>(work);
+        }
+      }
+#endif
       triesCount++;
       cpu_relax();
-    } while (triesCount < 3 ||
-             (std::chrono::steady_clock::now() - loopStart) < std::chrono::microseconds(timeOutForNow));
-
+    } while ((std::chrono::steady_clock::now() - loopStart) < std::chrono::microseconds(timeOutForNow));
 
     std::unique_lock<std::mutex> guard(state->_mutex);
+    // Now let's one more time check all the queues under the mutex before we
+    // actually go to sleep, we already indicate that we are sleeping. Note that
+    // both are important, otherwise we run the risk that the queue() call
+    // thinks we are spinning when in fact we are already going to sleep!
+    // This could lead to a request lying around on the queue and everybody is
+    // sleeping, which would cause random rare delays of some 20ms.
 
     if (state->_stop) {
       break;
     }
+
     state->_sleeping = true;
     _nrAwake.fetch_sub(1, std::memory_order_relaxed);
+
+#ifdef KNORKE
+    work = checkAllQueues();
+    if (work != nullptr) {
+      // Fix the sleep indicators:
+      state->_sleeping = false;
+      _nrAwake.fetch_add(1, std::memory_order_relaxed);
+      return std::unique_ptr<WorkItem>(work);
+    }
+#else
+    for (uint64_t i = 0; i < 3; ++i) {
+      if (canPullFromQueue(i) && _queues[i].pop(work)) {
+        state->_sleeping = false;
+        _nrAwake.fetch_add(1, std::memory_order_relaxed);
+        return std::unique_ptr<WorkItem>(work);
+      }
+    }
+#endif
+
     if (state->_sleepTimeout_ms == 0) {
       state->_conditionWork.wait(guard);
     } else {
