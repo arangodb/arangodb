@@ -299,6 +299,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/MultiDependencySingleRowFetcher.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
+  Aql/CalculationNodeVarFinder.cpp
   Aql/Optimizer.cpp
   Aql/OptimizerRules.cpp
   Aql/OptimizerRulesCluster.cpp

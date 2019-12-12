@@ -21,12 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
+#include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
-#include "Aql/NodeFinder.h"
 #include "Aql/Optimizer.h"
 #include "IndexNodeOptimizerRules.h"
 #include "Basics/AttributeNameParser.h"
@@ -73,26 +73,17 @@ namespace {
 
   void processCalculationNode(IndexNode const* indexNode, CalculationNode* calculationNode,
                               std::vector<latematerialized::NodeWithAttrs>& nodesToChange,
-                              bool NoSortNode, TRI_idx_iid_t& commonIndexId, bool& stickToSortNode, bool& stopSearch) {
+                              TRI_idx_iid_t& commonIndexId, bool& invalid) {
     auto astNode = calculationNode->expression()->nodeForModification();
     latematerialized::NodeWithAttrs node;
     node.node = calculationNode;
     // find attributes referenced to index node out variable
     if (!latematerialized::getReferencedAttributes(astNode, indexNode->outVariable(), node)) {
       // is not safe for optimization
-      stopSearch = true;
+      invalid = true;
     } else if (!node.attrs.empty()) {
       if (!attributesMatch(commonIndexId, indexNode, node)) {
-        // the node uses attributes which is not in index
-        if (NoSortNode) {
-          // we are between limit and sort nodes.
-          // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
-          stickToSortNode = true;
-        } else {
-          // this limit node affects only closest sort, if this sort is invalid
-          // we need to check other limit node
-          stopSearch = true;
-        }
+        invalid = true;
       } else {
         nodesToChange.emplace_back(std::move(node));
       }
@@ -136,6 +127,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       std::vector<latematerialized::NodeWithAttrs> nodesToChange;
       TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
+        auto invalid = false;
         auto type = current->getType();
         switch (type) {
           case ExecutionNode::SORT:
@@ -145,7 +137,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
             break;
           case ExecutionNode::CALCULATION:
             processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(current), nodesToChange,
-                                   nullptr == sortNode, commonIndexId, stickToSortNode, stopSearch);
+                                   commonIndexId, invalid);
             break;
           case ExecutionNode::REMOTE:
             // REMOTE node is a blocker - we do not want to make materialization calls across cluster!
@@ -156,47 +148,58 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
           default: // make clang happy
             break;
         }
-        // Currently only calculation and subquery nodes expected to use a loop variable.
-        // We successfully replaced all references to the loop variable.
-        // However if some other node types will begin to use the loop variable
-        // assertion below will be triggered and this rule should be updated.
-        if (!stopSearch && type != ExecutionNode::CALCULATION) {
+        // currently only calculation nodes expected to use a loop variable with attributes
+        // we successfully replace all references to the loop variable
+        if (!(stopSearch || invalid) && type != ExecutionNode::CALCULATION) {
           arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
+            invalid = true;
             if (ExecutionNode::SUBQUERY == type) {
               auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
               auto subquery = subqueryNode->getSubquery();
               arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
               arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
               // find calculation nodes in the plan of a subquery
-              NodeFinder<ExecutionNode::NodeType> finder(ExecutionNode::CALCULATION, subqueryCalcNodes, true);
-              subquery->walk(finder);
-              for (auto scn : subqueryCalcNodes) {
-                TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
-                currentUsedVars.clear();
-                scn->getVariablesUsedHere(currentUsedVars);
-                if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
-                  processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(scn), nodesToChange,
-                                         nullptr == sortNode, commonIndexId, stickToSortNode, stopSearch);
-                  if (stopSearch) {
-                    break;
+              CalculationNodeVarFinder finder(indexNode->outVariable(), subqueryCalcNodes);
+              invalid = subquery->walk(finder);
+              if (!invalid) { // if the finder did not stop
+                for (auto scn : subqueryCalcNodes) {
+                  TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
+                  currentUsedVars.clear();
+                  scn->getVariablesUsedHere(currentUsedVars);
+                  if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
+                    processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(scn), nodesToChange,
+                                           commonIndexId, invalid);
+                    if (invalid) {
+                      break;
+                    }
                   }
                 }
               }
-            } else {
-              TRI_ASSERT(false);
-              stopSearch = true;
             }
           }
         }
+        if (invalid) {
+          TRI_ASSERT(!stopSearch);
+          if (sortNode != nullptr) {
+            // we have a doc body used before selected SortNode
+            // forget it, let`s look for better sort to use
+            stopSearch = true;
+          } else {
+            // we are between limit and sort nodes
+            // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
+            stickToSortNode = true;
+          }
+        }
         if (stopSearch) {
-          // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
+          // this limit node affects only closest sort if this sort is invalid
+          // we need to check other limit node
           sortNode = nullptr;
           nodesToChange.clear();
           break;
         }
-        current = current->getFirstDependency();  // inspect next node
+        current = current->getFirstDependency(); // inspect next node
       }
       if (sortNode && !nodesToChange.empty()) {
         auto ast = plan->getAst();
