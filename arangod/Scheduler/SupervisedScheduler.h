@@ -49,6 +49,7 @@ class SupervisedScheduler final : public Scheduler {
  private:
   std::atomic<size_t> _numWorkers;
   std::atomic<bool> _stopping;
+  std::atomic<bool> _acceptingNewJobs;
 
  protected:
   bool isStopping() override { return _stopping; }

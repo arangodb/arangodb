@@ -146,6 +146,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
     : Scheduler(server),
       _numWorkers(0),
       _stopping(false),
+      _acceptingNewJobs(true),
       _jobsSubmitted(0),
       _jobsDequeued(0),
       _jobsDone(0),
@@ -168,6 +169,10 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
 SupervisedScheduler::~SupervisedScheduler() = default;
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
+  if (!_acceptingNewJobs.load(std::memory_order_relaxed) {
+    return false;
+  }
+
   auto work = std::make_unique<WorkItem>(std::move(handler));
   
   // use memory order acquire to make sure, pushed item is visible
@@ -279,6 +284,28 @@ bool SupervisedScheduler::start() {
 }
 
 void SupervisedScheduler::shutdown() {
+  // First do not accept any more jobs:
+  {
+    std::unique_lock<std::mutex> guard(_mutex);
+    _acceptingNewJobs = false;
+  }
+
+  // Now wait until all are finished:
+  while (true) {
+    auto jobsDone = _jobsDone.load(std::memory_order_acquire);
+    auto jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
+
+    if (jobsSubmitted <= jobsDone) {
+      break;
+    }
+
+    LOG_TOPIC("a1690", WARN, Logger::THREADS)
+    << "Scheduler received shutdown, but there are still tasks on the "
+    << "queue: jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
+  // Now we can shut down the worker threads:
   {
     std::unique_lock<std::mutex> guard(_mutex);
     _stopping = true;
@@ -289,21 +316,8 @@ void SupervisedScheduler::shutdown() {
     }
   }
 
+  // And the cron thread:
   Scheduler::shutdown();
-
-  while (true) {
-    auto jobsDone = _jobsDone.load(std::memory_order_acquire);
-    auto jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
-
-    if (jobsSubmitted <= jobsDone) {
-      break;
-    }
-
-    LOG_TOPIC("a1690", WARN, Logger::THREADS)
-        << "Scheduler received shutdown, but there are still tasks on the "
-        << "queue: jobsSubmitted=" << jobsSubmitted << " jobsDone=" << jobsDone;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
 
   // call the destructor of all threads
   _manager.reset();
