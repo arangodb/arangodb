@@ -1,5 +1,30 @@
-v3.6.0 (XXXX-XX-XX)
--------------------
+v3.6.0-rc.2 (XXXX-XX-XX)
+------------------------
+
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
+* When starting the RocksDB engine, first create small-sized WAL files.
+
+  This is a precaution so that when repeatedly trying to start an arangod
+  instance, an instant instance startup failure will not lead to the disk
+  filling up so quickly with WAL file data.
+
+  The WAL file size is increased later on in the startup sequence, so
+  everything should be fine if the startup works.
+
+  This fixes a problem with the disk filling up quickly when the arangodb 
+  starter tries to start an instance 100 times in a row but instantaneously 
+  gets a failure back from it.
+
+* Fixed a permissions bug for /_admin/cluster/rebalanceShards.
+
+
+v3.6.0-rc.1 (2019-12-10)
+------------------------
+
+* Renamed document / index / vertex "handle" to "identifier" / "id" for
+  consistency in documentation and error messages.
 
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
@@ -10,13 +35,14 @@ v3.6.0 (XXXX-XX-XX)
   `--cluster.write-concern` and avoid confusion with
   `--cluster.min-replication-factor`
 
-* ArangoDB web UI was switched to React from previous framework and rebuilt.
+* ArangoDB web UI switched build system from grunt to webpack.
+  It supports React now, but the previous framework is still in use.
 
 * Enable the `parallelize-gather` AQL optimizer rule for certain write queries.
   The optimization is turned on by default and can be disabled by setting the
   startup option `--query.parallelize-gather-writes` to `false`.
 
-* Shard synchronisation readlock aware of rebootId.
+* Shard synchronization readlock aware of rebootId.
 
 * Bugfix: In an AQL cluster query, when gathering unsorted data in combination
   with a LIMIT with non-zero offset, if this offset exactly matches the number
@@ -45,9 +71,9 @@ v3.6.0 (XXXX-XX-XX)
   `late-document-materialization` for indexes and views correspondingly.
 
   This optimization reduces amount of documents to read from storage engine to
-  the limit expicitly stated in LIMIT node.
+  the limit explicitly stated in LIMIT node.
 
-* Added support of "Edge Ngrams" to `text` analyzer.
+* Added support of "Edge N-grams" to `text` analyzer.
 
 * Added support of UTF8 to `ngram` analyzer.
 
@@ -88,11 +114,11 @@ v3.6.0 (XXXX-XX-XX)
   query does not use LIMIT and there is no further cluster-internal
   communication after the REMOVE, REPLACE or UPDATE node. 
 
-* Include ArangoSearch data in hotbackups.
+* Include ArangoSearch data in HotBackups.
 
-* Allow to restore 3.5 hotbackups in 3.6.
+* Allow to restore 3.5 HotBackups in 3.6.
 
-* Fixed an issue where removeServer left bihind current coordinators
+* Fixed an issue where removeServer left behind current coordinators
 
 * Allow usage of AQL function `RANDOM_TOKEN` with an argument value of `0`. This
   now produces an empty string, whereas in older versions this threw an invalid
@@ -160,7 +186,7 @@ v3.6.0 (XXXX-XX-XX)
   `_key` as the shard key, without making the caller aware of that an
   unsupported shard key was used.
 
-* Use execvp instead of execv in hotbackup restore.
+* Use execvp instead of execv in HotBackup restore.
 
 * Re-enabled the AQL sort-limit optimization rule in conjunction with fullCount
   in the cluster. It now also may speed up fullCount with sorted indexes and a
@@ -186,7 +212,7 @@ v3.6.0 (XXXX-XX-XX)
   creation dialog in web UI. Preselect database default values for collection
   creation in web UI.
 
-* Add new JavaScipt function `db._properties()` that provides information about
+* Add new JavaScript function `db._properties()` that provides information about
   the current database's properties.
 
 * Add new options `sharding` and `replicationFactor` for database creation
@@ -204,7 +230,7 @@ v3.6.0 (XXXX-XX-XX)
   google tests.
 
 * Bugfix: The AQL sort-limit optimization was applied in some cases it
-  shouldn't, resulting in undefined behaviour.
+  shouldn't, resulting in undefined behavior.
 
 * Remove operations for documents in the cluster will now use an optimization,
   if all sharding keys are specified. Should the sharding keys not match the
@@ -291,7 +317,7 @@ v3.5.3 (2019-11-28)
       `)
 
   This will now correctly insert a document instead of updating the existing,
-  that only partially machtes the upsert-expression.
+  that only partially matches the upsert-expression.
 
 * Fixed undefined behaviour with creation of ArangoSearch links with custom
   analyzers in cluster environment.
