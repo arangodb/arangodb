@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "iterators.hpp"
@@ -31,7 +30,7 @@
 
 NS_LOCAL
 
-irs::cost empty_cost() NOEXCEPT {
+irs::cost empty_cost() noexcept {
   irs::cost cost;
   cost.value(0);
   return cost;
@@ -60,7 +59,7 @@ struct empty_doc_iterator final : irs::doc_iterator {
   virtual irs::doc_id_t seek(irs::doc_id_t) override {
     return irs::doc_limits::eof();
   }
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     static const irs::attribute_view INSTANCE = empty_doc_iterator_attributes();
     return INSTANCE;
   }
@@ -70,17 +69,47 @@ struct empty_doc_iterator final : irs::doc_iterator {
 /// @class empty_term_iterator
 /// @brief represents an iterator without terms
 //////////////////////////////////////////////////////////////////////////////
-struct empty_term_iterator final : irs::term_iterator {
-  virtual const irs::bytes_ref& value() const override {
+struct empty_term_iterator : irs::term_iterator {
+  virtual const irs::bytes_ref& value() const noexcept final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const override {
+  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept final {
     return irs::doc_iterator::empty();
   }
-  virtual void read() override { }
-  virtual bool next() override { return false; }
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual void read() noexcept final { }
+  virtual bool next() noexcept final { return false; }
+  virtual const irs::attribute_view& attributes() const noexcept final {
     return irs::attribute_view::empty_instance();
+  }
+}; // empty_term_iterator
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class empty_seek_term_iterator
+/// @brief represents an iterator without terms
+//////////////////////////////////////////////////////////////////////////////
+struct empty_seek_term_iterator final : irs::seek_term_iterator {
+  virtual const irs::bytes_ref& value() const noexcept final {
+    return irs::bytes_ref::NIL;
+  }
+  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept final {
+    return irs::doc_iterator::empty();
+  }
+  virtual void read() noexcept final { }
+  virtual bool next() noexcept final { return false; }
+  virtual const irs::attribute_view& attributes() const noexcept final {
+    return irs::attribute_view::empty_instance();
+  }
+  virtual irs::SeekResult seek_ge(const irs::bytes_ref&) noexcept override {
+    return irs::SeekResult::END;
+  }
+  virtual bool seek(const irs::bytes_ref&) noexcept override {
+    return false;
+  }
+  virtual bool seek(const irs::bytes_ref&, const seek_cookie&) noexcept override {
+    return false;
+  }
+  virtual seek_cookie::ptr cookie() const noexcept override {
+    return nullptr;
   }
 }; // empty_term_iterator
 
@@ -89,12 +118,19 @@ struct empty_term_iterator final : irs::term_iterator {
 /// @brief represents a reader with no terms
 //////////////////////////////////////////////////////////////////////////////
 struct empty_term_reader final : irs::singleton<empty_term_reader>, irs::term_reader {
-  virtual iresearch::seek_term_iterator::ptr iterator() const override { return nullptr; }
+  virtual iresearch::seek_term_iterator::ptr iterator() const override {
+    return irs::seek_term_iterator::empty(); // no terms in reader
+  }
+
+  virtual iresearch::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const override {
+    return irs::seek_term_iterator::empty(); // no terms in reader
+  }
+
   virtual const iresearch::field_meta& meta() const override {
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return irs::attribute_view::empty_instance();
   }
 
@@ -157,13 +193,23 @@ NS_END // LOCAL
 NS_ROOT
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                              basic_term_iterator
+// --SECTION--                                                    term_iterator
 // ----------------------------------------------------------------------------
 
 term_iterator::ptr term_iterator::empty() {
   static empty_term_iterator INSTANCE;
 
   return memory::make_managed<irs::term_iterator, false>(&INSTANCE);
+}
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                               seek_term_iterator
+// ----------------------------------------------------------------------------
+
+seek_term_iterator::ptr seek_term_iterator::empty() {
+  static empty_seek_term_iterator INSTANCE;
+
+  return memory::make_managed<irs::seek_term_iterator, false>(&INSTANCE);
 }
 
 // ----------------------------------------------------------------------------

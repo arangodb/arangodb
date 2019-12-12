@@ -253,30 +253,30 @@ TEST(container_utils_array_tests, check_alignment) {
   typedef irs::container_utils::array<size_t, 5> array_size_t;
 
   static_assert(
-    ALIGNOF(array_size_t) == ALIGNOF(size_t),
+    alignof(array_size_t) == alignof(size_t),
     "wrong data alignment"
   );
 
   typedef irs::container_utils::array<MAX_ALIGN_T, 5> array_aligned_max_t;
 
   static_assert(
-    ALIGNOF(array_aligned_max_t) == ALIGNOF(MAX_ALIGN_T),
+    alignof(array_aligned_max_t) == alignof(MAX_ALIGN_T),
     "wrong data alignment"
   );
 
-  struct ALIGNAS(16) aligned16 { char c; };
+  struct alignas(16) aligned16 { char c; };
   typedef irs::container_utils::array<aligned16, 5> array_aligned16_t;
 
   static_assert(
-    ALIGNOF(array_aligned16_t) == ALIGNOF(aligned16),
+    alignof(array_aligned16_t) == alignof(aligned16),
     "wrong data alignment"
   );
 
-  struct ALIGNAS(32) aligned32 { char c; };
+  struct alignas(32) aligned32 { char c; };
   typedef irs::container_utils::array<aligned32, 5> array_aligned32_t;
 
   static_assert(
-    ALIGNOF(array_aligned32_t) == ALIGNOF(aligned32),
+    alignof(array_aligned32_t) == alignof(aligned32),
     "wrong data alignment"
   );
 }
@@ -290,7 +290,7 @@ TEST(container_utils_array_tests, construct) {
       ++DEFAULT_CTOR;
     }
 
-    explicit object(int i) NOEXCEPT : i(i) {
+    explicit object(int i) noexcept : i(i) {
       ++NON_DEFAULT_CTOR;
     }
 

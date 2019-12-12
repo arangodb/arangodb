@@ -42,7 +42,7 @@ NS_BEGIN(sort)
 /// @brief boost scorer assign boost value to the particular document score
 ////////////////////////////////////////////////////////////////////////////////
 struct boost : public irs::sort {
-  struct score_ctx: public irs::sort::score_ctx {
+  struct score_ctx: public irs::score_ctx {
    public:
     score_ctx(irs::boost_t boost): boost_(boost) { }
 
@@ -58,7 +58,7 @@ struct boost : public irs::sort {
       return irs::flags::empty_instance();
     }
 
-    virtual std::pair<irs::sort::score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* query_attrs,
@@ -67,7 +67,7 @@ struct boost : public irs::sort {
     ) const override {
       return {
         irs::memory::make_unique<boost::score_ctx>(boost),
-        [](const void* ctx, irs::byte_type* score_buf) {
+        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
           auto& state = *reinterpret_cast<const score_ctx*>(ctx);
 
           sort::score_cast<irs::boost_t>(score_buf) = state.boost_;
@@ -132,7 +132,7 @@ struct custom_sort: public irs::sort {
       const custom_sort& sort_;
     };
 
-    struct scorer: public irs::sort::score_ctx {
+    struct scorer: public irs::score_ctx {
       scorer(
         const custom_sort& sort,
         const irs::sub_reader& segment_reader,
@@ -181,7 +181,7 @@ struct custom_sort: public irs::sort {
       return irs::memory::make_unique<collector>(sort_);
     }
 
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader& segment_reader,
         const irs::term_reader& term_reader,
         const irs::byte_type* filter_node_attrs,
@@ -196,7 +196,7 @@ struct custom_sort: public irs::sort {
 
       return {
         irs::memory::make_unique<custom_sort::prepared::scorer>(sort_, segment_reader, term_reader, filter_node_attrs, document_attrs),
-        [](const void* ctx, irs::byte_type* score_buf) {
+        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
           ASSERT_TRUE(score_buf);
           auto& state = *reinterpret_cast<const scorer*>(ctx);
           auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
@@ -240,7 +240,7 @@ struct custom_sort: public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> collector_collect_term;
   std::function<void(irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)> collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
-  std::pair<sort::score_ctx::ptr, irs::score_f>(*prepare_scorer)(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&){};
+  std::pair<irs::score_ctx_ptr, irs::score_f>(*prepare_scorer)(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&){};
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
@@ -293,7 +293,7 @@ struct frequency_sort: public irs::sort {
       }
     };
 
-    struct scorer: public irs::sort::score_ctx {
+    struct scorer: public irs::score_ctx {
       scorer(const size_t* v_docs_count, const irs::attribute_view::ref<irs::document>::type& doc_id_t):
         doc_id_t_attr(doc_id_t), docs_count(v_docs_count) {
       }
@@ -327,7 +327,7 @@ struct frequency_sort: public irs::sort {
       return nullptr; // do not need to collect stats
     }
 
-    virtual std::pair<sort::score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         const irs::sub_reader&,
         const irs::term_reader&,
         const irs::byte_type* stats_buf,
@@ -339,7 +339,7 @@ struct frequency_sort: public irs::sort {
       const size_t* docs_count = &stats.count;
       return {
         irs::memory::make_unique<frequency_sort::prepared::scorer>(docs_count, doc_id_t),
-        [](const void* ctx, irs::byte_type* score_buf) {
+        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
           auto& state = *reinterpret_cast<const scorer*>(ctx);
           auto& buf = irs::sort::score_cast<score_t>(score_buf);
           buf.id = state.doc_id_t_attr->value;
@@ -515,13 +515,20 @@ class filter_test_case_base : public index_test_base {
 };
 
 struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
-  virtual irs::seek_term_iterator::ptr iterator() const { return nullptr; }
+  virtual irs::seek_term_iterator::ptr iterator() const {
+    return irs::seek_term_iterator::empty();
+  }
+
+  virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher&) const {
+    return irs::seek_term_iterator::empty();
+  }
+
   virtual const irs::field_meta& meta() const {
     static irs::field_meta EMPTY;
     return EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT {
+  virtual const irs::attribute_view& attributes() const noexcept {
     return irs::attribute_view::empty_instance();
   }
 

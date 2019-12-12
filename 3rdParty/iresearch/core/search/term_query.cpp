@@ -18,13 +18,12 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "term_query.hpp"
-#include "score_doc_iterators.hpp"
 
+#include "shared.hpp"
+#include "score_doc_iterators.hpp"
 #include "index/index_reader.hpp"
 
 NS_ROOT
@@ -56,12 +55,9 @@ term_query::ptr term_query::make(
     // find term
     auto terms = reader->iterator();
 
-    if (!terms->seek(term)) {
+    if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
       continue;
     }
-
-    // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
 
     // read term attributes
     terms->read();
@@ -72,11 +68,6 @@ term_query::ptr term_query::make(
     auto& state = states.insert(segment);
     state.reader = reader;
     state.cookie = terms->cookie();
-
-    // collect cost
-    if (meta) {
-      state.estimation = meta->docs_count;
-    }
 
     collectors.collect(segment, *reader, 0, terms->attributes()); // collect statistics, 0 because only 1 term
   }
@@ -96,8 +87,9 @@ term_query::term_query(
     term_query::states_t&& states,
     bstring&& stats,
     boost_t boost)
-  : filter::prepared(std::move(stats), boost),
-    states_(std::move(states)) {
+  : filter::prepared(boost),
+    states_(std::move(states)),
+    stats_(std::move(stats)) {
 }
 
 doc_iterator::ptr term_query::execute(
@@ -114,22 +106,27 @@ doc_iterator::ptr term_query::execute(
   // find term using cached state
   auto terms = state->reader->iterator();
 
+  if (IRS_UNLIKELY(!terms)) {
+    return doc_iterator::empty();
+  }
+
   // use bytes_ref::blank here since we need just to "jump" to the cached state,
   // and we are not interested in term value itself
   if (!terms->seek(bytes_ref::NIL, *state->cookie)) {
     return doc_iterator::empty();
   }
 
-  // return iterator
-  return doc_iterator::make<basic_doc_iterator>(
-    rdr, 
-    *state->reader,
-    stats(),
-    terms->postings(ord.features()), 
-    ord, 
-    state->estimation,
-    boost()
-  );
+  auto docs = terms->postings(ord.features());
+  auto& attrs = docs->attributes();
+
+  // set score
+  auto& score = attrs.get<irs::score>();
+
+  if (score) {
+    score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats_.c_str(), attrs, boost()));
+  }
+
+  return docs;
 }
 
 NS_END // ROOT

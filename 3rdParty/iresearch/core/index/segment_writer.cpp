@@ -88,13 +88,13 @@ segment_writer::ptr segment_writer::make(
   return memory::maker<segment_writer>::make(dir, column_info, comparator);
 }
 
-size_t segment_writer::memory_active() const NOEXCEPT {
+size_t segment_writer::memory_active() const noexcept {
   const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
     ? sizeof(bitvector::word_t) : 0;
 
   const auto column_cache_active = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
-    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) NOEXCEPT {
+    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) noexcept {
       return lhs + rhs.second.stream.memory_active();
   });
 
@@ -105,13 +105,13 @@ size_t segment_writer::memory_active() const NOEXCEPT {
     + column_cache_active;
 }
 
-size_t segment_writer::memory_reserved() const NOEXCEPT {
+size_t segment_writer::memory_reserved() const noexcept {
   const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
     ? sizeof(bitvector::word_t) : 0;
 
   const auto column_cache_reserved = std::accumulate(
     columns_.begin(), columns_.end(), size_t(0),
-    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) NOEXCEPT {
+    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) noexcept {
       return lhs + rhs.second.stream.memory_reserved();
   });
 
@@ -138,7 +138,7 @@ bool segment_writer::remove(doc_id_t doc_id) {
 segment_writer::segment_writer(
     directory& dir,
     const column_info_provider_t& column_info,
-    const comparer* comparator) NOEXCEPT
+    const comparer* comparator) noexcept
   : sort_(column_info),
     fields_(comparator),
     column_info_(&column_info),
@@ -183,7 +183,7 @@ columnstore_writer::column_output& segment_writer::stream(
 
   auto generator = [](
       const hashed_string_ref& key,
-      const stored_column& value) NOEXCEPT {
+      const stored_column& value) noexcept {
     // reuse hash but point ref at value
     return hashed_string_ref(key.hash(), value.name);
   };
@@ -216,7 +216,7 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
   struct less_t {
     bool operator()(
         const stored_column* lhs,
-        const stored_column* rhs) const NOEXCEPT {
+        const stored_column* rhs) const noexcept {
       return lhs->name < rhs->name;
     }
   };
@@ -335,7 +335,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   index_utils::flush_index_segment(dir_, segment);
 }
 
-void segment_writer::reset() NOEXCEPT {
+void segment_writer::reset() noexcept {
   initialized_ = false;
   tick_ = 0;
   dir_.clear_tracked();

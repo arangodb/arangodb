@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_CTR_ENCRYPTION_H
@@ -49,11 +48,11 @@ class IRESEARCH_API ctr_encryption : public encryption {
   static const size_t DEFAULT_HEADER_LENGTH = 4096;
   static const size_t MIN_HEADER_LENGTH = sizeof(uint64_t);
 
-  explicit ctr_encryption(const cipher& cipher) NOEXCEPT
+  explicit ctr_encryption(const cipher& cipher) noexcept
    : cipher_(&cipher) {
   }
 
-  virtual size_t header_length() NOEXCEPT override {
+  virtual size_t header_length() noexcept override {
     return DEFAULT_HEADER_LENGTH;
   }
 

@@ -25,7 +25,6 @@
 // 3rdParty\iresearch\core\shared.hpp
 #if defined(_MSC_VER)
 #include "date/date.h"
-#undef NOEXCEPT
 #endif
 
 #include "analysis/analyzers.hpp"
