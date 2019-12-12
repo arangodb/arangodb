@@ -194,8 +194,7 @@ TEST_F(NodeTest, node_applyOp_bs) {
 
   std::string path("/a/pi"), name("node");;
   Node n(name);
-  std::string oper = "bs";
-  double pi = 3.14159265359;
+  std::string oper = "bs", error = std::string("Unknown operation '") + oper + "'";
 
   Builder b;
   { VPackObjectBuilder a(&b);
@@ -203,7 +202,7 @@ TEST_F(NodeTest, node_applyOp_bs) {
 
   auto ret = n(path).applyOp(b.slice());
   EXPECT_EQ(ret.ok(), false);
-  EXPECT_EQ(ret.errorMessage(), std::string("Unknown operation. '") + oper + "'");
+  EXPECT_EQ(ret.errorMessage(), error);
 
 }
 
