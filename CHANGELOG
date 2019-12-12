@@ -1,6 +1,9 @@
 v3.6.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
 * When starting the RocksDB engine, first create small-sized WAL files.
 
   This is a precaution so that when repeatedly trying to start an arangod
@@ -22,9 +25,6 @@ v3.6.0-rc.1 (2019-12-10)
 
 * Renamed document / index / vertex "handle" to "identifier" / "id" for
   consistency in documentation and error messages.
-
-* Bugfix: An AQL ternary expression with the condition being true at query
-  compile time would not execute its false branch.
 
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
