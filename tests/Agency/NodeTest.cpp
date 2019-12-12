@@ -35,8 +35,6 @@
 #include <velocypack/velocypack-aliases.h>
 #include <iostream>
 
-#include "Mocks/LogLevels.h"
-
 #include "Agency/Node.h"
 
 using namespace arangodb;
@@ -48,8 +46,7 @@ namespace tests {
 namespace node_test {
 
 class NodeTest
-  : public ::testing::Test,
-    public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
+  : public ::testing::Test {
  protected:
 
   NodeTest() {}
@@ -187,6 +184,22 @@ TEST_F(NodeTest, node_applyOp_delete) {
   EXPECT_NE(ret.get(), nullptr);
   EXPECT_EQ(ret.get()->getDouble(), pi);
   EXPECT_NE(ret.get()->has(path), true);
+
+}
+
+TEST_F(NodeTest, node_applyOp_bs) {
+
+  std::string path("/a/pi"), name("node");;
+  Node n(name);
+  std::string oper = "bs", error = std::string("Unknown operation '") + oper + "'";
+
+  Builder b;
+  { VPackObjectBuilder a(&b);
+    b.add("op", VPackValue(oper)); }
+
+  auto ret = n(path).applyOp(b.slice());
+  EXPECT_EQ(ret.ok(), false);
+  EXPECT_EQ(ret.errorMessage(), error);
 
 }
 
