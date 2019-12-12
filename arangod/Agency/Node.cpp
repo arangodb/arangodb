@@ -716,7 +716,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_LOCK>(VPackSlice const& slice) 
 }
 
 template <>
-bool Node::handle<READ_UNLOCK>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<READ_UNLOCK>(VPackSlice const& slice) {
   Slice user = slice.get("by");
   if (!user.isString()) {
     return ResultT<std::shared_ptr<Node>>::error(
@@ -750,7 +750,7 @@ bool Node::handle<READ_UNLOCK>(VPackSlice const& slice) {
 }
 
 template<>
-bool Node::handle<WRITE_LOCK>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<WRITE_LOCK>(VPackSlice const& slice) {
   Slice user = slice.get("by");
   if (!user.isString()) {
     return ResultT<std::shared_ptr<Node>>::error(
@@ -766,7 +766,7 @@ bool Node::handle<WRITE_LOCK>(VPackSlice const& slice) {
 }
 
 template<>
-bool Node::handle<WRITE_UNLOCK>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slice) {
   Slice user = slice.get("by");
   if (!user.isString()) {
     return ResultT<std::shared_ptr<Node>>::error(
