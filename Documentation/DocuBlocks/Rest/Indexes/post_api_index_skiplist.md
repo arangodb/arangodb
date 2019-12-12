@@ -21,7 +21,7 @@ if *true*, then create a unique index.
 @RESTBODYPARAM{sparse,boolean,required,}
 if *true*, then create a sparse index.
 
-@RESTBODYPARAM{deduplicate,boolean,optional,boolean}
+@RESTBODYPARAM{deduplicate,boolean,optional,}
 if *false*, the deduplication of array values is turned off.
 
 @RESTDESCRIPTION
@@ -30,9 +30,9 @@ Creates a skip-list index for the collection *collection-name*, if
 it does not already exist. The call expects an object containing the index
 details.
 
-In a sparse index all documents will be excluded from the index that do not 
-contain at least one of the specified index attributes (i.e. *fields*) or that 
-have a value of *null* in any of the specified index attributes. Such documents 
+In a sparse index all documents will be excluded from the index that do not
+contain at least one of the specified index attributes (i.e. *fields*) or that
+have a value of *null* in any of the specified index attributes. Such documents
 will not be indexed, and not be taken into account for uniqueness checks if
 the *unique* flag is set.
 
@@ -70,10 +70,10 @@ Creating a skiplist index
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
-    var body = { 
-      type: "skiplist", 
-      unique: false, 
-      fields: [ "a", "b" ] 
+    var body = {
+      type: "skiplist",
+      unique: false,
+      fields: [ "a", "b" ]
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -92,11 +92,11 @@ Creating a sparse skiplist index
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
-    var body = { 
-      type: "skiplist", 
-      unique: false, 
-      sparse: true, 
-      fields: [ "a" ] 
+    var body = {
+      type: "skiplist",
+      unique: false,
+      sparse: true,
+      fields: [ "a" ]
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -107,4 +107,3 @@ Creating a sparse skiplist index
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

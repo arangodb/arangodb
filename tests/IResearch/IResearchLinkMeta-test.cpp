@@ -103,7 +103,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
   virtual bool next() override { return false; }
@@ -469,7 +469,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(7U, slice.length());
+    EXPECT_EQ(8, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -494,6 +494,8 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
                  ));
     EXPECT_EQUAL_SLICES(tmpSlice.at(0).get("properties"), VPackSlice::emptyObjectSlice());
     tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
+    tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
   }
 
@@ -538,7 +540,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(7U, slice.length());
+    EXPECT_EQ(8, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 0 == tmpSlice.length());
     tmpSlice = slice.get("includeAllFields");
@@ -563,6 +565,8 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
                  ));
     EXPECT_EQUAL_SLICES(tmpSlice.at(0).get("properties"), VPackSlice::emptyObjectSlice());
     tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
+    tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray() && 0 == tmpSlice.length());
   }
 }
@@ -754,7 +758,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(7U, slice.length());
+    EXPECT_EQ(8, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
@@ -1008,7 +1012,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(7U, slice.length());
+    EXPECT_EQ(8, slice.length());
     tmpSlice = slice.get("fields");
     EXPECT_TRUE(tmpSlice.isObject() && 3 == tmpSlice.length());
 
@@ -1216,7 +1220,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
 
     auto slice = builder.slice();
 
-    EXPECT_EQ(7U, slice.length());
+    EXPECT_EQ(8, slice.length());
     EXPECT_TRUE(slice.hasKey("fields"));
     EXPECT_TRUE(slice.hasKey("includeAllFields"));
     EXPECT_TRUE(slice.hasKey("trackListPositions"));
@@ -1224,6 +1228,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
     EXPECT_TRUE(slice.hasKey("analyzers"));
     EXPECT_TRUE(slice.hasKey("analyzerDefinitions"));
     EXPECT_TRUE(slice.hasKey("primarySort"));
+    EXPECT_TRUE(slice.hasKey("storedValues"));
   }
 }
 

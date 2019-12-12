@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_STRING_H
@@ -47,16 +46,16 @@ struct char_traits<::iresearch::byte_type> {
   typedef std::streamoff off_type;
   typedef std::streampos pos_type;
 
-  static void assign(char_type& dst, const char_type& src) NOEXCEPT {
+  static void assign(char_type& dst, const char_type& src) noexcept {
     dst = src;
   }
 
-  static char_type* assign(char_type* ptr, size_t count, char_type ch) NOEXCEPT {
+  static char_type* assign(char_type* ptr, size_t count, char_type ch) noexcept {
     assert(ptr);
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
 
-  static int compare(const char_type* lhs, const char_type* rhs, size_t count) NOEXCEPT {
+  static int compare(const char_type* lhs, const char_type* rhs, size_t count) noexcept {
     if (0 == count) {
       return 0;
     }
@@ -65,7 +64,7 @@ struct char_traits<::iresearch::byte_type> {
     return std::memcmp(lhs, rhs, count);
   }
 
-  static char_type* copy(char_type* dst, const char_type* src, size_t count) NOEXCEPT {
+  static char_type* copy(char_type* dst, const char_type* src, size_t count) noexcept {
     if (0 == count) {
       return dst;
     }
@@ -74,13 +73,13 @@ struct char_traits<::iresearch::byte_type> {
     return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
   }
 
-  static int_type eof() NOEXCEPT { return -1; }
+  static int_type eof() noexcept { return -1; }
 
-  static bool eq(char_type lhs, char_type rhs) NOEXCEPT { return lhs == rhs; }
+  static bool eq(char_type lhs, char_type rhs) noexcept { return lhs == rhs; }
 
-  static bool eq_int_type(int_type lhs, int_type rhs) NOEXCEPT { return lhs == rhs; }
+  static bool eq_int_type(int_type lhs, int_type rhs) noexcept { return lhs == rhs; }
 
-  static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) NOEXCEPT {
+  static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) noexcept {
     if (0 == count) {
       return nullptr;
     }
@@ -89,15 +88,15 @@ struct char_traits<::iresearch::byte_type> {
     return reinterpret_cast<char_type const*>(std::memchr(ptr, ch, count));
   }
 
-  static size_t length(const char_type* /*ptr*/) NOEXCEPT {
+  static size_t length(const char_type* /*ptr*/) noexcept {
     // binary string length cannot be determined from binary content
     assert(false);
     return (std::numeric_limits<size_t>::max)();
   }
 
-  static bool lt(char_type lhs, char_type rhs) NOEXCEPT { return lhs < rhs; }
+  static bool lt(char_type lhs, char_type rhs) noexcept { return lhs < rhs; }
 
-  static char_type* move(char_type* dst, const char_type* src, size_t count) NOEXCEPT {
+  static char_type* move(char_type* dst, const char_type* src, size_t count) noexcept {
     if (0 == count) {
       return dst;
     }
@@ -106,14 +105,14 @@ struct char_traits<::iresearch::byte_type> {
     return reinterpret_cast<char_type*>(std::memmove(dst, src, count));
   }
 
-  static int_type not_eof(int_type i) NOEXCEPT { return i != eof(); }
+  static int_type not_eof(int_type i) noexcept { return i != eof(); }
 
-  static char_type to_char_type(int_type i) NOEXCEPT {
+  static char_type to_char_type(int_type i) noexcept {
     assert(int_type(char_type(i)) == i);
     return char_type(i);
   }
 
-  static int_type to_int_type(char_type ch) NOEXCEPT { return ch; }
+  static int_type to_int_type(char_type ch) noexcept { return ch; }
 
   MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/, const char_type* /*src*/, size_t /*src_size*/) { assert(false); });
 }; // char_traits
@@ -144,51 +143,59 @@ class basic_string_ref {
   IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref NIL; // null string
   IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref EMPTY; // empty string
 
-  CONSTEXPR basic_string_ref() NOEXCEPT
+  constexpr basic_string_ref() noexcept
     : data_(nullptr), size_(0) {
   }
 
   // Constructs a string reference object from a ref and a size.
-  basic_string_ref(const basic_string_ref& ref, size_t size) NOEXCEPT
+  basic_string_ref(const basic_string_ref& ref, size_t size) noexcept
     : data_(ref.data_), size_(size) {
     IRS_ASSERT(size <= ref.size_);
   }
 
   // Constructs a string reference object from a C string and a size.
-  CONSTEXPR basic_string_ref(const char_type* s, size_t size) NOEXCEPT
+  constexpr basic_string_ref(const char_type* s, size_t size) noexcept
     : data_(s), size_(size) {
   }
 
   // Constructs a string reference object from a C string computing
   // the size with ``std::char_traits<Char>::length``.
-  CONSTEXPR basic_string_ref(const char_type* s) NOEXCEPT
+  constexpr basic_string_ref(const char_type* s) noexcept
     : data_(s), size_(s ? traits_type::length(s) : 0) {
   }
 
-  CONSTEXPR basic_string_ref(const std::basic_string<char_type>& s) NOEXCEPT
+  constexpr basic_string_ref(const std::basic_string<char_type>& s) noexcept
     : data_(s.c_str()), size_(s.size()) {
   }
 
-  CONSTEXPR basic_string_ref(const std::basic_string<char_type>& str, size_t size) NOEXCEPT
+  constexpr basic_string_ref(const std::basic_string<char_type>& str, size_t size) noexcept
     : data_(str.c_str()), size_(size) {
   }
 
-  CONSTEXPR const char_type& operator[](size_t i) const NOEXCEPT {
+  constexpr const char_type& operator[](size_t i) const noexcept {
     return IRS_ASSERT(i < size_), data_[i];
   }
 
   // Returns the pointer to a C string.
-  CONSTEXPR const char_type* c_str() const NOEXCEPT { return data_; }
+  constexpr const char_type* c_str() const noexcept { return data_; }
 
   // Returns the string size.
-  CONSTEXPR size_t size() const NOEXCEPT { return size_; }
+  constexpr size_t size() const noexcept { return size_; }
 
-  CONSTEXPR bool null() const NOEXCEPT { return nullptr == data_; }
-  CONSTEXPR bool empty() const NOEXCEPT { return null() || 0 == size_; }
-  CONSTEXPR const char_type* begin() const NOEXCEPT{ return data_; }
-  CONSTEXPR const char_type* end() const NOEXCEPT{ return data_ + size_; }
+  constexpr bool null() const noexcept { return nullptr == data_; }
+  constexpr bool empty() const noexcept { return null() || 0 == size_; }
+  constexpr const char_type* begin() const noexcept{ return data_; }
+  constexpr const char_type* end() const noexcept{ return data_ + size_; }
 
-  CONSTEXPR operator std::basic_string<char_type>() const {
+  constexpr const char_type& back() const noexcept {
+    return IRS_ASSERT(!empty()), data_[size()-1];
+  }
+
+  constexpr const char_type& front() const noexcept {
+    return IRS_ASSERT(!empty()), data_[0];
+  }
+
+  constexpr operator std::basic_string<char_type>() const {
     return std::basic_string<char_type>(data_, size_);
   }
 
@@ -331,12 +338,12 @@ typedef basic_string_ref<char> string_ref;
 typedef basic_string_ref<byte_type> bytes_ref;
 
 template<typename _ElemDst, typename _ElemSrc>
-CONSTEXPR inline basic_string_ref<_ElemDst> ref_cast(const basic_string_ref<_ElemSrc>& src) {
+constexpr inline basic_string_ref<_ElemDst> ref_cast(const basic_string_ref<_ElemSrc>& src) {
   return basic_string_ref<_ElemDst>(reinterpret_cast<const _ElemDst*>(src.c_str()), src.size());
 }
 
 template<typename ElemDst, typename ElemSrc>
-CONSTEXPR inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<ElemSrc>& src) {
+constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<ElemSrc>& src) {
   return basic_string_ref<ElemDst>(reinterpret_cast<const ElemDst*>(src.c_str()), src.size());
 }
 
@@ -346,11 +353,11 @@ CONSTEXPR inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<Elem
 
 NS_BEGIN(hash_utils)
 
-IRESEARCH_API size_t hash(const irs::bstring& value);
-IRESEARCH_API size_t hash(const char* value);
-IRESEARCH_API size_t hash(const wchar_t* value);
-IRESEARCH_API size_t hash(const bytes_ref& value);
-IRESEARCH_API size_t hash(const string_ref& value);
+IRESEARCH_API size_t hash(const irs::bstring& value) noexcept;
+IRESEARCH_API size_t hash(const char* value) noexcept;
+IRESEARCH_API size_t hash(const wchar_t* value) noexcept;
+IRESEARCH_API size_t hash(const bytes_ref& value) noexcept;
+IRESEARCH_API size_t hash(const string_ref& value) noexcept;
 
 NS_END // hash_utils
 
@@ -364,35 +371,35 @@ NS_BEGIN(std)
 
 template<>
 struct hash<char*> {
-  size_t operator()(const char* value) const {
+  size_t operator()(const char* value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash
 
 template<>
 struct hash<wchar_t*> {
-  size_t operator()(const wchar_t* value) const {
+  size_t operator()(const wchar_t* value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash
 
 template<>
 struct hash<::iresearch::bstring> {
-  size_t operator()(const ::iresearch::bstring& value) const {
+  size_t operator()(const ::iresearch::bstring& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash
 
 template<>
 struct hash<::iresearch::bytes_ref> {
-  size_t operator()(const ::iresearch::bytes_ref& value) const {
+  size_t operator()(const ::iresearch::bytes_ref& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash
 
 template<>
 struct hash<::iresearch::string_ref> {
-  size_t operator()(const ::iresearch::string_ref& value) const {
+  size_t operator()(const ::iresearch::string_ref& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash

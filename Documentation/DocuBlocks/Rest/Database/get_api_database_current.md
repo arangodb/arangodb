@@ -45,4 +45,3 @@ is returned if the database could not be found.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

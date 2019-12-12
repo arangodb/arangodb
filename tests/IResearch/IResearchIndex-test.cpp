@@ -137,7 +137,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
 
