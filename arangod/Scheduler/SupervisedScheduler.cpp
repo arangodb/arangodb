@@ -225,7 +225,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
 
   // PLEASE LEAVE THESE EXPLANATIONS IN THE CODE, SINCE WE HAVE HAD MANY PROBLEMS
   // IN THIS AREA IN THE PAST, AND WE MIGHT FORGET AGAIN WHAT WE INVESTIGATED IF
-  // IT IS NOT WRITEN ANYWHERE.
+  // IT IS NOT WRITTEN ANYWHERE.
   // Waking up a sleeping thread is very expensive (order of magnitude of a
   // microsecond), therefore, we do not want to do it unnecessarily. However,
   // if we push work to a queue, we do not want a sleeping worker to sleep
