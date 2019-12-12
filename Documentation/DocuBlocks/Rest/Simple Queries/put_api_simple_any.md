@@ -16,8 +16,7 @@ Returns a random document from a collection. The call expects a JSON object
 as body with the following attributes:
 
 @RESTBODYPARAM{collection,string,required, string}
-The identifier or name of the collection to query.
-
+The identifier or name of the collection to query.<br>
 Returns a JSON object with the document stored in the attribute
 *document* if the collection contains at least one document. If
 the collection is empty, the *document* attribute contains null.
@@ -58,4 +57,3 @@ response body contains an error document in this case.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_DIRECTORY_H
@@ -56,7 +55,7 @@ struct IRESEARCH_API index_lock : private util::noncopyable {
   /// @param[out] true if resource is already locked
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool is_locked(bool& result) const NOEXCEPT = 0;
+  virtual bool is_locked(bool& result) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief locks the guarded resource
@@ -71,13 +70,13 @@ struct IRESEARCH_API index_lock : private util::noncopyable {
   /// @param[in] wait_timeout timeout between different locking attempts
   /// @returns true on success
   ////////////////////////////////////////////////////////////////////////////
-  bool try_lock(size_t wait_timeout = 1000) NOEXCEPT;
+  bool try_lock(size_t wait_timeout = 1000) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief unlocks the guarded resource
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool unlock() NOEXCEPT = 0;
+  virtual bool unlock() noexcept = 0;
 }; // unique_lock
 
 //////////////////////////////////////////////////////////////////////////////
@@ -144,7 +143,7 @@ struct IRESEARCH_API directory
   /// @param[in] name name of the file to open
   /// @returns output stream associated with the file with the specified name
   ////////////////////////////////////////////////////////////////////////////
-  virtual index_output::ptr create(const std::string& name) NOEXCEPT = 0;
+  virtual index_output::ptr create(const std::string& name) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief check whether the file specified by the given name exists
@@ -154,7 +153,7 @@ struct IRESEARCH_API directory
   ////////////////////////////////////////////////////////////////////////////
   virtual bool exists(
     bool& result, const std::string& name
-  ) const NOEXCEPT = 0;
+  ) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief returns the length of the file specified by the given name
@@ -164,14 +163,14 @@ struct IRESEARCH_API directory
   ////////////////////////////////////////////////////////////////////////////
   virtual bool length(
     uint64_t& result, const std::string& name
-  ) const NOEXCEPT = 0;
+  ) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief creates an index level lock with the specified name 
   /// @param[in] name name of the lock
   /// @returns lock hande
   ////////////////////////////////////////////////////////////////////////////
-  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT = 0;
+  virtual index_lock::ptr make_lock(const std::string& name) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief returns modification time of the file specified by the given name
@@ -181,7 +180,7 @@ struct IRESEARCH_API directory
   ////////////////////////////////////////////////////////////////////////////
   virtual bool mtime(
     std::time_t& result, const std::string& name
-  ) const NOEXCEPT = 0;
+  ) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief opens input stream associated with the existing file
@@ -191,14 +190,14 @@ struct IRESEARCH_API directory
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
-  ) const NOEXCEPT = 0;
+  ) const noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief removes the file specified by the given name from directory
   /// @param[in] name name of the file
   /// @returns true if file has been removed
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool remove(const std::string& name) NOEXCEPT = 0;
+  virtual bool remove(const std::string& name) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief renames the 'src' file to 'dst'
@@ -208,14 +207,14 @@ struct IRESEARCH_API directory
   ////////////////////////////////////////////////////////////////////////////
   virtual bool rename(
     const std::string& src, const std::string& dst
-  ) NOEXCEPT = 0;
+  ) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief ensures that all modification have been sucessfully persisted
   /// @param[in] name name of the file
   /// @returns call success
   ////////////////////////////////////////////////////////////////////////////
-  virtual bool sync(const std::string& name) NOEXCEPT = 0;
+  virtual bool sync(const std::string& name) noexcept = 0;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief applies the specified 'visitor' to every filename in a directory

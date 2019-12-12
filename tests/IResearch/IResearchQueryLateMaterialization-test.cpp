@@ -176,21 +176,17 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
 
       EXPECT_TRUE(trx.commit().ok());
 
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view1)
-                   ->commit()
-                   .ok()));
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view1)
+                  ->commit().ok());
 
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view1)
-                   ->commit()
-                   .ok()));
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view1)
+                  ->commit().ok());
 
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view2)
-                   ->commit()
-                   .ok()));
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection1, *view2)
+                  ->commit().ok());
 
-      EXPECT_TRUE((arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view2)
-                   ->commit()
-                   .ok()));
+      EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *view2)
+                  ->commit().ok());
     }
   }
 
@@ -220,8 +216,8 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
 
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                     arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
+                    arangodb::velocypack::Slice(*expectedDoc), resolved, true));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }

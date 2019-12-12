@@ -59,7 +59,7 @@ namespace tests {
       virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
         return nullptr; // do not need to collect stats
       }
-      virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+      virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
           const irs::byte_type* query_attrs,
