@@ -70,7 +70,13 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 
   let command;
   command = '(';
-  command += 'printf \'bt full\\n thread apply all bt\\n\';';
+  command += 'printf \'' +
+    'set logging file ' + gdbOutputFile + '\\n' +
+    'set logging on\\n' +
+    'bt full\\n' +
+    'thread apply all bt\\n'+
+    '\';';
+
   command += 'sleep 10;';
   command += 'echo quit;';
   command += 'sleep 2';
@@ -81,7 +87,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   } else {
     command += options.coreDirectory;
   }
-  command += ' > ' + gdbOutputFile + ' 2>&1';
+
   const args = ['-c', command];
   print(JSON.stringify(args));
 
