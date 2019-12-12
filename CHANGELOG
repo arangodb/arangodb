@@ -1,6 +1,14 @@
 devel
 -----
 
+* Changed HTTP return code for an error case in /_api/cluster/endpoints REST API.
+  Now, if the API is called on a single server, it will return HTTP 501 instead
+  of HTTP 403.
+
+* Changed HTTP return code for an error case in /_api/cluster/agency-dump REST API.
+  Now, if the API is called on a server type other than coordinator, it will return 
+  HTTP 501 instead of HTTP 403.
+
 * Fixed undefined behavior on node delete.
 
 * Fixed agency invalid operation
