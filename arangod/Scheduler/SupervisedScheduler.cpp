@@ -538,7 +538,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
   WorkItem* work;
 
-#define KNORKE 1
+//#define KNORKE 1
 #ifdef KNORKE
   auto checkAllQueues = [&]() -> WorkItem* {
     WorkItem* res = nullptr;
