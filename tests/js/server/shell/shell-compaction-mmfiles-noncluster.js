@@ -84,7 +84,7 @@ function CompactionSuite () {
     testShapesMovement: function () {
       var collectionName = 'example';
       const ndocs = 10000;
-      const nrubbish = 250000;
+      const nrRubbish = 250000;
 
       internal.db._drop(collectionName);
 
@@ -135,14 +135,14 @@ function CompactionSuite () {
       }
 
       // fill the datafile with rubbish
-      for (i = 0; i < nrubbish; ++i) {
+      for (i = 0; i < nrRubbish; ++i) {
         cn.save({
           _key: 'test' + i,
           value: 'thequickbrownfox'
         });
       }
 
-      for (i = 0; i < nrubbish; ++i) {
+      for (i = 0; i < nrRubbish; ++i) {
         cn.remove('test' + i);
       }
 
@@ -181,7 +181,7 @@ function CompactionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testShapes1: function () {
-      const nrTrash = 10000;
+      const nrRubbish = 10000;
       const nrShapes = 10000;
       var cn = 'example';
       internal.db._drop(cn);
@@ -193,7 +193,7 @@ function CompactionSuite () {
       var i, doc;
 
       // prefill with 'trash'
-      for (i = 0; i < nrTrash; ++i) {
+      for (i = 0; i < nrRubbish; ++i) {
         c1.save({
           _key: 'test' + i
         });
