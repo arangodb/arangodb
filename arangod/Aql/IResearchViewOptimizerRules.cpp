@@ -492,13 +492,13 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
             // currently only calculation nodes expected to use a loop variable with attributes
             // we successfully replace all references to the loop variable
-            auto invalid = true;
+            auto valid = false;
             switch (type) {
             case ExecutionNode::CALCULATION: {
               auto calcNode = ExecutionNode::castTo<CalculationNode*>(current);
               if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                 calcNodes.emplace_back(calcNode);
-                invalid = false;
+                valid = true;
               }
               break;
             }
@@ -509,8 +509,8 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
               ::arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
               // find calculation nodes in the plan of a subquery
               CalculationNodeVarFinder finder(&viewNode.outVariable(), subqueryCalcNodes);
-              invalid = subquery->walk(finder);
-              if (!invalid) { // if the finder did not stop
+              valid = !subquery->walk(finder);
+              if (valid) { // if the finder did not stop
                 for (auto scn : subqueryCalcNodes) {
                   TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
                   currentUsedVars.clear();
@@ -520,7 +520,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
                     if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                       calcNodes.emplace_back(calcNode);
                     } else {
-                      invalid = true;
+                      valid = false;
                       break;
                     }
                   }
@@ -531,7 +531,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             default:
               break;
             }
-            if (invalid) {
+            if (!valid) {
               if (sortNode != nullptr) {
                 // we have a doc body used before selected SortNode
                 // forget it, let`s look for better sort to use
