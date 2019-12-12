@@ -169,7 +169,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
 SupervisedScheduler::~SupervisedScheduler() = default;
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
-  if (!_acceptingNewJobs.load(std::memory_order_relaxed) {
+  if (!_acceptingNewJobs.load(std::memory_order_relaxed)) {
     return false;
   }
 
