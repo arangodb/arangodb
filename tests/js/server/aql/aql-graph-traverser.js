@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global assertEqual, assertTrue, fail, AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
+/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -31,6 +31,7 @@
 'use strict';
 
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, fail} = jsunity.jsUnity.assertions;
 
 const internal = require('internal');
 const db = internal.db;
@@ -1796,46 +1797,66 @@ function complexInternaSuite() {
     },
 
     testSkipSome: function () {
-      var query = `WITH ${vn}
+      const query = `WITH ${vn}
       FOR x, e, p IN 1..2 OUTBOUND @startId @@eCol
       LIMIT 4, 100
       RETURN p.vertices[1]._key`;
-      var startId = vn + '/test';
-      var bindVars = {
+      const startId = vn + '/start';
+      const bindVars = {
         '@eCol': en,
         'startId': startId
       };
       vc.save({ _key: startId.split('/')[1] });
 
       // Insert amount many edges and vertices into the collections.
-      for (var i = 0; i < 3; ++i) {
-        var tmp = vc.save({ _key: '' + i })._id;
+      for (let i = 0; i < 3; ++i) {
+        const tmp = vc.save({ _key: '' + i })._id;
         ec.save(startId, tmp, {});
-        for (var k = 0; k < 3; ++k) {
-          var tmp2 = vc.save({ _key: '' + i + '_' + k })._id;
+        for (let k = 0; k < 3; ++k) {
+          const tmp2 = vc.save({ _key: '' + i + '_' + k })._id;
           ec.save(tmp, tmp2, {});
         }
       }
 
+      /*
+                   /-> 0_0
+               -> 0 -> 0_1
+             /     \-> 0_2
+            |
+            |      /-> 1_0
+         start -> 1 -> 1_1
+            |      \-> 1_2
+            |
+             \     /-> 2_0
+               -> 2 -> 2_1
+                   \-> 2_2
+       */
+
+      const isValidResult = result => {
+        return true
+          // all results must be depth 1 vertices
+          && result.every(v => -1 !== ['0', '1', '2'].indexOf(v))
+          // we expect exactly 8 results
+          && result.length === 8
+          // but only two different vertices (because we skipped one subtree)
+          && _.uniq(result).length === 2
+          // first one (any) of the subtrees must be returned, then the other
+          && _.uniq(result.slice(0, 4)).length === 1
+          && _.uniq(result.slice(4, 8)).length === 1;
+      };
+
       // Check that we can get all of them out again.
-      var result = db._query(query, bindVars).toArray();
-      // Internally: The Query selects elements in chunks, check that nothing is lost.
-      assertEqual(result.length, 8);
+      const result = db._query(query, bindVars).toArray();
+      assertTrue(isValidResult(result), result);
 
       // Each of the 3 parts of this graph contains of 4 nodes, one connected to the start.
       // And 3 connected to the first one. As we do a depth first traversal we expect to skip
       // exactly one sub-tree. Therefor we expect exactly two sub-trees to be traversed.
-      var seen = {};
-      for (var r of result) {
-        if (!seen.hasOwnProperty(r)) {
-          seen[r] = true;
-        }
-      }
-      assertEqual(Object.keys(seen).length, 2);
-      var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
+
+      const plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
-        assertEqual(jsonResult, result, query + " " + JSON.stringify(plan));
+        const jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        assertTrue(isValidResult(jsonResult), JSON.stringify({jsonResult, plan}));
       });
     },
 
