@@ -783,6 +783,9 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slic
 }
 
 bool Node::isReadLockable(std::string_view const& by) const {
+  if (!_children.empty()) {
+    return false;
+  }
   Slice slice = this->slice();
   // the following states are counted as readLockable
   // array - when read locked or read lock released
@@ -801,6 +804,9 @@ bool Node::isReadLockable(std::string_view const& by) const {
 }
 
 bool Node::isReadUnlockable(std::string_view const& by) const {
+  if (!_children.empty()) {
+    return false;
+  }
   Slice slice = this->slice();
   // the following states are counted as readUnlockable
   // array of strings containing the value `by`
@@ -821,6 +827,9 @@ bool Node::isReadUnlockable(std::string_view const& by) const {
 }
 
 bool Node::isWriteLockable(std::string_view const& by) const {
+  if (!_children.empty()) {
+    return false;
+  }
   Slice slice = this->slice();
   // the following states are counted as writeLockable
   //  empty object - when the node is create
@@ -828,6 +837,9 @@ bool Node::isWriteLockable(std::string_view const& by) const {
 }
 
 bool Node::isWriteUnlockable(std::string_view const& by) const {
+  if (!_children.empty()) {
+    return false;
+  }
   Slice slice = this->slice();
   // the following states are counted as writeLockable
   //  string - when write lock was obtained
