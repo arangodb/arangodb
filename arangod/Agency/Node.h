@@ -372,8 +372,6 @@ public:
   static Children const dummyChildren;
   static Node const _dummyNode;
 
- private:
-  bool deleteMe();
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
