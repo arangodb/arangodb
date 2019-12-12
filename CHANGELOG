@@ -14,6 +14,8 @@ v3.6.0-rc.2 (XXXX-XX-XX)
   starter tries to start an instance 100 times in a row but instantaneously 
   gets a failure back from it.
 
+* Fixed a permissions bug for /_admin/cluster/rebalanceShards.
+
 
 v3.6.0-rc.1 (2019-12-10)
 ------------------------
