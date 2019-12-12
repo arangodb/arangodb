@@ -436,7 +436,7 @@
             'newSharding',
             'Sharding',
             'flexible',
-            'some nice description TODO',
+            'Selects the default sharding setup for new collections in this database. *flexible* means that shards of different collections by default will be randomly distributed to database servers. *single* means that collections by default will use the same sharding setup (number of shards and shard distribution) as one of the system collections.',
             sharding
           )
         );
