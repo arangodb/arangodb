@@ -1128,7 +1128,7 @@ void Node::clear() {
   _isArray = false;
 }
 
-[[nodiscard]] arangodb::ResultT<std::shared_ptr<Node>> Node::deleteMe() {
+arangodb::ResultT<std::shared_ptr<Node>> Node::deleteMe() {
   if (_parent == nullptr) {  // root node
     _children.clear();
     _value.clear();
