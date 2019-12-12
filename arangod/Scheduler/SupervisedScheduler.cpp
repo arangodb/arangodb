@@ -538,18 +538,18 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
   WorkItem* work;
 
-//#define KNORKE 1
-#ifdef KNORKE
-  auto checkAllQueues = [&]() -> WorkItem* {
+  auto checkAllQueues = [this]() -> WorkItem* {
     WorkItem* res = nullptr;
     for (uint64_t i = 0; i < 3; ++i) {
-      if (canPullFromQueue(i) && _queues[i].pop(res)) {
+      if (this->canPullFromQueue(i) && this->_queues[i].pop(res)) {
         return res;
       }
     }
-    return res;
+    // Please note that _queues[i].pop(res) can modify res even if it does
+    // not return `true`. Therefore it is crucial that we return nullptr
+    // here and not res! We have been there and do not want to go back!
+    return nullptr;
   };
-#endif
 
   while (!state->_stop) {
     uint64_t triesCount = 0;
@@ -559,18 +559,10 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       timeOutForNow = 0;
     }
     do {
-#ifdef KNORKE
       work = checkAllQueues();
       if (work != nullptr) {
         return std::unique_ptr<WorkItem>(work);
       }
-#else
-      for (uint64_t i = 0; i < 3; ++i) {
-        if (canPullFromQueue(i) && _queues[i].pop(work)) {
-          return std::unique_ptr<WorkItem>(work);
-        }
-      }
-#endif
       triesCount++;
       cpu_relax();
     } while ((std::chrono::steady_clock::now() - loopStart) < std::chrono::microseconds(timeOutForNow));
@@ -590,7 +582,6 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     state->_sleeping = true;
     _nrAwake.fetch_sub(1, std::memory_order_relaxed);
 
-#ifdef KNORKE
     work = checkAllQueues();
     if (work != nullptr) {
       // Fix the sleep indicators:
@@ -598,15 +589,6 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       _nrAwake.fetch_add(1, std::memory_order_relaxed);
       return std::unique_ptr<WorkItem>(work);
     }
-#else
-    for (uint64_t i = 0; i < 3; ++i) {
-      if (canPullFromQueue(i) && _queues[i].pop(work)) {
-        state->_sleeping = false;
-        _nrAwake.fetch_add(1, std::memory_order_relaxed);
-        return std::unique_ptr<WorkItem>(work);
-      }
-    }
-#endif
 
     if (state->_sleepTimeout_ms == 0) {
       state->_conditionWork.wait(guard);
