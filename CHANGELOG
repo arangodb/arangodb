@@ -1,10 +1,29 @@
 v3.6.0-rc.2 (XXXX-XX-XX)
 ------------------------
+
 * Fixed undefined behavior on node delete.
 
 * Fixed agency invalid operation.
 
 * Added google tests for Node.
+
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
+* When starting the RocksDB engine, first create small-sized WAL files.
+
+  This is a precaution so that when repeatedly trying to start an arangod
+  instance, an instant instance startup failure will not lead to the disk
+  filling up so quickly with WAL file data.
+
+  The WAL file size is increased later on in the startup sequence, so
+  everything should be fine if the startup works.
+
+  This fixes a problem with the disk filling up quickly when the arangodb 
+  starter tries to start an instance 100 times in a row but instantaneously 
+  gets a failure back from it.
+
+* Fixed a permissions bug for /_admin/cluster/rebalanceShards.
 
 
 v3.6.0-rc.1 (2019-12-10)
