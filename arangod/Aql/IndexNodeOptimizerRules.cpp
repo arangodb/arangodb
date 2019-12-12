@@ -80,15 +80,15 @@ namespace {
     // find attributes referenced to index node out variable
     if (!latematerialized::getReferencedAttributes(astNode, indexNode->outVariable(), node)) {
       // is not safe for optimization
-      return true;
+      return false;
     } else if (!node.attrs.empty()) {
       if (!attributesMatch(commonIndexId, indexNode, node)) {
-        return true;
+        return false;
       } else {
         nodesToChange.emplace_back(std::move(node));
       }
     }
-    return false;
+    return true;
   }
 }
 
@@ -128,7 +128,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       std::vector<latematerialized::NodeWithAttrs> nodesToChange;
       TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
-        auto invalid = false;
+        auto valid = true;
         auto type = current->getType();
         switch (type) {
           case ExecutionNode::SORT:
@@ -137,8 +137,8 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
             }
             break;
           case ExecutionNode::CALCULATION:
-            invalid = processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(current),
-                                             nodesToChange, commonIndexId);
+            valid = processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(current),
+                                           nodesToChange, commonIndexId);
             break;
           case ExecutionNode::REMOTE:
             // REMOTE node is a blocker - we do not want to make materialization calls across cluster!
@@ -151,11 +151,11 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         }
         // currently only calculation nodes expected to use a loop variable with attributes
         // we successfully replace all references to the loop variable
-        if (!(stopSearch || invalid) && type != ExecutionNode::CALCULATION) {
+        if (!stopSearch && valid && type != ExecutionNode::CALCULATION) {
           arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
-            invalid = true;
+            valid = false;
             if (ExecutionNode::SUBQUERY == type) {
               auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
               auto subquery = subqueryNode->getSubquery();
@@ -163,16 +163,16 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
               arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
               // find calculation nodes in the plan of a subquery
               CalculationNodeVarFinder finder(indexNode->outVariable(), subqueryCalcNodes);
-              invalid = subquery->walk(finder);
-              if (!invalid) { // if the finder did not stop
+              valid = !subquery->walk(finder);
+              if (valid) { // if the finder did not stop
                 for (auto scn : subqueryCalcNodes) {
                   TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
                   currentUsedVars.clear();
                   scn->getVariablesUsedHere(currentUsedVars);
                   if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
-                    invalid = processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(scn),
-                                                     nodesToChange, commonIndexId);
-                    if (invalid) {
+                    valid = processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(scn),
+                                                   nodesToChange, commonIndexId);
+                    if (!valid) {
                       break;
                     }
                   }
@@ -181,7 +181,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
             }
           }
         }
-        if (invalid) {
+        if (!valid) {
           TRI_ASSERT(!stopSearch);
           if (sortNode != nullptr) {
             // we have a doc body used before selected SortNode
