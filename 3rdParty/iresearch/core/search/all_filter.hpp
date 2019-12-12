@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ALL_FILTER_H
@@ -37,7 +36,7 @@ class IRESEARCH_API all: public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  all() NOEXCEPT;
+  all() noexcept;
 
   using filter::prepare;
 

@@ -54,7 +54,7 @@ TEST_F(segment_writer_tests, invalid_actions) {
   struct token_stream_t: public irs::token_stream {
     irs::attribute_view attrs;
     size_t token_count;
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs; }
+    virtual const irs::attribute_view& attributes() const noexcept override { return attrs; }
     virtual bool next() override { return --token_count; }
   };
 
@@ -126,7 +126,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
@@ -235,7 +235,7 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
@@ -285,7 +285,7 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
   } field;
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       return lhs < rhs;
     }
   } less;
@@ -368,7 +368,7 @@ TEST_F(segment_writer_tests, memory_index_field) {
   struct token_stream_t: public irs::token_stream {
     irs::attribute_view attrs;
     size_t token_count;
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs; }
+    virtual const irs::attribute_view& attributes() const noexcept override { return attrs; }
     virtual bool next() override { return --token_count; }
   };
 
@@ -413,7 +413,7 @@ TEST_F(segment_writer_tests, index_field) {
   struct token_stream_t: public irs::token_stream {
     irs::attribute_view attrs;
     size_t token_count;
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs; }
+    virtual const irs::attribute_view& attributes() const noexcept override { return attrs; }
     virtual bool next() override { return --token_count; }
   };
 

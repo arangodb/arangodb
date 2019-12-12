@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -57,13 +56,13 @@ class ctr_cipher_stream : public encryption::stream {
       const cipher& cipher,
       const bytes_ref& iv,
       uint64_t counter_base
-  ) NOEXCEPT
+  ) noexcept
     : cipher_(&cipher),
       iv_(iv),
       counter_base_(counter_base) {
   }
 
-  virtual size_t block_size() const NOEXCEPT override {
+  virtual size_t block_size() const noexcept override {
     return cipher_->block_size();
   }
 

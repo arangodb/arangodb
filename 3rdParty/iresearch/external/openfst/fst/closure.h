@@ -30,8 +30,6 @@ namespace fst {
 // where V is the number of states.
 template <class Arc>
 void Closure(MutableFst<Arc> *fst, ClosureType closure_type) {
-  using Label = typename Arc::Label;
-  using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
   const auto props = fst->Properties(kFstProperties, false);
   const auto start = fst->Start();
@@ -45,8 +43,8 @@ void Closure(MutableFst<Arc> *fst, ClosureType closure_type) {
     fst->ReserveStates(fst->NumStates() + 1);
     const auto nstart = fst->AddState();
     fst->SetStart(nstart);
-    fst->SetFinal(nstart, Weight::One());
-    if (start != kNoLabel) fst->AddArc(nstart, Arc(0, 0, Weight::One(), start));
+    fst->SetFinal(nstart);
+    if (start != kNoLabel) fst->AddArc(nstart, Arc(0, 0, start));
   }
   fst->SetProperties(ClosureProperties(props, closure_type == CLOSURE_STAR),
                      kFstProperties);
