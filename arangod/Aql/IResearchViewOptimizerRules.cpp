@@ -411,7 +411,6 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
                     auto calcNode = ExecutionNode::castTo<CalculationNode*>(scn);
                     if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                       calcNodes.emplace_back(calcNode);
-                      invalid = false;
                     } else {
                       invalid = true;
                       break;
