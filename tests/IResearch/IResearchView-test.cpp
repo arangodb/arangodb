@@ -110,7 +110,7 @@ struct DocIdScorer: public irs::sort {
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override { return nullptr; }
     virtual void prepare_score(irs::byte_type* score) const override { }
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override { return nullptr; }
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
       irs::sub_reader const& segment,
       irs::term_reader const& field,
       irs::byte_type const*,
@@ -119,14 +119,14 @@ struct DocIdScorer: public irs::sort {
     ) const override {
       return {
         std::make_unique<ScoreCtx>(doc_attrs.get<irs::document>()),
-        [](const void* ctx, irs::byte_type* score_buf) {
+        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) {
           reinterpret_cast<uint64_t&>(*score_buf) = reinterpret_cast<const ScoreCtx*>(ctx)->_doc.get()->value;
         }
       };
     }
   };
 
-  struct ScoreCtx: public irs::sort::score_ctx {
+  struct ScoreCtx: public irs::score_ctx {
     ScoreCtx(irs::attribute_view::ref<irs::document>::type const& doc): _doc(doc) { }
     irs::attribute_view::ref<irs::document>::type const& _doc;
   };

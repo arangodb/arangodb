@@ -45,7 +45,7 @@ NS_ROOT
 /// @brief base class for all attributes that can be used with attribute_map
 ///        an empty struct tag type with no virtual methods
 ///        all derived classes must implement the following function:
-///        static const attribute::type_id& type() NOEXCEPT
+///        static const attribute::type_id& type() noexcept
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute {
@@ -60,7 +60,7 @@ struct IRESEARCH_API attribute {
     static const type_id* get(
       const string_ref& name,
       bool load_library = true
-    ) NOEXCEPT;
+    ) noexcept;
     const string_ref& name() const { return name_; }
 
    private:
@@ -73,7 +73,7 @@ struct IRESEARCH_API attribute {
 ///        this struct type using a virtual destructor
 ///        an empty struct tag type with a virtual destructor
 ///        all derived classes must implement the following functions:
-///        static const attribute::type_id& type() NOEXCEPT
+///        static const attribute::type_id& type() noexcept
 ///          via DECLARE_ATTRIBUTE_TYPE()/DEFINE_ATTRIBUTE_TYPE(...)
 ///        static ptr make(Args&&... args)
 ///          via DECLARE_FACTORY()/DECLARE_FACTORY()
@@ -104,7 +104,7 @@ class IRESEARCH_API attribute_registrar {
     const attribute::type_id& type,
     const char* source = nullptr
   );
-  operator bool() const NOEXCEPT;
+  operator bool() const noexcept;
  private:
   bool registered_;
 };
@@ -172,10 +172,10 @@ class IRESEARCH_API flags {
 
   flags();
   flags(const flags&) = default;
-  flags(flags&& rhs) NOEXCEPT;
+  flags(flags&& rhs) noexcept;
   flags(std::initializer_list<const attribute::type_id*> flags);
   flags& operator=(std::initializer_list<const attribute::type_id*> flags);
-  flags& operator=(flags&& rhs) NOEXCEPT;
+  flags& operator=(flags&& rhs) noexcept;
   flags& operator=(const flags&) = default;
 
   type_map::const_iterator begin() const { return map_.begin(); }
@@ -211,13 +211,13 @@ class IRESEARCH_API flags {
   
   bool empty() const { return map_.empty(); }
   size_t size() const { return map_.size(); }
-  void clear() NOEXCEPT { map_.clear(); }
+  void clear() noexcept { map_.clear(); }
   void reserve(size_t /*capacity*/) {
     // NOOP for std::set
   }
 
   template< typename T >
-  bool check() const NOEXCEPT {
+  bool check() const noexcept {
     typedef typename std::enable_if< 
       std::is_base_of< attribute, T >::value, T 
     >::type attribute_t;
@@ -225,7 +225,7 @@ class IRESEARCH_API flags {
     return check(attribute_t::type());
   }
 
-  bool check(const attribute::type_id& type) const NOEXCEPT {
+  bool check(const attribute::type_id& type) const noexcept {
     return map_.end() != map_.find( &type );
   }
 
@@ -316,13 +316,13 @@ template<
 
   attribute_map(const attribute_map& other) = default;
 
-  attribute_map(attribute_map&& other) NOEXCEPT {
+  attribute_map(attribute_map&& other) noexcept {
     *this = std::move(other);
   }
 
   attribute_map& operator=(const attribute_map& other) = default;
 
-  attribute_map& operator=(attribute_map&& other) NOEXCEPT {
+  attribute_map& operator=(attribute_map&& other) noexcept {
     if (this != &other) {
       map_ = std::move(other.map_);
     }
@@ -334,12 +334,12 @@ template<
     map_.clear();
   }
 
-  bool contains(const attribute::type_id& type) const NOEXCEPT {
+  bool contains(const attribute::type_id& type) const noexcept {
     return map_.find(type) != map_.end();
   }
 
   template<typename A>
-  inline bool contains() const NOEXCEPT {
+  inline bool contains() const noexcept {
     typedef typename std::enable_if<
       std::is_base_of<attribute, A >::value, A
     >::type type;
@@ -360,7 +360,7 @@ template<
   }
 
   template<typename A>
-  inline typename ref<A>::type* get() NOEXCEPT {
+  inline typename ref<A>::type* get() noexcept {
     typedef typename std::enable_if<
       std::is_base_of<attribute, A>::value, A
     >::type type;
@@ -374,7 +374,7 @@ template<
   template<typename A>
   inline typename ref<A>::type& get(
       typename ref<A>::type& fallback
-  ) NOEXCEPT {
+  ) noexcept {
     typedef typename std::enable_if<
       std::is_base_of<attribute, A>::value, A
     >::type type;
@@ -388,7 +388,7 @@ template<
   template<typename A>
   inline const typename ref<A>::type& get(
       const typename ref<A>::type& fallback = ref<A>::NIL
-  ) const NOEXCEPT {
+  ) const noexcept {
     typedef typename std::enable_if<
       std::is_base_of<attribute, A>::value, A
     >::type type;
@@ -422,9 +422,9 @@ template<
     return visit(*this, visitor);
   }
 
-  size_t size() const NOEXCEPT { return map_.size(); }
+  size_t size() const noexcept { return map_.size(); }
 
-  bool empty() const NOEXCEPT { return map_.empty(); }
+  bool empty() const noexcept { return map_.empty(); }
 
  protected:
   typename ref<T>::type& emplace(bool& inserted, const attribute::type_id& type) {
@@ -435,7 +435,7 @@ template<
     return res.first->second;
   }
 
-  typename ref<T>::type* get(const attribute::type_id& type) NOEXCEPT {
+  typename ref<T>::type* get(const attribute::type_id& type) noexcept {
     auto itr = map_.find(&type);
 
     return map_.end() == itr ? nullptr : &(itr->second);
@@ -444,7 +444,7 @@ template<
   typename ref<T>::type& get(
       const attribute::type_id& type,
       typename ref<T>::type& fallback
-  ) NOEXCEPT {
+  ) noexcept {
     auto itr = map_.find(&type);
 
     return map_.end() == itr ? fallback : itr->second;
@@ -453,7 +453,7 @@ template<
   const typename ref<T>::type& get(
       const attribute::type_id& type,
       const typename ref<T>::type& fallback = ref<T>::NIL
-  ) const NOEXCEPT {
+  ) const noexcept {
     return const_cast<attribute_map*>(this)->get(type, const_cast<typename ref<T>::type&>(fallback));
   }
 
@@ -503,13 +503,13 @@ class IRESEARCH_API attribute_store
 
   attribute_store(const attribute_store&) = default;
 
-  attribute_store(attribute_store&& rhs) NOEXCEPT
+  attribute_store(attribute_store&& rhs) noexcept
     : base_t(std::move(rhs)) {
   }
 
   attribute_store& operator=(const attribute_store&) = default;
 
-  attribute_store& operator=(attribute_store&& rhs) NOEXCEPT {
+  attribute_store& operator=(attribute_store&& rhs) noexcept {
     base_t::operator=(std::move(rhs));
     return *this;
   }
@@ -548,21 +548,21 @@ class IRESEARCH_API attribute_store
 template<typename T>
 class pointer_wrapper {
  public:
-  FORCE_INLINE pointer_wrapper(T* p = nullptr) NOEXCEPT : p_(p) { }
-  FORCE_INLINE T* get() const NOEXCEPT { return p_; }
-  FORCE_INLINE T* operator->() const NOEXCEPT { return get(); }
-  FORCE_INLINE T& operator*() const NOEXCEPT { return *get(); }
-  FORCE_INLINE pointer_wrapper& operator=(T* p) NOEXCEPT {
+  FORCE_INLINE pointer_wrapper(T* p = nullptr) noexcept : p_(p) { }
+  FORCE_INLINE T* get() const noexcept { return p_; }
+  FORCE_INLINE T* operator->() const noexcept { return get(); }
+  FORCE_INLINE T& operator*() const noexcept { return *get(); }
+  FORCE_INLINE pointer_wrapper& operator=(T* p) noexcept {
     p_ = p;
     return *this;
   }
-  FORCE_INLINE operator bool() const NOEXCEPT {
+  FORCE_INLINE operator bool() const noexcept {
     return nullptr != p_;
   }
-  FORCE_INLINE bool operator==(std::nullptr_t) const NOEXCEPT {
+  FORCE_INLINE bool operator==(std::nullptr_t) const noexcept {
     return nullptr == p_;
   }
-  FORCE_INLINE bool operator!=(std::nullptr_t) const NOEXCEPT {
+  FORCE_INLINE bool operator!=(std::nullptr_t) const noexcept {
     return !(*this == nullptr);
   }
 
@@ -574,7 +574,7 @@ template<typename T>
 FORCE_INLINE bool operator==(
     std::nullptr_t,
     const pointer_wrapper<T>& rhs
-) NOEXCEPT {
+) noexcept {
   return rhs == nullptr;
 }
 
@@ -582,7 +582,7 @@ template<typename T>
 FORCE_INLINE bool operator!=(
     std::nullptr_t,
     const pointer_wrapper<T>& rhs
-) NOEXCEPT {
+) noexcept {
   return rhs != nullptr;
 }
 
@@ -601,11 +601,11 @@ class IRESEARCH_API attribute_view
 
   explicit attribute_view(size_t reserve = 0);
 
-  attribute_view(attribute_view&& rhs) NOEXCEPT
+  attribute_view(attribute_view&& rhs) noexcept
     : base_t(std::move(rhs)) {
   }
 
-  attribute_view& operator=(attribute_view&& rhs) NOEXCEPT {
+  attribute_view& operator=(attribute_view&& rhs) noexcept {
     base_t::operator=(std::move(rhs));
     return *this;
   }

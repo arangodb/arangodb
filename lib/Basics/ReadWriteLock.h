@@ -31,8 +31,7 @@
 #include <cstdint>
 #include <mutex>
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 /// @brief read-write lock, slow but just using CPP11
 /// This class has two other advantages:
@@ -55,30 +54,30 @@ class ReadWriteLock {
   void writeLock();
 
   /// @brief locks for writing within microsecond timeout
-  bool writeLock(uint64_t timeout) {
+  [[nodiscard]] bool writeLock(uint64_t timeout) {
     std::chrono::microseconds ms(timeout);
     return writeLock(ms);
   }
 
-  bool writeLock(std::chrono::microseconds timeout);
+  [[nodiscard]] bool writeLock(std::chrono::microseconds timeout);
 
   /// @brief locks for writing, but only tries
-  bool tryWriteLock();
+  [[nodiscard]] bool tryWriteLock();
 
   /// @brief locks for reading
   void readLock();
 
   /// @brief locks for reading, tries only
-  bool tryReadLock();
+  [[nodiscard]] bool tryReadLock();
 
   /// @brief releases the read-lock or write-lock
-  void unlock();
+  void unlock() noexcept;
 
   /// @brief releases the read-lock
-  void unlockRead();
+  void unlockRead() noexcept;
 
   /// @brief releases the write-lock
-  void unlockWrite();
+  void unlockWrite() noexcept;
 
  private:
   /// @brief mutex for _readers_bell cv
@@ -118,7 +117,6 @@ class ReadWriteLock {
                     (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
                 "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
 };
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics
 
 #endif

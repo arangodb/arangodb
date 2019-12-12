@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TOKEN_ATTRIBUTES_H
@@ -62,7 +61,7 @@ struct IRESEARCH_API offset : attribute {
 struct IRESEARCH_API increment : basic_attribute<uint32_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
-  increment() NOEXCEPT;
+  increment() noexcept;
 
   void clear() { value = 1U; }
 };
@@ -102,7 +101,7 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 struct IRESEARCH_API document: basic_attribute<doc_id_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
-  document(irs::doc_id_t doc = irs::doc_limits::invalid()) NOEXCEPT
+  document(irs::doc_id_t doc = irs::doc_limits::invalid()) noexcept
     : basic_attribute<doc_id_t>(doc) {
   }
 };
@@ -138,13 +137,13 @@ struct IRESEARCH_API norm : stored_attribute {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY();
 
-  FORCE_INLINE static CONSTEXPR float_t DEFAULT() {
+  FORCE_INLINE static constexpr float_t DEFAULT() {
     return 1.f;
   }
 
-  norm() NOEXCEPT;
-  norm(norm&& rhs) NOEXCEPT;
-  norm& operator=(norm&& rhs) NOEXCEPT;
+  norm() noexcept;
+  norm(norm&& rhs) noexcept;
+  norm& operator=(norm&& rhs) noexcept;
 
   bool reset(const sub_reader& segment, field_id column, const document& doc);
   float_t read() const;
@@ -174,7 +173,7 @@ class IRESEARCH_API position
   DECLARE_REFERENCE(position);
   DECLARE_TYPE_ID(attribute::type_id);
 
-  const irs::attribute_view& attributes() const NOEXCEPT override {
+  const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
 
@@ -183,16 +182,14 @@ class IRESEARCH_API position
     return value_;
   }
 
-  value_t value() const NOEXCEPT {
+  value_t value() const noexcept {
     return value_;
   }
-
-  virtual void clear() = 0;
 
   virtual bool next() = 0;
 
  protected:
-  position(size_t reserve_attrs) NOEXCEPT;
+  position(size_t reserve_attrs) noexcept;
 
   value_t value_{ pos_limits::invalid() };
   attribute_view attrs_;

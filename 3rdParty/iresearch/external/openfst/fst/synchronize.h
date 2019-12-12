@@ -10,7 +10,6 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <utility>
 #include <vector>
 
 #include <fst/cache.h>
@@ -38,7 +37,7 @@ class SynchronizeFstImpl : public CacheImpl<Arc> {
   using FstImpl<Arc>::SetInputSymbols;
   using FstImpl<Arc>::SetOutputSymbols;
 
-  using CacheBaseImpl<CacheState<Arc>>::PushArc;
+  using CacheBaseImpl<CacheState<Arc>>::EmplaceArc;
   using CacheBaseImpl<CacheState<Arc>>::HasArcs;
   using CacheBaseImpl<CacheState<Arc>>::HasFinal;
   using CacheBaseImpl<CacheState<Arc>>::HasStart;
@@ -46,7 +45,7 @@ class SynchronizeFstImpl : public CacheImpl<Arc> {
   using CacheBaseImpl<CacheState<Arc>>::SetFinal;
   using CacheBaseImpl<CacheState<Arc>>::SetStart;
 
-  using String = basic_string<Label>;
+  using String = std::basic_string<Label>;
 
   struct Element {
     Element() {}
@@ -189,8 +188,7 @@ class SynchronizeFstImpl : public CacheImpl<Arc> {
   // Finds state corresponding to an element. Creates new state if element
   // is not found.
   StateId FindState(const Element &element) {
-    const auto insert_result =
-        element_map_.insert(std::make_pair(element, elements_.size()));
+    const auto insert_result = element_map_.emplace(element, elements_.size());
     if (insert_result.second) {
       elements_.push_back(element);
     }
@@ -209,14 +207,14 @@ class SynchronizeFstImpl : public CacheImpl<Arc> {
             !Empty(element.ostring, arc.olabel)) {
           const auto *istring = Cdr(element.istring, arc.ilabel);
           const auto *ostring = Cdr(element.ostring, arc.olabel);
-          PushArc(s, Arc(Car(element.istring, arc.ilabel),
-                         Car(element.ostring, arc.olabel), arc.weight,
-                         FindState(Element(arc.nextstate, istring, ostring))));
+          EmplaceArc(s, Car(element.istring, arc.ilabel),
+                     Car(element.ostring, arc.olabel), arc.weight,
+                     FindState(Element(arc.nextstate, istring, ostring)));
         } else {
           const auto *istring = Concat(element.istring, arc.ilabel);
           const auto *ostring = Concat(element.ostring, arc.olabel);
-          PushArc(s, Arc(0, 0, arc.weight,
-                         FindState(Element(arc.nextstate, istring, ostring))));
+          EmplaceArc(s, 0, 0, arc.weight,
+                     FindState(Element(arc.nextstate, istring, ostring)));
         }
       }
     }
@@ -227,8 +225,8 @@ class SynchronizeFstImpl : public CacheImpl<Arc> {
         ((element.istring)->size() + (element.ostring)->size() > 0)) {
       const auto *istring = Cdr(element.istring);
       const auto *ostring = Cdr(element.ostring);
-      PushArc(s, Arc(Car(element.istring), Car(element.ostring), weight,
-                     FindState(Element(kNoStateId, istring, ostring))));
+      EmplaceArc(s, Car(element.istring), Car(element.ostring), weight,
+                 FindState(Element(kNoStateId, istring, ostring)));
     }
     SetArcs(s);
   }
