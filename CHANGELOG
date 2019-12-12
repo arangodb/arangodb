@@ -1,6 +1,12 @@
 v3.6.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* Fixed undefined behavior on node delete.
+
+* Fixed agency invalid operation.
+
+* Added google tests for Node.
+
 * Bugfix: An AQL ternary expression with the condition being true at query
   compile time would not execute its false branch.
 
