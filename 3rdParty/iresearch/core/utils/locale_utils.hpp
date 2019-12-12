@@ -49,7 +49,7 @@ const std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
   IRESEARCH_API const std::codecvt<char32_t, char, mbstate_t>& codecvt(
     std::locale const& locale
   );
-#elif defined(_MSC_VER) && _MSC_VER <= 1916 // MSVC2015/MSVC2017
+#elif defined(_MSC_VER) && _MSC_VER <= 1923 // MSVC2015/MSVC2017/MSVC2019
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate

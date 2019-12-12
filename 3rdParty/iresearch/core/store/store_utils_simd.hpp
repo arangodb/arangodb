@@ -18,11 +18,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_STORE_UTILS_OPTIMIZED_H
-#define IRESEARCH_STORE_UTILS_OPTIMIZED_H
+#ifndef IRESEARCH_STORE_UTILS_SIMD_H
+#define IRESEARCH_STORE_UTILS_SIMD_H
 
 NS_ROOT
 
@@ -34,8 +33,8 @@ NS_BEGIN(bitpack)
 
 // reads block of the specified size from the stream
 // that was previously encoded with the corresponding
-// 'write_block' funcion using low-level optimizations
-IRESEARCH_API void read_block_optimized(
+// 'write_block' function using low-level optimizations
+IRESEARCH_API void read_block_simd(
   data_input& in,
   uint32_t size,
   uint32_t* RESTRICT encoded,
@@ -46,7 +45,7 @@ IRESEARCH_API void read_block_optimized(
 //   all values are equal -> RL encoding,
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
-IRESEARCH_API uint32_t write_block_optimized(
+IRESEARCH_API uint32_t write_block_simd(
   data_output& out,
   const uint32_t* RESTRICT decoded,
   uint32_t size,

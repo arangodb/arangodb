@@ -123,6 +123,7 @@ add_library(arango STATIC
   Basics/Mutex.cpp
   Basics/Nonce.cpp
   Basics/ReadWriteLock.cpp
+  Basics/ReadWriteSpinLock.cpp
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/RocksDBLogger.cpp

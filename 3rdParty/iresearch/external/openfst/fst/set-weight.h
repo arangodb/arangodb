@@ -8,9 +8,8 @@
 #ifndef FST_SET_WEIGHT_H_
 #define FST_SET_WEIGHT_H_
 
-#include <cstdlib>
-
 #include <algorithm>
+#include <cstdlib>
 #include <list>
 #include <string>
 #include <vector>
@@ -21,10 +20,10 @@
 
 namespace fst {
 
-FST_CONSTEXPR const int kSetEmpty = 0;         // Label for the empty set.
-FST_CONSTEXPR const int kSetUniv = -1;         // Label for the universal set.
-FST_CONSTEXPR const int kSetBad = -2;          // Label for a non-set.
-FST_CONSTEXPR const char kSetSeparator = '_';  // Label separator in sets.
+constexpr int kSetEmpty = 0;         // Label for the empty set.
+constexpr int kSetUniv = -1;         // Label for the universal set.
+constexpr int kSetBad = -2;          // Label for a non-set.
+constexpr char kSetSeparator = '_';  // Label separator in sets.
 
 // Determines whether to use (intersect, union) or (union, intersect)
 // as (+, *) for the semiring. SET_INTERSECT_UNION_RESTRICTED is a
@@ -50,6 +49,9 @@ class SetWeight {
   using ReverseWeight = SetWeight<Label, S>;
   using Iterator = SetWeightIterator<SetWeight>;
   friend class SetWeightIterator<SetWeight>;
+  // Allow type-converting copy and move constructors private access.
+  template <typename L2, SetType S2>
+  friend class SetWeight;
 
   SetWeight() {}
 
@@ -62,6 +64,29 @@ class SetWeight {
   // Input should be positive. (Non-positive value has
   // special internal meaning w.r.t. integral constants above.)
   explicit SetWeight(Label label) { PushBack(label); }
+
+  template <SetType S2>
+  explicit SetWeight(const SetWeight<Label, S2> &w)
+    : first_(w.first_), rest_(w.rest_) {}
+
+  template <SetType S2>
+  explicit SetWeight(SetWeight<Label, S2> &&w)
+    : first_(w.first_), rest_(std::move(w.rest_)) { w.Clear(); }
+
+  template <SetType S2>
+  SetWeight &operator=(const SetWeight<Label, S2> &w) {
+    first_ = w.first_;
+    rest_ = w.rest_;
+    return *this;
+  }
+
+  template <SetType S2>
+  SetWeight &operator=(SetWeight<Label, S2> &&w) {
+    first_ = w.first_;
+    rest_ = std::move(w.rest_);
+    w.Clear();
+    return *this;
+  }
 
   static const SetWeight &Zero() {
     return S == SET_UNION_INTERSECT ? EmptySet() : UnivSet();
@@ -76,15 +101,15 @@ class SetWeight {
     return *no_weight;
   }
 
-  static const string &Type() {
-    static const string *const type = new string(
-        S == SET_UNION_INTERSECT
-        ? "union_intersect_set"
-        : (S == SET_INTERSECT_UNION
-           ? "intersect_union_set"
-           : (S == SET_INTERSECT_UNION_RESTRICT
-              ? "restricted_set_intersect_union"
-              : "boolean_set")));
+  static const std::string &Type() {
+    static const std::string *const type =
+        new std::string(S == SET_UNION_INTERSECT
+                            ? "union_intersect_set"
+                            : (S == SET_INTERSECT_UNION
+                                   ? "intersect_union_set"
+                                   : (S == SET_INTERSECT_UNION_RESTRICT
+                                          ? "restricted_set_intersect_union"
+                                          : "boolean_set")));
     return *type;
   }
 
@@ -100,7 +125,7 @@ class SetWeight {
 
   ReverseWeight Reverse() const;
 
-  static FST_CONSTEXPR uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kIdempotent | kLeftSemiring | kRightSemiring | kCommutative;
   }
 
@@ -313,7 +338,7 @@ inline std::ostream &operator<<(std::ostream &strm,
 template <typename Label, SetType S>
 inline std::istream &operator>>(std::istream &strm,
                                 SetWeight<Label, S> &weight) {
-  string str;
+  std::string str;
   strm >> str;
   using Weight = SetWeight<Label, S>;
   if (str == "EmptySet") {

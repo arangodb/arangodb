@@ -59,8 +59,10 @@
   #elif _MSC_VER >= 1800 && _MSC_VER < 1910 // MSVC2013-2015
     // not MSVC2015 nor MSVC2017 are not c++14 compatible
     #define IRESEARCH_CXX IRESEARCH_CXX_11
-  #elif _MSC_VER >= 1910 // MSVC2017 and later
+  #elif _MSC_VER >= 1910 && _MSC_VER < 1920  // MSVC2017 and later
     #define IRESEARCH_CXX IRESEARCH_CXX_14
+  #elif _MSC_VER >= 1920 // MSVC2019 and later
+    #define IRESEARCH_CXX IRESEARCH_CXX_17
   #endif
 #else // GCC/Clang
   #if __cplusplus < IRESEARCH_CXX_11
@@ -87,16 +89,8 @@
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
   #if _MSC_VER < 1900 // before msvc2015
-    #define CONSTEXPR
-    #define NOEXCEPT throw()
-    #define ALIGNOF(v) __alignof(v)
-    #define ALIGNAS(v) __declspec(align(v))
+    #error "compiler is not supported"
   #else
-    #define CONSTEXPR constexpr
-    #define NOEXCEPT noexcept
-    #define ALIGNOF(v) alignof(v)
-    #define ALIGNAS(v) alignas(v)
-
     // MSVC2017.1 - MSVC2017.7 does not correctly support alignas()
     // FIXME TODO find a workaround or do not use alignas(...) and remove definition from CMakeLists.txt
     static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916, "_MSC_VER > 1910 && _MSC_VER < 1915");
@@ -111,19 +105,12 @@
     #define IRESEARCH_HELPER_DLL_IMPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_EXPORT __attribute__ ((visibility ("default")))
     #define IRESEARCH_HELPER_DLL_LOCAL  __attribute__ ((visibility ("hidden")))
-    #define CONSTEXPR constexpr
   #else
-    #define IRESEARCH_HELPER_DLL_IMPORT
-    #define IRESEARCH_HELPER_DLL_EXPORT
-    #define IRESEARCH_HELPER_DLL_LOCAL
-    #define CONSTEXPR
+    #error "compiler is not supported"
   #endif
   #define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT 
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT IRESEARCH_HELPER_DLL_EXPORT 
 
-  #define NOEXCEPT noexcept
-  #define ALIGNOF(v) alignof(v)
-  #define ALIGNAS(v) alignas(v)
   #define FORCE_INLINE inline __attribute__ ((always_inline))
   #define NO_INLINE __attribute__ ((noinline))
   #define RESTRICT __restrict__
@@ -172,13 +159,6 @@
   #define MSVC_ONLY(...) __VA_ARGS__
 #else
   #define MSVC_ONLY(...)
-#endif
-
-// hook for MSVC2013-only code
-#if defined(_MSC_VER) && _MSC_VER == 1800
-  #define MSVC2013_ONLY(...) __VA_ARGS__
-#else
-  #define MSVC2013_ONLY(...)
 #endif
 
 // hook for MSVC2015-only code
@@ -319,7 +299,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// SSE compatibility
 ////////////////////////////////////////////////////////////////////////////////
-
 #ifdef __SSE2__
 #define IRESEARCH_SSE2
 #endif
@@ -369,8 +348,6 @@
 
 NS_ROOT NS_END // ROOT namespace predeclaration
 namespace irs = ::iresearch;
-
-#define ASSERT( cond, mess ) assert( (cond) && (mess) )
 
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)

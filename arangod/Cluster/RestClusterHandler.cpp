@@ -64,14 +64,14 @@ RestStatus RestClusterHandler::execute() {
   }
 
   generateError(
-    Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
+    Result(TRI_ERROR_HTTP_NOT_FOUND, "expecting /_api/cluster/[endpoints,agency-dump]"));
 
   return RestStatus::DONE;
 }
 
 void RestClusterHandler::handleAgencyDump() {
   if (!ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                   "only to be executed on coordinators");
     return;
   }
@@ -108,7 +108,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
     if (!replication->isActiveFailoverEnabled() || !AgencyCommManager::isEnabled()) {
       generateError(
-          Result(TRI_ERROR_FORBIDDEN, "automatic failover is not enabled"));
+          Result(TRI_ERROR_NOT_IMPLEMENTED, "automatic failover is not enabled"));
       return;
     }
 
@@ -164,7 +164,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     endpoints.insert(endpoints.begin(), leaderId);
 
   } else {
-    generateError(Result(TRI_ERROR_FORBIDDEN, "cannot serve this request"));
+    generateError(Result(TRI_ERROR_NOT_IMPLEMENTED, "cannot serve this request for this deployment type"));
     return;
   }
 

@@ -28,6 +28,7 @@
 #include "Containers/SmallVector.h"
 
 namespace arangodb {
+class Result;
 namespace transaction {
 class Methods;
 }
@@ -45,6 +46,11 @@ typedef ::arangodb::containers::SmallVector<AqlValue> VPackFunctionParameters;
 typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
                                            transaction::Methods*,
                                            VPackFunctionParameters const&);
+
+void registerError(ExpressionContext* expressionContext, char const* functionName, int code);
+void registerWarning(ExpressionContext* expressionContext, char const* functionName, int code);
+void registerWarning(ExpressionContext* expressionContext, char const* functionName, Result const& rr);
+void registerInvalidArgumentWarning(ExpressionContext* expressionContext, char const* functionName);
 
 struct Functions {
  public:
