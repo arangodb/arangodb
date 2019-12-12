@@ -832,6 +832,7 @@ bool Node::isWriteUnlockable(std::string_view const& by) const {
   // the following states are counted as writeLockable
   //  string - when write lock was obtained
   return slice.isString() && slice.isEqualString(VPackStringRef(by.data(), by.length()));
+
 }
 
 }  // namespace consensus
