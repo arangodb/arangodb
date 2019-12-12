@@ -1,5 +1,6 @@
 v3.6.0-rc.2 (XXXX-XX-XX)
 ------------------------
+
 * Fixed undefined behavior on node delete.
 
 * Fixed agency invalid operation.
