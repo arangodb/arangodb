@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed internal issue #4748: Editing a single edgeDefinition using the graph
+  API failed if it was not shared between all available graphs.
+
 * Changed HTTP return code for an error case in /_api/cluster/endpoints REST API.
   Now, if the API is called on a single server, it will return HTTP 501 instead
   of HTTP 403.
