@@ -1580,7 +1580,7 @@ void MMFilesEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t col
 static bool UnloadCollectionCallback(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+  WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
 
   if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
     return false;

@@ -484,7 +484,7 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
  public:
   typedef std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> readers_t;
 
-  Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) NOEXCEPT
+  Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) noexcept
       : _readers(std::move(readers)),
         _docs_count(docs_count),
         _live_docs_count(live_docs_count) {}
@@ -495,26 +495,26 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
            ::arangodb::containers::HashSet<TRI_voc_cid_t> const& collections);
 
   /// @returns corresponding sub-reader
-  virtual const irs::sub_reader& operator[](size_t i) const NOEXCEPT override {
+  virtual const irs::sub_reader& operator[](size_t i) const noexcept override {
     assert(i < readers_.size());
     return *(_readers[i].second);
   }
 
-  virtual TRI_voc_cid_t cid(size_t i) const NOEXCEPT override {
+  virtual TRI_voc_cid_t cid(size_t i) const noexcept override {
     assert(i < readers_.size());
     return _readers[i].first;
   }
 
   /// @returns number of documents
-  virtual uint64_t docs_count() const NOEXCEPT override { return _docs_count; }
+  virtual uint64_t docs_count() const noexcept override { return _docs_count; }
 
   /// @returns number of live documents
-  virtual uint64_t live_docs_count() const NOEXCEPT override {
+  virtual uint64_t live_docs_count() const noexcept override {
     return _live_docs_count;
   }
 
   /// @returns total number of opened writers
-  virtual size_t size() const NOEXCEPT override { return _readers.size(); }
+  virtual size_t size() const noexcept override { return _readers.size(); }
 
  private:
   readers_t _readers;
@@ -1474,6 +1474,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       auto it = varInfos.find(fieldsVars.var->id);
       TRI_ASSERT(it != varInfos.cend());
       std::vector<irs::string_ref> postfix;
+      postfix.reserve(fieldsVars.postfix.size());
       std::transform(fieldsVars.postfix.cbegin(), fieldsVars.postfix.cend(), std::back_inserter(postfix), [](auto const& attr) {
         return irs::string_ref(attr.c_str(), attr.size());
       });
@@ -1512,6 +1513,7 @@ void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(std::ve
   _nodesToChange.clear();
   for (auto& node : nodesToChange) {
     auto& calcNodeData = _nodesToChange[node.node];
+    calcNodeData.reserve(node.attrs.size());
     std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(calcNodeData, calcNodeData.end()),
       [](auto const& attrAndField) {
         return attrAndField.afData;
@@ -1519,18 +1521,38 @@ void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(std::ve
   }
 }
 
-IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes) {
+IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes,
+                                                                                           arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
   TRI_ASSERT(!calcNodes.empty());
   ViewVarsInfo uniqueVariables;
   auto ast = calcNodes.back()->expression()->ast();
+  // at first use variables from simple expressions
   for (auto calcNode : calcNodes) {
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
     auto const& calcNodeData = _nodesToChange[calcNode];
-    std::transform(calcNodeData.cbegin(), calcNodeData.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-      [ast](auto const& afData) {
-        return std::make_pair(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+    TRI_ASSERT(!calcNodeData.empty());
+    auto const& afData = calcNodeData[0];
+    if (afData.parentNode == nullptr) {
+      TRI_ASSERT(calcNodeData.size() == 1);
+      // we could add one redundant variable for each field only
+      if (uniqueVariables.try_emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+        calcNode->outVariable()}, afData.columnNumber}).second) {
+        toUnlink.emplace(calcNode);
+      }
+    }
+  }
+  // create variables for complex expressions
+  for (auto calcNode : calcNodes) {
+    TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
+    auto const& calcNodeData = _nodesToChange[calcNode];
+    TRI_ASSERT(!calcNodeData.empty());
+    for (auto const& afData : calcNodeData) {
+      // create a variable if necessary
+      if (afData.parentNode != nullptr && uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
+        uniqueVariables.emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
           ast->variables()->createTemporaryVariable()}, afData.columnNumber});
-      });
+      }
+    }
   }
   for (auto calcNode : calcNodes) {
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());

@@ -27,6 +27,8 @@ add_library(
   ${MurMurHash_sources}
 )
 
+set_ipo(${IResearch_TARGET_NAME}-murmurhash)
+
 # setup CRT
 if(MSVC)
   add_library(
@@ -34,6 +36,8 @@ if(MSVC)
     OBJECT
     ${MurMurHash_sources}
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-murmurhash-scrt)
 endif()
 
 target_compile_features(
@@ -109,6 +113,8 @@ add_library(
   ${OpenFST_sources}
 )
 
+set_ipo(${IResearch_TARGET_NAME}-ofst)
+
 # setup CRT
 if(MSVC)
   add_library(
@@ -116,6 +122,8 @@ if(MSVC)
     OBJECT
     ${OpenFST_sources}
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-ofst-scrt)
 endif()
 
 target_compile_definitions(
@@ -232,3 +240,18 @@ target_include_directories(
 ################################################################################
 
 add_subdirectory(simdcomp)
+
+################################################################################
+### utfcpp library
+################################################################################
+
+add_library(
+  ${IResearch_TARGET_NAME}-utfcpp
+  INTERFACE
+)
+
+target_include_directories(
+  ${IResearch_TARGET_NAME}-utfcpp
+  SYSTEM
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/utfcpp
+)
