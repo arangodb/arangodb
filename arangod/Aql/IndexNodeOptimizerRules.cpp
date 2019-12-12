@@ -72,23 +72,24 @@ namespace {
     return true;
   }
 
-  void processCalculationNode(IndexNode const* indexNode, CalculationNode* calculationNode,
+  bool processCalculationNode(IndexNode const* indexNode, CalculationNode* calculationNode,
                               std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>>& nodesToChange,
-                              TRI_idx_iid_t& commonIndexId, bool& invalid) {
+                              TRI_idx_iid_t& commonIndexId) {
     auto astNode = calculationNode->expression()->nodeForModification();
     latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData> node;
     node.node = calculationNode;
     // find attributes referenced to index node out variable
     if (!latematerialized::getReferencedAttributes(astNode, indexNode->outVariable(), node)) {
       // is not safe for optimization
-      invalid = true;
+      return true;
     } else if (!node.attrs.empty()) {
       if (!attributesMatch(commonIndexId, indexNode, node)) {
-        invalid = true;
+        return true;
       } else {
         nodesToChange.emplace_back(std::move(node));
       }
     }
+    return false;
   }
 }
 
@@ -137,8 +138,8 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
             }
             break;
           case ExecutionNode::CALCULATION:
-            processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(current), nodesToChange,
-                                   commonIndexId, invalid);
+            invalid = processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(current),
+                                             nodesToChange, commonIndexId);
             break;
           case ExecutionNode::REMOTE:
             // REMOTE node is a blocker - we do not want to make materialization calls across cluster!
@@ -170,8 +171,8 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
                   currentUsedVars.clear();
                   scn->getVariablesUsedHere(currentUsedVars);
                   if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
-                    processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(scn), nodesToChange,
-                                           commonIndexId, invalid);
+                    invalid = processCalculationNode(indexNode, ExecutionNode::castTo<CalculationNode*>(scn),
+                                                     nodesToChange, commonIndexId);
                     if (invalid) {
                       break;
                     }
