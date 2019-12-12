@@ -96,8 +96,6 @@ struct RocksDBMetadata final {
   /// @brief returns the largest safe seq to squash updates against
   rocksdb::SequenceNumber committableSeq(rocksdb::SequenceNumber maxCommitSeq) const;
 
-  /// @brief get the current count
-  DocCount loadCount();
   /// @brief get the current count, ONLY use in recovery
   DocCount& countUnsafe() { return _count; }
 
@@ -136,7 +134,7 @@ public:
 
  private:
   /// @brief apply counter adjustments, only call from sync thread
-  rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq, bool& didWork);
+  bool applyAdjustments(rocksdb::SequenceNumber commitSeq);
 
  private:
   // TODO we should probably use flat_map or abseils Swiss Tables
