@@ -436,10 +436,10 @@ void RocksDBEngine::start() {
   _options.optimize_filters_for_hits = opts._optimizeFiltersForHits;
   _options.use_direct_reads = opts._useDirectReads;
   _options.use_direct_io_for_flush_and_compaction = opts._useDirectIoForFlushAndCompaction;
-  // limit the total size of WAL files. This forces the flush of memtables of
-  // column families still backed by WAL files. If we would not do this, WAL
-  // files may linger around forever and will not get removed
-  _options.max_total_wal_size = opts._maxTotalWalSize;
+  // during startup, limit the total WAL size to a small value so we do not see
+  // large WAL files created at startup.
+  // Instead, we will start with a small value here and up it later in the startup process
+  _options.max_total_wal_size = 4 * 1024 * 1024; 
 
   if (opts._walDirectory.empty()) {
     _options.wal_dir = basics::FileUtils::buildFilename(_path, "journals");
@@ -761,6 +761,11 @@ void RocksDBEngine::start() {
   if (opts._limitOpenFilesAtStartup) {
     _db->SetDBOptions({{"max_open_files", "-1"}});
   }
+  
+  // limit the total size of WAL files. This forces the flush of memtables of
+  // column families still backed by WAL files. If we would not do this, WAL
+  // files may linger around forever and will not get removed
+  _db->SetDBOptions({{"max_total_wal_size", std::to_string(opts._maxTotalWalSize)}});
 
   {
     auto& feature = server().getFeature<FlushFeature>();
