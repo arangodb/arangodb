@@ -1,6 +1,8 @@
 devel
 -----
 
+* Improve latency in scheduler.
+
 * Changed HTTP return code for an error case in /_api/cluster/endpoints REST API.
   Now, if the API is called on a single server, it will return HTTP 501 instead
   of HTTP 403.
