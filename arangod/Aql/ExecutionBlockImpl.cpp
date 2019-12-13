@@ -1154,7 +1154,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       switch (execState) {
         case ExecState::SKIP: {
           auto const& clientCall = _outputItemRow->getClientCall();
-          ExecuteSkipRowsRange<skipRowsType<ShortestPathExecutor>()> skip;
+          ExecuteSkipRowsRange<skipRowsType<Executor>()> skip;
           auto [state, skippedLocal, call] =
               skip.executeSkipRowsRange(_executor, _lastRange,
                                         _outputItemRow->getModifiableClientCall());
