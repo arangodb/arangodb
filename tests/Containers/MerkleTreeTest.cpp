@@ -80,62 +80,6 @@ class InternalMerkleTreeTest : public ::arangodb::containers::MerkleTree<3, 64>,
   InternalMerkleTreeTest() : MerkleTree<3, 64>(2, 0, 64) {}
 };
 
-TEST_F(InternalMerkleTreeTest, test_log2ceil) {
-  ASSERT_EQ(log2ceil(0), 1);
-  ASSERT_EQ(log2ceil(1), 1);
-  ASSERT_EQ(log2ceil(2), 1);
-  ASSERT_EQ(log2ceil(3), 2);
-  ASSERT_EQ(log2ceil(4), 2);
-  ASSERT_EQ(log2ceil(5), 3);
-  ASSERT_EQ(log2ceil(8), 3);
-  ASSERT_EQ(log2ceil(9), 4);
-  ASSERT_EQ(log2ceil(16), 4);
-  ASSERT_EQ(log2ceil(17), 5);
-  // ...
-  ASSERT_EQ(log2ceil((std::numeric_limits<std::size_t>::max() / 2) + 1),
-            8 * sizeof(std::size_t) - 1);
-}
-
-TEST_F(InternalMerkleTreeTest, test_minimumFactorFor) {
-  // test error on target <= current
-  ASSERT_THROW(minimumFactorFor(2, 1), std::invalid_argument);
-
-  // test error on current not power of 2
-  ASSERT_THROW(minimumFactorFor(3, 4), std::invalid_argument);
-
-  // test valid inputs
-  ASSERT_EQ(minimumFactorFor(1, 2), 2);
-  ASSERT_EQ(minimumFactorFor(1, 4), 4);
-  ASSERT_EQ(minimumFactorFor(1, 12), 16);
-  ASSERT_EQ(minimumFactorFor(1, 16), 16);
-  ASSERT_EQ(minimumFactorFor(2, 4), 2);
-  ASSERT_EQ(minimumFactorFor(2, 5), 4);
-  ASSERT_EQ(minimumFactorFor(2, 8), 4);
-  ASSERT_EQ(minimumFactorFor(2, 17), 16);
-  ASSERT_EQ(minimumFactorFor(2, 31), 16);
-  ASSERT_EQ(minimumFactorFor(2, 32), 16);
-  ASSERT_EQ(minimumFactorFor(65536, 90000), 2);
-  ASSERT_EQ(minimumFactorFor(8192, 2147483600), 262144);
-}
-
-TEST_F(InternalMerkleTreeTest, test_nodeCountAtDepth) {
-  ASSERT_EQ(nodeCountAtDepth(0), 1);
-  ASSERT_EQ(nodeCountAtDepth(1), 8);
-  ASSERT_EQ(nodeCountAtDepth(2), 64);
-  ASSERT_EQ(nodeCountAtDepth(3), 512);
-  // ...
-  ASSERT_EQ(nodeCountAtDepth(10), 1073741824);
-}
-
-TEST_F(InternalMerkleTreeTest, test_nodeCountUpToDepth) {
-  ASSERT_EQ(nodeCountUpToDepth(0), 1);
-  ASSERT_EQ(nodeCountUpToDepth(1), 9);
-  ASSERT_EQ(nodeCountUpToDepth(2), 73);
-  ASSERT_EQ(nodeCountUpToDepth(3), 585);
-  // ...
-  ASSERT_EQ(nodeCountUpToDepth(10), 1227133513);
-}
-
 TEST_F(InternalMerkleTreeTest, test_childrenAreLeaves) {
   ASSERT_FALSE(childrenAreLeaves(0));
   for (std::size_t index = 1; index < 9; ++index) {
@@ -189,7 +133,6 @@ TEST_F(InternalMerkleTreeTest, test_index) {
 }
 
 TEST_F(InternalMerkleTreeTest, test_modify) {
-  ASSERT_EQ(nodeCountAtDepth(2), 64);
   std::pair<std::size_t, std::size_t> range = this->range();
   ASSERT_EQ(range.first, 0);
   ASSERT_EQ(range.second, 64);
@@ -210,7 +153,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   }
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::size_t index = 0; index < nodeCountUpToDepth(meta().maxDepth); ++index) {
+  for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
     std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
@@ -231,7 +174,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   }
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::size_t index = 0; index < nodeCountUpToDepth(meta().maxDepth); ++index) {
+  for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
     std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
@@ -256,7 +199,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   }
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::size_t index = 0; index < nodeCountUpToDepth(meta().maxDepth); ++index) {
+  for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
     std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
@@ -279,7 +222,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 2);
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::size_t index = 0; index < nodeCountUpToDepth(meta().maxDepth); ++index) {
+  for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
     std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
@@ -298,7 +241,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 1);
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::size_t index = 0; index < nodeCountUpToDepth(meta().maxDepth); ++index) {
+  for (std::size_t index = 0; index < 73; ++index) {
     bool inSet0 = indices0.find(index) != indices0.end();
     std::size_t expectedCount = inSet0 ? 1 : 0;
     std::size_t expectedHash = inSet0 ? TRI_FnvHashPod(0) : 0;
@@ -313,7 +256,7 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   ASSERT_EQ(count(), 0);
 
   // check that it sets everything it should, and nothing it shouldn't
-  for (std::size_t index = 0; index < nodeCountUpToDepth(meta().maxDepth); ++index) {
+  for (std::size_t index = 0; index < 73; ++index) {
     InternalMerkleTreeTest::Node& node = this->node(index);
     ASSERT_EQ(node.count, 0);
     ASSERT_EQ(node.hash, 0);
@@ -321,9 +264,6 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
 }
 
 TEST_F(InternalMerkleTreeTest, test_grow) {
-  ASSERT_EQ(nodeCountAtDepth(1), 8);
-  ASSERT_EQ(nodeCountAtDepth(2), 64);
-
   std::pair<std::size_t, std::size_t> range = this->range();
   ASSERT_EQ(range.first, 0);
   ASSERT_EQ(range.second, 64);
@@ -382,7 +322,7 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
       hash2[i / 2] ^= TRI_FnvHashPod(i);
     }
     for (std::size_t i = 0; i < 64; ++i) {
-      Node& node = this->node(i + nodeCountUpToDepth(1));
+      Node& node = this->node(i + 9);
       ASSERT_EQ(node.count, 2);
       if (node.hash != hash2[i]) {
       }
