@@ -129,6 +129,7 @@ CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
 CREATE_HAS_MEMBER_CHECK(skipRows, hasSkipRows);
 CREATE_HAS_MEMBER_CHECK(fetchBlockForPassthrough, hasFetchBlockForPassthrough);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
+CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 
 /*
  * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
@@ -1032,7 +1033,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
       !std::is_same<Executor, SubqueryExecutor<true>>::value;
 
-  bool constexpr useExecutor = hasSkipRows<Executor>::value;
+  bool constexpr useExecutor = hasSkipRowsRange<Executor>::value;
 
   // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
   // it may not be done for modification subqueries.
@@ -1045,28 +1046,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(
-      useExecutor ==
-          (std::is_same<Executor, IndexExecutor>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>::value ||
-           std::is_same<Executor, EnumerateCollectionExecutor>::value ||
-           std::is_same<Executor, LimitExecutor>::value ||
-           std::is_same<Executor, ConstrainedSortExecutor>::value ||
-           std::is_same<Executor, SortingGatherExecutor>::value ||
-           std::is_same<Executor, UnsortedGatherExecutor>::value ||
-           std::is_same<Executor, ParallelUnsortedGatherExecutor>::value ||
-           std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
-           std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
-      "Unexpected executor for SkipVariants::EXECUTOR");
+  static_assert(useExecutor == (std::is_same<Executor, FilterExecutor>::value),
+                "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
