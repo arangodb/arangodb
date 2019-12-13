@@ -265,7 +265,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
 }
 
 bool SupervisedScheduler::start() {
-  _manager = std::make_unique<SupervisedSchedulerManagerThread>(*this));
+  _manager = std::make_unique<SupervisedSchedulerManagerThread>(*this);
   if (!_manager->start()) {
     LOG_TOPIC("00443", ERR, Logger::THREADS)
         << "could not start supervisor thread";
