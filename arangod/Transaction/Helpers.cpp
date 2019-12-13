@@ -22,11 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Helpers.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -402,9 +404,17 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   TRI_ASSERT(id.isCustom() && id.head() == 0xf3);
   TRI_ASSERT(key.isString());
 
-  uint64_t cid = encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
+  auto cid = encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
+  if (resolved == "_unknown") {
+    using namespace std::string_literals;
+    std::string const msg = "Could not resolve collection name of "s +
+                            std::to_string(cid) +
+                            " while writing _id of _key = "s + key.toJson();
+    LOG_TOPIC("03d05", WARN, Logger::FIXME) << msg;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
+  }
 #ifdef USE_ENTERPRISE
   if (resolved.compare(0, 7, "_local_") == 0) {
     resolved.erase(0, 7);
