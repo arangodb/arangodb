@@ -482,10 +482,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
-  auto cb = [self = shared_from_this(), handler = std::move(handler), a = 0]() mutable {
-    ++a;
-    TRI_ASSERT(a==1);
-    TRI_ASSERT(self != nullptr);
+  auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
     RequestStatistics::SET_QUEUE_END(handler->statistics());
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
       // Pass the response the io context
