@@ -44,11 +44,12 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
-  bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override ADB_WARN_UNUSED_RESULT;
+  bool queue(RequestLane lane, std::function<void()>) override ADB_WARN_UNUSED_RESULT;
 
  private:
   std::atomic<size_t> _numWorkers;
   std::atomic<bool> _stopping;
+  std::atomic<bool> _acceptingNewJobs;
 
  protected:
   bool isStopping() override { return _stopping; }
@@ -97,8 +98,10 @@ class SupervisedScheduler final : public Scheduler {
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
-  // _queueRetryCount is the number of spins this particular thread should perform
-  // before going to sleep.
+  // _queueRetryTime_us is the number of microseconds this particular
+  // thread should spin before going to sleep. Note that this spinning is only
+  // done if the thread has actually started to work on a request less than
+  // 1 seconds ago.
   // _sleepTimeout_ms is the amount of ms the thread should sleep before waking
   // up again. Note that each worker wakes up constantly, even if there is no work.
   //
@@ -112,15 +115,17 @@ class SupervisedScheduler final : public Scheduler {
   //    _working && (now - _lastJobStarted) > eps
 
   struct alignas(64) WorkerState {
-    uint64_t _queueRetryCount;  // t1
+    uint64_t _queueRetryTime_us; // t1
     uint64_t _sleepTimeout_ms;  // t2
-    std::atomic<bool> _stop, _working;
+    std::atomic<bool> _stop, _working, _sleeping;
     // _ready = false means the Worker is not properly initialized
     // _ready = true means it is initialized and can be used to dispatch tasks to
     // _ready is protected by the Scheduler's condition variable & mutex
     bool _ready;
     clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
+    std::mutex _mutex;
+    std::condition_variable _conditionWork;
 
     // initialize with harmless defaults: spin once, sleep forever
     explicit WorkerState(SupervisedScheduler& scheduler);
@@ -130,13 +135,21 @@ class SupervisedScheduler final : public Scheduler {
     // cppcheck-suppress missingOverride
     bool start();
   };
-  size_t _maxNumWorker;
-  size_t _numIdleWorker;
+  size_t const _minNumWorker;
+  size_t const _maxNumWorker;
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
+  std::atomic<uint64_t> _nrWorking;   // Number of threads actually working
+  std::atomic<uint64_t> _nrAwake;     // Number of threads working or spinning
+                                      // (i.e. not sleeping)
 
+  // The following mutex protects the lists _workerStates and
+  // _abandonedWorkerStates, whenever one accesses any of these two
+  // lists, this mutex is needed. Note that if you need a mutex of one
+  // of the workers, always acquire _mutex first and then the worker
+  // mutex, never, the other way round. You may acquire only the
+  // worker's mutex.
   std::mutex _mutex;
-  std::condition_variable _conditionWork;
 
   void runWorker();
   void runSupervisor();

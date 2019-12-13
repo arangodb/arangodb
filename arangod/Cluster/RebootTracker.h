@@ -25,15 +25,17 @@
 
 #include "Cluster/CallbackGuard.h"
 #include "Basics/Mutex.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 #include <map>
+#include <memory>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 namespace arangodb {
+
+class SupervisedScheduler;
+
 namespace cluster {
 
 // Note:
@@ -42,13 +44,7 @@ namespace cluster {
 class RebootTracker {
  public:
   using Callback = std::function<void(void)>;
-  using SchedulerPointer = decltype(SchedulerFeature::SCHEDULER);
-  static_assert(std::is_pointer<SchedulerPointer>::value,
-                "If SCHEDULER is changed to a non-pointer type, this class "
-                "might have to be adapted");
-  static_assert(
-      std::is_base_of<Scheduler, std::remove_pointer<SchedulerPointer>::type>::value,
-      "SchedulerPointer is expected to point to an instance of Scheduler");
+  using SchedulerPointer = SupervisedScheduler*;
 
   class PeerState {
    public:
