@@ -134,38 +134,35 @@ class conjunction : public doc_iterator_base, score_ctx {
       }
     }
    
-    if (scores_.empty()) {
-      prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) { /*NOOP*/});
-    } else {
-      // prepare score
-      {
-        switch (scores_.size()) {
-          case 1:
-            prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
-              auto& self = *static_cast<const conjunction*>(ctx);
-              self.scores_[0]->evaluate();
-              self.order_->merge(score, &self.scores_vals_[0], 1);
-            });
-            break;
-          case 2:
-            prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
-              auto& self = *static_cast<const conjunction*>(ctx);
-              self.scores_[0]->evaluate();
-              self.scores_[1]->evaluate();
-              self.order_->merge(score, &self.scores_vals_[0], 2);
-              });
-            break;
-          default:
-            prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
-              auto& self = *static_cast<const conjunction*>(ctx);
-              for (auto* it_score : self.scores_) {
-                it_score->evaluate();
-              }
-              self.order_->merge(score, &self.scores_vals_[0], self.scores_vals_.size());
-              });
-            break;
-        }
-      }
+    // prepare score
+    switch (scores_.size()) {
+      case 0:
+        prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) { /*NOOP*/});
+        break;
+      case 1:
+        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+          auto& self = *static_cast<const conjunction*>(ctx);
+          self.scores_[0]->evaluate();
+          self.order_->merge(score, &self.scores_vals_[0], 1);
+          });
+        break;
+      case 2:
+        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+          auto& self = *static_cast<const conjunction*>(ctx);
+          self.scores_[0]->evaluate();
+          self.scores_[1]->evaluate();
+          self.order_->merge(score, &self.scores_vals_[0], 2);
+          });
+        break;
+      default:
+        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+          auto& self = *static_cast<const conjunction*>(ctx);
+          for (auto* it_score : self.scores_) {
+            it_score->evaluate();
+          }
+          self.order_->merge(score, &self.scores_vals_[0], self.scores_vals_.size());
+          });
+        break;
     }
   }
 
