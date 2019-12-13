@@ -25,7 +25,6 @@
 // 3rdParty\iresearch\core\shared.hpp
 #if defined(_MSC_VER)
 #include "date/date.h"
-#undef NOEXCEPT
 #endif
 
 #include "analysis/analyzers.hpp"
@@ -120,7 +119,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
 
-  static bool normalize(const irs::string_ref& /*args*/, std::string& out) noexcept {
+  static bool normalize(const irs::string_ref& /*args*/, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
     return true;
@@ -194,7 +193,7 @@ bool parse_delimiter_vpack_config(const irs::string_ref& args, std::string& deli
   return false;
 }
 
-irs::analysis::analyzer::ptr delimiter_vpack_builder(irs::string_ref const& args) noexcept {
+irs::analysis::analyzer::ptr delimiter_vpack_builder(irs::string_ref const& args) {
   std::string delimiter;
   if (parse_delimiter_vpack_config(args, delimiter)) {
     return irs::analysis::delimited_token_stream::make(delimiter);
@@ -202,7 +201,7 @@ irs::analysis::analyzer::ptr delimiter_vpack_builder(irs::string_ref const& args
   return nullptr;
 }
 
-bool delimiter_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+bool delimiter_vpack_normalizer(const irs::string_ref& args, std::string& out) {
   std::string tmp;
   if (parse_delimiter_vpack_config(args, tmp)) {
     VPackBuilder vpack;
@@ -280,10 +279,11 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       options.start_marker = irs::ref_cast<irs::byte_type>(
         arangodb::iresearch::getStringRef(start_marker_json));
     } else {
+      std::string argString = slice.toJson();
       IR_FRMT_ERROR(
           "Failed to read '%s' attribute as string while constructing "
           "ngram_token_stream from jSON arguments: %s",
-          START_MARKER_PARAM_NAME.c_str(), args.c_str());
+          START_MARKER_PARAM_NAME.c_str(), argString.c_str());
       return false;
     }
   }
@@ -294,10 +294,11 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       options.end_marker = irs::ref_cast<irs::byte_type>(
         arangodb::iresearch::getStringRef(end_marker_json));
     } else {
+      std::string argString = slice.toJson();
       IR_FRMT_ERROR(
           "Failed to read '%s' attribute as string while constructing "
           "ngram_token_stream from jSON arguments: %s",
-          END_MARKER_PARAM_NAME.c_str(), args.c_str());
+          END_MARKER_PARAM_NAME.c_str(), argString.c_str());
       return false;
     }
   }
@@ -306,18 +307,20 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       auto stream_type_json = slice.get(STREAM_TYPE_PARAM_NAME.c_str());
 
       if (!stream_type_json.isString()) {
+        std::string argString = slice.toJson();
         IR_FRMT_WARN(
             "Non-string value in '%s' while constructing ngram_token_stream "
             "from jSON arguments: %s",
-            STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
+            STREAM_TYPE_PARAM_NAME.c_str(), argString.c_str());
         return false;
       }
       auto itr = STREAM_TYPE_CONVERT_MAP.find(arangodb::iresearch::getStringRef(stream_type_json));
       if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
+        std::string argString = slice.toJson();
         IR_FRMT_WARN(
             "Invalid value in '%s' while constructing ngram_token_stream from "
             "jSON arguments: %s",
-            STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
+            STREAM_TYPE_PARAM_NAME.c_str(), argString.c_str());
         return false;
       }
       options.stream_bytes_type = itr->second;
@@ -334,7 +337,7 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
 }
 
 
-irs::analysis::analyzer::ptr ngram_vpack_builder(irs::string_ref const& args) noexcept {
+irs::analysis::analyzer::ptr ngram_vpack_builder(irs::string_ref const& args) {
   irs::analysis::ngram_token_stream_base::Options tmp;
   if (parse_ngram_vpack_config(args, tmp)) {
     switch (tmp.stream_bytes_type) {
@@ -349,7 +352,7 @@ irs::analysis::analyzer::ptr ngram_vpack_builder(irs::string_ref const& args) no
 }
 
 
-bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) {
   irs::analysis::ngram_token_stream_base::Options tmp;
   if (parse_ngram_vpack_config(args, tmp)) {
     VPackBuilder vpack;
@@ -393,7 +396,7 @@ REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream_base,
 
 namespace text_vpack {
 // FIXME implement proper vpack parsing
-irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noexcept {
+irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) {
   auto slice = arangodb::iresearch::slice<char>(args);
   if (!slice.isNone()) {
     return irs::analysis::analyzers::get("text", irs::text_format::json,
@@ -403,7 +406,7 @@ irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noe
   return nullptr;
 }
 
-bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) {
   std::string tmp;
   auto slice = arangodb::iresearch::slice<char>(args);
 
@@ -424,7 +427,7 @@ REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, text_vpack_builder,
 
 namespace stem_vpack {
   // FIXME implement proper vpack parsing
-  irs::analysis::analyzer::ptr stem_vpack_builder(irs::string_ref const& args) noexcept {
+  irs::analysis::analyzer::ptr stem_vpack_builder(irs::string_ref const& args) {
     auto slice = arangodb::iresearch::slice<char>(args);
     if (!slice.isNone()) {
       return irs::analysis::analyzers::get("stem", irs::text_format::json,
@@ -434,7 +437,7 @@ namespace stem_vpack {
     return nullptr;
   }
 
-  bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+  bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) {
     std::string tmp;
     auto slice = arangodb::iresearch::slice<char>(args);
     if (!slice.isNone() &&
@@ -453,7 +456,7 @@ namespace stem_vpack {
 
 namespace norm_vpack {
   // FIXME implement proper vpack parsing
-  irs::analysis::analyzer::ptr norm_vpack_builder(irs::string_ref const& args) noexcept {
+  irs::analysis::analyzer::ptr norm_vpack_builder(irs::string_ref const& args) {
     auto slice = arangodb::iresearch::slice<char>(args);
     if (!slice.isNone()) {//cannot be created without properties
       return irs::analysis::analyzers::get("norm", irs::text_format::json,
@@ -463,7 +466,7 @@ namespace norm_vpack {
     return nullptr;
   }
 
-  bool norm_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+  bool norm_vpack_normalizer(const irs::string_ref& args, std::string& out) {
     std::string tmp;
     auto slice = arangodb::iresearch::slice<char>(args);
     if (!slice.isNone() && //cannot be created without properties

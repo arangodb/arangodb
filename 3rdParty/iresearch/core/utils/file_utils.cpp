@@ -18,7 +18,7 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -40,10 +40,9 @@
 #include <sys/types.h>
 
 #ifdef _WIN32
-
-#include <Windows.h>
 #include <Shlwapi.h>
 #include <io.h> // for _get_osfhandle
+#include "windows.h"
 #pragma comment(lib, "Shlwapi.lib")
 
 #else
@@ -78,8 +77,7 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
 
     return file_stat(
       parts.basename.empty() ? std::wstring(parts.dirname).c_str() : path,
-      &info
-    );
+      &info);
   #else
     return file_stat(path, &info);
   #endif
@@ -90,23 +88,174 @@ NS_END
 NS_ROOT
 NS_BEGIN(file_utils)
 
-#ifdef _WIN32
+
+void file_deleter::operator()(void* f) const noexcept {
+#if _WIN32
+  if (f != nullptr && f != INVALID_HANDLE_VALUE) {
+    CloseHandle(f);
+  }
+#else
+  if (f) {
+    const int fd = handle_cast(f);
+    if (fd < 0) {
+      return; // invalid desriptor
+    }
+    ::close(fd);
+  }
+#endif
+}
 
 void lock_file_deleter::operator()(void* handle) const {
   if (handle) {
-    ::CloseHandle(reinterpret_cast<HANDLE>(handle));
+#ifdef _WIN32
+    if (handle != INVALID_HANDLE_VALUE) {
+      ::CloseHandle(handle);
+    }
+#else
+    const int fd = handle_cast(handle);
+    if (fd < 0) {
+      return; // invalid desriptor
+    }
+    flock(fd, LOCK_UN); // unlock file
+    close(fd); // close file
+#endif
   }
 }
 
-bool write(HANDLE fd, const char* buf, size_t size) {
-  DWORD written;
-  auto res = ::WriteFile(fd, buf, DWORD(size), &written, NULL);
-  return res && size == written;
+bool exists(const file_path_t file) {
+#ifdef _WIN32
+  return TRUE == ::PathFileExists(file);
+#else
+  return 0 == access(file, F_OK);
+#endif
 }
 
-bool exists(const file_path_t file) {
-  return TRUE == ::PathFileExists(file);
+size_t fwrite(void* fd, const void* buf, size_t size) {
+  size_t left = size;
+  auto current = static_cast<const byte_type*>(buf);
+#ifdef _WIN32
+  static_assert(sizeof(size_t) > sizeof(DWORD), "sizeof(size_t) > sizeof(DWORD)");
+  constexpr size_t maxWrite = MAXDWORD;
+  while (left > 0) {
+    DWORD to_write = static_cast<DWORD>((std::min)(maxWrite, left));
+    DWORD written{ 0 };
+    if (WriteFile(fd, current, to_write, &written, NULL)) {
+      left -= written;
+      current += written;
+    } else {
+      break;
+    }
+  }
+#else
+  constexpr size_t writeLimit = 1UL << 30;
+  const int descriptor = handle_cast(fd);
+  while (left > 0) {
+    size_t to_write = (std::min)(left, writeLimit);
+    const ssize_t written = ::write(descriptor, current, to_write);
+    if (written < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      break;
+    }
+    left -= written;
+    current += written;
+  }
+#endif
+  return size - left;
 }
+
+size_t fread(void* fd, void* buf, size_t size) {
+  size_t left = size;
+  auto current = static_cast<byte_type*>(buf);
+#ifdef _WIN32
+  constexpr size_t maxRead = MAXDWORD;
+  while (left > 0) {
+    DWORD to_read = static_cast<DWORD>((std::min)(maxRead, left));
+    DWORD read{ 0 };
+    if (ReadFile(fd, current, to_read, &read, NULL) && read > 0) {
+      left -= read;
+      current += read;
+    } else {
+      break;
+    }
+  }
+#else
+  constexpr size_t readLimit = 0x7ffff000;
+  const int descriptor = handle_cast(fd);
+  while (left > 0) {
+    size_t to_read = (std::min)(left, readLimit);
+    const ssize_t read = ::read(descriptor, current, to_read);
+    if (read < 0) {
+      if (errno == EINTR) {
+        continue;
+      }
+      break;
+    } else if (read > 0) {
+      left -= read;
+      current += read;
+    } else {
+      break; // EOF reached
+    }
+  }
+#endif
+  return size - left;
+}
+
+
+int fseek(void* fd, long pos, int origin) {
+#ifdef _WIN32
+  LARGE_INTEGER li;
+  li.QuadPart = pos;
+  DWORD moveMethod;
+  switch (origin) {
+  case SEEK_SET:
+    moveMethod = FILE_BEGIN;
+    break;
+  case SEEK_CUR:
+    moveMethod = FILE_CURRENT;
+    break;
+  case SEEK_END:
+    moveMethod = FILE_END;
+    break;
+  default:
+    IRS_ASSERT(false);
+    return 0;
+  }
+  return !SetFilePointerEx(fd, li, nullptr, moveMethod);
+#else
+  return lseek(handle_cast(fd), pos, origin) == -1;
+#endif
+}
+
+int ferror(void*) {
+#ifdef _WIN32
+  return static_cast<int>(GetLastError());
+#else
+  return errno;
+#endif
+}
+
+long ftell(void* fd) {
+#ifdef _WIN32
+  LARGE_INTEGER liOfs = { 0 };
+  LARGE_INTEGER liNew = { 0 };
+  if (SetFilePointerEx(fd, liOfs, &liNew, FILE_CURRENT)) {
+    return static_cast<long>(liNew.LowPart);
+  } else {
+    return -1;
+  }
+#else
+  return lseek(handle_cast(fd), 0, SEEK_CUR);
+#endif
+}
+
+
+#ifdef _WIN32
+NS_LOCAL
+constexpr DWORD FS_DEFERRED_DELETE_TIMEOUT = 10;
+constexpr int CREATE_FILE_TRIES = 3;
+NS_END
 
 bool verify_lock_file(const file_path_t file) {
   if (!exists(file)) {
@@ -119,7 +268,7 @@ bool verify_lock_file(const file_path_t file) {
     0, // prevent access from other processes
     NULL, // default security attributes
     OPEN_EXISTING, // open existing file
-    FILE_ATTRIBUTE_NORMAL, // use normal file attributes 
+    FILE_ATTRIBUTE_NORMAL, // use normal file attributes
     NULL);
 
   if (INVALID_HANDLE_VALUE == handle) {
@@ -143,7 +292,7 @@ bool verify_lock_file(const file_path_t file) {
   }
 
   // check hostname
-  const size_t len = strlen(buf); // hostname length 
+  const size_t len = strlen(buf);
   if (!is_same_hostname(buf, len)) {
     typedef std::remove_pointer<file_path_t>::type char_t;
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
@@ -170,14 +319,26 @@ bool verify_lock_file(const file_path_t file) {
 }
 
 lock_handle_t create_lock_file(const file_path_t file) {
-  HANDLE fd = ::CreateFileW(
-    file,
-    GENERIC_WRITE, // write access
-    0, // prevent access from other processes
-    NULL, // default security attributes
-    CREATE_ALWAYS, // always create file 
-    FILE_FLAG_DELETE_ON_CLOSE, // allow OS to remove file when process finished
-    NULL);
+  HANDLE fd = INVALID_HANDLE_VALUE;
+  // windows has a deferred deletion and with rapid locking/unlocking same lock file could fail to be created
+  // so we try several times
+  int try_count = CREATE_FILE_TRIES;
+  do {
+    fd = ::CreateFileW(
+      file,
+      GENERIC_WRITE, // write access
+      0, // prevent access from other processes
+      NULL, // default security attributes
+      CREATE_ALWAYS, // always create file
+      FILE_FLAG_DELETE_ON_CLOSE, // allow OS to remove file when process finished
+      NULL);
+
+    if (ERROR_ACCESS_DENIED != GetLastError()) {
+      break;
+    } else {
+      ::Sleep(FS_DEFERRED_DELETE_TIMEOUT); // give some time for file system to finalize deletion
+    }
+  } while ((--try_count) > 0);
 
   if (INVALID_HANDLE_VALUE == fd) {
     typedef std::remove_pointer<file_path_t>::type char_t;
@@ -188,7 +349,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
     IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d", path.c_str(), GetLastError());
     return nullptr;
   }
-  
+
   lock_handle_t handle(reinterpret_cast<void*>(fd));
   char buf[256];
 
@@ -210,9 +371,9 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
 #ifdef _WIN32
   #pragma warning(disable : 4996)
-#endif // _WIN32 
+#endif // _WIN32
 
-  // write PID to lock file 
+  // write PID to lock file
   const size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
     typedef std::remove_pointer<file_path_t>::type char_t;
@@ -226,7 +387,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
 #ifdef _WIN32
   #pragma warning(default: 4996)
-#endif // _WIN32 
+#endif // _WIN32
 
   // flush buffers
   if (::FlushFileBuffers(fd) <= 0) {
@@ -242,54 +403,21 @@ lock_handle_t create_lock_file(const file_path_t file) {
   return handle;
 }
 
-bool file_sync(const file_path_t file) NOEXCEPT {
+bool file_sync(const file_path_t file) noexcept {
   HANDLE handle = ::CreateFileW(
     file, GENERIC_WRITE,
-    FILE_SHARE_WRITE, NULL,
+    FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
     OPEN_EXISTING,
-    0, NULL
-  );
-
-  // try other sharing modes since MSFT Windows fails sometimes
-  if (INVALID_HANDLE_VALUE == handle) {
-      handle = ::CreateFileW(
-      file, GENERIC_WRITE,
-      FILE_SHARE_READ, NULL,
-      OPEN_EXISTING,
-      0, NULL
-    );
-  }
-
-  // try other sharing modes since MSFT Windows fails sometimes
-  if (INVALID_HANDLE_VALUE == handle) {
-      handle = ::CreateFileW(
-      file, GENERIC_WRITE,
-      FILE_SHARE_DELETE, NULL,
-      OPEN_EXISTING,
-      0, NULL
-    );
-  }
-
-  // try other sharing modes since MSFT Windows fails sometimes
-  if (INVALID_HANDLE_VALUE == handle) {
-      handle = ::CreateFileW(
-      file, GENERIC_WRITE,
-      0, NULL,
-      OPEN_EXISTING,
-      0, NULL
-    );
-  }
-
+    0, NULL);
   if (INVALID_HANDLE_VALUE == handle) {
     return false;
   }
-
   const bool res = ::FlushFileBuffers(handle) > 0;
   ::CloseHandle(handle);
   return res;
 }
 
-bool file_sync(int fd) NOEXCEPT {
+bool file_sync(int fd) noexcept {
   // Attempt to convert file descriptor into an operating system file handle
   HANDLE handle = reinterpret_cast<HANDLE>(_get_osfhandle(fd));
 
@@ -302,26 +430,6 @@ bool file_sync(int fd) NOEXCEPT {
 }
 
 #else
-
-void lock_file_deleter::operator()(void* handle) const {
-  if (handle) {
-    const int fd = static_cast<int>(reinterpret_cast<size_t>(handle));
-    if (fd < 0) {
-      return; // invalid desriptor
-    }
-    flock(fd, LOCK_UN); // unlock file
-    close(fd); // close file
-  }
-}
-
-bool exists(const file_path_t file) {
-  return 0 == access(file, F_OK);
-}
-
-bool write(int fd, const char* buf, size_t size) {
-  const ssize_t written = ::write(fd, buf, size);
-  return written >= 0 && size_t(written) == size;
-}
 
 bool verify_lock_file(const file_path_t file) {
   if (!exists(file)) {
@@ -352,7 +460,7 @@ bool verify_lock_file(const file_path_t file) {
       }
     }
 
-    size = read(fd, buf, sizeof buf);
+    size = fread(handle.get(), buf, sizeof buf);
   }
 
   if (size <= 0 || sizeof buf == size) {
@@ -362,7 +470,7 @@ bool verify_lock_file(const file_path_t file) {
   buf[size] = 0; // set termination 0
 
   // check hostname
-  const size_t len = strlen(buf); // hostname length 
+  const size_t len = strlen(buf); // hostname length
   if (!is_same_hostname(buf, len)) {
     IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'", buf, file);
     return true; // locked
@@ -400,14 +508,14 @@ lock_handle_t create_lock_file(const file_path_t file) {
     return nullptr;
   }
 
-  if (!file_utils::write(fd, buf, strlen(buf)+1)) { // include terminated 0
+  if (!file_utils::write(reinterpret_cast<void*>(fd), buf, strlen(buf)+1)) { // include terminated 0
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
 
-  // write PID to lock file 
+  // write PID to lock file
   size_t size = sprintf(buf, "%d", get_pid());
-  if (!file_utils::write(fd, buf, size)) {
+  if (!file_utils::write(reinterpret_cast<void*>(fd), buf, size)) {
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
     return nullptr;
   }
@@ -427,7 +535,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   return handle;
 }
 
-bool file_sync(const file_path_t file) NOEXCEPT {
+bool file_sync(const file_path_t file) noexcept {
   const int handle = ::open(file, O_WRONLY, S_IRWXU);
   if (handle < 0) {
     return false;
@@ -438,7 +546,7 @@ bool file_sync(const file_path_t file) NOEXCEPT {
   return res;
 }
 
-bool file_sync(int fd) NOEXCEPT {
+bool file_sync(int fd) noexcept {
   return 0 == fsync(fd);
 }
 
@@ -448,7 +556,7 @@ bool file_sync(int fd) NOEXCEPT {
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-bool absolute(bool& result, const file_path_t path) NOEXCEPT {
+bool absolute(bool& result, const file_path_t path) noexcept {
   if (!path) {
     return false;
   }
@@ -470,7 +578,7 @@ bool absolute(bool& result, const file_path_t path) NOEXCEPT {
   return true;
 }
 
-bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
+bool block_size(file_blksize_t& result, const file_path_t file) noexcept {
   assert(file != nullptr);
 #ifdef _WIN32
   // TODO FIXME find a workaround
@@ -491,27 +599,26 @@ bool block_size(file_blksize_t& result, const file_path_t file) NOEXCEPT {
 #endif // _WIN32
 }
 
-bool block_size(file_blksize_t& result, int fd) NOEXCEPT {
 #ifdef _WIN32
+bool block_size(file_blksize_t& result, void* fd) noexcept {
   // TODO FIXME find a workaround
   UNUSED(fd);
   result = 512;
-
   return true;
+}
 #else
+bool block_size(file_blksize_t& result, int fd) noexcept {
   file_stat_t info;
-
   if (0 != file_fstat(fd, &info)) {
     return false;
   }
-
   result = info.st_blksize;
-
   return true;
-#endif // _WIN32
 }
+#endif // _WIN32
 
-bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT {
+
+bool byte_size(uint64_t& result, const file_path_t file) noexcept {
   assert(file != nullptr);
   file_stat_t info;
 
@@ -524,7 +631,23 @@ bool byte_size(uint64_t& result, const file_path_t file) NOEXCEPT {
   return true;
 }
 
-bool byte_size(uint64_t& result, int fd) NOEXCEPT {
+
+bool byte_size(uint64_t& result, void* fd) noexcept {
+#ifdef _WIN32
+  LARGE_INTEGER li;
+
+  if (!GetFileSizeEx(fd, &li)) {
+    return false;
+  }
+  result = static_cast<uint64_t>(li.QuadPart);
+  return true;
+#else
+  return byte_size(result, handle_cast(fd));
+#endif
+}
+
+
+bool byte_size(uint64_t& result, int fd) noexcept {
   file_stat_t info;
 
   if (0 != file_fstat(fd, &info)) {
@@ -536,7 +659,8 @@ bool byte_size(uint64_t& result, int fd) NOEXCEPT {
   return true;
 }
 
-bool exists(bool& result, const file_path_t file) NOEXCEPT {
+
+bool exists(bool& result, const file_path_t file) noexcept {
   assert(file != nullptr);
   file_stat_t info;
 
@@ -554,7 +678,7 @@ bool exists(bool& result, const file_path_t file) NOEXCEPT {
   return true;
 }
 
-bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
+bool exists_directory(bool& result, const file_path_t name) noexcept {
   assert(name != nullptr);
   file_stat_t info;
 
@@ -578,7 +702,7 @@ bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
   return true;
 }
 
-bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
+bool exists_file(bool& result, const file_path_t name) noexcept {
   assert(name != nullptr);
   file_stat_t info;
 
@@ -602,7 +726,7 @@ bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
   return true;
 }
 
-bool mtime(time_t& result, const file_path_t file) NOEXCEPT {
+bool mtime(time_t& result, const file_path_t file) noexcept {
   assert(file != nullptr);
   file_stat_t info;
 
@@ -615,54 +739,73 @@ bool mtime(time_t& result, const file_path_t file) NOEXCEPT {
   return true;
 }
 
-bool mtime(time_t& result, int fd) NOEXCEPT {
-  file_stat_t info;
-
-  if (0 != file_fstat(fd, &info)) {
-    return false;
-  }
-
-  result = info.st_mtime;
-
-  return true;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
 
-handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
+handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   #ifdef _WIN32
-    #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
-    handle_t handle(::_wfopen(path ? path : IR_WSTR("NUL:"), mode));
-    #pragma warning(default: 4996)
-  #else
-    handle_t handle(::fopen(path ? path : "/dev/null", mode));
-  #endif
-
-  if (!handle) {
-    // even win32 uses 'errno' for error codes in calls to _wfopen(...)
-    IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
-    IR_LOG_STACK_TRACE();
+  if (!path) {
+    return handle_t(nullptr);
   }
 
-  return handle;
+  DWORD desiredAccess{ 0 };
+  // as *nix does not have sharing restrictions, we put none also
+  // intentionally do not add FILE_SHARE_DELETE to detect bugs
+  // with not properly closed files (error will be triggered on cleanup with error code 32)
+  DWORD sharing_mode = FILE_SHARE_READ | FILE_SHARE_WRITE;
+  DWORD create_disposition = OPEN_EXISTING;
+  switch (mode) {
+    case OpenMode::Read:
+      desiredAccess = GENERIC_READ;
+      break;
+    case OpenMode::Write:
+      desiredAccess = GENERIC_WRITE | GENERIC_READ;
+      create_disposition = CREATE_ALWAYS; // while opening for write we infer creation
+      break;
+    default:
+      IR_FRMT_ERROR("Invalid OpenMode %d specified for file %s", static_cast<int>(mode), path);
+      IRS_ASSERT(false);
+      return handle_t(nullptr);
+  }
+  DWORD dwFlags = FILE_ATTRIBUTE_NORMAL | (static_cast<DWORD>(advice));
+  HANDLE hFile = INVALID_HANDLE_VALUE;
+  int try_count = CREATE_FILE_TRIES;
+  do {
+    hFile = CreateFile(path, desiredAccess, sharing_mode, NULL, create_disposition, dwFlags, NULL);
+    if (hFile != INVALID_HANDLE_VALUE) {
+      return handle_t(hFile);
+    }
+    // this could be pending deletion blocking, if we are recreating file - this is ok, we just try again
+    // if this is reading, file is gone, we give up
+    if (ERROR_ACCESS_DENIED != GetLastError() || OpenMode::Write != mode) {
+        break;
+    } else {
+      Sleep(FS_DEFERRED_DELETE_TIMEOUT);
+    }
+  } while ((--try_count) > 0);
+  return handle_t(nullptr);
+  #else
+    auto fd = ::open(path ? path : "/dev/null", (OpenMode::Read == mode ? O_RDONLY : (O_CREAT | O_TRUNC | O_WRONLY)), S_IRUSR | S_IWUSR);
+    if (fd < 0) {
+      IR_FRMT_ERROR("Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
+      IR_LOG_STACK_TRACE();
+      return handle_t(nullptr);
+    }
+#if (_XOPEN_SOURCE >= 600 || _POSIX_C_SOURCE >= 200112L) && !defined(__APPLE__)
+    posix_fadvise(fd, 0, 0, advice);
+#endif
+    return handle_t(reinterpret_cast<void*>(fd));
+  #endif
 }
 
-handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
+handle_t open(void* file, OpenMode mode, int advice) noexcept {
   #ifdef _WIN32
     // win32 approach is to get the original filename of the handle and open it again
     // due to a bug from the 1980's the file name is garanteed to not change while the file is open
-    HANDLE handle = HANDLE(::_get_osfhandle(::_fileno(file)));
-
-    if (INVALID_HANDLE_VALUE == HANDLE(handle)) {
-      IR_FRMT_ERROR("Failed to get system handle from file handle, error %d", errno);
-      return nullptr;
-    }
-
-    const auto size = MAX_PATH + 1; // +1 for \0
+    constexpr auto size = MAX_PATH + 1; // +1 for \0
     TCHAR path[size];
-    auto length = GetFinalPathNameByHandle(handle, path, size - 1, VOLUME_NAME_DOS); // -1 for \0
+    auto length = GetFinalPathNameByHandle(file, path, size - 1, VOLUME_NAME_DOS); // -1 for \0
 
     if (!length) {
       IR_FRMT_ERROR("Failed to get filename from file handle, error %d", GetLastError());
@@ -670,32 +813,28 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
       return nullptr;
     }
 
-    if(length < size) {
+    if (length < size) {
       path[length] = '\0';
-
-      return open(path, mode);
+      return open(path, mode, advice);
     }
 
     IR_FRMT_WARN(
       "Required file path buffer size of %d is greater than the expected size of %d, malloc necessary",
-      length + 1, size // +1 for \0
-    );
+      length + 1, size); // +1 for \0
 
     auto buf_size = length + 1; // +1 for \0
     auto buf = irs::memory::make_unique<TCHAR[]>(buf_size);
 
-    length = GetFinalPathNameByHandle(handle, buf.get(), buf_size - 1, VOLUME_NAME_DOS); // -1 for \0
+    length = GetFinalPathNameByHandle(file, buf.get(), buf_size - 1, VOLUME_NAME_DOS); // -1 for \0
 
-    if(length && length < buf_size) {
+    if (length && length < buf_size) {
       buf[length] = '\0';
-
-      return open(buf.get(), mode);
+      return open(buf.get(), mode, advice);
     }
 
     IR_FRMT_ERROR(
       "Failed to get filename from file handle, inconsistent length detected, first %d then %d",
-      buf_size, length + 1 // +1 for \0
-    );
+      buf_size, length + 1); // +1 for \0
 
     return nullptr;
   #elif defined(__APPLE__)
@@ -704,7 +843,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
     // unfortunatly this results in the original file descriptor being dup()'ed
     // therefore try to get the original file name from the existing descriptor and reopen it
     // FIXME TODO assume that the file has not moved and was not deleted
-    auto fd = ::fileno(file);
+    auto fd = handle_cast(file);
     char path[MAXPATHLEN + 1]; // F_GETPATH requires a buffer of size at least MAXPATHLEN, +1 for \0
 
     if (0 > fd || 0 > fcntl(fd, F_GETPATH, path)) {
@@ -712,11 +851,11 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
       return nullptr;
     }
 
-    return open(path, mode);
+    return open(path, mode, advice);
   #else
     // posix approach is to open the original file via the file descriptor link under /proc/self/fd
     // the link is garanteed to point to the original inode even if the original file was removed
-    auto fd = ::fileno(file);
+    auto fd = handle_cast(file);
     char path[strlen("/proc/self/fd/") + sizeof(fd)*3 + 1]; // approximate maximum number of chars, +1 for \0
 
     if (0 > fd || 0 > sprintf(path, "/proc/self/fd/%d", fd)) {
@@ -724,7 +863,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
       return nullptr;
     }
 
-    return open(path, mode);
+    return open(path, mode, advice);
   #endif
 }
 
@@ -732,7 +871,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
 // --SECTION--                                                        path utils
 // -----------------------------------------------------------------------------
 
-bool mkdir(const file_path_t path, bool createNew) NOEXCEPT {
+bool mkdir(const file_path_t path, bool createNew) noexcept {
   bool result;
 
   if (!exists_directory(result, path)) {
@@ -784,9 +923,7 @@ bool mkdir(const file_path_t path, bool createNew) NOEXCEPT {
     auto dirname = path_prefix + path;
 
     // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
-    std::replace(
-      &dirname[0], &dirname[0] + dirname.size(), L'/', file_path_delimiter
-    );
+    std::replace(&dirname[0], &dirname[0] + dirname.size(), L'/', file_path_delimiter);
 
     if (0 == ::CreateDirectoryW(dirname.c_str(), nullptr)) {
       if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
@@ -814,7 +951,7 @@ bool mkdir(const file_path_t path, bool createNew) NOEXCEPT {
   return true;
 }
 
-bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT {
+bool move(const file_path_t src_path, const file_path_t dst_path) noexcept {
   // FIXME TODO ensure both functions lead to the same result in all cases @see utf8_path_tests::rename() tests
   #ifdef _WIN32
     return 0 != ::MoveFileExW(src_path, dst_path, MOVEFILE_REPLACE_EXISTING|MOVEFILE_COPY_ALLOWED);
@@ -823,7 +960,7 @@ bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT {
   #endif
 }
 
-path_parts_t path_parts(const file_path_t path) NOEXCEPT {
+path_parts_t path_parts(const file_path_t path) noexcept {
   if (!path) {
     return path_parts_t();
   }
@@ -832,7 +969,7 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
   path_parts_t::ref_t dirname = path_parts_t::ref_t::NIL;
   size_t stem_end = 0;
 
-  for(size_t i = 0;; ++i) {
+  for (size_t i = 0;; ++i) {
     switch (*(path + i)) {
     #ifdef _WIN32
      case L'\\': // fall through
@@ -888,7 +1025,7 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
 
 bool read_cwd(
     std::basic_string<std::remove_pointer<file_path_t>::type>& result
-) NOEXCEPT {
+) noexcept {
   try {
     #ifdef _WIN32
       auto size = GetCurrentDirectory(0, nullptr);
@@ -967,7 +1104,7 @@ bool read_cwd(
   return false;
 }
 
-bool remove(const file_path_t path) NOEXCEPT {
+bool remove(const file_path_t path) noexcept {
   try {
     // a reusable buffer for a full path used during recursive removal
     std::basic_string<std::remove_pointer<file_path_t>::type> buf;
@@ -983,8 +1120,7 @@ bool remove(const file_path_t path) NOEXCEPT {
 
         return true;
       },
-      false
-    );
+      false);
   } catch(...) {
     return false; // possibly a malloc error
   }
@@ -1001,8 +1137,7 @@ bool remove(const file_path_t path) NOEXCEPT {
       bool result;
       auto res = exists_directory(result, path) && result
                ? ::RemoveDirectoryW(path)
-               : ::DeleteFileW(path)
-               ;
+               : ::DeleteFileW(path);
 
       if (!res) { // 0 == error
         typedef std::remove_pointer<file_path_t>::type char_t;
@@ -1022,15 +1157,12 @@ bool remove(const file_path_t path) NOEXCEPT {
     auto fullpath = path_prefix + path;
 
     // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
-    std::replace(
-      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
-    );
+    std::replace(&fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter);
 
     bool result;
     auto res = exists_directory(result, path) && result
              ? ::RemoveDirectoryW(fullpath.c_str())
-             : ::DeleteFileW(fullpath.c_str())
-             ;
+             : ::DeleteFileW(fullpath.c_str());
 
     if (!res) { // 0 == error
       typedef std::remove_pointer<file_path_t>::type char_t;
@@ -1055,7 +1187,7 @@ bool remove(const file_path_t path) NOEXCEPT {
   return true;
 }
 
-bool set_cwd(const file_path_t path) NOEXCEPT {
+bool set_cwd(const file_path_t path) noexcept {
   #ifdef _WIN32
     bool abs;
 
@@ -1072,9 +1204,7 @@ bool set_cwd(const file_path_t path) NOEXCEPT {
     auto fullpath = path_prefix + path;
 
     // 'path_prefix' cannot be used with paths containing a mix of native and non-native path separators
-    std::replace(
-      &fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter
-    );
+    std::replace(&fullpath[0], &fullpath[0] + fullpath.size(), L'/', file_path_delimiter);
 
     return 0 != SetCurrentDirectory(fullpath.c_str());
   #else
@@ -1103,7 +1233,7 @@ bool visit_directory(
     WIN32_FIND_DATA direntry;
     HANDLE dir = ::FindFirstFile(dirname.c_str(), &direntry);
 
-    if(dir == INVALID_HANDLE_VALUE) {
+    if (dir == INVALID_HANDLE_VALUE) {
       return false;
     }
 
@@ -1115,7 +1245,7 @@ bool visit_directory(
           (direntry.cFileName[0] == L'.' && direntry.cFileName[1] == L'.' && direntry.cFileName[2] == L'\0'))) {
         terminate = !visitor(direntry.cFileName);
       }
-    } while(!terminate && ::FindNextFile(dir, &direntry));
+    } while (!terminate && ::FindNextFile(dir, &direntry));
 
     ::FindClose(dir);
 
@@ -1123,7 +1253,7 @@ bool visit_directory(
   #else
     DIR* dir = opendir(name);
 
-    if(!dir) {
+    if (!dir) {
       return false;
     }
 

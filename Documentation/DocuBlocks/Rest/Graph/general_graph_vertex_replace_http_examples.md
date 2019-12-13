@@ -11,10 +11,10 @@ Replaces the data of a vertex in the collection.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection,string,required} 
+@RESTURLPARAM{collection,string,required}
 The name of the vertex collection the vertex belongs to.
 
-@RESTURLPARAM{vertex,string,required} 
+@RESTURLPARAM{vertex,string,required}
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS
@@ -95,8 +95,7 @@ Will only be present if returnOld is true.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to replace vertices in the graph  you at least need to have the following privileges:
-
+In order to replace vertices in the graph  you at least need to have the following privileges:<br>
   1. `Read Only` access on the Database.
   2. `Write` access on the given collection.
 
@@ -108,7 +107,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -127,7 +126,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -143,7 +142,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.

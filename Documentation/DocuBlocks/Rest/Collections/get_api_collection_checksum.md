@@ -98,4 +98,3 @@ but not the revisions:
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-
