@@ -527,7 +527,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            firstOutputRegister,
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                            calcRegsToKeep(), &engine, this->_collection, _outVariable,
-                           (this->isVarUsedLater(_outVariable) || this->_filter != nullptr),
+                           isProduceResult(),
                            this->_filter.get(), this->projections(),
                            this->coveringIndexAttributePositions(),
                            EngineSelectorFeature::ENGINE->useRawDocumentPointers(),

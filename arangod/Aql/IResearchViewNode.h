@@ -211,7 +211,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
 
-    IResearchViewNode::ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes);
+    IResearchViewNode::ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes, arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
 
     void clearViewVariables() {
       _nodesToChange.clear();
