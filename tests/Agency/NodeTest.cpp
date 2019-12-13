@@ -190,6 +190,22 @@ TEST_F(NodeTest, node_applyOp_delete) {
   
 }
 
+TEST_F(NodeTest, node_applyOp_bs) {
+
+  std::string path("/a/pi"), name("node");;
+  Node n(name);
+  std::string oper = "bs", error = std::string("Unknown operation '") + oper + "'";
+
+  Builder b;
+  { VPackObjectBuilder a(&b);
+    b.add("op", VPackValue(oper)); }
+
+  auto ret = n(path).applyOp(b.slice());
+  EXPECT_EQ(ret.ok(), false);
+  EXPECT_EQ(ret.errorMessage(), error);
+
+}
+
 }}} //namespace
 
 

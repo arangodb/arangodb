@@ -49,10 +49,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
 
  protected:
   
-  bool allowDirectHandling() const override {
-    return this->_protocol->context.clients() <= 1;
-  }
-  
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                          velocypack::Buffer<uint8_t>&&) override;

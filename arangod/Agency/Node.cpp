@@ -717,14 +717,12 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"
     return handle<REPLACE>(slice);
-  } else {  // "op" might not be a key word after all
-    LOG_TOPIC("fb064", WARN, Logger::AGENCY)
-        << "Keyword 'op' without known operation. Handling as regular key: \""
-        << oper << "\"";
-  }
+  } 
 
-  return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
-  
+  return ResultT<std::shared_ptr<Node>>::error(
+    TRI_ERROR_FAILED,
+    std::string("Unknown operation '") + oper + "'");
+
 }
 
 // Apply slice to this node

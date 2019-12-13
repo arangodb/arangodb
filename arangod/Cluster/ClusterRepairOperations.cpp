@@ -22,6 +22,8 @@
 
 #include "ClusterRepairOperations.h"
 #include <utility>
+#include <ctime>
+
 #include "ServerState.h"
 
 using namespace arangodb;
