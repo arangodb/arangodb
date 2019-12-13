@@ -22,7 +22,7 @@
 
 #include "ClusterRepairOperations.h"
 #include <utility>
-#include <time.h>
+#include <ctime>
 
 #include "ServerState.h"
 
