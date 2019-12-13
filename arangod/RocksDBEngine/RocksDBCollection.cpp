@@ -1198,7 +1198,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(
-    transaction::Methods& trx, std::size_t rangeMax) {
+    transaction::Methods& trx) {
   std::unique_ptr<ReplicationIterator> iter =
       getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
   RevisionReplicationIterator& it =
@@ -1207,10 +1207,10 @@ std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(
   TRI_voc_rid_t rangeMin = _logicalCollection.minRevision();
   std::size_t constexpr maxDepth = 6;
   std::unique_ptr<containers::RevisionTree> tree =
-      std::make_unique<containers::RevisionTree>(maxDepth, static_cast<std::size_t>(rangeMin), rangeMax);
+      std::make_unique<containers::RevisionTree>(maxDepth, static_cast<std::size_t>(rangeMin));
 
   it.seek(rangeMin);
-  while (it.hasMore() && it.revision() <= static_cast<TRI_voc_rid_t>(rangeMax)) {
+  while (it.hasMore()) {
     tree->insert(it.revision(), TRI_FnvHashPod(it.revision())/*it.document().hashString()*/);
     it.next();
   }

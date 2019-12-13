@@ -59,12 +59,28 @@ template <std::size_t const BranchingBits, std::size_t const LockStripes>
 constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::nodeCountAtDepth(std::size_t maxDepth) {
   return static_cast<std::size_t>(1) << (BranchingBits * maxDepth);
 }
+class TestNodeCountAtDepth : public MerkleTree<3, 64> {
+  static_assert(nodeCountAtDepth(0) == 1);
+  static_assert(nodeCountAtDepth(1) == 8);
+  static_assert(nodeCountAtDepth(2) == 64);
+  static_assert(nodeCountAtDepth(3) == 512);
+  // ...
+  static_assert(nodeCountAtDepth(10) == 1073741824);
+};
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::nodeCountUpToDepth(std::size_t maxDepth) {
   return ((static_cast<std::size_t>(1) << (BranchingBits * (maxDepth + 1))) - 1) /
          (BranchingFactor - 1);
 }
+class TestNodeCountUpToDepth : public MerkleTree<3, 64> {
+  static_assert(nodeCountUpToDepth(0) == 1);
+  static_assert(nodeCountUpToDepth(1) == 9);
+  static_assert(nodeCountUpToDepth(2) == 73);
+  static_assert(nodeCountUpToDepth(3) == 585);
+  // ...
+  static_assert(nodeCountUpToDepth(10) == 1227133513);
+};
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::allocationSize(std::size_t maxDepth) {
@@ -86,6 +102,21 @@ constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::log2ceil(std::size
   }
   return i;
 }
+class TestLog2Ceil : public MerkleTree<3, 64> {
+  static_assert(log2ceil(0) == 1);
+  static_assert(log2ceil(1) == 1);
+  static_assert(log2ceil(2) == 1);
+  static_assert(log2ceil(3) == 2);
+  static_assert(log2ceil(4) == 2);
+  static_assert(log2ceil(5) == 3);
+  static_assert(log2ceil(8) == 3);
+  static_assert(log2ceil(9) == 4);
+  static_assert(log2ceil(16) == 4);
+  static_assert(log2ceil(17) == 5);
+  // ...
+  static_assert(log2ceil((std::numeric_limits<std::size_t>::max() / 2) + 1) ==
+                8 * sizeof(std::size_t) - 1);
+};
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::minimumFactorFor(
@@ -104,12 +135,30 @@ constexpr std::size_t MerkleTree<BranchingBits, LockStripes>::minimumFactorFor(
   }
 
   std::size_t rawFactor = target / current;
-  std::size_t correction = (rawFactor * current == target) ? 0 : 1;
   std::size_t correctedFactor = static_cast<std::size_t>(1)
-                                << log2ceil(rawFactor + correction);  // force power of 2
+                                << log2ceil(rawFactor + 1);  // force power of 2
   TRI_ASSERT(isPowerOf2(correctedFactor));
+  TRI_ASSERT(target >= (current * correctedFactor / 2));
   return correctedFactor;
 }
+class TestMinimumFactorFor : public MerkleTree<3, 64> {
+  static_assert(minimumFactorFor(1, 2) == 4);
+  static_assert(minimumFactorFor(1, 4) == 8);
+  static_assert(minimumFactorFor(1, 12) == 16);
+  static_assert(minimumFactorFor(1, 16) == 32);
+  static_assert(minimumFactorFor(2, 3) == 2);
+  static_assert(minimumFactorFor(2, 4) == 4);
+  static_assert(minimumFactorFor(2, 5) == 4);
+  static_assert(minimumFactorFor(2, 7) == 4);
+  static_assert(minimumFactorFor(2, 8) == 8);
+  static_assert(minimumFactorFor(2, 15) == 8);
+  static_assert(minimumFactorFor(2, 16) == 16);
+  static_assert(minimumFactorFor(2, 17) == 16);
+  static_assert(minimumFactorFor(2, 31) == 16);
+  static_assert(minimumFactorFor(2, 32) == 32);
+  static_assert(minimumFactorFor(65536, 90000) == 2);
+  static_assert(minimumFactorFor(8192, 2147483600) == 262144);
+};
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 std::size_t MerkleTree<BranchingBits, LockStripes>::defaultRange(std::size_t maxDepth) {
@@ -339,12 +388,6 @@ std::size_t MerkleTree<BranchingBits, LockStripes>::index(std::size_t key,
   // not thread-safe, lock buffer from outside
   TRI_ASSERT(depth <= meta().maxDepth);
   TRI_ASSERT(key >= meta().rangeMin);
-  if (key >= meta().rangeMax) {
-    while (true) {
-      LOG_DEVEL << "WAITING FOR DEBUG";
-      std::this_thread::sleep_for(std::chrono::seconds(10));
-    }
-  }
   TRI_ASSERT(key < meta().rangeMax);
 
   // special fast case
@@ -407,6 +450,7 @@ void MerkleTree<BranchingBits, LockStripes>::grow(std::size_t key) {
   }
 
   meta().rangeMax = rangeMin + ((rangeMax - rangeMin) * factor);
+  TRI_ASSERT(key < meta().rangeMax);
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>

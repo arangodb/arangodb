@@ -1380,9 +1380,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
 
   // diff with local tree
-  std::pair<std::size_t, std::size_t> fullRange = treeMaster->range();
+  //std::pair<std::size_t, std::size_t> fullRange = treeMaster->range();
   std::unique_ptr<containers::RevisionTree> treeLocal =
-      physical->revisionTree(*trx, fullRange.second);
+      physical->revisionTree(*trx);
   std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
   if (ranges.empty()) {
     // no differences, done!
@@ -1421,37 +1421,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
     std::vector<std::size_t> toFetch;
     std::vector<std::string> toRemove;
-
+    const uint64_t documentsFound = treeLocal->count();
     RevisionReplicationIterator& local =
         *static_cast<RevisionReplicationIterator*>(iter.get());
-
-    uint64_t documentsFound = 0;
-
-    while (local.hasMore() && local.revision() < fullRange.first) {
-      toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
-      ++documentsFound;
-      local.next();
-    }
-    res = ::removeRevisions(*trx, *coll, toRemove, stats);
-    if (res.fail()) {
-      return res;
-    }
-    toRemove.clear();
-
-    while (local.hasMore() && local.revision() < fullRange.second) {
-      ++documentsFound;
-      local.next();
-    }
-    while (local.hasMore()) {
-      toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
-      ++documentsFound;
-      local.next();
-    }
-    res = ::removeRevisions(*trx, *coll, toRemove, stats);
-    if (res.fail()) {
-      return res;
-    }
-    toRemove.clear();
 
     while (requestResume < std::numeric_limits<std::size_t>::max()) {
       if (isAborted()) {
@@ -1630,6 +1602,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         trx->documentCollection()->getPhysical()->adjustNumberDocuments(*trx, diff);
       }
     }
+
     res = trx->commit();
     if (res.fail()) {
       return res;
