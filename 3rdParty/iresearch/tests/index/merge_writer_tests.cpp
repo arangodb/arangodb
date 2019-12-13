@@ -69,7 +69,7 @@ namespace tests {
         auto& attrs = docs_itr->attributes();
 
         ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
-        ASSERT_EQ(1 + (frequency ? 1 : 0) + (position ? 1 : 0), attrs.size());
+        ASSERT_EQ(3 + (frequency ? 1 : 0) + (position ? 1 : 0), attrs.size());
         ASSERT_TRUE(attrs.contains(iresearch::document::type()));
 
         if (frequency) {

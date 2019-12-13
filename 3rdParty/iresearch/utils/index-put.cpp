@@ -523,7 +523,7 @@ int put(const cmdline::parser& args) {
   auto commit_interval_ms = args.exist(CPR) ? args.get<size_t>(CPR) : size_t(0);
   auto indexer_threads = args.exist(THR) ? args.get<size_t>(THR) : size_t(0);
   auto lines_max = args.exist(MAX) ? args.get<size_t>(MAX) : size_t(0);
-  auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
+  auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
   auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
 
   if (args.exist(INPUT)) {
@@ -545,8 +545,8 @@ int put(int argc, char* argv[]) {
   cmdline::parser cmdput;
   cmdput.add(HELP, '?', "Produce help message");
   cmdput.add(INDEX_DIR, 0, "Path to index directory", true, std::string());
-  cmdput.add(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
-  cmdput.add(FORMAT, 0, "Format (1_0|1_0-optimized)", false, std::string("1_0"));
+  cmdput.add(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("mmap"));
+  cmdput.add(FORMAT, 0, "Format (1_0|1_1|1_2|1_2simd)", false, std::string("1_0"));
   cmdput.add(INPUT, 0, "Input file", true, std::string());
   cmdput.add(BATCH_SIZE, 0, "Lines per batch", false, size_t(0));
   cmdput.add(CONSOLIDATE, 0, "Consolidate segments", false, false);

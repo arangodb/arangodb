@@ -484,7 +484,7 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
  public:
   typedef std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> readers_t;
 
-  Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) NOEXCEPT
+  Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) noexcept
       : _readers(std::move(readers)),
         _docs_count(docs_count),
         _live_docs_count(live_docs_count) {}
@@ -495,26 +495,26 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
            ::arangodb::containers::HashSet<TRI_voc_cid_t> const& collections);
 
   /// @returns corresponding sub-reader
-  virtual const irs::sub_reader& operator[](size_t i) const NOEXCEPT override {
+  virtual const irs::sub_reader& operator[](size_t i) const noexcept override {
     assert(i < readers_.size());
     return *(_readers[i].second);
   }
 
-  virtual TRI_voc_cid_t cid(size_t i) const NOEXCEPT override {
+  virtual TRI_voc_cid_t cid(size_t i) const noexcept override {
     assert(i < readers_.size());
     return _readers[i].first;
   }
 
   /// @returns number of documents
-  virtual uint64_t docs_count() const NOEXCEPT override { return _docs_count; }
+  virtual uint64_t docs_count() const noexcept override { return _docs_count; }
 
   /// @returns number of live documents
-  virtual uint64_t live_docs_count() const NOEXCEPT override {
+  virtual uint64_t live_docs_count() const noexcept override {
     return _live_docs_count;
   }
 
   /// @returns total number of opened writers
-  virtual size_t size() const NOEXCEPT override { return _readers.size(); }
+  virtual size_t size() const noexcept override { return _readers.size(); }
 
  private:
   readers_t _readers;

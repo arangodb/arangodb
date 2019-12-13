@@ -936,7 +936,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> docs;
   docs.reserve(_documents.size());
-  for (auto const& [key, doc] : _documents) {
+  for (auto const& entry : _documents) {
+    auto& doc = entry.second;
     docs.emplace_back(doc.docId(), doc.data());
   }
 
@@ -1257,7 +1258,8 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
                                           arangodb::LocalDocumentId const& token,
                                           arangodb::ManagedDocumentResult& result) const {
   before();
-  for (auto const& [key, doc] : _documents) {
+  for (auto const& entry : _documents) {
+    auto& doc = entry.second;
     if (doc.docId() == token) {
       result.setUnmanaged(doc.vptr());
       return true;
@@ -1270,7 +1272,8 @@ bool PhysicalCollectionMock::readDocumentWithCallback(
     arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
     arangodb::IndexIterator::DocumentCallback const& cb) const {
   before();
-  for (auto const& [key, doc] : _documents) {
+  for (auto const& entry : _documents) {
+    auto& doc = entry.second;
     if (doc.docId() == token) {
       cb(token, doc.data());
       return true;

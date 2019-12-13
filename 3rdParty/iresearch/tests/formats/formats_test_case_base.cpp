@@ -755,7 +755,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
     }
   }
 
-  // read broken meta (live_docs_count > docs_count)
+  // write broken meta (live_docs_count > docs_count)
   {
     irs::segment_meta meta;
     meta.name = "broken_meta_name";
@@ -774,7 +774,104 @@ TEST_P(format_test_case, segment_meta_read_write) {
     // write segment meta
     {
       auto writer = codec()->get_segment_meta_writer();
-      writer->write(dir(), filename, meta);
+      ASSERT_THROW(writer->write(dir(), filename, meta), irs::index_error);
+    }
+
+    // read segment meta
+    {
+      irs::segment_meta read_meta;
+      read_meta.name = meta.name;
+      read_meta.version = 100;
+
+      auto reader = codec()->get_segment_meta_reader();
+      ASSERT_THROW(reader->read(dir(), read_meta), irs::io_error);
+    }
+  }
+
+  // read broken meta (live_docs_count > docs_count)
+  {
+    class segment_meta_corrupting_directory : public irs::directory {
+     public:
+      segment_meta_corrupting_directory(irs::directory& dir, irs::segment_meta& meta)
+        : dir_(dir), meta_(meta) {
+      }
+
+      using directory::attributes;
+
+      virtual irs::attribute_store& attributes() noexcept override {
+        return dir_.attributes();
+      }
+
+      virtual irs::index_output::ptr create(const std::string& name) noexcept override {
+        // corrupt meta before writing it
+        meta_.docs_count = meta_.live_docs_count - 1;
+        return dir_.create(name);
+      }
+
+      virtual bool exists(bool& result, const std::string& name) const noexcept override {
+        return dir_.exists(result, name);
+      }
+
+      virtual bool length(uint64_t& result, const std::string& name) const noexcept override {
+        return dir_.length(result, name);
+      }
+
+      virtual irs::index_lock::ptr make_lock(const std::string& name) noexcept override {
+        return dir_.make_lock(name);
+      }
+
+      virtual bool mtime(std::time_t& result,
+                         const std::string& name) const noexcept override {
+        return dir_.mtime(result, name);
+      }
+
+      virtual irs::index_input::ptr open(const std::string& name,
+                                         irs::IOAdvice advice) const noexcept override {
+        return dir_.open(name, advice);
+      }
+
+      virtual bool remove(const std::string& name) noexcept override {
+        return dir_.remove(name);
+      }
+
+      virtual bool rename(const std::string& src,
+                          const std::string& dst) noexcept override {
+        return dir_.rename(src, dst);
+      }
+
+      virtual bool sync(const std::string& name) noexcept override {
+        return dir_.sync(name);
+      }
+
+      virtual bool visit(const irs::directory::visitor_f& visitor) const override {
+        return dir_.visit(visitor);
+      }
+
+     private:
+      irs::directory& dir_;
+      irs::segment_meta& meta_;
+    }; // directory_mock
+
+    irs::segment_meta meta;
+    meta.name = "broken_meta_name";
+    meta.docs_count = 1453;
+    meta.live_docs_count = 1345;
+    meta.size = 666;
+    meta.version = 100;
+
+    meta.files.emplace("file1");
+    meta.files.emplace("index_file2");
+    meta.files.emplace("file3");
+    meta.files.emplace("stored_file4");
+
+    std::string filename;
+
+    // write segment meta
+    {
+      auto writer = codec()->get_segment_meta_writer();
+
+      segment_meta_corrupting_directory currupting_dir(dir(), meta);
+      writer->write(currupting_dir, filename, meta);
     }
 
     // read segment meta

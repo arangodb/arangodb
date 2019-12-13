@@ -47,15 +47,15 @@ class IRESEARCH_API store_reader final
   typedef store_reader ptr; // pointer to self
 
   store_reader() = default; // allow creation of an uninitialized ptr
-  store_reader(const store_reader& other) NOEXCEPT;
-  store_reader& operator=(const store_reader& other) NOEXCEPT;
+  store_reader(const store_reader& other) noexcept;
+  store_reader& operator=(const store_reader& other) noexcept;
 
-  explicit operator bool() const NOEXCEPT { return bool(impl_); }
+  explicit operator bool() const noexcept { return bool(impl_); }
 
-  store_reader& operator*() NOEXCEPT { return *this; }
-  const store_reader& operator*() const NOEXCEPT { return *this; }
-  store_reader* operator->() NOEXCEPT { return this; }
-  const store_reader* operator->() const NOEXCEPT { return this; }
+  store_reader& operator*() noexcept { return *this; }
+  const store_reader& operator*() const noexcept { return *this; }
+  store_reader* operator->() noexcept { return this; }
+  const store_reader* operator->() const noexcept { return this; }
 
   virtual const column_meta* column(const string_ref& name) const override {
     return impl_->column(name);
@@ -94,7 +94,7 @@ class IRESEARCH_API store_reader final
   ////////////////////////////////////////////////////////////////////////////////
   virtual store_reader reopen() const;
 
-  void reset() NOEXCEPT { impl_.reset(); }
+  void reset() noexcept { impl_.reset(); }
 
   virtual const sub_reader& operator[](size_t i) const override {
     return (*impl_)[i];
@@ -114,7 +114,7 @@ class IRESEARCH_API store_reader final
   impl_ptr impl_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
-  store_reader(impl_ptr&& impl) NOEXCEPT;
+  store_reader(impl_ptr&& impl) noexcept;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,8 +199,8 @@ class IRESEARCH_API transaction_store: private util::noncopyable {
     ref_t(): value_(nullptr) {}
     ref_t(T& value): value_(&value) { ++(value.refs_); }
     ~ref_t() { if (value_) { --(value_->refs_); } }
-    ref_t(ref_t&& other) NOEXCEPT: value_(nullptr) { *this = std::move(other); }
-    ref_t(const ref_t& other) NOEXCEPT: value_(nullptr) { *this = other; }
+    ref_t(ref_t&& other) noexcept: value_(nullptr) { *this = std::move(other); }
+    ref_t(const ref_t& other) noexcept: value_(nullptr) { *this = other; }
     ref_t& operator=(const ref_t& other) {
       if (this != &other) {
         if (value_) {
@@ -362,7 +362,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
         transaction_store::document_t& doc,
         bstring_output& out,
         state_t& state
-    ) NOEXCEPT: doc_(doc), out_(out), state_(state), valid_(true), writer_(writer) {
+    ) noexcept: doc_(doc), out_(out), state_(state), valid_(true), writer_(writer) {
       state_.offsets_.clear(); // reset for this document
       state_.out_.seek(0); // reset for this document
     }
@@ -415,7 +415,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     /// @note for the case when the object is in an invalid state all further
     ///       operations will not take any effect
     ////////////////////////////////////////////////////////////////////////////
-    bool valid() const NOEXCEPT { return valid_; }
+    bool valid() const noexcept { return valid_; }
 
    private:
     friend store_writer;
@@ -426,7 +426,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     store_writer& writer_;
   }; // document
 
-  store_writer(transaction_store& store) NOEXCEPT;
+  store_writer(transaction_store& store) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief rolls-back any uncommited data
@@ -528,8 +528,8 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     bstring::value_type& operator*() { return buf_[pos_]; }
     bstring_output& operator++() { ensure(++pos_); return *this; }
     bstring_output& operator+=(size_t i) { ensure(pos_ += i); return *this; }
-    size_t file_pointer() const NOEXCEPT { return pos_; }
-    void seek(size_t pos) NOEXCEPT { pos_ = pos; }
+    size_t file_pointer() const noexcept { return pos_; }
+    void seek(size_t pos) noexcept { pos_ = pos; }
     void write(const byte_type* value, size_t size);
 
    private:
@@ -549,7 +549,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
       : filter_(match_filter), generation_(generation) {}
     modification_context(filter::ptr&& match_filter, doc_id_t generation)
       : filter_(std::move(match_filter)), generation_(generation) {}
-    modification_context(modification_context&& other) NOEXCEPT
+    modification_context(modification_context&& other) noexcept
       : documents_(std::move(other.documents_)), filter_(std::move(other.filter_)), generation_(other.generation_) {}
   }; // modification_context
 

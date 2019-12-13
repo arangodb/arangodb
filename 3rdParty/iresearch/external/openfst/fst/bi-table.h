@@ -8,14 +8,16 @@
 #define FST_BI_TABLE_H_
 
 #include <deque>
-#include <memory>
 #include <functional>
+#include <memory>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include <fst/log.h>
 #include <fst/memory.h>
+#include <unordered_set>
 
 namespace fst {
 
@@ -113,6 +115,8 @@ struct HashSet : public std::unordered_set<K, H, E, PoolAllocator<K>> {
 template <class I, class T, class H, class E = std::equal_to<T>,
           HSType HS = HS_FLAT>
 class CompactHashBiTable {
+  static_assert(HS == HS_STL || HS == HS_FLAT, "Unsupported hash set type");
+
  public:
   friend class HashFunc;
   friend class HashEqual;
@@ -177,9 +181,11 @@ class CompactHashBiTable {
   }
 
  private:
-  static FST_CONSTEXPR const I kCurrentKey = -1;
-  static FST_CONSTEXPR const I kEmptyKey = -2;
-  static FST_CONSTEXPR const I kDeletedKey = -3;
+  static_assert(std::is_signed<I>::value, "I must be a signed type");
+  // ... otherwise >= kCurrentKey comparisons as used below don't work.
+  // TODO(rybach): (1) don't use >= for key comparison, (2) allow unsigned key
+  // types.
+  static constexpr I kCurrentKey = -1;
 
   class HashFunc {
    public:
@@ -235,13 +241,7 @@ class CompactHashBiTable {
 };
 
 template <class I, class T, class H, class E, HSType HS>
-FST_CONSTEXPR const I CompactHashBiTable<I, T, H, E, HS>::kCurrentKey;
-
-template <class I, class T, class H, class E, HSType HS>
-FST_CONSTEXPR const I CompactHashBiTable<I, T, H, E, HS>::kEmptyKey;
-
-template <class I, class T, class H, class E, HSType HS>
-FST_CONSTEXPR const I CompactHashBiTable<I, T, H, E, HS>::kDeletedKey;
+constexpr I CompactHashBiTable<I, T, H, E, HS>::kCurrentKey;
 
 // An implementation using a vector for the entry to ID mapping. It is passed a
 // function object FP that should fingerprint entries uniquely to an integer
@@ -359,8 +359,8 @@ class VectorHashBiTable {
   const H &Hash() const { return *h_; }
 
  private:
-  static FST_CONSTEXPR const I kCurrentKey = -1;
-  static FST_CONSTEXPR const I kEmptyKey = -2;
+  static constexpr I kCurrentKey = -1;
+  static constexpr I kEmptyKey = -2;
 
   class HashFunc {
    public:
@@ -420,10 +420,10 @@ class VectorHashBiTable {
 };
 
 template <class I, class T, class S, class FP, class H, HSType HS>
-FST_CONSTEXPR const I VectorHashBiTable<I, T, S, FP, H, HS>::kCurrentKey;
+constexpr I VectorHashBiTable<I, T, S, FP, H, HS>::kCurrentKey;
 
 template <class I, class T, class S, class FP, class H, HSType HS>
-FST_CONSTEXPR const I VectorHashBiTable<I, T, S, FP, H, HS>::kEmptyKey;
+constexpr I VectorHashBiTable<I, T, S, FP, H, HS>::kEmptyKey;
 
 // An implementation using a hash map for the entry to ID mapping. This version
 // permits erasing of arbitrary states. The entry T must have == defined and
