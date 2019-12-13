@@ -968,6 +968,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 template <class Executor>
 void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
   if (_outputItemRow == nullptr || _outputItemRow->isFull()) {
+    // Is this a TODO:?
     // We need to define the size of this block based on Input / Executor / Subquery depth
     size_t blockSize = ExecutionBlock::DefaultBatchSize();
     SharedAqlItemBlockPtr newBlock =
@@ -1023,51 +1024,8 @@ ExecState NextState(AqlCall const& call) {
 //
 enum class SkipRowsRangeVariant { FETCHER, EXECUTOR, GET_SOME };
 
-template <enum SkipRowsRangeVariant>
-struct ExecuteSkipRowsRange {};
-
-using SkipRowsRangeResult = std::tuple<ExecutorState, size_t, AqlCall>;
-
-template <>
-struct ExecuteSkipRowsRange<SkipRowsRangeVariant::FETCHER> {
-  template <class Executor>
-  static SkipRowsRangeResult executeSkipRowsRange(Executor& executor,
-                                                  AqlItemBlockInputRange& input,
-                                                  AqlCall& call) {
-    TRI_ASSERT(false);
-    /*    auto res = fetcher.skipRows(toSkip);
-        return std::make_tuple(res.first, typename Executor::Stats{}, res.second); // tuple, cannot use initializer list due to build failure
-    */
-    return std::make_tuple(ExecutorState::DONE, 0, call);  // tuple, cannot use initializer list due to build failure
-  }
-};
-
-template <>
-struct ExecuteSkipRowsRange<SkipRowsRangeVariant::EXECUTOR> {
-  template <class Executor>
-  static SkipRowsRangeResult executeSkipRowsRange(Executor& executor,
-                                                  AqlItemBlockInputRange& input,
-                                                  AqlCall& call) {
-    TRI_ASSERT(false);
-    // TODO forward to executor
-    //    return executor.skipRows(toSkip);
-    return std::make_tuple(ExecutorState::DONE, 0, call);
-  }
-};
-
-template <>
-struct ExecuteSkipRowsRange<SkipRowsRangeVariant::GET_SOME> {
-  template <class Executor>
-  static SkipRowsRangeResult executeSkipRowsRange(Executor& executor,
-                                                  AqlItemBlockInputRange& input,
-                                                  AqlCall& call) {
-    // this function should never be executed
-    TRI_ASSERT(false);
-    // Make MSVC happy:
-    return std::make_tuple(ExecutorState::DONE, 0, call);
-  }
-};
-
+// This function is just copy&pasted from above to decide which variant of skip
+// is used for which executor.
 template <class Executor>
 static SkipRowsRangeVariant constexpr skipRowsType() {
   bool constexpr useFetcher =
@@ -1125,20 +1083,60 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 }
 
 template <class Executor>
+std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::executeSkipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  if constexpr (isNewStyleExecutor<Executor>()) {
+    if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
+      // TODO: make statically sure that this method exists?
+      // the executor has a method skipRowsRange, so use it
+      return _executor.skipRowsRange(inputRange, call);
+    } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
+      // TODO: check whether this is right (and test!)
+      // just let the fetcher fetch some stuff and ignore it without even passing it
+      // to the executor
+      return _rowFetcher.execute(call);
+    } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::GET_SOME) {
+      // Here we need to skip by just having the executor produce rows which we then
+      // subsequently throw away. I do this by allocating a block and having the
+      // executor write to it.
+      //
+      // unsure about the role of call here as yet, might have to be std::move()'d
+      // into createOutputRow, and then use the resCall for return value.
+      //
+      // TODO: is outputBlock freed when the variable goes out of scope?
+      // TODO: do we need to use currently available blocks and then just discard?
+      size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
+      SharedAqlItemBlockPtr outputBlock =
+          _engine->itemBlockManager().requestBlock(toSkip, _infos.numberOfOutputRegisters());
+      TRI_ASSERT(outputBlock != nullptr);
+      TRI_ASSERT(outputBlock->size() == call.getOffset());
+      // TODO: do we need to std::move(call) here?
+      auto outputRow = createOutputRow(outputBlock, AqlCall{});
+
+      auto const [state, stats, rescall] = _executor.produceRows(inputRange, *outputRow);
+
+      size_t skipped = outputRow->numRowsWritten();
+      call.didSkip(skipped);
+
+      return std::make_tuple(state, skipped, call);
+    } else {
+      // TODO: this should be a compiler error
+      TRI_ASSERT(false);
+      return std::make_tuple(ExecutorState::DONE, 0, call);
+    }
+  } else {
+    TRI_ASSERT(false);
+    return std::make_tuple(ExecutorState::DONE, 0, call);
+  }
+  // Compiler is unhappy without this.
+  return std::make_tuple(ExecutorState::DONE, 0, call);
+}
+
+template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if constexpr (isNewStyleExecutor<Executor>()) {
     ensureOutputBlock(stack.popCall());
-
-    /*
-    if (!_outputItemRow) {
-      // TODO: FIXME Hard coded size
-      SharedAqlItemBlockPtr newBlock =
-          _engine->itemBlockManager().requestBlock(1000,
-    _infos.numberOfOutputRegisters()); TRI_ASSERT(newBlock != nullptr); TRI_ASSERT(newBlock->size()
-    == 1000); _outputItemRow = createOutputRow(newBlock);
-    }
-    */
     size_t skipped = 0;
 
     TRI_ASSERT(_outputItemRow);
@@ -1154,10 +1152,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       switch (execState) {
         case ExecState::SKIP: {
           auto const& clientCall = _outputItemRow->getClientCall();
-          ExecuteSkipRowsRange<skipRowsType<Executor>()> skip;
           auto [state, skippedLocal, call] =
-              skip.executeSkipRowsRange(_executor, _lastRange,
-                                        _outputItemRow->getModifiableClientCall());
+              executeSkipRowsRange(_lastRange, _outputItemRow->getModifiableClientCall());
           skipped += skippedLocal;
 
           if (state == ExecutorState::DONE) {
