@@ -1,6 +1,8 @@
 devel
 -----
 
+* Improve latency in scheduler.
+
 * Fixed internal issue #4748: Editing a single edgeDefinition using the graph
   API failed if it was not shared between all available graphs.
 
