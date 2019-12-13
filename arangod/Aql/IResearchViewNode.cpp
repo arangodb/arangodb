@@ -1408,6 +1408,7 @@ void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(std::ve
   _nodesToChange.clear();
   for (auto& node : nodesToChange) {
     auto& calcNodeData = _nodesToChange[node.node];
+    calcNodeData.reserve(node.attrs.size());
     std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(calcNodeData, calcNodeData.end()),
       [](auto const& attrAndField) {
         return attrAndField.afData;
@@ -1415,18 +1416,38 @@ void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(std::ve
   }
 }
 
-IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes) {
+IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes,
+                                                                                           arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
   TRI_ASSERT(!calcNodes.empty());
   ViewVarsInfo uniqueVariables;
   auto ast = calcNodes.back()->expression()->ast();
+  // at first use variables from simple expressions
   for (auto calcNode : calcNodes) {
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
     auto const& calcNodeData = _nodesToChange[calcNode];
-    std::transform(calcNodeData.cbegin(), calcNodeData.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-      [ast](auto const& afData) {
-        return std::make_pair(afData.field, ViewVariable{afData.number,
+    TRI_ASSERT(!calcNodeData.empty());
+    auto const& afData = calcNodeData[0];
+    if (afData.parentNode == nullptr) {
+      TRI_ASSERT(calcNodeData.size() == 1);
+      // we could add one redundant variable for each field only
+      if (uniqueVariables.try_emplace(afData.field, ViewVariable{afData.number,
+                                      calcNode->outVariable()}).second) {
+        toUnlink.emplace(calcNode);
+      }
+    }
+  }
+  // create variables for complex expressions
+  for (auto calcNode : calcNodes) {
+    TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
+    auto const& calcNodeData = _nodesToChange[calcNode];
+    TRI_ASSERT(!calcNodeData.empty());
+    for (auto const& afData : calcNodeData) {
+      // create a variable if necessary
+      if (afData.parentNode != nullptr && uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
+        uniqueVariables.emplace(afData.field, ViewVariable{afData.number,
           ast->variables()->createTemporaryVariable()});
-      });
+      }
+    }
   }
   for (auto calcNode : calcNodes) {
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
