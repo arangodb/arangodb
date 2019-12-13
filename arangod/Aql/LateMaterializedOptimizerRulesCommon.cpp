@@ -50,19 +50,21 @@ void traverseReadOnly(AstNode* node, AstNode* parentNode, size_t childNumber,
 }
 
 // traversal state
+template<typename T>
 struct TraversalState {
   Variable const* variable;
-  latematerialized::NodeWithAttrs& nodeAttrs;
+  latematerialized::NodeWithAttrs<T>& nodeAttrs;
   bool optimize;
   bool wasAccess;
 };
 }
 
 // determines attributes referenced in an expression for the specified out variable
+template<typename T>
 bool latematerialized::getReferencedAttributes(AstNode* node,
                                                Variable const* variable,
-                                               NodeWithAttrs& nodeAttrs) {
-  TraversalState state{variable, nodeAttrs, true, false};
+                                               NodeWithAttrs<T>& nodeAttrs) {
+  TraversalState<T> state{variable, nodeAttrs, true, false};
 
   auto preVisitor = [&state](AstNode const* node,
       AstNode* parentNode, size_t childNumber) {
@@ -73,9 +75,12 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
     switch (node->type) {
       case NODE_TYPE_ATTRIBUTE_ACCESS:
         if (!state.wasAccess) {
+          T afData;
+          afData.parentNode = parentNode;
+          afData.childNumber = childNumber;
           state.nodeAttrs.attrs.emplace_back(
-            NodeWithAttrs::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
-              {std::string(node->getStringValue(), node->getStringLength()), false}}, {parentNode, childNumber, nullptr, 0}});
+            typename NodeWithAttrs<T>::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
+              {std::string(node->getStringValue(), node->getStringLength()), false}}, std::move(afData)});
           state.wasAccess = true;
         } else {
           state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
@@ -118,3 +123,16 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
 
   return state.optimize;
 }
+
+template struct latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>;
+template struct latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>;
+
+template bool latematerialized::getReferencedAttributes(
+  AstNode* node,
+  Variable const* variable,
+  NodeWithAttrs<latematerialized::AstAndFieldData>& nodeAttrs);
+
+template bool latematerialized::getReferencedAttributes(
+  AstNode* node,
+  Variable const* variable,
+  NodeWithAttrs<latematerialized::AstAndColumnFieldData>& nodeAttrs);

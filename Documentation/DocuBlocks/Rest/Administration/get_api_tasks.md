@@ -2,7 +2,7 @@
 @startDocuBlock get_api_tasks
 @brief Retrieves one currently active server task
 
-@RESTHEADER{GET /_api/tasks/{id}, Fetch one task with id, getTasks}
+@RESTHEADER{GET /_api/tasks/{id}, Fetch one task with id, getTask}
 
 @RESTURLPARAM{id,string,required}
 The id of the task to fetch.
@@ -15,7 +15,6 @@ The requested task
 
 @RESTREPLYBODY{,object,required,api_task_struct}
 The function in question
-
 
 @EXAMPLES
 
@@ -42,4 +41,3 @@ Trying to fetch a non-existing task
 
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

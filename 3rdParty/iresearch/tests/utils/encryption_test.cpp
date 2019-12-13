@@ -418,7 +418,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
     using irs::buffered_index_output::remain;
 
-    size_t last_written_size() const NOEXCEPT {
+    size_t last_written_size() const noexcept {
       return last_written_size_;
     }
 
@@ -432,7 +432,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     size_t last_written_size_{};
   };
 
-  class buffered_input : public irs::buffered_index_input {
+  class buffered_input final : public irs::buffered_index_input {
    public:
     buffered_input(index_input& in)
       : in_(&in) {
@@ -460,16 +460,16 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
     using irs::buffered_index_input::remain;
 
-    size_t last_read_size() const NOEXCEPT {
+    size_t last_read_size() const noexcept {
       return last_read_size_;
     }
 
    protected:
-    void seek_internal(size_t pos) {
+    virtual void seek_internal(size_t pos) override {
       in_->seek(pos);
     }
 
-    size_t read_internal(irs::byte_type* b, size_t size) {
+    virtual size_t read_internal(irs::byte_type* b, size_t size) override {
       last_read_size_ = size;
       return in_->read_bytes(b, size);
     }

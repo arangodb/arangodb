@@ -1,7 +1,7 @@
 @startDocuBlock delete_remove_document_MULTI
 @brief removes multiple document
 
-@RESTHEADER{DELETE /_api/document/{collection},Removes multiple documents, removeDocument}
+@RESTHEADER{DELETE /_api/document/{collection},Removes multiple documents,removeDocuments}
 
 @RESTALLBODYPARAM{array,json,required}
 A JSON array of strings or documents.
@@ -17,7 +17,7 @@ Collection from which documents are removed.
 Wait until deletion operation has been synced to disk.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
-Return additionally the complete previous revision of the changed 
+Return additionally the complete previous revision of the changed
 document under the attribute *old* in the result.
 
 @RESTQUERYPARAM{ignoreRevs,boolean,optional}

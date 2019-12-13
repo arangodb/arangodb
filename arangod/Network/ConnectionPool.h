@@ -23,6 +23,7 @@
 #ifndef ARANGOD_NETWORK_CONNECTION_POOL_H
 #define ARANGOD_NETWORK_CONNECTION_POOL_H 1
 
+#include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Containers/SmallVector.h"
 #include "Network/types.h"

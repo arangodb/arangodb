@@ -6,15 +6,15 @@
 #ifndef FST_FLOAT_WEIGHT_H_
 #define FST_FLOAT_WEIGHT_H_
 
+#include <algorithm>
 #include <climits>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
-
-#include <algorithm>
 #include <limits>
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 #include <fst/util.h>
 #include <fst/weight.h>
@@ -26,13 +26,13 @@ namespace fst {
 template <class T>
 class FloatLimits {
  public:
-  static FST_CONSTEXPR T PosInfinity() {
+  static constexpr T PosInfinity() {
     return std::numeric_limits<T>::infinity();
   }
 
-  static FST_CONSTEXPR T NegInfinity() { return -PosInfinity(); }
+  static constexpr T NegInfinity() { return -PosInfinity(); }
 
-  static FST_CONSTEXPR T NumberBad() { return std::numeric_limits<T>::quiet_NaN(); }
+  static constexpr T NumberBad() { return std::numeric_limits<T>::quiet_NaN(); }
 };
 
 // Weight class to be templated on floating-points types.
@@ -41,16 +41,16 @@ class FloatWeightTpl {
  public:
   using ValueType = T;
 
-  FloatWeightTpl() {}
+  FloatWeightTpl() noexcept {}
 
-  FloatWeightTpl(T f) : value_(f) {}
+  constexpr FloatWeightTpl(T f) : value_(f) {}  // NOLINT
 
-  FloatWeightTpl(const FloatWeightTpl<T> &weight) : value_(weight.value_) {}
+  // TODO(mjansche): Leave implicit once Android NDK r18 is the default.
+  FloatWeightTpl(const FloatWeightTpl<T> &) = default;
+  FloatWeightTpl(FloatWeightTpl<T> &&) noexcept = default;
 
-  FloatWeightTpl<T> &operator=(const FloatWeightTpl<T> &weight) {
-    value_ = weight.value_;
-    return *this;
-  }
+  FloatWeightTpl<T> &operator=(const FloatWeightTpl<T> &) = default;
+  FloatWeightTpl<T> &operator=(FloatWeightTpl<T> &&) noexcept = default;
 
   std::istream &Read(std::istream &strm) { return ReadType(strm, &value_); }
 
@@ -68,18 +68,17 @@ class FloatWeightTpl {
     return hash;
   }
 
-  const T &Value() const { return value_; }
+  constexpr const T &Value() const { return value_; }
 
  protected:
   void SetValue(const T &f) { value_ = f; }
 
-  static FST_CONSTEXPR const char *GetPrecisionString() {
-    return sizeof(T) == 4
-               ? ""
-               : sizeof(T) == 1
-                     ? "8"
-                     : sizeof(T) == 2 ? "16"
-                                      : sizeof(T) == 8 ? "64" : "unknown";
+  static constexpr const char *GetPrecisionString() {
+    return sizeof(T) == 4 ? ""
+        : sizeof(T) == 1 ? "8"
+        : sizeof(T) == 2 ? "16"
+        : sizeof(T) == 8 ? "64"
+        : "unknown";
   }
 
  private:
@@ -90,49 +89,57 @@ class FloatWeightTpl {
 using FloatWeight = FloatWeightTpl<float>;
 
 template <class T>
-inline bool operator==(const FloatWeightTpl<T> &w1,
-                       const FloatWeightTpl<T> &w2) {
-  // Volatile qualifier thwarts over-aggressive compiler optimizations that
-  // lead to problems esp. with NaturalLess().
-  volatile T v1 = w1.Value();
-  volatile T v2 = w2.Value();
-  return v1 == v2;
+constexpr bool operator==(const FloatWeightTpl<T> &w1,
+                          const FloatWeightTpl<T> &w2) {
+#if (defined(__i386__) || defined(__x86_64__)) && !defined(__SSE2_MATH__)
+// With i387 instructions, excess precision on a weight in an 80-bit
+// register may cause it to compare unequal to that same weight when
+// stored to memory.  This breaks =='s reflexivity, in turn breaking
+// NaturalLess.
+#error "Please compile with -msse -mfpmath=sse, or equivalent."
+#endif
+  return w1.Value() == w2.Value();
 }
 
 // These seemingly unnecessary overloads are actually needed to make
 // comparisons like FloatWeightTpl<float> == float compile.  If only the
 // templated version exists, the FloatWeightTpl<float>(float) conversion
 // won't be found.
-inline bool operator==(const FloatWeightTpl<double> &w1,
-                       const FloatWeightTpl<double> &w2) {
-  return operator==<double>(w1, w2);
-}
-
-inline bool operator==(const FloatWeightTpl<float> &w1,
-                       const FloatWeightTpl<float> &w2) {
+constexpr bool operator==(const FloatWeightTpl<float> &w1,
+                          const FloatWeightTpl<float> &w2) {
   return operator==<float>(w1, w2);
 }
 
+constexpr bool operator==(const FloatWeightTpl<double> &w1,
+                          const FloatWeightTpl<double> &w2) {
+  return operator==<double>(w1, w2);
+}
+
 template <class T>
-inline bool operator!=(const FloatWeightTpl<T> &w1,
-                       const FloatWeightTpl<T> &w2) {
+constexpr bool operator!=(const FloatWeightTpl<T> &w1,
+                          const FloatWeightTpl<T> &w2) {
   return !(w1 == w2);
 }
 
-inline bool operator!=(const FloatWeightTpl<double> &w1,
-                       const FloatWeightTpl<double> &w2) {
-  return operator!=<double>(w1, w2);
-}
-
-inline bool operator!=(const FloatWeightTpl<float> &w1,
-                       const FloatWeightTpl<float> &w2) {
+constexpr bool operator!=(const FloatWeightTpl<float> &w1,
+                          const FloatWeightTpl<float> &w2) {
   return operator!=<float>(w1, w2);
 }
 
+constexpr bool operator!=(const FloatWeightTpl<double> &w1,
+                          const FloatWeightTpl<double> &w2) {
+  return operator!=<double>(w1, w2);
+}
+
 template <class T>
-inline bool ApproxEqual(const FloatWeightTpl<T> &w1,
-                        const FloatWeightTpl<T> &w2, float delta = kDelta) {
-  return w1.Value() <= w2.Value() + delta && w2.Value() <= w1.Value() + delta;
+constexpr bool FloatApproxEqual(T w1, T w2, float delta = kDelta) {
+  return w1 <= w2 + delta && w2 <= w1 + delta;
+}
+
+template <class T>
+constexpr bool ApproxEqual(const FloatWeightTpl<T> &w1,
+                           const FloatWeightTpl<T> &w2, float delta = kDelta) {
+  return FloatApproxEqual(w1.Value(), w2.Value(), delta);
 }
 
 template <class T>
@@ -151,7 +158,7 @@ inline std::ostream &operator<<(std::ostream &strm,
 
 template <class T>
 inline std::istream &operator>>(std::istream &strm, FloatWeightTpl<T> &w) {
-  string s;
+  std::string s;
   strm >> s;
   if (s == "Infinity") {
     w = FloatWeightTpl<T>(FloatLimits<T>::PosInfinity());
@@ -178,51 +185,56 @@ class TropicalWeightTpl : public FloatWeightTpl<T> {
   using ReverseWeight = TropicalWeightTpl<T>;
   using Limits = FloatLimits<T>;
 
-  FST_CONSTEXPR TropicalWeightTpl() : FloatWeightTpl<T>() {}
+  TropicalWeightTpl() noexcept : FloatWeightTpl<T>() {}
 
-  FST_CONSTEXPR TropicalWeightTpl(T f) : FloatWeightTpl<T>(f) {}
+  constexpr TropicalWeightTpl(T f) : FloatWeightTpl<T>(f) {}
 
-  FST_CONSTEXPR TropicalWeightTpl(const TropicalWeightTpl<T> &weight)
-      : FloatWeightTpl<T>(weight) {}
+  static constexpr TropicalWeightTpl<T> Zero() { return Limits::PosInfinity(); }
 
-  static const TropicalWeightTpl<T> &Zero() {
-    static const TropicalWeightTpl zero(Limits::PosInfinity());
-    return zero;
+  static constexpr TropicalWeightTpl<T> One() { return 0; }
+
+  static constexpr TropicalWeightTpl<T> NoWeight() {
+    return Limits::NumberBad();
   }
 
-  static const TropicalWeightTpl<T> &One() {
-    static const TropicalWeightTpl one(0.0F);
-    return one;
-  }
-
-  static const TropicalWeightTpl<T> &NoWeight() {
-    static const TropicalWeightTpl no_weight(Limits::NumberBad());
-    return no_weight;
-  }
-
-  static const string &Type() {
-    static const string *const type =
-        new string(string("tropical") +
-                   FloatWeightTpl<T>::GetPrecisionString());
+  static const std::string &Type() {
+    static const std::string *const type = new std::string(
+        std::string("tropical") + FloatWeightTpl<T>::GetPrecisionString());
     return *type;
   }
 
-  bool Member() const {
-    // First part fails for IEEE NaN.
-    return Value() == Value() && Value() != Limits::NegInfinity();
+  constexpr bool Member() const {
+    // All floating point values except for NaNs and negative infinity are valid
+    // tropical weights.
+    //
+    // Testing membership of a given value can be done by simply checking that
+    // it is strictly greater than negative infinity, which fails for negative
+    // infinity itself but also for NaNs. This can usually be accomplished in a
+    // single instruction (such as *UCOMI* on x86) without branching logic.
+    //
+    // An additional wrinkle involves constexpr correctness of floating point
+    // comparisons against NaN. GCC is uneven when it comes to which expressions
+    // it considers compile-time constants. In particular, current versions of
+    // GCC do not always consider (nan < inf) to be a constant expression, but
+    // do consider (inf < nan) to be a constant expression. (See
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88173 and
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88683 for details.) In order
+    // to allow Member() to be a constexpr function accepted by GCC, we write
+    // the comparison here as (-inf < v).
+    return Limits::NegInfinity() < Value();
   }
 
   TropicalWeightTpl<T> Quantize(float delta = kDelta) const {
     if (!Member() || Value() == Limits::PosInfinity()) {
       return *this;
     } else {
-      return TropicalWeightTpl<T>(floor(Value() / delta + 0.5F) * delta);
+      return TropicalWeightTpl<T>(std::floor(Value() / delta + 0.5F) * delta);
     }
   }
 
-  TropicalWeightTpl<T> Reverse() const { return *this; }
+  constexpr TropicalWeightTpl<T> Reverse() const { return *this; }
 
-  static FST_CONSTEXPR uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative | kPath | kIdempotent;
   }
 };
@@ -231,84 +243,158 @@ class TropicalWeightTpl : public FloatWeightTpl<T> {
 using TropicalWeight = TropicalWeightTpl<float>;
 
 template <class T>
-inline TropicalWeightTpl<T> Plus(const TropicalWeightTpl<T> &w1,
-                                 const TropicalWeightTpl<T> &w2) {
-  if (!w1.Member() || !w2.Member()) return TropicalWeightTpl<T>::NoWeight();
-  return w1.Value() < w2.Value() ? w1 : w2;
+constexpr TropicalWeightTpl<T> Plus(const TropicalWeightTpl<T> &w1,
+                                    const TropicalWeightTpl<T> &w2) {
+  return (!w1.Member() || !w2.Member()) ? TropicalWeightTpl<T>::NoWeight()
+      : w1.Value() < w2.Value() ? w1 : w2;
 }
 
 // See comment at operator==(FloatWeightTpl<float>, FloatWeightTpl<float>)
 // for why these overloads are present.
-inline TropicalWeightTpl<float> Plus(const TropicalWeightTpl<float> &w1,
-                                     const TropicalWeightTpl<float> &w2) {
+constexpr TropicalWeightTpl<float> Plus(const TropicalWeightTpl<float> &w1,
+                                        const TropicalWeightTpl<float> &w2) {
   return Plus<float>(w1, w2);
 }
 
-inline TropicalWeightTpl<double> Plus(const TropicalWeightTpl<double> &w1,
-                                      const TropicalWeightTpl<double> &w2) {
+constexpr TropicalWeightTpl<double> Plus(const TropicalWeightTpl<double> &w1,
+                                         const TropicalWeightTpl<double> &w2) {
   return Plus<double>(w1, w2);
 }
 
 template <class T>
-inline TropicalWeightTpl<T> Times(const TropicalWeightTpl<T> &w1,
-                                  const TropicalWeightTpl<T> &w2) {
-  using Limits = FloatLimits<T>;
-  if (!w1.Member() || !w2.Member()) return TropicalWeightTpl<T>::NoWeight();
-  const T f1 = w1.Value();
-  const T f2 = w2.Value();
-  if (f1 == Limits::PosInfinity()) {
-    return w1;
-  } else if (f2 == Limits::PosInfinity()) {
-    return w2;
-  } else {
-    return TropicalWeightTpl<T>(f1 + f2);
-  }
+constexpr TropicalWeightTpl<T> Times(const TropicalWeightTpl<T> &w1,
+                                     const TropicalWeightTpl<T> &w2) {
+  // The following is safe in the context of the Tropical (and Log) semiring
+  // for all IEEE floating point values, including infinities and NaNs,
+  // because:
+  //
+  // * If one or both of the floating point Values is NaN and hence not a
+  //   Member, the result of addition below is NaN, so the result is not a
+  //   Member. This supersedes all other cases, so we only consider non-NaN
+  //   values next.
+  //
+  // * If both Values are finite, there is no issue.
+  //
+  // * If one of the Values is infinite, or if both are infinities with the
+  //   same sign, the result of floating point addition is the same infinity,
+  //   so there is no issue.
+  //
+  // * If both of the Values are infinities with opposite signs, the result of
+  //   adding IEEE floating point -inf + inf is NaN and hence not a Member. But
+  //   since -inf was not a Member to begin with, returning a non-Member result
+  //   is fine as well.
+  return TropicalWeightTpl<T>(w1.Value() + w2.Value());
 }
 
-inline TropicalWeightTpl<float> Times(const TropicalWeightTpl<float> &w1,
-                                      const TropicalWeightTpl<float> &w2) {
+constexpr TropicalWeightTpl<float> Times(const TropicalWeightTpl<float> &w1,
+                                         const TropicalWeightTpl<float> &w2) {
   return Times<float>(w1, w2);
 }
 
-inline TropicalWeightTpl<double> Times(const TropicalWeightTpl<double> &w1,
-                                       const TropicalWeightTpl<double> &w2) {
+constexpr TropicalWeightTpl<double> Times(const TropicalWeightTpl<double> &w1,
+                                          const TropicalWeightTpl<double> &w2) {
   return Times<double>(w1, w2);
 }
 
 template <class T>
-inline TropicalWeightTpl<T> Divide(const TropicalWeightTpl<T> &w1,
-                                   const TropicalWeightTpl<T> &w2,
-                                   DivideType typ = DIVIDE_ANY) {
-  using Limits = FloatLimits<T>;
-  if (!w1.Member() || !w2.Member()) return TropicalWeightTpl<T>::NoWeight();
-  const T f1 = w1.Value();
-  const T f2 = w2.Value();
-  if (f2 == Limits::PosInfinity()) {
-    return Limits::NumberBad();
-  } else if (f1 == Limits::PosInfinity()) {
-    return Limits::PosInfinity();
-  } else {
-    return TropicalWeightTpl<T>(f1 - f2);
-  }
+constexpr TropicalWeightTpl<T> Divide(const TropicalWeightTpl<T> &w1,
+                                      const TropicalWeightTpl<T> &w2,
+                                      DivideType typ = DIVIDE_ANY) {
+  // The following is safe in the context of the Tropical (and Log) semiring
+  // for all IEEE floating point values, including infinities and NaNs,
+  // because:
+  //
+  // * If one or both of the floating point Values is NaN and hence not a
+  //   Member, the result of subtraction below is NaN, so the result is not a
+  //   Member. This supersedes all other cases, so we only consider non-NaN
+  //   values next.
+  //
+  // * If both Values are finite, there is no issue.
+  //
+  // * If w2.Value() is -inf (and hence w2 is not a Member), the result of ?:
+  //   below is NoWeight, which is not a Member.
+  //
+  //   Whereas in IEEE floating point semantics 0/inf == 0, this does not carry
+  //   over to this semiring (since TropicalWeight(-inf) would be the analogue
+  //   of floating point inf) and instead Divide(Zero(), TropicalWeight(-inf))
+  //   is NoWeight().
+  //
+  // * If w2.Value() is inf (and hence w2 is Zero), the resulting floating
+  //   point value is either NaN (if w1 is Zero or if w1.Value() is NaN) and
+  //   hence not a Member, or it is -inf and hence not a Member; either way,
+  //   division by Zero results in a non-Member result.
+  using Weight = TropicalWeightTpl<T>;
+  return w2.Member() ? Weight(w1.Value() - w2.Value()) : Weight::NoWeight();
 }
 
-inline TropicalWeightTpl<float> Divide(const TropicalWeightTpl<float> &w1,
-                                       const TropicalWeightTpl<float> &w2,
-                                       DivideType typ = DIVIDE_ANY) {
+constexpr TropicalWeightTpl<float> Divide(const TropicalWeightTpl<float> &w1,
+                                          const TropicalWeightTpl<float> &w2,
+                                          DivideType typ = DIVIDE_ANY) {
   return Divide<float>(w1, w2, typ);
 }
 
-inline TropicalWeightTpl<double> Divide(const TropicalWeightTpl<double> &w1,
-                                        const TropicalWeightTpl<double> &w2,
-                                        DivideType typ = DIVIDE_ANY) {
+constexpr TropicalWeightTpl<double> Divide(const TropicalWeightTpl<double> &w1,
+                                           const TropicalWeightTpl<double> &w2,
+                                           DivideType typ = DIVIDE_ANY) {
   return Divide<double>(w1, w2, typ);
 }
 
-template <class T>
-inline TropicalWeightTpl<T> Power(const TropicalWeightTpl<T> &weight,
-                                  T scalar) {
-  return TropicalWeightTpl<T>(weight.Value() * scalar);
+// Power(w, n) calculates the n-th power of w with respect to semiring Times.
+//
+// In the case of the Tropical (and Log) semiring, the exponent n is not
+// restricted to be an integer. It can be a floating point value, for example.
+//
+// In weight.h, a narrower and hence more broadly applicable version of
+// Power(w, n) is defined for arbitrary weight types and non-negative integer
+// exponents n (of type size_t) and implemented in terms of repeated
+// multiplication using Times.
+//
+// Without further provisions this means that, when an expression such as
+//
+//   Power(TropicalWeightTpl<float>::One(), static_cast<size_t>(2))
+//
+// is specified, the overload of Power() is ambiguous. The template function
+// below could be instantiated as
+//
+//   Power<float, size_t>(const TropicalWeightTpl<float> &, size_t)
+//
+// and the template function defined in weight.h (further specialized below)
+// could be instantiated as
+//
+//   Power<TropicalWeightTpl<float>>(const TropicalWeightTpl<float> &, size_t)
+//
+// That would lead to two definitions with identical signatures, which results
+// in a compilation error. To avoid that, we hide the definition of Power<T, V>
+// when V is size_t, so only Power<W> is visible. Power<W> is further
+// specialized to Power<TropicalWeightTpl<...>>, and the overloaded definition
+// of Power<T, V> is made conditionally available only to that template
+// specialization.
+
+template <class T, class V,
+          bool Enable = !std::is_same<V, size_t>::value,
+          typename std::enable_if<Enable>::type * = nullptr>
+constexpr TropicalWeightTpl<T> Power(const TropicalWeightTpl<T> &w, V n) {
+  using Weight = TropicalWeightTpl<T>;
+  return (!w.Member() || n != n) ? Weight::NoWeight()
+      : (n == 0 || w == Weight::One()) ? Weight::One()
+      : Weight(w.Value() * n);
 }
+
+// Specializes the library-wide template to use the above implementation; rules
+// of function template instantiation require this be a full instantiation.
+
+template <>
+constexpr TropicalWeightTpl<float> Power<TropicalWeightTpl<float>>(
+    const TropicalWeightTpl<float> &weight, size_t n) {
+  return Power<float, size_t, true>(weight, n);
+}
+
+template <>
+constexpr TropicalWeightTpl<double> Power<TropicalWeightTpl<double>>(
+    const TropicalWeightTpl<double> &weight, size_t n) {
+  return Power<double, size_t, true>(weight, n);
+}
+
 
 // Log semiring: (log(e^-x + e^-y), +, inf, 0).
 template <class T>
@@ -319,50 +405,38 @@ class LogWeightTpl : public FloatWeightTpl<T> {
   using ReverseWeight = LogWeightTpl;
   using Limits = FloatLimits<T>;
 
-  FST_CONSTEXPR LogWeightTpl() : FloatWeightTpl<T>() {}
+  LogWeightTpl() noexcept : FloatWeightTpl<T>() {}
 
-  FST_CONSTEXPR LogWeightTpl(T f) : FloatWeightTpl<T>(f) {}
+  constexpr LogWeightTpl(T f) : FloatWeightTpl<T>(f) {}
 
-  FST_CONSTEXPR LogWeightTpl(const LogWeightTpl<T> &weight)
-      : FloatWeightTpl<T>(weight) {}
+  static constexpr LogWeightTpl Zero() { return Limits::PosInfinity(); }
 
-  static const LogWeightTpl &Zero() {
-    static const LogWeightTpl zero(Limits::PosInfinity());
-    return zero;
-  }
+  static constexpr LogWeightTpl One() { return 0; }
 
-  static const LogWeightTpl &One() {
-    static const LogWeightTpl one(0.0F);
-    return one;
-  }
+  static constexpr LogWeightTpl NoWeight() { return Limits::NumberBad(); }
 
-  static const LogWeightTpl &NoWeight() {
-    static const LogWeightTpl no_weight(Limits::NumberBad());
-    return no_weight;
-  }
-
-  static const string &Type() {
-    static const string *const type =
-        new string(string("log") + FloatWeightTpl<T>::GetPrecisionString());
+  static const std::string &Type() {
+    static const std::string *const type = new std::string(
+        std::string("log") + FloatWeightTpl<T>::GetPrecisionString());
     return *type;
   }
 
-  bool Member() const {
-    // First part fails for IEEE NaN.
-    return Value() == Value() && Value() != Limits::NegInfinity();
+  constexpr bool Member() const {
+    // The comments for TropicalWeightTpl<>::Member() apply here unchanged.
+    return Limits::NegInfinity() < Value();
   }
 
   LogWeightTpl<T> Quantize(float delta = kDelta) const {
     if (!Member() || Value() == Limits::PosInfinity()) {
       return *this;
     } else {
-      return LogWeightTpl<T>(floor(Value() / delta + 0.5F) * delta);
+      return LogWeightTpl<T>(std::floor(Value() / delta + 0.5F) * delta);
     }
   }
 
-  LogWeightTpl<T> Reverse() const { return *this; }
+  constexpr LogWeightTpl<T> Reverse() const { return *this; }
 
-  static FST_CONSTEXPR uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative;
   }
 };
@@ -441,63 +515,68 @@ inline LogWeightTpl<double> Plus(const LogWeightTpl<double> &w1,
 }
 
 template <class T>
-inline LogWeightTpl<T> Times(const LogWeightTpl<T> &w1,
-                             const LogWeightTpl<T> &w2) {
-  using Limits = FloatLimits<T>;
-  if (!w1.Member() || !w2.Member()) return LogWeightTpl<T>::NoWeight();
-  const T f1 = w1.Value();
-  const T f2 = w2.Value();
-  if (f1 == Limits::PosInfinity()) {
-    return w1;
-  } else if (f2 == Limits::PosInfinity()) {
-    return w2;
-  } else {
-    return LogWeightTpl<T>(f1 + f2);
-  }
+constexpr LogWeightTpl<T> Times(const LogWeightTpl<T> &w1,
+                                const LogWeightTpl<T> &w2) {
+  // The comments for Times(Tropical...) above apply here unchanged.
+  return LogWeightTpl<T>(w1.Value() + w2.Value());
 }
 
-inline LogWeightTpl<float> Times(const LogWeightTpl<float> &w1,
-                                 const LogWeightTpl<float> &w2) {
+constexpr LogWeightTpl<float> Times(const LogWeightTpl<float> &w1,
+                                    const LogWeightTpl<float> &w2) {
   return Times<float>(w1, w2);
 }
 
-inline LogWeightTpl<double> Times(const LogWeightTpl<double> &w1,
-                                  const LogWeightTpl<double> &w2) {
+constexpr LogWeightTpl<double> Times(const LogWeightTpl<double> &w1,
+                                     const LogWeightTpl<double> &w2) {
   return Times<double>(w1, w2);
 }
 
 template <class T>
-inline LogWeightTpl<T> Divide(const LogWeightTpl<T> &w1,
-                              const LogWeightTpl<T> &w2,
-                              DivideType typ = DIVIDE_ANY) {
-  using Limits = FloatLimits<T>;
-  if (!w1.Member() || !w2.Member()) return LogWeightTpl<T>::NoWeight();
-  const T f1 = w1.Value();
-  const T f2 = w2.Value();
-  if (f2 == Limits::PosInfinity()) {
-    return Limits::NumberBad();
-  } else if (f1 == Limits::PosInfinity()) {
-    return Limits::PosInfinity();
-  } else {
-    return LogWeightTpl<T>(f1 - f2);
-  }
+constexpr LogWeightTpl<T> Divide(const LogWeightTpl<T> &w1,
+                                 const LogWeightTpl<T> &w2,
+                                 DivideType typ = DIVIDE_ANY) {
+  // The comments for Divide(Tropical...) above apply here unchanged.
+  using Weight = LogWeightTpl<T>;
+  return w2.Member() ? Weight(w1.Value() - w2.Value()) : Weight::NoWeight();
 }
 
-inline LogWeightTpl<float> Divide(const LogWeightTpl<float> &w1,
-                                  const LogWeightTpl<float> &w2,
-                                  DivideType typ = DIVIDE_ANY) {
+constexpr LogWeightTpl<float> Divide(const LogWeightTpl<float> &w1,
+                                     const LogWeightTpl<float> &w2,
+                                     DivideType typ = DIVIDE_ANY) {
   return Divide<float>(w1, w2, typ);
 }
 
-inline LogWeightTpl<double> Divide(const LogWeightTpl<double> &w1,
-                                   const LogWeightTpl<double> &w2,
-                                   DivideType typ = DIVIDE_ANY) {
+constexpr LogWeightTpl<double> Divide(const LogWeightTpl<double> &w1,
+                                      const LogWeightTpl<double> &w2,
+                                      DivideType typ = DIVIDE_ANY) {
   return Divide<double>(w1, w2, typ);
 }
 
-template <class T>
-inline LogWeightTpl<T> Power(const LogWeightTpl<T> &weight, T scalar) {
-  return LogWeightTpl<T>(weight.Value() * scalar);
+// The comments for Power<>(Tropical...) above apply here unchanged.
+
+template <class T, class V,
+          bool Enable = !std::is_same<V, size_t>::value,
+          typename std::enable_if<Enable>::type * = nullptr>
+constexpr LogWeightTpl<T> Power(const LogWeightTpl<T> &w, V n) {
+  using Weight = LogWeightTpl<T>;
+  return (!w.Member() || n != n) ? Weight::NoWeight()
+      : (n == 0 || w == Weight::One()) ? Weight::One()
+      : Weight(w.Value() * n);
+}
+
+// Specializes the library-wide template to use the above implementation; rules
+// of function template instantiation require this be a full instantiation.
+
+template <>
+constexpr LogWeightTpl<float> Power<LogWeightTpl<float>>(
+    const LogWeightTpl<float> &weight, size_t n) {
+  return Power<float, size_t, true>(weight, n);
+}
+
+template <>
+constexpr LogWeightTpl<double> Power<LogWeightTpl<double>>(
+    const LogWeightTpl<double> &weight, size_t n) {
+  return Power<double, size_t, true>(weight, n);
 }
 
 // Specialization using the Kahan compensated summation.
@@ -547,36 +626,24 @@ class MinMaxWeightTpl : public FloatWeightTpl<T> {
   using ReverseWeight = MinMaxWeightTpl<T>;
   using Limits = FloatLimits<T>;
 
-  MinMaxWeightTpl() : FloatWeightTpl<T>() {}
+  MinMaxWeightTpl() noexcept : FloatWeightTpl<T>() {}
 
-  MinMaxWeightTpl(T f) : FloatWeightTpl<T>(f) {}
+  constexpr MinMaxWeightTpl(T f) : FloatWeightTpl<T>(f) {}  // NOLINT
 
-  MinMaxWeightTpl(const MinMaxWeightTpl<T> &weight)
-      : FloatWeightTpl<T>(weight) {}
+  static constexpr MinMaxWeightTpl Zero() { return Limits::PosInfinity(); }
 
-  static const MinMaxWeightTpl &Zero() {
-    static const MinMaxWeightTpl zero(Limits::PosInfinity());
-    return zero;
-  }
+  static constexpr MinMaxWeightTpl One() { return Limits::NegInfinity(); }
 
-  static const MinMaxWeightTpl &One() {
-    static const MinMaxWeightTpl one(Limits::NegInfinity());
-    return one;
-  }
+  static constexpr MinMaxWeightTpl NoWeight() { return Limits::NumberBad(); }
 
-  static const MinMaxWeightTpl &NoWeight() {
-    static const MinMaxWeightTpl no_weight(Limits::NumberBad());
-    return no_weight;
-  }
-
-  static const string &Type() {
-    static const string *const type =
-        new string(string("minmax") + FloatWeightTpl<T>::GetPrecisionString());
+  static const std::string &Type() {
+    static const std::string *const type = new std::string(
+        std::string("minmax") + FloatWeightTpl<T>::GetPrecisionString());
     return *type;
   }
 
   // Fails for IEEE NaN.
-  bool Member() const { return Value() == Value(); }
+  constexpr bool Member() const { return Value() == Value(); }
 
   MinMaxWeightTpl<T> Quantize(float delta = kDelta) const {
     // If one of infinities, or a NaN.
@@ -584,13 +651,13 @@ class MinMaxWeightTpl : public FloatWeightTpl<T> {
         Value() == Limits::NegInfinity() || Value() == Limits::PosInfinity()) {
       return *this;
     } else {
-      return MinMaxWeightTpl<T>(floor(Value() / delta + 0.5F) * delta);
+      return MinMaxWeightTpl<T>(std::floor(Value() / delta + 0.5F) * delta);
     }
   }
 
-  MinMaxWeightTpl<T> Reverse() const { return *this; }
+  constexpr MinMaxWeightTpl<T> Reverse() const { return *this; }
 
-  static FST_CONSTEXPR uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative | kIdempotent | kPath;
   }
 };
@@ -600,93 +667,103 @@ using MinMaxWeight = MinMaxWeightTpl<float>;
 
 // Min.
 template <class T>
-inline MinMaxWeightTpl<T> Plus(const MinMaxWeightTpl<T> &w1,
+constexpr MinMaxWeightTpl<T> Plus(const MinMaxWeightTpl<T> &w1,
                                const MinMaxWeightTpl<T> &w2) {
-  if (!w1.Member() || !w2.Member()) return MinMaxWeightTpl<T>::NoWeight();
-  return w1.Value() < w2.Value() ? w1 : w2;
+  return (!w1.Member() || !w2.Member()) ? MinMaxWeightTpl<T>::NoWeight()
+      : w1.Value() < w2.Value() ? w1 : w2;
 }
 
-inline MinMaxWeightTpl<float> Plus(const MinMaxWeightTpl<float> &w1,
-                                   const MinMaxWeightTpl<float> &w2) {
+constexpr MinMaxWeightTpl<float> Plus(const MinMaxWeightTpl<float> &w1,
+                                      const MinMaxWeightTpl<float> &w2) {
   return Plus<float>(w1, w2);
 }
 
-inline MinMaxWeightTpl<double> Plus(const MinMaxWeightTpl<double> &w1,
-                                    const MinMaxWeightTpl<double> &w2) {
+constexpr MinMaxWeightTpl<double> Plus(const MinMaxWeightTpl<double> &w1,
+                                       const MinMaxWeightTpl<double> &w2) {
   return Plus<double>(w1, w2);
 }
 
 // Max.
 template <class T>
-inline MinMaxWeightTpl<T> Times(const MinMaxWeightTpl<T> &w1,
-                                const MinMaxWeightTpl<T> &w2) {
-  if (!w1.Member() || !w2.Member()) return MinMaxWeightTpl<T>::NoWeight();
-  return w1.Value() >= w2.Value() ? w1 : w2;
+constexpr MinMaxWeightTpl<T> Times(const MinMaxWeightTpl<T> &w1,
+                                   const MinMaxWeightTpl<T> &w2) {
+  return (!w1.Member() || !w2.Member()) ? MinMaxWeightTpl<T>::NoWeight()
+      : w1.Value() >= w2.Value() ? w1 : w2;
 }
 
-inline MinMaxWeightTpl<float> Times(const MinMaxWeightTpl<float> &w1,
-                                    const MinMaxWeightTpl<float> &w2) {
+constexpr MinMaxWeightTpl<float> Times(const MinMaxWeightTpl<float> &w1,
+                                       const MinMaxWeightTpl<float> &w2) {
   return Times<float>(w1, w2);
 }
 
-inline MinMaxWeightTpl<double> Times(const MinMaxWeightTpl<double> &w1,
-                                     const MinMaxWeightTpl<double> &w2) {
+constexpr MinMaxWeightTpl<double> Times(const MinMaxWeightTpl<double> &w1,
+                                        const MinMaxWeightTpl<double> &w2) {
   return Times<double>(w1, w2);
 }
 
 // Defined only for special cases.
 template <class T>
-inline MinMaxWeightTpl<T> Divide(const MinMaxWeightTpl<T> &w1,
-                                 const MinMaxWeightTpl<T> &w2,
-                                 DivideType typ = DIVIDE_ANY) {
-  if (!w1.Member() || !w2.Member()) return MinMaxWeightTpl<T>::NoWeight();
-  // min(w1, x) = w2, w1 >= w2 => min(w1, x) = w2, x = w2.
-  return w1.Value() >= w2.Value() ? w1 : FloatLimits<T>::NumberBad();
+constexpr MinMaxWeightTpl<T> Divide(const MinMaxWeightTpl<T> &w1,
+                                    const MinMaxWeightTpl<T> &w2,
+                                    DivideType typ = DIVIDE_ANY) {
+  return w1.Value() >= w2.Value() ? w1 : MinMaxWeightTpl<T>::NoWeight();
 }
 
-inline MinMaxWeightTpl<float> Divide(const MinMaxWeightTpl<float> &w1,
-                                     const MinMaxWeightTpl<float> &w2,
-                                     DivideType typ = DIVIDE_ANY) {
+constexpr MinMaxWeightTpl<float> Divide(const MinMaxWeightTpl<float> &w1,
+                                        const MinMaxWeightTpl<float> &w2,
+                                        DivideType typ = DIVIDE_ANY) {
   return Divide<float>(w1, w2, typ);
 }
 
-inline MinMaxWeightTpl<double> Divide(const MinMaxWeightTpl<double> &w1,
-                                      const MinMaxWeightTpl<double> &w2,
-                                      DivideType typ = DIVIDE_ANY) {
+constexpr MinMaxWeightTpl<double> Divide(const MinMaxWeightTpl<double> &w1,
+                                         const MinMaxWeightTpl<double> &w2,
+                                         DivideType typ = DIVIDE_ANY) {
   return Divide<double>(w1, w2, typ);
 }
 
 // Converts to tropical.
 template <>
 struct WeightConvert<LogWeight, TropicalWeight> {
-  TropicalWeight operator()(const LogWeight &w) const { return w.Value(); }
+  constexpr TropicalWeight operator()(const LogWeight &w) const {
+    return w.Value();
+  }
 };
 
 template <>
 struct WeightConvert<Log64Weight, TropicalWeight> {
-  TropicalWeight operator()(const Log64Weight &w) const { return w.Value(); }
+  constexpr TropicalWeight operator()(const Log64Weight &w) const {
+    return w.Value();
+  }
 };
 
 // Converts to log.
 template <>
 struct WeightConvert<TropicalWeight, LogWeight> {
-  LogWeight operator()(const TropicalWeight &w) const { return w.Value(); }
+  constexpr LogWeight operator()(const TropicalWeight &w) const {
+    return w.Value();
+  }
 };
 
 template <>
 struct WeightConvert<Log64Weight, LogWeight> {
-  LogWeight operator()(const Log64Weight &w) const { return w.Value(); }
+  constexpr LogWeight operator()(const Log64Weight &w) const {
+    return w.Value();
+  }
 };
 
 // Converts to log64.
 template <>
 struct WeightConvert<TropicalWeight, Log64Weight> {
-  Log64Weight operator()(const TropicalWeight &w) const { return w.Value(); }
+  constexpr Log64Weight operator()(const TropicalWeight &w) const {
+    return w.Value();
+  }
 };
 
 template <>
 struct WeightConvert<LogWeight, Log64Weight> {
-  Log64Weight operator()(const LogWeight &w) const { return w.Value(); }
+  constexpr Log64Weight operator()(const LogWeight &w) const {
+    return w.Value();
+  }
 };
 
 // This function object returns random integers chosen from [0,
