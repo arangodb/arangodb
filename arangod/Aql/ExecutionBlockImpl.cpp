@@ -988,6 +988,7 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
 // TODO move me up
 enum ExecState { SKIP, PRODUCE, FULLCOUNT, UPSTREAM, SHADOWROWS, DONE };
 
+// TODO clean me up
 namespace {
 // This cannot return upstream call or shadowrows.
 ExecState NextState(AqlCall const& call) {
@@ -1006,7 +1007,122 @@ ExecState NextState(AqlCall const& call) {
   // now we are done.
   return ExecState::DONE;
 }
+
 }  // namespace
+
+//
+// FETCHER:  if we have one output row per input row, we can skip
+//           directly by just calling the fetcher and see whether
+//           it produced any output.
+//           With the new architecture we should be able to just skip
+//           ahead on the input range, fetching new blocks when necessary
+// EXECUTOR: the executor has a specialised skipRowsRange method
+//           that will be called to skip
+// GET_SOME: we just request rows from the executor and then discard
+//           them
+//
+enum class SkipRowsRangeVariant { FETCHER, EXECUTOR, GET_SOME };
+
+template <enum SkipRowsRangeVariant>
+struct ExecuteSkipRowsRange {};
+
+using SkipRowsRangeResult = std::tuple<ExecutorState, size_t, AqlCall>;
+
+template <>
+struct ExecuteSkipRowsRange<SkipRowsRangeVariant::FETCHER> {
+  template <class Executor>
+  static SkipRowsRangeResult executeSkipRowsRange(Executor& executor,
+                                                  AqlItemBlockInputRange& input,
+                                                  AqlCall& call) {
+    TRI_ASSERT(false);
+    /*    auto res = fetcher.skipRows(toSkip);
+        return std::make_tuple(res.first, typename Executor::Stats{}, res.second); // tuple, cannot use initializer list due to build failure
+    */
+    return std::make_tuple(ExecutorState::DONE, 0, call);  // tuple, cannot use initializer list due to build failure
+  }
+};
+
+template <>
+struct ExecuteSkipRowsRange<SkipRowsRangeVariant::EXECUTOR> {
+  template <class Executor>
+  static SkipRowsRangeResult executeSkipRowsRange(Executor& executor,
+                                                  AqlItemBlockInputRange& input,
+                                                  AqlCall& call) {
+    TRI_ASSERT(false);
+    // TODO forward to executor
+    //    return executor.skipRows(toSkip);
+    return std::make_tuple(ExecutorState::DONE, 0, call);
+  }
+};
+
+template <>
+struct ExecuteSkipRowsRange<SkipRowsRangeVariant::GET_SOME> {
+  template <class Executor>
+  static SkipRowsRangeResult executeSkipRowsRange(Executor& executor,
+                                                  AqlItemBlockInputRange& input,
+                                                  AqlCall& call) {
+    // this function should never be executed
+    TRI_ASSERT(false);
+    // Make MSVC happy:
+    return std::make_tuple(ExecutorState::DONE, 0, call);
+  }
+};
+
+template <class Executor>
+static SkipRowsRangeVariant constexpr skipRowsType() {
+  bool constexpr useFetcher =
+      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
+      !std::is_same<Executor, SubqueryExecutor<true>>::value;
+
+  bool constexpr useExecutor = hasSkipRows<Executor>::value;
+
+  // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
+  // it may not be done for modification subqueries.
+  static_assert(useFetcher ==
+                    (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
+                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>>::value &&
+                      !std::is_same<Executor, SubqueryExecutor<true>>::value)),
+                "Unexpected fetcher for SkipVariants::FETCHER");
+
+  static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
+                "Fetcher is chosen for skipping, but has not skipRows method!");
+
+  static_assert(
+      useExecutor ==
+          (std::is_same<Executor, IndexExecutor>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, EnumerateCollectionExecutor>::value ||
+           std::is_same<Executor, LimitExecutor>::value ||
+           std::is_same<Executor, ConstrainedSortExecutor>::value ||
+           std::is_same<Executor, SortingGatherExecutor>::value ||
+           std::is_same<Executor, UnsortedGatherExecutor>::value ||
+           std::is_same<Executor, ParallelUnsortedGatherExecutor>::value ||
+           std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
+           std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
+      "Unexpected executor for SkipVariants::EXECUTOR");
+
+  // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
+  static_assert(
+      !std::is_same<Executor, LimitExecutor>::value || useFetcher,
+      "LimitExecutor needs to implement skipRows() to work correctly");
+
+  if (useExecutor) {
+    return SkipRowsRangeVariant::EXECUTOR;
+  } else if (useFetcher) {
+    return SkipRowsRangeVariant::FETCHER;
+  } else {
+    return SkipRowsRangeVariant::GET_SOME;
+  }
+}
 
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
@@ -1038,8 +1154,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       switch (execState) {
         case ExecState::SKIP: {
           auto const& clientCall = _outputItemRow->getClientCall();
+          ExecuteSkipRowsRange<skipRowsType<ShortestPathExecutor>()> skip;
           auto [state, skippedLocal, call] =
-              _executor.skipRowsRange(_lastRange, _outputItemRow->getModifiableClientCall());
+              skip.executeSkipRowsRange(_executor, _lastRange,
+                                        _outputItemRow->getModifiableClientCall());
           skipped += skippedLocal;
 
           if (state == ExecutorState::DONE) {
