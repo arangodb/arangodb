@@ -48,7 +48,7 @@ class DefaultAccumulator {
     return adder.Sum();
   }
 
-  FST_CONSTEXPR bool Error() const { return false; }
+  constexpr bool Error() const { return false; }
 
  private:
   DefaultAccumulator &operator=(const DefaultAccumulator &) = delete;
@@ -83,10 +83,13 @@ class LogAccumulator {
     return sum;
   }
 
-  FST_CONSTEXPR bool Error() const { return false; }
+  constexpr bool Error() const { return false; }
 
  private:
   Weight LogPlus(Weight w, Weight v) {
+    if (w == Weight::Zero()) {
+      return v;
+    }
     const auto f1 = to_log_weight_(w).Value();
     const auto f2 = to_log_weight_(v).Value();
     if (f1 > f2) {
@@ -96,8 +99,8 @@ class LogAccumulator {
     }
   }
 
-  WeightConvert<Weight, Log64Weight> to_log_weight_;
-  WeightConvert<Log64Weight, Weight> to_weight_;
+  const WeightConvert<Weight, Log64Weight> to_log_weight_{};
+  const WeightConvert<Log64Weight, Weight> to_weight_{};
 
   LogAccumulator &operator=(const LogAccumulator &) = delete;
 };
@@ -335,6 +338,9 @@ class FastLogAccumulator {
   }
 
   Weight LogPlus(Weight w, Weight v) const {
+    if (w == Weight::Zero()) {
+      return v;
+    }
     const auto f1 = to_log_weight_(w).Value();
     const auto f2 = to_log_weight_(v).Value();
     if (f1 > f2) {
@@ -364,8 +370,8 @@ class FastLogAccumulator {
     }
   }
 
-  const WeightConvert<Weight, Log64Weight> to_log_weight_;
-  const WeightConvert<Log64Weight, Weight> to_weight_;
+  const WeightConvert<Weight, Log64Weight> to_log_weight_{};
+  const WeightConvert<Log64Weight, Weight> to_weight_{};
   const ssize_t arc_limit_;   // Minimum number of arcs to pre-compute state.
   const ssize_t arc_period_;  // Saves cumulative weights per arc_period_.
   std::shared_ptr<FastLogAccumulatorData> data_;
@@ -405,7 +411,7 @@ class CacheLogAccumulatorData {
 
   void AddWeights(StateId s, std::vector<double> *weights) {
     if (cache_gc_ && cache_size_ >= cache_limit_) GC(false);
-    cache_.insert(std::make_pair(s, CacheState(weights, true)));
+    cache_.emplace(s, CacheState(weights, true));
     if (cache_gc_) cache_size_ += weights->capacity() * sizeof(double);
   }
 
@@ -575,6 +581,9 @@ class CacheLogAccumulator {
   }
 
   Weight LogPlus(Weight w, Weight v) {
+    if (w == Weight::Zero()) {
+      return v;
+    }
     const auto f1 = to_log_weight_(w).Value();
     const auto f2 = to_log_weight_(v).Value();
     if (f1 > f2) {
@@ -616,8 +625,8 @@ class CacheLogAccumulator {
   }
 
 
-  WeightConvert<Weight, Log64Weight> to_log_weight_;
-  WeightConvert<Log64Weight, Weight> to_weight_;
+  const WeightConvert<Weight, Log64Weight> to_log_weight_{};
+  const WeightConvert<Log64Weight, Weight> to_weight_{};
   ssize_t arc_limit_;                    // Minimum # of arcs to cache a state.
   std::vector<double> *weights_;         // Accumulated weights for cur. state.
   std::unique_ptr<const Fst<Arc>> fst_;  // Input FST.

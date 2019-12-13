@@ -20,4 +20,3 @@ ID of a DBserver
 
 @RESTRETURNCODE{403} server is not a coordinator.
 @endDocuBlock
-

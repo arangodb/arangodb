@@ -35,7 +35,7 @@ not set, a server-controlled default value will be used.
 an optional limit value, determining the maximum number of documents to
 be included in the cursor. Omitting the *limit* attribute or setting it to 0 will
 lead to no limit being used. If a limit is used, it is undefined which documents
-from the collection will be included in the export and which will be excluded. 
+from the collection will be included in the export and which will be excluded.
 This is because there is no natural order of documents in a collection.
 
 @RESTBODYPARAM{ttl,integer,required,int64}
@@ -45,10 +45,9 @@ is useful to ensure garbage collection of cursors that are not fully fetched
 by clients. If not set, a server-defined value will be used.
 
 @RESTBODYPARAM{restrict,object,optional,post_api_export_restrictions}
-an object containing an array of attribute names that will be 
-included or excluded when returning result documents.
-
-Not specifying *restrict* will by default return all attributes of each document.
+an object containing an array of attribute names that will be
+included or excluded when returning result documents. Not specifying
+*restrict* will by default return all attributes of each document.
 
 @RESTSTRUCT{type,post_api_export_restrictions,string,required,string}
 has to be be set to either *include* or *exclude* depending on which you want to use
@@ -58,22 +57,21 @@ Contains an array of attribute names to *include* or *exclude*. Matching of attr
 for *inclusion* or *exclusion* will be done on the top level only.
 Specifying names of nested attributes is not supported at the moment.
 
-
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{collection,string,required}
 The name of the collection to export.
 
 @RESTDESCRIPTION
-A call to this method creates a cursor containing all documents in the 
+A call to this method creates a cursor containing all documents in the
 specified collection. In contrast to other data-producing APIs, the internal
 data structures produced by the export API are more lightweight, so it is
 the preferred way to retrieve all documents from a collection.
 
-Documents are returned in a similar manner as in the `/_api/cursor` REST API. 
+Documents are returned in a similar manner as in the `/_api/cursor` REST API.
 If all documents of the collection fit into the first batch, then no cursor
 will be created, and the result object's *hasMore* attribute will be set to
-*false*. If not all documents fit into the first batch, then the result 
+*false*. If not all documents fit into the first batch, then the result
 object's *hasMore* attribute will be set to *true*, and the *id* attribute
 of the result will contain a cursor id.
 
@@ -85,7 +83,7 @@ log (WAL) at the time the export is run will not be exported.
 
 To export these documents as well, the caller can issue a WAL flush request
 before calling the export API or set the *flush* attribute. Setting the *flush*
-option will trigger a WAL flush before the export so documents get copied from 
+option will trigger a WAL flush before the export so documents get copied from
 the WAL to the collection datafiles.
 
 If the result set can be created by the server, the server will respond with
@@ -125,7 +123,7 @@ details. The object has the following attributes:
 
 Clients should always delete an export cursor result as early as possible because a
 lingering export cursor will prevent the underlying collection from being
-compacted or unloaded. By default, unused cursors will be deleted automatically 
+compacted or unloaded. By default, unused cursors will be deleted automatically
 after a server-defined idle time, and clients can adjust this idle time by setting
 the *ttl* value.
 
@@ -152,4 +150,3 @@ The server will respond with *HTTP 501* if this API is called on a cluster
 coordinator.
 
 @endDocuBlock
-

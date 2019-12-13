@@ -36,7 +36,7 @@ If the index does not already exist and could be created, then a *HTTP 201*
 is returned.
 
 @RESTRETURNCODE{400}
-If the collection already contains another TTL index, then an *HTTP 400* is 
+If the collection already contains another TTL index, then an *HTTP 400* is
 returned, as there can be at most one TTL index per collection.
 
 @RESTRETURNCODE{404}
@@ -52,10 +52,10 @@ Creating a TTL index
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
-    var body = { 
-      type: "ttl", 
+    var body = {
+      type: "ttl",
       expireAfter: 3600,
-      fields : [ "createdAt" ] 
+      fields : [ "createdAt" ]
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -67,4 +67,3 @@ Creating a TTL index
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

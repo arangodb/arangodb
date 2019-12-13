@@ -132,7 +132,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
     if (arangodb::iresearch::ValueStorage::NONE == field._storeValues) {
       doc.insert<irs::Action::INDEX>(field);
     } else {
-      doc.insert<irs::Action::INDEX_AND_STORE>(field);
+      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
     }
 
     ++body;
@@ -155,6 +155,31 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
     }
   }
 
+  // Stored value field
+  {
+    struct StoredValue {
+      bool write(irs::data_output& out) const {
+        out.write_bytes(slice.start(), slice.byteSize());
+        return true;
+      }
+
+      irs::string_ref const& name() {
+        return fieldName;
+      }
+
+      VPackSlice slice;
+      irs::string_ref fieldName;
+    } field; // StoredValue
+
+    for (auto const& column : meta._storedValues.columns()) {
+      field.fieldName = column.name;
+      for (auto const& storedValue : column.fields) {
+        field.slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
+      }
+      doc.insert<irs::Action::STORE>(field);
+    }
+  }
+
   // System fields
 
   // Indexed and Stored: LocalDocumentId
@@ -162,7 +187,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   arangodb::iresearch::Field::setPkValue(const_cast<arangodb::iresearch::Field&>(field), docPk);
-  doc.insert<irs::Action::INDEX_AND_STORE>(field);
+  doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (!doc) {
     return {
@@ -1802,6 +1827,10 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
   builder.add("indexSize", VPackValue(stats.indexSize));
+}
+
+IResearchViewStoredValues const& IResearchLink::storedValues() const {
+  return _meta._storedValues;
 }
 
 }  // namespace iresearch

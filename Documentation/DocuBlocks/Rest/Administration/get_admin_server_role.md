@@ -33,6 +33,4 @@ the server error number
 @RESTREPLYBODY{role,string,required,string}
 one of [ *SINGLE*, *COORDINATOR*, *PRIMARY*, *SECONDARY*, *AGENT*, *UNDEFINED*]
 
-
 @endDocuBlock
-

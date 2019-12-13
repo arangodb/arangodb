@@ -429,6 +429,66 @@
         assertEqual(result[1].c, 0);
       },
 
+      testWildcardFilter : function() {
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_a_' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_ar' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(1, result.length);
+          assertEqual("bar", result[0].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_a__' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(0, result.length);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'ba_' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b__' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '%r' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(1, result.length);
+          assertEqual("bar", result[0].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b%%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+
+        {
+          let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '%a%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+          assertEqual(2, result.length);
+          assertEqual("bar", result[0].a);
+          assertEqual("baz", result[1].a);
+        }
+      },
+
       testPhraseFilter : function () {
         var result0 = db._query("FOR doc IN UnitTestsView SEARCH PHRASE(doc.text, 'quick brown fox jumps', 'text_en') OPTIONS { waitForSync: true } RETURN doc").toArray();
 

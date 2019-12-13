@@ -12,11 +12,11 @@ JSON object with the following properties:
   *false*, neither queries nor slow queries will be tracked.
 
 - *trackSlowQueries*: if set to *true*, then slow queries will be tracked
-  in the list of slow queries if their runtime exceeds the value set in 
+  in the list of slow queries if their runtime exceeds the value set in
   *slowQueryThreshold*. In order for slow queries to be tracked, the *enabled*
   property must also be set to *true*.
 
-- *trackBindVars*: if set to *true*, then bind variables used in queries will 
+- *trackBindVars*: if set to *true*, then bind variables used in queries will
   be tracked.
 
 - *maxSlowQueries*: the maximum number of slow queries to keep in the list
@@ -42,4 +42,3 @@ Is returned if properties were retrieved successfully.
 The server will respond with *HTTP 400* in case of a malformed request,
 
 @endDocuBlock
-

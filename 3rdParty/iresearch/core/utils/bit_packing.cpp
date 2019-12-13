@@ -43,7 +43,7 @@ NS_LOCAL
 
 
 template<int N>
-void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
+void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
   // ensure all computations are constexr, i.e. no conditional jumps, no loops, no variable increment/decrement
@@ -82,12 +82,12 @@ void __fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
 }
 
 template<>
-void __fastpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
+void __fastpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint32_t)*iresearch::packed::BLOCK_SIZE_32);
 }
 
 template<int N>
-void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
+void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
   // 64 == sizeof(uint64_t) * 8
   static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
   // ensure all computations are constexr, i.e. no conditional jumps, no loops, no variable increment/decrement
@@ -158,12 +158,12 @@ void __fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
 }
 
 template<>
-FORCE_INLINE void __fastpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
+FORCE_INLINE void __fastpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint64_t)*iresearch::packed::BLOCK_SIZE_64);
 }
 
 template<int N>
-void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
+void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
          *out = ((*in) >> (N *  0) % 32) % (1U << N); if (((N *  1) % 32) < ((N *  0) % 32)) { ++in; *out |= ((*in) % (1U << (N *  1) % 32)) << (N - ((N *  1) % 32)); }
@@ -201,12 +201,12 @@ void __fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT 
 }
 
 template<>
-FORCE_INLINE void __fastunpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) NOEXCEPT {
+FORCE_INLINE void __fastunpack<32>(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint32_t)*iresearch::packed::BLOCK_SIZE_32);
 }
 
 template<int N>
-void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
+void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
   // 64 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
          *out = ((*in) >> (N *  0) % 64) % (1ULL << N); if (((N *  1) % 64) < ((N *  0) % 64)) { ++in; *out |= ((*in) % (1ULL << (N *  1) % 64)) << (N - ((N *  1) % 64)); }
@@ -276,12 +276,12 @@ void __fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT 
 }
 
 template<>
-FORCE_INLINE void __fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) NOEXCEPT {
+FORCE_INLINE void __fastunpack<64>(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint64_t)*iresearch::packed::BLOCK_SIZE_64);
 }
 
 template<int N, int I>
-FORCE_INLINE uint32_t __fastpack_at(const uint32_t* in) NOEXCEPT {
+FORCE_INLINE uint32_t __fastpack_at(const uint32_t* in) noexcept {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N < 32, "N <= 0 || N > 32");
   static_assert(I >= 0 && I < 32, "I < 0 || I >= 32");
@@ -296,7 +296,7 @@ FORCE_INLINE uint32_t __fastpack_at(const uint32_t* in) NOEXCEPT {
 }
 
 template<int N, int I>
-FORCE_INLINE uint64_t __fastpack_at(const uint64_t* in) NOEXCEPT {
+FORCE_INLINE uint64_t __fastpack_at(const uint64_t* in) noexcept {
   // 64 == sizeof(uint64_t) * 8
   static_assert(N > 0 && N < 64, "N <= 0 || N > 64");
   static_assert(I >= 0 && I < 64, "I < 0 || I >= 64");
@@ -319,7 +319,7 @@ FORCE_INLINE uint64_t __fastpack_at(const uint64_t* in) NOEXCEPT {
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4715))) // not all control paths return a value
 template<int N>
-uint32_t __fastpack_at(const uint32_t* in, const size_t i) NOEXCEPT {
+uint32_t __fastpack_at(const uint32_t* in, const size_t i) noexcept {
   switch (i) {
     case 0:  return __fastpack_at<N, 0>(in);
     case 1:  return __fastpack_at<N, 1>(in);
@@ -358,13 +358,13 @@ uint32_t __fastpack_at(const uint32_t* in, const size_t i) NOEXCEPT {
 }
 
 template<>
-uint32_t __fastpack_at<32>(const uint32_t* in, const size_t i) NOEXCEPT {
+uint32_t __fastpack_at<32>(const uint32_t* in, const size_t i) noexcept {
   // 32 == sizeof(uint32_t) * 8
   assert(i < 32);
   return in[i];
 }
 
-uint32_t __fastpack_at(const uint32_t* in, const size_t i, const uint32_t bits) NOEXCEPT {
+uint32_t __fastpack_at(const uint32_t* in, const size_t i, const uint32_t bits) noexcept {
   switch (bits) {
     case 1:  return __fastpack_at<1>(in, i);
     case 2:  return __fastpack_at<2>(in, i);
@@ -403,7 +403,7 @@ uint32_t __fastpack_at(const uint32_t* in, const size_t i, const uint32_t bits) 
 }
 
 template<int N>
-uint64_t __fastpack_at(const uint64_t* in, const size_t i) NOEXCEPT {
+uint64_t __fastpack_at(const uint64_t* in, const size_t i) noexcept {
   switch (i) {
     case 0:  return __fastpack_at<N, 0>(in);
     case 1:  return __fastpack_at<N, 1>(in);
@@ -474,13 +474,13 @@ uint64_t __fastpack_at(const uint64_t* in, const size_t i) NOEXCEPT {
 }
 
 template<>
-uint64_t __fastpack_at<64>(const uint64_t* in, const size_t i) NOEXCEPT {
+uint64_t __fastpack_at<64>(const uint64_t* in, const size_t i) noexcept {
   // 64 == sizeof(uint64_t) * 8
   assert(i < 64);
   return in[i];
 }
 
-uint64_t __fastpack_at(const uint64_t* in, const size_t i, const uint32_t bits) NOEXCEPT {
+uint64_t __fastpack_at(const uint64_t* in, const size_t i, const uint32_t bits) noexcept {
   switch (bits) {
     case 1:  return __fastpack_at<1>(in, i);
     case 2:  return __fastpack_at<2>(in, i);
@@ -558,7 +558,7 @@ NS_BEGIN(packed)
 
 void pack_block(
     const uint32_t* RESTRICT in, uint32_t* RESTRICT out, const uint32_t bit
-) NOEXCEPT {
+) noexcept {
   switch (bit) {
     case 1:   __fastpack<1>(in, out); break;
     case 2:   __fastpack<2>(in, out); break;
@@ -598,7 +598,7 @@ void pack_block(
 
 void pack_block(
   const uint64_t* RESTRICT in, uint64_t* RESTRICT out, const uint32_t bit
-) NOEXCEPT {
+) noexcept {
   switch (bit) {
     case 1:   __fastpack<1>(in, out); break;
     case 2:   __fastpack<2>(in, out); break;
@@ -670,7 +670,7 @@ void pack_block(
 
 void unpack_block(
   const uint32_t* RESTRICT in, uint32_t* RESTRICT out, const uint32_t bit
-) NOEXCEPT {
+) noexcept {
   switch (bit) {
     case 1:   __fastunpack<1>(in, out); break;
     case 2:   __fastunpack<2>(in, out); break;
@@ -710,7 +710,7 @@ void unpack_block(
 
 void unpack_block(
   const uint64_t* RESTRICT in, uint64_t* RESTRICT out, const uint32_t bit
-) NOEXCEPT {
+) noexcept {
   switch (bit) {
     case 1:   __fastunpack<1>(in, out); break;
     case 2:   __fastunpack<2>(in, out); break;
@@ -780,7 +780,7 @@ void unpack_block(
   }
 }
 
-uint32_t at(const uint32_t* encoded, size_t i, const uint32_t bit) NOEXCEPT {
+uint32_t at(const uint32_t* encoded, size_t i, const uint32_t bit) noexcept {
   return __fastpack_at(
     encoded + bit * (i / BLOCK_SIZE_32), 
     i % BLOCK_SIZE_32, 
@@ -788,7 +788,7 @@ uint32_t at(const uint32_t* encoded, size_t i, const uint32_t bit) NOEXCEPT {
   );
 }
 
-uint64_t at(const uint64_t* encoded, size_t i, const uint32_t bit) NOEXCEPT {
+uint64_t at(const uint64_t* encoded, size_t i, const uint32_t bit) noexcept {
   return __fastpack_at(
     encoded + bit * (i / BLOCK_SIZE_64), 
     i % BLOCK_SIZE_64, 
@@ -798,7 +798,7 @@ uint64_t at(const uint64_t* encoded, size_t i, const uint32_t bit) NOEXCEPT {
 
 void pack(
   const uint32_t* first, const uint32_t* last, uint32_t* out, const uint32_t bit
-) NOEXCEPT {
+) noexcept {
   assert(0 == (last - first) % BLOCK_SIZE_32);
 
   for (; first < last; first += BLOCK_SIZE_32, out += bit) {
@@ -808,7 +808,7 @@ void pack(
 
 void pack(
   const uint64_t* first, const uint64_t* last, uint64_t* out, const uint32_t bit
-) NOEXCEPT {
+) noexcept {
   assert(0 == (last - first) % BLOCK_SIZE_64);
 
   for (; first < last; first += BLOCK_SIZE_64, out += bit) {
@@ -818,7 +818,7 @@ void pack(
 
 void unpack(
   uint32_t* first, uint32_t* last, const uint32_t* in, const uint32_t bit
-) NOEXCEPT {
+) noexcept {
   for (; first < last; first += BLOCK_SIZE_32, in += bit) {
     unpack_block(in, first, bit);
   }
@@ -826,7 +826,7 @@ void unpack(
 
 void unpack(
   uint64_t* first, uint64_t* last, const uint64_t* in, const uint32_t bit
-) NOEXCEPT {
+) noexcept {
   for (; first < last; first += BLOCK_SIZE_64, in += bit) {
     unpack_block(in, first, bit);
   }
