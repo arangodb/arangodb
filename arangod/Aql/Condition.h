@@ -212,7 +212,7 @@ class Condition {
   AstNode* transformNodePreorder(AstNode*);
 
   /// @brief converts from negation normal to disjunctive normal form
-  AstNode* transformNodePostorder(AstNode*);
+  AstNode* transformNodePostorder(AstNode*, bool multivalued = false);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step
