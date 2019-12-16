@@ -408,7 +408,9 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
         return false;
       }
     }
-   
+
+    context.incrScanned();
+
     bool checkFilter = context.hasFilter();
     if (checkFilter && !context.getAllowCoveringIndexOptimization()) {
       if (!context.checkFilter(slice)) {
@@ -477,7 +479,6 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     output.moveValueInto(registerId, input, guard);
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
 
     return true;
   };
