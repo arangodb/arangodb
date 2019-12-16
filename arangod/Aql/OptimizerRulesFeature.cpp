@@ -510,7 +510,7 @@ void OptimizerRulesFeature::enableOrDisableRules() {
         }
       } else {
         int id = translateRule(n);
-        if (id == -1) {
+        if (id != -1) {
           auto& rule = ruleByLevel(id);
           if (rule.hasFlag(OptimizerRule::Flags::CanBeDisabled)) {
             rule.flags |= OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
