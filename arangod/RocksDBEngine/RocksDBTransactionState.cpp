@@ -254,6 +254,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       auto* rcoll = static_cast<RocksDBTransactionCollection*>(trxColl);
       TRI_ASSERT(!rcoll->hasOperations());
       TRI_ASSERT(rcoll->stealTrackedOperations().empty());
+      TRI_ASSERT(rcoll->stealTrackedIndexOperations().empty());
     }
     // don't write anything if the transaction is empty
 #endif
@@ -638,6 +639,24 @@ Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& 
     }
   }
   return TRI_ERROR_NO_ERROR;
+}
+
+void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+  auto col = findCollection(cid);
+  if (col != nullptr) {
+    static_cast<RocksDBTransactionCollection*>(col)->trackInsert(rid);
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+void RocksDBTransactionState::trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
+  auto col = findCollection(cid);
+  if (col != nullptr) {
+    static_cast<RocksDBTransactionCollection*>(col)->trackRemove(rid);
+  } else {
+    TRI_ASSERT(false);
+  }
 }
 
 void RocksDBTransactionState::trackIndexInsert(TRI_voc_cid_t cid,

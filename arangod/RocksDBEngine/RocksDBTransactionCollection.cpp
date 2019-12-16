@@ -220,6 +220,10 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
+  // update the revision tree
+  rcoll->bufferUpdates(commitSeq, std::move(_trackedOperations.inserts),
+                       std::move(_trackedOperations.removals));
+
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
@@ -237,7 +241,7 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
     }
   }
 
-  if (hasOperations() || !_trackedIndexOperations.empty()) {
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     rcoll->meta().removeBlocker(trxId);
   }
 
@@ -245,16 +249,23 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
+  _trackedOperations.clear();
   _trackedIndexOperations.clear();
 }
 
+void RocksDBTransactionCollection::trackInsert(TRI_voc_rid_t rid) {
+  _trackedOperations.inserts.emplace_back(rid);
+}
+
+void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
+  _trackedOperations.removals.emplace_back(rid);
+}
+
 void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {
-  // First list is Inserts
   _trackedIndexOperations[iid].inserts.emplace_back(hash);
 }
 
 void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash) {
-  // Second list is Removes
   _trackedIndexOperations[iid].removals.emplace_back(hash);
 }
 

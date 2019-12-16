@@ -639,7 +639,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
         idx->afterTruncate(seq);  // clears caches / clears links (if applicable)
       }
     }
-    
+    bufferTruncate(seq);
+
     guard.fire();  // remove blocker
     
     TRI_ASSERT(!state->hasOperations());  // not allowed
@@ -1321,6 +1322,9 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     }
   }
 
+  RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
+                                                     documentId.id());
+
   return res;
 }
 
@@ -1369,6 +1373,9 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
       break;
     }
   }
+
+  RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
+                                                     documentId.id());
 
   return res;
 }
@@ -1432,6 +1439,12 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
       break;
     }
   }
+
+  RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
+                                                     oldDocumentId.id());
+  RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
+                                                     newDocumentId.id());
+
   return res;
 }
 

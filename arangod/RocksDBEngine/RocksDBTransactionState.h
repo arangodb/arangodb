@@ -139,6 +139,14 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
 
+  /// @brief Track documents inserted to the collection
+  ///        Used to update the revision tree for replication after commit
+  void trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+
+  /// @brief Track documents removed from the collection
+  ///        Used to update the revision tree for replication after commit
+  void trackRemove(TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx committed
   void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);

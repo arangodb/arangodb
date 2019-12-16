@@ -78,6 +78,24 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// estimate size of collection and indexes
   void estimateSize(velocypack::Builder& builder);
 
+  std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
+
+  /**
+   * @brief Buffer updates to this collection to be applied when appropriate
+   *
+   * Buffers updates associated with a given commit seq/tick. Will hold updates
+   * until all previous blockers have been removed to ensure a consistent state
+   * for sync/recovery and avoid any missed updates.
+   *
+   * @param  seq      The seq/tick post-commit, prior to call
+   * @param  inserts  Vector of revisions to insert
+   * @param  removals Vector of revisions to remove
+   */
+  void bufferUpdates(rocksdb::SequenceNumber seq, std::vector<TRI_voc_rid_t>&& inserts,
+                     std::vector<TRI_voc_rid_t>&& removals);
+
+  Result bufferTruncate(rocksdb::SequenceNumber seq);
+
  public:
   
   /// return bounds for all documents
@@ -87,12 +105,21 @@ class RocksDBMetaCollection : public PhysicalCollection {
   
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
-  
+
+  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
+
  protected:
-  RocksDBMetadata _meta;  /// collection metadata
-  uint64_t const _objectId; /// rocksdb-specific object id for collection
+  RocksDBMetadata _meta;     /// collection metadata
+  uint64_t const _objectId;  /// rocksdb-specific object id for collection
   /// @brief collection lock used for write access
   mutable basics::ReadWriteLock _exclusiveLock;
+
+  /// @revision tree management for replication
+  containers::RevisionTree _revisionTree;
+  std::multimap<rocksdb::SequenceNumber, std::vector<TRI_voc_rid_t>> _revisionInsertBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<TRI_voc_rid_t>> _revisionRemovalBuffers;
+  std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
+  mutable std::shared_mutex _revisionBufferLock;
 };
 
 } // namespace arangodb

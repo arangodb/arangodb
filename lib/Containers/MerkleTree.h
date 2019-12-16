@@ -156,6 +156,16 @@ class MerkleTree {
   void remove(std::size_t key, std::size_t value);
 
   /**
+   * @brief Remove all values from the tree.
+   */
+  void clear();
+
+  /**
+   * @brief Clone the tree.
+   */
+  std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> clone();
+
+  /**
    * @brief Find the ranges of keys over which two trees differ.
    *
    * @param other The other tree to compare
@@ -181,6 +191,7 @@ class MerkleTree {
 
  protected:
   explicit MerkleTree(std::string_view buffer);
+  explicit MerkleTree(MerkleTree<BranchingBits, LockStripes>& other);
 
   Meta& meta() const;
   Node& node(std::size_t index) const;

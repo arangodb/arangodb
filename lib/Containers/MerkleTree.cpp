@@ -262,6 +262,22 @@ void MerkleTree<BranchingBits, LockStripes>::remove(std::size_t key, std::size_t
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
+void MerkleTree<BranchingBits, LockStripes>::clear() {
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+  std::size_t const last = nodeCountUpToDepth(meta().maxDepth);
+  for (std::size_t i = 0; i < last; ++i) {
+    new (&node(i)) Node{0, 0};
+  }
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
+std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> MerkleTree<BranchingBits, LockStripes>::clone() {
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+  return std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>(
+      new MerkleTree<BranchingBits, LockStripes>(*this));
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
 std::vector<std::pair<std::size_t, std::size_t>> MerkleTree<BranchingBits, LockStripes>::diff(
     MerkleTree<BranchingBits, LockStripes>& other) {
   std::shared_lock<std::shared_mutex> guard1(_bufferLock);
@@ -363,6 +379,18 @@ MerkleTree<BranchingBits, LockStripes>::MerkleTree(std::string_view buffer)
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
+MerkleTree<BranchingBits, LockStripes>::MerkleTree(MerkleTree<BranchingBits, LockStripes>& other)
+    : _buffer(new uint8_t[allocationSize(other.meta().maxDepth)]) {
+  new (&meta()) Meta{other.meta().rangeMin, other.meta().rangeMax, other.meta().maxDepth};
+
+  std::size_t const last = nodeCountUpToDepth(meta().maxDepth);
+  for (std::size_t i = 0; i < last; ++i) {
+    std::unique_lock<std::mutex> nodeGuard(other.lock(i));
+    new (&this->node(i)) Node{other.node(i).hash, other.node(i).count};
+  }
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
 typename MerkleTree<BranchingBits, LockStripes>::Meta& MerkleTree<BranchingBits, LockStripes>::meta() const {
   // not thread-safe, lock buffer from outside
   return *reinterpret_cast<Meta*>(_buffer.get());
@@ -396,8 +424,8 @@ std::size_t MerkleTree<BranchingBits, LockStripes>::index(std::size_t key,
   }
 
   std::size_t offset = key - meta().rangeMin;
-  std::size_t chunkSizeAtDepth =
-      (meta().rangeMax - meta().rangeMin) / (static_cast<std::size_t>(1) << (BranchingBits * depth));
+  std::size_t chunkSizeAtDepth = (meta().rangeMax - meta().rangeMin) /
+                                 (static_cast<std::size_t>(1) << (BranchingBits * depth));
   std::size_t chunk = offset / chunkSizeAtDepth;
 
   return chunk + nodeCountUpToDepth(depth - 1);
@@ -476,7 +504,8 @@ std::pair<std::size_t, std::size_t> MerkleTree<BranchingBits, LockStripes>::chun
   // not thread-safe, lock buffer from outside
   std::size_t rangeMin = meta().rangeMin;
   std::size_t rangeMax = meta().rangeMax;
-  std::size_t chunkSizeAtDepth = (rangeMax - rangeMin) / (static_cast<std::size_t>(1) << (BranchingBits * depth));
+  std::size_t chunkSizeAtDepth =
+      (rangeMax - rangeMin) / (static_cast<std::size_t>(1) << (BranchingBits * depth));
   return std::make_pair(rangeMin + (chunkSizeAtDepth * chunk),
                         rangeMin + (chunkSizeAtDepth * (chunk + 1)) - 1);
 }

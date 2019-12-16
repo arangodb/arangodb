@@ -84,6 +84,31 @@ class RocksDBTransactionCollection final : public TransactionCollection {
    */
   void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq);
 
+  /// @brief Track documents inserted to the collection
+  ///        Used to update the revision tree for replication after commit
+  void trackInsert(TRI_voc_rid_t rid);
+
+  /// @brief Track documents removed from the collection
+  ///        Used to update the revision tree for replication after commit
+  void trackRemove(TRI_voc_rid_t rid);
+
+  struct TrackedOperations {
+    std::vector<TRI_voc_rid_t> inserts;
+    std::vector<TRI_voc_rid_t> removals;
+    bool empty() const { return inserts.empty() && removals.empty(); }
+    void clear() {
+      inserts.clear();
+      removals.clear();
+    }
+  };
+
+  TrackedOperations stealTrackedOperations() {
+    TrackedOperations empty;
+    _trackedOperations.inserts.swap(empty.inserts);
+    _trackedOperations.removals.swap(empty.removals);
+    return empty;
+  }
+
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
   void trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash);
@@ -93,15 +118,15 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash);
 
   /// @brief tracked index operations
-  struct IndexOperations {
+  struct TrackedIndexOperations {
     std::vector<uint64_t> inserts;
     std::vector<uint64_t> removals;
   };
-  typedef std::unordered_map<TRI_idx_iid_t, IndexOperations> OperationsMap;
+  using IndexOperationsMap = std::unordered_map<TRI_idx_iid_t, TrackedIndexOperations>;
 
   /// @brief steal the tracked operations from the map
-  OperationsMap stealTrackedOperations() {
-    OperationsMap empty;
+  IndexOperationsMap stealTrackedIndexOperations() {
+    IndexOperationsMap empty;
     _trackedIndexOperations.swap(empty);
     return empty;
   }
@@ -126,9 +151,13 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numUpdates;
   uint64_t _numRemoves;
 
+  /// @brief A list where collection can store its document operations
+  ///        Will be applied on commit and not applied on abort
+  TrackedOperations _trackedOperations;
+
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
-  OperationsMap _trackedIndexOperations;
+  IndexOperationsMap _trackedIndexOperations;
 };
 }  // namespace arangodb
 

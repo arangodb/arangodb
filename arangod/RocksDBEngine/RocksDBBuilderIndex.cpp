@@ -201,7 +201,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
     }
     batch.Clear();
 
-    auto ops = trxColl->stealTrackedOperations();
+    auto ops = trxColl->stealTrackedIndexOperations();
     if (!ops.empty()) {
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
@@ -462,7 +462,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     }
     wb.Clear();
 
-    auto ops = trxColl->stealTrackedOperations();
+    auto ops = trxColl->stealTrackedIndexOperations();
     if (!ops.empty()) {
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();

@@ -26,6 +26,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -43,8 +44,9 @@ using namespace arangodb;
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
-: PhysicalCollection(collection, info),
-  _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
+    : PhysicalCollection(collection, info),
+      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
+      _revisionTree(6, collection.minRevision()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -59,8 +61,9 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              PhysicalCollection const* physical)
-: PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-  _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId) {
+    : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
+      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId),
+      _revisionTree(6, collection.minRevision()) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(_objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
 }
@@ -314,4 +317,122 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   builder.close();
   builder.add("total", VPackValue(total));
   builder.close();
+}
+
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(transaction::Methods& trx) {
+  // first apply any updates that can be safely applied
+  RocksDBEngine* engine = rocksutils::globalRocksEngine();
+  rocksdb::DB* db = engine->db()->GetRootDB();
+  rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
+  applyUpdates(safeSeq);
+
+  // now clone the tree so we can apply all updates consistent with our ongoing trx
+  auto tree = _revisionTree.clone();
+
+  return tree;
+}
+
+void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
+                                          std::vector<TRI_voc_rid_t>&& inserts,
+                                          std::vector<TRI_voc_rid_t>&& removals) {
+  TRI_ASSERT(!inserts.empty() || !removals.empty());
+  std::unique_lock guard(_revisionBufferLock);
+  if (!inserts.empty()) {
+    _revisionInsertBuffers.emplace(seq, std::move(inserts));
+  }
+  if (!removals.empty()) {
+    _revisionRemovalBuffers.emplace(seq, std::move(removals));
+  }
+}
+
+Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
+  Result res = basics::catchVoidToResult([&]() -> void {
+    std::unique_lock guard(_revisionBufferLock);
+    _revisionTruncateBuffer.emplace(seq);
+  });
+  return res;
+}
+
+rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
+  rocksdb::SequenceNumber appliedSeq = 0;
+  Result res = basics::catchVoidToResult([&]() -> void {
+    std::vector<TRI_voc_rid_t> inserts;
+    std::vector<TRI_voc_rid_t> removals;
+
+    // truncate will increase this sequence
+    rocksdb::SequenceNumber ignoreSeq = 0;
+    while (true) {
+      bool foundTruncate = false;
+      // find out if we have buffers to apply
+      {
+        std::unique_lock guard(_revisionBufferLock);
+
+        {
+          // check for a truncate marker
+          auto it = _revisionTruncateBuffer.begin();  // sorted ASC
+          while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
+            ignoreSeq = *it;
+            TRI_ASSERT(ignoreSeq != 0);
+            foundTruncate = true;
+            appliedSeq = std::max(appliedSeq, ignoreSeq);
+            it = _revisionTruncateBuffer.erase(it);
+          }
+        }
+        TRI_ASSERT(ignoreSeq <= commitSeq);
+
+        // check for inserts
+        auto it = _revisionInsertBuffers.begin();  // sorted ASC
+        while (it != _revisionInsertBuffers.end() && it->first <= commitSeq) {
+          if (it->first <= ignoreSeq) {
+            TRI_ASSERT(it->first <= appliedSeq);
+            it = _revisionInsertBuffers.erase(it);
+            continue;
+          }
+          inserts = std::move(it->second);
+          TRI_ASSERT(!inserts.empty());
+          appliedSeq = std::max(appliedSeq, it->first);
+          _revisionInsertBuffers.erase(it);
+
+          break;
+        }
+
+        // check for removals
+        it = _revisionRemovalBuffers.begin();  // sorted ASC
+        while (it != _revisionRemovalBuffers.end() && it->first <= commitSeq) {
+          if (it->first <= ignoreSeq) {
+            TRI_ASSERT(it->first <= appliedSeq);
+            it = _revisionRemovalBuffers.erase(it);
+            continue;
+          }
+          removals = std::move(it->second);
+          TRI_ASSERT(!removals.empty());
+          appliedSeq = std::max(appliedSeq, it->first);
+          _revisionRemovalBuffers.erase(it);
+          break;
+        }
+      }
+
+      if (foundTruncate) {
+        _revisionTree.clear();  // clear estimates
+      }
+
+      // no inserts or removals left to apply, drop out of loop
+      if (inserts.empty() && removals.empty()) {
+        break;
+      }
+
+      // apply inserts
+      for (auto const& rid : inserts) {
+        _revisionTree.insert(rid, TRI_FnvHashPod(rid));
+      }
+      inserts.clear();
+
+      // apply removals
+      for (auto const& rid : removals) {
+        _revisionTree.remove(rid, TRI_FnvHashPod(rid));
+      }
+      removals.clear();
+    }  // </while(true)>
+  });
+  return appliedSeq;
 }
