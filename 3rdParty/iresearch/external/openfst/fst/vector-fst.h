@@ -625,7 +625,7 @@ bool VectorFst<Arc, State>::WriteFst(const FST &fst, std::ostream &strm,
   hdr.SetNumStates(kNoStateId);
   std::streampos start_offset = 0;
   if (fst.Properties(kExpanded, false) || opts.stream_write ||
-      (start_offset = strm.tellp()) != -1) {
+      (start_offset = strm.tellp()) != decltype(start_offset)(-1)) {
     hdr.SetNumStates(CountStates(fst));
     update_header = false;
   }
