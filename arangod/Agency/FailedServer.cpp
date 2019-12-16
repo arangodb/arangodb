@@ -101,7 +101,7 @@ bool FailedServer::start(bool& aborts) {
             return false;
           }
         } else {
-          LOG_TOPIC("1479a", ERR, Logger::SUPERVISION)
+          LOG_TOPIC("1479b", ERR, Logger::SUPERVISION)
               << "bad value in lock for server " << _server;
         }
       }
@@ -110,7 +110,7 @@ bool FailedServer::start(bool& aborts) {
         return false;
       }
     } else {
-      LOG_TOPIC("1479a", ERR, Logger::SUPERVISION)
+      LOG_TOPIC("1479c", ERR, Logger::SUPERVISION)
           << "bad value in lock for server " << _server;
     }
   }
