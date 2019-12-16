@@ -339,13 +339,13 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     VPackBuilder merged =
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
-    if (haveShardingFeature && !info.properties.get("shardingStrategy").isString()) {
+    if (haveShardingFeature && !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
       // NOTE: We need to do this in a second merge as the geature call requires to have the
       // DataSourceType set in the JSON, which has just been done by the call above.
       helper.clear();
       helper.openObject();
       TRI_ASSERT(ServerState::instance()->isCoordinator());
-      helper.add("shardingStrategy",
+      helper.add(StaticStrings::ShardingStrategy,
                  VPackValue(vocbase.server().getFeature<ShardingFeature>().getDefaultShardingStrategyForNewCollection(
                      merged.slice())));
       helper.close();
