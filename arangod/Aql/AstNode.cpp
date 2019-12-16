@@ -2750,6 +2750,17 @@ void AstNode::removeMemberUnchecked(size_t i) {
   members.erase(members.begin() + i);
 }
 
+void AstNode::removeMemberUncheckedUnordered(size_t i) {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  std::swap(members[i], members.back());
+  members.pop_back();
+}
+
+void AstNode::removeMembers() {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  members.clear();
+}
+
 AstNode* AstNode::getMember(size_t i) const {
   if (i >= members.size()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
