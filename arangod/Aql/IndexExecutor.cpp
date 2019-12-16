@@ -133,7 +133,6 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
 
     return true;
   };
