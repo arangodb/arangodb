@@ -313,7 +313,6 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
     if (current->_ttl != std::chrono::system_clock::time_point() &&
       current->_ttl < std::chrono::system_clock::now()) {
       current->clear();
-//      current->removeTimeToLive();
     }
 
     auto& children = current->_children;
