@@ -504,7 +504,7 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
   arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-  arangodb::ServerState::instance()->setRebootId(1);
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers
   auto& indexFactory = const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
