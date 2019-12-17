@@ -134,6 +134,11 @@ class TransactionState {
     _options.allowImplicitCollections = value;
   }
 
+  /// @brief prepare the state for parallel reads
+  /// this can be overloaded in derived state implementations with
+  /// useful behavior
+  virtual void prepareForParallelReads() {}
+
   /// @brief return the collection from a transaction
   TransactionCollection* collection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType) const;

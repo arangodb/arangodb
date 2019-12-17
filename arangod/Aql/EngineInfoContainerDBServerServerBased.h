@@ -125,8 +125,9 @@ class EngineInfoContainerDBServerServerBased {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   Result buildEngines(MapRemoteToSnippet& queryIds,
-                      std::unordered_map<size_t, size_t>& nodeAliases);
-
+                      std::unordered_map<size_t, size_t>& nodeAliases,
+                      bool usesParallelization);
+  
   /**
    * @brief Will send a shutdown to all engines registered in the list of
    * queryIds.
@@ -174,6 +175,7 @@ class EngineInfoContainerDBServerServerBased {
                        std::vector<bool> const& didCreateEngine) const;
 
   void injectVertexColletions(GraphNode* node);
+
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
 

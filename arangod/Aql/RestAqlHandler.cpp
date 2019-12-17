@@ -191,6 +191,13 @@ void RestAqlHandler::setupClusterQuery() {
   SerializationFormat format = static_cast<SerializationFormat>(
       VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::SerializationFormat,
                                              static_cast<int>(SerializationFormat::CLASSIC)));
+  
+  bool mayWorkInParallel = false;
+  VPackSlice mayWorkInParallelSlice = querySlice.get("mayWorkInParallel");
+  if (mayWorkInParallelSlice.isBoolean()) {
+    mayWorkInParallel = mayWorkInParallelSlice.getBoolean();
+  }
+
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
   // to prepare create a Query object.
@@ -246,7 +253,8 @@ void RestAqlHandler::setupClusterQuery() {
   answerBuilder.openObject();
   bool needToLock = true;
   bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                              options, ctx, ttl, format, needToLock, answerBuilder);
+                              options, ctx, ttl, format, mayWorkInParallel, needToLock, 
+                              answerBuilder);
   if (!res) {
     // TODO we need to trigger cleanup here??
     // Registering the snippets failed.
@@ -271,8 +279,9 @@ void RestAqlHandler::setupClusterQuery() {
 bool RestAqlHandler::registerSnippets(
     VPackSlice const snippetsSlice, VPackSlice const collectionSlice,
     VPackSlice const variablesSlice, std::shared_ptr<VPackBuilder> const& options,
-    std::shared_ptr<transaction::Context> const& ctx, double const ttl,
-    SerializationFormat format, bool& needToLock, VPackBuilder& answerBuilder) {
+    std::shared_ptr<transaction::Context> const& ctx, double ttl,
+    SerializationFormat format, bool prepareForParallelReads,
+    bool& needToLock, VPackBuilder& answerBuilder) {
   TRI_ASSERT(answerBuilder.isOpenObject());
   answerBuilder.add(VPackValue("snippets"));
   answerBuilder.openObject();
@@ -311,6 +320,10 @@ bool RestAqlHandler::registerSnippets(
           << "failed to instantiate the query";
       generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
       return false;
+    }
+
+    if (prepareForParallelReads) {
+      query->trx()->prepareForParallelReads();
     }
 
     try {

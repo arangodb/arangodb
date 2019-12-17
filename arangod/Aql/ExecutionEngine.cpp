@@ -372,6 +372,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   EngineInfoContainerDBServerServerBased _dbserverParts;
   bool _isCoordinator;
   bool const _pushToSingleServer;
+  bool const _usesParallelization;
   QueryId _lastClosed;
   Query& _query;
   // This is a handle to the last gather node that we see while traversing the
@@ -381,10 +382,11 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   GatherNode const* _lastGatherNode;
 
  public:
-  DistributedQueryInstanciator(Query& query, bool pushToSingleServer)
+  DistributedQueryInstanciator(Query& query, ExecutionPlan& plan, bool pushToSingleServer)
       : _dbserverParts(query),
         _isCoordinator(true),
         _pushToSingleServer(pushToSingleServer),
+        _usesParallelization(plan.hasAppliedRule(OptimizerRule::parallelizeGatherRule)),
         _lastClosed(0),
         _query(query),
         _lastGatherNode(nullptr) {}
@@ -480,7 +482,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     });
 
     std::unordered_map<size_t, size_t> nodeAliases;
-    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, nodeAliases);
+    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, nodeAliases, _usesParallelization);
     if (res.fail()) {
       return res;
     }
@@ -676,14 +678,14 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry& queryRegist
 
   if (arangodb::ServerState::isCoordinator(role)) {
     // distributed query
-    DistributedQueryInstanciator inst(query, pushToSingleServer);
+    DistributedQueryInstanciator inst(query, plan, pushToSingleServer);
     plan.root()->walk(inst);
-
+    
     auto result = inst.buildEngines(&queryRegistry);
     if (!result.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
-
+    
     engine.reset(result.engine());
     TRI_ASSERT(engine != nullptr);
 

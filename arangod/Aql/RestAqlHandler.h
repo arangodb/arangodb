@@ -108,12 +108,13 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                         arangodb::velocypack::Slice const variables,
                         std::shared_ptr<arangodb::velocypack::Builder> const& options,
                         std::shared_ptr<transaction::Context> const& ctx,
-                        double const ttl, aql::SerializationFormat format,
-                        bool& needToLock, arangodb::velocypack::Builder& answer);
+                        double ttl, aql::SerializationFormat format,
+                        bool mayWorkInParallel, bool& needToLock, 
+                        arangodb::velocypack::Builder& answer);
 
   bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
                                 std::shared_ptr<transaction::Context> const& ctx,
-                                double const ttl, bool& needToLock,
+                                double ttl, bool& needToLock,
                                 arangodb::velocypack::Builder& answer);
   
   // handle for useQuery
