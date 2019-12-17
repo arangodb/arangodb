@@ -220,8 +220,6 @@ class StaticStrings {
   static std::string const Sharding;
   static std::string const Satellite;
   static std::string const WriteConcern;
-  static std::string const CollectionCoordinator;
-  static std::string const CollectionCoordinatorRebootId;
 
   // graph attribute names
   static std::string const GraphCollection;
