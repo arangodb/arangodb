@@ -37,12 +37,15 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Cluster/AgencyPaths.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::application_features;
+using namespace arangodb::cluster::paths;
+using namespace arangodb::cluster::paths::aliases;
 
 struct HealthRecord {
   std::string shortName;
@@ -1337,9 +1340,10 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
       {
         // precondition that this database is still in Plan and is building
         VPackObjectBuilder preconditions(envelope.get());
-        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::AttrIsBuilding, VPackValue(true));
-        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::AttrCoordinatorRebootId, VPackValue(rebootID));
-        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::AttrCoordinator, VPackValue(coordinatorID));
+        auto const databasesPath = plan()->databases()->database(database)->str();
+        envelope->add(databasesPath + "/" + StaticStrings::AttrIsBuilding, VPackValue(true));
+        envelope->add(databasesPath + "/" + StaticStrings::AttrCoordinatorRebootId, VPackValue(rebootID));
+        envelope->add(databasesPath + "/" + StaticStrings::AttrCoordinator, VPackValue(coordinatorID));
 
         {
           VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + coordinatorID);
@@ -1365,7 +1369,8 @@ void Supervision::deleteBrokenCollection(std::string const& database, std::strin
   {
     VPackArrayBuilder trxs(envelope.get());
     {
-      std::string collection_path = _agencyPrefix + planColPrefix + '/' + database + '/' + collection;
+      std::string collection_path =
+          plan()->collections()->database(database)->collection(collection)->str();
 
       VPackArrayBuilder trx(envelope.get());
       {
