@@ -1,10 +1,14 @@
 v3.6.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* Fixed bug that made AQL queries eligible for parallelization even in case
+  they couldn't be parallelized, leading to undefined behavior due to the
+  thread races.
+
 * Fixed bug in `--query.parallelize-gather-writes-behavior` which led to
   the option not working correctly.
 
-* Agency relational operators TTL fix
+* Agency relational operators TTL fix.
 
 * Improve latency in scheduler.
 
