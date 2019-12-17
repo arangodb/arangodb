@@ -122,7 +122,7 @@ function OptionsTestSuite () {
         }
       }
 
-      // only one transaction should have succeeded
+      // both transactions should have succeeded
       assertEqual(2, c2.count());
       let docs = c2.toArray();
       assertEqual(docs[0].value, true);
