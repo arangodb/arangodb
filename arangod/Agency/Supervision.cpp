@@ -1132,6 +1132,9 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("00790", TRACE, Logger::SUPERVISION) << "Begin checkBrokenCreatedDatabases";
   checkBrokenCreatedDatabases();
 
+  LOG_TOPIC("69480", TRACE, Logger::SUPERVISION) << "Begin checkBrokenCollections";
+  checkBrokenCollections();
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -1334,9 +1337,9 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
       {
         // precondition that this database is still in Plan and is building
         VPackObjectBuilder preconditions(envelope.get());
-        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseIsBuilding, VPackValue(true));
-        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinatorRebootId, VPackValue(rebootID));
-        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinator, VPackValue(coordinatorID));
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::AttrIsBuilding, VPackValue(true));
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::AttrCoordinatorRebootId, VPackValue(rebootID));
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::AttrCoordinator, VPackValue(coordinatorID));
 
         {
           VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + coordinatorID);
@@ -1381,9 +1384,9 @@ void Supervision::deleteBrokenCollection(std::string const& database, std::strin
       {
         // precondition that this collection is still in Plan and is building
         VPackObjectBuilder preconditions(envelope.get());
-        envelope->add(collection_path + "/" + StaticStrings::DatabaseIsBuilding, VPackValue(true));
-        envelope->add(collection_path + "/" + StaticStrings::DatabaseCoordinatorRebootId, VPackValue(rebootID));
-        envelope->add(collection_path + "/" + StaticStrings::DatabaseCoordinator, VPackValue(coordinatorID));
+        envelope->add(collection_path + "/" + StaticStrings::AttrIsBuilding, VPackValue(true));
+        envelope->add(collection_path + "/" + StaticStrings::AttrCoordinatorRebootId, VPackValue(rebootID));
+        envelope->add(collection_path + "/" + StaticStrings::AttrCoordinator, VPackValue(coordinatorID));
 
         {
           VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + "/" + coordinatorID);
@@ -1405,14 +1408,14 @@ void Supervision::ifResourceCreatorLost(
     std::shared_ptr<Node> const& resource,
     std::function<void(const ResourceCreatorLostEvent&)> const& action) {
   // check if isBuilding is set and it is true
-  std::pair<bool, bool> isBuilding = resource->hasAsBool(StaticStrings::DatabaseIsBuilding);
+  std::pair<bool, bool> isBuilding = resource->hasAsBool(StaticStrings::AttrIsBuilding);
   if (isBuilding.first && isBuilding.second) {
     // this database is currently being built
     //  check if the coordinator exists and its reboot is the same as specified
     std::pair<uint64_t, bool> rebootID =
-        resource->hasAsUInt(StaticStrings::DatabaseCoordinatorRebootId);
+        resource->hasAsUInt(StaticStrings::AttrCoordinatorRebootId);
     std::pair<std::string, bool> coordinatorID =
-        resource->hasAsString(StaticStrings::DatabaseCoordinator);
+        resource->hasAsString(StaticStrings::AttrCoordinator);
 
     bool keepResource = true;
     bool coordinatorFound = false;
