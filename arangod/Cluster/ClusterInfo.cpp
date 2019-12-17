@@ -85,9 +85,9 @@ static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const&
   if (!info.get("shards").isEmptyObject() &&
       !arangodb::basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IsSmart,
                                                            false)) {
-    TRI_ASSERT(info.hasKey(arangodb::StaticStrings::IsBuilding));
-    TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).isBool());
-    TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
+    TRI_ASSERT(info.hasKey(arangodb::StaticStrings::AttrIsBuilding));
+    TRI_ASSERT(info.get(arangodb::StaticStrings::AttrIsBuilding).isBool());
+    TRI_ASSERT(info.get(arangodb::StaticStrings::AttrIsBuilding).getBool() == true);
   }
 #endif
   arangodb::AgencyOperation op{collectionPath(dbName, collection),
@@ -104,7 +104,7 @@ static inline arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
 
 static inline arangodb::AgencyOperation CreateCollectionSuccess(
     std::string const& dbName, std::string const& collection, VPackSlice const& info) {
-  TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::IsBuilding));
+  TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::AttrIsBuilding));
   return arangodb::AgencyOperation{collectionPath(dbName, collection),
                                    arangodb::AgencyValueOperationType::SET, info};
 }
@@ -625,7 +625,7 @@ void ClusterInfo::loadPlan() {
       // it is used to create LogicalCollection instances further
       // down in this function.
       if (ServerState::instance()->isCoordinator() &&
-          !database.value.hasKey(StaticStrings::DatabaseIsBuilding)) {
+          !database.value.hasKey(StaticStrings::AttrIsBuilding)) {
         TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
         if (vocbase == nullptr) {
           // database does not yet exist, create it now
@@ -651,7 +651,7 @@ void ClusterInfo::loadPlan() {
 
       // On a coordinator we can only see databases that have been fully created
       if (!(ServerState::instance()->isCoordinator() &&
-            database.value.hasKey(StaticStrings::DatabaseIsBuilding))) {
+            database.value.hasKey(StaticStrings::AttrIsBuilding))) {
         newDatabases.try_emplace(std::move(name), database.value);
       } else {
         buildingDatabases.emplace(std::move(name));
@@ -914,7 +914,7 @@ void ClusterInfo::loadPlan() {
 
           bool isBuilding = isCoordinator &&
                             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                collectionSlice, StaticStrings::IsBuilding, false);
+                                collectionSlice, StaticStrings::AttrIsBuilding, false);
           if (isCoordinator) {
             // copying over index estimates from the old version of the
             // collection into the new one
@@ -1502,11 +1502,11 @@ void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
   VPackObjectBuilder guard(&builder);
   database.toVelocyPack(builder);
 
-  builder.add(StaticStrings::DatabaseCoordinator,
+  builder.add(StaticStrings::AttrCoordinator,
               VPackValue(ServerState::instance()->getId()));
-  builder.add(StaticStrings::DatabaseCoordinatorRebootId,
+  builder.add(StaticStrings::AttrCoordinatorRebootId,
               VPackValue(ServerState::instance()->getRebootId().value()));
-  builder.add(StaticStrings::DatabaseIsBuilding, VPackValue(true));
+  builder.add(StaticStrings::AttrIsBuilding, VPackValue(true));
 }
 
 // Build the VPackSlice that does not contain  the `isBuilding` entry
@@ -2213,6 +2213,10 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
   }
 
+  TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
+    TRI_TerminateDebugging("During cluster collection creation");
+  }
+
   LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
@@ -2238,7 +2242,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // We do not need to lock all condition variables
       // we are save by cacheMutex
       cbGuard.fire();
-      // Now we need to remove the IsBuilding flag and the creator in the Agency
+      // Now we need to remove the AttrIsBuilding flag and the creator in the Agency
       opers.clear();
       precs.clear();
       opers.push_back(IncreaseVersion());

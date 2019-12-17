@@ -64,7 +64,7 @@ ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
   if (needsBuildingFlag()) {
     VPackBuilder tmp;
     tmp.openObject();
-    tmp.add(StaticStrings::IsBuilding, VPackValue(true));
+    tmp.add(StaticStrings::AttrIsBuilding, VPackValue(true));
     if (creator) {
       creator->toVelocyPack(tmp);
     }
@@ -95,8 +95,8 @@ bool ClusterCollectionCreationInfo::needsBuildingFlag() const {
 void ClusterCollectionCreationInfo::CreatorInfo::toVelocyPack(
     velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
-  builder.add(StaticStrings::CollectionCoordinator, VPackValue(coordinatorId()));
-  builder.add(StaticStrings::CollectionCoordinatorRebootId, VPackValue(rebootId().value()));
+  builder.add(StaticStrings::AttrCoordinator, VPackValue(coordinatorId()));
+  builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(rebootId().value()));
 }
 
 ClusterCollectionCreationInfo::CreatorInfo::CreatorInfo(std::string coordinatorId,
