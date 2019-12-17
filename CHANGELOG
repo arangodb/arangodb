@@ -1,6 +1,9 @@
 v3.6.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* Fixed bug in `--query.parallelize-gather-writes-behavior` which led to
+  the option not working correctly.
+
 * Improve latency in scheduler.
 
 * Fixed internal issue #4748: Editing a single edgeDefinition using the graph
