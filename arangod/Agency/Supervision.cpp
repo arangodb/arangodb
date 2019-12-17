@@ -1289,7 +1289,7 @@ bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID,
     << coordinatorID << " health=" << health;
 
   // if the server is not found, health is an empty string
-  coordinatorFound = health.empty();
+  coordinatorFound = !health.empty();
   if (health != "GOOD" && health != "BAD") {
     return false;
   }
@@ -1339,7 +1339,7 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
         envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinator, VPackValue(coordinatorID));
 
         {
-          VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + "/" + coordinatorID);
+          VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + coordinatorID);
           envelope->add("oldEmpty", VPackValue(!coordinatorFound));
         }
       }
@@ -1350,7 +1350,88 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
   write_ret_t res = _agent->write(envelope);
   if (!res.successful()) {
     LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
-        << "failed to delete broken database in agency. Will retry.";
+        << "failed to delete broken database in agency. Will retry " << envelope->toJson();
+  }
+}
+
+
+void Supervision::deleteBrokenCollection(std::string const& database, std::string const& collection,
+                                       std::string const& coordinatorID,
+                                       uint64_t rebootID, bool coordinatorFound) {
+  auto envelope = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(envelope.get());
+    {
+      std::string collection_path = _agencyPrefix + planColPrefix + '/' + database + '/' + collection;
+
+      VPackArrayBuilder trx(envelope.get());
+      {
+        VPackObjectBuilder operation(envelope.get());
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + "/" + PLAN_VERSION);
+          envelope->add("op", VPackValue("increment"));
+        }
+        // delete the collection from Plan/Collections/<db>
+        {
+          VPackObjectBuilder o(envelope.get(), collection_path);
+          envelope->add("op", VPackValue("delete"));
+        }
+      }
+      {
+        // precondition that this collection is still in Plan and is building
+        VPackObjectBuilder preconditions(envelope.get());
+        envelope->add(collection_path + "/" + StaticStrings::DatabaseIsBuilding, VPackValue(true));
+        envelope->add(collection_path + "/" + StaticStrings::DatabaseCoordinatorRebootId, VPackValue(rebootID));
+        envelope->add(collection_path + "/" + StaticStrings::DatabaseCoordinator, VPackValue(coordinatorID));
+
+        {
+          VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + "/" + coordinatorID);
+          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+        }
+      }
+    }
+  }
+
+
+  write_ret_t res = _agent->write(envelope);
+  if (!res.successful()) {
+    LOG_TOPIC("38485", DEBUG, Logger::SUPERVISION)
+    << "failed to delete broken collection in agency. Will retry. " << envelope->toJson();
+  }
+}
+
+void Supervision::ifResourceCreatorLost(
+    std::shared_ptr<Node> const& resource,
+    std::function<void(const ResourceCreatorLostEvent&)> const& action) {
+  // check if isBuilding is set and it is true
+  std::pair<bool, bool> isBuilding = resource->hasAsBool(StaticStrings::DatabaseIsBuilding);
+  if (isBuilding.first && isBuilding.second) {
+    // this database is currently being built
+    //  check if the coordinator exists and its reboot is the same as specified
+    std::pair<uint64_t, bool> rebootID =
+        resource->hasAsUInt(StaticStrings::DatabaseCoordinatorRebootId);
+    std::pair<std::string, bool> coordinatorID =
+        resource->hasAsString(StaticStrings::DatabaseCoordinator);
+
+    bool keepResource = true;
+    bool coordinatorFound = false;
+
+    if (rebootID.second && coordinatorID.second) {
+      keepResource = Supervision::verifyCoordinatorRebootID(coordinatorID.first,
+                                                            rebootID.first, coordinatorFound);
+      // incomplete data, should not happen
+    } else {
+      //          v---- Please note this awesome log-id
+      LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
+          << "resource has set `isBuilding` but is missing coordinatorID and "
+             "rebootID";
+    }
+
+    if (!keepResource) {
+      action(ResourceCreatorLostEvent{resource, coordinatorID.first,
+                                      rebootID.first, coordinatorFound});
+    }
   }
 }
 
@@ -1367,38 +1448,45 @@ void Supervision::checkBrokenCreatedDatabases() {
   for (auto const& dbpair : databases.first.children()) {
     std::shared_ptr<Node> const& db = dbpair.second;
 
-    LOG_TOPIC("24152", DEBUG, Logger::SUPERVISION)
-      << "checkBrokenDbs: " << *db;
+    LOG_TOPIC("24152", DEBUG, Logger::SUPERVISION) << "checkBrokenDbs: " << *db;
 
-    // check if isBuilding is set and it is true
-    std::pair<bool, bool> isBuilding = db->hasAsBool(StaticStrings::DatabaseIsBuilding);
-    if (isBuilding.first && isBuilding.second) {
+    ifResourceCreatorLost(db, [&](ResourceCreatorLostEvent const& ev) {
+      LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
+          << "checkBrokenCreatedDatabases: removing skeleton database with "
+             "name "
+          << dbpair.first;
+      // delete this database and all of its collections
+      deleteBrokenDatabase(dbpair.first, ev.coordinatorId,
+                           ev.coordinatorRebootId, ev.coordinatorFound);
+    });
+  }
+}
 
-      // this database is currently being built
-      //  check if the coordinator exists and its reboot is the same as specified
-      std::pair<uint64_t, bool> rebootID = db->hasAsUInt(StaticStrings::DatabaseCoordinatorRebootId);
-      std::pair<std::string, bool> coordinatorID = db->hasAsString(StaticStrings::DatabaseCoordinator);
+void Supervision::checkBrokenCollections() {
+  _lock.assertLockedByCurrentThread();
 
-      bool keepDatabase = true;
-      bool coordinatorFound = false;
+  // check if snapshot has databases
+  std::pair<Node const&, bool> collections = _snapshot.hasAsNode(planColPrefix);
+  if (!collections.second) {
+    return;
+  }
 
-      if (rebootID.second && coordinatorID.second) {
-        keepDatabase = verifyCoordinatorRebootID(coordinatorID.first,
-                                                 rebootID.first, coordinatorFound);
-        // incomplete data, should not happen
-      } else {
-        //          v---- Please note this awesome log-id
-        LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
-          << "database has set `isBuilding` but is missing coordinatorID and rebootID";
-      }
+  // dbpair is <std::string, std::shared_ptr<Node>>
+  for (auto const& dbpair : collections.first.children()) {
+    std::shared_ptr<Node> const& db = dbpair.second;
 
-      // check if the server is still able to finish the initalisation
-      if (!keepDatabase) {
-        LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
-          << "checkBrokenCreatedDatabases: removing skeleton database with name " << dbpair.first;
-        // delete this database and all of its collections
-        deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first, coordinatorFound);
-      }
+    for (auto const& collectionPair : db->children()) {
+      ifResourceCreatorLost(collectionPair.second,
+                            [&](ResourceCreatorLostEvent const& ev) {
+                              LOG_TOPIC("fe523", INFO, Logger::SUPERVISION) << "checkBrokenCollections: removing broken collection with name "
+                                                                            << dbpair
+                                                                                   .first;
+                              // delete this database and all of its collections
+                              deleteBrokenCollection(dbpair.first,
+                                                     collectionPair.first, ev.coordinatorId,
+                                                     ev.coordinatorRebootId,
+                                                     ev.coordinatorFound);
+                            });
     }
   }
 }
