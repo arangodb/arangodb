@@ -32,10 +32,47 @@ var jsunity = require('jsunity');
 var internal = require('internal');
 var testHelper = require('@arangodb/test-helper').Helper;
 var ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
+const console = require('console');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite: collection
 // //////////////////////////////////////////////////////////////////////////////
+
+// This function waits for the compactionState of collection to change
+// and a compaction to have occurred.
+//
+// We define a compaction to have occured when files have been combined.
+// Note that the compaction count only counts how many times the compaction
+// thread has run, but the thread might not have performed any action
+//
+// The function tries nrTries iterations in which it waits for wait seconds
+//
+// returns true if a compaction occurred, and false if there was no
+// compaction detected.
+function waitForCompaction(collection, initialFigures, nrTries, wait) {
+  var lastTime = initialFigures["compactionStatus"]["time"];
+  var lastMessage = initialFigures["compactionStatus"]["message"];
+  var lastCount = initialFigures["compactionStatus"]["count"];
+
+  console.log("waiting for compaction to occur");
+  var tries = 0;
+  while (tries < nrTries) {
+    var cur = collection.figures();
+    if (cur["compactionStatus"]["time"] !== lastTime) {
+      lastTime = cur["compactionStatus"]["time"];
+      lastMessage = cur["compactionStatus"]["message"];
+      lastCount = cur["compactionStatus"]["count"];
+      console.log("compaction timestamp changed: " + lastTime + ", message: " + lastMessage);
+      if (cur.compactionStatus.filesCombined > 0) {
+        console.log("compaction occurred");
+        return true;
+      }
+    }
+    internal.wait(wait);
+    tries++;
+  }
+  return false;
+}
 
 function CompactionSuite () {
   'use strict';
@@ -46,6 +83,9 @@ function CompactionSuite () {
 
     testShapesMovement: function () {
       var collectionName = 'example';
+      const ndocs = 10000;
+      const nrRubbish = 250000;
+
       internal.db._drop(collectionName);
 
       var cn = internal.db._create(collectionName, {
@@ -53,7 +93,10 @@ function CompactionSuite () {
       });
       var x, i, j, doc;
 
-      for (i = 0; i < 1000; ++i) {
+
+      const initialFigures = cn.figures();
+
+      for (i = 0; i < ndocs; ++i) {
         doc = {
           _key: 'old' + i,
           a: i,
@@ -71,7 +114,7 @@ function CompactionSuite () {
       }
 
       // now access the documents once, to build the shape accessors
-      for (i = 0; i < 1000; ++i) {
+      for (i = 0; i < ndocs; ++i) {
         doc = cn.document('old' + i);
 
         assertTrue(doc.hasOwnProperty('a'));
@@ -92,23 +135,25 @@ function CompactionSuite () {
       }
 
       // fill the datafile with rubbish
-      for (i = 0; i < 10000; ++i) {
+      for (i = 0; i < nrRubbish; ++i) {
         cn.save({
           _key: 'test' + i,
           value: 'thequickbrownfox'
         });
       }
 
-      for (i = 0; i < 10000; ++i) {
+      for (i = 0; i < nrRubbish; ++i) {
         cn.remove('test' + i);
       }
 
-      internal.wait(7, false);
-
-      assertEqual(1000, cn.count());
+      /* we wait for a compaction to occur */
+      if (waitForCompaction(cn, initialFigures, 100, 1) === false) {
+          throw "No compaction occurred!";
+      }
+      assertEqual(ndocs, cn.count());
 
       // now access the 'old' documents, which were probably moved
-      for (i = 0; i < 1000; ++i) {
+      for (i = 0; i < ndocs; ++i) {
         doc = cn.document('old' + i);
 
         assertTrue(doc.hasOwnProperty('a'));
@@ -136,16 +181,19 @@ function CompactionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testShapes1: function () {
+      const nrRubbish = 10000;
+      const nrShapes = 10000;
       var cn = 'example';
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
+      const initialFigures = c1.figures();
 
       var i, doc;
 
       // prefill with 'trash'
-      for (i = 0; i < 1000; ++i) {
+      for (i = 0; i < nrRubbish; ++i) {
         c1.save({
           _key: 'test' + i
         });
@@ -158,7 +206,7 @@ function CompactionSuite () {
       testHelper.rotate(c1);
 
       // create lots of different shapes
-      for (i = 0; i < 100; ++i) {
+      for (i = 0; i < nrShapes; ++i) {
         doc = {
           _key: 'test' + i
         };
@@ -172,7 +220,9 @@ function CompactionSuite () {
       testHelper.rotate(c1);
       c1.truncate();
 
-      internal.wait(5, false);
+      if (waitForCompaction(c1, initialFigures, 100, 1) === false) {
+        throw "No compaction occurred!";
+      }
 
       for (i = 0; i < 100; ++i) {
         doc = {
@@ -208,6 +258,7 @@ function CompactionSuite () {
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
+      const initialFigures = c1.figures();
 
       var i, doc;
       // prefill with 'trash'
@@ -284,6 +335,7 @@ function CompactionSuite () {
       var cn = 'example';
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { 'journalSize': 1048576 });
+      const initialFigures = c1.figures();
 
       var i, doc;
 
@@ -383,6 +435,7 @@ function CompactionSuite () {
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
+      const initialFigures = c1.figures();
 
       internal.wal.flush(true, true);
 
@@ -562,30 +615,12 @@ function CompactionSuite () {
       internal.wal.flush(true, true);
       c1.rotate();
 
+      const initialFigures = c1.figures();
       c1.properties({
         doCompact: true
       });
 
-      // wait for compactor to run
-      require('console').log('waiting for compactor to run');
-
-      // set max wait time
-      if (internal.valgrind) {
-        maxWait = 750;
-      } else {
-        maxWait = 90;
-      }
-
-      var tries = 0;
-      while (++tries < maxWait) {
-        fig = c1.figures();
-
-        if (fig['dead']['deletion'] === 0 && fig['dead']['count'] === 0) {
-          break;
-        }
-
-        internal.wait(1, false);
-      }
+      waitForCompaction(c1, initialFigures, 100, 1);
 
       fig = c1.figures();
       assertEqual(0, c1.count());
@@ -718,7 +753,7 @@ function CompactionSuite () {
       var maxWait;
       var waited;
       var cn = 'example';
-      var n = 400;
+      var n = 20000;
       var i;
       var payload = 'the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox';
 
@@ -730,6 +765,7 @@ function CompactionSuite () {
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
+      const initialFigures = c1.figures();
 
       for (i = 0; i < n; ++i) {
         c1.save({
@@ -752,7 +788,8 @@ function CompactionSuite () {
       var tries = 0;
       var fig;
 
-      while (++tries < 20) {
+      console.log("waiting for alive.count === " + n/2 + " and dead.count === 0");
+      while (++tries < 500) {
         fig = c1.figures();
         if (fig['alive']['count'] === n / 2 && fig['dead']['count'] === 0) {
           break;
@@ -772,27 +809,8 @@ function CompactionSuite () {
       internal.wait(0);
 
       // wait for compactor to run
-      require('console').log('waiting for compactor to run');
-
-      // set max wait time
-      if (internal.valgrind) {
-        maxWait = 750;
-      } else {
-        maxWait = 90;
-      }
-
-      waited = 0;
-      var lastValue = fig['dead']['deletion'];
-
-      while (waited < maxWait) {
-        internal.wait(5);
-        waited += 5;
-
-        fig = c1.figures();
-        if (fig['dead']['deletion'] === lastValue) {
-          break;
-        }
-        lastValue = fig['dead']['deletion'];
+      if (waitForCompaction(c1, initialFigures, 100, 1) === false) {
+        throw "No compaction occurred!";
       }
 
       for (i = 0; i < n; i++) {
@@ -817,6 +835,8 @@ function CompactionSuite () {
 
       waited = 0;
 
+      maxWait = 10000;
+      console.log("Waiting for dead.deletion === 0 and dead.count === 0");
       while (waited < maxWait) {
         internal.wait(2);
         waited += 2;
@@ -861,6 +881,7 @@ function CompactionSuite () {
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
+      const initialFigures = c1.figures();
 
       for (i = 0; i < n; ++i) {
         c1.save({ value: i,
@@ -909,26 +930,11 @@ function CompactionSuite () {
       assertEqual(0, fig['alive']['count']);
       assertEqual(n, fig['dead']['deletion']);
 
-      // wait for compactor to run
-      require('console').log('waiting for compactor to run');
-
-      // set max wait time
-      if (internal.valgrind) {
-        maxWait = 750;
-      } else {
-        maxWait = 90;
+      if (waitForCompaction(c1, initialFigures, 100, 1) === false) {
+        throw "No compaction occurred!";
       }
 
-      tries = 0;
-      while (++tries < maxWait) {
-        fig = c1.figures();
-
-        if (fig['dead']['count'] === 0) {
-          break;
-        }
-
-        internal.wait(1, false);
-      }
+      fig = c1.figures();
 
       assertEqual(0, c1.count());
       // all alive & dead markers should be gone
