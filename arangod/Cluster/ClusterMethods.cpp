@@ -2499,7 +2499,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       infos.emplace_back(ClusterCollectionCreationInfo{
           std::to_string(col->id()), col->numberOfShards(), col->replicationFactor(),
           col->writeConcern(), waitForSyncReplication, velocy.slice(),
-          serverState->getPersistedId(), serverState->getRebootId()});
+          serverState->getId(), serverState->getRebootId()});
       vpackData.emplace_back(velocy.steal());
     }
 

@@ -1865,7 +1865,7 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
   auto serverState = ServerState::instance();
   std::vector<ClusterCollectionCreationInfo> infos{ClusterCollectionCreationInfo{
       collectionID, numberOfShards, replicationFactor, writeConcern, waitForReplication,
-      json, serverState->getPersistedId(), serverState->getRebootId()}};
+      json, serverState->getId(), serverState->getRebootId()}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime,
