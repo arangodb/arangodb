@@ -276,10 +276,6 @@ transaction::Status transaction::Methods::status() const {
   return _state->status();
 }
 
-void transaction::Methods::prepareForParallelReads() {
-  _state->prepareForParallelReads();
-}
-
 /// @brief sort ORs for the same attribute so they are in ascending value
 /// order. this will only work if the condition is for a single attribute
 /// the usedIndexes vector may also be re-sorted

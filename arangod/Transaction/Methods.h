@@ -428,9 +428,6 @@ class Methods {
   ENTERPRISE_VIRT bool isInaccessibleCollection(std::string const& /*cid*/) const {
     return false;
   }
-  
-  /// @brief prepare the transaction for parallel reads
-  void prepareForParallelReads();
 
   static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
                                         arangodb::velocypack::Slice value);
@@ -497,7 +494,7 @@ class Methods {
 
   OperationResult rotateActiveJournalCoordinator(std::string const& collectionName,
                                                  OperationOptions const& options);
-  
+
  protected:
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(

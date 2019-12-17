@@ -135,8 +135,7 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief make some internal preparations for accessing this state in
   /// parallel from multiple threads. READ-ONLY transactions
-  void prepareForParallelReads() override { _parallel = true; }
-
+  void prepareForParallelReads() { _parallel = true; }
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
 

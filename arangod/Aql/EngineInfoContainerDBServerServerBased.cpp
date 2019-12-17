@@ -266,8 +266,7 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(QueryId inputSnippet) 
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
-    MapRemoteToSnippet& queryIds, std::unordered_map<size_t, size_t>& nodeAliases,
-    bool usesParallelization) {
+    MapRemoteToSnippet& queryIds, std::unordered_map<size_t, size_t>& nodeAliases) {
   // This needs to be a set with a defined order, it is important, that we contact
   // the database servers only in this specific order to avoid cluster-wide deadlock situations.
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
@@ -323,12 +322,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
         addTraversalEnginesPart(infoBuilder, shardMapping, server);
     TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
     TRI_ASSERT(infoBuilder.isOpenObject());
-
-    // this is true if the query uses a parallel GatherNode and there are multiple
-    // engines located on the DB servers. In this case it is possible that the engines
-    // perform work concurrently on the same transaction (context) object, and we need to
-    // take precautions
-    infoBuilder.add("mayWorkInParallel", VPackValue(usesParallelization && _closedSnippets.size() > 1));
 
     infoBuilder.add(StaticStrings::SerializationFormat,
                     VPackValue(static_cast<int>(aql::SerializationFormat::SHADOWROWS)));
