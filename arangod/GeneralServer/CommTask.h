@@ -101,10 +101,6 @@ protected:
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
                             RequestStatistics*) = 0;
 
-  /// @brief whether or not requests of this CommTask can be executed directly,
-  /// inside the IO thread
-  virtual bool allowDirectHandling() const = 0;
-
  protected:
   
   enum class Flow : bool { Continue = true, Abort = false };

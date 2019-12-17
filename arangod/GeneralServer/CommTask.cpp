@@ -478,7 +478,6 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   RequestLane lane = handler->getRequestLane();
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
-  bool handlerAllowDirectExecution = handler->allowDirectExecution();
 
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
@@ -490,7 +489,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       self->sendResponse(handler->stealResponse(), handler->stealStatistics());
     });
   };
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling() && handlerAllowDirectExecution);
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb));
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
