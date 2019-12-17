@@ -302,6 +302,12 @@ NodeType Node::type() const {
   return (_isArray || _value.size()) ? LEAF : NODE;
 }
 
+
+bool Node::lifetimeExpired() const {
+  using clock = std::chrono::system_clock; 
+  return _ttl != clock::time_point() && _ttl < clock::now();
+}
+
 /// @brief lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
   Node* current = this;
@@ -310,8 +316,7 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 
     // Remove TTL for any nodes on the way down, if and only if the noted TTL
     // is expired.
-    if (current->_ttl != std::chrono::system_clock::time_point() &&
-      current->_ttl < std::chrono::system_clock::now()) {
+    if (current->lifetimeExpired()) {
       current->clear();
     }
 
@@ -352,9 +357,7 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
     auto const& children = current->_children;
     auto const  child = children.find(key);
 
-    if (child == children.end() ||
-        (child->second->_ttl != std::chrono::system_clock::time_point() &&
-         child->second->_ttl < std::chrono::system_clock::now())) {
+    if (child == children.end() || child->second->lifetimeExpired()) {
       throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
     }  else {
       current = child->second.get();
@@ -506,8 +509,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
   {
     VPackObjectBuilder t(&tmp);
     try {
-      if (_ttl == std::chrono::system_clock::time_point() ||
-          _ttl >= std::chrono::system_clock::now()) {
+      if (!lifetimeExpired()) {
         tmp.add("tmp", Value(this->slice().getInt() + inc));
         applied = true;
       }
@@ -529,8 +531,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) 
   {
     VPackObjectBuilder t(&tmp);
     try {
-      if (_ttl == std::chrono::system_clock::time_point() ||
-          _ttl >= std::chrono::system_clock::now()) {
+      if (!lifetimeExpired()) {
         tmp.add("tmp", Value(this->slice().getInt() - 1));
         applied = true;
       }
@@ -555,9 +556,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray() &&
-        (_ttl == std::chrono::system_clock::time_point() ||
-         _ttl >= std::chrono::system_clock::now())) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
     tmp.add(slice.get("new"));
@@ -590,9 +589,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
   {
     VPackArrayBuilder t(&tmp);
 
-    if (this->slice().isArray() &&
-        (_ttl == std::chrono::system_clock::time_point() ||
-         _ttl >= std::chrono::system_clock::now())) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       if (haveVal) {
         VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
@@ -638,9 +635,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<REPLACE>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray() &&
-        (_ttl == std::chrono::system_clock::time_point() ||
-         _ttl >= std::chrono::system_clock::now())) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
         if (VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true)) {
@@ -661,9 +656,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<POP>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray() &&
-        (_ttl == std::chrono::system_clock::time_point() ||
-         _ttl >= std::chrono::system_clock::now())) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       VPackArrayIterator it(this->slice());
       if (it.size() > 1) {
         size_t j = it.size() - 1;
@@ -690,9 +683,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
   {
     VPackArrayBuilder t(&tmp);
     tmp.add(slice.get("new"));
-    if (this->slice().isArray() &&
-        (_ttl == std::chrono::system_clock::time_point() ||
-         _ttl >= std::chrono::system_clock::now())) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
   }
@@ -706,9 +697,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray() &&
-        (_ttl == std::chrono::system_clock::time_point() ||
-         _ttl >= std::chrono::system_clock::now())) {  // If a
+    if (this->slice().isArray() && !lifetimeExpired()) {  // If a
       VPackArrayIterator it(this->slice());
       bool first = true;
       for (auto const& old : it) {
