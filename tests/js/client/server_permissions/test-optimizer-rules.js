@@ -44,7 +44,7 @@ function testSuite() {
     setUp: function() {
       db._drop(cn);
       let c = db._create(cn);
-      c.ensureIndex({ type: "hash", fields: ["value"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value"] });
     },
     
     tearDown: function() {
