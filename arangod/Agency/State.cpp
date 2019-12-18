@@ -95,8 +95,16 @@ inline static std::string stringify(index_t index) {
 bool State::persist(index_t index, term_t term, uint64_t millis,
                     arangodb::velocypack::Slice const& entry,
                     std::string const& clientId) const {
-  LOG_TOPIC("b735e", TRACE, Logger::AGENCY) << "persist index=" << index << " term=" << term
-                                   << " entry: " << entry.toJson();
+  LOG_TOPIC("b735e", TRACE, Logger::AGENCY)
+    << "persist index=" << index << " term=" << term << " entry: " << entry.toJson();
+
+#ifdef MAINTAINER_MODE // we should never get here
+  if (index == 1 && entry.length != 1 && !entry.hasKey(RECONFIGURATION)) {
+    LOG_TOPIC("cba44", FATAL, Logger::AGENCY)
+      << "RAFT index 1 must be an holding only a '.agency' entry, however we got " << entry.toJSON();
+  }
+  TRI_ASSERT(false);
+#endif
 
   Builder body;
   {

@@ -1,12 +1,16 @@
 v3.6.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* Fixed a bug where a single host agency could log too early.
+
 * Fixed bug that made AQL queries eligible for parallelization even in case
   they couldn't be parallelized, leading to undefined behavior due to the
   thread races.
 
 * Fixed bug in `--query.parallelize-gather-writes-behavior` which led to
   the option not working correctly.
+
+* Fixed a bug, where a single host agency logged to early.
 
 * Agency relational operators TTL fix.
 
@@ -33,8 +37,8 @@ v3.6.0-rc.2 (XXXX-XX-XX)
   The WAL file size is increased later on in the startup sequence, so
   everything should be fine if the startup works.
 
-  This fixes a problem with the disk filling up quickly when the arangodb 
-  starter tries to start an instance 100 times in a row but instantaneously 
+  This fixes a problem with the disk filling up quickly when the arangodb
+  starter tries to start an instance 100 times in a row but instantaneously
   gets a failure back from it.
 
 * Fixed a permissions bug for /_admin/cluster/rebalanceShards.
