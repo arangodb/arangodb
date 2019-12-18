@@ -154,7 +154,7 @@ function lateDocumentMaterializationArangoSearch3RuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       assertEqual(1, plan.nodes.filter(obj => {
-        return obj.type === "EnumerateViewNode"
+        return obj.type === "EnumerateViewNode";
       })[0].viewValuesVars.length);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
@@ -170,7 +170,7 @@ function lateDocumentMaterializationArangoSearch3RuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       assertEqual(1, plan.nodes.filter(obj => {
-        return obj.type === "EnumerateViewNode"
+        return obj.type === "EnumerateViewNode";
       })[0].viewValuesVars.length);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
