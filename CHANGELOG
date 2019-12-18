@@ -1,6 +1,8 @@
 devel
 -----
 
+* Agency relational operators TTL fix.
+
 * Improve latency in scheduler.
 
 * Fixed internal issue #4748: Editing a single edgeDefinition using the graph
