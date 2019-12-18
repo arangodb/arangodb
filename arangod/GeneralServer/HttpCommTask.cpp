@@ -795,7 +795,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       << Logger::FIXED(totalTime, 6);
   
   if constexpr (SocketType::Ssl == T) {
-    this->_protocol->context.io_context.dispatch([self = this->shared_from_this(), stat]() mutable {
+    this->_protocol->context.io_context.post([self = this->shared_from_this(), stat]() mutable {
       auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
       thisPtr->writeResponse(stat);
     });
