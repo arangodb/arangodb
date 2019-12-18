@@ -677,7 +677,6 @@ const char* NODE_VIEW_VALUES_VARS = "viewValuesVars";
 const char* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
 const char* NODE_VIEW_VALUES_VAR_COLUMN_NUMBER = "columnNumber";
 const char* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
-const char* NODE_VIEW_VALUES_VAR_POSTFIX = "postfix";
 const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
 const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
@@ -687,13 +686,6 @@ void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
   nodes.add(NODE_VIEW_VALUES_VAR_FIELD_NUMBER, VPackValue(fieldVar.fieldNum));
   nodes.add(NODE_VIEW_VALUES_VAR_ID, VPackValue(fieldVar.var->id));
   nodes.add(NODE_VIEW_VALUES_VAR_NAME, VPackValue(fieldVar.var->name)); // for explainer.js
-  if (!fieldVar.postfix.empty()) {
-    VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VAR_POSTFIX);
-    for (auto const& attr : fieldVar.postfix) {
-      nodes.add(VPackValue(attr));
-      fieldName += "." + attr;
-    }
-  }
   nodes.add(NODE_VIEW_VALUES_VAR_FIELD, VPackValue(fieldName)); // for explainer.js
 }
 
@@ -724,26 +716,7 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
         TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" unable to find variable by id %d",
         varId);
   }
-  std::vector<std::string> postfix;
-  if (fieldVar.hasKey(NODE_VIEW_VALUES_VAR_POSTFIX)) {
-    auto const postfixSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_POSTFIX);
-    if (!postfixSlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_BAD_PARAMETER,
-            "\"viewValuesVars[*].postfix\" attribute should be an array");
-    }
-    for (auto const attrSlice : velocypack::ArrayIterator(postfixSlice)) {
-      if (!attrSlice.isString()) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].postfix[*]\" %s should be a string",
-            attrSlice.toString().c_str());
-      }
-      VPackValueLength l;
-      char const* s = attrSlice.getString(l);
-      postfix.emplace_back(std::string(s, l));
-    }
-  }
-  viewValuesVars[columnNumber].emplace_back(IResearchViewNode::ViewVariable{fieldNumber, std::move(postfix), var});
+  viewValuesVars[columnNumber].emplace_back(IResearchViewNode::ViewVariable{fieldNumber, var});
 }
 
 template<MaterializeType materializeType> std::unique_ptr<aql::ExecutionBlock> (*executors[])(aql::ExecutionEngine*, IResearchViewNode const*, aql::IResearchViewExecutorInfos&&) = {
@@ -971,7 +944,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     }
   }
 
-  if (isLateMaterialized()) {
+  {
     auto const* vars = plan.getAst()->variables();
     TRI_ASSERT(vars);
 
@@ -1003,7 +976,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
         extractViewValuesVar(vars, viewValuesVars, SortColumnNumber, columnFieldsVars);
       }
     }
-    _outNonMaterializedViewVars = std::move(viewValuesVars);
+    if (!viewValuesVars.empty()) {
+      _outNonMaterializedViewVars = std::move(viewValuesVars);
+    }
   }
 }
 
@@ -1473,12 +1448,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
       auto it = varInfos.find(fieldsVars.var->id);
       TRI_ASSERT(it != varInfos.cend());
-      std::vector<irs::string_ref> postfix;
-      postfix.reserve(fieldsVars.postfix.size());
-      std::transform(fieldsVars.postfix.cbegin(), fieldsVars.postfix.cend(), std::back_inserter(postfix), [](auto const& attr) {
-        return irs::string_ref(attr.c_str(), attr.size());
-      });
-      fields.insert({fieldsVars.fieldNum, ViewVariableRegister{std::move(postfix), it->second.registerId}});
+      fields.emplace(fieldsVars.fieldNum, it->second.registerId);
     }
   }
 
@@ -1549,10 +1519,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
     auto const& calcNodeData = _nodesToChange[calcNode];
     TRI_ASSERT(!calcNodeData.empty());
     auto const& afData = calcNodeData[0];
-    if (afData.parentNode == nullptr) {
+    if (afData.parentNode == nullptr && afData.postfix.empty()) {
       TRI_ASSERT(calcNodeData.size() == 1);
-      // we could add one redundant variable for each field only
-      if (uniqueVariables.try_emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+      // we can unlink one redundant variable only for each field
+      if (uniqueVariables.try_emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber,
         calcNode->outVariable()}, afData.columnNumber}).second) {
         toUnlink.emplace(calcNode);
       }
@@ -1565,8 +1535,9 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
     auto const& calcNodeData = _nodesToChange[calcNode];
     for (auto const& afData : calcNodeData) {
       // create a variable if necessary
-      if (afData.parentNode != nullptr && uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
-        uniqueVariables.emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+      if ((afData.parentNode != nullptr || !afData.postfix.empty()) &&
+          uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
+        uniqueVariables.emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber,
           ast->variables()->createTemporaryVariable()}, afData.columnNumber});
       }
     }
@@ -1578,6 +1549,9 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
       auto it = uniqueVariables.find(afData.field);
       TRI_ASSERT(it != uniqueVariables.cend());
       auto newNode = ast->createNodeReference(it->second.var);
+      if (!afData.postfix.empty()) {
+        newNode = ast->createNodeAttributeAccess(newNode, afData.postfix);
+      }
       if (afData.parentNode != nullptr) {
         TEMPORARILY_UNLOCK_NODE(afData.parentNode);
         afData.parentNode->changeMember(afData.childNumber, newNode);
@@ -1599,10 +1573,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
   for (auto calcNode : _nodesToChange) {
     TRI_ASSERT(!calcNode.second.empty());
     auto const& afData = calcNode.second[0];
-    if (afData.parentNode == nullptr) {
+    if (afData.parentNode == nullptr && afData.postfix.empty()) {
       TRI_ASSERT(calcNode.second.size() == 1);
-      // we could add one redundant variable for each field only
-      if (uniqueVariables.try_emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+      // we can unlink one redundant variable only for each field
+      if (uniqueVariables.try_emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber,
         calcNode.first->outVariable()}, afData.columnNumber}).second) {
         toUnlink.emplace(calcNode.first);
       }
@@ -1613,8 +1587,9 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
   for (auto calcNode : _nodesToChange) {
     for (auto const& afData : calcNode.second) {
       // create a variable if necessary
-      if (afData.parentNode != nullptr && uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
-        uniqueVariables.emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+      if ((afData.parentNode != nullptr || !afData.postfix.empty()) &&
+          uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
+        uniqueVariables.emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber,
           ast->variables()->createTemporaryVariable()}, afData.columnNumber});
       }
     }
@@ -1624,6 +1599,9 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
       auto it = uniqueVariables.find(afData.field);
       TRI_ASSERT(it != uniqueVariables.cend());
       auto newNode = ast->createNodeReference(it->second.var);
+      if (!afData.postfix.empty()) {
+        newNode = ast->createNodeAttributeAccess(newNode, afData.postfix);
+      }
       if (afData.parentNode != nullptr) {
         TEMPORARILY_UNLOCK_NODE(afData.parentNode);
         afData.parentNode->changeMember(afData.childNumber, newNode);

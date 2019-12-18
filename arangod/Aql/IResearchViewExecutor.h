@@ -292,7 +292,7 @@ class IResearchViewExecutorBase {
   void reset();
 
   bool writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues, int columnNum,
-                        std::map<size_t, iresearch::IResearchViewNode::ViewVariableRegister> const& fieldsRegs);
+                        std::map<size_t, RegisterId> const& fieldsRegs);
 
   void getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, int index);
 

@@ -639,7 +639,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
 
 template<typename Impl, typename Traits>
 inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues,
-                                                                      int columnNum, std::map<size_t, IResearchViewNode::ViewVariableRegister> const& fieldsRegs) {
+                                                                      int columnNum, std::map<size_t, RegisterId> const& fieldsRegs) {
   TRI_ASSERT(static_cast<decltype(storedValues.size())>(columnNum) < storedValues.size());
   auto const& storedValue = storedValues[static_cast<decltype(storedValues.size())>(columnNum)];
   TRI_ASSERT(!storedValue.empty());
@@ -648,7 +648,7 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContex
   auto slice = VPackSlice(s);
   size_t size = 0;
   size_t i = 0;
-  for (auto const& [fieldNum, postfixAndRegisterId] : fieldsRegs) {
+  for (auto const& [fieldNum, registerId] : fieldsRegs) {
     while (i < fieldNum) {
       size += slice.byteSize();
       TRI_ASSERT(size <= totalSize);
@@ -658,21 +658,10 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContex
       slice = VPackSlice(s + slice.byteSize());
       ++i;
     }
-    auto sl = slice;
-    TRI_ASSERT(!sl.isNone());
-    if (!postfixAndRegisterId.postfix.empty()) {
-      for (auto const& attr : postfixAndRegisterId.postfix) {
-        if (!sl.isObject()) {
-          sl = VPackSlice::nullSlice();
-          break;
-        }
-        sl = sl.get(attr);
-        TRI_ASSERT(!sl.isNone());
-      }
-    }
-    AqlValue v(sl);
+    TRI_ASSERT(!slice.isNone());
+    AqlValue v(slice);
     AqlValueGuard guard{v, true};
-    ctx.outputRow.moveValueInto(postfixAndRegisterId.registerId, ctx.inputRow, guard);
+    ctx.outputRow.moveValueInto(registerId, ctx.inputRow, guard);
   }
   return true;
 }
