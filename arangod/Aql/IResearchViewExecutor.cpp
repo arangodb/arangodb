@@ -740,8 +740,9 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
 }
 
 template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, int index) {
-  irs::columnstore_reader::values_reader_f reader = _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(index)];
+void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, int index,
+                                                             std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders) {
+  irs::columnstore_reader::values_reader_f reader = storedValuesReaders[static_cast<decltype(storedValuesReaders.size())>(index)];
   TRI_ASSERT(reader);
   irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
   auto ok = reader(doc->value, value);
@@ -750,7 +751,8 @@ void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const
 }
 
 template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document const* doc) {
+void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document const* doc,
+                                                               std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders) {
   auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
   TRI_ASSERT(!columnsFieldsRegs.empty());
   auto max = (--columnsFieldsRegs.cend())->first;
@@ -761,17 +763,18 @@ void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document con
   }
   std::vector<irs::bytes_ref> storedValue(static_cast<size_t>(max + 1));
   if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-    getStoredValue(doc, storedValue, max);
+    getStoredValue(doc, storedValue, max, storedValuesReaders);
     ++columnFieldsRegs;
   }
   for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-    getStoredValue(doc, storedValue, columnFieldsRegs->first);
+    getStoredValue(doc, storedValue, columnFieldsRegs->first, storedValuesReaders);
   }
   this->_indexReadBuffer.pushStoredValue(std::move(storedValue));
 }
 
 template<typename Impl, typename Traits>
-bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_reader const& segmentReader) {
+bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_reader const& segmentReader,
+                                                                     std::vector<irs::columnstore_reader::values_reader_f>& storedValuesReaders) {
   auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
   if (!columnsFieldsRegs.empty()) {
     auto max = (--columnsFieldsRegs.cend())->first;
@@ -780,7 +783,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
     if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
       ++max;
     }
-    _storedValuesReaders.resize(static_cast<typename decltype(_storedValuesReaders)::size_type>(max + 1));
+    storedValuesReaders.resize(static_cast<decltype(storedValuesReaders.size())>(max + 1));
     if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
       auto sortReader = ::sortColumn(segmentReader);
       if (!sortReader) {
@@ -789,7 +792,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
                "executing a query, ignoring";
         return false;
       }
-      _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(max)] = sortReader;
+      storedValuesReaders[static_cast<decltype(storedValuesReaders.size())>(max)] = std::move(sortReader);
       ++columnFieldsRegs;
     }
     // if stored values exist
@@ -807,7 +810,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
                  "executing a query, ignoring";
           return false;
         }
-        _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(columnFieldsRegs->first)] = storedValuesReader->values();
+        storedValuesReaders[static_cast<decltype(storedValuesReaders.size())>(columnFieldsRegs->first)] = storedValuesReader->values();
       }
     }
   }
@@ -947,7 +950,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     }
 
     if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
-      this->pushStoredValues(_doc);
+      this->pushStoredValues(_doc, _storedValuesReaders);
     }
     // doc and scores are both pushed, sizes must now be coherent
     this->_indexReadBuffer.assertSizeCoherence();
@@ -985,7 +988,7 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
   }
 
   if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
-    if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader))) {
+    if (ADB_UNLIKELY(!this->getStoredValuesReaders(segmentReader, _storedValuesReaders))) {
       return false;
     }
   }
@@ -1110,14 +1113,15 @@ template <bool ordered, MaterializeType materializeType>
 IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     irs::doc_iterator::ptr&& docs, irs::document const& doc,
     irs::score const& score, LogicalCollection const& collection,
-    irs::columnstore_reader::values_reader_f&& sortReader,
-    irs::columnstore_reader::values_reader_f&& pkReader) noexcept
+    irs::columnstore_reader::values_reader_f&& pkReader,
+    std::vector<irs::columnstore_reader::values_reader_f>&& storedValuesReaders) noexcept
     : docs(std::move(docs)),
       doc(&doc),
       score(&score),
       collection(&collection),
-      sortReader(std::move(sortReader)),
-      pkReader(std::move(pkReader)) {
+      pkReader(std::move(pkReader)),
+      storedValuesReaders(std::move(storedValuesReaders)),
+      sortReader(this->storedValuesReaders.back()) {
   TRI_ASSERT(this->docs);
   TRI_ASSERT(this->doc);
   TRI_ASSERT(this->score);
@@ -1181,15 +1185,6 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
   for (size_t i = 0, size = this->_reader->size(); i < size; ++i) {
     auto& segment = (*this->_reader)[i];
 
-    auto sortReader = ::sortColumn(segment);
-
-    if (!sortReader) {
-      LOG_TOPIC("af4cd", WARN, arangodb::iresearch::TOPIC)
-          << "encountered a sub-reader without a sort column while "
-             "executing a query, ignoring";
-      continue;
-    }
-
     irs::doc_iterator::ptr it =
         segment.mask(this->_filter->execute(segment, this->_order, this->_filterCtx));
     TRI_ASSERT(it);
@@ -1241,14 +1236,28 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
       continue;
     }
 
+    std::vector<irs::columnstore_reader::values_reader_f> storedValuesReaders;
     if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
-      if (ADB_UNLIKELY(!this->getStoredValuesReaders(segment))) {
+      if (ADB_UNLIKELY(!this->getStoredValuesReaders(segment, storedValuesReaders))) {
         continue;
       }
     }
+    // add sortReader if it has not been added yet
+    // sortReader is the last item
+    if (this->_infos.getOutNonMaterializedViewRegs().size() == storedValuesReaders.size()) {
+      auto sortReader = ::sortColumn(segment);
+
+      if (!sortReader) {
+        LOG_TOPIC("af4cd", WARN, arangodb::iresearch::TOPIC)
+            << "encountered a sub-reader without a sort column while "
+               "executing a query, ignoring";
+        continue;
+      }
+      storedValuesReaders.emplace_back(std::move(sortReader));
+    }
 
     _segments.emplace_back(std::move(it), *doc, *score, *collection,
-                           std::move(sortReader), std::move(pkReader));
+                           std::move(pkReader), std::move(storedValuesReaders));
   }
 
   _heap_it.reset(_segments.size());
@@ -1306,7 +1315,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     }
 
     if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
-      this->pushStoredValues(segment.doc);
+      this->pushStoredValues(segment.doc, segment.storedValuesReaders);
     }
 
     // doc and scores are both pushed, sizes must now be coherent

@@ -294,11 +294,12 @@ class IResearchViewExecutorBase {
   bool writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues, int columnNum,
                         std::map<size_t, RegisterId> const& fieldsRegs);
 
-  void getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, int index);
+  void getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, int index,
+                      std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders);
 
-  void pushStoredValues(irs::document const* doc);
+  void pushStoredValues(irs::document const* doc, std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders);
 
-  bool getStoredValuesReaders(irs::sub_reader const& segmentReader);
+  bool getStoredValuesReaders(irs::sub_reader const& segmentReader, std::vector<irs::columnstore_reader::values_reader_f>& storedValuesReaders);
 
  private:
   bool next(ReadContext& ctx);
@@ -316,7 +317,6 @@ class IResearchViewExecutorBase {
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx;  // expression execution context
-  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders; // current stored values readers
   size_t _inflight;  // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
   bool _isInitialized;
@@ -361,6 +361,7 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   irs::document const* _doc{};
   size_t _readerOffset;
   LogicalCollection const* _collection{};
+  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders; // current stored values readers
 
   // case ordered only:
   irs::score const* _scr;
@@ -395,20 +396,21 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
-            irs::columnstore_reader::values_reader_f&& sortReader,
-            irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
+            irs::columnstore_reader::values_reader_f&& pkReader,
+            std::vector<irs::columnstore_reader::values_reader_f>&& storedValuesReaders) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;
-    Segment& operator=(Segment&&) = default;
+    Segment& operator=(Segment&&) = delete;
 
     irs::doc_iterator::ptr docs;
     irs::document const* doc{};
     irs::score const* score{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
     irs::bytes_ref sortValue{irs::bytes_ref::NIL};        // sort column value
-    irs::columnstore_reader::values_reader_f sortReader;  // sort column reader
     irs::columnstore_reader::values_reader_f pkReader;    // primary key reader
+    std::vector<irs::columnstore_reader::values_reader_f> storedValuesReaders; // current stored values readers
+    irs::columnstore_reader::values_reader_f& sortReader; // sort column reader
   };
 
   class MinHeapContext {
