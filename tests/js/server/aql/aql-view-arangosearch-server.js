@@ -403,13 +403,13 @@ function iResearchFeatureAqlServerSideTestSuite () {
           if (afterLinkCount === beforeLinkCount) {
           	break; // all is ok.
           }
-          if (tryCount > 0 ) {
-          	tryCount--;
-          	require('internal').sleep(5);
+          if (tryCount > 0) {
+            tryCount--;
+            require('internal').sleep(5);
           } else {
             assertEqual(beforeLinkCount, afterLinkCount);
-      	  }
-    	}
+          }
+        }
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);
