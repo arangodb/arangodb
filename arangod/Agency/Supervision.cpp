@@ -1484,6 +1484,13 @@ void Supervision::checkBrokenCollections() {
     std::shared_ptr<Node> const& db = dbpair.second;
 
     for (auto const& collectionPair : db->children()) {
+      // collectionPair.first is collection id
+      std::pair<std::string, bool> collectionNamePair = collectionPair.second->hasAsString(StaticStrings::DataSourceName);
+      std::string const& collectionName = collectionNamePair.first;
+      if (!collectionNamePair.second || collectionName.empty() || collectionName.front() == '_') {
+        continue;
+      }
+
       ifResourceCreatorLost(collectionPair.second,
                             [&](ResourceCreatorLostEvent const& ev) {
                               LOG_TOPIC("fe523", INFO, Logger::SUPERVISION) << "checkBrokenCollections: removing broken collection with name "
