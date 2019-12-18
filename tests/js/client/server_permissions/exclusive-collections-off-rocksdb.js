@@ -101,16 +101,22 @@ function OptionsTestSuite () {
         require("internal").sleep(0.02);
       }
 
-      db._executeTransaction({
-        collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
-        action: function () {
-          let db = require("internal").db;
-          for (let i = 0; i < 100000; ++i) {
-            db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+      try {
+        db._executeTransaction({
+          collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
+          action: function () {
+            let db = require("internal").db;
+            for (let i = 0; i < 100000; ++i) {
+              db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+            }
+            db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
           }
-          db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
-        }
-      });
+        });
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        assertEqual(409, err.code); // conflict
+        assertEqual("precondition failed", err.errorMessage);
+      }
 
       while (true) {
         try {
@@ -122,13 +128,10 @@ function OptionsTestSuite () {
         }
       }
 
-      // TODO: fix asserts
       assertEqual(2, c2.count());
-      let docs = c2.toArray();
-      assertEqual(docs[0].value, true);
-      assertEqual(docs[1].value, true);
-    },
-
+      assertTrue(c2.document("runner1").value);  // runner1 transaction should succeed
+      assertFalse(c2.document("runner2").value); // runner2 transaction should fail
+    }
 
   };
 }
