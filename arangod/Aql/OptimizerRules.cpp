@@ -7302,27 +7302,15 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<Execut
   // parallelization (e.g. no DistributeNodes around) still apply.
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::GATHER, false);
+  plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  // this keeps track of whether we have seen a GatherNode already (and which one)
-  GatherNode* gn = nullptr;
-  for (auto const& n : nodes) {
-    if (gn != nullptr) {
-      // we already saw a GatherNode and now found another one. if there are
-      // two or more GatherNodes in the same query, we cannot make any of them parallel,
-      // as this would mean two threads could access the same transaction object on
-      // the same server. we can optimize this in the future by making the transaction
-      // object really thread-safe
-      gn = nullptr;
-      break;
+  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
+    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
+
+    if (!gn->isInSubquery() && gn->isParallelizable()) {
+      gn->setParallelism(GatherNode::Parallelism::Parallel);
+      modified = true;
     }
-    // keep track of seen GatherNode
-    gn = ExecutionNode::castTo<GatherNode*>(n);
-  }
-
-  if (gn != nullptr && gn->isParallelizable()) {
-    gn->setParallelism(GatherNode::Parallelism::Parallel);
-    modified = true;
   }
 
   opt->addPlan(std::move(plan), rule, modified);
