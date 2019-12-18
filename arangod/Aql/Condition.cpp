@@ -747,19 +747,19 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
-void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/) {
+void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/, bool noDNFConversion /*= false*/) {
   if (_isNormalized) {
     // already normalized
     return;
   }
  
   _root = transformNodePreorder(_root);
-  _root = transformNodePostorder(_root);
+  _root = transformNodePostorder(_root, noDNFConversion);
   _root = fixRoot(_root, 0);
   optimize(plan, multivalued);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr) {
+  if (_root != nullptr && !noDNFConversion) { // if DNF conversion is explicitly disabled - don`t check
     // _root->dump(0);
     validateAst(_root, 0);
   }
@@ -1666,7 +1666,7 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
 }
 
 /// @brief converts from negation normal to disjunctive normal form
-AstNode* Condition::transformNodePostorder(AstNode* node) {
+AstNode* Condition::transformNodePostorder(AstNode* node, bool noDNFConversion /*= false*/) {
   if (node == nullptr) {
     return node;
   }
@@ -1682,7 +1682,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
 
     for (size_t i = 0; i < n; ++i) {
       // process subnodes first
-      auto sub = transformNodePostorder(node->getMemberUnchecked(i));
+      auto sub = transformNodePostorder(node->getMemberUnchecked(i), noDNFConversion);
       node->changeMember(i, sub);
 
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {
@@ -1698,7 +1698,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
       n = node->numMembers();
     }
 
-    if (distributeOverChildren) {
+    if (distributeOverChildren && !noDNFConversion) {
       // we found an AND with at least one OR child, e.g.
       //        AND
       //   OR          c
@@ -1787,7 +1787,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
     bool mustCollapse = false;
 
     for (size_t i = 0; i < n; ++i) {
-      auto sub = transformNodePostorder(node->getMemberUnchecked(i));
+      auto sub = transformNodePostorder(node->getMemberUnchecked(i), noDNFConversion);
       node->changeMember(i, sub);
 
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {

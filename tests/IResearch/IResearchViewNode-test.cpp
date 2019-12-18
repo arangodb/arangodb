@@ -353,11 +353,104 @@ TEST_F(IResearchViewNodeTest, construct) {
     EXPECT_EQ(1, setHere.size());
     EXPECT_EQ(&outVariable, setHere[0]);
     EXPECT_TRUE(node.options().forceSync);
+    EXPECT_EQ(arangodb::iresearch::ConditionOptimization::Auto, node.options().conditionOptimization);
 
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
   }
 
+  // with options default optimization
+  {
+    // build options node
+    std::string value{ "auto" };
+    arangodb::aql::AstNode attributeValue(arangodb::aql::NODE_TYPE_VALUE);
+    attributeValue.setValueType(arangodb::aql::VALUE_TYPE_STRING);
+    attributeValue.setStringValue(value.c_str(), value.size());
+    arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeName.addMember(&attributeValue);
+    std::string name{ "conditionOptimization" };
+    attributeName.setStringValue(name.c_str(), name.size());
+    arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
+    options.addMember(&attributeName);
+
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+      42,             // id
+      vocbase,        // database
+      logicalView,    // view
+      outVariable,    // out variable
+      nullptr,  // no filter condition
+      &options, {});  // no sort condition
+
+    EXPECT_TRUE(node.empty());                // view has no links
+    EXPECT_TRUE(node.collections().empty());  // view has no links
+    EXPECT_TRUE(node.shards().empty());
+
+    EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
+    EXPECT_EQ(&outVariable, &node.outVariable());
+    EXPECT_EQ(query.plan(), node.plan());
+    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(logicalView, node.view());
+    EXPECT_TRUE(node.scorers().empty());
+    EXPECT_FALSE(node.volatility().first);   // filter volatility
+    EXPECT_FALSE(node.volatility().second);  // sort volatility
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    EXPECT_TRUE(usedHere.empty());
+    auto const setHere = node.getVariablesSetHere();
+    EXPECT_EQ(1, setHere.size());
+    EXPECT_EQ(&outVariable, setHere[0]);
+    EXPECT_FALSE(node.options().forceSync);
+    EXPECT_EQ(arangodb::iresearch::ConditionOptimization::Auto, node.options().conditionOptimization);
+
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
+  }
+  // with options none optimization
+  {
+    // build options node
+    std::string value{ "none" };
+    arangodb::aql::AstNode attributeValue(arangodb::aql::NODE_TYPE_VALUE);
+    attributeValue.setValueType(arangodb::aql::VALUE_TYPE_STRING);
+    attributeValue.setStringValue(value.c_str(), value.size());
+    arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeName.addMember(&attributeValue);
+    std::string name{ "conditionOptimization" };
+    attributeName.setStringValue(name.c_str(), name.size());
+    arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
+    options.addMember(&attributeName);
+
+    arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+      42,             // id
+      vocbase,        // database
+      logicalView,    // view
+      outVariable,    // out variable
+      nullptr,  // no filter condition
+      &options, {});  // no sort condition
+
+    EXPECT_TRUE(node.empty());                // view has no links
+    EXPECT_TRUE(node.collections().empty());  // view has no links
+    EXPECT_TRUE(node.shards().empty());
+
+    EXPECT_EQ(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, node.getType());
+    EXPECT_EQ(&outVariable, &node.outVariable());
+    EXPECT_EQ(query.plan(), node.plan());
+    EXPECT_EQ(42, node.id());
+    EXPECT_EQ(logicalView, node.view());
+    EXPECT_TRUE(node.scorers().empty());
+    EXPECT_FALSE(node.volatility().first);   // filter volatility
+    EXPECT_FALSE(node.volatility().second);  // sort volatility
+    arangodb::containers::HashSet<arangodb::aql::Variable const*> usedHere;
+    node.getVariablesUsedHere(usedHere);
+    EXPECT_TRUE(usedHere.empty());
+    auto const setHere = node.getVariablesSetHere();
+    EXPECT_EQ(1, setHere.size());
+    EXPECT_EQ(&outVariable, setHere[0]);
+    EXPECT_FALSE(node.options().forceSync);
+    EXPECT_EQ(arangodb::iresearch::ConditionOptimization::None, node.options().conditionOptimization);
+
+    EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
+    EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
+  }
   // invalid options
   {
     // build options node
@@ -380,7 +473,52 @@ TEST_F(IResearchViewNodeTest, construct) {
                                                nullptr,  // no filter condition
                                                &options, {}));  // no sort condition
   }
+  // invalid option conditionOptimization
+  {
+    // build options node
+    std::string value{ "none2" };
+    arangodb::aql::AstNode attributeValue(arangodb::aql::NODE_TYPE_VALUE);
+    attributeValue.setValueType(arangodb::aql::VALUE_TYPE_STRING);
+    attributeValue.setStringValue(value.c_str(), value.size());
+    arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeName.addMember(&attributeValue);
+    std::string name{ "conditionOptimization" };
+    attributeName.setStringValue(name.c_str(), name.size());
+    arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
+    options.addMember(&attributeName);
 
+    EXPECT_ANY_THROW(
+      arangodb::iresearch::IResearchViewNode(*query.plan(),  // plan
+        42,             // id
+        vocbase,        // database
+        logicalView,    // view
+        outVariable,    // out variable
+        nullptr,  // no filter condition
+        &options, {}));  // no sort condition
+  }
+
+  // invalid option conditionOptimization non-string
+  {
+    // build options node
+    arangodb::aql::AstNode attributeValue(arangodb::aql::NODE_TYPE_VALUE);
+    attributeValue.setValueType(arangodb::aql::VALUE_TYPE_BOOL);
+    attributeValue.setBoolValue(false);
+    arangodb::aql::AstNode attributeName(arangodb::aql::NODE_TYPE_OBJECT_ELEMENT);
+    attributeName.addMember(&attributeValue);
+    std::string name{ "conditionOptimization" };
+    attributeName.setStringValue(name.c_str(), name.size());
+    arangodb::aql::AstNode options(arangodb::aql::NODE_TYPE_OBJECT);
+    options.addMember(&attributeName);
+
+    EXPECT_ANY_THROW(
+      arangodb::iresearch::IResearchViewNode(*query.plan(),  // plan
+        42,             // id
+        vocbase,        // database
+        logicalView,    // view
+        outVariable,    // out variable
+        nullptr,  // no filter condition
+        &options, {}));  // no sort condition
+  }
   // invalid options
   {
     // build options node

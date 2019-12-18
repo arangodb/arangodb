@@ -47,6 +47,10 @@ enum class MaterializeType {
   Materialized, LateMaterialized, LateMaterializedWithVars
 };
 
+enum class ConditionOptimization {
+  Auto, None
+};
+
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   friend class arangodb::aql::RedundantCalculationsReplacer;
@@ -62,6 +66,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief sync view before querying to get the latest index snapshot
     bool forceSync{false};
+
+    /// @brief condition optimization Auto - condition will be transformed to DNF.
+    ConditionOptimization conditionOptimization{ ConditionOptimization::Auto };
+
   };  // Options
 
   IResearchViewNode(aql::ExecutionPlan& plan, size_t id, TRI_vocbase_t& vocbase,

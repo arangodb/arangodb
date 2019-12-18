@@ -144,7 +144,9 @@ class Condition {
   /// this will convert the condition into its disjunctive normal form
   /// @param mutlivalued attributes may have more than one value
   ///                    (ArangoSearch view case)
-  void normalize(ExecutionPlan*, bool multivalued = false);
+  /// @param noDNFConversion skip converting condition to DNF. May be useful if 
+  ///                        DNF conversion takes more time than executing original condition
+  void normalize(ExecutionPlan*, bool multivalued = false, bool noDNFConversion = false);
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
@@ -212,7 +214,9 @@ class Condition {
   AstNode* transformNodePreorder(AstNode*);
 
   /// @brief converts from negation normal to disjunctive normal form
-  AstNode* transformNodePostorder(AstNode*);
+  /// @param noDNFConversion skip converting condition to DNF. May be useful if 
+  ///                        DNF conversion takes more time than executing original condition
+  AstNode* transformNodePostorder(AstNode*, bool noDNFConversion = false);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step
