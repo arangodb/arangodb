@@ -114,6 +114,29 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       });
       assertEqual(0, expectedKeys.size);
     },
+    testQueryResultsWithoutDocAccess() {
+      let query = "FOR d IN " + vn + " RETURN 1";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(4, result.json.length);
+      result.json.forEach(function(doc) {
+        assertEqual(1, doc);
+      });
+    },
+    testQueryResultsWithSortedView() {
+      let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] SORT d.obj.a.a1 LIMIT 10 RETURN d.obj.e.e1";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(2, result.json.length);
+      let expectedKeys = new Set([14, 4]);
+      result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc));
+        expectedKeys.delete(doc);
+      });
+      assertEqual(0, expectedKeys.size);
+    }
   };
 }
 

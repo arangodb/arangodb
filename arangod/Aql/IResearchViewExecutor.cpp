@@ -705,9 +705,13 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
           return false;
         }
       }
-      if (!tryWriteDoc) {
-        return true;
-      }
+    } else if (Traits::MaterializeType == MaterializeType::NotMaterialize) {
+      AqlValue v(VPackSlice::noneSlice());
+      AqlValueGuard guard{v, true};
+      ctx.outputRow.moveValueInto(infos().getOutputRegister(), ctx.inputRow, guard);
+    }
+    if (!tryWriteDoc) {
+      return true;
     }
   }
   if (writeDocOk) {

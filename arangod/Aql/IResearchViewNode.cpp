@@ -680,6 +680,7 @@ const char* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
 const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
 const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
+const char* NODE_VIEW_IS_NO_MATERIALIZATION = "isNoMaterialization";
 
 void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
                       IResearchViewNode::ViewVariable const& fieldVar) {
@@ -767,6 +768,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
       _outVariable(&outVariable),
       _outNonMaterializedDocId(nullptr),
       _outNonMaterializedColPtr(nullptr),
+      _isNoMaterialization(false),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(filterCondition ? filterCondition : &ALL),
@@ -944,7 +946,15 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     }
   }
 
-  {
+  auto const isNoMaterializationSlice = base.get(NODE_VIEW_IS_NO_MATERIALIZATION);
+  if (!isNoMaterializationSlice.isBool()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(
+        TRI_ERROR_BAD_PARAMETER, "\"isNoMaterialization\" %s should be a bool value",
+        isNoMaterializationSlice.toString().c_str());
+  }
+  _isNoMaterialization = isNoMaterializationSlice.getBool();
+
+  if (isLateMaterialized() || isNoMaterialization()) {
     auto const* vars = plan.getAst()->variables();
     TRI_ASSERT(vars);
 
@@ -1001,8 +1011,7 @@ void IResearchViewNode::planNodeRegisters(
     varInfo.try_emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
   }
 
-  // Plan register for document-id only block
-  if (isLateMaterialized() || !_outNonMaterializedViewVars.empty()) {
+  if (isLateMaterialized() || isNoMaterialization()) {
     if (isLateMaterialized()) {
       ++nrRegsHere[depth];
       ++nrRegs[depth];
@@ -1010,6 +1019,12 @@ void IResearchViewNode::planNodeRegisters(
       ++nrRegsHere[depth];
       ++nrRegs[depth];
       varInfo.try_emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
+    } else if (_outNonMaterializedViewVars.empty()) {
+      // there is no variable if isNoMaterialization()
+      TRI_ASSERT(isNoMaterialization());
+      ++nrRegsHere[depth];
+      ++nrRegs[depth];
+      ++totalNrRegs;
     }
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       for (auto const& fieldVar : columnFieldsVars.second) {
@@ -1018,7 +1033,7 @@ void IResearchViewNode::planNodeRegisters(
         varInfo.try_emplace(fieldVar.var->id, aql::VarInfo(depth, totalNrRegs++));
       }
     }
-  } else {
+  } else { // plan register for document-id only block
     ++nrRegsHere[depth];
     ++nrRegs[depth];
     varInfo.try_emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
@@ -1059,6 +1074,8 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add(VPackValue(NODE_OUT_NM_COL_PARAM));
     _outNonMaterializedColPtr->toVelocyPack(nodes);
   }
+
+  nodes.add(NODE_VIEW_IS_NO_MATERIALIZATION, VPackValue(_isNoMaterialization));
 
   // stored value
   {
@@ -1207,6 +1224,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
   if (outNonMaterializedColId != nullptr && outNonMaterializedDocId != nullptr) {
     node->setLateMaterialized(outNonMaterializedColId, outNonMaterializedDocId);
   }
+  node->_isNoMaterialization = _isNoMaterialization;
   node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
@@ -1233,7 +1251,7 @@ void IResearchViewNode::getVariablesUsedHere(
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
 
-  if (isLateMaterialized() || !_outNonMaterializedViewVars.empty()) {
+  if (isLateMaterialized() || isNoMaterialization()) {
     vars.erase(_outVariable);
   }
 
@@ -1249,14 +1267,14 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
   // collection + docId or document
   if (isLateMaterialized()) {
     reserve += 2;
-  } else if (_outNonMaterializedViewVars.empty()) {
+  } else if (!isNoMaterialization()) {
     reserve += 1;
   }
   vars.reserve(reserve);
 
   std::transform(_scorers.cbegin(), _scorers.cend(), std::back_inserter(vars),
     [](auto const& scorer) { return scorer.var; });
-  if (isLateMaterialized() || !_outNonMaterializedViewVars.empty()) {
+  if (isLateMaterialized() || isNoMaterialization()) {
     if (isLateMaterialized()) {
       vars.emplace_back(_outNonMaterializedColPtr);
       vars.emplace_back(_outNonMaterializedDocId);
@@ -1281,7 +1299,7 @@ std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInpu
     ::arangodb::containers::HashSet<aql::Variable const*> vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
-    if (isLateMaterialized() || !_outNonMaterializedViewVars.empty()) {
+    if (isLateMaterialized() || isNoMaterialization()) {
       vars.erase(_outVariable);
     }
 
@@ -1400,10 +1418,16 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   aql::RegisterCount numDocumentRegs = 0;
   MaterializeType materializeType = MaterializeType::Zero;
   if (isLateMaterialized()) {
+    TRI_ASSERT(!isNoMaterialization());
     materializeType = MaterializeType::LateMaterialize;
     numDocumentRegs += 2;
-  } else if (!_outNonMaterializedViewVars.empty()) {
+  } else if (isNoMaterialization()) {
+    TRI_ASSERT(!isLateMaterialized());
     materializeType = MaterializeType::NotMaterialize;
+    // Register for a loop
+    if (_outNonMaterializedViewVars.empty()) {
+      numDocumentRegs += 1;
+    }
   } else {
     materializeType = MaterializeType::Materialize;
     numDocumentRegs += 1;
@@ -1515,6 +1539,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
   ViewVarsInfo uniqueVariables;
   // at first use variables from simple expressions
   for (auto calcNode : calcNodes) {
+    // a node is already unlinked
+    if (calcNode->getParents().empty()) {
+      continue;
+    }
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
     auto const& calcNodeData = _nodesToChange[calcNode];
     TRI_ASSERT(!calcNodeData.empty());
@@ -1531,6 +1559,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
   auto ast = calcNodes.back()->expression()->ast();
   // create variables for complex expressions
   for (auto calcNode : calcNodes) {
+    // a node is already unlinked
+    if (calcNode->getParents().empty()) {
+      continue;
+    }
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
     auto const& calcNodeData = _nodesToChange[calcNode];
     for (auto const& afData : calcNodeData) {
@@ -1543,6 +1575,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
     }
   }
   for (auto calcNode : calcNodes) {
+    // a node is already unlinked
+    if (calcNode->getParents().empty()) {
+      continue;
+    }
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
     auto const& calcNodeData = _nodesToChange[calcNode];
     for (auto const& afData : calcNodeData) {
@@ -1571,6 +1607,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
   }
   // at first use variables from simple expressions
   for (auto calcNode : _nodesToChange) {
+    // a node is already unlinked
+    if (calcNode.first->getParents().empty()) {
+      continue;
+    }
     TRI_ASSERT(!calcNode.second.empty());
     auto const& afData = calcNode.second[0];
     if (afData.parentNode == nullptr && afData.postfix.empty()) {
@@ -1585,6 +1625,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
   auto ast = _nodesToChange.begin()->first->expression()->ast();
   // create variables for complex expressions
   for (auto calcNode : _nodesToChange) {
+    // a node is already unlinked
+    if (calcNode.first->getParents().empty()) {
+      continue;
+    }
     for (auto const& afData : calcNode.second) {
       // create a variable if necessary
       if ((afData.parentNode != nullptr || !afData.postfix.empty()) &&
@@ -1595,6 +1639,10 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceAll
     }
   }
   for (auto calcNode : _nodesToChange) {
+    // a node is already unlinked
+    if (calcNode.first->getParents().empty()) {
+      continue;
+    }
     for (auto const& afData : calcNode.second) {
       auto it = uniqueVariables.find(afData.field);
       TRI_ASSERT(it != uniqueVariables.cend());

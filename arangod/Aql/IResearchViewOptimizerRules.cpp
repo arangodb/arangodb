@@ -463,8 +463,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
     auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
     if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
-      auto& viewNodeState = viewNode.state();
-      if (viewNodeState.isNoDocumentMaterializationEnabled() || viewNode.isLateMaterialized()) {
+      if (viewNode.isNoMaterialization() || viewNode.isLateMaterialized()) {
         continue; // loop is already optimized
       }
       ExecutionNode* current = limitNode->getFirstDependency();
@@ -476,6 +475,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       bool stickToSortNode = false;
       auto const& var = viewNode.outVariable();
       std::vector<aql::CalculationNode*> calcNodes; // nodes variables can be replaced
+      auto& viewNodeState = viewNode.state();
       while (current != loop) {
         auto type = current->getType();
         switch (type) {
@@ -617,7 +617,7 @@ void noDocumentMaterializationArangoSearchRule(Optimizer* opt,
     TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == type);
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
     auto& viewNodeState = viewNode.state();
-    if (viewNodeState.isNoDocumentMaterializationDisabled()) {
+    if (!viewNodeState.isNoDocumentMaterializationPossible()) {
       continue; // can not optimize
     }
     auto current = node;
@@ -671,7 +671,7 @@ void noDocumentMaterializationArangoSearchRule(Optimizer* opt,
         plan->unlinkNodes(toUnlink);
       }
     }
-    viewNodeState.enableNoDocumentMaterialization();
+    viewNode.setNoMaterialization();
     modified = true;
   }
 }

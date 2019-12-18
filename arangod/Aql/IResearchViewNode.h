@@ -95,13 +95,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @returns true if underlying view has no links
   bool empty() const noexcept;
 
-  void setLateMaterialized(aql::Variable const* colPtrVariable,
-                           aql::Variable const* docIdVariable) noexcept {
-    TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
-    _outNonMaterializedDocId = docIdVariable;
-    _outNonMaterializedColPtr = colPtrVariable;
-  }
-
   /// @brief the cost of an enumerate view node
   aql::CostEstimate estimateCost() const override final;
 
@@ -184,9 +177,24 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
 
-  bool isLateMaterialized() const {
+  bool isLateMaterialized() const noexcept{
     return _outNonMaterializedDocId != nullptr &&
            _outNonMaterializedColPtr != nullptr;
+  }
+
+  void setLateMaterialized(aql::Variable const* colPtrVariable,
+                           aql::Variable const* docIdVariable) noexcept {
+    TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
+    _outNonMaterializedDocId = docIdVariable;
+    _outNonMaterializedColPtr = colPtrVariable;
+  }
+
+  bool isNoMaterialization() const noexcept {
+    return _isNoMaterialization;
+  }
+
+  void setNoMaterialization() noexcept {
+    _isNoMaterialization = true;
   }
 
   static const int SortColumnNumber;
@@ -224,12 +232,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
     std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
 
-    enum class NoDocumentMaterializationStatus {
-      Unknown, Enabled, Disabled
-    };
-
-    /// @brief is late document materialization enabled (can be disabled by another rule)
-    NoDocumentMaterializationStatus _noDocMaterStatus = NoDocumentMaterializationStatus::Unknown;
+    /// @brief is no document materialization possible
+    bool _noDocMaterStatus = true;
 
    public:
     void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs<aql::latematerialized::AstAndColumnFieldData>> const& nodesToChange);
@@ -244,20 +248,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
       _nodesToChange.clear();
     }
 
-    bool isNoDocumentMaterializationEnabled() const noexcept {
-      return NoDocumentMaterializationStatus::Enabled == _noDocMaterStatus;
-    }
-
-    bool isNoDocumentMaterializationDisabled() const noexcept {
-      return NoDocumentMaterializationStatus::Disabled == _noDocMaterStatus;
-    }
-
-    void enableNoDocumentMaterialization() noexcept {
-      _noDocMaterStatus = NoDocumentMaterializationStatus::Enabled;
+    bool isNoDocumentMaterializationPossible() const noexcept {
+      return _noDocMaterStatus;
     }
 
     void disableNoDocumentMaterialization() noexcept {
-      _noDocMaterStatus = NoDocumentMaterializationStatus::Disabled;
+      _noDocMaterStatus = false;
     }
   };
 
@@ -288,6 +284,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief output variables to non-materialized document view sort references
   ViewValuesVars _outNonMaterializedViewVars;
+
+  /// @brief is no materialization should be applied
+  bool _isNoMaterialization;
 
   OptimizationState _optState;
 
