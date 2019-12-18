@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/ResultT.h"
 #include "VocBase/voc-types.h"
 
@@ -208,9 +209,9 @@ class ServerState {
   /// @brief set the server short id
   void setShortId(uint32_t);
 
-  uint64_t getRebootId() const;
+  RebootId getRebootId() const;
 
-  void setRebootId(uint64_t rebootId);
+  void setRebootId(RebootId rebootId);
 
   /// @brief get the server endpoint
   std::string getEndpoint();
@@ -319,7 +320,7 @@ class ServerState {
   ///
   /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
   /// can be used through a notification architecture from there
-  uint64_t _rebootId;
+  RebootId _rebootId;
 
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;
