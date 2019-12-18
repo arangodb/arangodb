@@ -3773,7 +3773,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       });
 
-      // we have to reset the timeout, otherwise the code below will exit to soon
+      // we have to reset the timeout, otherwise the code below will exit too soon
       end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000 * timeout));
 
       // send the locks
