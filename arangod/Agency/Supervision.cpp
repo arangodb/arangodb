@@ -1486,7 +1486,8 @@ void Supervision::checkBrokenCollections() {
     for (auto const& collectionPair : db->children()) {
       // collectionPair.first is collection id
       std::pair<std::string, bool> collectionNamePair = collectionPair.second->hasAsString(StaticStrings::DataSourceName);
-      if (!collectionNamePair.second || collectionNamePair.first.front() == '_') {
+      std::string const& collectionName = collectionNamePair.first;
+      if (!collectionNamePair.second || collectionName.empty() || collectionName.front() == '_') {
         continue;
       }
 
