@@ -395,8 +395,21 @@ function iResearchFeatureAqlServerSideTestSuite () {
         // on Single server we could also check fs (on cluster we are on 
         // coordinator, so nothing to do)
         // no new arangosearch folders should be present
-        let afterLinkCount = getLinksCount();
-        assertEqual(beforeLinkCount, afterLinkCount);
+        // due to race conditions in FS (on MACs specifically)
+        // we will do several attempts
+        let tryCount = 3;
+        while (tryCount > 0) {
+          let afterLinkCount = getLinksCount();
+          if (afterLinkCount === beforeLinkCount) {
+          	break; // all is ok.
+          }
+          if (tryCount > 0) {
+            tryCount--;
+            require('internal').sleep(5);
+          } else {
+            assertEqual(beforeLinkCount, afterLinkCount);
+          }
+        }
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);
