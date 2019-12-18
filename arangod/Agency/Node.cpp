@@ -502,22 +502,18 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 /// Increment integer value or set 1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) {
-  size_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
-                   ? slice.get("step").getUInt() : 1;
+  int inc = (slice.hasKey("step") && slice.get("step").isUInt())
+                   ? slice.get("step").getInt() : 1;
   Builder tmp;
-  bool applied = false;
+  int pre = 0;
   {
     VPackObjectBuilder t(&tmp);
     try {
-      if (!lifetimeExpired()) {
-        tmp.add("tmp", Value(this->slice().getInt() + inc));
-        applied = true;
+      if (!_value.empty() && !lifetimeExpired()) {
+        pre = this->slice().getInt();
       }
     } catch (...) {}
-
-    if (!applied) {
-      tmp.add("tmp", Value(1));
-    }
+    tmp.add("tmp", Value(pre + inc));
   }
   *this = tmp.slice().get("tmp");
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
@@ -526,20 +522,18 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
 /// Decrement integer value or set -1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) {
+  int inc = (slice.hasKey("step") && slice.get("step").isUInt())
+                   ? slice.get("step").getInt() : 1;
   Builder tmp;
-  bool applied = false;
+  int pre = 0;
   {
     VPackObjectBuilder t(&tmp);
     try {
-      if (!lifetimeExpired()) {
-        tmp.add("tmp", Value(this->slice().getInt() - 1));
-        applied = true;
+      if (!_value.empty() && !lifetimeExpired()) {
+        pre = this->slice().getInt();
       }
     } catch (...) {}
-
-    if (!applied) {
-      tmp.add("tmp", Value(-1));
-    }
+    tmp.add("tmp", Value(pre - inc));
   }
   *this = tmp.slice().get("tmp");
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
@@ -695,8 +689,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
   Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
+  {    VPackArrayBuilder t(&tmp);
     if (this->slice().isArray() && !lifetimeExpired()) {  // If a
       VPackArrayIterator it(this->slice());
       bool first = true;
