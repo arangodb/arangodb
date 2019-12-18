@@ -1044,7 +1044,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
               {
                 VPackArrayBuilder trx(builder.get());
                 {
-                  VPackObjectBuilder update(builder.get ());
+                  VPackObjectBuilder update(builder.get());
                   // remove the shard in current
                   builder->add(VPackValue(currenturl));
                   {
@@ -1489,7 +1489,7 @@ void Supervision::checkBrokenCollections() {
       if (!collectionNamePair.second || collectionNamePair.first.front() == '_') {
         continue;
       }
-      LOG_DEVEL << collectionNamePair.first;
+
       ifResourceCreatorLost(collectionPair.second,
                             [&](ResourceCreatorLostEvent const& ev) {
                               LOG_TOPIC("fe523", INFO, Logger::SUPERVISION) << "checkBrokenCollections: removing broken collection with name "
