@@ -946,13 +946,17 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     }
   }
 
-  auto const isNoMaterializationSlice = base.get(NODE_VIEW_IS_NO_MATERIALIZATION);
-  if (!isNoMaterializationSlice.isBool()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER, "\"isNoMaterialization\" %s should be a bool value",
-        isNoMaterializationSlice.toString().c_str());
+  if (base.hasKey(NODE_VIEW_IS_NO_MATERIALIZATION)) {
+    auto const isNoMaterializationSlice = base.get(NODE_VIEW_IS_NO_MATERIALIZATION);
+    if (!isNoMaterializationSlice.isBool()) {
+      THROW_ARANGO_EXCEPTION_FORMAT(
+          TRI_ERROR_BAD_PARAMETER, "\"isNoMaterialization\" %s should be a bool value",
+          isNoMaterializationSlice.toString().c_str());
+    }
+    _isNoMaterialization = isNoMaterializationSlice.getBool();
+  } else {
+    _isNoMaterialization = false;
   }
-  _isNoMaterialization = isNoMaterializationSlice.getBool();
 
   if (isLateMaterialized() || isNoMaterialization()) {
     auto const* vars = plan.getAst()->variables();
@@ -1075,7 +1079,9 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     _outNonMaterializedColPtr->toVelocyPack(nodes);
   }
 
-  nodes.add(NODE_VIEW_IS_NO_MATERIALIZATION, VPackValue(_isNoMaterialization));
+  if (_isNoMaterialization) {
+    nodes.add(NODE_VIEW_IS_NO_MATERIALIZATION, VPackValue(_isNoMaterialization));
+  }
 
   // stored value
   {
