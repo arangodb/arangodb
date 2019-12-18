@@ -7264,16 +7264,65 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<Execut
   
   bool modified = false;
 
+  // find all GatherNodes in the main query, starting from the query's root node
+  // (the node most south when looking at the query execution plan).
+  // 
+  // for now, we effectively stop right after the first GatherNode we found, regardless
+  // of whether we can make that node use parallelism or not.
+  // the reason we have to stop here is that if we have multiple query snippets on a
+  // server they will use the same underlying transaction object. however,
+  // transactions are not thread-safe right now, so we must avoid any parallelism when
+  // there can be another snippet with the same transaction on the same server.
+  //
+  // for example consider the following query, joining the shards of two collections 
+  // on 2 database servers:
+  //
+  //   (4)      DBS1                            DBS2               database
+  //        users, shard 1                 users, shard 2          servers
+  //       --------------------------------------------------------
+  //   (3)                      Gather                             coordinator 
+  //       -------------------------------------------------------- 
+  //   (2)      DBS1            Scatter         DBS2               database
+  //       orders, shard 1                orders, shard 2          servers
+  //       -------------------------------------------------------- 
+  //   (1)                      Gather                             coordinator
+  //
+  // the query starts with a GatherNode (1). if we make that parallel, then it will 
+  // ask the shards of `orders` on the database servers in parallel (2). So there
+  // can be 2 threads in (2), on different servers. all is fine until here.
+  // however, if the thread for DBS1 fetches upstream data from the coordinator (3),
+  // then the coordinator may reach out to DBS2 to get more data from the `users`
+  // collection (4). so one thread will be on DBS2 and using the transaction. at
+  // the very same time we already have another thread working on the same server on
+  // (2). they are using the same transaction object, which currently is not 
+  // thread-safe.
+  // we need to avoid any such situation, and thus we cannot make any of the GatherNodes
+  // thread-safe here. the only case in which we currently can employ parallelization
+  // is when there is only a single GatherNode. all other restrictions for 
+  // parallelization (e.g. no DistributeNodes around) still apply.
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, false);
 
+  // this keeps track of whether we have seen a GatherNode already (and which one)
+  GatherNode* gn = nullptr;
   for (auto const& n : nodes) {
-    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(n);
-    if (gn->isParallelizable()) {
-      gn->setParallelism(GatherNode::Parallelism::Parallel);
-      modified = true;
+    if (gn != nullptr) {
+      // we already saw a GatherNode and now found another one. if there are
+      // two or more GatherNodes in the same query, we cannot make any of them parallel,
+      // as this would mean two threads could access the same transaction object on
+      // the same server. we can optimize this in the future by making the transaction
+      // object really thread-safe
+      gn = nullptr;
+      break;
     }
+    // keep track of seen GatherNode
+    gn = ExecutionNode::castTo<GatherNode*>(n);
+  }
+
+  if (gn != nullptr && gn->isParallelizable()) {
+    gn->setParallelism(GatherNode::Parallelism::Parallel);
+    modified = true;
   }
 
   opt->addPlan(std::move(plan), rule, modified);
@@ -7281,7 +7330,7 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<Execut
 
 namespace {
 
-bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
+bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* node) {
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:

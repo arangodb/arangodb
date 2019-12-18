@@ -33,7 +33,7 @@ bool ShardingStrategy::isCompatible(ShardingStrategy const* other) const {
   return name() == other->name();
 }
 
-void ShardingStrategy::toVelocyPack(VPackBuilder& result) {
+void ShardingStrategy::toVelocyPack(VPackBuilder& result) const {
   // only need to print sharding strategy if we are in a cluster
   if (ServerState::instance()->isRunningInCluster()) {
     result.add("shardingStrategy", VPackValue(name()));
