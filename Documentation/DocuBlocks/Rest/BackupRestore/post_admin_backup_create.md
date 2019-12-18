@@ -31,12 +31,15 @@ a timeout results in an HTTP 408 error.
 @RESTBODYPARAM{force,boolean,optional,}
 If this flag is set to `true` and no global transaction lock can be acquired
 within the given timeout, all running transactions are forcefully aborted to
-ensure that a consistent backup can be created. This is almost certainly not
-what you want for your application. In the presence of intermediate commits
-it can even destroy the atomicity of your transactions. Use at your own risk,
-and only if you need a consistent backup at all costs. The default and
-recommended value is `false`. If both `allowInconsistent` and `force` are set
-to `true`, then the latter takes precedence and transactions are aborted.
+ensure that a consistent backup can be created. This does not include 
+JavaScript transactions. It waits for the transactions to be aborted at most 
+`timeout` seconds. Thus using `force` the request timeout is doubled.
+To abort transactions is almost certainly not what you want for your application. 
+In the presence of intermediate commits it can even destroy the atomicity of your
+transactions. Use at your own risk, and only if you need a consistent backup at 
+all costs. The default and recommended value is `false`. If both 
+`allowInconsistent` and `force` are set to `true`, then the latter takes 
+precedence and transactions are aborted. This is only available in the cluster.
 
 @RESTRETURNCODES
 
