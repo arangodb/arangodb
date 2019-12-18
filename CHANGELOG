@@ -10,8 +10,6 @@ v3.6.0-rc.2 (XXXX-XX-XX)
 * Fixed bug in `--query.parallelize-gather-writes-behavior` which led to
   the option not working correctly.
 
-* Fixed a bug, where a single host agency logged to early.
-
 * Agency relational operators TTL fix.
 
 * Improve latency in scheduler.
