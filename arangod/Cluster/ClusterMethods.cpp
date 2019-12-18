@@ -732,7 +732,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
                                      "' it is already distributed like '" + name + "'.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
   }
-  
+
   auto result =
       std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
@@ -927,7 +927,7 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   if (collinfo == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(300.0);
@@ -937,7 +937,7 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
-  
+
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shards) {
     auto future =
@@ -991,7 +991,7 @@ futures::Future<Result> warmupOnCoordinator(ClusterFeature& feature,
   // If we get here, the sharding attributes are not only _key, therefore
   // we have to contact everybody:
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
-  
+
   network::RequestOptions opts;
   opts.database = dbname;
   opts.timeout = network::Timeout(300.0);
@@ -1040,7 +1040,7 @@ futures::Future<OperationResult> figuresOnCoordinator(ClusterFeature& feature,
   if (collinfo == nullptr) {
     return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(300.0);
@@ -1113,7 +1113,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
       return futures::makeFuture(OperationResult(res));
     }
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
@@ -1183,7 +1183,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.retryNotFound = true;
@@ -1227,7 +1227,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
     if (!answer.isObject()) {
       return {TRI_ERROR_INTERNAL, "invalid response structure"};
     }
-   
+
     if (answer.hasKey(StaticStrings::ErrorNum)) {
       Result res = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
 
@@ -1316,9 +1316,9 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     if (r.fail()) {
       return OperationResult(std::move(r));
     }
-    
+
     std::string const baseUrl = "/_api/document/";
-    
+
     network::RequestOptions reqOpts;
     reqOpts.database = trx.vocbase().name();
     reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
@@ -1329,7 +1329,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
            .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
 
-    
+
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
@@ -1428,7 +1428,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     }
   }
   // We sorted the shards correctly.
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
@@ -1581,7 +1581,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
       return futures::makeFuture(OperationResult(res));
     }
   }
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.timeout = network::Timeout(600.0);
@@ -1660,7 +1660,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   // Some stuff to prepare cluster-internal requests:
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.retryNotFound = true;
@@ -1843,7 +1843,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
   std::string const url = "/_internal/traverser/edge/";
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.skipScheduler = true; // hack to avoid scheduler queue
@@ -1873,7 +1873,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     }
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
-    
+
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
@@ -1935,7 +1935,7 @@ int fetchEdgesFromEngines(
   std::string const url = "/_internal/traverser/edge/";
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.skipScheduler = true; // hack to avoid scheduler queue
@@ -2025,7 +2025,7 @@ void fetchVerticesFromEngines(
   std::string const url = "/_internal/traverser/vertex/";
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
   reqOpts.skipScheduler = true; // hack to avoid scheduler queue
@@ -2305,7 +2305,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
-  
+
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true; // hack to avoid scheduler queue
   reqOpts.param(StaticStrings::WaitForSyncString, (waitForSync ? "true" : "false"))
@@ -2313,7 +2313,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   if (maxWaitTime >= 0.0) {
     reqOpts.param("maxWaitTime", std::to_string(maxWaitTime));
   }
-  
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
 
@@ -3775,6 +3775,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       });
 
+      // we have to reset the timeout, otherwise the code below will exit to soon
+      end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000 * timeout));
+
       // send the locks
       result = hotbackupAsyncLockDBServersTransactions(backupId, dbServers, lockWait, lockJobIds);
       if (result.fail()) {
@@ -3783,7 +3786,12 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
 
       transaction::Manager* mgr = transaction::ManagerFeature::manager();
 
-      while (lockJobIds.size() > 0) {
+      while (!lockJobIds.empty()) {
+        if (steady_clock::now() > end) {
+          return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
+                                  "hot backup timeout before locking phase");
+        }
+
         // kill all transactions
         result = mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
         if (result.fail()) {
