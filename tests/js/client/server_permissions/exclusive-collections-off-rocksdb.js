@@ -112,6 +112,7 @@ function OptionsTestSuite () {
             db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
           }
         });
+        fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
         assertEqual(409, err.code); // conflict
