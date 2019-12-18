@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, getOptions*/
+/*global assertEqual, assertNotEqual, assertTrue, getOptions, fail, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the deadlock detection
@@ -30,7 +30,7 @@
 
 if (getOptions === true) {
   return {
-    'rocksdb.exclusive-writes': 'true',
+    'rocksdb.exclusive-writes': 'false',
   };
 }
 
@@ -101,16 +101,25 @@ function OptionsTestSuite () {
         require("internal").sleep(0.02);
       }
 
-      db._executeTransaction({
-        collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
-        action: function () {
-          let db = require("internal").db;
-          for (let i = 0; i < 100000; ++i) {
-            db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+      try {
+        db._executeTransaction({
+          collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
+          action: function () {
+            let db = require("internal").db;
+            for (let i = 0; i < 100000; ++i) {
+              db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+            }
+            db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
           }
-          db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
-        }
-      });
+        });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
+        assertEqual(409, err.code); // conflict
+        assertTrue( // it is possible to get two different errors messages here (two different internal states can appear)
+          (("precondition failed" === err.errorMessage) || ("timeout waiting to lock key Operation timed out: Timeout waiting to lock key" === err.errorMessage))
+        );
+      }
 
       while (true) {
         try {
@@ -122,13 +131,10 @@ function OptionsTestSuite () {
         }
       }
 
-      // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray();
-      assertEqual(docs[0].value, true);
-      assertEqual(docs[1].value, true);
-    },
-
+      assertTrue(c2.document("runner1").value);  // runner1 transaction should succeed
+      assertFalse(c2.document("runner2").value); // runner2 transaction should fail
+    }
 
   };
 }
