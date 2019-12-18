@@ -116,7 +116,9 @@ function OptionsTestSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
         assertEqual(409, err.code); // conflict
-        assertEqual("precondition failed", err.errorMessage);
+        assertTrue( // it is possible to get two different errors messages here (two different internal states can appear)
+          (("precondition failed" === err.errorMessage) || ("timeout waiting to lock key Operation timed out: Timeout waiting to lock key" === err.errorMessage))
+        );
       }
 
       while (true) {
