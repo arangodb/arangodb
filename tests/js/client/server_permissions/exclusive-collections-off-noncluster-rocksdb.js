@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, getOptions*/
+/*global assertEqual, assertNotEqual, assertTrue, getOptions, fail, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the deadlock detection
