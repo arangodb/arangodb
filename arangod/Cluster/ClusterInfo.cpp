@@ -1998,7 +1998,7 @@ Result ClusterInfo::createCollectionsCoordinator(
                     nrDone, isCleaned, shardServers, this](VPackSlice const& result) {
       // NOTE: This ordering here is important to cover against a race in cleanup.
       // a) The Guard get's the Mutex, sets isCleaned == true, then removes the callback
-      // b) If the callback is aquired it is saved in a shared_ptr, the Mutex will be aquired first, then it will check if it isCleaned
+      // b) If the callback is acquired it is saved in a shared_ptr, the Mutex will be acquired first, then it will check if it isCleaned
       RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
       if (*isCleaned) {
         return true;

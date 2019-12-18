@@ -107,7 +107,7 @@ class EngineInfoContainerCoordinator {
   // @brief List of EngineInfos to distribute accross the cluster
   std::vector<EngineInfo> _engines;
 
-  std::stack<size_t> _engineStack;
+  std::stack<size_t, std::vector<size_t>> _engineStack;
 };
 
 }  // namespace aql
