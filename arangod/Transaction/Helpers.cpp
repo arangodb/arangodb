@@ -407,7 +407,7 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   auto cid = encoding::readNumber<uint64_t>(id.begin() + 1, sizeof(uint64_t));
 
   std::string resolved = resolver->getCollectionNameCluster(cid);
-  if (resolved == "_unknown") {
+  if (resolved == StaticStrings::UnknownCollectionName) {
     using namespace std::string_literals;
     std::string const msg = "Could not resolve collection name of "s +
                             std::to_string(cid) +

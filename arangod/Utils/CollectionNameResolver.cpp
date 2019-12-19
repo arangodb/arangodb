@@ -25,6 +25,7 @@
 
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
@@ -32,10 +33,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
-
-namespace {
-std::string const UNKNOWN("_unknown");
-}
 
 namespace arangodb {
 
@@ -223,7 +220,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
   if (ServerState::isDBServer(_serverRole)) {
     // This might be a local system collection:
     name = lookupName(cid);
-    if (name != ::UNKNOWN) {
+    if (name != StaticStrings::UnknownCollectionName) {
       WRITE_LOCKER(locker, _idLock);
       _resolvedIds.emplace(cid, name);
       return name;
@@ -251,7 +248,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
 
   LOG_TOPIC("817e8", DEBUG, arangodb::Logger::FIXME)
       << "CollectionNameResolver: was not able to resolve id " << cid;
-  return ::UNKNOWN;
+  return StaticStrings::UnknownCollectionName;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -392,7 +389,7 @@ std::string CollectionNameResolver::lookupName(TRI_voc_cid_t cid) const {
 
   // exactly as in the non-cluster case
   if (!ServerState::isDBServer(_serverRole)) {
-    return collection ? collection->name() : ::UNKNOWN;
+    return collection ? collection->name() : StaticStrings::UnknownCollectionName;
   }
 
   // DBserver case of a shard:
@@ -406,7 +403,7 @@ std::string CollectionNameResolver::lookupName(TRI_voc_cid_t cid) const {
     return collection->name();
   }
 
-  return ::UNKNOWN;
+  return StaticStrings::UnknownCollectionName;
 }
 
 }  // namespace arangodb

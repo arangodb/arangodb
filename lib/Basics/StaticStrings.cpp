@@ -281,3 +281,4 @@ std::string const StaticStrings::BackupToDeleteName("DIRECTORY_TO_DELETE");
 std::string const StaticStrings::BackupSearchToDeleteName(
     "DIRECTORY_TO_DELETE_SEARCH");
 std::string const StaticStrings::SerializationFormat("serializationFormat");
+std::string const StaticStrings::UnknownCollectionName("_unknown");
