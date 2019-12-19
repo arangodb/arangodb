@@ -348,7 +348,7 @@ public:
     return T{0};
   }
 
-  static auto getUIntWithDefault(Slice slice, char const* key, uint64_t def) -> std::uint64_t;
+  static auto getUIntWithDefault(Slice slice, char const* key, std::uint64_t def) -> std::uint64_t;
 
  public:
   /// @brief Clear key value store

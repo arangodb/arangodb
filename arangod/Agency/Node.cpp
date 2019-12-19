@@ -1139,7 +1139,7 @@ void Node::clear() {
   }
 }
 
-auto Node::getUIntWithDefault(Slice slice, char const* key, uint64_t def)
+auto Node::getUIntWithDefault(Slice slice, char const* key, std::uint64_t def)
     -> std::uint64_t {
   if (slice.isObject()) {
     Slice value = slice.get(key);
