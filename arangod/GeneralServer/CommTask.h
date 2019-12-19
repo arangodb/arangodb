@@ -123,9 +123,7 @@ protected:
 
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum, std::string const&);
-  void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum);
+                        uint64_t messageId, int errorNum, char const* errorMessage = nullptr);
   
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
