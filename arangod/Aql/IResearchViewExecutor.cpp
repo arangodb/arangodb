@@ -787,7 +787,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
       ++columnFieldsRegs;
     }
     // if stored values exist
-    if (max > 0) {
+    if (columnFieldsRegs != columnsFieldsRegs.cend()) {
       auto storedValues = this->_infos.storedValues();
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
         TRI_ASSERT(!storedValues.empty());
