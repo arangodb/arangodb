@@ -207,6 +207,9 @@ private:
   /// @brief Access private methods
   friend class Store;
 
+  // @brief check lifetime expiry
+  bool lifetimeExpired() const;
+
 public:
 
   /// @brief Create JSON representation of this node and below

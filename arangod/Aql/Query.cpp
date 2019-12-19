@@ -276,10 +276,9 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 bool Query::killed() const {
-  if(_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon()) {
-    if(TRI_microtime() > (_startTime + _queryOptions.maxRuntime)) {
-      return true;
-    }
+  if (_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon() &&
+      TRI_microtime() > (_startTime + _queryOptions.maxRuntime)) {
+    return true;
   }
   return _killed;
 }
