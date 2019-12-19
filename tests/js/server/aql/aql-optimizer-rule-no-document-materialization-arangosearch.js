@@ -82,6 +82,11 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
+    testNotAppliedDueToScorer() {
+      let query = "FOR d IN " + vn + " RETURN BM25(d)";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
     testQueryResultsWithSubqueryFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] " +
                   "LET a = NOOPT(d.obj.b.b1) " +

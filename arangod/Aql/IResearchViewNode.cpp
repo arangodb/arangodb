@@ -1025,7 +1025,7 @@ void IResearchViewNode::planNodeRegisters(
       varInfo.try_emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
     } else if (_outNonMaterializedViewVars.empty()) {
       // there is no variable if isNoMaterialization()
-      TRI_ASSERT(isNoMaterialization());
+      TRI_ASSERT(_scorers.empty());
       ++nrRegsHere[depth];
       ++nrRegs[depth];
       ++totalNrRegs;
@@ -1257,7 +1257,8 @@ void IResearchViewNode::getVariablesUsedHere(
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
 
-  if (isLateMaterialized() || isNoMaterialization()) {
+  if (isNoMaterialization()) {
+    TRI_ASSERT(_scorers.empty());
     vars.erase(_outVariable);
   }
 
@@ -1305,7 +1306,8 @@ std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInpu
     ::arangodb::containers::HashSet<aql::Variable const*> vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
-    if (isLateMaterialized() || isNoMaterialization()) {
+    if (isNoMaterialization()) {
+      TRI_ASSERT(_scorers.empty());
       vars.erase(_outVariable);
     }
 
@@ -1428,7 +1430,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     materializeType = MaterializeType::LateMaterialize;
     numDocumentRegs += 2;
   } else if (isNoMaterialization()) {
-    TRI_ASSERT(!isLateMaterialized());
+    TRI_ASSERT(_scorers.empty());
     materializeType = MaterializeType::NotMaterialize;
     // Register for a loop
     if (_outNonMaterializedViewVars.empty()) {
@@ -1511,7 +1513,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
     return ::executors<MaterializeType::LateMaterialize | MaterializeType::UseStoredValues>[getExecutorIndex(_sort.first != nullptr, ordered)](&engine, this, std::move(executorInfos));
   default:
-    TRI_ASSERT(false);
+    ADB_UNREACHABLE;
   }
 }
 
