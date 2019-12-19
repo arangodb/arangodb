@@ -30,11 +30,11 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 enum NodeType { NODE, LEAF };
 enum Operation {
@@ -348,6 +348,8 @@ public:
     return T{0};
   }
 
+  static auto getUIntWithDefault(Slice slice, char const* key, uint64_t def) -> std::uint64_t;
+
  public:
   /// @brief Clear key value store
   void clear();
@@ -383,7 +385,7 @@ public:
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus
 
 #endif
