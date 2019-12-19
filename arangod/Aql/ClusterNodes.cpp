@@ -572,10 +572,10 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
     // can be parallelized, provided the rest of the plan
     // does not prohibit this
     if (node->isModificationNode() &&
-        _parallelizeWrites &&
-        (node->getType() != ExecutionNode::REMOVE &&
-         node->getType() != ExecutionNode::REPLACE && 
-         node->getType() != ExecutionNode::UPDATE)) {
+        (!_parallelizeWrites ||
+         (node->getType() != ExecutionNode::REMOVE &&
+          node->getType() != ExecutionNode::REPLACE && 
+          node->getType() != ExecutionNode::UPDATE))) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }

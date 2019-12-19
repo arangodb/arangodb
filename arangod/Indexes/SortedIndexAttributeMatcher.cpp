@@ -474,7 +474,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   // must edit in place, no access to AST; TODO change so we can replace with
   // copy
   TEMPORARILY_UNLOCK_NODE(node);
-  node->removeMembers();
+  node->clearMembers();
 
   for (auto& it : children) {
     TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
