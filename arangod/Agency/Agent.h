@@ -330,7 +330,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief load() has run
   bool loaded() const;
-  
+
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
