@@ -17,7 +17,7 @@ The response is a JSON object with the following attributes:
 
 - *isSystem*: whether or not the current database is the *_system* database
 
-- *sharding*: information about the default sharding method for collections created in this database
+- *sharding*: the default sharding method for collections created in this database
 
 - *replicationFactor*: the default replication factor for collections in this database
 
