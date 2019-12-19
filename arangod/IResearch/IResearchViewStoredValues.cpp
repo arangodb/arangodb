@@ -35,7 +35,7 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
               std::vector<arangodb::basics::AttributeName> const& attrs) {
   TRI_ASSERT(prefix.size() < attrs.size());
 
-  for (decltype(prefix.size()) i = 0; i < prefix.size(); ++i) {
+  for (size_t i = 0; i < prefix.size(); ++i) {
     TRI_ASSERT(!prefix[i].shouldExpand);
     if (prefix[i].name != attrs[i].name) {
       return false;
@@ -103,7 +103,7 @@ bool IResearchViewStoredValues::fromVelocyPack(
           // check field uniqueness
           auto newField = true;
           auto fieldSize = field.size();
-          decltype(fieldNames.size()) i = 0;
+          size_t i = 0;
           for (auto& f : sc.fields) {
             if (f.second.size() == fieldSize) {
               if (basics::AttributeName::isIdentical(f.second, field, false)) {

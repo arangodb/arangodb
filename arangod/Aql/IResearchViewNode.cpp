@@ -1092,7 +1092,7 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       if (columnFieldsVars.first >= 0) { // not SortColumnNumber
         VPackObjectBuilder objectScope(&nodes);
         auto const& columns = storedValues.columns();
-        auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnFieldsVars.first);
+        auto const storedColumnNumber = static_cast<size_t>(columnFieldsVars.first);
         TRI_ASSERT(storedColumnNumber < columns.size());
         nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(columnFieldsVars.first));
         VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_STORED_VALUES_VARS);
@@ -1268,7 +1268,7 @@ void IResearchViewNode::getVariablesUsedHere(
 std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHere() const {
   std::vector<arangodb::aql::Variable const*> vars;
   // scorers + vars for late materialization
-  decltype(vars)::size_type reserve = _scorers.size() + _outNonMaterializedViewVars.size();
+  auto reserve = _scorers.size() + _outNonMaterializedViewVars.size();
   // collection + docId or document
   if (isLateMaterialized()) {
     reserve += 2;

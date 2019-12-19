@@ -283,7 +283,7 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
     return false;
   }
 
-  decltype(prefix.size()) i = 0;
+  size_t i = 0;
   for (; i < prefix.size(); ++i) {
     if (prefix[i].name != attrs[i].name) {
       return false;
@@ -299,7 +299,7 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
   }
   if (i < attrs.size()) {
     postfix.reserve(attrs.size() - i);
-    std::transform(attrs.cbegin() + static_cast<decltype(attrs.cbegin())::difference_type>(i),
+    std::transform(attrs.cbegin() + static_cast<ptrdiff_t>(i),
                    attrs.cend(), std::back_inserter(postfix), [](auto const& attr) {
       return attr.name;
     });

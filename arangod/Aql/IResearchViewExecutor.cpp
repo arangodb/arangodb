@@ -639,9 +639,9 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
 
 template<typename Impl, typename Traits>
 inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues,
-                                                                      int columnNum, std::map<size_t, RegisterId> const& fieldsRegs) {
-  TRI_ASSERT(static_cast<decltype(storedValues.size())>(columnNum) < storedValues.size());
-  auto const& storedValue = storedValues[static_cast<decltype(storedValues.size())>(columnNum)];
+                                                                      size_t columnNum, std::map<size_t, RegisterId> const& fieldsRegs) {
+  TRI_ASSERT(columnNum < storedValues.size());
+  auto const& storedValue = storedValues[columnNum];
   TRI_ASSERT(!storedValue.empty());
   auto s = storedValue.c_str();
   auto totalSize = storedValue.size();
@@ -730,14 +730,14 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
 }
 
 template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, int index,
+void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, size_t index,
                                                              std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders) {
-  irs::columnstore_reader::values_reader_f reader = storedValuesReaders[static_cast<decltype(storedValuesReaders.size())>(index)];
+  irs::columnstore_reader::values_reader_f reader = storedValuesReaders[index];
   TRI_ASSERT(reader);
   irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
   auto ok = reader(doc->value, value);
   TRI_ASSERT(ok);
-  storedValue[static_cast<decltype(storedValue.size())>(index)] = std::move(value);
+  storedValue[index] = std::move(value);
 }
 
 template<typename Impl, typename Traits>
@@ -751,13 +751,14 @@ void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document con
   if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
     ++max;
   }
-  std::vector<irs::bytes_ref> storedValue(static_cast<size_t>(max + 1));
+  auto lastColumn = static_cast<size_t>(max);
+  std::vector<irs::bytes_ref> storedValue(lastColumn + 1);
   if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-    getStoredValue(doc, storedValue, max, storedValuesReaders);
+    getStoredValue(doc, storedValue, lastColumn, storedValuesReaders);
     ++columnFieldsRegs;
   }
   for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-    getStoredValue(doc, storedValue, columnFieldsRegs->first, storedValuesReaders);
+    getStoredValue(doc, storedValue, static_cast<size_t>(columnFieldsRegs->first), storedValuesReaders);
   }
   this->_indexReadBuffer.pushStoredValue(std::move(storedValue));
 }
@@ -773,7 +774,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
     if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
       ++max;
     }
-    storedValuesReaders.resize(static_cast<decltype(storedValuesReaders.size())>(max + 1));
+    storedValuesReaders.resize(static_cast<size_t>(max + 1));
     if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
       auto sortReader = ::sortColumn(segmentReader);
       if (!sortReader) {
@@ -782,7 +783,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
                "executing a query, ignoring";
         return false;
       }
-      storedValuesReaders[static_cast<decltype(storedValuesReaders.size())>(max)] = std::move(sortReader);
+      storedValuesReaders[static_cast<size_t>(max)] = std::move(sortReader);
       ++columnFieldsRegs;
     }
     // if stored values exist
@@ -791,7 +792,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
       for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
         TRI_ASSERT(!storedValues.empty());
         auto const& columns = storedValues.columns();
-        auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnFieldsRegs->first);
+        auto const storedColumnNumber = static_cast<size_t>(columnFieldsRegs->first);
         TRI_ASSERT(storedColumnNumber < columns.size());
         auto storedValuesReader = segmentReader.column_reader(columns[storedColumnNumber].name);
         if (!storedValuesReader) {
@@ -800,7 +801,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
                  "executing a query, ignoring";
           return false;
         }
-        storedValuesReaders[static_cast<decltype(storedValuesReaders.size())>(columnFieldsRegs->first)] = storedValuesReader->values();
+        storedValuesReaders[static_cast<size_t>(columnFieldsRegs->first)] = storedValuesReader->values();
       }
     }
   }
