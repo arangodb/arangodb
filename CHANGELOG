@@ -1,6 +1,8 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #10725: Wrong document count shown inside an empty collection in the WebUI.
+
 * The _users collection is now properly restored when using arangorestore.
 
 * Updated arangosync to 0.7.1.
