@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #10725: Wrong document count shown inside an empty collection in the WebUI.
+
 * Agency relational operators TTL fix.
 
 * Improve latency in scheduler.
