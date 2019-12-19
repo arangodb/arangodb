@@ -516,7 +516,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
               ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
               ::arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
               // find calculation nodes in the plan of a subquery
-              CalculationNodeVarFinder finder(&var, &subqueryCalcNodes);
+              CalculationNodeVarFinder finder(&var, subqueryCalcNodes);
               valid = !subquery->walk(finder);
               if (valid) { // if the finder did not stop
                 for (auto scn : subqueryCalcNodes) {
@@ -576,7 +576,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         Ast* ast = plan->getAst();
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
-        viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
+        viewNode.setLateMaterialized(*localColPtrTmp, *localDocIdTmp);
         // insert a materialize node
         auto materializeNode =
             plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
@@ -639,7 +639,7 @@ void noDocumentMaterializationArangoSearchRule(Optimizer* opt,
           auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
           auto subquery = subqueryNode->getSubquery();
           // check calculation nodes in the plan of a subquery
-          CalculationNodeVarFinder finder(&var);
+          CalculationNodeVarExistenceFinder finder(&var);
           valid = !subquery->walk(finder);
           isCalcNodesFound |= finder.isCalculationNodesFound();
           break;

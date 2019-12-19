@@ -158,8 +158,11 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   // Stored value field
   {
     struct StoredValue {
+      StoredValue(arangodb::velocypack::Slice const& document) : document(document) {}
+
       bool write(irs::data_output& out) const {
-        for (auto const& slice : slices) {
+        for (auto const& storedValue : *fields) {
+          auto slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
           out.write_bytes(slice.start(), slice.byteSize());
         }
         return true;
@@ -169,18 +172,15 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
         return fieldName;
       }
 
-      std::vector<VPackSlice> slices;
+      arangodb::velocypack::Slice const& document;
       irs::string_ref fieldName;
-    } field; // StoredValue
+      std::vector<std::pair<std::string, std::vector<arangodb::basics::AttributeName>>> const* fields;
+    } field(document); // StoredValue
 
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
-      field.slices.reserve(column.fields.size());
-      for (auto const& storedValue : column.fields) {
-        field.slices.emplace_back(arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice()));
-      }
+      field.fields = &column.fields;
       doc.insert<irs::Action::STORE>(field);
-      field.slices.clear();
     }
   }
 

@@ -164,7 +164,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
               arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
               arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
               // find calculation nodes in the plan of a subquery
-              CalculationNodeVarFinder finder(var, &subqueryCalcNodes);
+              CalculationNodeVarFinder finder(var, subqueryCalcNodes);
               valid = !subquery->walk(finder);
               if (valid) { // if the finder did not stop
                 for (auto scn : subqueryCalcNodes) {

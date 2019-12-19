@@ -95,6 +95,16 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
   return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
+inline std::pair<int, IResearchViewNode::ViewValuesRegisters::const_iterator> getStoredColumnsInfo(IResearchViewNode::ViewValuesRegisters const& columnsFieldsRegs) {
+  auto max = (--columnsFieldsRegs.cend())->first;
+  TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
+  auto columnFieldsRegs = columnsFieldsRegs.cbegin();
+  if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+    ++max;
+  }
+  return {max, std::move(columnFieldsRegs)};
+}
+
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -686,21 +696,17 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   if constexpr ((Traits::MaterializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
     auto const& columnsFieldsRegs = infos().getOutNonMaterializedViewRegs();
     TRI_ASSERT(!columnsFieldsRegs.empty());
-    auto max = (--columnsFieldsRegs.cend())->first;
-    TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
-    auto columnFieldsRegs = columnsFieldsRegs.cbegin();
-    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-      ++max;
-    }
+    auto columsInfo = getStoredColumnsInfo(columnsFieldsRegs);
+    auto& columnFieldsRegs = columsInfo.second;
     auto const& storedValues = _indexReadBuffer.getStoredValue(bufferEntry);
     if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-      if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, max, columnFieldsRegs->second))) {
+      if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, static_cast<size_t>(columsInfo.first), columnFieldsRegs->second))) {
         return false;
       }
       ++columnFieldsRegs;
     }
     for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-      if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, columnFieldsRegs->first, columnFieldsRegs->second))) {
+      if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, static_cast<size_t>(columnFieldsRegs->first), columnFieldsRegs->second))) {
         return false;
       }
     }
@@ -730,28 +736,24 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
 }
 
 template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const* doc, std::vector<irs::bytes_ref>& storedValue, size_t index,
+void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const& doc, std::vector<irs::bytes_ref>& storedValue, size_t index,
                                                              std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders) {
   irs::columnstore_reader::values_reader_f reader = storedValuesReaders[index];
   TRI_ASSERT(reader);
   irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
-  auto ok = reader(doc->value, value);
+  auto ok = reader(doc.value, value);
   TRI_ASSERT(ok);
   storedValue[index] = std::move(value);
 }
 
 template<typename Impl, typename Traits>
-void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document const* doc,
+void IResearchViewExecutorBase<Impl, Traits>::pushStoredValues(irs::document const& doc,
                                                                std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders) {
   auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
   TRI_ASSERT(!columnsFieldsRegs.empty());
-  auto max = (--columnsFieldsRegs.cend())->first;
-  TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
-  auto columnFieldsRegs = columnsFieldsRegs.cbegin();
-  if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-    ++max;
-  }
-  auto lastColumn = static_cast<size_t>(max);
+  auto columsInfo = getStoredColumnsInfo(columnsFieldsRegs);
+  auto& columnFieldsRegs = columsInfo.second;
+  auto lastColumn = static_cast<size_t>(columsInfo.first);
   std::vector<irs::bytes_ref> storedValue(lastColumn + 1);
   if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
     getStoredValue(doc, storedValue, lastColumn, storedValuesReaders);
@@ -768,13 +770,9 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
                                                                      std::vector<irs::columnstore_reader::values_reader_f>& storedValuesReaders) {
   auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
   if (!columnsFieldsRegs.empty()) {
-    auto max = (--columnsFieldsRegs.cend())->first;
-    TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
-    auto columnFieldsRegs = columnsFieldsRegs.cbegin();
-    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-      ++max;
-    }
-    storedValuesReaders.resize(static_cast<size_t>(max + 1));
+    auto columsInfo = getStoredColumnsInfo(columnsFieldsRegs);
+    auto& columnFieldsRegs = columsInfo.second;
+    storedValuesReaders.resize(static_cast<size_t>(columsInfo.first + 1));
     if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
       auto sortReader = ::sortColumn(segmentReader);
       if (!sortReader) {
@@ -783,7 +781,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::getStoredValuesReaders(irs::sub_re
                "executing a query, ignoring";
         return false;
       }
-      storedValuesReaders[static_cast<size_t>(max)] = std::move(sortReader);
+      storedValuesReaders[static_cast<size_t>(columsInfo.first)] = std::move(sortReader);
       ++columnFieldsRegs;
     }
     // if stored values exist
@@ -941,7 +939,8 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     }
 
     if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
-      this->pushStoredValues(_doc, _storedValuesReaders);
+      TRI_ASSERT(_doc);
+      this->pushStoredValues(*_doc, _storedValuesReaders);
     }
     // doc and scores are both pushed, sizes must now be coherent
     this->_indexReadBuffer.assertSizeCoherence();
@@ -1306,7 +1305,8 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     }
 
     if constexpr ((materializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
-      this->pushStoredValues(segment.doc, segment.storedValuesReaders);
+      TRI_ASSERT(segment.doc);
+      this->pushStoredValues(*segment.doc, segment.storedValuesReaders);
     }
 
     // doc and scores are both pushed, sizes must now be coherent

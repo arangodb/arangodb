@@ -1227,7 +1227,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
   node->_sort = _sort;
   node->_optState = _optState;
   if (outNonMaterializedColId != nullptr && outNonMaterializedDocId != nullptr) {
-    node->setLateMaterialized(outNonMaterializedColId, outNonMaterializedDocId);
+    node->setLateMaterialized(*outNonMaterializedColId, *outNonMaterializedDocId);
   }
   node->_isNoMaterialization = _isNoMaterialization;
   node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
@@ -1421,7 +1421,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   bool const ordered = !_scorers.empty();
   // We could be asked to produce only document/collection ids for later materialization or full document body at once
   aql::RegisterCount numDocumentRegs = 0;
-  MaterializeType materializeType = MaterializeType::Zero;
+  MaterializeType materializeType = MaterializeType::Undefined;
   if (isLateMaterialized()) {
     TRI_ASSERT(!isNoMaterialization());
     materializeType = MaterializeType::LateMaterialize;

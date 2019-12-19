@@ -45,11 +45,11 @@ struct VarInfo;
 namespace iresearch {
 
 enum class MaterializeType {
-  Zero = 0,
-  NotMaterialize = 1,
-  LateMaterialize = 2,
-  Materialize = 4,
-  UseStoredValues = 8
+  Undefined = 0,       // an undefined initialize value
+  NotMaterialize = 1,  // do not materialize a document
+  LateMaterialize = 2, // a document will be materialized later
+  Materialize = 4,     // materialize a document
+  UseStoredValues = 8  // use stored or sort values from a view
 };
 
 ENABLE_BITMASK_ENUM(MaterializeType);
@@ -182,11 +182,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
            _outNonMaterializedColPtr != nullptr;
   }
 
-  void setLateMaterialized(aql::Variable const* colPtrVariable,
-                           aql::Variable const* docIdVariable) noexcept {
-    TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
-    _outNonMaterializedDocId = docIdVariable;
-    _outNonMaterializedColPtr = colPtrVariable;
+  void setLateMaterialized(aql::Variable const& colPtrVariable,
+                           aql::Variable const& docIdVariable) noexcept {
+    _outNonMaterializedDocId = &docIdVariable;
+    _outNonMaterializedColPtr = &colPtrVariable;
   }
 
   bool isNoMaterialization() const noexcept {

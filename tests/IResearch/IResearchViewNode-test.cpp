@@ -1415,7 +1415,7 @@ TEST_F(IResearchViewNodeTest, clone) {
                                                 {});        // no sort condition
     arangodb::aql::Variable const outNmColPtr("variable100", 100);
     arangodb::aql::Variable const outNmDocId("variable101", 101);
-    node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+    node.setLateMaterialized(outNmColPtr, outNmDocId);
     ASSERT_TRUE(node.isLateMaterialized());
     auto varsSetOriginal = node.getVariablesSetHere();
     ASSERT_EQ(2, varsSetOriginal.size());
@@ -1698,7 +1698,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
                                                 {});        // no sort condition
     arangodb::aql::Variable const outNmColPtr("variable100", 100);
     arangodb::aql::Variable const outNmDocId("variable101", 101);
-    node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+    node.setLateMaterialized(outNmColPtr, outNmDocId);
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
@@ -1967,7 +1967,7 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
     arangodb::aql::Variable const outNmColPtr("variable100", 100);
     arangodb::aql::Variable const outNmDocId("variable101", 101);
     node.sort(&viewImpl.primarySort(), 1);
-    node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+    node.setLateMaterialized(outNmColPtr, outNmDocId);
 
     arangodb::velocypack::Builder builder;
     unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
@@ -2332,7 +2332,7 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
                                               nullptr,  // no options
                                               {});        // no sort condition
   node.addDependency(&singleton);
-  node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+  node.setLateMaterialized(outNmColPtr, outNmDocId);
   std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
   singleton.setVarUsageValid();
   node.setVarUsageValid();
@@ -2379,7 +2379,7 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterialized) {
                                               nullptr,  // no options
                                               {});        // no sort condition
   node.addDependency(&singleton);
-  node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+  node.setLateMaterialized(outNmColPtr, outNmDocId);
   std::vector<arangodb::aql::RegisterId> nrRegsHere{ 0 };
   std::vector<arangodb::aql::RegisterId> nrRegs{ 0 };
   std::unordered_map<arangodb::aql::VariableId, arangodb::aql::VarInfo> varInfo;
@@ -2429,7 +2429,7 @@ TEST_F(IResearchViewNodeTest, registerPlanningLateMaterializedWitScore) {
                                               nullptr,  // no options
                                               std::vector<arangodb::iresearch::Scorer>{ {&scoreVariable, nullptr} });   //sort condition
   node.addDependency(&singleton);
-  node.setLateMaterialized(&outNmColPtr, &outNmDocId);
+  node.setLateMaterialized(outNmColPtr, outNmDocId);
   std::vector<arangodb::aql::RegisterId> nrRegsHere{ 0 };
   std::vector<arangodb::aql::RegisterId> nrRegs{ 0 };
   std::unordered_map<arangodb::aql::VariableId, arangodb::aql::VarInfo> varInfo;
