@@ -69,6 +69,19 @@ function OneShardPropertiesSuite () {
       }
     },
     
+    testShardingFlexibles : function () {
+      assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
+      db._useDatabase(dn);
+      let props = db._properties();
+      if (isCluster) {
+        assertEqual(props.sharding, "");
+        assertEqual(props.replicationFactor, 1);
+      } else {
+        assertEqual(props.sharding, undefined);
+        assertEqual(props.replicationFactor, undefined);
+      }
+    },
+    
     testNormalDBAndTooManyServers : function () {
       if (!isCluster) {
         return;

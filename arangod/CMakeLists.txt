@@ -236,6 +236,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/BlockCollector.cpp
   Aql/BlocksWithClients.cpp
   Aql/CalculationExecutor.cpp
+  Aql/CalculationNodeVarFinder.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
