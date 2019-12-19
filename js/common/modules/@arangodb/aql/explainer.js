@@ -774,7 +774,7 @@ function processQuery(query, explain, planIndex) {
           maxCallsLen = String(nodes[n.id].calls).length;
         }
         if (String(nodes[n.id].items).length > maxItemsLen) {
-          maxItemsLen = String(nodes[n.id].items || 0).length;
+          maxItemsLen = String(nodes[n.id].items).length;
         }
         let l = String(nodes[n.id].runtime.toFixed(3)).length;
         if (l > maxRuntimeLen) {
