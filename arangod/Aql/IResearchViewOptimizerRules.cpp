@@ -374,8 +374,13 @@ void setAttributesMaxMatchedColumns(std::unordered_map<int, std::vector<ColumnVa
     auto lSize = lhs.second.size();
     auto rSize = rhs.second.size();
     // column contains more fields or
-    // columns sizes == 1 and postfix is less (less column size)
-    return lSize > rSize || (lSize == rSize && lSize == 1 && lhs.second[0].postfix.size() < rhs.second[0].postfix.size());
+    // columns sizes == 1 and postfix is less (less column size) or
+    // less column number (sort column priority)
+    TRI_ASSERT(lhs.first >= IResearchViewNode::SortColumnNumber &&
+               rhs.first >= IResearchViewNode::SortColumnNumber);
+    return lSize > rSize ||
+        (lSize == rSize && ((lSize == 1 && lhs.second[0].postfix.size() < rhs.second[0].postfix.size()) ||
+        lhs.first < rhs.first));
   });
   // get values from columns which contain max number of appropriate values
   for (auto& cv : columnVariants) {
