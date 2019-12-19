@@ -337,7 +337,7 @@ public:
   double getDouble() const;
 
   template<typename T>
-  T getNumberUnlessExpiredWithDefault() {
+  auto getNumberUnlessExpiredWithDefault() -> T {
     if (ADB_UNLIKELY(!lifetimeExpired())) {
       try {
         return this->slice().getNumber<T>();
@@ -348,7 +348,7 @@ public:
     return T{0};
   }
 
-  static auto getUIntWithDefault(Slice slice, char const* key, std::uint64_t def) -> std::uint64_t;
+  static auto getUIntAsIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
 
  public:
   /// @brief Clear key value store

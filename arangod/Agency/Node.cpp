@@ -1139,12 +1139,12 @@ void Node::clear() {
   }
 }
 
-auto Node::getUIntWithDefault(Slice slice, char const* key, std::uint64_t def)
-    -> std::uint64_t {
+auto Node::getUIntAsIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
+    -> std::int64_t {
   if (slice.isObject()) {
     Slice value = slice.get(key);
     if (value.isUInt()) {
-      return value.getUInt();
+      return value.getInt();
     }
   }
   return def;
