@@ -96,6 +96,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
+  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
+
  public:
   
   /// return bounds for all documents
@@ -106,7 +108,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
-  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
 

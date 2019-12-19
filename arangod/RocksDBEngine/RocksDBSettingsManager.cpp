@@ -190,6 +190,7 @@ Result RocksDBSettingsManager::sync(bool force) {
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
+    rcoll->applyUpdates(rcoll->meta().committableSeq(maxSeqNr));
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 

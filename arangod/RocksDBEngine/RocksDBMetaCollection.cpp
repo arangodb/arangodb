@@ -465,13 +465,13 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
   Result res = basics::catchVoidToResult([&]() -> void {
     // truncate will increase this sequence
     rocksdb::SequenceNumber ignoreSeq = 0;
-    std::vector<TRI_voc_rid_t> const* inserts = nullptr;
-    std::vector<TRI_voc_rid_t> const* removals = nullptr;
+    auto insertIt = _revisionInsertBuffers.begin();
+    auto removeIt = _revisionRemovalBuffers.begin();
     while (true) {
       bool foundTruncate = false;
+      std::vector<TRI_voc_rid_t> const* inserts = nullptr;
+      std::vector<TRI_voc_rid_t> const* removals = nullptr;
       // find out if we have buffers to apply
-      auto insertIt = _revisionInsertBuffers.begin();   // sorted ASC
-      auto removeIt = _revisionRemovalBuffers.begin();  // sorted ASC
       {
         {
           // check for a truncate marker
@@ -493,7 +493,6 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
           }
           inserts = &insertIt->second;
           ++insertIt;
-
           break;
         }
 
@@ -519,16 +518,18 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
       }
 
       // apply inserts
-      for (auto const& rid : *inserts) {
-        tree.insert(rid, TRI_FnvHashPod(rid));
+      if (inserts) {
+        for (auto const& rid : *inserts) {
+          tree.insert(rid, TRI_FnvHashPod(rid));
+        }
       }
-      inserts = nullptr;
 
       // apply removals
-      for (auto const& rid : *removals) {
-        tree.remove(rid, TRI_FnvHashPod(rid));
+      if (removals) {
+        for (auto const& rid : *removals) {
+          tree.remove(rid, TRI_FnvHashPod(rid));
+        }
       }
-      removals = nullptr;
     }  // </while(true)>
   });
   return res;

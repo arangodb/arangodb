@@ -89,7 +89,22 @@ const compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, increment
   slaveCompareFunc(state);
 };
 
-const singleRun = () => {
+const runBench = (fn) => {
+  const results = [];
+  for (let i = 0; i < 3; ++i) {
+    const run = fn()
+    internal.print(`trial: ${run / 1000}s`)
+    results.push(run);
+  }
+  let total = 0.0;
+  for (let i = 0; i < results.length; ++i) {
+    internal.print(`trial: ${results[i] / 1000}s`)
+    total += results[i];
+  }
+  internal.print(`BENCHMARK: ${(total / results.length) / 1000}s`);
+};
+
+const singleRunHugeDiff = () => {
   connectToMaster();
   const initialCount = 500000;
 
@@ -149,7 +164,59 @@ const singleRun = () => {
   const start = Date.now();
   replication.syncCollection(cn, {
     endpoint: masterEndpoint,
-    verbose: true,
+    verbose: false,
+    incremental: true
+  });
+  const result = Date.now() - start;
+  require('internal').print(`trial: ${result / 1000}s`);
+
+  connectToMaster();
+  db._drop(cn);
+
+  return result;
+};
+
+const singleRunCatchUp = () => {
+  connectToMaster();
+  const initialCount = 1000000;
+
+  compare(
+    function (state) {
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < initialCount; ++i) {
+        docs.push({ _key: 'test' + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+    },
+    function (state) { },
+    function (state) { },
+    true
+  );
+
+  connectToMaster();
+  var c = db._collection(cn);
+  let docs = [];
+  //  insert some documents 'after'
+  for (let i = 0; i < initialCount / 100; ++i) {
+    docs.push({ _key: 'z' + i });
+    if (docs.length === 5000) {
+      c.insert(docs);
+      docs = [];
+    }
+  }
+
+
+  connectToSlave();
+
+  //  and sync again, timed
+  const start = Date.now();
+  replication.syncCollection(cn, {
+    endpoint: masterEndpoint,
+    verbose: false,
     incremental: true
   });
   const result = Date.now() - start;
@@ -187,19 +254,12 @@ function ReplicationIncrementalKeyConflict() {
       db._drop(cn);
     },
 
-    testBenchmark: function () {
-      const results = [];
-      for (let i = 0; i < 3; ++i) {
-        const run = singleRun()
-        internal.print(`trial: ${run / 1000}s`)
-        results.push(run);
-      }
-      let total = 0.0;
-      for (let i = 0; i < results.length; ++i) {
-        internal.print(`trial: ${results[i] / 1000}s`)
-        total += results[i];
-      }
-      internal.print(`BENCHMARK: ${(total / results.length) / 1000}s`);
+    /*testHugeDiff: function () {
+      runBench(singleRunHugeDiff);
+    },*/
+
+    testCatchUp: function () {
+      runBench(singleRunCatchUp);
     }
 
   };
