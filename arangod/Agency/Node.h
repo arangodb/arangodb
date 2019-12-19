@@ -336,6 +336,18 @@ public:
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
 
+  template<typename T>
+  T getNumberUnlessExpiredWithDefault() {
+    if (ADB_UNLIKELY(!lifetimeExpired())) {
+      try {
+        return this->slice().getNumber<T>();
+      } catch (...) {
+      }
+    }
+
+    return T{0};
+  }
+
  public:
   /// @brief Clear key value store
   void clear();
