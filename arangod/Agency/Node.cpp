@@ -502,7 +502,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 /// Increment integer value or set 1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) {
-  int inc = (slice.hasKey("step") && slice.get("step").isUInt())
+  int64_t inc = (slice.hasKey("step") && slice.get("step").isInt())
                    ? slice.get("step").getInt() : 1;
   Builder tmp;
   int pre = 0;
@@ -522,7 +522,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
 /// Decrement integer value or set -1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) {
-  int inc = (slice.hasKey("step") && slice.get("step").isUInt())
+  int64_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
                    ? slice.get("step").getInt() : 1;
   Builder tmp;
   int pre = 0;
