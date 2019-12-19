@@ -82,11 +82,6 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
-    testNotAppliedDueToScorer() {
-      let query = "FOR d IN " + vn + " RETURN BM25(d)";
-      let plan = AQL_EXPLAIN(query).plan;
-      assertEqual(-1, plan.rules.indexOf(ruleName));
-    },
     testQueryResultsWithSubqueryFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] " +
                   "LET a = NOOPT(d.obj.b.b1) " +
@@ -141,6 +136,13 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
         expectedKeys.delete(doc);
       });
       assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsWithScorer() {
+      let query = "FOR d IN " + vn + " RETURN BM25(d)";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(4, result.json.length);
     }
   };
 }

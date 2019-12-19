@@ -617,7 +617,7 @@ void noDocumentMaterializationArangoSearchRule(Optimizer* opt,
     TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == type);
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
     auto& viewNodeState = viewNode.state();
-    if (!viewNodeState.isNoDocumentMaterializationPossible() || !viewNode.scorers().empty()) {
+    if (!viewNodeState.isNoDocumentMaterializationPossible()) {
       continue; // can not optimize
     }
     auto current = node;

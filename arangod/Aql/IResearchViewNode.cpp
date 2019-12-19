@@ -1023,9 +1023,8 @@ void IResearchViewNode::planNodeRegisters(
       ++nrRegsHere[depth];
       ++nrRegs[depth];
       varInfo.try_emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
-    } else if (_outNonMaterializedViewVars.empty()) {
+    } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       // there is no variable if isNoMaterialization()
-      TRI_ASSERT(_scorers.empty());
       ++nrRegsHere[depth];
       ++nrRegs[depth];
       ++totalNrRegs;
@@ -1257,13 +1256,12 @@ void IResearchViewNode::getVariablesUsedHere(
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
 
-  if (isNoMaterialization()) {
-    TRI_ASSERT(_scorers.empty());
-    vars.erase(_outVariable);
-  }
-
   for (auto& scorer : _scorers) {
     aql::Ast::getReferencedVariables(scorer.node, vars);
+  }
+
+  if (isNoMaterialization()) {
+    vars.erase(_outVariable);
   }
 }
 
@@ -1307,7 +1305,6 @@ std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInpu
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
     if (isNoMaterialization()) {
-      TRI_ASSERT(_scorers.empty());
       vars.erase(_outVariable);
     }
 
@@ -1430,10 +1427,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     materializeType = MaterializeType::LateMaterialize;
     numDocumentRegs += 2;
   } else if (isNoMaterialization()) {
-    TRI_ASSERT(_scorers.empty());
     materializeType = MaterializeType::NotMaterialize;
     // Register for a loop
-    if (_outNonMaterializedViewVars.empty()) {
+    if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
       numDocumentRegs += 1;
     }
   } else {

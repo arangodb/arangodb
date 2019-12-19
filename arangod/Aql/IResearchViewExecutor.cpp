@@ -672,71 +672,61 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
                                                        LocalDocumentId const& documentId,
                                                        LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
-  auto writeDocOk = false;
-  auto tryWriteDoc = false;
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
-    tryWriteDoc = true;
     // read document from underlying storage engine, if we got an id
-    writeDocOk = collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback);
+    if (!collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback)) {
+      return false;
+    }
   } else if ((Traits::MaterializeType & MaterializeType::LateMaterialize) == MaterializeType::LateMaterialize) {
-    tryWriteDoc = true;
     // no need to look into collection. Somebody down the stream will do materialization. Just emit LocalDocumentIds
-    writeDocOk = writeLocalDocumentId(ctx, documentId, collection);
-  }
-  if (!tryWriteDoc || writeDocOk) {
-    if constexpr ((Traits::MaterializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
-      auto const& columnsFieldsRegs = infos().getOutNonMaterializedViewRegs();
-      TRI_ASSERT(!columnsFieldsRegs.empty());
-      auto max = (--columnsFieldsRegs.cend())->first;
-      TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
-      auto columnFieldsRegs = columnsFieldsRegs.cbegin();
-      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-        ++max;
-      }
-      auto const& storedValues = _indexReadBuffer.getStoredValue(bufferEntry);
-      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
-        if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, max, columnFieldsRegs->second))) {
-          return false;
-        }
-        ++columnFieldsRegs;
-      }
-      for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
-        if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, columnFieldsRegs->first, columnFieldsRegs->second))) {
-          return false;
-        }
-      }
-    } else if (Traits::MaterializeType == MaterializeType::NotMaterialize) {
-      AqlValue v(VPackSlice::noneSlice());
-      AqlValueGuard guard{v, true};
-      ctx.outputRow.moveValueInto(infos().getOutputRegister(), ctx.inputRow, guard);
-    }
-    if (!tryWriteDoc) {
-      return true;
+    if (!writeLocalDocumentId(ctx, documentId, collection)) {
+      return false;
     }
   }
-  if (writeDocOk) {
-    // in the ordered case we have to write scores as well as a document
-    if constexpr (Traits::Ordered) {
-      // scorer register are placed right before the document output register
-      RegisterId scoreReg = infos().getFirstScoreRegister();
-      for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
-        TRI_ASSERT(infos().isScoreReg(scoreReg));
-        bool mustDestroy = false;
-        AqlValueGuard guard{it, mustDestroy};
-        ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
-        ++scoreReg;
+  if constexpr ((Traits::MaterializeType & MaterializeType::UseStoredValues) == MaterializeType::UseStoredValues) {
+    auto const& columnsFieldsRegs = infos().getOutNonMaterializedViewRegs();
+    TRI_ASSERT(!columnsFieldsRegs.empty());
+    auto max = (--columnsFieldsRegs.cend())->first;
+    TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
+    auto columnFieldsRegs = columnsFieldsRegs.cbegin();
+    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+      ++max;
+    }
+    auto const& storedValues = _indexReadBuffer.getStoredValue(bufferEntry);
+    if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+      if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, max, columnFieldsRegs->second))) {
+        return false;
       }
-
-      // we should have written exactly all score registers by now
-      TRI_ASSERT(!infos().isScoreReg(scoreReg));
-    } else {
-      UNUSED(bufferEntry);
+      ++columnFieldsRegs;
+    }
+    for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
+      if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, columnFieldsRegs->first, columnFieldsRegs->second))) {
+        return false;
+      }
+    }
+  } else if (Traits::MaterializeType == MaterializeType::NotMaterialize && !Traits::Ordered) {
+    AqlValue v(VPackSlice::noneSlice());
+    AqlValueGuard guard{v, true};
+    ctx.outputRow.moveValueInto(infos().getOutputRegister(), ctx.inputRow, guard);
+  }
+  // in the ordered case we have to write scores as well as a document
+  if constexpr (Traits::Ordered) {
+    // scorer register are placed right before the document output register
+    RegisterId scoreReg = infos().getFirstScoreRegister();
+    for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
+      TRI_ASSERT(infos().isScoreReg(scoreReg));
+      bool mustDestroy = false;
+      AqlValueGuard guard{it, mustDestroy};
+      ctx.outputRow.moveValueInto(scoreReg, ctx.inputRow, guard);
+      ++scoreReg;
     }
 
-    return true;
+    // we should have written exactly all score registers by now
+    TRI_ASSERT(!infos().isScoreReg(scoreReg));
+  } else {
+    UNUSED(bufferEntry);
   }
-
-  return false;
+  return true;
 }
 
 template<typename Impl, typename Traits>
