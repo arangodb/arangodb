@@ -321,7 +321,7 @@ ArangoDatabase.prototype._collection = function (id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._create = function (name, properties, type, options) {
-  var body = {
+  let body = {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
   };
@@ -370,15 +370,15 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     body.type = type;
   }
 
-  var requestResult = this._connection.POST(this._collectionurl() + urlAddon, body);
+  let requestResult = this._connection.POST(this._collectionurl() + urlAddon, body);
 
   arangosh.checkRequestResult(requestResult);
 
-  var nname = requestResult.name;
+  name = requestResult.name;
 
-  if (nname !== undefined) {
-    this[nname] = new ArangoCollection(this, requestResult);
-    return this[nname];
+  if (name !== undefined) {
+    this[name] = new ArangoCollection(this, requestResult);
+    return this[name];
   }
 
   return undefined;
@@ -1195,7 +1195,7 @@ ArangoDatabase.prototype._transactions = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._createView = function (name, type, properties) {
-  var body = properties === undefined ? {} : properties;
+  let body = properties === undefined ? {} : properties;
 
   if (name === undefined) {
     delete body['name'];
@@ -1209,15 +1209,15 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
     body['type'] = type;
   }
 
-  var requestResult = this._connection.POST(this._viewurl(), body);
+  let requestResult = this._connection.POST(this._viewurl(), body);
 
   arangosh.checkRequestResult(requestResult);
 
-  var nname = requestResult.name;
+  name = requestResult.name;
 
-  if (nname !== undefined) {
-    this[nname] = new ArangoView(this, requestResult);
-    return this[nname];
+  if (name !== undefined) {
+    this[name] = new ArangoView(this, requestResult);
+    return this[name];
   }
 
   return undefined;
