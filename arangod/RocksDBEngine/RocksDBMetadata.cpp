@@ -78,9 +78,10 @@ RocksDBMetadata::RocksDBMetadata()
 /**
  * @brief Place a blocker to allow proper commit/serialize semantics
  *
- * Should be called immediately prior to internal RocksDB commit. If the
- * commit succeeds, any inserts/removals should be buffered, then the blocker
- * removed; otherwise simply remove the blocker.
+ * Should be called immediately prior to beginning an internal trx. If the
+ * trx commit succeeds, any inserts/removals should be buffered, then the
+ * blocker updated (intermediate) or removed (final); otherwise simply remove
+ * the blocker.
  *
  * @param  trxId The identifier for the active transaction
  * @param  seq   The sequence number immediately prior to call
@@ -97,6 +98,42 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
     auto insert = _blockers.try_emplace(trxId, seq);
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!insert.second || !crosslist.second) {
+      return res.reset(TRI_ERROR_INTERNAL);
+    }
+    return res;
+  });
+}
+
+/**
+ * @brief Update a blocker to allow proper commit/serialize semantics
+ *
+ * Should be called after initializing an internal trx.
+ *
+ * @param  trxId The identifier for the active transaction (should match input
+ *               to earlier `placeBlocker` call)
+ * @param  seq   The sequence number from the internal snapshot
+ * @return       May return error if we fail to allocate and place blocker
+ */
+Result RocksDBMetadata::updateBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+  return basics::catchToResult([&]() -> Result {
+    Result res;
+    WRITE_LOCKER(locker, _blockerLock);
+
+    auto previous = _blockers.find(trxId);
+    if (_blockers.end() == previous ||
+        _blockersBySeq.end() ==
+            _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
+      res.reset(TRI_ERROR_INTERNAL);
+    }
+
+    auto removed = _blockersBySeq.erase(std::make_pair(previous->second, trxId));
+    if (!removed) {
+      return res.reset(TRI_ERROR_INTERNAL);
+    }
+
+    _blockers[trxId] = seq;
+    auto crosslist = _blockersBySeq.emplace(seq, trxId);
+    if (!crosslist.second) {
       return res.reset(TRI_ERROR_INTERNAL);
     }
     return res;

@@ -193,12 +193,20 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
   }
 }
 
-void RocksDBTransactionCollection::prepareCommit(uint64_t trxId, uint64_t preCommitSeq) {
+void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t beginSeq) {
   TRI_ASSERT(_collection != nullptr);
-  if (hasOperations() || !_trackedIndexOperations.empty()) {
-    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-    coll->meta().placeBlocker(trxId, preCommitSeq);
-  }
+  // if (hasOperations() || !_trackedIndexOperations.empty()) {
+  auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  coll->meta().placeBlocker(trxId, beginSeq);
+  //}
+}
+
+void RocksDBTransactionCollection::updateTransaction(uint64_t trxId, uint64_t beginSeq) {
+  TRI_ASSERT(_collection != nullptr);
+  // if (hasOperations() || !_trackedIndexOperations.empty()) {
+  auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  coll->meta().updateBlocker(trxId, beginSeq);
+  //}
 }
 
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
@@ -209,7 +217,8 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   }
 }
 
-void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
+void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq,
+                                                bool intermediate) {
   TRI_ASSERT(_collection != nullptr);
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
 
@@ -241,7 +250,7 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
     }
   }
 
-  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
+  if (!intermediate) {
     rcoll->meta().removeBlocker(trxId);
   }
 

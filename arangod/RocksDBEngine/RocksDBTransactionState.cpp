@@ -122,6 +122,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
+    // place blockers with an initial seq
+    prepareCollections();
+
     TRI_ASSERT(_readSnapshot == nullptr);
     if (isReadOnlyTransaction()) {
       // no need to acquire a snapshot for a single op
@@ -180,6 +183,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         }
       }
     }
+
+    // update blockers with correct start seq
+    updateCollections();
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -223,6 +229,47 @@ void RocksDBTransactionState::createTransaction() {
   }
 }
 
+void RocksDBTransactionState::prepareCollections() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    coll->prepareTransaction(id(), preSeq);
+  }
+  _blockers = true;
+}
+
+void RocksDBTransactionState::updateCollections() {
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    coll->updateTransaction(id(), beginSeq());
+  }
+}
+
+void RocksDBTransactionState::commitCollections(rocksdb::SequenceNumber lastWritten,
+                                                bool intermediate) {
+  TRI_ASSERT(lastWritten > 0);
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    // we need this in case of an intermediate commit. The number of
+    // initial documents is adjusted and numInserts / removes is set to 0
+    // index estimator updates are buffered
+    /*TRI_IF_FAILURE("RocksDBCommitCounts") {
+      continue;
+    }*/
+    coll->commitCounts(id(), lastWritten, intermediate);
+  }
+  _blockers = !intermediate;
+}
+
+void RocksDBTransactionState::cleanupCollections() {
+  for (auto& trxColl : _collections) {
+    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
+    coll->abortCommit(id());
+  }
+  _blockers = false;
+}
+
 void RocksDBTransactionState::cleanupTransaction() noexcept {
   delete _rocksTransaction;
   _rocksTransaction = nullptr;
@@ -239,9 +286,12 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
     db->ReleaseSnapshot(_readSnapshot);  // calls delete
     _readSnapshot = nullptr;
   }
+  if (_blockers) {
+    cleanupCollections();
+  }
 }
 
-arangodb::Result RocksDBTransactionState::internalCommit() {
+arangodb::Result RocksDBTransactionState::internalCommit(bool intermediate) {
   if (!hasOperations()) { // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
                (_rocksTransaction->GetNumKeys() == 0 &&
@@ -270,18 +320,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     }
   }
 
-  auto commitCounts = [this]() {
-    TRI_ASSERT(_lastWrittenOperationTick > 0);
-    for (auto& trxColl : _collections) {
-      auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-      // we need this in case of an intermediate commit. The number of
-      // initial documents is adjusted and numInserts / removes is set to 0
-      // index estimator updates are buffered
-      /*TRI_IF_FAILURE("RocksDBCommitCounts") {
-        continue;
-      }*/
-      coll->commitCounts(id(), _lastWrittenOperationTick);
-    }
+  auto commitCounts = [this, intermediate]() {
+    commitCollections(_lastWrittenOperationTick, intermediate);
   };
 
   // we are actually going to attempt a commit
@@ -314,21 +354,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   TRI_ASSERT(x > 0);
 #endif
 
-  // prepare for commit on each collection, e.g. place blockers for estimators
-  rocksdb::SequenceNumber preCommitSeq =
-      rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    coll->prepareCommit(id(), preCommitSeq);
-  }
-
   // if we fail during commit, make sure we remove blockers, etc.
-  auto cleanupCollTrx = scopeGuard([this]() {
-    for (auto& trxColl : _collections) {
-      auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-      coll->abortCommit(id());
-    }
-  });
+  auto cleanupCollTrx = scopeGuard([this]() { cleanupCollections(); });
 
 #ifdef _WIN32
   // set wait for sync flag if required
@@ -395,7 +422,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
 
   arangodb::Result res;
   if (nestingLevel() == 0) {
-    res = internalCommit();
+    res = internalCommit(false);
     if (res.ok()) {
       updateStatus(transaction::Status::COMMITTED);
       cleanupTransaction();  // deletes trx
@@ -596,7 +623,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
 #endif
 
-  Result res = internalCommit();
+  Result res = internalCommit(true);
   if (res.fail()) {
     // FIXME: do we abort the transaction ?
     return res;
@@ -619,6 +646,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   _numLogdata = 0;
 #endif
   createTransaction();
+  updateCollections();
   _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
   TRI_ASSERT(_readSnapshot != nullptr);  // snapshots for iterators
   TRI_ASSERT(_rocksReadOptions.snapshot != nullptr);
@@ -639,6 +667,12 @@ Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize, bool& 
     }
   }
   return TRI_ERROR_NO_ERROR;
+}
+
+RocksDBTransactionCollection::TrackedOperations& RocksDBTransactionState::trackedOperations(TRI_voc_cid_t cid) {
+  auto col = findCollection(cid);
+  TRI_ASSERT(col != nullptr);
+  return static_cast<RocksDBTransactionCollection*>(col)->trackedOperations();
 }
 
 void RocksDBTransactionState::trackInsert(TRI_voc_cid_t cid, TRI_voc_rid_t rid) {
@@ -689,6 +723,15 @@ bool RocksDBTransactionState::isOnlyExclusiveTransaction() const {
     }
   }
   return true;
+}
+
+rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
+  if (_rocksTransaction) {
+    return _rocksTransaction->GetSnapshot()->GetSequenceNumber();
+  } else if (_readSnapshot) {
+    return _readSnapshot->GetSequenceNumber();
+  }
+  return 0;
 }
 
 /// @brief constructor, leases a builder

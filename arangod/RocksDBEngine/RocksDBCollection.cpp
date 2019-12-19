@@ -1198,7 +1198,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   return res;
 }
 
-std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(
+/*std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(
     transaction::Methods& trx) {
   std::unique_ptr<ReplicationIterator> iter =
       getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
@@ -1212,12 +1212,12 @@ std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(
 
   it.seek(rangeMin);
   while (it.hasMore()) {
-    tree->insert(it.revision(), TRI_FnvHashPod(it.revision())/*it.document().hashString()*/);
+    tree->insert(it.revision(), TRI_FnvHashPod(it.revision());
     it.next();
   }
 
   return tree;
-}
+}*/
 
 void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t diff) {
   auto seq = rocksutils::latestSequenceNumber();

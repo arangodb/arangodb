@@ -107,6 +107,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
   rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
+  Result applyUpdatesForTransaction(containers::RevisionTree& tree,
+                                    rocksdb::SequenceNumber commitSeq) const;
 
  protected:
   RocksDBMetadata _meta;     /// collection metadata

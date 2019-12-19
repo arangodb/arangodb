@@ -327,7 +327,30 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   applyUpdates(safeSeq);
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
+  std::shared_lock<std::shared_mutex> guard(_revisionBufferLock);
   auto tree = _revisionTree.clone();
+
+  {
+    // apply any which are buffered and older than our ongoing transaction start
+    rocksdb::SequenceNumber trxSeq = RocksDBTransactionState::toState(&trx)->beginSeq();
+    TRI_ASSERT(trxSeq != 0);
+    Result res = applyUpdatesForTransaction(*tree, trxSeq);
+    if (res.fail()) {
+      return nullptr;
+    }
+  }
+
+  {
+    // now peek at updates buffered inside transaction and apply those too
+    auto operations = RocksDBTransactionState::toState(&trx)->trackedOperations(
+        _logicalCollection.id());
+    for (auto& rid : operations.inserts) {
+      tree->insert(rid, TRI_FnvHashPod(rid));
+    }
+    for (auto& rid : operations.removals) {
+      tree->remove(rid, TRI_FnvHashPod(rid));
+    }
+  }
 
   return tree;
 }
@@ -435,4 +458,78 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
     }  // </while(true)>
   });
   return appliedSeq;
+}
+
+Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTree& tree,
+                                                         rocksdb::SequenceNumber commitSeq) const {
+  Result res = basics::catchVoidToResult([&]() -> void {
+    // truncate will increase this sequence
+    rocksdb::SequenceNumber ignoreSeq = 0;
+    std::vector<TRI_voc_rid_t> const* inserts = nullptr;
+    std::vector<TRI_voc_rid_t> const* removals = nullptr;
+    while (true) {
+      bool foundTruncate = false;
+      // find out if we have buffers to apply
+      auto insertIt = _revisionInsertBuffers.begin();   // sorted ASC
+      auto removeIt = _revisionRemovalBuffers.begin();  // sorted ASC
+      {
+        {
+          // check for a truncate marker
+          auto it = _revisionTruncateBuffer.begin();  // sorted ASC
+          while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
+            ignoreSeq = *it;
+            TRI_ASSERT(ignoreSeq != 0);
+            foundTruncate = true;
+            ++it;
+          }
+        }
+        TRI_ASSERT(ignoreSeq <= commitSeq);
+
+        // check for inserts
+        while (insertIt != _revisionInsertBuffers.end() && insertIt->first <= commitSeq) {
+          if (insertIt->first <= ignoreSeq) {
+            ++insertIt;
+            continue;
+          }
+          inserts = &insertIt->second;
+          ++insertIt;
+
+          break;
+        }
+
+        // check for removals
+        while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= commitSeq) {
+          if (removeIt->first <= ignoreSeq) {
+            ++removeIt;
+            continue;
+          }
+          removals = &removeIt->second;
+          ++removeIt;
+          break;
+        }
+      }
+
+      if (foundTruncate) {
+        tree.clear();  // clear estimates
+      }
+
+      // no inserts or removals left to apply, drop out of loop
+      if (!inserts && !removals) {
+        break;
+      }
+
+      // apply inserts
+      for (auto const& rid : *inserts) {
+        tree.insert(rid, TRI_FnvHashPod(rid));
+      }
+      inserts = nullptr;
+
+      // apply removals
+      for (auto const& rid : *removals) {
+        tree.remove(rid, TRI_FnvHashPod(rid));
+      }
+      removals = nullptr;
+    }  // </while(true)>
+  });
+  return res;
 }

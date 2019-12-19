@@ -65,11 +65,18 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void addOperation(TRI_voc_document_operation_e operationType, TRI_voc_rid_t revisionId);
 
   /**
-   * @brief Prepare collection for commit by placing index blockers
-   * @param trxId        Active transaction ID
-   * @param preCommitSeq Current seq/tick immediately before call
+   * @brief Prepare collection for commit by placing collection blockers
+   * @param trxId    Active transaction ID
+   * @param beginSeq Current seq/tick on transaction begin
    */
-  void prepareCommit(uint64_t trxId, uint64_t preCommitSeq);
+  void prepareTransaction(uint64_t trxId, uint64_t beginSeq);
+
+  /**
+   * @brief Prepare collection for commit by updating collection blockers
+   * @param trxId    Active transaction ID
+   * @param beginSeq Current seq/tick on transaction begin
+   */
+  void updateTransaction(uint64_t trxId, uint64_t beginSeq);
 
   /**
    * @brief Signal upstream abort/rollback to clean up index blockers
@@ -81,8 +88,9 @@ class RocksDBTransactionCollection final : public TransactionCollection {
    * @brief Commit collection counts and buffer tracked index updates
    * @param trxId     Active transaction ID
    * @param commitSeq Seq/tick immediately after upstream commit
+   * @param intermediate  Whether this is an intermediate commit
    */
-  void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq);
+  void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq, bool intermediate);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
@@ -101,6 +109,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
       removals.clear();
     }
   };
+
+  TrackedOperations& trackedOperations() { return _trackedOperations; }
 
   TrackedOperations stealTrackedOperations() {
     TrackedOperations empty;
