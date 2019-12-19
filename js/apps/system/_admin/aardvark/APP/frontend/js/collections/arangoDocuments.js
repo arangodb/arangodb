@@ -46,7 +46,6 @@
         contentType: 'application/json',
         processData: false,
         success: function (data) {
-          console.log(data);
           if (data.count || data.count === 0) {
             self.setTotal(data.count);
           }
