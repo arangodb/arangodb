@@ -766,15 +766,15 @@ function processQuery(query, explain, planIndex) {
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id)) {
-        nodes[n.id].calls = n.calls;
-        nodes[n.id].items = n.items;
-        nodes[n.id].runtime = n.runtime;
+        nodes[n.id].calls = n.calls || 0;
+        nodes[n.id].items = n.items || 0;
+        nodes[n.id].runtime = n.runtime || 0.0;
 
-        if (String(n.calls).length > maxCallsLen) {
-          maxCallsLen = String(n.calls).length;
+        if (String(nodes[n.id].calls).length > maxCallsLen) {
+          maxCallsLen = String(nodes[n.id].calls).length;
         }
-        if (String(n.items).length > maxItemsLen) {
-          maxItemsLen = String(n.items).length;
+        if (String(nodes[n.id].items).length > maxItemsLen) {
+          maxItemsLen = String(nodes[n.id].items || 0).length;
         }
         let l = String(nodes[n.id].runtime.toFixed(3)).length;
         if (l > maxRuntimeLen) {
