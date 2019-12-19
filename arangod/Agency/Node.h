@@ -338,7 +338,7 @@ public:
 
   template<typename T>
   auto getNumberUnlessExpiredWithDefault() -> T {
-    if (ADB_UNLIKELY(!lifetimeExpired())) {
+    if (ADB_LIKELY(!lifetimeExpired())) {
       try {
         return this->slice().getNumber<T>();
       } catch (...) {
