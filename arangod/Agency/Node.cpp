@@ -502,7 +502,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 /// Increment integer value or set 1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) {
-  auto inc = getUIntAsIntWithDefault(slice, "step", 1);
+  auto inc = getIntWithDefault(slice, "step", 1);
   auto pre = getNumberUnlessExpiredWithDefault<int64_t>();
 
   Builder tmp;
@@ -517,7 +517,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
 /// Decrement integer value or set -1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) {
-  auto dec = getUIntAsIntWithDefault(slice, "step", 1);
+  auto dec = getIntWithDefault(slice, "step", 1);
   auto pre = getNumberUnlessExpiredWithDefault<std::int64_t>();
 
   Builder tmp;
@@ -1139,11 +1139,11 @@ void Node::clear() {
   }
 }
 
-auto Node::getUIntAsIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
+auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
     -> std::int64_t {
   if (slice.isObject()) {
     Slice value = slice.get(key);
-    if (value.isUInt()) {
+    if (value.isInt()) {
       return value.getInt();
     }
   }

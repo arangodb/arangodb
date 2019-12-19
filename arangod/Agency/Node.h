@@ -348,7 +348,7 @@ public:
     return T{0};
   }
 
-  static auto getUIntAsIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
+  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
 
  public:
   /// @brief Clear key value store
