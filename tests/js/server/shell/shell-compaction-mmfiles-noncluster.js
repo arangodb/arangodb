@@ -830,19 +830,27 @@ function CompactionSuite () {
       internal.wait(0);
 
       c1.truncate();
+
+      // truncation should empty the collection
+      assertEqual(0, c1.count());
+
       internal.wal.flush(true, true);
       c1.rotate();
 
       waited = 0;
 
       maxWait = 10000;
-      console.log("Waiting for dead.deletion === 0 and dead.count === 0");
+      console.log("Waiting for alive.count === 0, dead.deletion === 0, dead.count === 0, journals.count === 0, and datafiles.count === 0");
       while (waited < maxWait) {
         internal.wait(2);
         waited += 2;
 
         fig = c1.figures();
-        if (fig['dead']['deletion'] === 0 && fig['dead']['count'] === 0) {
+        if (fig['alive']['count'] === 0 &&
+            fig['dead']['deletion'] === 0 &&
+	    fig['dead']['count'] === 0 &&
+            fig['journals']['count'] === 0 &&
+	    fig['datafiles']['count'] === 0) {
           break;
         }
       }
