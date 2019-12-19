@@ -747,19 +747,23 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
-void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/, bool noDNFConversion /*= false*/) {
+void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/, 
+                          ConditionOptimization conditionOptimization /*= ConditionOptimization::Auto*/) {
   if (_isNormalized) {
     // already normalized
     return;
   }
  
-  _root = transformNodePreorder(_root);
-  _root = transformNodePostorder(_root, noDNFConversion);
+  _root = transformNodePreorder(
+      _root, 
+      conditionOptimization == ConditionOptimization::None || 
+      conditionOptimization == ConditionOptimization::NoNegation);
+  _root = transformNodePostorder(_root, conditionOptimization != ConditionOptimization::Auto);
   _root = fixRoot(_root, 0);
   optimize(plan, multivalued);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr && !noDNFConversion) { // if DNF conversion is explicitly disabled - don`t check
+  if (_root != nullptr && conditionOptimization == ConditionOptimization::Auto) { 
     // _root->dump(0);
     validateAst(_root, 0);
   }
@@ -1603,7 +1607,7 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
 }
 
 /// @brief converts binary to n-ary, comparision normal and negation normal form
-AstNode* Condition::transformNodePreorder(AstNode* node) {
+AstNode* Condition::transformNodePreorder(AstNode* node, bool noNegationConversion /*= false*/) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -1616,9 +1620,8 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
     // create a new n-ary node
     node = _ast->createNode(Ast::NaryOperatorType(old->type));
     node->reserve(2);
-    node->addMember(transformNodePreorder(old->getMember(0)));
-    node->addMember(transformNodePreorder(old->getMember(1)));
-
+    node->addMember(transformNodePreorder(old->getMember(0), noNegationConversion));
+    node->addMember(transformNodePreorder(old->getMember(1), noNegationConversion));
     return node;
   }
 
@@ -1626,8 +1629,8 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
     // push down logical negations
     auto sub = node->getMemberUnchecked(0);
 
-    if (sub->type == NODE_TYPE_OPERATOR_NARY_AND || sub->type == NODE_TYPE_OPERATOR_BINARY_AND ||
-        sub->type == NODE_TYPE_OPERATOR_NARY_OR || sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    if (!noNegationConversion && (sub->type == NODE_TYPE_OPERATOR_NARY_AND || sub->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+        sub->type == NODE_TYPE_OPERATOR_NARY_OR || sub->type == NODE_TYPE_OPERATOR_BINARY_OR)) {
       size_t const n = sub->numMembers();
 
       AstNode* newOperator = nullptr;
@@ -1652,11 +1655,11 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
 
     if (sub->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
       // eliminate double-negatives
-      return transformNodePreorder(sub->getMemberUnchecked(0));
+      return transformNodePreorder(sub->getMemberUnchecked(0), noNegationConversion);
     }
 
     auto replacement = _ast->shallowCopyForModify(node);
-    replacement->changeMember(0, transformNodePreorder(sub));
+    replacement->changeMember(0, transformNodePreorder(sub, noNegationConversion));
 
     return replacement;
   }

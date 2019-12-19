@@ -44,6 +44,16 @@ class SortCondition;
 struct AstNode;
 struct Variable;
 
+// note to maintainers:
+// 
+enum class ConditionOptimization {
+  None,        // only generic optimizations are made (e.g. AND to n-ry AND )
+  NoNegation, // no conversions to negation normal form. Implies NoDNF!
+  NoDNF,      // no conversions to DNF are made
+  Auto,       // all existing condition optimizations are applied
+
+};
+
 enum ConditionPartCompareResult {
   IMPOSSIBLE = 0,
   SELF_CONTAINED_IN_OTHER = 1,
@@ -144,9 +154,9 @@ class Condition {
   /// this will convert the condition into its disjunctive normal form
   /// @param mutlivalued attributes may have more than one value
   ///                    (ArangoSearch view case)
-  /// @param noDNFConversion skip converting condition to DNF. May be useful if 
-  ///                        DNF conversion takes more time than executing original condition
-  void normalize(ExecutionPlan*, bool multivalued = false, bool noDNFConversion = false);
+  /// @param conditionOptimization  allowed condition optimizations
+  void normalize(ExecutionPlan*, bool multivalued = false, 
+                 ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
@@ -211,7 +221,7 @@ class Condition {
 
   /// @brief converts binary to n-ary, comparision normal and negation normal
   ///        form
-  AstNode* transformNodePreorder(AstNode*);
+  AstNode* transformNodePreorder(AstNode*, bool noNegationConversion = false);
 
   /// @brief converts from negation normal to disjunctive normal form
   /// @param noDNFConversion skip converting condition to DNF. May be useful if 

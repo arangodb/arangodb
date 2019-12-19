@@ -128,9 +128,11 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
 namespace {
-  std::map<std::string, ConditionOptimization> conditionOptimizationTypeMap = {
-    {"auto", ConditionOptimization::Auto},
-    {"none", ConditionOptimization::None}
+  std::map<std::string, arangodb::aql::ConditionOptimization> conditionOptimizationTypeMap = {
+    {"auto", arangodb::aql::ConditionOptimization::Auto},
+    {"nodnf", arangodb::aql::ConditionOptimization::NoDNF},
+    {"noneg", arangodb::aql::ConditionOptimization::NoNegation},
+    {"none", arangodb::aql::ConditionOptimization::None}
   };
 }
 

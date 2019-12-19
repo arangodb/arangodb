@@ -24,6 +24,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
@@ -47,9 +48,6 @@ enum class MaterializeType {
   Materialized, LateMaterialized, LateMaterializedWithVars
 };
 
-enum class ConditionOptimization {
-  Auto, None
-};
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
@@ -68,7 +66,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     bool forceSync{false};
 
     /// @brief condition optimization Auto - condition will be transformed to DNF.
-    ConditionOptimization conditionOptimization{ ConditionOptimization::Auto };
+    arangodb::aql::ConditionOptimization conditionOptimization{ arangodb::aql::ConditionOptimization::Auto };
 
   };  // Options
 

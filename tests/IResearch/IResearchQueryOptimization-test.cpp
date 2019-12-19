@@ -170,6 +170,7 @@ TEST_F(IResearchQueryOptimizationTest, test_1) {
         "FOR d IN testView SEARCH d.values IN [ '@', 'A' ] AND d.values == 'C' "
         "RETURN d";
 
+
   EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
                                            {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
