@@ -73,6 +73,7 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _compactor(this),
       _ready(false),
       _preparing(0),
+      _loaded(false),
       _write_ok(
         _server.getFeature<arangodb::MetricsFeature>().counter(
           "agency_agent_write_ok", 0, "Agency write ok")),
