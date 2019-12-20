@@ -502,17 +502,12 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 /// Increment integer value or set 1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) {
-  int inc = (slice.hasKey("step") && slice.get("step").isUInt())
-                   ? slice.get("step").getInt() : 1;
+  auto inc = getIntWithDefault(slice, "step", 1);
+  auto pre = getNumberUnlessExpiredWithDefault<int64_t>();
+
   Builder tmp;
-  int pre = 0;
   {
     VPackObjectBuilder t(&tmp);
-    try {
-      if (!_value.empty() && !lifetimeExpired()) {
-        pre = this->slice().getInt();
-      }
-    } catch (...) {}
     tmp.add("tmp", Value(pre + inc));
   }
   *this = tmp.slice().get("tmp");
@@ -522,18 +517,13 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
 /// Decrement integer value or set -1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) {
-  int inc = (slice.hasKey("step") && slice.get("step").isUInt())
-                   ? slice.get("step").getInt() : 1;
+  auto dec = getIntWithDefault(slice, "step", 1);
+  auto pre = getNumberUnlessExpiredWithDefault<std::int64_t>();
+
   Builder tmp;
-  int pre = 0;
   {
     VPackObjectBuilder t(&tmp);
-    try {
-      if (!_value.empty() && !lifetimeExpired()) {
-        pre = this->slice().getInt();
-      }
-    } catch (...) {}
-    tmp.add("tmp", Value(pre - inc));
+    tmp.add("tmp", Value(pre - dec));
   }
   *this = tmp.slice().get("tmp");
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
@@ -1147,4 +1137,15 @@ void Node::clear() {
   } else {
     return _parent->removeChild(_nodeName);
   }
+}
+
+auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
+    -> std::int64_t {
+  if (slice.isObject()) {
+    Slice value = slice.get(key);
+    if (value.isInt()) {
+      return value.getInt();
+    }
+  }
+  return def;
 }
