@@ -766,17 +766,22 @@ function processQuery(query, explain, planIndex) {
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id)) {
-        nodes[n.id].calls = n.calls;
-        nodes[n.id].items = n.items;
-        nodes[n.id].runtime = n.runtime;
+        nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
+        nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
+        nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
 
-        if (String(n.calls).length > maxCallsLen) {
-          maxCallsLen = String(n.calls).length;
+        if (String(nodes[n.id].calls).length > maxCallsLen) {
+          maxCallsLen = String(nodes[n.id].calls).length;
         }
-        if (String(n.items).length > maxItemsLen) {
-          maxItemsLen = String(n.items).length;
+        if (String(nodes[n.id].items).length > maxItemsLen) {
+          maxItemsLen = String(nodes[n.id].items).length;
         }
-        let l = String(nodes[n.id].runtime.toFixed(3)).length;
+        let l;
+        if (typeof nodes[n.id].runtime === 'number') {
+          l = String(nodes[n.id].runtime.toFixed(3)).length;
+        } else {
+          l = nodes[n.id].runtime.length;
+        }
         if (l > maxRuntimeLen) {
           maxRuntimeLen = l;
         }
@@ -785,10 +790,14 @@ function processQuery(query, explain, planIndex) {
     // by design the runtime is cumulative right now.
     // by subtracting the dependencies from parent runtime we get the runtime per node
     stats.nodes.forEach(n => {
-      if (parents.hasOwnProperty(n.id)) {
-        parents[n.id].forEach(pid => {
-          nodes[pid].runtime -= n.runtime;
-        });
+      if (typeof n.runtime === 'number') {
+        if (parents.hasOwnProperty(n.id)) {
+          parents[n.id].forEach(pid => {
+            if (typeof nodes[pid].runtime === 'number') {
+              nodes[pid].runtime -= n.runtime;
+            }
+          });
+        }
       }
     });
   }
@@ -1745,7 +1754,6 @@ function processQuery(query, explain, planIndex) {
 
   var printNode = function (node) {
     preHandle(node);
-    node.runtime = Math.abs(node.runtime);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
@@ -1755,9 +1763,22 @@ function processQuery(query, explain, planIndex) {
     }
 
     if (profileMode) {
+      if (node.calls === undefined) {
+        node.calls = 'n/a';
+      }
+      if (node.items === undefined) {
+        node.items = 'n/a';
+      }
+      let runtime = node.runtime;
+      if (runtime === undefined) {
+        runtime = 'n/a';
+      } else {
+        runtime = String(Math.abs(node.runtime).toFixed(5));
+      }
+  
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-        pad(1 + maxRuntimeLen - String(node.runtime.toFixed(5)).length) + value(node.runtime.toFixed(5)) + '   ' +
+        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
