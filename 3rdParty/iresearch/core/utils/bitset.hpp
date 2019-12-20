@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BITSET_H
@@ -49,7 +48,7 @@ class dynamic_bitset_base : irs::compact<0, Alloc> {
     : compact<0, allocator_type>(alloc) {
   }
 
-  allocator_type& allocator() NOEXCEPT {
+  allocator_type& allocator() noexcept {
     return compact<0, allocator_type>::get();
   }
 }; // bitset_base
@@ -67,23 +66,24 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
 
   // returns corresponding bit index within a word for the
   // specified offset in bits
-  CONSTEXPR FORCE_INLINE static size_t bit(size_t i) NOEXCEPT {
+  constexpr FORCE_INLINE static size_t bit(size_t i) noexcept {
     return i % bits_required<word_t>();
   }
 
   // returns corresponding word index specified offset in bits
-  CONSTEXPR FORCE_INLINE static size_t word(size_t i) NOEXCEPT {
+  constexpr FORCE_INLINE static size_t word(size_t i) noexcept {
     return i / bits_required<word_t>();
   }
 
   // returns corresponding offset in bits for the specified word index
-  CONSTEXPR FORCE_INLINE static size_t bit_offset(size_t i) NOEXCEPT {
+  constexpr FORCE_INLINE static size_t bit_offset(size_t i) noexcept {
     return i * bits_required<word_t>();
   }
 
   dynamic_bitset(const Alloc& alloc = Alloc())
     : base_t(alloc),
-      data_(nullptr, word_ptr_deleter_t(this->allocator(), 0)) {
+      data_(static_cast<typename word_ptr_t::pointer>(nullptr), // workaround for broken check in MSVC2015
+            word_ptr_deleter_t(this->allocator(), 0)) {
   }
 
   explicit dynamic_bitset(size_t bits, const Alloc& alloc = Alloc())
@@ -91,7 +91,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     reset(bits);
   }
 
-  dynamic_bitset(dynamic_bitset&& rhs) NOEXCEPT
+  dynamic_bitset(dynamic_bitset&& rhs) noexcept
     : bits_(rhs.bits_),
       words_(rhs.words_),
       data_(std::move(rhs.data_)) {
@@ -99,7 +99,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     rhs.words_ = 0;
   }
 
-  dynamic_bitset& operator=(dynamic_bitset&& rhs) NOEXCEPT {
+  dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept {
     if (this != &rhs) {
       bits_ = rhs.bits_;
       words_ = rhs.words_;
@@ -125,7 +125,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     clear();
   }
 
-  bool operator==(const dynamic_bitset& rhs) const NOEXCEPT {
+  bool operator==(const dynamic_bitset& rhs) const noexcept {
     if (this->size() != rhs.size()) {
       return false;
     }
@@ -133,67 +133,67 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
   }
 
-  bool operator!=(const dynamic_bitset& rhs) const NOEXCEPT {
+  bool operator!=(const dynamic_bitset& rhs) const noexcept {
     return !(*this == rhs);
   }
 
   // number of bits in bitset
-  size_t size() const NOEXCEPT { return bits_; }
+  size_t size() const noexcept { return bits_; }
 
   // capacity in bits
-  size_t capacity() const NOEXCEPT {
+  size_t capacity() const noexcept {
     return bits_required<word_t>()*words_;
   }
 
-  size_t words() const NOEXCEPT { return words_; }
+  size_t words() const noexcept { return words_; }
 
-  const word_t* data() const NOEXCEPT { return data_.get(); }
+  const word_t* data() const noexcept { return data_.get(); }
 
-  const word_t* begin() const NOEXCEPT { return data(); }
-  const word_t* end() const NOEXCEPT { return data() + words_; }
+  const word_t* begin() const noexcept { return data(); }
+  const word_t* end() const noexcept { return data() + words_; }
 
   template<typename T>
-  void memset(const T& value) NOEXCEPT {
+  void memset(const T& value) noexcept {
     memset(&value, sizeof(value));
   }
 
-  void memset(const void* src, size_t size) NOEXCEPT {
+  void memset(const void* src, size_t size) noexcept {
     std::memcpy(data_.get(), src, std::min(size, words()*sizeof(word_t)));
     sanitize();
   }
 
-  void set(size_t i) NOEXCEPT {
+  void set(size_t i) noexcept {
     set_bit(data_[word(i)], bit(i));
   }
 
-  void unset(size_t i) NOEXCEPT {
+  void unset(size_t i) noexcept {
     unset_bit(data_[word(i)], bit(i));
   }
 
-  void reset(size_t i, bool set) NOEXCEPT {
+  void reset(size_t i, bool set) noexcept {
     set_bit(data_[word(i)], bit(i), set);
   }
 
-  bool test(size_t i) const NOEXCEPT {
+  bool test(size_t i) const noexcept {
     return check_bit(data_[word(i)], bit(i));
   }
 
-  bool any() const NOEXCEPT {
+  bool any() const noexcept {
     return std::any_of(
       begin(), end(),
       [] (word_t w) { return w != 0; }
     );
   }
 
-  bool none() const NOEXCEPT {
+  bool none() const noexcept {
     return !any();
   }
 
-  bool all() const NOEXCEPT {
+  bool all() const noexcept {
     return (count() == size());
   }
 
-  void clear() NOEXCEPT {
+  void clear() noexcept {
     if (data_) {
       // passing nullptr to `std::memset` is undefined behavior
       std::memset(data_.get(), 0, sizeof(word_t)*words_);
@@ -201,7 +201,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   }
 
   // counts bits set
-  word_t count() const NOEXCEPT {
+  word_t count() const noexcept {
     return std::accumulate(
       begin(), end(), word_t(0),
       [] (word_t v, word_t w) {
@@ -210,14 +210,14 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   }
 
  private:
-  FORCE_INLINE static size_t bit_to_words(size_t bits) NOEXCEPT {
+  FORCE_INLINE static size_t bit_to_words(size_t bits) noexcept {
     static const size_t EXTRA[] { 1, 0 };
 
     return bits / bits_required<word_t>()
         + EXTRA[0 == (bits % bits_required<word_t>())];
   }
 
-  void sanitize() NOEXCEPT {
+  void sanitize() noexcept {
     assert(bits_ <= capacity());
     auto last_word_bits = bits_ % bits_required<word_t>();
 

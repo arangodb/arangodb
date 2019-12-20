@@ -50,12 +50,12 @@ TEST(formats_tests, duplicate_register) {
     ASSERT_FALSE(irs::formats::exists("dummy_format"));
     ASSERT_EQ(nullptr, irs::formats::get("dummy_format"));
 
-    irs::format_registrar initial(dummy_format::type(), &dummy_format::make);
+    irs::format_registrar initial(dummy_format::type(), irs::string_ref::NIL, &dummy_format::make);
     ASSERT_EQ(!initial_expected, !initial);
   }
 
   initial_expected = false; // next test iteration will not be able to register the same format
-  irs::format_registrar duplicate(dummy_format::type(), &dummy_format::make);
+  irs::format_registrar duplicate(dummy_format::type(), "foo", &dummy_format::make);
   ASSERT_TRUE(!duplicate);
 
   ASSERT_TRUE(irs::formats::exists("dummy_format"));

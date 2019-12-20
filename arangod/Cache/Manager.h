@@ -36,9 +36,10 @@
 #include "Cache/Transaction.h"
 #include "Cache/TransactionManager.h"
 
-#include <stdint.h>
+#include <array>
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <stack>
@@ -108,7 +109,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy the given cache.
   //////////////////////////////////////////////////////////////////////////////
-  void destroyCache(std::shared_ptr<Cache> cache);
+  static void destroyCache(std::shared_ptr<Cache> const& cache);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Prepare for shutdown.
@@ -192,7 +193,8 @@ class Manager {
   uint64_t _nextCacheId;
 
   // actual tables to lease out
-  std::stack<std::shared_ptr<Table>> _tables[32];
+
+  std::array<std::stack<std::shared_ptr<Table>>, 32> _tables;
 
   // global statistics
   uint64_t _globalSoftLimit;
@@ -243,9 +245,9 @@ class Manager {
   static const std::chrono::milliseconds rebalancingGracePeriod;
 
   // check if shutdown or shutting down
-  bool isOperational() const;
+  [[nodiscard]] bool isOperational() const;
   // check if there is already a global process running
-  bool globalProcessRunning() const;
+  [[nodiscard]] bool globalProcessRunning() const;
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
@@ -266,14 +268,14 @@ class Manager {
   void reclaimTable(std::shared_ptr<Table> table, bool internal = false);
 
   // helpers for individual allocations
-  bool increaseAllowed(uint64_t increase, bool privileged = false) const;
+  [[nodiscard]] bool increaseAllowed(uint64_t increase, bool privileged = false) const;
 
   // helper for lr-accessed heuristics
   std::shared_ptr<PriorityList> priorityList();
 
   // helper for wait times
-  Manager::time_point futureTime(uint64_t millisecondsFromNow);
-  bool pastRebalancingGracePeriod() const;
+  [[nodiscard]] static Manager::time_point futureTime(uint64_t millisecondsFromNow);
+  [[nodiscard]] bool pastRebalancingGracePeriod() const;
 };
 
 };  // end namespace cache

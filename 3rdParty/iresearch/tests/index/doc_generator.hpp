@@ -67,8 +67,8 @@ class field_base : public ifield {
  public:
   field_base() = default;
 
-  field_base(field_base&& rhs) NOEXCEPT;
-  field_base& operator=(field_base&& rhs) NOEXCEPT;
+  field_base(field_base&& rhs) noexcept;
+  field_base& operator=(field_base&& rhs) noexcept;
 
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
@@ -114,7 +114,7 @@ class int_field: public field_base {
   typedef int32_t value_t;
 
   int_field() = default;
-  int_field(int_field&& other) NOEXCEPT
+  int_field(int_field&& other) noexcept
     : field_base(std::move(other)),
       stream_(std::move(other.stream_)),
       value_(std::move(other.value_)) {
@@ -206,8 +206,8 @@ class particle: irs::util::noncopyable {
   typedef irs::ptr_iterator<fields_t::iterator> iterator;
 
   particle() = default;
-  particle(particle&& rhs) NOEXCEPT;
-  particle& operator=(particle&& rhs) NOEXCEPT;
+  particle(particle&& rhs) noexcept;
+  particle& operator=(particle&& rhs) noexcept;
   virtual ~particle() = default;
 
   size_t size() const { return fields_.size(); }
@@ -262,7 +262,7 @@ class particle: irs::util::noncopyable {
 
 struct document: irs::util::noncopyable {
   document() = default;
-  document(document&& rhs) NOEXCEPT;
+  document(document&& rhs) noexcept;
   virtual ~document() = default;
 
   void insert(const ifield::ptr& field, bool indexed = true, bool stored = true) {
@@ -436,21 +436,21 @@ class json_doc_generator: public doc_generator_base {
 
     ValueType vt{ ValueType::NIL };
 
-    json_value() NOEXCEPT { }
+    json_value() noexcept { }
 
-    bool is_bool() const NOEXCEPT {
+    bool is_bool() const noexcept {
       return ValueType::BOOL == vt;
     }
 
-    bool is_null() const NOEXCEPT {
+    bool is_null() const noexcept {
       return ValueType::NIL == vt;
     }
 
-    bool is_string() const NOEXCEPT {
+    bool is_string() const noexcept {
       return ValueType::STRING == vt;
     }
 
-    bool is_number() const NOEXCEPT {
+    bool is_number() const noexcept {
       return ValueType::INT == vt
         || ValueType::INT64 == vt
         || ValueType::UINT == vt
@@ -459,7 +459,7 @@ class json_doc_generator: public doc_generator_base {
     }
 
     template<typename T>
-    T as_number() const NOEXCEPT {
+    T as_number() const noexcept {
       assert(is_number());
 
       switch (vt) {
@@ -490,7 +490,12 @@ class json_doc_generator: public doc_generator_base {
     const factory_f& factory
   );
 
-  json_doc_generator(json_doc_generator&& rhs) NOEXCEPT;
+  json_doc_generator(
+    const char* data,
+    const factory_f& factory
+  );
+
+  json_doc_generator(json_doc_generator&& rhs) noexcept;
 
   virtual const tests::document* next() override;
   virtual void reset() override;

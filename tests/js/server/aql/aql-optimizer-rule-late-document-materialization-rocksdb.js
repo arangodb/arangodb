@@ -191,6 +191,13 @@ function lateDocumentMaterializationRuleTestSuite () {
         assertEqual(-1, plan.rules.indexOf(ruleName));
       }
     },
+    testNotAppliedDueToUpdateDoc() {
+      for (i = 0; i < numOfCollectionIndexes; ++i) {
+        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' UPDATE d IN " + collectionNames[i] + " SORT d.obj.c LIMIT 10 RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      }
+    },
     testNotAppliedDueToExpansion() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         for (j = 0; j < numOfExpCollections; ++j) {
@@ -222,6 +229,16 @@ function lateDocumentMaterializationRuleTestSuite () {
         let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
                     "LET a = NOOPT(d.obj.b) " +
                     "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d, c.obj.a) RETURN p) " +
+                    "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      }
+    },
+    testNotAppliedDueToSubqueryWithReturnDocument() {
+      for (i = 0; i < numOfCollectionIndexes; ++i) {
+        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
+                    "LET a = NOOPT(d.obj.b) " +
+                    "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = NOOPT(CONCAT(d.obj.a, c.obj.a)) RETURN d) " +
                     "SORT CONCAT(a, e) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));

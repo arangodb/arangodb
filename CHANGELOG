@@ -4,6 +4,28 @@ devel
 * Renamed document / index / vertex "handle" to "identifier" / "id" for
   consistency in documentation and error messages.
 
+* Agency relational operators TTL fix.
+
+* Improve latency in scheduler.
+
+* Fixed internal issue #4748: Editing a single edgeDefinition using the graph
+  API failed if it was not shared between all available graphs.
+
+* Changed HTTP return code for an error case in /_api/cluster/endpoints REST API.
+  Now, if the API is called on a single server, it will return HTTP 501 instead
+  of HTTP 403.
+
+* Changed HTTP return code for an error case in /_api/cluster/agency-dump REST API.
+  Now, if the API is called on a server type other than coordinator, it will return 
+  HTTP 501 instead of HTTP 403.
+
+* Fixed undefined behavior on node delete.
+
+* Fixed agency invalid operation
+
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
 * Fixed uptime in _admin/statistics.
 
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
@@ -24,7 +46,7 @@ devel
 * ArangoDB web UI switched build system from grunt to webpack.
   It supports React now, but the previous framework is still in use.
 
-* Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
+* Enable the `parallelize-gather` AQL optimizer rule for certain write queries.
 
   The optimization is turned on by default and can be disabled by setting the
   startup option `--query.parallelize-gather-writes` to `false`.

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_MEMORY_POOL_H
@@ -37,7 +36,7 @@
 NS_ROOT
 NS_BEGIN(memory)
 
-inline CONSTEXPR size_t align_up(size_t size, size_t alignment) NOEXCEPT {
+inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
   assert(math::is_power2(alignment));
   return (size + alignment - 1) & (0 - alignment);
@@ -59,14 +58,14 @@ class freelist : private util::noncopyable {
 
  public:
   static const size_t MIN_SIZE = sizeof(slot*);
-  static const size_t MIN_ALIGN = ALIGNOF(slot*);
+  static const size_t MIN_ALIGN = alignof(slot*);
 
   freelist() = default;
-  freelist(freelist&& rhs) NOEXCEPT
+  freelist(freelist&& rhs) noexcept
     : head_(rhs.head_) {
     rhs.head_ = nullptr;
   }
-  freelist& operator=(freelist&& rhs) NOEXCEPT {
+  freelist& operator=(freelist&& rhs) noexcept {
     if (this != &rhs) {
       head_ = rhs.head_;
       rhs.head_ = nullptr;
@@ -75,19 +74,19 @@ class freelist : private util::noncopyable {
   }
 
   // push the specified element 'p' to the stack denoted by 'head'
-  FORCE_INLINE void push(void* p) NOEXCEPT {
+  FORCE_INLINE void push(void* p) noexcept {
     assert(p);
     auto* free = static_cast<slot*>(p);
     free->next = head_;
     head_ = free;
   }
 
-  FORCE_INLINE void assign(void* p, const size_t slot_size, const size_t count) NOEXCEPT {
+  FORCE_INLINE void assign(void* p, const size_t slot_size, const size_t count) noexcept {
     segregate(p, slot_size, count);
     head_ = static_cast<slot*>(p);
   }
 
-  FORCE_INLINE void push_n(void* p, const size_t slot_size, const size_t count) NOEXCEPT {
+  FORCE_INLINE void push_n(void* p, const size_t slot_size, const size_t count) noexcept {
     assert(p);
 
     auto* end = segregate(p, slot_size, count);
@@ -95,19 +94,19 @@ class freelist : private util::noncopyable {
     head_ = static_cast<slot*>(p);
   }
 
-  FORCE_INLINE bool empty() const NOEXCEPT {
+  FORCE_INLINE bool empty() const noexcept {
     return !head_;
   }
 
   // pops an element from the stack denoted by 'head'
-  FORCE_INLINE void* pop() NOEXCEPT {
+  FORCE_INLINE void* pop() noexcept {
     assert(head_);
     void* p = head_;
     head_ = head_->next;
     return p;
   }
 
-  void* pop_n(const size_t slot_size, size_t count) NOEXCEPT {
+  void* pop_n(const size_t slot_size, size_t count) noexcept {
     slot* begin = reinterpret_cast<slot*>(&head_);
     slot* end;
     while (nullptr == (end = try_pop_n(begin, slot_size, count))) {
@@ -122,7 +121,7 @@ class freelist : private util::noncopyable {
   }
 
  private:
-  static slot* segregate(void* p, const size_t slot_size, const size_t count) NOEXCEPT {
+  static slot* segregate(void* p, const size_t slot_size, const size_t count) noexcept {
     assert(p);
 
     auto* head = static_cast<slot*>(p);
@@ -142,7 +141,7 @@ class freelist : private util::noncopyable {
   // on success, puts the beginning of the found range into the 'begin'
   // and retuns 'n-1'th element starting from 'begin'
   // on fail, puts failed element into the 'begin' and returns nullptr
-  static slot* try_pop_n(slot*& begin, const size_t slot_size, size_t count) NOEXCEPT {
+  static slot* try_pop_n(slot*& begin, const size_t slot_size, size_t count) noexcept {
     auto* it = begin->next;
     while (it && --count) {
       if ((reinterpret_cast<char*>(it) + slot_size) != reinterpret_cast<char*>(it->next)) {
@@ -164,8 +163,8 @@ class freelist : private util::noncopyable {
 ///   typedef ... size_type;
 ///   typedef ... difference_type;
 ///
-///   char* malloc(size_type size_in_bytes) NOEXCEPT;
-///   void free(const char* ptr, size_t size) NOEXCEPT:
+///   char* malloc(size_type size_in_bytes) noexcept;
+///   void free(const char* ptr, size_t size) noexcept:
 /// };
 ///
 ///////////////////////////////////////////////////////////////////////////////
@@ -178,11 +177,11 @@ struct malloc_free_allocator {
   typedef size_t size_type;
   typedef std::ptrdiff_t difference_type;
 
-  char* allocate(size_type size) NOEXCEPT {
+  char* allocate(size_type size) noexcept {
     return static_cast<char*>(std::malloc(size));
   }
 
-  void deallocate(char* const ptr, size_t /*size*/) NOEXCEPT {
+  void deallocate(char* const ptr, size_t /*size*/) noexcept {
     std::free(ptr);
   }
 }; // malloc_free_allocator
@@ -195,11 +194,11 @@ struct new_delete_allocator {
   typedef size_t size_type;
   typedef std::ptrdiff_t difference_type;
 
-  char* allocate(size_type size) NOEXCEPT {
+  char* allocate(size_type size) noexcept {
     return new (std::nothrow) char[size];
   }
 
-  void deallocate(const char* ptr, size_t /*size*/) NOEXCEPT {
+  void deallocate(const char* ptr, size_t /*size*/) noexcept {
     delete[] ptr;
   }
 }; // new_delete_allocator
@@ -213,7 +212,7 @@ struct arena_allocator
       private util::noncopyable {
  public:
   arena_allocator() = default;
-  ~arena_allocator() NOEXCEPT { p_ = nullptr; }
+  ~arena_allocator() noexcept { p_ = nullptr; }
 
   char* allocate(size_t size) {
     assert(within_arena(p_));
@@ -226,12 +225,12 @@ struct arena_allocator
 
 #if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
 //FIXME
-//    if (Alignment > ALIGNOF(MAX_ALIGN_T)) {
+//    if (Alignment > alignof(MAX_ALIGN_T)) {
 //      return reinterpret_cast<char*>(::operator new(size, Alignment));
 //    }
 #else
     static_assert(
-      Alignment <= ALIGNOF(MAX_ALIGN_T),
+      Alignment <= alignof(MAX_ALIGN_T),
       "new can't guarantee the requested alignment"
     );
 #endif
@@ -239,7 +238,7 @@ struct arena_allocator
     return reinterpret_cast<char*>(::operator new(size));
   }
 
-  void deallocate(char* p, size_t size) NOEXCEPT {
+  void deallocate(char* p, size_t size) noexcept {
     assert(within_arena(p_));
 
     if (within_arena(p)) {
@@ -251,12 +250,12 @@ struct arena_allocator
     } else {
 #if (defined(__cpp_aligned_new) && __cpp_aligned_new >= 201606)
 //FIXME
-//      if (Alignment > ALIGNOF(MAX_ALIGN_T)) {
+//      if (Alignment > alignof(MAX_ALIGN_T)) {
 //        ::operator delete(p, Alignment);
 //      }
 #else
       static_assert(
-        Alignment <= ALIGNOF(MAX_ALIGN_T),
+        Alignment <= alignof(MAX_ALIGN_T),
         "new can't guarantee the requested alignment"
       );
 #endif
@@ -264,11 +263,11 @@ struct arena_allocator
     }
   }
 
-  size_t used() const NOEXCEPT {
+  size_t used() const noexcept {
     return p_ - buffer_t::data;
   }
 
-  bool within_arena(const char* p) const NOEXCEPT {
+  bool within_arena(const char* p) const noexcept {
     return std::begin(buffer_t::data) <= p && p <= std::end(buffer_t::data);
   }
 
@@ -396,13 +395,13 @@ template<
       const size_t slot_min_size = 0,
       size_t initial_size = 32,
       const block_allocator_t& alloc = block_allocator_t(),
-      const grow_policy_t& grow_policy = grow_policy_t()) NOEXCEPT
+      const grow_policy_t& grow_policy = grow_policy_t()) noexcept
     : pool_base_t(grow_policy, alloc),
       slot_size_(adjust_slot_size(slot_min_size)),
       next_size_(adjust_initial_size(initial_size)) {
   }
 
-  memory_pool(memory_pool&& rhs) NOEXCEPT
+  memory_pool(memory_pool&& rhs) noexcept
     : pool_base_t(std::move(rhs)),
       slot_size_(rhs.slot_size_),
       next_size_(rhs.next_size_),
@@ -413,7 +412,7 @@ template<
     rhs.capacity_ = 0;
   }
 
-  memory_pool& operator=(memory_pool&& rhs) NOEXCEPT {
+  memory_pool& operator=(memory_pool&& rhs) noexcept {
     if (this != &rhs) {
       pool_base_t::operator=(std::move(rhs));
       slot_size_ = rhs.slot_size_;
@@ -427,7 +426,7 @@ template<
     return *this;
   }
 
-  ~memory_pool() NOEXCEPT {
+  ~memory_pool() noexcept {
     // deallocate previously allocated blocks
     // in reverse order
     while (!blocks_.empty()) {
@@ -475,38 +474,38 @@ template<
     return free_.pop();
   }
 
-  void deallocate(void* p, size_t n) NOEXCEPT {
+  void deallocate(void* p, size_t n) noexcept {
     if (!p) return;
 
     free_.push_n(p, slot_size_, n);
   }
 
-  void deallocate(void* p) NOEXCEPT {
+  void deallocate(void* p) noexcept {
     free_.push(p);
   }
 
-  size_t capacity() const NOEXCEPT {
+  size_t capacity() const noexcept {
     return capacity_;
   }
 
-  size_t slot_size() const NOEXCEPT {
+  size_t slot_size() const noexcept {
     return slot_size_;
   }
 
-  size_t next_size() const NOEXCEPT {
+  size_t next_size() const noexcept {
     return next_size_;
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return blocks_.empty();
   }
 
  private:
-  static size_t adjust_initial_size(size_t next_size) NOEXCEPT {
+  static size_t adjust_initial_size(size_t next_size) noexcept {
     return (std::max)(next_size, size_t(2)); // block chain + 1 slot
   }
 
-  static size_t adjust_slot_size(size_t slot_size) NOEXCEPT {
+  static size_t adjust_slot_size(size_t slot_size) noexcept {
     using namespace iresearch::math;
     static_assert(is_power2(freelist::MIN_ALIGN), "MIN_ALIGN must be a power of 2");
 
@@ -586,11 +585,11 @@ struct allocator_base {
   typedef const T*        const_pointer;
   typedef const T&        const_reference;
 
-  pointer address(reference x) const NOEXCEPT {
+  pointer address(reference x) const noexcept {
     return std::addressof(x);
   }
 
-  const_pointer address(const_reference x) const NOEXCEPT {
+  const_pointer address(const_reference x) const noexcept {
     return std::addressof(x);
   }
 
@@ -599,7 +598,7 @@ struct allocator_base {
     new (p) value_type(std::forward<Args>(args)...); // call ctor
   }
 
-  void destroy(pointer p) NOEXCEPT {
+  void destroy(pointer p) noexcept {
     p->~value_type(); // call dtor
   }
 }; // allocator_base
@@ -635,12 +634,12 @@ template<
   };
 
   template<typename U>
-  memory_pool_allocator(const memory_pool_allocator<U, memory_pool_t, Tag>& rhs) NOEXCEPT
+  memory_pool_allocator(const memory_pool_allocator<U, memory_pool_t, Tag>& rhs) noexcept
     : pool_(rhs.pool_) {
     pool_->rebind(sizeof(T));
   }
 
-  explicit memory_pool_allocator(memory_pool_t& pool) NOEXCEPT
+  explicit memory_pool_allocator(memory_pool_t& pool) noexcept
     : pool_(&pool) {
     pool_->rebind(sizeof(T));
   }
@@ -660,7 +659,7 @@ template<
     return static_cast<pointer>(pool_->allocate(n));
   }
 
-  void deallocate(pointer p, size_type n = 1) NOEXCEPT {
+  void deallocate(pointer p, size_type n = 1) noexcept {
     if (std::is_same<Tag, single_allocator_tag>::value) {
       assert(1 == n);
       pool_->deallocate(p);
@@ -699,7 +698,7 @@ template<
   explicit memory_multi_size_pool(
       size_t initial_size = 32,
       const block_allocator_t& block_alloc = block_allocator_t(),
-      const grow_policy_t& grow_policy = grow_policy_t()) NOEXCEPT
+      const grow_policy_t& grow_policy = grow_policy_t()) noexcept
     : pool_base_t(grow_policy, block_alloc),
       initial_size_(initial_size) {
   }
@@ -762,11 +761,11 @@ template<
   };
 
   template<typename U>
-  memory_pool_multi_size_allocator(const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) NOEXCEPT
+  memory_pool_multi_size_allocator(const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) noexcept
     : allocators_(rhs.allocators_), pool_(&allocators_->pool(sizeof(T))) {
   }
 
-  memory_pool_multi_size_allocator(allocators_t& pool) NOEXCEPT
+  memory_pool_multi_size_allocator(allocators_t& pool) noexcept
     : allocators_(&pool), pool_(&allocators_->pool(sizeof(T))) {
   }
 
@@ -785,7 +784,7 @@ template<
     return static_cast<pointer>(pool_->allocate(n));
   }
 
-  void deallocate(pointer p, size_type n = 1) NOEXCEPT {
+  void deallocate(pointer p, size_type n = 1) noexcept {
     if (std::is_same<Tag, single_allocator_tag>::value) {
       assert(1 == n);
       pool_->deallocate(p);
@@ -812,7 +811,7 @@ template<
   typename U,
   typename AllocatorsPool,
   typename Tag
-> CONSTEXPR inline bool operator==(
+> constexpr inline bool operator==(
     const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
     const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
   return lhs.allocators_ == rhs.allocators_ && sizeof(T) == sizeof(U);
@@ -823,7 +822,7 @@ template<
   typename U,
   typename AllocatorsPool,
   typename Tag
-> CONSTEXPR inline bool operator!=(
+> constexpr inline bool operator!=(
     const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
     const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
   return !(lhs == rhs);
