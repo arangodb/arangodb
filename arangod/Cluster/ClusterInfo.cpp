@@ -2264,7 +2264,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   }
 
   TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
-    TRI_TerminateDebugging("During cluster collection creation");
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
   LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
