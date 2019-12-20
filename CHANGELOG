@@ -1,6 +1,9 @@
 v3.6.0-rc.2 (XXXX-XX-XX)
 ------------------------
 
+* Fixed issue #10725: Wrong document count shown inside an empty collection in
+  the web UI.
+
 * Fixed bug that made AQL queries eligible for parallelization even in case
   they couldn't be parallelized, leading to undefined behavior due to the
   thread races.
