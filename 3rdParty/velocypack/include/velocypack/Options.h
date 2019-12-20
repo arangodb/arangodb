@@ -141,6 +141,12 @@ struct Options {
   // disallow using type Custom (to prevent injection of arbitrary opaque
   // values as a security precaution)
   bool disallowCustom = false;
+  
+  // disallow tagged values
+  bool disallowTags = false;
+  
+  // disallow BCD values
+  bool disallowBCD = false;
 
   // write tags to JSON output
   bool debugTags = false;

@@ -145,18 +145,18 @@ class Slice {
   std::vector<uint64_t> getTags() const {
     std::vector<uint64_t> ret;
 
-    if(isTagged()) {
+    if (isTagged()) {
       // always need the actual first byte, so use _start directly
       uint8_t const* start = _start;
 
-      while(SliceStaticData::TypeMap[*start] == ValueType::Tagged) {
+      while (SliceStaticData::TypeMap[*start] == ValueType::Tagged) {
         uint8_t offset;
         uint64_t tag;
 
-        if(*start == 0xee) {
+        if (*start == 0xee) {
           tag = readIntegerFixed<uint64_t, 1>(start + 1);
           offset = 2;
-        } else if(*start == 0xef) {
+        } else if (*start == 0xef) {
           tag = readIntegerFixed<uint64_t, 8>(start + 1);
           offset = 9;
         } else {
@@ -175,21 +175,21 @@ class Slice {
     // always need the actual first byte, so use _start directly
     uint8_t const* start = _start;
 
-    while(SliceStaticData::TypeMap[*start] == ValueType::Tagged) {
+    while (SliceStaticData::TypeMap[*start] == ValueType::Tagged) {
       uint8_t offset;
       uint64_t tag;
 
-      if(*start == 0xee) {
+      if (*start == 0xee) {
         tag = readIntegerFixed<uint64_t, 1>(start + 1);
         offset = 2;
-      } else if(*start == 0xef) {
+      } else if (*start == 0xef) {
         tag = readIntegerFixed<uint64_t, 8>(start + 1);
         offset = 9;
       } else {
         throw new Exception(Exception::InternalError, "Invalid tag type ID");
       }
 
-      if(tag == tagId) {
+      if (tag == tagId) {
         return true;
       }
 

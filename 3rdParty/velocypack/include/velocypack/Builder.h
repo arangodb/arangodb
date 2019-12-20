@@ -395,12 +395,15 @@ class Builder {
   inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Serialize const& sub) {
     return addInternal<Serializable>(attrName, tag, sub._sable);
   }
+
   inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Serialize const& sub) {
     return addInternal<Serializable>(attrName, tag, sub._sable);
   }
+
   inline uint8_t* addTagged(char const* attrName, uint64_t tag, Serialize const& sub) {
     return addInternal<Serializable>(attrName, tag, sub._sable);
   }
+
   inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Serialize const& sub) {
     return addInternal<Serializable>(attrName, attrLength, tag, sub._sable);
   }
@@ -597,6 +600,11 @@ class Builder {
   }
 
   void addBCD(int8_t sign, int32_t exponent, char* mantissa, uint64_t mantissaLength) {
+    if (options->disallowBCD) {
+      // BCD values explicitly disallowed 
+      throw Exception(Exception::BuilderBCDDisallowed);
+    }
+
     bool isOdd = mantissaLength % 2 != 0;
     uint64_t byteLen = mantissaLength / 2 + (isOdd ? 1 : 0);
 
@@ -832,12 +840,6 @@ class Builder {
   inline void reportAdd() {
     std::size_t depth = _stack.size() - 1;
     _index[depth].push_back(_pos - _stack[depth]);
-  }
-
-  template <uint64_t n>
-  void appendLength(ValueLength v) {
-    reserve(n);
-    appendLengthUnchecked<n>(v);
   }
 
   template <uint64_t n>

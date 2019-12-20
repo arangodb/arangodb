@@ -556,7 +556,8 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
     } else {  // offsetSize == 8
       _start[tos] += 3;
       if (needNrSubs) {
-        appendLength<8>(index.size());
+        reserve(8);
+        appendLengthUnchecked<8>(index.size());
       }
     }
   }
@@ -690,7 +691,8 @@ Builder& Builder::close() {
       _start[tos] += 2;
     } else {  // offsetSize == 8
       _start[tos] += 3;
-      appendLength<8>(index.size());
+      reserve(8);
+      appendLengthUnchecked<8>(index.size());
     }
   }
 
@@ -769,6 +771,10 @@ Slice Builder::getKey(std::string const& key) const {
 }
 
 void Builder::appendTag(uint64_t tag) {
+  if (options->disallowTags) {
+    // Tagged values explicitly disallowed
+    throw Exception(Exception::BuilderTagsDisallowed);
+  }
   if (tag <= 255) {
     reserve(1 + 1);
     appendByte(0xee);
@@ -1057,7 +1063,7 @@ uint8_t* Builder::set(uint64_t tag, Slice const& item) {
     throw Exception(Exception::BuilderCustomDisallowed);
   }
 
-  if(tag != 0) {
+  if (tag != 0) {
     appendTag(tag);
   }
 
@@ -1078,7 +1084,7 @@ uint8_t* Builder::set(uint64_t tag, ValuePair const& pair) {
 
   checkKeyIsString(pair.valueType() == ValueType::String);
 
-  if(tag != 0) {
+  if (tag != 0) {
     appendTag(tag);
   }
 
