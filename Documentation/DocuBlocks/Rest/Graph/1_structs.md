@@ -12,9 +12,6 @@ Documents within these collections do not have edges within this graph.
 @RESTSTRUCT{numberOfShards,graph_representation,integer,required,}
 Number of shards created for every new collection in the graph.
 
-@RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
-The replication factor used for every new collection in the graph.
-
 @RESTSTRUCT{_id,graph_representation,string,required,}
 The internal id value of this graph.
 
