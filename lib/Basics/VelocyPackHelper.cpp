@@ -218,6 +218,10 @@ void VelocyPackHelper::initialize() {
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
   
+  // disallow tagged values and BCDs. they are not used in ArangoDB as of now
+  VPackOptions::Defaults.disallowTags = true;
+  VPackOptions::Defaults.disallowBCD = true;
+  
   ::optionsWithUniquenessCheck = VPackOptions::Defaults;
   ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
