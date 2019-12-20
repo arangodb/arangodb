@@ -477,6 +477,7 @@ void epoll_reactor::run(long usec, op_queue<operation>& ops)
     void* ptr = events[i].data.ptr;
     if (ptr == &interrupter_)
     {
+      interrupter_.reset();
       // Ignore.
     }
 # if defined(BOOST_ASIO_HAS_TIMERFD)
@@ -567,10 +568,13 @@ void epoll_reactor::run(long usec, op_queue<operation>& ops)
 
 void epoll_reactor::interrupt()
 {
+#if 0
   epoll_event ev = { 0, { 0 } };
   ev.events = EPOLLIN | EPOLLERR | EPOLLET;
   ev.data.ptr = &interrupter_;
   epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, interrupter_.read_descriptor(), &ev);
+#endif
+  interrupter_.interrupt();
 }
 
 int epoll_reactor::do_epoll_create()
