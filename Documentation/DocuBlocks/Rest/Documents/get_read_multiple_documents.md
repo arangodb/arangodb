@@ -36,7 +36,7 @@ are treated as hints to improve performance. Should the shard keys
 values be incorrect ArangoDB may answer with a *not found* error.
 
 The returned array of documents contain three special attributes: *_id* containing the document
-handle, *_key* containing key which uniquely identifies a document
+identifier, *_key* containing key which uniquely identifies a document
 in a given collection and *_rev* containing the revision.
 
 @RESTRETURNCODES
@@ -54,7 +54,7 @@ is returned if the collection was not found.
 
 @EXAMPLES
 
-Reading multiple documents handle:
+Reading multiple documents identifier:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerReadMultiDocument}
     var cn = "products";

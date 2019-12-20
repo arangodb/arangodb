@@ -68,8 +68,6 @@ If set to `true` or `yes`, the result will include an attribute `details`
 with details about documents that could not be imported.
 
 @RESTDESCRIPTION
-**NOTE** Swagger examples won't work due to the anchor.
-
 Creates documents in the collection identified by `collection-name`.
 The JSON representations of the documents must be passed as the body of the
 POST request. The request body can either consist of multiple lines, with

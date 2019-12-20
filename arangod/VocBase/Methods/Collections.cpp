@@ -310,7 +310,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           auto distributeSlice = info.properties.get(StaticStrings::DistributeShardsLike);
           if (distributeSlice.isNone()) {
             helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
-          } else if (distributeSlice.isString() && distributeSlice.compareString("") == 0) {
+          } else if (distributeSlice.isNull() ||
+                     (distributeSlice.isString() && distributeSlice.compareString("") == 0)) {
             helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
           }
         }
