@@ -502,22 +502,13 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 /// Increment integer value or set 1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) {
-  size_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
-                   ? slice.get("step").getUInt() : 1;
+  auto inc = getIntWithDefault(slice, "step", 1);
+  auto pre = getNumberUnlessExpiredWithDefault<int64_t>();
+
   Builder tmp;
-  bool applied = false;
   {
     VPackObjectBuilder t(&tmp);
-    try {
-      if (!lifetimeExpired()) {
-        tmp.add("tmp", Value(this->slice().getInt() + inc));
-        applied = true;
-      }
-    } catch (...) {}
-
-    if (!applied) {
-      tmp.add("tmp", Value(1));
-    }
+    tmp.add("tmp", Value(pre + inc));
   }
   *this = tmp.slice().get("tmp");
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
@@ -526,20 +517,13 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
 /// Decrement integer value or set -1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) {
+  auto dec = getIntWithDefault(slice, "step", 1);
+  auto pre = getNumberUnlessExpiredWithDefault<std::int64_t>();
+
   Builder tmp;
-  bool applied = false;
   {
     VPackObjectBuilder t(&tmp);
-    try {
-      if (!lifetimeExpired()) {
-        tmp.add("tmp", Value(this->slice().getInt() - 1));
-        applied = true;
-      }
-    } catch (...) {}
-
-    if (!applied) {
-      tmp.add("tmp", Value(-1));
-    }
+    tmp.add("tmp", Value(pre - dec));
   }
   *this = tmp.slice().get("tmp");
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
@@ -1154,4 +1138,15 @@ void Node::clear() {
   } else {
     return _parent->removeChild(_nodeName);
   }
+}
+
+auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
+    -> std::int64_t {
+  if (slice.isObject()) {
+    Slice value = slice.get(key);
+    if (value.isInt()) {
+      return value.getInt();
+    }
+  }
+  return def;
 }
