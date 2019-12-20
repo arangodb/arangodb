@@ -45,11 +45,11 @@ struct VarInfo;
 namespace iresearch {
 
 enum class MaterializeType {
-  Undefined = 0,       // an undefined initialize value
+  Undefined = 0,       // an undefined initial value
   NotMaterialize = 1,  // do not materialize a document
   LateMaterialize = 2, // a document will be materialized later
   Materialize = 4,     // materialize a document
-  UseStoredValues = 8  // use stored or sort values from a view
+  UseStoredValues = 8  // use stored or sort column values
 };
 
 ENABLE_BITMASK_ENUM(MaterializeType);
@@ -243,7 +243,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     ViewVarsInfo replaceAllViewVariables(arangodb::containers::HashSet<ExecutionNode*>& toUnlink);
 
-    void clearViewVariables() {
+    void clearViewVariables() noexcept {
       _nodesToChange.clear();
     }
 
