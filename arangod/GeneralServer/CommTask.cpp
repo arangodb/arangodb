@@ -189,7 +189,8 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
         LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
         addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
-                         req.messageId(), TRI_ERROR_FORBIDDEN);
+                         req.messageId(), TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                         "service unavailable due to startup or maintenance mode");
         return Flow::Abort;
       }
       break;
@@ -443,24 +444,23 @@ RequestStatistics* CommTask::stealStatistics(uint64_t id) {
 /// @brief send response including error response body
 
 void CommTask::addErrorResponse(rest::ResponseCode code,
-                                          rest::ContentType respType, uint64_t messageId,
-                                          int errorNum, std::string const& msg) {
+                                rest::ContentType respType, uint64_t messageId,
+                                int errorNum, char const* errorMessage /* = nullptr */) {
+  if (errorMessage == nullptr) {
+    errorMessage = TRI_errno_string(errorNum);
+  }
+  TRI_ASSERT(errorMessage != nullptr);
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(msg));
-  builder.add(StaticStrings::Code, VPackValue((int)code));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
   builder.close();
 
   addSimpleResponse(code, respType, messageId, std::move(buffer));
-}
-
-
-void CommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respType,
-                                          uint64_t messageId, int errorNum) {
-  addErrorResponse(code, respType, messageId, errorNum, TRI_errno_string(errorNum));
 }
 
 // -----------------------------------------------------------------------------
@@ -472,7 +472,6 @@ void CommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respT
 // and scheduled later when the number of used threads decreases
 
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-
   RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 
   RequestLane lane = handler->getRequestLane();
