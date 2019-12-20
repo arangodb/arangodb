@@ -35,6 +35,6 @@ to be not found.
 
     assert(response.code === 200);
 
-    logRawResponse(response);
+    logPlainResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
