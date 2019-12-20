@@ -2185,11 +2185,8 @@ Result ClusterInfo::createCollectionsCoordinator(
     // a single transaction, or none is.
 
     for (auto const& info : infos) {
-      auto const collectionPlanPath = plan()
-                                          ->collections()
-                                          ->database(databaseName)
-                                          ->collection(info.collectionID)
-                                          ->str();
+      using namespace std::string_literals;
+      auto const collectionPlanPath = "Plan/Collections/"s + databaseName + "/" + info.collectionID;
       precs.emplace_back(collectionPlanPath + "/" + StaticStrings::AttrIsBuilding,
           AgencyPrecondition::Type::EMPTY, false);
       opers.emplace_back(collectionPlanPath, AgencySimpleOperationType::DELETE_OP);
@@ -2314,7 +2311,10 @@ Result ClusterInfo::createCollectionsCoordinator(
       AgencyWriteTransaction transaction(opers, precs);
 
       // This is a best effort, in the worst case the collection stays, but will
-      // be cleaned out by the supervision
+      // be cleaned out by deleteCollectionGuard respectively the supervision.
+      // This removes *all* isBuilding flags from all collections. This is
+      // important so that the creation of all collections is atomic, and
+      // the deleteCollectionGuard relies on it, too.
       auto res = ac.sendTransactionWithFailover(transaction);
 
       if (res.successful()) {
@@ -2323,7 +2323,8 @@ Result ClusterInfo::createCollectionsCoordinator(
         deleteCollectionGuard.cancel();
       }
 
-      // Report if this operation worked, if it failed collections will be cleaned up eventually
+      // Report if this operation worked, if it failed collections will be
+      // cleaned up by deleteCollectionGuard.
       for (auto const& info : infos) {
         TRI_ASSERT(info.state == ClusterCollectionCreationState::DONE);
         events::CreateCollection(databaseName, info.name, res.errorCode());
