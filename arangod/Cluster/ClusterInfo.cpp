@@ -2169,7 +2169,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
     }
   }
-  
+
   auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this, &ac]() {
     using namespace arangodb::cluster::paths;
     using namespace arangodb::cluster::paths::aliases;
