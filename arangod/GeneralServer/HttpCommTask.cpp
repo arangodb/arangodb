@@ -800,7 +800,10 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       thisPtr->writeResponse(stat);
     });
   } else {
-    writeResponse(stat);
+    this->_protocol->context.io_context.post([self = this->shared_from_this(), stat]() mutable {
+      auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
+      thisPtr->writeResponse(stat);
+    });
   }
 }
 
