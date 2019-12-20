@@ -510,7 +510,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
     VPackObjectBuilder t(&tmp);
     try {
       if (!_value.empty() && !lifetimeExpired()) {
-        pre = this->slice().getInt();
+        pre = this->slice().getNumber<int64_t>();
       }
     } catch (...) {}
     tmp.add("tmp", Value(pre + inc));
@@ -530,7 +530,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) 
     VPackObjectBuilder t(&tmp);
     try {
       if (!_value.empty() && !lifetimeExpired()) {
-        pre = this->slice().getInt();
+        pre = this->slice().getNumber<int64_t>();
       }
     } catch (...) {}
     tmp.add("tmp", Value(pre - inc));
