@@ -357,7 +357,10 @@ function iResearchFeatureAqlServerSideTestSuite () {
           if (db._engine().name === "rocksdb") {
             dbPath = fs.safeJoin(internal.db._path(), 'databases');
             let databases = fs.list(dbPath);
-            assertEqual(1, databases.length);
+            databases.forEach(function(database) {
+              assertEqual(0, fs.list(fs.safeJoin(dbPath, database)).length);
+            });
+            assertTrue(databases.length >= 1);
             dbPath = fs.safeJoin(dbPath, databases[0]);
           } else if (db._engine().name !== "mmfiles") {
             fail("Unknown storage engine"); // if new engine is introduced, test should be updated
