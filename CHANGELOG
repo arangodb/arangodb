@@ -1,4 +1,4 @@
-v3.6.0-rc.2 (XXXX-XX-XX)
+v3.6.0-rc.2 (2019-12-23)
 ------------------------
 
 * Fixed issue #10725: Wrong document count shown inside an empty collection in
