@@ -1,7 +1,8 @@
 devel
 -----
 
-* fixed issue #10725: Wrong document count shown inside an empty collection in the WebUI.
+* Fixed issue #10725: Wrong document count shown inside an empty collection in
+  the web UI.
 
 * Agency relational operators TTL fix.
 
