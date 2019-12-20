@@ -35,6 +35,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
+#include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/RebootTracker.h"
@@ -1954,7 +1955,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     // We register a callback in the agency.
     // For some reason this scopeguard is executed (e.g. error case)
     // While we are in this cleanup, and before a callback is removed from the
-    // agency. The callback is triggered by another threat. We have the
+    // agency. The callback is triggered by another thread. We have the
     // following guarantees: a) cacheMutex|Owner are valid and locked by cleanup
     // b) isCleaned is valid and now set to true
     // c) the closure is owned by the callback
@@ -2168,6 +2169,58 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
     }
   }
+  
+  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this, &ac]() {
+    using namespace arangodb::cluster::paths;
+    using namespace arangodb::cluster::paths::aliases;
+    // We need to check isBuilding as a precondition.
+    // If the transaction removing the isBuilding flag results in a timeout, the
+    // state of the collection is unknown; if it was actually removed, we must
+    // not drop the collection, but we must otherwise.
+
+    auto precs = std::vector<AgencyPrecondition>{};
+    auto opers = std::vector<AgencyOperation>{};
+
+    // Note that we trust here that either all isBuilding flags are removed in
+    // a single transaction, or none is.
+
+    for (auto const& info : infos) {
+      auto const collectionPlanPath = plan()
+                                          ->collections()
+                                          ->database(databaseName)
+                                          ->collection(info.collectionID)
+                                          ->str();
+      precs.emplace_back(collectionPlanPath + "/" + StaticStrings::AttrIsBuilding,
+          AgencyPrecondition::Type::EMPTY, false);
+      opers.emplace_back(collectionPlanPath, AgencySimpleOperationType::DELETE_OP);
+    }
+    auto trx = AgencyWriteTransaction{opers, precs};
+
+    using namespace std::chrono;
+    using namespace std::chrono_literals;
+    auto const begin = steady_clock::now();
+    // After a shutdown, the supervision will clean the collections either due
+    // to the coordinator going into FAIL, or due to it changing its rebootId.
+    // Otherwise we must under no circumstance give up here, because noone else
+    // will clean this up.
+    while(!_server.isStopping()) {
+      auto res = ac.sendTransactionWithFailover(trx);
+      // If the collections were removed (res.ok()), we may abort. If we run
+      // into precondition failed, the collections were successfully created, so
+      // we're fine too.
+      if (res.successful() || res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+        return;
+      }
+      // exponential backoff, just to be safe,
+      auto const durationSinceStart = steady_clock::now() - begin;
+      auto constexpr maxWaitTime = 2min;
+      auto const waitTime =
+          std::min<std::common_type_t<decltype(durationSinceStart), decltype(maxWaitTime)>>(
+              durationSinceStart, maxWaitTime);
+      std::this_thread::sleep_for(waitTime);
+    }
+
+  });
 
   // now try to update the plan in the agency, using the current plan version as
   // our precondition
@@ -2263,6 +2316,12 @@ Result ClusterInfo::createCollectionsCoordinator(
       // This is a best effort, in the worst case the collection stays, but will
       // be cleaned out by the supervision
       auto res = ac.sendTransactionWithFailover(transaction);
+
+      if (res.successful()) {
+        // Note that this is not strictly necessary, just to avoid an
+        // unneccessary request when we're sure that we don't need it anymore.
+        deleteCollectionGuard.cancel();
+      }
 
       // Report if this operation worked, if it failed collections will be cleaned up eventually
       for (auto const& info : infos) {
