@@ -108,8 +108,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
-                       infos.getInputRegisters(), infos.numberOfInputRegisters(),
-                       trxVpackOptions()),
+                       infos.getInputRegisters(),
+                       infos.numberOfInputRegisters(), trxVpackOptions()),
       _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
@@ -500,13 +500,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
                 "initializeCursor method!");
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
 
-  // // use this with c++17 instead of specialization below
-  // if constexpr (std::is_same_v<Executor, IdExecutor>) {
-  //   if (items != nullptr) {
-  //     _executor._inputRegisterValues.reset(
-  //         items->slice(pos, *(_executor._infos.registersToKeep())));
-  //   }
-  // }
+  if constexpr (std::is_same_v<Executor, IdExecutor>) {
+    if (items != nullptr) {
+      _executor._inputRegisterValues.reset(
+          items->slice(pos, *(_executor._infos.registersToKeep())));
+    }
+  }
 
   return ExecutionBlock::initializeCursor(input);
 }
@@ -520,36 +519,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 // Without the namespaces it fails with
 // error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
 namespace arangodb::aql {
-// TODO -- remove this specialization when cpp 17 becomes available
-template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    InputAqlItemRow const& input) {
-  // reinitialize the DependencyProxy
-  _dependencyProxy.reset();
-
-  // destroy and re-create the Fetcher
-  _rowFetcher.~Fetcher();
-  new (&_rowFetcher) Fetcher(_dependencyProxy);
-
-  TRI_ASSERT(_skipped == 0);
-  _skipped = 0;
-  TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
-  _state = InternalState::FETCH_DATA;
-
-  SharedAqlItemBlockPtr block =
-      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
-                         infos().numberOfOutputRegisters());
-
-  _rowFetcher.injectBlock(block);
-
-  // cppcheck-suppress unreadVariable
-  constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
-  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
-
-  // end of default initializeCursor
-  return ExecutionBlock::initializeCursor(input);
-}
-
 // TODO the shutdown specializations shall be unified!
 
 template <>
@@ -632,8 +601,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 }
 
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<
-    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
   if (this->infos().isResponsibleForInitializeCursor()) {
     return ExecutionBlock::shutdown(errorCode);
   }
