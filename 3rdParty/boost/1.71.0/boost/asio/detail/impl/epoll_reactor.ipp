@@ -477,7 +477,6 @@ void epoll_reactor::run(long usec, op_queue<operation>& ops)
     void* ptr = events[i].data.ptr;
     if (ptr == &interrupter_)
     {
-      interrupter_.reset();
       // Ignore.
     }
 # if defined(BOOST_ASIO_HAS_TIMERFD)
@@ -517,6 +516,7 @@ void epoll_reactor::run(long usec, op_queue<operation>& ops)
       // in a ready-to-read state and relying on edge-triggered notifications
       // to make it so that we only get woken up when the descriptor's epoll
       // registration is updated.
+      interrupter_.reset();
 
 #if defined(BOOST_ASIO_HAS_TIMERFD)
       if (timer_fd_ == -1)
