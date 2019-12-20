@@ -372,7 +372,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange) {
   EXPECT_EQ(state, ExecutorState::DONE);
   EXPECT_EQ(stats.getFiltered(), 2);
   EXPECT_EQ(output.numRowsWritten(), 3);
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 }
 
 TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
@@ -398,7 +398,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(stats.getFiltered(), 2);
   EXPECT_EQ(output.numRowsWritten(), 3);
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
   // Test the Call we send to upstream
   EXPECT_EQ(call.offset, 0);
   EXPECT_FALSE(call.hasHardLimit());
@@ -428,7 +428,7 @@ TEST_F(FilterExecutorTest, test_skip_datarange_need_more) {
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(skipped, 3);
   EXPECT_EQ(clientCall.getOffset(), 1000 - 3);
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 
   // Test the Call we send to upstream
   EXPECT_EQ(call.offset, 0);
@@ -461,21 +461,21 @@ TEST_F(FilterExecutorTest, test_produce_datarange_has_more) {
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(stats.getFiltered(), 1);
   EXPECT_EQ(output.numRowsWritten(), 2);
-  EXPECT_TRUE(input.hasMore());
+  EXPECT_TRUE(input.hasDataRow());
   // We still have two values in block: false and true
   {
     // pop false
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_FALSE(row.getValue(0).toBoolean());
   }
   {
     // pop true
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::DONE);
     EXPECT_TRUE(row.getValue(0).toBoolean());
   }
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 }
 
 TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
@@ -498,21 +498,21 @@ TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(skipped, 2);
   EXPECT_EQ(clientCall.getOffset(), 0);
-  EXPECT_TRUE(input.hasMore());
+  EXPECT_TRUE(input.hasDataRow());
   // We still have two values in block: false and true
   {
     // pop false
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_FALSE(row.getValue(0).toBoolean());
   }
   {
     // pop true
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::DONE);
     EXPECT_TRUE(row.getValue(0).toBoolean());
   }
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 }
 
 }  // namespace aql

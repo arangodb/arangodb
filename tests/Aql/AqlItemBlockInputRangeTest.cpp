@@ -57,16 +57,16 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
   }
 
   void validateEndReached(AqlItemBlockInputRange& testee) {
-    EXPECT_EQ(GetParam(), testee.state());
+    EXPECT_EQ(GetParam(), testee.upstreamState());
     // Test Data rows
-    EXPECT_FALSE(testee.hasMore());
+    EXPECT_FALSE(testee.hasDataRow());
     {
-      auto const [state, row] = testee.peek();
+      auto const [state, row] = testee.peekDataRow();
       EXPECT_EQ(GetParam(), state);
       EXPECT_FALSE(row.isInitialized());
     }
     {
-      auto const [state, row] = testee.next();
+      auto const [state, row] = testee.nextDataRow();
       EXPECT_EQ(GetParam(), state);
       EXPECT_FALSE(row.isInitialized());
     }
@@ -86,10 +86,10 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
 
   void validateNextIsDataRow(AqlItemBlockInputRange& testee,
                              ExecutorState expectedState, int64_t value) {
-    EXPECT_TRUE(testee.hasMore());
+    EXPECT_TRUE(testee.hasDataRow());
     EXPECT_FALSE(testee.hasShadowRow());
     // We have the next row
-    EXPECT_EQ(testee.state(), ExecutorState::HASMORE);
+    EXPECT_EQ(testee.upstreamState(), ExecutorState::HASMORE);
     auto rowIndexBefore = testee.getRowIndex();
     // Validate that shadowRowAPI does not move on
     {
@@ -108,7 +108,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     }
     // Validate Data Row API
     {
-      auto [state, row] = testee.peek();
+      auto [state, row] = testee.peekDataRow();
       EXPECT_EQ(state, expectedState);
       EXPECT_TRUE(row.isInitialized());
       auto val = row.getValue(0);
@@ -119,7 +119,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
     }
 
     {
-      auto [state, row] = testee.next();
+      auto [state, row] = testee.nextDataRow();
       EXPECT_EQ(state, expectedState);
       EXPECT_TRUE(row.isInitialized());
       auto val = row.getValue(0);
@@ -128,26 +128,26 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
       ASSERT_NE(rowIndexBefore, testee.getRowIndex())
           << "Did not go to next row.";
     }
-    EXPECT_EQ(expectedState, testee.state());
+    EXPECT_EQ(expectedState, testee.upstreamState());
   }
 
   void validateNextIsShadowRow(AqlItemBlockInputRange& testee, ExecutorState expectedState,
                                int64_t value, uint64_t depth) {
     EXPECT_TRUE(testee.hasShadowRow());
     // The next is a ShadowRow, the state shall be done
-    EXPECT_EQ(testee.state(), ExecutorState::DONE);
+    EXPECT_EQ(testee.upstreamState(), ExecutorState::DONE);
 
     auto rowIndexBefore = testee.getRowIndex();
     // Validate that inputRowAPI does not move on
     {
-      auto [state, row] = testee.peek();
+      auto [state, row] = testee.peekDataRow();
       EXPECT_EQ(state, ExecutorState::DONE);
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
           << "Skipped a non processed row.";
     }
     {
-      auto [state, row] = testee.next();
+      auto [state, row] = testee.nextDataRow();
       EXPECT_EQ(state, ExecutorState::DONE);
       EXPECT_FALSE(row.isInitialized());
       ASSERT_EQ(rowIndexBefore, testee.getRowIndex())
@@ -181,24 +181,24 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
 
 TEST_P(InputRangeTest, empty_returns_given_state) {
   auto testee = createEmpty();
-  EXPECT_EQ(GetParam(), testee.state());
+  EXPECT_EQ(GetParam(), testee.upstreamState());
 }
 
 TEST_P(InputRangeTest, empty_does_not_have_more) {
   auto testee = createEmpty();
-  EXPECT_FALSE(testee.hasMore());
+  EXPECT_FALSE(testee.hasDataRow());
 }
 
 TEST_P(InputRangeTest, empty_peek_is_empty) {
   auto testee = createEmpty();
-  auto const [state, row] = testee.peek();
+  auto const [state, row] = testee.peekDataRow();
   EXPECT_EQ(GetParam(), state);
   EXPECT_FALSE(row.isInitialized());
 }
 
 TEST_P(InputRangeTest, empty_next_is_empty) {
   auto testee = createEmpty();
-  auto const [state, row] = testee.next();
+  auto const [state, row] = testee.nextDataRow();
   EXPECT_EQ(GetParam(), state);
   EXPECT_FALSE(row.isInitialized());
 }

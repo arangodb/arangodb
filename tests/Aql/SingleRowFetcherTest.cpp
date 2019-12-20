@@ -51,7 +51,7 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-// TODO check that blocks are not returned to early (e.g. not before the next row
+// TODO check that blocks are not returned to early (e.g. not before the nextDataRow row
 //      is fetched)
 
 // TODO check that, for SingleRowFetcher<true>, blocks are reposited (passed through) immediately
@@ -72,10 +72,10 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
     for (auto const& value : result) {
       SCOPED_TRACE("Checking for value: " + value);
       // We need more rows
-      ASSERT_TRUE(input.hasMore());
+      ASSERT_TRUE(input.hasDataRow());
       EXPECT_FALSE(input.hasShadowRow());
 
-      auto [state, row] = input.next();
+      auto [state, row] = input.nextDataRow();
 
       if (value == result.back()) {
         EXPECT_EQ(state, ExecutorState::DONE);
@@ -89,7 +89,7 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
           << inputVal.slice().toJson() << " should be equal to \"" << value << "\"";
     }
     // We always fetch to the end
-    EXPECT_FALSE(input.hasMore());
+    EXPECT_FALSE(input.hasDataRow());
   }
 
   void validateShadowRange(AqlItemBlockInputRange& input,
@@ -99,7 +99,7 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
                    " with value: " + value);
       // We need more rows
       ASSERT_TRUE(input.hasShadowRow());
-      EXPECT_FALSE(input.hasMore());
+      EXPECT_FALSE(input.hasDataRow());
 
       auto [state, row] = input.nextShadowRow();
 

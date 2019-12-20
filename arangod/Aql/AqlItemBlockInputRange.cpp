@@ -32,7 +32,7 @@ using namespace arangodb::aql;
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state)
     : _block(nullptr), _rowIndex(0), _endIndex(0), _finalState(state) {
-  TRI_ASSERT(!hasMore());
+  TRI_ASSERT(!hasDataRow());
 }
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
@@ -49,8 +49,12 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
   TRI_ASSERT(index <= _block->size());
 }
 
-std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peek() {
-  if (hasMore()) {
+bool AqlItemBlockInputRange::hasDataRow() const noexcept {
+  return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
+}
+
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() {
+  if (hasDataRow()) {
     return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
                           InputAqlItemRow{_block, _rowIndex});
   }
@@ -58,20 +62,20 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peek() {
                         InputAqlItemRow{CreateInvalidInputRowHint{}});
 }
 
-std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::next() {
-  auto res = peek();
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::nextDataRow() {
+  auto res = peekDataRow();
   if (res.second) {
     ++_rowIndex;
   }
   return res;
 }
 
-bool AqlItemBlockInputRange::hasMore() const noexcept {
-  return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
+ExecutorState AqlItemBlockInputRange::upstreamState() const noexcept {
+  return nextState<LookAhead::NOW, RowType::DATA>();
 }
 
-ExecutorState AqlItemBlockInputRange::state() const noexcept {
-  return nextState<LookAhead::NOW, RowType::DATA>();
+bool AqlItemBlockInputRange::upstreamHasMore() const noexcept {
+  return upstreamState() == ExecutorState::HASMORE;
 }
 
 bool AqlItemBlockInputRange::hasShadowRow() const noexcept {

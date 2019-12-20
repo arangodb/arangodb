@@ -107,10 +107,10 @@ std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
   ExecutorState state = ExecutorState::HASMORE;
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   size_t skipped = 0;
-  while (inputRange.hasMore() && skipped < call.getOffset()) {
-    std::tie(state, input) = inputRange.next();
+  while (inputRange.hasDataRow() && skipped < call.getOffset()) {
+    std::tie(state, input) = inputRange.nextDataRow();
     if (!input) {
-      TRI_ASSERT(!inputRange.hasMore());
+      TRI_ASSERT(!inputRange.hasDataRow());
       break;
     }
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
@@ -131,8 +131,8 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   }
   FilterStats stats{};
 
-  while (inputRange.hasMore() && !output.isFull()) {
-    auto const& [state, input] = inputRange.next();
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    auto const& [state, input] = inputRange.nextDataRow();
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       output.copyRow(input);
@@ -148,5 +148,5 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   // pass through all rows this fetch is correct, otherwise we have too few rows.
   upstreamCall.softLimit = clientCall.getOffset() +
                            (std::min)(clientCall.softLimit, clientCall.hardLimit);
-  return {inputRange.state(), stats, upstreamCall};
+  return {inputRange.upstreamState(), stats, upstreamCall};
 }

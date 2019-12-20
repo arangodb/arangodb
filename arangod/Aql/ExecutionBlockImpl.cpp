@@ -82,7 +82,7 @@ using namespace arangodb::aql;
 namespace {
 
 std::string const doneString = "DONE";
-std::string const hasMoreString = "HASMORE";
+std::string const hasDataRowString = "HASMORE";
 std::string const waitingString = "WAITING";
 std::string const unknownString = "UNKNOWN";
 
@@ -91,7 +91,7 @@ std::string const& stateToString(aql::ExecutionState state) {
     case aql::ExecutionState::DONE:
       return doneString;
     case aql::ExecutionState::HASMORE:
-      return hasMoreString;
+      return hasDataRowString;
     case aql::ExecutionState::WAITING:
       return waitingString;
     default:
@@ -1063,6 +1063,10 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   }
 }
 
+// Let's do it the C++ way.
+template <class T>
+struct dependent_false : std::false_type {};
+
 template <class Executor>
 std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::executeSkipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
@@ -1070,11 +1074,15 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
       // TODO: make statically sure that this method exists?
       // the executor has a method skipRowsRange, so use it
+      //
+      // Input range needs data in it for this to work
       return _executor.skipRowsRange(inputRange, call);
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
       // TODO: check whether this is right (and test!)
-      // just let the fetcher fetch some stuff and ignore it without even passing it
-      // to the executor
+      // just let the fetcher fetch some stuff and ignore it without even
+      // passing it to the executor
+      //
+      //
       return _rowFetcher.execute(call);
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::GET_SOME) {
       // Here we need to skip by just having the executor produce rows which we then
@@ -1086,6 +1094,7 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       //
       // TODO: is outputBlock freed when the variable goes out of scope?
       // TODO: do we need to use currently available blocks and then just discard?
+      // For this skip we need data in the input row. We could just run PRODUCE and ignore?
       size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
       SharedAqlItemBlockPtr outputBlock =
           _engine->itemBlockManager().requestBlock(toSkip, _infos.numberOfOutputRegisters());
@@ -1101,8 +1110,8 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
 
       return std::make_tuple(state, skipped, call);
     } else {
-      // TODO: this should be a compiler error
-      TRI_ASSERT(false);
+      static_assert(dependent_false<Executor>::value,
+                    "This value of SkipRowsRangeVariant is not supported");
       return std::make_tuple(ExecutorState::DONE, 0, call);
     }
   } else {
@@ -1113,21 +1122,44 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
   return std::make_tuple(ExecutorState::DONE, 0, call);
 }
 
+// This is the central function of an executor, and it acts like a
+// coroutine: It can be called multiple times and keeps state across
+// calls.
+//
+// The intended behaviour of this function is best described in terms of
+// a state machine; the possible states are the ExecStates
+// SKIP, PRODUCE, FULLCOUNT, UPSTREAM, SHADOWROWS, DONE
+//
+// SKIP       skipping rows. How rows are skipped is determined by
+//            the Executor that is used. See SkipVariants
+// PRODUCE    calls produceRows of the executor
+// FULLCOUNT
+// UPSTREAM   fetches rows from the upstream executor(s) to be processed by
+//            our executor.
+// SHADOWROWS process any shadow rows
+// DONE       processing is done
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if constexpr (isNewStyleExecutor<Executor>()) {
+    // Make sure there's a block allocated and set
+    // the call
     ensureOutputBlock(stack.popCall());
-    size_t skipped = 0;
+
+    auto skipped = size_t{0};
 
     TRI_ASSERT(_outputItemRow);
-    ExecState execState = ::NextState(_outputItemRow->getClientCall());
+
+    auto execState = ::NextState(_outputItemRow->getClientCall());
+
+    // ::NextState(_outputItemRow->getClientCall());
     if (_lastRange.hasShadowRow()) {
       // We have not been able to move all shadowRows into the output last time.
       // Continue from there.
       // TODO test if this works with COUNT COLLECT
       execState = ExecState::SHADOWROWS;
     }
+
     AqlCall executorRequest;
     while (execState != ExecState::DONE && !_outputItemRow->allRowsUsed()) {
       switch (execState) {
@@ -1172,12 +1204,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         }
         case ExecState::FULLCOUNT: {
           TRI_ASSERT(false);
+          // TODO: wat.
         }
         case ExecState::UPSTREAM: {
           // If this triggers the executors produceRows function has returned
-          // HASMORE even if it new that upstream has no further rows.
+          // HASMORE even if it knew that upstream has no further rows.
           TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-          TRI_ASSERT(!_lastRange.hasMore());
+          TRI_ASSERT(!_lastRange.hasDataRow());
           size_t skippedLocal = 0;
           stack.pushCall(std::move(executorRequest));
           std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
@@ -1213,14 +1246,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             TRI_ASSERT(_outputItemRow->produced());
             _outputItemRow->advanceRow();
             if (state == ExecutorState::DONE) {
-              if (_lastRange.hasMore()) {
+              if (_lastRange.hasDataRow()) {
                 // TODO this state is invalid, and can just show up now if we exclude SKIP
                 execState = ExecState::PRODUCE;
               } else {
                 // Right now we cannot support to have more than one set of
                 // ShadowRows inside of a Range.
                 // We do not know how to continue with the above executor after a shadowrow.
-                TRI_ASSERT(!_lastRange.hasMore());
+                TRI_ASSERT(!_lastRange.hasDataRow());
                 execState = ExecState::DONE;
               }
             }
@@ -1239,7 +1272,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     // This is not strictly necessary here, as we shouldn't be called again
     // after DONE.
     _outputItemRow.reset();
-    if (_lastRange.hasMore() || _lastRange.hasShadowRow()) {
+    if (_lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};

@@ -40,13 +40,14 @@ class AqlItemBlockInputRange {
   AqlItemBlockInputRange(ExecutorState, arangodb::aql::SharedAqlItemBlockPtr&&,
                          std::size_t startIndex, std::size_t endIndex) noexcept;
 
-  bool hasMore() const noexcept;
+  ExecutorState upstreamState() const noexcept;
+  bool upstreamHasMore() const noexcept;
 
-  ExecutorState state() const noexcept;
+  bool hasDataRow() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peek();
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow();
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> next();
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
 
   std::size_t getRowIndex() noexcept { return _rowIndex; };
 
