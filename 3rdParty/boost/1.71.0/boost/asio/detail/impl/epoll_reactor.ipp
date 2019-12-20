@@ -519,7 +519,7 @@ void epoll_reactor::run(long usec, op_queue<operation>& ops)
       // registration is updated.
       //
       // The above is the original comment. We have to work around a bug in
-      // Linux 5.13 and thus are using the actual interrupt() call of the
+      // Linux 5.3 and thus are using the actual interrupt() call of the
       // interrupter. Therefore, we have to reset it here:
       interrupter_.reset();
 
