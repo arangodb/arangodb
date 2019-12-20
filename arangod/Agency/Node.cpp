@@ -505,7 +505,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
   int64_t inc = (slice.hasKey("step") && slice.get("step").isInt())
                    ? slice.get("step").getInt() : 1;
   Builder tmp;
-  int pre = 0;
+  int64_t pre = 0;
   {
     VPackObjectBuilder t(&tmp);
     try {
@@ -525,7 +525,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) 
   int64_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
                    ? slice.get("step").getInt() : 1;
   Builder tmp;
-  int pre = 0;
+  int64_t pre = 0;
   {
     VPackObjectBuilder t(&tmp);
     try {
