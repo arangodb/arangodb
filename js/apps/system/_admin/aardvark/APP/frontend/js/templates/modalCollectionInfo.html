@@ -98,6 +98,16 @@
               </th>
             </tr>
           <% } %>
+          <% if (figuresData.writeConcern) { %>
+            <tr>
+              <th class="collectionInfoTh2">Write concern:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.writeConcern%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
           
           <% if (figuresData.shardKeys) { %>
             <tr>

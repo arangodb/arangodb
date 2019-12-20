@@ -133,7 +133,6 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
 
     return true;
   };
@@ -347,7 +346,7 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
                 ? Type::LateMaterialized
                 : !infos.getProduceResult()
                     ? Type::NoResult
-                    : _cursor->hasCovering() &&
+                    : _cursor->hasCovering() && // if change see IndexNode::canApplyLateDocumentMaterializationRule()
                           !infos.getCoveringIndexAttributePositions().empty()
                       ? Type::Covering
                       : Type::Document) {

@@ -64,4 +64,4 @@ exec $ARANGOSH \
     --log.file - \
     --server.password "" \
     --javascript.startup-directory ./js \
-    ${FILELIST}
+    ${FILELIST} "$@"

@@ -23,6 +23,7 @@
 
 #include "IResearchViewOptimizerRules.h"
 
+#include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -399,7 +400,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
     auto const& primarySort = ::primarySort(*viewNode.view());
     auto const& storedValues = ::storedValues(*viewNode.view());
     if (primarySort.empty() && storedValues.empty()) {
-      // neither primary sort nor stored value
+      // neither primary sort nor stored values
       continue;
     }
     auto const& var = viewNode.outVariable();
@@ -438,7 +439,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
   auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
-      // arangosearch view node supports late materialization
+  // arangosearch view node supports late materialization
   //cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
@@ -469,20 +470,17 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       auto& viewNodeState = viewNode.state();
       while (current != loop) {
         auto type = current->getType();
-        switch (current->getType()) {
+        switch (type) {
           case ExecutionNode::SORT:
             if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
               sortNode = current;
             }
             break;
           case ExecutionNode::REMOTE:
-            // REMOTE node is a blocker  - we do not want to make materialization calls across cluster!
+            // REMOTE node is a blocker - we do not want to make materialization calls across cluster!
             // Moreover we pass raw collection pointer - this must not cross process border!
             if (sortNode != nullptr) {
-              // this limit node affects only closest sort, if this sort is invalid
-              // we need to check other limit node
               stopSearch = true;
-              sortNode = nullptr;
             }
             break;
           default: // make clang happy
@@ -492,30 +490,54 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-            // Currently only calculation and subquery nodes expected to use loop variable.
-            // We successfully replace all references to loop variable in calculation nodes only.
-            // However if some other node types will begin to use loop variable
-            // assertion below will be triggered and this rule should be updated.
-            // Subquery node is planned to be supported later.
-            auto invalid = true;
-            if (ExecutionNode::CALCULATION == type) {
+            // currently only calculation nodes expected to use a loop variable with attributes
+            // we successfully replace all references to the loop variable
+            auto valid = false;
+            switch (type) {
+            case ExecutionNode::CALCULATION: {
               auto calcNode = ExecutionNode::castTo<CalculationNode*>(current);
               if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                 calcNodes.emplace_back(calcNode);
-                invalid = false;
+                valid = true;
               }
-            } else {
-              TRI_ASSERT(ExecutionNode::SUBQUERY == type);
+              break;
             }
-            if (invalid) {
+            case ExecutionNode::SUBQUERY: {
+              auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
+              auto subquery = subqueryNode->getSubquery();
+              ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type sa;
+              ::arangodb::containers::SmallVector<ExecutionNode*> subqueryCalcNodes{sa};
+              // find calculation nodes in the plan of a subquery
+              CalculationNodeVarFinder finder(&viewNode.outVariable(), subqueryCalcNodes);
+              valid = !subquery->walk(finder);
+              if (valid) { // if the finder did not stop
+                for (auto scn : subqueryCalcNodes) {
+                  TRI_ASSERT(scn->getType() == ExecutionNode::CALCULATION);
+                  currentUsedVars.clear();
+                  scn->getVariablesUsedHere(currentUsedVars);
+                  if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
+                    auto calcNode = ExecutionNode::castTo<CalculationNode*>(scn);
+                    if (viewNodeState.canVariablesBeReplaced(calcNode)) {
+                      calcNodes.emplace_back(calcNode);
+                    } else {
+                      valid = false;
+                      break;
+                    }
+                  }
+                }
+              }
+              break;
+            }
+            default:
+              break;
+            }
+            if (!valid) {
               if (sortNode != nullptr) {
-                // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
-                sortNode = nullptr;
-                // this limit node affects only closest sort, if this sort is invalid
-                // we need to check other limit node
+                // we have a doc body used before selected SortNode
+                // forget it, let`s look for better sort to use
                 stopSearch = true;
               } else {
-                // we are between limit and sort nodes.
+                // we are between limit and sort nodes
                 // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
                 stickToSortNode = true;
               }
@@ -523,6 +545,9 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           }
         }
         if (stopSearch) {
+          // this limit node affects only closest sort if this sort is invalid
+          // we need to check other limit node
+          sortNode = nullptr;
           break;
         }
         current = current->getFirstDependency();  // inspect next node
@@ -531,8 +556,12 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         // we could apply late materialization
         // 1. Replace view variables in calculation node if need
         if (!calcNodes.empty()) {
-          auto viewVariables = viewNodeState.replaceViewVariables(calcNodes);
+          ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+          auto viewVariables = viewNodeState.replaceViewVariables(calcNodes, toUnlink);
           viewNode.setViewVariables(viewVariables);
+          if (!toUnlink.empty()) {
+            plan->unlinkNodes(toUnlink);
+          }
         }
         // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
         // 3. We need to add materializer after limit node to do materialization

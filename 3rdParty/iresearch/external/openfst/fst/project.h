@@ -22,7 +22,7 @@ class ProjectMapper {
   using FromArc = A;
   using ToArc = A;
 
-  explicit ProjectMapper(ProjectType project_type)
+  constexpr explicit ProjectMapper(ProjectType project_type)
       : project_type_(project_type) {}
 
   ToArc operator()(const FromArc &arc) const {
@@ -30,21 +30,21 @@ class ProjectMapper {
     return ToArc(label, label, arc.weight, arc.nextstate);
   }
 
-  FST_CONSTEXPR MapFinalAction FinalAction() const {
+  constexpr MapFinalAction FinalAction() const {
     return MAP_NO_SUPERFINAL;
   }
 
-  MapSymbolsAction InputSymbolsAction() const {
+  constexpr MapSymbolsAction InputSymbolsAction() const {
     return project_type_ == PROJECT_INPUT ? MAP_COPY_SYMBOLS
                                           : MAP_CLEAR_SYMBOLS;
   }
 
-  MapSymbolsAction OutputSymbolsAction() const {
+  constexpr MapSymbolsAction OutputSymbolsAction() const {
     return project_type_ == PROJECT_OUTPUT ? MAP_COPY_SYMBOLS
                                            : MAP_CLEAR_SYMBOLS;
   }
 
-  uint64 Properties(uint64 props) const {
+  constexpr uint64 Properties(uint64 props) const {
     return ProjectProperties(props, project_type_ == PROJECT_INPUT);
   }
 

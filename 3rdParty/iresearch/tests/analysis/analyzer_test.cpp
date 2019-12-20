@@ -69,7 +69,7 @@ TEST_F(analyzer_test, duplicate_register) {
     static ptr make(const irs::string_ref&) { return ptr(new dummy_analyzer()); }
     static bool normalize(const irs::string_ref&, std::string&) { return true; }
     dummy_analyzer(): irs::analysis::analyzer(dummy_analyzer::type()) { }
-    virtual const irs::attribute_view& attributes() const NOEXCEPT override { return attrs_; }
+    virtual const irs::attribute_view& attributes() const noexcept override { return attrs_; }
     virtual bool next() override { return false; }
     virtual bool reset(const irs::string_ref&) override { return false; }
   };

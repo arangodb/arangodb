@@ -63,7 +63,7 @@ class CollectionAccessingNode {
 
   void setUsedShard(std::string const& shardName) {
     // We can only use the shard we are restricted to
-    TRI_ASSERT(_restrictedTo.empty() || _restrictedTo == shardName);
+    TRI_ASSERT(shardName.empty() || _restrictedTo.empty() || _restrictedTo == shardName);
     _usedShard = shardName;
   }
 
