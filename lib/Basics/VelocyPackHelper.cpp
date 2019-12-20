@@ -818,6 +818,7 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
     case VPackValueType::Binary:
     case VPackValueType::BCD:
     case VPackValueType::Custom:
+    case VPackValueType::Tagged:
       break;
   }
 

@@ -19,50 +19,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
+/// @author Lauri Keel
+/// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VALUETYPE_H
-#define VELOCYPACK_VALUETYPE_H 1
+#ifndef VELOCYPACK_MEMORY_H
+#define VELOCYPACK_MEMORY_H 1
 
-#include <iosfwd>
+#include <cstdint>
+#include <memory>
 
-#include "velocypack-common.h"
+// memory management definitions
 
-namespace arangodb {
-namespace velocypack {
+extern "C" {
 
-enum class ValueType : uint8_t {
-  None,    // not yet initialized
-  Illegal, // illegal value
-  Null,    // JSON null
-  Bool,
-  Array,
-  Object,
-  Double,
-  UTCDate,
-  External,
-  MinKey,
-  MaxKey,
-  Int,
-  UInt,
-  SmallInt,
-  String,
-  Binary,
-  BCD,
-  Custom,
-  Tagged
-};
+extern void* velocypack_malloc(std::size_t size);
+extern void* velocypack_realloc(void* ptr, std::size_t size);
+extern void velocypack_free(void* ptr);
 
-char const* valueTypeName(ValueType);
+#ifndef velocypack_malloc
 
-ValueType valueTypeGroup(ValueType type);
+#define velocypack_malloc(size) malloc(size)
+#define velocypack_realloc(ptr, size) realloc(ptr, size)
+#define velocypack_free(ptr) free(ptr)
 
-}  // namespace arangodb::velocypack
-}  // namespace arangodb
+#endif
 
-std::ostream& operator<<(std::ostream&, arangodb::velocypack::ValueType);
+}
 
 #endif

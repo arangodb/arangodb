@@ -52,11 +52,17 @@ struct SortEntry {
 // reallocations
 constexpr size_t minSortEntriesAllocation = 32;
 
+
+#ifndef VELOCYPACK_NO_THREADLOCALS
+
 // thread-local, reusable buffer used for sorting medium to big index entries
-thread_local std::unique_ptr<std::vector<SortEntry>> sortEntries; 
+thread_local std::unique_ptr<std::vector<SortEntry>> sortEntries;
 
 // thread-local, reusable set to track usage of duplicate keys
 thread_local std::unique_ptr<std::unordered_set<StringRef>> duplicateKeys;
+
+#endif
+
 
 // Find the actual bytes of the attribute name of the VPack value
 // at position base, also determine the length len of the attribute.
@@ -106,16 +112,23 @@ bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
 }
 
 bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
+#ifndef VELOCYPACK_NO_THREADLOCALS
+  std::unique_ptr<std::unordered_set<StringRef>>& duplicateKeys = ::duplicateKeys;
+
   if (::duplicateKeys == nullptr) {
     ::duplicateKeys.reset(new std::unordered_set<StringRef>());
   } else {
     ::duplicateKeys->clear();
   }
+#else
+  std::unique_ptr<std::unordered_set<StringRef>> duplicateKeys(new std::unordered_set<StringRef>());
+#endif
+
   do {
     Slice const key = it.key(true);
     // key(true) guarantees a String as returned type
     VELOCYPACK_ASSERT(key.isString());
-    if (VELOCYPACK_UNLIKELY(!::duplicateKeys->emplace(key).second)) {
+    if (VELOCYPACK_UNLIKELY(!duplicateKeys->emplace(key).second)) {
       // identical key
       return false;
     }
@@ -315,6 +328,9 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
                                   std::vector<ValueLength>& offsets) {
+#ifndef VELOCYPACK_NO_THREADLOCALS
+  std::unique_ptr<std::vector<SortEntry>>& sortEntries = ::sortEntries;
+
   // start with clean sheet in case the previous run left something
   // in the vector (e.g. when bailing out with an exception)
   if (::sortEntries == nullptr) {
@@ -322,19 +338,22 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   } else {
     ::sortEntries->clear();
   }
+#else
+  std::unique_ptr<std::vector<SortEntry>> sortEntries(new std::vector<SortEntry>());
+#endif
 
   std::size_t const n = offsets.size();
   VELOCYPACK_ASSERT(n > 1);
-  ::sortEntries->reserve(std::max(::minSortEntriesAllocation, n));
+  sortEntries->reserve(std::max(::minSortEntriesAllocation, n));
   for (std::size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
     e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
-    ::sortEntries->push_back(e);
+    sortEntries->push_back(e);
   }
-  VELOCYPACK_ASSERT(::sortEntries->size() == n);
-  std::sort(::sortEntries->begin(), ::sortEntries->end(), [](SortEntry const& a, 
-                                                             SortEntry const& b) 
+  VELOCYPACK_ASSERT(sortEntries->size() == n);
+  std::sort(sortEntries->begin(), sortEntries->end(), [](SortEntry const& a,
+                                                         SortEntry const& b)
 #ifdef VELOCYPACK_64BIT
     noexcept
 #endif
@@ -350,7 +369,7 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
 
   // copy back the sorted offsets
   for (std::size_t i = 0; i < n; i++) {
-    offsets[i] = (*::sortEntries)[i].offset;
+    offsets[i] = (*sortEntries)[i].offset;
   }
 }
 
@@ -749,11 +768,27 @@ Slice Builder::getKey(std::string const& key) const {
   return Slice();
 }
 
-uint8_t* Builder::set(Value const& item) {
+void Builder::appendTag(uint64_t tag) {
+  if (tag <= 255) {
+    reserve(1 + 1);
+    appendByte(0xee);
+    appendLengthUnchecked<1>(tag);
+  } else {
+    reserve(1 + 8);
+    appendByte(0xef);
+    appendLengthUnchecked<8>(tag);
+  }
+}
+
+uint8_t* Builder::set(uint64_t tag, Value const& item) {
   auto const oldPos = _pos;
   auto ctype = item.cType();
 
   checkKeyIsString(item.valueType() == ValueType::String);
+
+  if (tag != 0) {
+    appendTag(tag);
+  }
 
   // This method builds a single further VPack item at the current
   // append position. If this is an array or object, then an index
@@ -995,6 +1030,9 @@ uint8_t* Builder::set(Value const& item) {
     case ValueType::BCD: {
       throw Exception(Exception::NotImplemented);
     }
+    case ValueType::Tagged: {
+      throw Exception(Exception::NotImplemented);
+    }
     case ValueType::Custom: {
       if (options->disallowCustom) {
         // Custom values explicitly disallowed as a security precaution
@@ -1011,12 +1049,16 @@ uint8_t* Builder::set(Value const& item) {
   return _start + oldPos;
 }
 
-uint8_t* Builder::set(Slice const& item) {
+uint8_t* Builder::set(uint64_t tag, Slice const& item) {
   checkKeyIsString(item);
 
   if (VELOCYPACK_UNLIKELY(options->disallowCustom && item.isCustom())) {
     // Custom values explicitly disallowed as a security precaution
     throw Exception(Exception::BuilderCustomDisallowed);
+  }
+
+  if(tag != 0) {
+    appendTag(tag);
   }
 
   ValueLength const l = item.byteSize();
@@ -1026,7 +1068,7 @@ uint8_t* Builder::set(Slice const& item) {
   return _start + _pos - l;
 }
 
-uint8_t* Builder::set(ValuePair const& pair) {
+uint8_t* Builder::set(uint64_t tag, ValuePair const& pair) {
   // This method builds a single further VPack item at the current
   // append position. This is the case for ValueType::String,
   // ValueType::Binary, or ValueType::Custom, which can be built
@@ -1035,6 +1077,10 @@ uint8_t* Builder::set(ValuePair const& pair) {
   auto const oldPos = _pos;
 
   checkKeyIsString(pair.valueType() == ValueType::String);
+
+  if(tag != 0) {
+    appendTag(tag);
+  }
 
   if (pair.valueType() == ValueType::Binary) {
     uint64_t v = pair.getSize();

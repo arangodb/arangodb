@@ -95,7 +95,8 @@ bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart)
     case ValueType::Double:
     case ValueType::UTCDate:
     case ValueType::Binary:
-    case ValueType::Illegal: {
+    case ValueType::Illegal:
+    case ValueType::Tagged: {
       break;
     }
 
