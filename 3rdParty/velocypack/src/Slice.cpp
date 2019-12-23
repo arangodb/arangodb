@@ -189,7 +189,7 @@ uint64_t Slice::normalizedHash(uint64_t seed) const {
   return value;
 }
 
-uint32_t Slice::normalizedHash32(uint64_t seed) const {
+uint32_t Slice::normalizedHash32(uint32_t seed) const {
   uint32_t value;
 
   if (isNumber()) {
@@ -203,7 +203,7 @@ uint32_t Slice::normalizedHash32(uint64_t seed) const {
     uint64_t const n = it.size() ^ 0xba5bedf00d;
     value = VELOCYPACK_HASH32(&n, sizeof(n), seed);
     while (it.valid()) {
-      value ^= it.value().normalizedHash(value);
+      value ^= it.value().normalizedHash32(value);
       it.next();
     }
   } else if (isObject()) {
@@ -215,9 +215,9 @@ uint32_t Slice::normalizedHash32(uint64_t seed) const {
     value = seed2;
     while (it.valid()) {
       auto current = (*it);
-      uint64_t seed3 = current.key.normalizedHash(seed2);
+      uint64_t seed3 = current.key.normalizedHash32(seed2);
       value ^= seed3;
-      value ^= current.value.normalizedHash(seed3);
+      value ^= current.value.normalizedHash32(seed3);
       it.next();
     }
   } else {

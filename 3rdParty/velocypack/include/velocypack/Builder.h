@@ -615,7 +615,7 @@ class Builder {
 
     reserve(1 + n + 4 + byteLen);
 
-    appendByte((sign >= 0 ? 0xc8 : 0xd0) + n - 1);
+    appendByte(static_cast<uint8_t>((sign >= 0 ? 0xc8 : 0xd0) + n - 1));
 
     uint64_t v = byteLen;
     for (uint64_t i = 0; i < n; ++i) {

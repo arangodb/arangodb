@@ -71,7 +71,9 @@ class Slice {
   uint8_t const* _start;
 
  public:
-  static constexpr uint64_t defaultSeed = 0xdeadbeef;
+  static constexpr uint64_t defaultSeed64 = 0xdeadbeef;
+  static constexpr uint32_t defaultSeed32 = 0xdeadbeef;
+  static constexpr uint64_t defaultSeed = defaultSeed64;
  
   static uint8_t const noneSliceData[];
   static uint8_t const illegalSliceData[];
@@ -238,9 +240,9 @@ class Slice {
   void set(uint8_t const* s) { _start = s; }
 
   // hashes the binary representation of a value
-  inline uint64_t hash(uint64_t seed = defaultSeed) const {
+  inline uint64_t hash(uint64_t seed = defaultSeed64) const {
     std::size_t const size = checkOverflow(byteSize());
-    if (seed == defaultSeed && size == 1) {
+    if (seed == defaultSeed64 && size == 1) {
       uint64_t h = SliceStaticData::PrecalculatedHashesForDefaultSeed[head()];
       VELOCYPACK_ASSERT(h != 0);
       return h;
@@ -249,14 +251,14 @@ class Slice {
   }
 
   // hashes the binary representation of a value
-  inline uint32_t hash32(uint32_t seed = defaultSeed) const {
+  inline uint32_t hash32(uint32_t seed = defaultSeed32) const {
     size_t const size = checkOverflow(byteSize());
     return VELOCYPACK_HASH32(start(), size, seed);
   }
 
   // hashes the binary representation of a value, not using precalculated hash values
   // this is mainly here for testing purposes
-  inline uint64_t hashSlow(uint64_t seed = defaultSeed) const {
+  inline uint64_t hashSlow(uint64_t seed = defaultSeed64) const {
     std::size_t const size = checkOverflow(byteSize());
     return VELOCYPACK_HASH(start(), size, seed);
   }
@@ -264,22 +266,22 @@ class Slice {
   // hashes the value, normalizing different representations of
   // arrays, objects and numbers. this function may produce different
   // hash values than the binary hash() function
-  uint64_t normalizedHash(uint64_t seed = defaultSeed) const;
+  uint64_t normalizedHash(uint64_t seed = defaultSeed64) const;
 
   // hashes the value, normalizing different representations of
   // arrays, objects and numbers. this function may produce different
   // hash values than the binary hash32() function
-  uint32_t normalizedHash32(uint64_t seed = defaultSeed) const;
+  uint32_t normalizedHash32(uint32_t seed = defaultSeed32) const;
 
   // hashes the binary representation of a String slice. No check
   // is done if the Slice value is actually of type String
-  inline uint64_t hashString(uint64_t seed = defaultSeed) const noexcept {
+  inline uint64_t hashString(uint64_t seed = defaultSeed64) const noexcept {
     return VELOCYPACK_HASH(start(), static_cast<std::size_t>(stringSliceLength()), seed);
   }
 
   // hashes the binary representation of a String slice. No check
   // is done if the Slice value is actually of type String
-  inline uint32_t hashString32(uint64_t seed = defaultSeed) const noexcept {
+  inline uint32_t hashString32(uint32_t seed = defaultSeed32) const noexcept {
     return VELOCYPACK_HASH32(start(), static_cast<std::size_t>(stringSliceLength()), seed);
   }
 
@@ -996,7 +998,7 @@ class Slice {
 
     uint64_t type = head();
     bool positive = type >= 0xc8 && type <= 0xcf;
-    uint8_t mlenlen = type - (positive ? 0xc7 : 0xcf);
+    uint64_t mlenlen = type - (positive ? 0xc7 : 0xcf);
 
     sign = positive ? 1 : -1;
     exponent = static_cast<int32_t>(readIntegerFixed<uint32_t, 4>(valueStart() + 1 + mlenlen));
