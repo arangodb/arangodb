@@ -720,7 +720,7 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
   viewValuesVars[columnNumber].emplace_back(IResearchViewNode::ViewVariable{fieldNumber, var});
 }
 
-template<MaterializeType materializeType> std::unique_ptr<aql::ExecutionBlock> (*executors[])(aql::ExecutionEngine*, IResearchViewNode const*, aql::IResearchViewExecutorInfos&&) = {
+template<MaterializeType materializeType> constexpr std::unique_ptr<aql::ExecutionBlock> (*executors[])(aql::ExecutionEngine*, IResearchViewNode const*, aql::IResearchViewExecutorInfos&&) = {
   [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
     return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, materializeType>>>(
       engine, viewNode, std::move(infos));
@@ -741,7 +741,7 @@ template<MaterializeType materializeType> std::unique_ptr<aql::ExecutionBlock> (
 
 inline size_t getExecutorIndex(bool sorted, bool ordered) {
   auto index = static_cast<size_t>(ordered) + 2 * static_cast<size_t>(sorted);
-  TRI_ASSERT(index < IRESEARCH_COUNTOF(executors<MaterializeType::Materialize>));
+  TRI_ASSERT(index < sizeof(executors<MaterializeType::Materialize>) / sizeof(executors<MaterializeType::Materialize>[0]));
   return index;
 }
 
@@ -1082,7 +1082,7 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     nodes.add(NODE_VIEW_IS_NO_MATERIALIZATION, VPackValue(_isNoMaterialization));
   }
 
-  // stored value
+  // stored values
   {
     auto const& primarySort = ::primarySort(*_view);
     auto const& storedValues = ::storedValues(*_view);
@@ -1328,9 +1328,7 @@ bool IResearchViewNode::filterConditionIsEmpty() const noexcept {
   return ::filterConditionIsEmpty(_filterCondition);
 }
 
-#if defined(_MSC_VER)
-  #pragma warning( disable : 4063 )
-#elif defined (__GNUC__)
+#if defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wswitch"
 #endif
@@ -1513,9 +1511,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 }
 
-#if defined(_MSC_VER)
-  #pragma warning( default : 4063 )
-#elif defined (__GNUC__)
+#if defined (__GNUC__)
   #pragma GCC diagnostic pop
 #endif
 
