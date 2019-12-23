@@ -69,6 +69,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief sync view before querying to get the latest index snapshot
     bool forceSync{false};
+
+    /// @brief try not to materialize documents
+    bool noMaterialization{true};
   };  // Options
 
   IResearchViewNode(aql::ExecutionPlan& plan, size_t id, TRI_vocbase_t& vocbase,

@@ -438,6 +438,69 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
   }
 }
 
+bool noDocumentMaterialization(arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes,
+                               arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
+  bool modified = false;
+  ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
+  for (auto* node : viewNodes) {
+    TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+    auto& viewNodeState = viewNode.state();
+    if (!(viewNode.options().noMaterialization && viewNodeState.isNoDocumentMaterializationPossible())) {
+      continue; // can not optimize
+    }
+    auto current = node;
+    current = current->getFirstParent();
+    TRI_ASSERT(current);
+    auto const& var = viewNode.outVariable();
+    auto isCalcNodesFound = false;
+    auto valid = true;
+    // check if there are any not calculation nodes in the plan referencing to the view variable
+    do {
+      currentUsedVars.clear();
+      current->getVariablesUsedHere(currentUsedVars);
+      if (currentUsedVars.find(&var) != currentUsedVars.end()) {
+        switch (current->getType()) {
+        case ExecutionNode::CALCULATION:
+          isCalcNodesFound = true;
+          break;
+        case ExecutionNode::SUBQUERY: {
+          auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
+          auto subquery = subqueryNode->getSubquery();
+          // check calculation nodes in the plan of a subquery
+          CalculationNodeVarExistenceFinder finder(&var);
+          valid = !subquery->walk(finder);
+          isCalcNodesFound |= finder.isCalculationNodesFound();
+          break;
+        }
+        default:
+          valid = false;
+          break;
+        }
+        if (!valid) {
+          break;
+        }
+      }
+      current = current->getFirstParent();
+    } while (current);
+    if (!valid) {
+      continue; // can not optimize
+    }
+    // replace view variables in calculation nodes if need
+    if (isCalcNodesFound) {
+      auto viewVariables = viewNodeState.replaceAllViewVariables(toUnlink);
+      // if no replacements were found
+      if (viewVariables.empty()) {
+        continue; // can not optimize
+      }
+      viewNode.setViewVariables(viewVariables);
+    }
+    viewNode.setNoMaterialization();
+    modified = true;
+  }
+  return modified;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -600,87 +663,6 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
   }
 }
 
-void noDocumentMaterializationArangoSearchRule(Optimizer* opt,
-                                               std::unique_ptr<ExecutionPlan> plan,
-                                               OptimizerRule const& rule) {
-  auto modified = false;
-  auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
-    opt->addPlan(std::move(plan), rule, modified);
-  });
-  //cppcheck-suppress accessMoved
-  if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW)) {
-    // no view present in the query, so no need to do any expensive
-    // transformations
-    return;
-  }
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type va;
-  ::arangodb::containers::SmallVector<ExecutionNode*> viewNodes{va};
-  plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
-  ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
-  for (auto* node : viewNodes) {
-    auto type = node->getType();
-    TRI_ASSERT(node && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == type);
-    auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
-    auto& viewNodeState = viewNode.state();
-    if (!viewNodeState.isNoDocumentMaterializationPossible()) {
-      continue; // can not optimize
-    }
-    auto current = node;
-    current = current->getFirstParent();
-    TRI_ASSERT(current);
-    auto const& var = viewNode.outVariable();
-    auto isCalcNodesFound = false;
-    auto valid = true;
-    // check if there are any not calculation nodes in the plan referencing to the view variable
-    do {
-      currentUsedVars.clear();
-      current->getVariablesUsedHere(currentUsedVars);
-      if (currentUsedVars.find(&var) != currentUsedVars.end()) {
-        switch (current->getType()) {
-        case ExecutionNode::CALCULATION:
-          isCalcNodesFound = true;
-          break;
-        case ExecutionNode::SUBQUERY: {
-          auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(current);
-          auto subquery = subqueryNode->getSubquery();
-          // check calculation nodes in the plan of a subquery
-          CalculationNodeVarExistenceFinder finder(&var);
-          valid = !subquery->walk(finder);
-          isCalcNodesFound |= finder.isCalculationNodesFound();
-          break;
-        }
-        default:
-          valid = false;
-          break;
-        }
-        if (!valid) {
-          break;
-        }
-      }
-      current = current->getFirstParent();
-    } while (current);
-    if (!valid) {
-      continue; // can not optimize
-    }
-    // replace view variables in calculation nodes if need
-    if (isCalcNodesFound) {
-      ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
-      auto viewVariables = viewNodeState.replaceAllViewVariables(toUnlink);
-      // if no replacements were found
-      if (viewVariables.empty()) {
-        TRI_ASSERT(toUnlink.empty());
-        continue; // can not optimize
-      }
-      viewNode.setViewVariables(viewVariables);
-      if (!toUnlink.empty()) {
-        plan->unlinkNodes(toUnlink);
-      }
-    }
-    viewNode.setNoMaterialization();
-    modified = true;
-  }
-}
-
 /// @brief move filters and sort conditions into views
 void handleViewsRule(Optimizer* opt,
                      std::unique_ptr<ExecutionPlan> plan,
@@ -743,10 +725,11 @@ void handleViewsRule(Optimizer* opt,
 
     modified = true;
   }
-  // we can use view variables to replace only if late or no materialization arangosearch rule is enabled
-  if (!(plan->isDisabledRule(OptimizerRule::lateDocumentMaterializationArangoSearchRule) &&
-        plan->isDisabledRule(OptimizerRule::noDocumentMaterializationArangoSearchRule))) {
-    keepReplacementViewVariables(calcNodes, viewNodes);
+  keepReplacementViewVariables(calcNodes, viewNodes);
+  arangodb::containers::HashSet<ExecutionNode*> toUnlink;
+  modified |= noDocumentMaterialization(viewNodes, toUnlink);
+  if (!toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
   }
 
   // ensure all replaced scorers are covered by corresponding view nodes

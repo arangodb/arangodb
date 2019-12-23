@@ -140,6 +140,10 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
       builder.add(VPackValue(cid));
     }
   }
+
+  if (!options.noMaterialization) {
+    builder.add("noMaterialization", VPackValue(options.noMaterialization));
+  }
 }
 
 bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& options) {
@@ -190,6 +194,19 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
       }
 
       options.restrictSources = true;
+    }
+  }
+
+  // noMaterialization
+  {
+    auto const optionSlice = optionsSlice.get("noMaterialization");
+    if (!optionSlice.isNone()) {
+      // 'noMaterialization' is optional
+      if (!optionSlice.isBool()) {
+        return false;
+      }
+
+      options.noMaterialization = optionSlice.getBool();
     }
   }
 
@@ -299,6 +316,18 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
 
          options.forceSync = value.getBoolValue();
          return true;
+       }},
+      // cppcheck-suppress constStatement
+      {"noMaterialization", [](aql::Query& /*query*/, LogicalView const& /*view*/,
+                               aql::AstNode const& value,
+                               IResearchViewNode::Options& options, std::string& error) {
+           if (!value.isValueType(aql::VALUE_TYPE_BOOL)) {
+             error = "boolean value expected for option 'noMaterialization'";
+             return false;
+           }
+
+           options.noMaterialization = value.getBoolValue();
+           return true;
        }}};
 
   if (!optionsNode) {
@@ -739,9 +768,9 @@ template<MaterializeType materializeType> constexpr std::unique_ptr<aql::Executi
   }
 };
 
-inline size_t getExecutorIndex(bool sorted, bool ordered) {
+inline constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
   auto index = static_cast<size_t>(ordered) + 2 * static_cast<size_t>(sorted);
-  TRI_ASSERT(index < sizeof(executors<MaterializeType::Materialize>) / sizeof(executors<MaterializeType::Materialize>[0]));
+  TRI_ASSERT(index < IRESEARCH_COUNTOF(executors<MaterializeType::Materialize>));
   return index;
 }
 
@@ -1425,6 +1454,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     materializeType = MaterializeType::LateMaterialize;
     numDocumentRegs += 2;
   } else if (isNoMaterialization()) {
+    TRI_ASSERT(options().noMaterialization);
     materializeType = MaterializeType::NotMaterialize;
     // Register for a loop
     if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {

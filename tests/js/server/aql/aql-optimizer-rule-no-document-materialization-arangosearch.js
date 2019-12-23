@@ -33,7 +33,6 @@ let db = require("@arangodb").db;
 let isCluster = require("internal").isCluster();
 
 function noDocumentMaterializationArangoSearchRuleTestSuite () {
-  const ruleName = "no-document-materialization-arangosearch";
   const cn = "UnitTestsCollection";
   const cn1 = "UnitTestsCollection1";
   const vn = "UnitTestsView";
@@ -72,7 +71,9 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
     testNotAppliedDueToFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SORT d.obj.j DESC LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
-      assertEqual(-1, plan.rules.indexOf(ruleName));
+      assertFalse(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].hasOwnProperty('isNoMaterialization'));
     },
     testNotAppliedDueToSubqueryFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] " +
@@ -80,7 +81,9 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
                   "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d, c) RETURN p) " +
                   "SORT CONCAT(a, e) LIMIT 10 RETURN d.obj.e.e1";
       let plan = AQL_EXPLAIN(query).plan;
-      assertEqual(-1, plan.rules.indexOf(ruleName));
+      assertFalse(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].hasOwnProperty('isNoMaterialization'));
     },
     testQueryResultsWithSubqueryFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] " +
@@ -88,7 +91,11 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
                   "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d, c.obj.d.d1) RETURN p) " +
                   "SORT CONCAT(a, e) LIMIT 10 RETURN d.obj.e.e1";
       let plan = AQL_EXPLAIN(query).plan;
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertTrue(plan.nodes.filter(obj => {
+        return obj.type === "SubqueryNode";
+      })[0].subquery.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].isNoMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([14, 4]);
@@ -104,7 +111,9 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
                   "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d.obj.b, c) RETURN p) " +
                   "SORT CONCAT(a, e) LIMIT 10 RETURN d.obj.e.e1";
       let plan = AQL_EXPLAIN(query).plan;
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertTrue(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].isNoMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([14, 4]);
@@ -117,7 +126,9 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
     testQueryResultsWithoutDocAccess() {
       let query = "FOR d IN " + vn + " RETURN 1";
       let plan = AQL_EXPLAIN(query).plan;
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertTrue(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].isNoMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
       result.json.forEach(function(doc) {
@@ -127,7 +138,9 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
     testQueryResultsWithSortedView() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] SORT d.obj.a.a1 LIMIT 10 RETURN d.obj.e.e1";
       let plan = AQL_EXPLAIN(query).plan;
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertTrue(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].isNoMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([14, 4]);
@@ -140,7 +153,9 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
     testQueryResultsWithScorer() {
       let query = "FOR d IN " + vn + " RETURN BM25(d)";
       let plan = AQL_EXPLAIN(query).plan;
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertTrue(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].isNoMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
     }
