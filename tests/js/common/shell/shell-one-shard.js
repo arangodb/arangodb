@@ -55,7 +55,7 @@ function OneShardPropertiesSuite () {
       } catch (ex) {
       }
     },
-    
+
     testDefaultValues : function () {
       assertTrue(db._createDatabase(dn));
       db._useDatabase(dn);
@@ -69,7 +69,28 @@ function OneShardPropertiesSuite () {
       }
     },
     
-    testShardingFlexibles : function () {
+    testDefaultValuesOverridden : function () {
+      assertTrue(db._createDatabase(dn, { replicationFactor: 2, writeConcern: 2, sharding: "single" }));
+      db._useDatabase(dn);
+      let props = db._properties();
+      if (isCluster) {
+        assertEqual(props.sharding, "single");
+        assertEqual(props.replicationFactor, 2);
+        assertEqual(props.writeConcern, 2);
+
+        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 1, distributeShardsLike: "" });
+        props = c.properties();
+        assertEqual(1, props.writeConcern);
+        assertEqual(1, props.replicationFactor);
+        assertEqual(1, props.numberOfShards);
+      } else {
+        assertEqual(props.sharding, undefined);
+        assertEqual(props.replicationFactor, undefined);
+        assertEqual(props.writeConcern, undefined);
+      }
+    },
+    
+    testShardingFlexible : function () {
       assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
       db._useDatabase(dn);
       let props = db._properties();
@@ -80,6 +101,36 @@ function OneShardPropertiesSuite () {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
       }
+    },
+
+    testDeviatingWriteConcernAndMinReplicationFactorForDatabase : function () {
+      if (!isCluster) {
+        return;
+      }
+      try {
+        db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2, sharding: "flexible" });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+        
+      assertTrue(db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2, sharding: "flexible" }));
+    },
+    
+    testDeviatingWriteConcernAndMinReplicationFactorForCollection : function () {
+      if (!isCluster) {
+        return;
+      }
+      assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
+      db._useDatabase(dn);
+      try {
+        db._create("test", { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+        
+      db._create("test", { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2 });
     },
     
     testNormalDBAndTooManyServers : function () {
