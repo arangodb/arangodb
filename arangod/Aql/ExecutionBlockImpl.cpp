@@ -451,7 +451,16 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   if constexpr (isNewStyleExecutor<Executor>()) {
     AqlCallStack stack{AqlCall::SimulateSkipSome(atMost)};
     auto const [state, skipped, block] = execute(stack);
-    return {state, skipped};
+
+    // execute returns ExecutionState::DONE here, which stops execution after simulating a skip.
+    // If we indiscriminately return ExecutionState::HASMORE, then we end up in an infinite loop
+    //
+    // luckily we can dispose of this kludge once executors have been ported.
+    if (skipped < atMost && state == ExecutionState::DONE) {
+      return {ExecutionState::DONE, skipped};
+    } else {
+      return {ExecutionState::HASMORE, skipped};
+    }
   } else {
     traceSkipSomeBegin(atMost);
     auto state = ExecutionState::HASMORE;
