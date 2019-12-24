@@ -121,6 +121,13 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
         return obj.type === "EnumerateViewNode";
       })[0].hasOwnProperty('isNoMaterialization'));
     },
+    testNotAppliedDueToFalseOptions() {
+      let query = "FOR d IN " + vn + " OPTIONS {noMaterialization: false} SORT d.obj.h DESC LIMIT 10 RETURN d.obj.f";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertFalse(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].hasOwnProperty('isNoMaterialization'));
+    },
     testNotAppliedDueToSubqueryFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] " +
                   "LET a = NOOPT(d.obj.b.b1) " +
@@ -282,6 +289,21 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set(["testVertices/c1", "testVertices/c0"]);
+      result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc));
+        expectedKeys.delete(doc);
+      });
+      assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsWithTrueOptions() {
+      let query = "FOR d IN " + vn + " OPTIONS {noMaterialization: true} SORT d.obj.h DESC LIMIT 2 RETURN d.obj.f";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertTrue(plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].isNoMaterialization);
+      let result = AQL_EXECUTE(query);
+      assertEqual(2, result.json.length);
+      let expectedKeys = new Set([25, 35]);
       result.json.forEach(function(doc) {
         assertTrue(expectedKeys.has(doc));
         expectedKeys.delete(doc);
