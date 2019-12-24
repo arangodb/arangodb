@@ -290,6 +290,9 @@ bool ShortestPathExecutor::getVertexId(bool isTarget, VPackSlice& id) {
 auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   auto stats = NoStats{};
+
+  // We always request unlimited rows, because we cannot sensibly bound
+  // our output size by the input size at all.
   auto upstreamCall = AqlCall{};
 
   while (true) {
@@ -345,7 +348,7 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
   }
 
   TRI_ASSERT(false);  // never should a while(true) be exited.
-  return {ExecutorState::HASMORE, stats, upstreamCall};
+  return {ExecutorState::DONE, stats, upstreamCall};
 }
 
 // Check this function is correct
