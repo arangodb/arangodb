@@ -114,7 +114,7 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx,
-                                       arangodb::transaction::Methods& trx,
+                                       arangodb::transaction::Methods const& trx,
                                        arangodb::iresearch::FieldIterator& body,
                                        arangodb::velocypack::Slice const& document,
                                        arangodb::LocalDocumentId const& documentId,
@@ -160,7 +160,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   // Stored value field
   {
     struct StoredValue {
-      StoredValue(arangodb::transaction::Methods& trx, arangodb::velocypack::Slice const& document) : trx(trx), document(document) {}
+      StoredValue(arangodb::transaction::Methods const& trx, arangodb::velocypack::Slice const& document) : trx(trx), document(document) {}
 
       bool write(irs::data_output& out) const {
         for (auto const& storedValue : *fields) {
@@ -180,12 +180,12 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
         return true;
       }
 
-      irs::string_ref const& name() {
+      irs::string_ref const& name() const noexcept {
         return fieldName;
       }
 
       mutable VPackBuffer<uint8_t> buffer;
-      arangodb::transaction::Methods& trx;
+      arangodb::transaction::Methods const& trx;
       arangodb::velocypack::Slice const& document;
       irs::string_ref fieldName;
       std::vector<std::pair<std::string, std::vector<arangodb::basics::AttributeName>>> const* fields;
