@@ -768,7 +768,7 @@ template<MaterializeType materializeType> constexpr std::unique_ptr<aql::Executi
   }
 };
 
-inline constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
+constexpr size_t getExecutorIndex(bool sorted, bool ordered) {
   auto index = static_cast<size_t>(ordered) + 2 * static_cast<size_t>(sorted);
   TRI_ASSERT(index < IRESEARCH_COUNTOF(executors<MaterializeType::Materialize>));
   return index;
