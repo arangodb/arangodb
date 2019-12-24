@@ -1867,7 +1867,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         // if this is pending consolidation, 
         // this segment is already in the mask (see assert below)
         // new version will be created. Remove old version from cache!
-        ctx->segment_mask_.emplace(pending_segment.segment.meta);
+        ctx->segment_mask_.emplace(pending_segment.segment.meta.name);
       }
       assert(ctx->segment_mask_.find(pending_segment.segment.meta) != ctx->segment_mask_.end()); // this segment should be deleted from cache!
       write_document_mask(dir, pending_segment.segment.meta, docs_mask, !pending_consolidation);
