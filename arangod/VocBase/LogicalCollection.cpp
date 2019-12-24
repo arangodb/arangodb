@@ -582,7 +582,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     if (!_sharding->distributeShardsLike().empty()) {
       CollectionNameResolver resolver(vocbase());
 
-      result.add("distributeShardsLike",
+      result.add(StaticStrings::DistributeShardsLike,
                  VPackValue(resolver.getCollectionNameCluster(static_cast<TRI_voc_cid_t>(
                      basics::StringUtils::uint64(distributeShardsLike())))));
     }

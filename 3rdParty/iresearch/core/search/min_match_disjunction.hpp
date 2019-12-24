@@ -103,13 +103,12 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     // prepare external heap
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
-
+    scores_vals_.resize(itrs_.size());
     // prepare score
     prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<min_match_disjunction&>(
         *static_cast<const min_match_disjunction*>(ctx)
       );
-      self.ord_->prepare_score(score);
       self.score_impl(score);
     });
   }
@@ -408,16 +407,19 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     }
 
     // score lead iterators
+    const irs::byte_type** pVal = scores_vals_.data();
     std::for_each(
-      lead(), heap_.end(),
-      [this, lhs](size_t it) {
-        assert(it < itrs_.size());
-        detail::score_add(lhs, *ord_, itrs_[it]);
-    });
+        lead(), heap_.end(),
+        [this, lhs, &pVal](size_t it) {
+          assert(it < itrs_.size());
+          detail::evaluate_score_iter(pVal, itrs_[it]);
+        });
+    ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
   doc_iterators_t itrs_; // sub iterators
   std::vector<size_t> heap_;
+  mutable std::vector<const irs::byte_type*> scores_vals_;
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
   document doc_; // current doc

@@ -115,6 +115,8 @@ enum class category_t {
   OrHighLow,
   Prefix3,
   Wildcard,
+  Or4High,
+  Or6High4Med2Low,
   UNKNOWN
 };
 
@@ -133,7 +135,8 @@ category_t parseCategory(const irs::string_ref& value) {
   if (value == "OrHighLow") return category_t::OrHighLow;
   if (value == "Prefix3") return category_t::Prefix3;
   if (value == "Wildcard") return category_t::Wildcard;
-
+  if (value == "Or4High") return category_t::Or4High;
+  if (value == "Or6High4Med2Low") return category_t::Or6High4Med2Low;
   return category_t::UNKNOWN;
 }
 
@@ -153,6 +156,8 @@ irs::string_ref stringCategory(category_t category) {
    case category_t::OrHighLow: return "OrHighLow";
    case category_t::Prefix3: return "Prefix3";
    case category_t::Wildcard: return "Wildcard";
+   case category_t::Or4High: return "Or4High";
+   case category_t::Or6High4Med2Low: return "Or6High4Med2Low";
    default: return "<unknown>";
   }
 }
@@ -253,6 +258,8 @@ irs::filter::prepared::ptr prepareFilter(
 
     return query.prepare(reader, order);
    }
+   case category_t::Or4High:
+   case category_t::Or6High4Med2Low:
    case category_t::OrHighHigh: // fall through
    case category_t::OrHighMed: // fall through
    case category_t::OrHighLow: {
@@ -475,6 +482,11 @@ int search(
 
       // process a single task
       for (const task_t* task; (task = task_provider.pop()) != nullptr;) {
+        // this sleep circumvents context-switching penalties for CPU
+        // and makes thread planner life easier
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(
+                static_cast<unsigned>(100. * (static_cast<double>(rand()) / static_cast<double>(RAND_MAX)))));
         size_t doc_count = 0;
         const auto start = std::chrono::system_clock::now();
 

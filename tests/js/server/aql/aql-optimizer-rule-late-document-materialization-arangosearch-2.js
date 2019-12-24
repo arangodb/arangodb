@@ -108,10 +108,23 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
+    testNotAppliedDueToUpdateDoc() {
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] UPDATE d IN " + cn + " SORT d.foo DESC LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
     testNotAppliedDueToSubqueryWithDocumentAccess() {
       let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
                   "LET a = NOOPT(d.foo) " +
                   "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d, c.foo) RETURN p) " +
+                  "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
+    testNotAppliedDueToSubqueryWithReturnDocument() {
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
+                  "LET a = NOOPT(d.foo) " +
+                  "LET e = SUM(FOR c IN " + vn + " LET p = NOOPT(CONCAT(d.foo, c.foo)) RETURN d) " +
                   "SORT CONCAT(a, e) LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
