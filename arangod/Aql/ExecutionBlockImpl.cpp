@@ -966,15 +966,20 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
       executor(), *_engine, nrItems, nrRegs);
 }
 
+// TODO: We need to define the size of this block based on Input / Executor / Subquery depth
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
+    -> std::unique_ptr<OutputAqlItemRow> {
+  size_t blockSize = ExecutionBlock::DefaultBatchSize();
+  SharedAqlItemBlockPtr newBlock =
+      _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
+  return createOutputRow(newBlock, std::move(call));
+}
+
 template <class Executor>
 void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
   if (_outputItemRow == nullptr || _outputItemRow->isFull()) {
-    // Is this a TODO:?
-    // We need to define the size of this block based on Input / Executor / Subquery depth
-    size_t blockSize = ExecutionBlock::DefaultBatchSize();
-    SharedAqlItemBlockPtr newBlock =
-        _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
-    _outputItemRow = createOutputRow(newBlock, std::move(call));
+    _outputItemRow = allocateOutputBlock(std::move(call));
   } else {
     _outputItemRow->setCall(std::move(call));
   }
