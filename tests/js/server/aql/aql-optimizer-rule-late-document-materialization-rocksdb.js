@@ -37,12 +37,12 @@ function lateDocumentMaterializationRuleTestSuite () {
   const projectionRuleName = "reduce-extraction-to-projection";
   const numOfCollectionIndexes = 2;
   const numOfExpCollections = 2;
+  const primaryIndexCollectionName = "UnitTestsPrimCollection";
+  const edgeIndexCollectionName = "UnitTestsEdgeCollection";
+  const severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
+  const projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
   let collectionNames = [];
   let expCollectionNames = [];
-  let primaryIndexCollectionName = "UnitTestsPrimCollection";
-  let edgeIndexCollectionName = "UnitTestsEdgeCollection";
-  let severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
-  let projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
   var i;
   var j;
   for (i = 0; i < numOfCollectionIndexes; ++i) {
