@@ -452,7 +452,16 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   if constexpr (isNewStyleExecutor<Executor>()) {
     AqlCallStack stack{AqlCall::SimulateSkipSome(atMost)};
     auto const [state, skipped, block] = execute(stack);
-    return {state, skipped};
+
+    // execute returns ExecutionState::DONE here, which stops execution after simulating a skip.
+    // If we indiscriminately return ExecutionState::HASMORE, then we end up in an infinite loop
+    //
+    // luckily we can dispose of this kludge once executors have been ported.
+    if (skipped < atMost && state == ExecutionState::DONE) {
+      return {ExecutionState::DONE, skipped};
+    } else {
+      return {ExecutionState::HASMORE, skipped};
+    }
   } else {
     traceSkipSomeBegin(atMost);
     auto state = ExecutionState::HASMORE;
@@ -967,15 +976,20 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
       executor(), *_engine, nrItems, nrRegs);
 }
 
+// TODO: We need to define the size of this block based on Input / Executor / Subquery depth
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
+    -> std::unique_ptr<OutputAqlItemRow> {
+  size_t blockSize = ExecutionBlock::DefaultBatchSize();
+  SharedAqlItemBlockPtr newBlock =
+      _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
+  return createOutputRow(newBlock, std::move(call));
+}
+
 template <class Executor>
 void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
   if (_outputItemRow == nullptr || _outputItemRow->isFull()) {
-    // Is this a TODO:?
-    // We need to define the size of this block based on Input / Executor / Subquery depth
-    size_t blockSize = ExecutionBlock::DefaultBatchSize();
-    SharedAqlItemBlockPtr newBlock =
-        _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
-    _outputItemRow = createOutputRow(newBlock, std::move(call));
+    _outputItemRow = allocateOutputBlock(std::move(call));
   } else {
     _outputItemRow->setCall(std::move(call));
   }
@@ -1073,43 +1087,32 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   if constexpr (isNewStyleExecutor<Executor>()) {
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      // TODO: make statically sure that this method exists?
-      // the executor has a method skipRowsRange, so use it
-      //
-      // Input range needs data in it for this to work
+      // If the executor has a method skipRowsRange, to skip outputs more
+      // efficiently than just producing them to subsequently discard them, then
+      // we use it
       return _executor.skipRowsRange(inputRange, call);
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
-      // TODO: check whether this is right (and test!)
-      // just let the fetcher fetch some stuff and ignore it without even
-      // passing it to the executor
-      //
-      //
+      // If we know that every input row produces exactly one output row (this
+      // is a property of the executor), then we can just let the fetcher skip
+      // the number of rows that we would like to skip.
       return _rowFetcher.execute(call);
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::GET_SOME) {
-      // Here we need to skip by just having the executor produce rows which we then
-      // subsequently throw away. I do this by allocating a block and having the
-      // executor write to it.
-      //
-      // unsure about the role of call here as yet, might have to be std::move()'d
-      // into createOutputRow, and then use the resCall for return value.
-      //
-      // TODO: is outputBlock freed when the variable goes out of scope?
-      // TODO: do we need to use currently available blocks and then just discard?
-      // For this skip we need data in the input row. We could just run PRODUCE and ignore?
+      // In all other cases, we skip by letting the executor produce rows, and
+      // then throw them away.
+
       size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
-      SharedAqlItemBlockPtr outputBlock =
-          _engine->itemBlockManager().requestBlock(toSkip, _infos.numberOfOutputRegisters());
-      TRI_ASSERT(outputBlock != nullptr);
-      TRI_ASSERT(outputBlock->size() == call.getOffset());
-      // TODO: do we need to std::move(call) here?
-      auto outputRow = createOutputRow(outputBlock, AqlCall{});
+      AqlCall skipCall{};
+      skipCall.softLimit = toSkip;
+      skipCall.hardLimit = toSkip;
+      skipCall.offset = 0;
 
-      auto const [state, stats, rescall] = _executor.produceRows(inputRange, *outputRow);
+      // we can't mess with _outputItemRow,
+      auto skipOutput = allocateOutputBlock(std::move(skipCall));
+      auto [state, stats, rescall] = _executor.produceRows(inputRange, *skipOutput);
+      auto skipped = skipOutput->numRowsWritten();
 
-      size_t skipped = outputRow->numRowsWritten();
       call.didSkip(skipped);
-
-      return std::make_tuple(state, skipped, call);
+      return std::make_tuple(state, skipped, rescall);
     } else {
       static_assert(dependent_false<Executor>::value,
                     "This value of SkipRowsRangeVariant is not supported");
@@ -1153,7 +1156,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
     auto execState = ::NextState(_outputItemRow->getClientCall());
 
-    // ::NextState(_outputItemRow->getClientCall());
     if (_lastRange.hasShadowRow()) {
       // We have not been able to move all shadowRows into the output last time.
       // Continue from there.
