@@ -1,4 +1,0 @@
-arangosh&gt; db.example.loadIndexesIntoMemory();
-{ 
-  <span class="hljs-string">"result"</span> : <span class="hljs-literal">true</span> 
-}

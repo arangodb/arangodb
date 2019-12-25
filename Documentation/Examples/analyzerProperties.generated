@@ -1,9 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> analyzers = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/analyzers"</span>);
-arangosh&gt; analyzers.analyzer(<span class="hljs-string">"text_en"</span>).properties();
-{ 
-  <span class="hljs-string">"locale"</span> : <span class="hljs-string">"en.utf-8"</span>, 
-  <span class="hljs-string">"case"</span> : <span class="hljs-string">"lower"</span>, 
-  <span class="hljs-string">"stopwords"</span> : [ ], 
-  <span class="hljs-string">"accent"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"stemming"</span> : <span class="hljs-literal">true</span> 
-}

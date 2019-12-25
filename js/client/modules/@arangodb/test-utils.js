@@ -41,7 +41,7 @@ const platform = require('internal').platform;
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
-// const GREEN = require('internal').COLORS.COLOR_GREEN;
+const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
@@ -103,7 +103,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let env = {};
   let customInstanceInfos = {};
   let healthCheck = function () {return true;};
-
+  let beforeStart = time();
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('healthCheck')) {
     healthCheck = startStopHandlers.healthCheck;
   }
@@ -162,7 +162,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     _.defaults(env, customInstanceInfos.postStart.env);
   }
 
-  let results = { shutdown: true };
+  let testrunStart = time();
+  let results = {
+    shutdown: true,
+    startupTime: testrunStart - beforeStart
+  };
   let continueTesting = true;
   let serverDead = false;
   let count = 0;
@@ -179,16 +183,20 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       count += 1;
 
       let collectionsBefore = [];
+      let viewsBefore = [];
       if (!serverDead) {
         try {
           db._collections().forEach(collection => {
             collectionsBefore.push(collection._name);
           });
+          db._views().forEach(view => {
+            viewsBefore.push(view._name);
+          });
         }
         catch (x) {
           results[te] = {
             status: false,
-            message: 'failed to fetch the previously available collections: ' + x.message
+            message: 'failed to fetch the previously available collections & views: ' + x.message
           };
           continueTesting = false;
           serverDead = true;
@@ -221,7 +229,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           break;
         }
 
-        print('\n' + Date() + ' ' + runFn.info + ': Trying', te, '...');
+        print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
 
         if (reply.hasOwnProperty('forceTerminate')) {
@@ -248,22 +256,25 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             break;
           }
         }
-
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
             healthCheck(options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers)) {
           continueTesting = true; 
 
-          // Check whether some collections were left behind, and if mark test as failed.
+          // Check whether some collections & views were left behind, and if mark test as failed.
           let collectionsAfter = [];
+          let viewsAfter = [];
           try {
             db._collections().forEach(collection => {
               collectionsAfter.push(collection._name);
+            });
+            db._views().forEach(view => {
+              viewsAfter.push(view._name);
             });
           }
           catch (x) {
             results[te] = {
               status: false,
-              message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+              message: 'failed to fetch the currently available collections & views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
             };
             continueTesting = false;
             continue;
@@ -274,21 +285,29 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             return (name[0] !== '_'); // exclude system collections from the comparison
           });
 
-          if (delta.length !== 0) {
+          let deltaViews = diffArray(viewsBefore, viewsAfter).filter(function(name) {
+            return ! ((name[0] === '_') || (name === "compact") || (name === "election")
+                     || (name === "log")); 
+          });
+          if ((delta.length !== 0) || (deltaViews.length !== 0)){
             results[te] = {
               status: false,
-              message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
+              message: 'Cleanup missing - test left over collections / views : ' + delta + ' / ' + deltaViews + '. Original test status: ' + JSON.stringify(results[te])
             };
             collectionsBefore = [];
+            viewsBefore = [];
             try {
               db._collections().forEach(collection => {
                 collectionsBefore.push(collection._name);
+              });
+              db._views().forEach(view => {
+                viewsBefore.push(view._name);
               });
             }
             catch (x) {
               results[te] = {
                 status: false,
-                message: 'failed to fetch the currently available delta collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+                message: 'failed to fetch the currently available delta collections / views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
               };
               continueTesting = false;
               continue;
@@ -337,15 +356,19 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             results.setup.message = 'custom alive check failed!';
           }
           collectionsBefore = [];
+          viewsBefore = [];
           try {
             db._collections().forEach(collection => {
               collectionsBefore.push(collection._name);
+            });
+            db._views().forEach(view => {
+              viewsBefore.push(view._name);
             });
           }
           catch (x) {
             results[te] = {
               status: false,
-              message: 'failed to fetch the currently available shutdown collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+              message: 'failed to fetch the currently available shutdown collections / views: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
             };
             continueTesting = false;
             continue;
@@ -380,7 +403,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
-
+  let shutDownStart = time();
+  results['testDuration'] = shutDownStart - testrunStart;
   print(Date() + ' Shutting down...');
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('preStop')) {
     customInstanceInfos['preStop'] = startStopHandlers.preStop(options,
@@ -428,11 +452,6 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 // //////////////////////////////////////////////////////////////////////////////
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
-  if (options.skipTest(testname, options)) {
-    whichFilter.filter = 'blacklist';
-    return false;
-  }
-
   // These filters require a proper setup, Even if we filter by testcase:
   if ((testname.indexOf('-mmfiles') !== -1) && options.storageEngine === 'rocksdb') {
     whichFilter.filter = 'skip when running as rocksdb';
@@ -462,7 +481,19 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   // if we filter, we don't care about the other filters below:
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     whichFilter.filter = 'testcase';
-    return testname.search(options.test) >= 0;
+    if (typeof options.test === 'string') {
+      return testname.search(options.test) >= 0;
+    } else {
+      let found = false;
+      options.test.forEach(
+        filter => {
+          if (testname.search(filter) >= 0) {
+            found = true;
+          }
+        }
+      );
+      return found;
+    }
   }
 
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
@@ -685,7 +716,7 @@ function runThere (options, instanceInfo, file) {
     };
   }
 }
-runThere.info = 'runThere';
+runThere.info = 'runInArangod';
 
 function readTestResult(path, rc, testCase) {
   const jsonFN = fs.join(path, 'testresult.json');
@@ -694,27 +725,22 @@ function readTestResult(path, rc, testCase) {
     buf = fs.read(jsonFN);
     fs.remove(jsonFN);
   } catch (x) {
-    let msg = 'failed to read ' + jsonFN + " - " + x;
+    let msg = 'readTestResult: failed to read ' + jsonFN + " - " + x;
     print(RED + msg + RESET);
-    return {
-      failed: 1,
-      status: false,
-      message: msg,
-      duration: -1
-    };
+    rc.message += " - " + msg;
+    rc.status = false;
+    return rc;
   }
 
   let result;
   try {
     result = JSON.parse(buf);
   } catch (x) {
-    let msg = 'failed to parse ' + jsonFN + "'" + buf + "' - " + x;
+    let msg = 'readTestResult: failed to parse ' + jsonFN + "'" + buf + "' - " + x;
     print(RED + msg + RESET);
-    return {
-      status: false,
-      message: msg,
-      duration: -1
-    };
+    rc.message += " - " + msg;
+    rc.status = false;
+    return rc;
   }
 
   if (Array.isArray(result)) {
@@ -739,7 +765,7 @@ function readTestResult(path, rc, testCase) {
     }
   } else {
     rc.failed = rc.status ? 0 : 1;
-    rc.message = "don't know howto handle '" + buf + "'";
+    rc.message = "readTestResult: don't know howto handle '" + buf + "'";
     return rc;
   }    
 }
@@ -769,10 +795,10 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     args = Object.assign(args, addArgs);
   }
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, false, options.coreCheck);
+  let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), options, 'arangosh', instanceInfo.rootDir, options.coreCheck);
   return readTestResult(instanceInfo.rootDir, rc, args['javascript.unit-tests']);
 }
-runInArangosh.info = 'arangosh';
+runInArangosh.info = 'runInExternalArangosh';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file in the current arangosh
@@ -815,7 +841,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     };
   }
 }
-runInLocalArangosh.info = 'localarangosh';
+runInLocalArangosh.info = 'runInLocalArangosh';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a unittest file using rspec
@@ -913,7 +939,9 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, false, options.oneTestTimeout);
+  let start = Date();
+  const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, options.oneTestTimeout);
+  let end = Date();
 
   if (!res.status && res.timeout) {
     return {
@@ -958,7 +986,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   fs.remove(tmpname);
   return result;
 }
-runInRSpec.info = 'runInRSpec';
+runInRSpec.info = 'runInLocalRSpec';
 
 exports.runThere = runThere;
 exports.runInArangosh = runInArangosh;
