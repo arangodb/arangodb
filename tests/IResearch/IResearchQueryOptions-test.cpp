@@ -1114,7 +1114,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     auto found = false;
     for (auto const node : nodes) {
       if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringView() == "EnumerateViewNode") {
-        EXPECT_TRUE(!node.hasKey("isNoMaterialization"));
+        EXPECT_FALSE(node.hasKey("isNoMaterialization"));
         found = true;
         break;
       }
