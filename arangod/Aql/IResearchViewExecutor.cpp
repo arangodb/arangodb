@@ -1234,7 +1234,8 @@ void IResearchViewMergeExecutor<ordered, materializeType>::reset() {
     }
     // add sortReader if it has not been added yet
     // sortReader is the last item
-    if (this->_infos.getOutNonMaterializedViewRegs().size() == storedValuesReaders.size()) {
+    auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
+    if (columnsFieldsRegs.empty() || columnsFieldsRegs.cbegin()->first != IResearchViewNode::SortColumnNumber) {
       auto sortReader = ::sortColumn(segment);
 
       if (!sortReader) {
