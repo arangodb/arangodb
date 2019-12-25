@@ -1,7 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
-* fixed issue #10725: Wrong document count shown inside an empty collection in the WebUI.
+* Fixed issue #10725: Wrong document count shown inside an empty collection in
+  the web UI.
 
 * Removed content from Documentation/Books, but keeping the subfolders.
   The documentation is in a separate repository (except DocuBlocks and Scripts):
