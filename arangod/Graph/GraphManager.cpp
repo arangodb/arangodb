@@ -579,7 +579,8 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                                          aql::QueryPart const queryPart) const {
-  std::string const queryStr{"FOR g IN _graphs RETURN g"};
+  std::string const queryStr{
+      "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
   return readGraphByQuery(builder, queryPart, queryStr);
 }
 

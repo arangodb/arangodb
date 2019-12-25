@@ -87,7 +87,7 @@ set(ARANGODB_VERSION_MINOR "5")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "3")
+  set(ARANGODB_VERSION_PATCH "4")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -291,20 +291,18 @@ set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
 set(ARANGODB_DISPLAY_NAME    "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT  "https://www.arangodb.com")
-set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
+set(ARANGODB_HELP_LINK       "https://www.arangodb.com/docs/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
 # MSVC
-set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
-set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
+set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
+set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - dump data and configuration")
+set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - restore data and configuration")
 set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
-
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - TSV/CSV/JSON importer")
-set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
+set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
+set(ARANGOSH_FRIENDLY_STRING       "arangosh - command-line client")
+set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack pretty-printer")
 
 # libraries
 set(LIB_ARANGO        arango)
@@ -1097,6 +1095,7 @@ set(LIB_ARANGO_IRESEARCH arango_iresearch)
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
 
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 

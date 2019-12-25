@@ -127,7 +127,6 @@ function runArangodRecovery (params) {
     params.options,
     'recovery',
     params.instanceInfo.rootDir,
-    params.setup,
     !params.setup && params.options.coreCheck);
 }
 

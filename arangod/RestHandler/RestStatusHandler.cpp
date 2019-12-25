@@ -56,10 +56,10 @@ RestStatus RestStatusHandler::execute() {
       application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
           "ServerSecurity");
   TRI_ASSERT(security != nullptr);
-  
+
   if (!security->canAccessHardenedApi()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 
@@ -83,6 +83,7 @@ RestStatus RestStatusHandler::execute() {
                VPackValue(server->operationModeString()));  // to be deprecated - 3.3 compat
     result.add("operationMode", VPackValue(server->operationModeString()));
   }
+  result.add("foxxApi", VPackValue(!security->isFoxxApiDisabled()));
 
   std::string host = ServerState::instance()->getHost();
 
