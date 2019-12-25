@@ -1,8 +1,0 @@
-arangosh&gt; db._createDatabase(<span class="hljs-string">"myapp"</span>);
-<span class="hljs-literal">true</span>
-arangosh&gt; db._useDatabase(<span class="hljs-string">"myapp"</span>);
-<span class="hljs-literal">true</span>
-arangosh&gt; db._useDatabase(<span class="hljs-string">"_system"</span>);
-<span class="hljs-literal">true</span>
-arangosh&gt; db._dropDatabase(<span class="hljs-string">"myapp"</span>);
-<span class="hljs-literal">true</span>

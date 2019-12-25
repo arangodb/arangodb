@@ -96,7 +96,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   AQL_STATE_RESULT = 3
 
   aqlState = AQL_STATE_QUERY
-  blockCount = 0;
+  blockCount = 0
 
   # read in the context, split into long and short
   infile = io.open(filepath, 'r', encoding='utf-8', newline=None)

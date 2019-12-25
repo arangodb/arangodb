@@ -181,16 +181,23 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     return {};
   }
 
-  static const std::function<bool(irs::string_ref const& key)> propertiesAcceptor =
+  static const std::function<bool(irs::string_ref const&)> propertiesAcceptor =
       [](irs::string_ref const& key) -> bool {
     return key != StaticStrings::VersionField; // ignored fields
   };
-  static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
+  static const std::function<bool(irs::string_ref const&)> persistenceAcceptor =
     [](irs::string_ref const&) -> bool { return true; };
+
+  static const std::function<bool(irs::string_ref const&)> linkPropertiesAcceptor =
+    [](irs::string_ref const& key) -> bool {
+      return key != iresearch::StaticStrings::AnalyzerDefinitionsField
+          && key != iresearch::StaticStrings::PrimarySortField;
+  };
 
   auto* acceptor = &propertiesAcceptor;
 
-  if (context == Serialization::Persistence || context == Serialization::Inventory) {
+  if (context == Serialization::Persistence || 
+      context == Serialization::PersistenceWithInProgress) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {
@@ -198,9 +205,10 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     }
 
     acceptor = &persistenceAcceptor;
-    // links are not persisted, their definitions are part of the corresponding
-    // collections
-  } else if (context == Serialization::Properties) {
+  }
+
+  if (context == Serialization::Properties ||
+      context == Serialization::Inventory) {
     // verify that the current user has access on all linked collections
     auto* exec = ExecContext::CURRENT;
     if (exec) {
@@ -211,18 +219,31 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
       }
     }
 
+    VPackBuilder tmp;
+
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
 
-    VPackBuilder links;
-    links.openObject();
-
+    builder.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     for (auto& entry : _collections) {
-      links.add(entry.second.first, entry.second.second.slice());
-    }
+      auto linkSlice = entry.second.second.slice();
 
-    links.close();
-    builder.add(StaticStrings::LinksField, links.slice());
+      if (context == Serialization::Properties) {
+        tmp.clear();
+        tmp.openObject();
+        if (!mergeSliceSkipKeys(tmp, linkSlice, linkPropertiesAcceptor)) {
+          return {
+            TRI_ERROR_INTERNAL,
+            "failed to generate externally visible link definition for arangosearch View '" + name() + "'"
+          };
+        }
+
+        linkSlice = tmp.close().slice();
+      }
+
+      builder.add(entry.second.first, linkSlice);
+    }
+    builder.close();
   }
 
   if (!builder.isOpenObject()) {
@@ -264,7 +285,7 @@ arangodb::Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   builder.openObject();
 
-  auto res = link.properties(builder, false); // generate user-visible definition, agency will not see links
+  auto res = link.properties(builder, true); // generate user-visible definition, agency will not see links
 
   if (!res.ok()) {
     return res;

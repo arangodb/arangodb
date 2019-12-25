@@ -1,8 +1,0 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/collection/testCollection/shards</span>
-
-HTTP/1.1 OK
-content-type: application/json; charset=utf-8
-location: /_api/collection/testCollection/shards
-x-content-type-options: nosniff
-
-"{\"error\":false,\"code\":200,\"cacheEnabled\":false,\"waitForSync\":false,\"status\":3,\"isSmart\":false,\"globallyUniqueId\":\"c4010051/\",\"keyOptions\":{\"allowUserKeys\":true,\"type\":\"traditional\"},\"type\":2,\"shardingStrategy\":\"hash\",\"shards\":[\"s4010052\",\"s4010053\",\"s4010054\"],\"name\":\"testCollection\",\"isSystem\":false,\"minReplicationFactor\":1,\"statusString\":\"loaded\",\"numberOfShards\":3,\"id\":\"4010051\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"]}"

@@ -614,9 +614,6 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
-      case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
-        flags = Index::makeFlags(Index::Serialize::Internals);
-        return true;
       default:
         flags = Index::makeFlags();
         return !idx->isHidden() && !idx->inProgress();
@@ -630,7 +627,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
                                                      Serialization context) const {
-  bool const forPersistence = (context == Serialization::Persistence);
+  bool const forPersistence = (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress);
+  bool const showInProgress = (context == Serialization::PersistenceWithInProgress);
 
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
@@ -673,8 +671,8 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  auto filter = [indexFlags, forPersistence](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
-    if (forPersistence || (!idx->inProgress() && !idx->isHidden())) {
+  auto filter = [indexFlags, forPersistence, showInProgress](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+    if ((forPersistence || !idx->isHidden()) && (showInProgress || !idx->inProgress())) {
       flags = indexFlags;
       return true;
     }

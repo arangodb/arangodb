@@ -1241,7 +1241,7 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
 
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
-      LogicalDataSource::Serialization::Persistence);
+      LogicalDataSource::Serialization::PersistenceWithInProgress);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res =
@@ -1399,7 +1399,7 @@ void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection, bool doSync) {
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
-      LogicalDataSource::Serialization::Persistence);
+      LogicalDataSource::Serialization::PersistenceWithInProgress);
   int res =
       writeCreateCollectionMarker(vocbase.id(), collection.id(), builder.slice(),
                                   RocksDBLogValue::CollectionChange(vocbase.id(),
@@ -1415,7 +1415,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
                                                  std::string const& oldName) {
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
-      LogicalDataSource::Serialization::Persistence);
+      LogicalDataSource::Serialization::PersistenceWithInProgress);
   int res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), arangodb::velocypack::StringRef(oldName)));
@@ -1442,7 +1442,7 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
   VPackBuilder props;
 
   props.openObject();
-  view.properties(props, LogicalDataSource::Serialization::Persistence);
+  view.properties(props, LogicalDataSource::Serialization::PersistenceWithInProgress);
   props.close();
 
   RocksDBValue const value = RocksDBValue::View(props.slice());
@@ -1467,7 +1467,7 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   VPackBuilder builder;
 
   builder.openObject();
-  view.properties(builder, LogicalDataSource::Serialization::Persistence);
+  view.properties(builder, LogicalDataSource::Serialization::PersistenceWithInProgress);
   builder.close();
 
   auto logValue =
@@ -1512,7 +1512,7 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
   VPackBuilder infoBuilder;
 
   infoBuilder.openObject();
-  view.properties(infoBuilder, LogicalDataSource::Serialization::Persistence);
+  view.properties(infoBuilder, LogicalDataSource::Serialization::PersistenceWithInProgress);
   infoBuilder.close();
 
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());

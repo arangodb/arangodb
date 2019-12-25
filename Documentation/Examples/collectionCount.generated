@@ -1,2 +1,0 @@
-arangosh&gt; db.users.count();
-<span class="hljs-number">0</span>

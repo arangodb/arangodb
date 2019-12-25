@@ -6,9 +6,58 @@ v3.5.4 (XXXX-XX-XX)
   running. This should prevent data from more exotic column families to
   stay only in WAL and memtables, which may block WAL journals collection.
 
+* Removed content from Documentation/Books, but keeping the subfolders.
+  The documentation is in a separate repository (except DocuBlocks and Scripts):
+  https://github.com/arangodb/docs.git
+  
+* Fix execution ability in CentOS 6 regarding newer boost.
 
-v3.5.3 (XXXX-XX-XX)
+* Updated arangosync to 0.7.1.
+
+
+v3.5.3 (2019-11-28)
 -------------------
+
+* Fixed GET _api/gharial to also include the name property in every returned
+  graph. This is a consistency fix within the API as all other APIs include the
+  name. As a work around the returned _key can be used, which is identical to
+  the name.
+
+* The _users collection is now properly restored when using arangorestore.
+
+* Allow the optimizer to use indexes when a collection attribute is compared to
+  an expansion followed by an attribute name, e.g.
+  `doc.value IN something[*].name`.
+
+* Updated arangosync to 0.7.0.
+
+* Fixed issue #10470: The WebUI now shows potential errors and details which
+  occured using _api/import (e.g. unique constraint violated).
+
+* Fixed issue #10440: Incorrect sorting with sort criteria partially covered 
+  by index.
+
+* Make the timeouts for replication requests (for active failover and master-slave 
+  replication configurable via startup options:
+
+      --replication.connect-timeout
+      --replication.request-timeout
+
+* Fixed internal issue #4647: dead Coordinators are not removed for agency.
+
+* Fixed UPSERT matching.
+
+  Empty objects in the `UPSERT { ... }` expression will not be omitted anymore:
+
+      db._collection("col").insert({ "find" : "me" });
+      db._query(` UPSERT { "find" : "me", "foo" : {} }
+                  UPDATE { "foo"  : "not gonna happen" }
+                  INSERT { "find" : "me", "foo"  : {} }
+                  INTO col
+      `)
+
+  This will now correctly insert a document instead of updating the existing,
+  that only partially machtes the upsert-expression.
 
 * Fixed undefined behaviour with creation of ArangoSearch links with custom
   analyzers in cluster environment.
