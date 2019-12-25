@@ -4,6 +4,9 @@ v3.5.4 (XXXX-XX-XX)
 * Added new maxRuntime option for queries. If a query does not finish execution within
   the given time (in seconds) it will be killed.
 
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
 * In the RocksDB engine, automatically flush more exotic column families
   10 minutes after server startup, plus every 12 hours while the server is
   running. This should prevent data from more exotic column families to
