@@ -1,6 +1,9 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug in smart graph bfs traversals that might violate path uniqueness
+  requirements in rare cases.
+
 * Fix unprotected access to shared `_indexes` vector of RocksDB collections
   when adding a background index. Modifying the indexes vector without acquiring
   the required lock in write mode could result in undefined behavior.
