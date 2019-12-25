@@ -132,6 +132,22 @@ std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
 std::string replace(std::string const& sourceStr, std::string const& fromString,
                     std::string const& toString);
 
+static inline char tolower(char c) {
+  return c + ((static_cast<unsigned char>(c - 65) < 26U) << 5);
+}
+
+static inline unsigned char tolower(unsigned char c) {
+  return c + ((c - 65U < 26U) << 5);
+}
+
+static inline char toupper(char c) {
+  return c - ((static_cast<unsigned char>(c - 97) < 26U) << 5);
+}
+
+static inline unsigned char toupper(unsigned char c) {
+  return c - ((c - 97U < 26U) << 5);
+}
+
 /// @brief converts string to lower case in place
 void tolowerInPlace(std::string* str);
 
