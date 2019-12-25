@@ -348,8 +348,6 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
         std::vector<std::string> postfix;
         if (isPrefix(field.second, nodeAttr.attr, false, postfix)) {
           usedColumnsCounter[columnNum].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix)));
-          nodeAttr.attr.clear(); // we do not need later
-          nodeAttr.attr.shrink_to_fit();
           found = true;
           break;
         }
