@@ -1,6 +1,11 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #656: While executing large amount of concurrent
+  insert/removes iresearch seems to leak open file handles. This results in
+  error 32 in cleanup (observed only on Windows as Linux doesn`t have file
+  sharing locks).
+
 * Fixed internal issue #4748: Editing a single edgeDefinition using the graph
   API failed if it was not shared between all available graphs.
 
