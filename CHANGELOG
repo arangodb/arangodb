@@ -1,6 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed permissions for dump/restore.
+
 * Added new maxRuntime option for queries. If a query does not finish execution
   within the given time (in seconds) it will be killed.
 
@@ -15,7 +17,7 @@ v3.5.4 (XXXX-XX-XX)
 * Removed content from Documentation/Books, but keeping the subfolders.
   The documentation is in a separate repository (except DocuBlocks and Scripts):
   https://github.com/arangodb/docs.git
-  
+
 * Fix execution ability in CentOS 6 regarding newer boost.
 
 * Updated arangosync to 0.7.1.
