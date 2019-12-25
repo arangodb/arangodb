@@ -100,7 +100,7 @@ struct RocksDBCollectionMeta final {
 
   /// @brief get the current count
   DocCount loadCount();
-  /// @brief get the current count, ONLY use in recovery
+    /// @brief get the current count, ONLY use in recovery
   DocCount& countUnsafe() { return _count; }
 
   /// @brief buffer a counter adjustment
@@ -129,7 +129,7 @@ public:
 
  private:
   /// @brief apply counter adjustments, only call from sync thread
-  rocksdb::SequenceNumber applyAdjustments(rocksdb::SequenceNumber commitSeq, bool& didWork);
+  bool applyAdjustments(rocksdb::SequenceNumber commitSeq);
 
  private:
   // TODO we should probably use flat_map or abseils Swiss Tables
