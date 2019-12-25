@@ -1,6 +1,9 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
 * In the RocksDB engine, automatically flush more exotic column families
   10 minutes after server startup, plus every 12 hours while the server is
   running. This should prevent data from more exotic column families to
@@ -17,9 +20,6 @@ v3.5.4 (XXXX-XX-XX)
 
 v3.5.3 (2019-11-28)
 -------------------
-
-* Bugfix: An AQL ternary expression with the condition being true at query
-  compile time would not execute its false branch.
 
 * Fixed GET _api/gharial to also include the name property in every returned
   graph. This is a consistency fix within the API as all other APIs include the
