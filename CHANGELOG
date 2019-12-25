@@ -6,10 +6,33 @@ v3.5.4 (XXXX-XX-XX)
   error 32 in cleanup (observed only on Windows as Linux doesn`t have file
   sharing locks).
 
+* Fixed internal issue #4748: Editing a single edgeDefinition using the graph
+  API failed if it was not shared between all available graphs.
+
+* Fixed a bug in smart graph bfs traversals that might violate path uniqueness
+  requirements in rare cases.
+
+* Fix unprotected access to shared `_indexes` vector of RocksDB collections
+  when adding a background index. Modifying the indexes vector without acquiring
+  the required lock in write mode could result in undefined behavior.
+
+* Fixed permissions for dump/restore.
+
+* Added new maxRuntime option for queries. If a query does not finish execution
+  within the given time (in seconds) it will be killed.
+
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
+* In the RocksDB engine, automatically flush more exotic column families
+  10 minutes after server startup, plus every 12 hours while the server is
+  running. This should prevent data from more exotic column families to
+  stay only in WAL and memtables, which may block WAL journals collection.
+
 * Removed content from Documentation/Books, but keeping the subfolders.
   The documentation is in a separate repository (except DocuBlocks and Scripts):
   https://github.com/arangodb/docs.git
-  
+
 * Fix execution ability in CentOS 6 regarding newer boost.
 
 * Updated arangosync to 0.7.1.

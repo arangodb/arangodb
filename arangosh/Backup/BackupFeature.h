@@ -65,7 +65,6 @@ class BackupFeature : public application_features::ApplicationFeature {
     double maxWaitForLock = 60.0;
     double maxWaitForRestart = 0.0;
     std::string operation = "list";
-    bool saveCurrent = false;
     bool abort = false;
   };
 
