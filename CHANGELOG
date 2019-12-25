@@ -4,9 +4,29 @@ v3.5.4 (XXXX-XX-XX)
 * Added new maxRuntime option for queries. If a query does not finish execution within
   the given time (in seconds) it will be killed.
 
+* In the RocksDB engine, automatically flush more exotic column families
+  10 minutes after server startup, plus every 12 hours while the server is
+  running. This should prevent data from more exotic column families to
+  stay only in WAL and memtables, which may block WAL journals collection.
 
-v3.5.3 (XXXX-XX-XX)
+* Removed content from Documentation/Books, but keeping the subfolders.
+  The documentation is in a separate repository (except DocuBlocks and Scripts):
+  https://github.com/arangodb/docs.git
+  
+* Fix execution ability in CentOS 6 regarding newer boost.
+
+* Updated arangosync to 0.7.1.
+
+
+v3.5.3 (2019-11-28)
 -------------------
+
+* Fixed GET _api/gharial to also include the name property in every returned
+  graph. This is a consistency fix within the API as all other APIs include the
+  name. As a work around the returned _key can be used, which is identical to
+  the name.
+
+* The _users collection is now properly restored when using arangorestore.
 
 * Allow the optimizer to use indexes when a collection attribute is compared to
   an expansion followed by an attribute name, e.g.
