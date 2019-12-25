@@ -1,6 +1,9 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #10371: AQL Error when using a custom ArangoSearch analyzer on a
+  cluster deployment.
+
 * Removed content from Documentation/Books, but keeping the subfolders.
   The documentation is in a separate repository (except DocuBlocks and Scripts):
   https://github.com/arangodb/docs.git
