@@ -134,9 +134,8 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq(rocksdb::SequenceN
   return maxCommitSeq;
 }
 
-rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,
-                                                                bool& didWork) {
-  rocksdb::SequenceNumber appliedSeq = _count._committedSeq;
+bool RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
+  bool didWork = false;
 
   decltype(_bufferedAdjs) swapper;
   {
@@ -153,7 +152,6 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 
   auto it = _stagedAdjs.begin();
   while (it != _stagedAdjs.end() && it->first <= commitSeq) {
-    appliedSeq = std::max(appliedSeq, it->first);
     if (it->second.adjustment > 0) {
       _count._added += it->second.adjustment;
     } else if (it->second.adjustment < 0) {
@@ -165,9 +163,8 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
-  TRI_ASSERT(appliedSeq >= _count._committedSeq);
-  _count._committedSeq = appliedSeq;
-  return appliedSeq;
+  _count._committedSeq = commitSeq;
+  return didWork;
 }
 
 /// @brief get the current count
@@ -179,6 +176,7 @@ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCount() {
 void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                                   TRI_voc_rid_t revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
+  TRI_ASSERT(seq > _count._committedSeq);
   std::lock_guard<std::mutex> guard(_bufferLock);
   _bufferedAdjs.emplace(seq, Adjustment{revId, adj});
 }
@@ -195,18 +193,11 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     return res;
   }
 
-  bool didWork = false;
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
-  const rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
-  TRI_ASSERT(commitSeq <= appliedSeq);
-  TRI_ASSERT(commitSeq <= maxCommitSeq);
+  bool didWork = applyAdjustments(maxCommitSeq);
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
   TRI_ASSERT(maxCommitSeq != UINT64_MAX);
-  if (didWork) {
-    appliedSeq = commitSeq;
-  } else {
-    appliedSeq = maxCommitSeq;
-  }
+  appliedSeq = maxCommitSeq;
 
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();

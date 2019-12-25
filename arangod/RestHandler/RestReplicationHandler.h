@@ -505,6 +505,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   ResultT<bool> cancelBlockingTransaction(aql::QueryId id) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Validate that the requesting user has access rights to this route
+  ///        Will return TRI_ERROR_NO_ERROR if user has access
+  ///        Will return error code otherwise.
+  //////////////////////////////////////////////////////////////////////////////
+  Result testPermissions();
 };
 }  // namespace arangodb
 #endif
