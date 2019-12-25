@@ -1272,6 +1272,11 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
 
+  int resLock = coll->lockWrite();  // technically not necessary
+  if (resLock != TRI_ERROR_NO_ERROR) {
+    return resLock;
+  }
+
   rocksdb::DB* db = _db->GetRootDB();
 
   // If we get here the collection is safe to drop.
@@ -1364,19 +1369,6 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     return TRI_ERROR_NO_ERROR;
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // check if documents have been deleted
-  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
-
-  if (numDocs > 0) {
-    std::string errorMsg(
-        "deletion check in collection drop failed - not all documents in the "
-        "index have been deleted. remaining: ");
-    errorMsg.append(std::to_string(numDocs));
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-  }
-#endif
-
   // run compaction for data only if collection contained a considerable
   // amount of documents. otherwise don't run compaction, because it will
   // slow things down a lot, especially during tests that create/drop LOTS
@@ -1384,6 +1376,19 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   if (useRangeDelete) {
     coll->compact();
   }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // check if documents have been deleted
+  size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(), bounds, true);
+
+  if (numDocs > 0) {
+    std::string errorMsg(
+        "deletion check in collection drop failed - not all documents "
+        "have been deleted. remaining: ");
+    errorMsg.append(std::to_string(numDocs));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+  }
+#endif
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.
@@ -2419,6 +2424,21 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }
+}
+
+void RocksDBEngine::flushColumnFamilies(bool wait) {
+  // we are intentionally not flushing cfs "document" and "primary", as these
+  // are expected to be written to every now and then by statistics etc.
+  LOG_TOPIC("9354c", DEBUG, Logger::ENGINES) << "flushing column families";
+
+  rocksdb::FlushOptions options;
+  options.wait = wait;
+  
+  _db->Flush(options, RocksDBColumnFamily::definitions());
+  _db->Flush(options, RocksDBColumnFamily::edge());
+  _db->Flush(options, RocksDBColumnFamily::vpack());
+  _db->Flush(options, RocksDBColumnFamily::geo());
+  _db->Flush(options, RocksDBColumnFamily::fulltext());
 }
 
 }  // namespace arangodb
