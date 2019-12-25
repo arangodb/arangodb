@@ -1,5 +1,14 @@
-v3.6.0-rc.2 (XXXX-XX-XX)
+v3.6.0 (XXXX-XX-XX)
+-------------------
+
+* Update swagger.
+
+
+v3.6.0-rc.2 (2019-12-23)
 ------------------------
+
+* Fixed issue #10725: Wrong document count shown inside an empty collection in
+  the web UI.
 
 * Fixed bug that made AQL queries eligible for parallelization even in case
   they couldn't be parallelized, leading to undefined behavior due to the
