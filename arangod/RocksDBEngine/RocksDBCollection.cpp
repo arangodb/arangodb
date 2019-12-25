@@ -433,7 +433,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     const bool inBackground =
     basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
     if (inBackground) {  // allow concurrent inserts into index
-      _indexes.emplace(buildIdx);
+      {
+        WRITE_LOCKER(guard, _indexesLock);
+        _indexes.emplace(buildIdx);
+      }
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();

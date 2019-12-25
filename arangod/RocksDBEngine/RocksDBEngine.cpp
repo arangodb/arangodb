@@ -2426,6 +2426,21 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   }
 }
 
+void RocksDBEngine::flushColumnFamilies(bool wait) {
+  // we are intentionally not flushing cfs "document" and "primary", as these
+  // are expected to be written to every now and then by statistics etc.
+  LOG_TOPIC("9354c", DEBUG, Logger::ENGINES) << "flushing column families";
+
+  rocksdb::FlushOptions options;
+  options.wait = wait;
+  
+  _db->Flush(options, RocksDBColumnFamily::definitions());
+  _db->Flush(options, RocksDBColumnFamily::edge());
+  _db->Flush(options, RocksDBColumnFamily::vpack());
+  _db->Flush(options, RocksDBColumnFamily::geo());
+  _db->Flush(options, RocksDBColumnFamily::fulltext());
+}
+
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
