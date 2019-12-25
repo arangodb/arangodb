@@ -818,6 +818,9 @@ class ClusterInfo final {
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
 
+  /// @brief map shardId to collection name (not ID)
+  CollectionID getCollectionNameForShard(ShardID const& shardId);
+
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -947,8 +950,7 @@ class ClusterInfo final {
   ProtectionData _planProt;
 
   uint64_t _planVersion;     // This is the version in the Plan which underlies
-                             // the data in _plannedCollections, _shards and
-                             // _shardKeys
+                             // the data in _plannedCollections and _shards and
   uint64_t _currentVersion;  // This is the version in Current which underlies
                              // the data in _currentDatabases,
                              // _currentCollections and _shardsIds
@@ -957,7 +959,7 @@ class ClusterInfo final {
 
   // We need information about collections, again we have
   // data from Plan and from Current.
-  // The information for _shards and _shardKeys are filled from the
+  // The information for _shards and _shardToName are filled from the
   // Plan (since they are fixed for the lifetime of the collection).
   // _shardIds is filled from Current, since we have to be able to
   // move shards between servers, and Plan contains who ought to be
@@ -969,11 +971,11 @@ class ClusterInfo final {
                      std::shared_ptr<std::vector<std::string>>>
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
-  std::unordered_map<CollectionID,
-                     std::shared_ptr<std::vector<std::string>>>
-      _shardKeys;  // from Plan/Collections/
+  // from Plan/Collections/
   // planned shard => servers map
   std::unordered_map<ShardID, std::vector<ServerID>> _shardServers;
+  // planned shard ID => collection name
+  std::unordered_map<ShardID, CollectionID> _shardToName;
 
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
