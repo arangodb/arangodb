@@ -1,10 +1,23 @@
-v3.4.9 (XXX-XX-XX)
+v3.4.9 (XXXX-XX-XX)
 -------------------
 
 * In the RocksDB engine, automatically flush more exotic column families
   10 minutes after server startup, plus every 12 hours while the server is
   running. This should prevent data from more exotic column families to
   stay only in WAL and memtables, which may block WAL journals collection.
+
+* The _users collection is now properly restored when using arangorestore.
+
+* Updated arangosync to 0.7.1.
+
+* Fixed issue #10470: The WebUI now shows potential errors and details which
+  occured using _api/import (e.g. unique constraint violated).
+
+* Make the timeouts for replication requests (for active failover and master-slave 
+  replication configurable via startup options:
+
+      --replication.connect-timeout
+      --replication.request-timeout
 
 * Fixed ArangoSearch index removes being discarded on commiting consolidation
   results with pending removes after some segments under consolidation were
