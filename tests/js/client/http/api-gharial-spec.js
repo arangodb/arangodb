@@ -142,10 +142,10 @@ describe('_api/gharial', () => {
       expect(db._collection(eColName)).to.not.be.null;
       expect(db._collection(vColName)).to.not.be.null;
     
-      expect(req).to.have.keys("error", "code", "graph");
-      expect(req.code).to.equal(200);
-      expect(req.error).to.be.false;
-      validateGraphFormat(req.graph);
+      expect(req.json).to.have.keys("error", "code", "graph");
+      expect(req.json.code).to.equal(200);
+      expect(req.json.error).to.be.false;
+      validateGraphFormat(req.json.graph);
     });
 
     it('should create a graph with orphans', () => {
@@ -184,10 +184,10 @@ describe('_api/gharial', () => {
       expect(db._collection(oColName)).to.not.be.null;
       expect(db._collection(oColName2)).to.not.be.null;
 
-      expect(req).to.have.keys("error", "code", "graph");
-      expect(req.code).to.equal(200);
-      expect(req.error).to.be.false;
-      validateGraphFormat(req.graph);
+      expect(req.json).to.have.keys("error", "code", "graph");
+      expect(req.json.code).to.equal(200);
+      expect(req.json.error).to.be.false;
+      validateGraphFormat(req.json.graph);
     });
 
   });
