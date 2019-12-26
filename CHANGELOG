@@ -1,6 +1,12 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed undefined behavior on node delete.
+
+* Fixed agency invalid operation.
+
+* Added google tests for Node.
+
 * Fixed issue #10725: Wrong document count shown inside an empty collection in
   the web UI.
 
@@ -63,10 +69,10 @@ v3.5.3 (2019-11-28)
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
 
-* Fixed issue #10440: Incorrect sorting with sort criteria partially covered 
+* Fixed issue #10440: Incorrect sorting with sort criteria partially covered
   by index.
 
-* Make the timeouts for replication requests (for active failover and master-slave 
+* Make the timeouts for replication requests (for active failover and master-slave
   replication configurable via startup options:
 
       --replication.connect-timeout
