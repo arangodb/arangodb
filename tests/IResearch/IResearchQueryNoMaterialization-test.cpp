@@ -302,7 +302,7 @@ TEST_F(IResearchQueryNoMaterializationTest, sortAndStoredValues) {
   executeAndCheck(queryString, expectedValues, 2, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 1}, {2, 0}});
 }
 
-TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesWrite) {
+TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   static std::vector<std::string> const EMPTY;
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"str\": \"abc\", \"value\": 10 }");
   std::string collectionName("testCollection");
@@ -310,13 +310,13 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesWrite) {
       "{ \"name\":\"" + collectionName + "\"}");
   auto logicalCollection = vocbase().createCollection(collectionJson->slice());
   ASSERT_TRUE(logicalCollection);
-  size_t const columnsCount = 5; // PK + storedValues
+  size_t const columnsCount = 6; // PK + storedValues
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \
         \"id\": 42, \
         \"name\": \"testView\", \
         \"type\": \"arangosearch\", \
-        \"storedValues\": [\"str\", \"value\", \"_id\", [\"str\", \"foo\", \"value\"]] \
+        \"storedValues\": [\"str\", \"foo\", \"value\", \"_id\", [\"str\", \"foo\", \"value\"]] \
       }");
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
       vocbase().createView(viewJson->slice()));
@@ -364,18 +364,18 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesWrite) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view);
     ASSERT_TRUE(link);
     irs::directory_reader const snapshotReader = link->snapshot();
-    size_t counter = 0;
-    std::string const columns[] = {"@_PK", "_id", "foo\1str\1value", "str", "value"};
+    std::string const columns[] = {"@_PK", "_id", "foo", "foo\1str\1value", "str", "value"};
     for (auto const& segment : snapshotReader) {
       auto col = segment.columns();
       auto doc = segment.docs_iterator();
       ASSERT_TRUE(doc);
       ASSERT_TRUE(doc->next());
+      size_t counter = 0;
       while (col->next()) {
         auto const& val = col->value();
         ASSERT_TRUE(counter < columnsCount);
         EXPECT_EQ(columns[counter], val.name);
-        if (counter < 1) { // skip PK
+        if (0 == counter) { // skip PK
           ++counter;
           continue;
         }
@@ -383,8 +383,13 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesWrite) {
         ASSERT_TRUE(columnReader);
         auto valReader = columnReader->values();
         ASSERT_TRUE(valReader);
-        irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
+        irs::bytes_ref value; // column value
         ASSERT_TRUE(valReader(doc->value(), value));
+        if (2 == counter) { // foo
+          EXPECT_TRUE(value.null());
+          ++counter;
+          continue;
+        }
         size_t valueSize = value.size();
         auto slice = VPackSlice(value.c_str());
         switch (counter) {
@@ -397,7 +402,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesWrite) {
           EXPECT_EQ(collectionName + "/", strVal.substr(0, collectionName.size() + 1));
           break;
         }
-        case 2: {
+        case 3: {
           arangodb::velocypack::ValueLength size = slice.byteSize();
           ASSERT_TRUE(slice.isString());
           arangodb::velocypack::ValueLength length = 0;
@@ -413,14 +418,14 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesWrite) {
           EXPECT_EQ(valueSize, size);
           break;
         }
-        case 3: {
+        case 4: {
           ASSERT_TRUE(slice.isString());
           arangodb::velocypack::ValueLength length = 0;
           auto str = slice.getString(length);
           EXPECT_EQ("abc", std::string(str, length));
           break;
         }
-        case 4:
+        case 5:
           ASSERT_TRUE(slice.isNumber());
           EXPECT_EQ(10, slice.getNumber<int>());
           break;

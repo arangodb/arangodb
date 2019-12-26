@@ -163,8 +163,13 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
       StoredValue(arangodb::transaction::Methods const& trx, arangodb::velocypack::Slice const& document) : trx(trx), document(document) {}
 
       bool write(irs::data_output& out) const {
+        auto size = fields->size();
         for (auto const& storedValue : *fields) {
           auto slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
+          // null value optimization
+          if (1 == size && slice.isNull()) {
+            return true;
+          }
 
           // _id field
           if (slice.isCustom()) {

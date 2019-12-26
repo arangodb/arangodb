@@ -664,7 +664,7 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContex
       if (ADB_UNLIKELY(size > totalSize)) {
         return false;
       }
-      slice = VPackSlice(slice.start() + slice.byteSize());
+      slice = VPackSlice(slice.end());
       ++i;
     }
     TRI_ASSERT(!slice.isNone());
@@ -739,10 +739,14 @@ void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const
                                                              std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders) {
   irs::columnstore_reader::values_reader_f reader = storedValuesReaders[index];
   TRI_ASSERT(reader);
-  irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
+  irs::bytes_ref value; // column value
   auto ok = reader(doc.value, value);
   TRI_ASSERT(ok);
-  storedValue[index] = std::move(value);
+  if (value.null()) {
+    storedValue[index] = ref<irs::byte_type>(VPackSlice::nullSlice());
+  } else {
+    storedValue[index] = std::move(value);
+  }
 }
 
 template<typename Impl, typename Traits>
