@@ -9010,3 +9010,143 @@ TEST_F(IResearchQueryOptimizationTest, test_176) {
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
 }
+
+// check double negation is always collapsed
+TEST_F(IResearchQueryOptimizationTest, test_177) {
+  std::string const query =
+    "FOR d IN testView SEARCH  NOT( NOT (d.values == 'B')) RETURN d";
+
+  EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+    { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    // check structure
+    {
+      irs::Or expected;
+      auto& root = expected.add<irs::And>();
+      root.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("B");
+      assertFilterOptimized(vocbase(), query, expected, nullptr, nullptr, o);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+        arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query, nullptr, o);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+  }
+}
+
+// check DNF conversion disabled 
+TEST_F(IResearchQueryOptimizationTest, test_178) {
+  std::string const query =
+    "FOR d IN testView SEARCH  d.values == 'B' AND  ( d.values == 'C'  OR d.values == 'A' ) RETURN d";
+
+  EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+    { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+  EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+ 
+
+  auto dnfConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected;
+    // left part B && C
+    {
+      auto& and = root.add<irs::And>();
+      and.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("B");
+      and.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("C");
+    }
+    // right part B && A
+    {
+      auto& and = root.add<irs::And>();
+      and.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("B");
+      and.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+    }
+  };
+
+  auto nonConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected.add<irs::And>();
+    root.add<irs::by_term>()
+      .field(mangleStringIdentity("values"))
+      .term("B");
+    {
+      auto& or = root.add<irs::Or>();
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("C");
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+    }
+  };
+
+  std::vector<std::function<void(irs::Or&)>> structureChecks =
+      { dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
+
+  size_t structCheckIdx = 0;
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    // check structure
+    {
+      irs::Or expected;
+      structureChecks[structCheckIdx](expected);
+      assertFilterOptimized(vocbase(), query, expected, nullptr, nullptr, o);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+        arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query, nullptr, o);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+
+    structCheckIdx++;
+  }
+}
