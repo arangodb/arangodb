@@ -35,6 +35,8 @@ class DistributeNode;
 // ExecutionBlockImpl, so this class only exists to identify the specialization.
 class DistributeExecutor {};
 
+class Query;
+
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
@@ -96,6 +98,8 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
   std::string createKey(arangodb::velocypack::Slice) const;
 
   ExecutorInfos const& infos() const { return _infos; }
+
+  Query const& getQuery() const noexcept;
 
  private:
   ExecutorInfos _infos;

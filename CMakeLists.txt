@@ -87,7 +87,7 @@ set(ARANGODB_VERSION_MINOR "5")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "1")
+  set(ARANGODB_VERSION_PATCH "4")
   set(ARANGODB_VERSION_RELEASE_TYPE "")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -258,11 +258,6 @@ message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 # ------------------------------------------------------------------------------
 
 if (WIN32)
-  # path containing the OpenSSL find-module and libraries
-  set(WIN_FIND_OPENSSL_PATH "C:/OpenSSL-ArangoDB")
-  if (EXISTS "${WIN_FIND_OPENSSL_PATH}")
-	list(APPEND CMAKE_MODULE_PATH ${WIN_FIND_OPENSSL_PATH})
-  endif()
   project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
@@ -296,20 +291,18 @@ set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
 set(ARANGODB_DISPLAY_NAME    "ArangoDB")
 set(ARANGODB_URL_INFO_ABOUT  "https://www.arangodb.com")
-set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
+set(ARANGODB_HELP_LINK       "https://www.arangodb.com/docs/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
 # MSVC
-set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
-set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
+set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
+set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - dump data and configuration")
+set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - restore data and configuration")
 set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
-
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - TSV/CSV/JSON importer")
-set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
+set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
+set(ARANGOSH_FRIENDLY_STRING       "arangosh - command-line client")
+set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack pretty-printer")
 
 # libraries
 set(LIB_ARANGO        arango)
@@ -974,22 +967,82 @@ endif()
 
 
 ################################################################################
-## OPENSSL
+## OpenSSL
 ################################################################################
 
-# Some special stuff for Mac OSX and homebrew as a preparation for the
-# generic FindOpenSSL script:
-if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
-  message("searching openssl with brew (${BREW})")
-  # if we have a brew openssl, prefer it over the elderly system one.
-  execute_process(OUTPUT_VARIABLE BREW_ROOT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    COMMAND ${BREW} --prefix)
-  set(OPENSSL_ROOT_DIR "${BREW_ROOT}/opt/openssl")
-  message("auto-set OPENSSL_ROOT_DIR to: ${OPENSSL_ROOT_DIR}")
+if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
+  message(FATAL_ERROR "expecting ${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
+else ()
+  file(READ "${CMAKE_CURRENT_LIST_DIR}/VERSIONS" ARANGODB_VERSIONS_CONTENT)
+  if (LINUX)
+    set (TARGET_OS "LINUX")
+  elseif (DARWIN)
+    set (TARGET_OS "MACOS")
+  elseif (WIN32)
+    set (TARGET_OS "WINDOWS")
+  endif ()
+
+  if (USE_STRICT_OPENSSL_VERSION)
+    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"]*).*")
+  else ()
+    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
+  endif ()
+  string(REGEX MATCH  
+            "${OPENSSL_VERSION_PATTERN}"
+            ARANGODB_REQUIRED_OPENSSL_VERSION
+            "${ARANGODB_VERSIONS_CONTENT}")
+  if ("${CMAKE_MATCH_1}" STREQUAL "")
+    message(FATAL_ERROR "expecting OPENSSL_${TARGET_OS} in ${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
+  else ()
+    set (ARANGODB_REQUIRED_OPENSSL_VERSION "${CMAKE_MATCH_1}")
+    if (USE_STRICT_OPENSSL_VERSION)
+      set (MSG_ARANGODB_REQUIRED_OPENSSL_VERSION "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
+    else ()
+      set (MSG_ARANGODB_REQUIRED_OPENSSL_VERSION "${ARANGODB_REQUIRED_OPENSSL_VERSION}*")
+    endif ()
+    message ("Required OpenSSL version: ${MSG_ARANGODB_REQUIRED_OPENSSL_VERSION}")
+  endif ()
 endif ()
 
-find_package(OpenSSL REQUIRED)
+
+if (NOT DEFINED OPENSSL_ROOT_DIR OR "${OPENSSL_ROOT_DIR}" STREQUAL "")
+  if (DEFINED ENV{OPENSSL_ROOT_DIR} AND NOT "$ENV{OPENSSL_ROOT_DIR}" STREQUAL "")
+    set (OPENSSL_ROOT_DIR "$ENV{OPENSSL_ROOT_DIR}")
+  endif ()
+else ()
+  set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
+endif ()
+
+unset (OPENSSL_FOUND CACHE)
+unset (OPENSSL_INCLUDE_DIR CACHE)
+unset (OPENSSL_CRYPTO_LIBRARY CACHE)
+unset (OPENSSL_SSL_LIBRARY CACHE)
+unset (OPENSSL_LIBRARIES CACHE)
+unset (OPENSSL_VERSION CACHE)
+
+if (DEFINED OPENSSL_ROOT_DIR AND NOT "${OPENSSL_ROOT_DIR}" STREQUAL "")
+  message ("Use OPENSSL_ROOT_DIR: ${OPENSSL_ROOT_DIR}")
+endif ()
+
+if (WIN32)
+  # Attempt to find ArangoDB CI compiled OpenSSL
+  message ("Attempt to find ArangoDB CI compiled OpenSSL:")
+  include ("${CMAKE_CURRENT_LIST_DIR}/cmake/custom/ArangoDB_FindOpenSSL_WIN32.cmake")
+  if (NOT OPENSSL_FOUND)
+    message ("System-wide attempt to find OpenSSL:")
+    find_package(OpenSSL REQUIRED)
+  endif ()
+else ()
+  find_package(OpenSSL REQUIRED)
+endif ()
+
+if (OPENSSL_FOUND)
+  if (NOT "${OPENSSL_VERSION}" MATCHES "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
+    message (FATAL_ERROR "Wrong OpenSSL version was found: ${OPENSSL_VERSION}! Required version: ${MSG_ARANGODB_REQUIRED_OPENSSL_VERSION}!")
+  endif ()
+endif ()
+
+message(${OPENSSL_INCLUDE_DIR})
 
 include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
@@ -1042,6 +1095,7 @@ set(LIB_ARANGO_IRESEARCH arango_iresearch)
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
 
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 

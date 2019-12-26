@@ -679,7 +679,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags());
+      wiew->properties(builder, arangodb::LogicalDataSource::Serialization::List);
       builder.close();
       EXPECT_TRUE((builder.slice().hasKey("name")));
       EXPECT_TRUE((std::string("testView") == builder.slice().get("name").copyString()));
@@ -691,7 +691,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags());
+      wiew->properties(builder, arangodb::LogicalDataSource::Serialization::List);
       builder.close();
       EXPECT_TRUE((builder.slice().hasKey("name")));
       EXPECT_TRUE((std::string("testView") == builder.slice().get("name").copyString()));
@@ -738,7 +738,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags());
+      wiew->properties(builder, arangodb::LogicalDataSource::Serialization::List);
       builder.close();
       EXPECT_TRUE((builder.slice().hasKey("name")));
       EXPECT_TRUE((std::string("testView") == builder.slice().get("name").copyString()));
@@ -750,7 +750,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags());
+      wiew->properties(builder, arangodb::LogicalDataSource::Serialization::List);
       builder.close();
       EXPECT_TRUE((builder.slice().hasKey("name")));
       EXPECT_TRUE((std::string("testView") == builder.slice().get("name").copyString()));
@@ -779,7 +779,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    wiew->properties(builder, arangodb::LogicalDataSource::makeFlags());
+    wiew->properties(builder, arangodb::LogicalDataSource::Serialization::List);
     builder.close();
     auto slice = builder.slice();
     EXPECT_TRUE((4U == slice.length()));
@@ -795,7 +795,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                      slice.get("type").copyString()));
   }
 
-  // includeProperties
+  // properties
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
@@ -813,8 +813,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     auto slice = builder.slice();
     EXPECT_TRUE((13U == slice.length()));
@@ -830,7 +829,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                      slice.get("type").copyString()));
   }
 
-  // includeSystem
+  // persistence
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
@@ -848,27 +847,36 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));
+    EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
     builder.close();
     auto slice = builder.slice();
-    EXPECT_TRUE((7 == slice.length()));
-    EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
-                 false == slice.get("deleted").getBoolean()));
-    EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
+    EXPECT_EQ(17, slice.length());
+    EXPECT_TRUE(slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
+                 false == slice.get("deleted").getBoolean());
+    EXPECT_TRUE(slice.hasKey("globallyUniqueId") &&
                  slice.get("globallyUniqueId").isString() &&
-                 false == slice.get("globallyUniqueId").copyString().empty()));
-    EXPECT_TRUE((slice.hasKey("id") && slice.get("id").isString() &&
-                 std::string("3") == slice.get("id").copyString()));
-    EXPECT_TRUE((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() &&
-                 false == slice.get("isSystem").getBoolean()));
-    EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
-                 std::string("testView") == slice.get("name").copyString()));
-    EXPECT_TRUE((slice.hasKey("planId") && slice.get("planId").isString() &&
-                 std::string("3") == slice.get("planId").copyString()));
-    EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
+                 false == slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.hasKey("id") && slice.get("id").isString() &&
+                 std::string("3") == slice.get("id").copyString());
+    EXPECT_TRUE(slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() &&
+                 false == slice.get("isSystem").getBoolean());
+    EXPECT_TRUE(slice.hasKey("name") && slice.get("name").isString() &&
+                 std::string("testView") == slice.get("name").copyString());
+    EXPECT_TRUE(slice.hasKey("planId") && slice.get("planId").isString() &&
+                 std::string("3") == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.hasKey("type") && slice.get("type").isString() &&
                  arangodb::iresearch::DATA_SOURCE_TYPE.name() ==
-                     slice.get("type").copyString()));
+                     slice.get("type").copyString());
+    EXPECT_TRUE(slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber());
+    EXPECT_TRUE(slice.hasKey("commitIntervalMsec") && slice.get("commitIntervalMsec").isNumber());
+    EXPECT_TRUE(slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber());
+    EXPECT_TRUE(slice.hasKey("version") && slice.get("version").isNumber());
+    EXPECT_TRUE(slice.hasKey("consolidationPolicy") && slice.get("consolidationPolicy").isObject());
+    EXPECT_TRUE(slice.hasKey("primarySort") && slice.get("primarySort").isArray());
+    EXPECT_TRUE(slice.hasKey("writebufferActive") && slice.get("writebufferActive").isNumber());
+    EXPECT_TRUE(slice.hasKey("writebufferIdle") && slice.get("writebufferIdle").isNumber());
+    EXPECT_TRUE(slice.hasKey("writebufferSizeMax") && slice.get("writebufferSizeMax").isNumber());
+    EXPECT_TRUE(slice.hasKey("collections") && slice.get("collections").isArray());
   }
 }
 
@@ -1023,8 +1031,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1051,8 +1058,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1078,8 +1084,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1100,9 +1105,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed,
-                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1144,8 +1147,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1172,8 +1174,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1199,8 +1200,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1221,9 +1221,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed,
-                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1276,8 +1274,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1304,8 +1301,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1326,8 +1322,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1348,9 +1343,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed,
-                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1407,8 +1400,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1435,8 +1427,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1457,8 +1448,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1479,9 +1469,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      wiew->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed,
-                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
+      EXPECT_TRUE(wiew->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
       builder.close();
 
       auto slice = builder.slice();

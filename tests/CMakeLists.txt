@@ -17,6 +17,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
+  Agency/NodeTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
@@ -236,14 +237,13 @@ target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
 )
 
-
-if(MSVC)
+if(MSVC AND FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN)
+if (DARWIN AND FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
+  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
 endif()
 
 # add these includes as system includes because otherwise

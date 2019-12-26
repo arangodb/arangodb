@@ -1200,19 +1200,26 @@ struct NoopCb final : public arangodb::ClusterCommCallback {
 void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc,
                                                  int errorCode, std::string const& dbname,
                                                  MapRemoteToSnippet& queryIds) const {
+  constexpr double shortTimeout = 10.0;  // Picked arbitrarily
+  auto cb = std::make_shared<::NoopCb>();
+  std::unordered_map<std::string, std::string> headers;
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  
   // Shutdown query snippets
   std::string url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
                   "/_api/aql/shutdown/");
-  std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>(
       "{\"code\":" + std::to_string(errorCode) + "}");
   for (auto const& it : queryIds) {
     // it.first == RemoteNodeId, we don't need this
     // it.second server -> [snippets]
     for (auto const& serToSnippets : it.second) {
-      auto server = serToSnippets.first;
-      for (auto const& shardId : serToSnippets.second) {
-        requests.emplace_back(server, rest::RequestType::PUT, url + shardId, body);
+      ServerID const& server = serToSnippets.first;
+      for (auto const& shardId : serToSnippets.second) {        
+        cc->asyncRequest(coordinatorTransactionID, server, rest::RequestType::PUT,
+                         url + shardId, body, headers, cb,
+                         shortTimeout, false, 2.0);
+        
       }
     }
   }
@@ -1220,13 +1227,8 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
   // Shutdown traverser engines
   url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
         "/_internal/traverser/";
-  std::unordered_map<std::string, std::string> headers;
   std::shared_ptr<std::string> noBody;
-  
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  auto cb = std::make_shared<::NoopCb>();
-  
-  constexpr double shortTimeout = 10.0;  // Picked arbitrarily
+    
   for (auto const& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {

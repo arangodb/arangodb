@@ -291,11 +291,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure no view directory
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((logicalView0
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
+  EXPECT_TRUE(logicalView0->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
 
@@ -314,11 +310,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
     builder.clear();
     builder.openObject();
-    EXPECT_TRUE((logicalView1
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
+  EXPECT_TRUE(logicalView1->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
     builder.close();
     EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
   }
@@ -398,11 +390,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && result));
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((logicalView0
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
+  EXPECT_TRUE(logicalView0->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
 
@@ -421,11 +409,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((viewDataPath.exists(result) && !result));  // ensure view directory not created
     builder.clear();
     builder.openObject();
-    EXPECT_TRUE((logicalView1
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
-                     .ok()));
+  EXPECT_TRUE(logicalView1->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
     builder.close();
     EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 1 after upgrade
 
@@ -556,9 +540,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE((logicalView0
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
                      .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
@@ -586,9 +568,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     builder.clear();
     builder.openObject();
     EXPECT_TRUE((logicalView1
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
                      .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 after upgrade
@@ -683,9 +663,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE((logicalView
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
                      .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade
@@ -788,9 +766,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::velocypack::Builder builder;
     builder.openObject();
     EXPECT_TRUE((logicalView
-                     ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                               arangodb::LogicalDataSource::Serialize::Detailed,
-                                               arangodb::LogicalDataSource::Serialize::ForPersistence))
+                     ->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence)
                      .ok()));
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>()));  // ensure 'version == 0 before upgrade

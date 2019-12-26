@@ -1,7 +1,0 @@
-@Q:
-RETURN NTH( [ <span class="hljs-string">"foo"</span>, <span class="hljs-string">"bar"</span>, <span class="hljs-string">"baz"</span> ], <span class="hljs-number">2</span> )
-
-@R
-[
-  <span class="hljs-string">"baz"</span>
-]

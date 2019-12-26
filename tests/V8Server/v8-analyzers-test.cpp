@@ -27,6 +27,7 @@
 
 #include "../IResearch/common.h"
 #include "../Mocks/StorageEngineMock.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "gtest/gtest.h"
 
@@ -38,9 +39,11 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/Methods/Collections.h"
 #include "Utils/ExecContext.h"
@@ -203,12 +206,30 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
   arangodb::DatabaseFeature* dbFeature;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  arangodb::QueryRegistryFeature* queryRegistry;
+  arangodb::AqlFeature* aqlFeature;
+  arangodb::aql::OptimizerRulesFeature* optimizer;
+  arangodb::TraverserEngineRegistryFeature* traverser;
+  server.addFeature(queryRegistry = new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  server.addFeature(optimizer = new arangodb::aql::OptimizerRulesFeature(server));
+  server.addFeature(traverser = new arangodb::TraverserEngineRegistryFeature(server) );  // must be before AqlFeature
+  server.addFeature(aqlFeature = new arangodb::AqlFeature(server));
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  traverser->prepare();
+  aqlFeature->start();
+  optimizer->prepare();
+  queryRegistry->prepare();
+
+  auto cleanup = arangodb::scopeGuard([&](){
+    dbFeature->unprepare();
+    optimizer->unprepare();
+    aqlFeature->stop();
+    queryRegistry->unprepare();
+    traverser->unprepare();
+  });
 
   // create system vocbase
   {
@@ -225,10 +246,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  ASSERT_TRUE((analyzers
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackSlice::noneSlice())
-                   .ok()));
+  ASSERT_TRUE(analyzers->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+                                 "identity", VPackSlice::noneSlice()).ok());
   auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer1");
   ASSERT_TRUE((false == !analyzer));
@@ -242,8 +261,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
-  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-  userManager->setQueryRegistry(&queryRegistry);
+  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
       userManager,
       [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -699,13 +717,31 @@ TEST_F(V8AnalyzersTest, test_create) {
   arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
   arangodb::DatabaseFeature* dbFeature;
   arangodb::SystemDatabaseFeature* sysDatabase;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  arangodb::QueryRegistryFeature* queryRegistry;
+  arangodb::AqlFeature* aqlFeature;
+  arangodb::aql::OptimizerRulesFeature* optimizer;
+  arangodb::TraverserEngineRegistryFeature* traverser;
+  server.addFeature(queryRegistry = new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  server.addFeature(optimizer = new arangodb::aql::OptimizerRulesFeature(server));
+  server.addFeature(traverser = new arangodb::TraverserEngineRegistryFeature(server) );  // must be before AqlFeature
+  server.addFeature(aqlFeature = new arangodb::AqlFeature(server));
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  traverser->prepare();
+  aqlFeature->start();
+  optimizer->prepare();
+  queryRegistry->prepare();
+
+  auto cleanup = arangodb::scopeGuard([&](){
+    dbFeature->unprepare();
+    optimizer->unprepare();
+    aqlFeature->stop();
+    queryRegistry->unprepare();
+    traverser->unprepare();
+  });
 
   // create system vocbase
   {
@@ -746,8 +782,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
-  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-  userManager->setQueryRegistry(&queryRegistry);
+  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
       userManager,
       [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -1140,7 +1175,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE((!result.IsEmpty()));
     EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     EXPECT_TRUE((false == !v8Analyzer));
@@ -1258,7 +1293,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE((!result.IsEmpty()));
     EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     EXPECT_TRUE((false == !v8Analyzer));
@@ -1317,7 +1352,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE((!result.IsEmpty()));
     EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     EXPECT_TRUE((false == !v8Analyzer));
@@ -1376,7 +1411,7 @@ TEST_F(V8AnalyzersTest, test_create) {
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE((!result.IsEmpty()));
     EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     EXPECT_TRUE((false == !v8Analyzer));
@@ -1404,13 +1439,32 @@ TEST_F(V8AnalyzersTest, test_get) {
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
   arangodb::DatabaseFeature* dbFeature;
+  arangodb::QueryRegistryFeature* queryRegistry;
+  arangodb::AqlFeature* aqlFeature;
+  arangodb::aql::OptimizerRulesFeature* optimizer;
+  arangodb::TraverserEngineRegistryFeature* traverser;
+  server.addFeature(queryRegistry = new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  server.addFeature(optimizer = new arangodb::aql::OptimizerRulesFeature(server));
+  server.addFeature(traverser = new arangodb::TraverserEngineRegistryFeature(server) );  // must be before AqlFeature
+  server.addFeature(aqlFeature = new arangodb::AqlFeature(server));
   server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
   analyzers->prepare();  // add static analyzers
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  traverser->prepare();
+  aqlFeature->start();
+  optimizer->prepare();
+  queryRegistry->prepare();
+
+  auto cleanup = arangodb::scopeGuard([&](){
+    dbFeature->unprepare();
+    optimizer->unprepare();
+    aqlFeature->stop();
+    queryRegistry->unprepare();
+    traverser->unprepare();
+  });
 
   // create system vocbase
   {
@@ -1449,8 +1503,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
-  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-  userManager->setQueryRegistry(&queryRegistry);
+  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
       userManager,
       [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -1555,7 +1608,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                                                     args.data());
     EXPECT_TRUE((!result.IsEmpty()));
     EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     EXPECT_TRUE((false == !v8Analyzer));
@@ -1659,7 +1712,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                                                     args.data());
     EXPECT_TRUE((!result.IsEmpty()));
     EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     EXPECT_TRUE((false == !v8Analyzer));
@@ -1775,7 +1828,7 @@ TEST_F(V8AnalyzersTest, test_get) {
                                                     args.data());
     EXPECT_TRUE((!result.IsEmpty()));
     EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     EXPECT_TRUE((false == !v8Analyzer));
@@ -2068,11 +2121,31 @@ TEST_F(V8AnalyzersTest, test_list) {
   arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
   arangodb::DatabaseFeature* dbFeature;
   arangodb::SystemDatabaseFeature* sysDatabase;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  arangodb::QueryRegistryFeature* queryRegistry;
+  arangodb::AqlFeature* aqlFeature;
+  arangodb::aql::OptimizerRulesFeature* optimizer;
+  arangodb::TraverserEngineRegistryFeature* traverser;
+  server.addFeature(queryRegistry = new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  server.addFeature(optimizer = new arangodb::aql::OptimizerRulesFeature(server));
+  server.addFeature(traverser = new arangodb::TraverserEngineRegistryFeature(server) );  // must be before AqlFeature
+  server.addFeature(aqlFeature = new arangodb::AqlFeature(server));
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
+
+  traverser->prepare();
+  aqlFeature->start();
+  optimizer->prepare();
+  queryRegistry->prepare();
+
+  auto cleanup = arangodb::scopeGuard([&](){
+    dbFeature->unprepare();
+    optimizer->unprepare();
+    aqlFeature->stop();
+    queryRegistry->unprepare();
+    traverser->unprepare();
+  });
 
   // create system vocbase
   {
@@ -2094,8 +2167,6 @@ TEST_F(V8AnalyzersTest, test_list) {
         arangodb::tests::AnalyzerCollectionName, false);
   }
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
-
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
@@ -2115,8 +2186,7 @@ TEST_F(V8AnalyzersTest, test_list) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
-  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-  userManager->setQueryRegistry(&queryRegistry);
+  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
       userManager,
       [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -2177,7 +2247,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       EXPECT_TRUE((!v8Analyzer.IsEmpty()));
       EXPECT_TRUE((v8Analyzer->IsObject()));
       auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_TRUE((false == !analyzer));
@@ -2243,7 +2313,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       EXPECT_TRUE((!v8Analyzer.IsEmpty()));
       EXPECT_TRUE((v8Analyzer->IsObject()));
       auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_TRUE((false == !analyzer));
@@ -2311,7 +2381,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       EXPECT_TRUE((!v8Analyzer.IsEmpty()));
       EXPECT_TRUE((v8Analyzer->IsObject()));
       auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_TRUE((false == !analyzer));
@@ -2378,7 +2448,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       EXPECT_TRUE((!v8Analyzer.IsEmpty()));
       EXPECT_TRUE((v8Analyzer->IsObject()));
       auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_TRUE((false == !analyzer));
@@ -2445,7 +2515,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       EXPECT_TRUE((!v8Analyzer.IsEmpty()));
       EXPECT_TRUE((v8Analyzer->IsObject()));
       auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_TRUE((false == !analyzer));
@@ -2511,7 +2581,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       EXPECT_TRUE((!v8Analyzer.IsEmpty()));
       EXPECT_TRUE((v8Analyzer->IsObject()));
       auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_TRUE((false == !analyzer));
@@ -2536,13 +2606,31 @@ TEST_F(V8AnalyzersTest, test_remove) {
   arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
   arangodb::DatabaseFeature* dbFeature;
   arangodb::SystemDatabaseFeature* sysDbFeature(new arangodb::SystemDatabaseFeature(server));
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  arangodb::QueryRegistryFeature* queryRegistry;
+  arangodb::AqlFeature* aqlFeature;
+  arangodb::aql::OptimizerRulesFeature* optimizer;
+  arangodb::TraverserEngineRegistryFeature* traverser;
+  server.addFeature(queryRegistry = new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
+  server.addFeature(optimizer = new arangodb::aql::OptimizerRulesFeature(server));
+  server.addFeature(traverser = new arangodb::TraverserEngineRegistryFeature(server) );  // must be before AqlFeature
+  server.addFeature(aqlFeature = new arangodb::AqlFeature(server));
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
   server.addFeature(sysDbFeature);
 
-  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+  traverser->prepare();
+  aqlFeature->start();
+  optimizer->prepare();
+  queryRegistry->prepare();
+
+  auto cleanup = arangodb::scopeGuard([&](){
+    dbFeature->unprepare();
+    optimizer->unprepare();
+    aqlFeature->stop();
+    queryRegistry->unprepare();
+    traverser->unprepare();
+  });
 
   // create system vocbase
   {
@@ -2601,8 +2689,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
   arangodb::ExecContextScope execContextScope(&execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
-  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-  userManager->setQueryRegistry(&queryRegistry);
+  userManager->setQueryRegistry(arangodb::QueryRegistryFeature::registry());
   auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
       userManager,
       [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });

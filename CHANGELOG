@@ -1,7 +1,142 @@
-v3.5.2 (XXXX-XX-XX)
+v3.5.4 (XXXX-XX-XX)
 -------------------
 
-* Shard synchronisation readlock aware of rebootId
+* Shard synchronisation readlock aware of rebootId.
+
+* Fixed undefined behavior on node delete.
+
+* Fixed agency invalid operation.
+
+* Added google tests for Node.
+
+* Fixed issue #10725: Wrong document count shown inside an empty collection in
+  the web UI.
+
+* Fixed issue #10371: AQL Error when using a custom ArangoSearch analyzer on a
+  cluster deployment.
+
+* Fixed internal issue #656: While executing large amount of concurrent
+  insert/removes ArangoSearch seems to leak open file handles. This results in
+  error 32 in cleanup (observed only on Windows as Linux doesn`t have file
+  sharing locks).
+
+* Fixed internal issue #4748: Editing a single edgeDefinition using the graph
+  API failed if it was not shared between all available graphs.
+
+* Fixed a bug in smart graph bfs traversals that might violate path uniqueness
+  requirements in rare cases.
+
+* Fix unprotected access to shared `_indexes` vector of RocksDB collections
+  when adding a background index. Modifying the indexes vector without acquiring
+  the required lock in write mode could result in undefined behavior.
+
+* Fixed permissions for dump/restore.
+
+* Added new maxRuntime option for queries. If a query does not finish execution
+  within the given time (in seconds) it will be killed.
+
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
+* In the RocksDB engine, automatically flush more exotic column families
+  10 minutes after server startup, plus every 12 hours while the server is
+  running. This should prevent data from more exotic column families to
+  stay only in WAL and memtables, which may block WAL journals collection.
+
+* Removed content from Documentation/Books, but keeping the subfolders.
+  The documentation is in a separate repository (except DocuBlocks and Scripts):
+  https://github.com/arangodb/docs.git
+
+* Fix execution ability in CentOS 6 regarding newer boost.
+
+* Updated arangosync to 0.7.1.
+
+
+v3.5.3 (2019-11-28)
+-------------------
+
+* Fixed GET _api/gharial to also include the name property in every returned
+  graph. This is a consistency fix within the API as all other APIs include the
+  name. As a work around the returned _key can be used, which is identical to
+  the name.
+
+* The _users collection is now properly restored when using arangorestore.
+
+* Allow the optimizer to use indexes when a collection attribute is compared to
+  an expansion followed by an attribute name, e.g.
+  `doc.value IN something[*].name`.
+
+* Updated arangosync to 0.7.0.
+
+* Fixed issue #10470: The WebUI now shows potential errors and details which
+  occured using _api/import (e.g. unique constraint violated).
+
+* Fixed issue #10440: Incorrect sorting with sort criteria partially covered
+  by index.
+
+* Make the timeouts for replication requests (for active failover and master-slave
+  replication configurable via startup options:
+
+      --replication.connect-timeout
+      --replication.request-timeout
+
+* Fixed internal issue #4647: dead Coordinators are not removed for agency.
+
+* Fixed UPSERT matching.
+
+  Empty objects in the `UPSERT { ... }` expression will not be omitted anymore:
+
+      db._collection("col").insert({ "find" : "me" });
+      db._query(` UPSERT { "find" : "me", "foo" : {} }
+                  UPDATE { "foo"  : "not gonna happen" }
+                  INSERT { "find" : "me", "foo"  : {} }
+                  INTO col
+      `)
+
+  This will now correctly insert a document instead of updating the existing,
+  that only partially machtes the upsert-expression.
+
+* Fixed undefined behaviour with creation of ArangoSearch links with custom
+  analyzers in cluster environment.
+
+* Fixed internal issue #651: analyzer duplication in _analyzers collection.
+
+* Fixed internal issue #4597: rebalanceShards API cannot work on any database
+  other than the _system database.
+
+* Stop putting system services in _apps on single server, this has never
+  worked on cluster and was not needed.
+
+* Fixed issue #10371: K_SHORTEST_PATHS LIMIT 1 can not return the shortest path.
+  Now the shortest path is returned as the first one in such queries.
+
+* Improve killability of some types of cluster AQL queries. Previously, several
+  cluster queries, especially those containing a `DistributeNode` in their
+  execution plans, did not respond to a kill instruction.
+
+  This change also introduces a new query status "killed", which may now be
+  returned by the REST APIs at `/_api/query/current` and `/_api/query/slow` in
+  the `state` attribute of each query.
+
+* Improve shutdown of some cluster AQL queries on the coordinator in case the
+  query has multiple coordinator snippets (true for queries involving more than
+  one collection) and the database server(s) cannot be reached on query
+  shutdown. In this case the proper shutdown of the coordinator parts of the
+  query previously was deferred until the coordinator snippets were removed by
+  the automatic garbage collection. Now, the cleanup of the coordinator snippets
+  will happen much more quickly, which reduces the chances of the queries
+  blocking resources.
+
+* Fixed ArangoSearch index removes being discarded on commiting consolidation
+  results with pending removes after some segments under consolidation were
+  already committed.
+
+* Assertion fail when no timestamp in agency's persistence.
+
+* Fixed internal issue #647: custom analyzer provokes errors on Active Failover
+  deployment.
+
+* Upgraded bundled version of libcurl to 7.66.0.
 
 * When starting a coordinator, wait up to 15 seconds for it to appear
   in the agency under key `Supervision/Health` before reporting as "ready".
@@ -11,9 +146,6 @@ v3.5.2 (XXXX-XX-XX)
   from a failed coordinator.
   To avoid huge startup delays, the startup will proceed after waiting
   futilely for 15 seconds and log a message.
-
-* Separately account for superuser and user request traffic. This is
-  needed for Oasis.
 
 * Fixed issue #10270: Query: Expecting type Array or Object (while executing).
 
@@ -64,6 +196,15 @@ v3.5.2 (XXXX-XX-XX)
 
   This fixes traversal queries that are run on a static empty start vertex
   string.
+
+
+v.3.5.2 (2019-11-06)
+--------------------
+
+* Fixed ArangoSearch upgrade procedure from previous minor version and
+  patches.
+
+* Separately account for superuser and user request traffic.
 
 
 v3.5.1 (2019-10-07)

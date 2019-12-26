@@ -467,7 +467,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     RequestStatistics::SET_QUEUE_END(handler->statistics());
     auto thisPtr = static_cast<GeneralCommTask*>(self.get());
     thisPtr->handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
-  }, allowDirectHandling() && _peer->clients() == 1);
+  });
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,

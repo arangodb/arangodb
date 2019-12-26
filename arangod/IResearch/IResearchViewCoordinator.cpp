@@ -175,51 +175,40 @@ IResearchViewCoordinator::~IResearchViewCoordinator() {
 }
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
-    arangodb::velocypack::Builder& builder, std::underlying_type<Serialize>::type flags) const {
-  if (hasFlag(flags, Serialize::ForPersistence)) {
+    arangodb::velocypack::Builder& builder, Serialization context) const {
+  if (Serialization::List == context) {
+    // nothing more to output
+    return {};
+  }
+
+  static const std::function<bool(irs::string_ref const&)> propertiesAcceptor =
+      [](irs::string_ref const& key) -> bool {
+    return key != StaticStrings::VersionField; // ignored fields
+  };
+  static const std::function<bool(irs::string_ref const&)> persistenceAcceptor =
+    [](irs::string_ref const&) -> bool { return true; };
+
+  static const std::function<bool(irs::string_ref const&)> linkPropertiesAcceptor =
+    [](irs::string_ref const& key) -> bool {
+      return key != iresearch::StaticStrings::AnalyzerDefinitionsField
+          && key != iresearch::StaticStrings::PrimarySortField;
+  };
+
+  auto* acceptor = &propertiesAcceptor;
+
+  if (context == Serialization::Persistence || 
+      context == Serialization::PersistenceWithInProgress) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {
       return res;
     }
+
+    acceptor = &persistenceAcceptor;
   }
 
-  if (!hasFlag(flags, Serialize::Detailed)) {
-    return arangodb::Result();  // nothing more to output
-  }
-
-  if (!builder.isOpenObject()) {
-    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                            std::string("invalid builder provided for "
-                                        "IResearchViewCoordinator definition"));
-  }
-
-  static const std::function<bool(irs::string_ref const& key)> acceptor =
-      [](irs::string_ref const& key) -> bool {
-    return key != StaticStrings::VersionField;  // ignored fields
-  };
-  static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
-      [](irs::string_ref const&) -> bool { return true; };
-  arangodb::velocypack::Builder sanitizedBuilder;
-
-  sanitizedBuilder.openObject();
-
-  if (!_meta.json(sanitizedBuilder) ||
-      !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
-                          hasFlag(flags, Serialize::ForPersistence) ? persistenceAcceptor
-                                                                    : acceptor)) {
-    return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failure to generate definition while generating "
-                    "properties jSON for IResearch View in database '") +
-            vocbase().name() + "'");
-  }
-
-  arangodb::velocypack::Builder links;
-
-  // links are not persisted, their definitions are part of the corresponding
-  // collections
-  if (!hasFlag(flags, Serialize::ForPersistence)) {
+  if (context == Serialization::Properties ||
+      context == Serialization::Inventory) {
     // verify that the current user has access on all linked collections
     auto* exec = ExecContext::CURRENT;
     if (exec) {
@@ -230,20 +219,52 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
       }
     }
 
+    VPackBuilder tmp;
+
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
 
-    links.openObject();
-
+    builder.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     for (auto& entry : _collections) {
-      links.add(entry.second.first, entry.second.second.slice());
-    }
+      auto linkSlice = entry.second.second.slice();
 
-    links.close();
-    builder.add(StaticStrings::LinksField, links.slice());
+      if (context == Serialization::Properties) {
+        tmp.clear();
+        tmp.openObject();
+        if (!mergeSliceSkipKeys(tmp, linkSlice, linkPropertiesAcceptor)) {
+          return {
+            TRI_ERROR_INTERNAL,
+            "failed to generate externally visible link definition for arangosearch View '" + name() + "'"
+          };
+        }
+
+        linkSlice = tmp.close().slice();
+      }
+
+      builder.add(entry.second.first, linkSlice);
+    }
+    builder.close();
   }
 
-  return arangodb::Result();
+  if (!builder.isOpenObject()) {
+    return { TRI_ERROR_BAD_PARAMETER,
+             "invalid builder provided for "
+             "IResearchViewCoordinator definition" };
+  }
+
+  VPackBuilder sanitizedBuilder;
+  sanitizedBuilder.openObject();
+
+  if (!_meta.json(sanitizedBuilder) ||
+      !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
+    return { TRI_ERROR_INTERNAL,
+             std::string("failure to generate definition while generating "
+                         "properties jSON for IResearch View in database '")
+            .append(vocbase().name())
+            .append("'") };
+  }
+
+  return {};
 }
 
 /*static*/ arangodb::ViewFactory const& IResearchViewCoordinator::factory() {
@@ -264,7 +285,7 @@ arangodb::Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   builder.openObject();
 
-  auto res = link.properties(builder, false); // generate user-visible definition, agency will not see links
+  auto res = link.properties(builder, true); // generate user-visible definition, agency will not see links
 
   if (!res.ok()) {
     return res;

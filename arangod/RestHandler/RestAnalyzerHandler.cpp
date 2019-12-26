@@ -215,7 +215,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
   auto pool = result.first;
   arangodb::velocypack::Builder builder;
 
-  pool->toVelocyPack(builder);
+  pool->toVelocyPack(builder, false);
 
   generateResult(
     result.second // new analyzer v.s. existing analyzer
@@ -288,10 +288,8 @@ arangodb::RestStatus RestAnalyzerHandler::execute() {
   return arangodb::RestStatus::DONE;
 }
 
-void RestAnalyzerHandler::getAnalyzer( 
-    IResearchAnalyzerFeature& analyzers, 
-    std::string const& requestedName  
-) {
+void RestAnalyzerHandler::getAnalyzer(IResearchAnalyzerFeature& analyzers,
+                                      std::string const& requestedName) {
   auto* sysDatabase = 
     arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
@@ -335,28 +333,26 @@ void RestAnalyzerHandler::getAnalyzer(
   }
 
   arangodb::velocypack::Builder builder;
-  pool->toVelocyPack(builder);
+  pool->toVelocyPack(builder, false);
 
   // generate result + 'error' field + 'code' field
   // 2nd param must be Builder and not Slice
   generateOk(arangodb::rest::ResponseCode::OK, builder);
 }
 
-void RestAnalyzerHandler::getAnalyzers( // get all analyzers
-    IResearchAnalyzerFeature& analyzers // analyzer feature
-) {
+void RestAnalyzerHandler::getAnalyzers(IResearchAnalyzerFeature& analyzers) {
   // ...........................................................................
   // end of parameter parsing
   // ...........................................................................
 
-  typedef arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr AnalyzerPoolPtr;
+  typedef arangodb::iresearch::AnalyzerPool::ptr AnalyzerPoolPtr;
   arangodb::velocypack::Builder builder;
   auto visitor = [&builder](AnalyzerPoolPtr const& analyzer)->bool {
     if (!analyzer) {
       return true; // continue with next analyzer
     }
 
-    analyzer->toVelocyPack(builder);
+    analyzer->toVelocyPack(builder, false);
 
     return true; // continue with next analyzer
   };

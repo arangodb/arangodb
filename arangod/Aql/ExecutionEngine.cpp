@@ -41,6 +41,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -438,19 +439,59 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
+    std::vector<uint64_t> coordinatorQueryIds{};
     res = _coordinatorParts.buildEngines(_query, registry, _query->vocbase().name(),
-                                         _query->queryOptions().shardIds, queryIds);
+                                         _query->queryOptions().shardIds, queryIds, coordinatorQueryIds);
 
     if (res.ok()) {
       cleanupGuard.cancel();
     }
 
+    _query->engine()->snippetMapping(std::move(queryIds), std::move(coordinatorQueryIds));
+
     return res;
   }
 };
 
+void ExecutionEngine::kill() {
+  // kill coordinator parts
+  // TODO: this doesn't seem to be necessary and sometimes even show adverse effects
+  // so leaving this deactivated for now
+  // auto queryRegistry = QueryRegistryFeature::registry();
+  // if (queryRegistry != nullptr) {
+  //   for (auto const& id : _coordinatorQueryIds) {
+  //     queryRegistry->kill(&(_query.vocbase()), id);
+  //   }
+  // }
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    return;
+  }
+  
+  std::unordered_map<std::string, std::string> headers;
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+  auto body = std::make_shared<std::string>();
+        
+  // kill DB server parts
+  // RemoteNodeId -> DBServerId -> [snippetId]
+  
+  for (auto const& it : _dbServerMapping) {
+    for (auto const& it2 : it.second) {
+      for (auto const& snippetId : it2.second) {
+        TRI_ASSERT(it2.first.substr(0, 7) == "server:");
+        cc->asyncRequest(coordinatorTransactionID, it2.first, rest::RequestType::DELETE_REQ,
+                         "/_api/aql/kill/" + snippetId, body, headers, nullptr,
+                         10.0, false, 2.0);
+      }
+    }
+  }
+}
+
 std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlItemBlockPtr&& items,
                                                                     size_t pos) {
+  if (_query->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
   if (items != nullptr) {
     inputRow = InputAqlItemRow{std::move(items), pos};
@@ -464,6 +505,9 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlIte
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t atMost) {
+  if (_query->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   if (!_initializeCursorCalled) {
     auto res = initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
@@ -474,6 +518,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
+  if (_query->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   if (!_initializeCursorCalled) {
     auto res = initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
@@ -483,10 +530,13 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   return _root->skipSome(atMost);
 }
 
-Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
+Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
   Result res{TRI_ERROR_INTERNAL};
   ExecutionState state = ExecutionState::WAITING;
   try {
+    TRI_IF_FAILURE("ExecutionEngine::shutdownSync") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     std::shared_ptr<SharedQueryState> sharedState = _query->sharedState();
     if (sharedState != nullptr) {
       sharedState->setContinueCallback();
@@ -498,10 +548,33 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
         }
       }
     }
+  } catch (basics::Exception const& ex) {
+    res.reset(ex.code(), std::string("unable to shutdown query: ") + ex.what());
+  } catch (std::exception const& ex) {
+    res.reset(TRI_ERROR_INTERNAL, std::string("unable to shutdown query: ") + ex.what());
   } catch (...) {
     res.reset(TRI_ERROR_INTERNAL);
   }
+
+  if (res.fail() && ServerState::instance()->isCoordinator()) {
+    // shutdown attempt has failed...
+    // in a cluster, try to at least abort all other coordinator parts
+    auto queryRegistry = QueryRegistryFeature::registry();
+    if (queryRegistry != nullptr) {
+      for (auto const& id : _coordinatorQueryIds) {
+        try {
+          queryRegistry->destroy(_query->vocbase().name(), id, errorCode, false);
+        } catch (...) {
+          // we want to abort all parts, even if aborting other parts fails
+        }
+      }
+    }
+  }
+
   return res;
+} catch (...) {
+  // nothing we can do here...
+  return Result(TRI_ERROR_INTERNAL, "unable to shutdown query");
 }
 
 /// @brief shutdown, will be called exactly once for the whole query

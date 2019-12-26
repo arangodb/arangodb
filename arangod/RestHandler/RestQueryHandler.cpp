@@ -149,7 +149,7 @@ bool RestQueryHandler::readQuery() {
   return true;
 }
 
-bool RestQueryHandler::deleteQuerySlow() {
+void RestQueryHandler::deleteQuerySlow() {
   auto queryList = _vocbase.queryList();
   queryList->clearSlow();
 
@@ -161,18 +161,16 @@ bool RestQueryHandler::deleteQuerySlow() {
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
-
-  return true;
 }
 
-bool RestQueryHandler::deleteQuery(std::string const& name) {
+void RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
   auto queryList = _vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
-  auto res = queryList->kill(id);
+  Result res = queryList->kill(id);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add(StaticStrings::Error, VPackValue(false));
@@ -181,29 +179,28 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
 
     generateResult(rest::ResponseCode::OK, result.slice());
   } else {
-    generateError(GeneralResponse::responseCode(res), res,
-                  "cannot kill query '" + name + "': " + TRI_errno_string(res));
+    generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(),
+                  "cannot kill query '" + name + "': " + res.errorMessage());
   }
-
-  return true;
 }
 
 /// @brief interrupts a query
-bool RestQueryHandler::deleteQuery() {
+void RestQueryHandler::deleteQuery() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/query/<id> or /_api/query/slow");
-    return true;
+    return;
   }
 
   auto const& name = suffixes[0];
 
   if (name == "slow") {
-    return deleteQuerySlow();
+    deleteQuerySlow();
+  } else {
+    deleteQuery(name);
   }
-  return deleteQuery(name);
 }
 
 bool RestQueryHandler::replaceProperties() {

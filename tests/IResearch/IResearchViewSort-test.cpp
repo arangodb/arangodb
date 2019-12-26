@@ -183,7 +183,7 @@ TEST(IResearchViewSortTest, deserialize) {
     ]");
     std::string errorField;
     EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
-    EXPECT_TRUE("[0]=>field" == errorField);
+    EXPECT_EQ("[0].field", errorField);
     EXPECT_TRUE(sort.empty());
     EXPECT_TRUE(0 == sort.size());
     EXPECT_TRUE(sort.memory() > 0);
@@ -199,7 +199,7 @@ TEST(IResearchViewSortTest, deserialize) {
     ]");
     std::string errorField;
     EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
-    EXPECT_TRUE("[0]=>direction" == errorField);
+    EXPECT_EQ("[0].direction", errorField);
     EXPECT_TRUE(sort.empty());
     EXPECT_TRUE(0 == sort.size());
     EXPECT_TRUE(sort.memory() > 0);
@@ -215,7 +215,7 @@ TEST(IResearchViewSortTest, deserialize) {
     ]");
     std::string errorField;
     EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
-    EXPECT_TRUE("[1]=>direction" == errorField);
+    EXPECT_EQ("[1].direction", errorField);
   }
 
   {
@@ -228,7 +228,7 @@ TEST(IResearchViewSortTest, deserialize) {
     ]");
     std::string errorField;
     EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
-    EXPECT_TRUE("[2]=>asc" == errorField);
+    EXPECT_EQ("[2].asc", errorField);
   }
 }
 

@@ -390,22 +390,22 @@ TRI_col_type_e LogicalCollection::type() const { return _type; }
 TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
 
 TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _statusLock);
   return _status;
 }
 
 void LogicalCollection::executeWhileStatusWriteLocked(std::function<void()> const& callback) {
-  WRITE_LOCKER_EVENTUAL(locker, _lock);
+  WRITE_LOCKER_EVENTUAL(locker, _statusLock);
   callback();
 }
 
 void LogicalCollection::executeWhileStatusLocked(std::function<void()> const& callback) {
-  READ_LOCKER(locker, _lock);
+  READ_LOCKER(locker, _statusLock);
   callback();
 }
 
 bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const& callback) {
-  TRY_READ_LOCKER(readLocker, _lock);
+  TRY_READ_LOCKER(readLocker, _statusLock);
   if (!readLocker.isLocked()) {
     return false;
   }
@@ -415,19 +415,13 @@ bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const&
 }
 
 TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
-  TRY_READ_LOCKER(locker, _lock);
+  TRY_READ_LOCKER(locker, _statusLock);
   if (locker.isLocked()) {
     didFetch = true;
     return _status;
   }
   didFetch = false;
   return TRI_VOC_COL_STATUS_CORRUPTED;
-}
-
-/// @brief returns a translation of a collection status
-std::string LogicalCollection::statusString() const {
-  READ_LOCKER(readLocker, _lock);
-  return ::translateStatus(_status);
 }
 
 // SECTION: Properties
@@ -458,9 +452,9 @@ std::vector<std::shared_ptr<arangodb::Index>> LogicalCollection::getIndexes() co
 }
 
 void LogicalCollection::getIndexesVPack(
-    VPackBuilder& result, std::underlying_type<Index::Serialize>::type flags,
-    std::function<bool(arangodb::Index const*)> const& filter) const {
-  getPhysical()->getIndexesVPack(result, flags, filter);
+    VPackBuilder& result,
+    std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
+  getPhysical()->getIndexesVPack(result, filter);
 }
 
 bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
@@ -587,7 +581,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   std::unordered_set<std::string> ignoreKeys{
       "allowUserKeys",        "cid",      "count",  "statusString", "version",
       "distributeShardsLike", "objectId", "indexes"};
-  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
+  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, Serialization::List);
   {
     VPackObjectBuilder guard(&result);
 
@@ -606,13 +600,18 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
+  getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
-    return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-            idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-            !idx->isHidden() && !idx->inProgress());
+    switch (idx->type()) {
+      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+      case Index::TRI_IDX_TYPE_EDGE_INDEX:
+        return false;
+      default:
+        flags = Index::makeFlags();
+        return !idx->isHidden() && !idx->inProgress();
+    }
   });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
@@ -621,7 +620,10 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 }
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
-                                                     std::underlying_type<Serialize>::type flags) const {
+                                                     Serialization context) const {
+  bool const forPersistence = (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress);
+  bool const showInProgress = (context == Serialization::PersistenceWithInProgress);
+
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 
@@ -635,7 +637,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // Collection Flags
   result.add("waitForSync", VPackValue(_waitForSync));
 
-  if (!hasFlag(flags, Serialize::ForPersistence)) {
+  if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourceDeleted, VPackValue(deleted()));
@@ -660,14 +662,18 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   auto indexFlags = Index::makeFlags();
   // hide hidden indexes. In effect hides unfinished indexes,
   // and iResearch links (only on a single-server and coordinator)
-  auto filter = [&](arangodb::Index const* idx) {
-    return (hasFlag(flags, Serialize::IncludeInProgress) || !idx->inProgress()) &&
-           (hasFlag(flags, Serialize::ForPersistence) || !idx->isHidden());
-  };
-  if (hasFlag(flags, Serialize::ForPersistence)) {
+  if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  getIndexesVPack(result, indexFlags, filter);
+  auto filter = [indexFlags, forPersistence, showInProgress](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+    if ((forPersistence || !idx->isHidden()) && (showInProgress || !idx->inProgress())) {
+      flags = indexFlags;
+      return true;
+    }
+
+    return false;
+  };
+  getIndexesVPack(result, filter);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
@@ -676,13 +682,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }
 
-  if (!hasFlag(flags, Serialize::ForPersistence)) {
+  if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourcePlanId, VPackValue(std::to_string(planId())));
   }
 
-  _sharding->toVelocyPack(result, hasFlag(flags, Serialize::Detailed));
+  _sharding->toVelocyPack(result, Serialization::List != context);
 
   includeVelocyPackEnterprise(result);
 
@@ -694,17 +700,17 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
 void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
                                            std::unordered_set<std::string> const& ignoreKeys,
-                                           std::underlying_type<Serialize>::type flags) const {
+                                           Serialization context) const {
   TRI_ASSERT(result.isOpenObject());
-  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, flags);
+  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, context);
   result.add(VPackObjectIterator(b.slice()));
 }
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                                   std::underlying_type<Serialize>::type flags) const {
+                                                   Serialization context) const {
   VPackBuilder full;
   full.openObject();
-  properties(full, flags);
+  properties(full, context);
   full.close();
   if (ignoreKeys.empty()) {
     return full;

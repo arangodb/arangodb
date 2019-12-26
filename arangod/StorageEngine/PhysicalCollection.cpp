@@ -526,19 +526,22 @@ int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expec
 }
 
 /// @brief hands out a list of indexes
-std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
   READ_LOCKER(guard, _indexesLock);
   return { _indexes.begin(), _indexes.end() };
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
-                                         std::function<bool(arangodb::Index const*)> const& filter) const {
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
+                                         std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
   for (auto const& idx : _indexes) {
-    if (!filter(idx.get())) {
+    std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
+
+    if (!filter(idx.get(), flags)) {
       continue;
     }
+
     idx->toVelocyPack(result, flags);
   }
   result.close();

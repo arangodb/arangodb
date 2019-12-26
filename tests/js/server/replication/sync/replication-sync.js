@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global arango, assertEqual, assertTrue, assertFalse, ARGUMENTS */
+/* global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the sync method of the replication
@@ -860,10 +860,13 @@ function BaseTestConfig () {
     testSyncView: function () {
       connectToMaster();
 
+      // create custom analyzer
+      let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
+
       //  create view & collection on master
       db._flushCache();
       db._create(cn);
-      db._createView(cn + 'View', 'arangosearch');
+      db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec:0});
 
       db._flushCache();
       connectToSlave();
@@ -878,6 +881,7 @@ function BaseTestConfig () {
         assertTrue(view !== null);
         let props = view.properties();
         assertTrue(props.hasOwnProperty('links'));
+        assertEqual(0, props.consolidationIntervalMsec);
         assertEqual(Object.keys(props.links).length, 0);
       }
 
@@ -890,7 +894,7 @@ function BaseTestConfig () {
         links[cn] = {
           includeAllFields: true,
           fields: {
-            text: { analyzers: ['text_en'] }
+              text: { analyzers: ['text_en', 'custom' ] }
           }
         };
         view.properties({ links });
@@ -901,13 +905,73 @@ function BaseTestConfig () {
 
       replication.sync({ endpoint: masterEndpoint });
 
+      // check replicated analyzer
+      {
+        let analyzerSlave = analyzers.analyzer('custom');
+        assertEqual(analyzer.name, analyzerSlave.name());
+        assertEqual(analyzer.type, analyzerSlave.type());
+        assertEqual(analyzer.properties, analyzerSlave.properties());
+        assertEqual(analyzer.features, analyzerSlave.features());
+      }
+
       {
         let view = db._view(cn + 'View');
-        assertTrue(view !== null);
+        assertNotEqual(view, null);
         let props = view.properties();
+        assertEqual(0, props.consolidationIntervalMsec);
         assertTrue(props.hasOwnProperty('links'));
         assertEqual(Object.keys(props.links).length, 1);
         assertTrue(props.links.hasOwnProperty(cn));
+        assertTrue(props.links[cn].includeAllFields);
+        assertEqual(Object.keys(props.links[cn].fields).length, 1);
+        assertEqual(props.links[cn].fields.text.analyzers.length, 2);
+        assertEqual(props.links[cn].fields.text.analyzers[0], 'text_en');
+        assertEqual(props.links[cn].fields.text.analyzers[1], 'custom');
+      }
+    },
+
+    testSyncViewOnAnalyzersCollection: function () {
+      connectToMaster();
+
+      // create custom analyzer
+      assertNotEqual(null, db._collection("_analyzers"));
+      assertEqual(0, db._analyzers.count());
+      let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
+      assertEqual(1, db._analyzers.count());
+
+      //  create view & collection on master
+      db._flushCache();
+      db._createView('analyzersView', 'arangosearch', {
+        consolidationIntervalMsec:0,
+        links: { _analyzers: { analyzers: [ analyzer.name ], includeAllFields:true } }
+      });
+
+      db._flushCache();
+      connectToSlave();
+      internal.wait(0.1, false);
+      //  sync on slave
+      replication.sync({ endpoint: masterEndpoint });
+
+      db._flushCache();
+
+      assertEqual(1, db._analyzers.count());
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
+
+      {
+        //  check state is the same
+        let view = db._view('analyzersView');
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty('links'));
+        assertEqual(0, props.consolidationIntervalMsec);
+        assertEqual(Object.keys(props.links).length, 1);
+        assertTrue(props.links.hasOwnProperty('_analyzers'));
+        assertTrue(props.links['_analyzers'].includeAllFields);
+        assertTrue(props.links['_analyzers'].analyzers.length, 1);
+        assertTrue(props.links['_analyzers'].analyzers[0], 'custom');
       }
     },
 
@@ -1748,6 +1812,9 @@ function ReplicationSuite () {
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
     },
@@ -1761,12 +1828,33 @@ function ReplicationSuite () {
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
+      try {
+        analyzers.remove('custom');
+      } catch (e) { }
+      try {
+        analyzers.remove('smartCustom');
+      } catch (e) { }
 
       connectToSlave();
+      try {
+        db._dropView(cn + 'View');
+      } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
+      try {
+        analyzers.remove('custom');
+      } catch (e) { }
+      try {
+        analyzers.remove('smartCustom');
+      } catch (e) { }
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');

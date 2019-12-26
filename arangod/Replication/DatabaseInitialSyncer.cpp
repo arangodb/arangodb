@@ -1359,6 +1359,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
                                                         bool incremental) {
   TRI_ASSERT(collSlices.isArray());
 
+  std::vector<std::pair<VPackSlice, VPackSlice>> systemCollections;
   std::vector<std::pair<VPackSlice, VPackSlice>> collections;
   for (VPackSlice it : VPackArrayIterator(collSlices)) {
     if (!it.isObject()) {
@@ -1414,7 +1415,12 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
       }
     }
 
-    collections.emplace_back(parameters, indexes);
+    if (masterName == StaticStrings::AnalyzersCollection) {
+      // _analyzers collection has to be restored before view creation
+      systemCollections.emplace_back(parameters, indexes);
+    } else {
+      collections.emplace_back(parameters, indexes);
+    }
   }
 
   // STEP 1: validate collection declarations from master
@@ -1427,19 +1433,34 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
   // iterate over all collections from the master...
   std::array<SyncPhase, 2> phases{{PHASE_VALIDATE, PHASE_DROP_CREATE}};
   for (auto const& phase : phases) {
-    Result r = iterateCollections(collections, incremental, phase);
+    Result r = iterateCollections(systemCollections, incremental, phase);
+
+    if (r.fail()) {
+      return r;
+    }
+
+    r = iterateCollections(collections, incremental, phase);
 
     if (r.fail()) {
       return r;
     }
   }
 
-  // STEP 3: now that the collections exist create the views
+  // STEP 3: restore data for system collections
+  // ----------------------------------------------------------------------------------
+  auto const res = iterateCollections(systemCollections, incremental, PHASE_DUMP);
+
+  if (res.fail()) {
+    return res;
+  }
+
+  // STEP 4: now that the collections exist create the views
   // this should be faster than re-indexing afterwards
   // ----------------------------------------------------------------------------------
 
   if (!_config.applier._skipCreateDrop &&
-      _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
+      _config.applier._restrictCollections.empty() &&
+      viewSlices.isArray()) {
     // views are optional, and 3.3 and before will not send any view data
     Result r = handleViewCreation(viewSlices);  // no requests to master
     if (r.fail()) {
@@ -1451,7 +1472,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     _config.progress.set("view creation skipped because of configuration");
   }
 
-  // STEP 4: sync collection data from master and create initial indexes
+  // STEP 5: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
 
   // now load the data into the collections

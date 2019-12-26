@@ -1,5 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> rel = graph_module._relation(<span class="hljs-string">"isCustomer"</span>, [<span class="hljs-string">"shop"</span>], [<span class="hljs-string">"customer"</span>]);
-arangosh&gt; graph._extendEdgeDefinitions(rel);
-arangosh&gt; graph;
-{[Graph] 
-}

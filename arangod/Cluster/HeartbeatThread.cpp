@@ -772,7 +772,13 @@ void HeartbeatThread::runSingleServer() {
         config._idleMinWaitTime = 250 * 1000; // 250ms
         config._idleMaxWaitTime = 3 * 1000 * 1000; // 3s
         TRI_ASSERT(!config._skipCreateDrop);
-        config._includeFoxxQueues = true;  // sync _queues and _jobs
+        config._includeFoxxQueues = true; // sync _queues and _jobs
+    
+        auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+        if (feature != nullptr) {
+          config._connectTimeout = feature->checkConnectTimeout(config._connectTimeout);
+          config._requestTimeout = feature->checkRequestTimeout(config._requestTimeout);
+        }
 
         applier->forget();  // forget about any existing configuration
         applier->reconfigure(config);
@@ -1302,25 +1308,33 @@ bool HeartbeatThread::sendServerState() {
 }
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
-  if (agentPool.isObject() && agentPool.get("pool").isObject() &&
-      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
+  if (agentPool.isObject() && agentPool.get("pool").isObject() && agentPool.hasKey("size") &&
+      agentPool.get("size").getUInt() > 0 && agentPool.get("id").isString()) {
     try {
       std::vector<std::string> values;
-      for (auto pair : VPackObjectIterator(agentPool.get("pool"))) {
-        values.emplace_back(pair.value.copyString());
+      // we have to make sure that the leader is on the front
+      auto leaderId = agentPool.get("id").stringRef();
+      auto pool = agentPool.get("pool");
+      values.reserve(pool.length());
+      values.emplace_back(pool.get(leaderId).copyString());
+      // now add all non leaders
+      for (auto pair : VPackObjectIterator(pool)) {
+        if (!pair.key.isEqualString(leaderId)) {
+          values.emplace_back(pair.value.copyString());
+        }
       }
       AgencyCommManager::MANAGER->updateEndpoints(values);
     } catch (basics::Exception const& e) {
       LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
-          << "Error updating agency pool: " << e.message();
+        << "Error updating agency pool: " << e.message();
     } catch (std::exception const& e) {
       LOG_TOPIC("889d4", WARN, Logger::HEARTBEAT)
-          << "Error updating agency pool: " << e.what();
+        << "Error updating agency pool: " << e.what();
     } catch (...) {
     }
   } else {
     LOG_TOPIC("92522", ERR, Logger::AGENCYCOMM)
-        << "Cannot find an agency persisted in RAFT 8|";
+      << "Cannot find an agency persisted in RAFT 8|";
   }
 }
 

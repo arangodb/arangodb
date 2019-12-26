@@ -206,6 +206,7 @@ Query::~Query() {
                                      << " this: " << (uintptr_t)this;
   }
 
+  // this will reset _trx, so _trx is invalid after here
   cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
 
   exitContext();
@@ -269,8 +270,24 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   return clone.release();
 }
 
+bool Query::killed() const {
+  if(_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon()) {
+    if(TRI_microtime() > (_startTime + _queryOptions.maxRuntime)) {
+      return true;
+    }
+  }
+  return _killed;
+}
+
 /// @brief set the query to killed
-void Query::kill() { _killed = true; }
+void Query::kill() {
+  _killed = true;
+  if (_engine != nullptr) {
+    // killing is best effort...
+    // intentionally ignoring the result of this call here
+    _engine->kill();
+  }
+}
 
 void Query::setExecutionTime() {
   if (_engine != nullptr) {
@@ -278,7 +295,7 @@ void Query::setExecutionTime() {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
 }
-    
+
 /// @brief increase number of HTTP requests. this is normally
 /// called during the setup of a query
 void Query::incHttpRequests(size_t requests) {
@@ -568,6 +585,10 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
   TRI_ASSERT(registry != nullptr);
 
   try {
+    if (_killed) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+
     bool useQueryCache = canUseQueryCache();
 
     switch (_executionPhase) {
@@ -887,6 +908,10 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
             }
           }
         }
+
+        if (_killed) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+        }
       }
 
       builder->close();
@@ -950,7 +975,7 @@ ExecutionState Query::finalize(QueryResult& result) {
     LOG_TOPIC("fc22c", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                       << "Query::finalize: before _trx->commit"
                                       << " this: " << (uintptr_t)this;
-    
+
     if (!_isClonedQuery) {
       Result commitResult = _trx->commit();
       if (commitResult.fail()) {
@@ -1396,6 +1421,13 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
 
     _sharedState->invalidate();
     _engine.reset();
+  }
+
+  // the following call removes the query from the list of currently
+  // running queries. so whoever fetches that list will not see a Query that
+  // is about to shut down/be destroyed
+  if (_profile != nullptr) {
+    _profile->unregisterFromQueryList();
   }
 
   // If the transaction was not committed, it is automatically aborted

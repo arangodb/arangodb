@@ -25,6 +25,23 @@
 // @author Max Neunhoeffer
 // /////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
+const fs = require('fs');
+const yaml = require('js-yaml');
+const internal = require('internal');
+const platform = internal.platform;
+
+const pu = require('@arangodb/process-utils');
+const cu = require('@arangodb/crash-utils');
+const tu = require('@arangodb/test-utils');
+
+const BLUE = require('internal').COLORS.COLOR_BLUE;
+const CYAN = require('internal').COLORS.COLOR_CYAN;
+const GREEN = require('internal').COLORS.COLOR_GREEN;
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
+const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+
 let functionsDocumentation = {
   'all': 'run all tests (marked with [x])',
   'find': 'searches all testcases, and eventually filters them by `--test`, ' +
@@ -77,9 +94,10 @@ let optionsDocumentation = [
   '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
   '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
-  '   - `test`: path to single test to execute for "single" test target',
-  '   - `cleanup`: if set to true (the default), the cluster data files',
-  '     and logs are removed after termination of the test.',
+  '   - `test`: path to single test to execute for "single" test target, ',
+  '             or pattern to filter for other suites',
+  '   - `cleanup`: if set to false the data files',
+  '                and logs are not removed after termination of the test.',
   '',
   '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
@@ -135,7 +153,7 @@ const optionsDefaults = {
   'agencyWaitForSync': false,
   'agencySupervision': true,
   'build': '',
-  'buildType': '',
+  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
   'cluster': false,
   'concurrency': 3,
@@ -196,21 +214,6 @@ const optionsDefaults = {
   'sleepBeforeStart' : 0,
 };
 
-const _ = require('lodash');
-const fs = require('fs');
-const yaml = require('js-yaml');
-
-const pu = require('@arangodb/process-utils');
-const cu = require('@arangodb/crash-utils');
-const tu = require('@arangodb/test-utils');
-
-const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
-const YELLOW = require('internal').COLORS.COLOR_YELLOW;
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test functions for all
 // //////////////////////////////////////////////////////////////////////////////
@@ -270,7 +273,9 @@ const internalMembers = [
   'crashed',
   'ok',
   'message',
-  'suiteName'
+  'suiteName',
+  'startupTime',
+  'testDuration'
 ];
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -521,7 +526,28 @@ function findTestCases(options) {
   return [found, allTestFiles];
 }
 
+function isClusterTest(options) {
+  let rc = false;
+  if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+    if (typeof (options.test) === 'string') {
+      rc = (options.test.search('-cluster') >= 0);
+    } else {
+      options.test.forEach(
+        filter => {
+          if (filter.search('-cluster') >= 0) {
+            rc = true;
+          }
+        }
+      );
+    }
+  }
+  return rc;
+}
+
 function findTest(options) {
+  if (isClusterTest(options)) {
+    options.cluster = true;
+  }
   let rc = findTestCases(options);
   if (rc[0]) {
     print(rc[1]);
@@ -557,7 +583,6 @@ function findTest(options) {
   }
 }
 
-
 function autoTest(options) {
   if (!options.hasOwnProperty('test') || (typeof (options.test) === 'undefined')) {
     return {
@@ -574,6 +599,9 @@ function autoTest(options) {
         }
       }
     };
+  }
+  if (isClusterTest(options)) {
+    options.cluster = true;
   }
   let rc = findTestCases(options);
   if (rc[0]) {
@@ -711,6 +739,8 @@ function iterateTests(cases, options, jsonReply) {
       delete result.status;
       delete result.failed;
       delete result.crashed;
+      delete result.startupTime;
+      delete result.testDuration;
       if (result.hasOwnProperty('shutdown')) {
         shutdownSuccess = result['shutdown'];
         delete result.shutdown;

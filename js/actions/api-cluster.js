@@ -112,6 +112,7 @@ actions.defineHttp({
         operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/Coordinators/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
@@ -1365,9 +1366,10 @@ actions.defineHttp({
     }
 
     // simon: RO is sufficient to rebalance shards for current db
-    if (req.database !== '_system'/* || !req.isAdminUser*/) {
+    if (!req.isAdminUser &&
+        users.permission(req.user, req.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the _system database');
+        'only allowed for admins on the database');
       return;
     }
 

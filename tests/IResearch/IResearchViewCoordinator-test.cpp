@@ -239,14 +239,12 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     EXPECT_TRUE(
         (true == view->visitCollections([](TRI_voc_cid_t) { return false; })));
 
-    // +system, +properties
+    // for persistence
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed,
-                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
+      EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -268,13 +266,12 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
     }
 
-    // -system, +properties
+    // properties
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -295,11 +292,11 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
     }
 
-    // -system, -properties
+    // list
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags());
+      view->properties(builder, arangodb::LogicalDataSource::Serialization::List);
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -315,30 +312,6 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
                    arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       EXPECT_TRUE((!slice.hasKey("planId")));
       EXPECT_TRUE((!slice.hasKey("deleted")));
-      EXPECT_TRUE((!slice.hasKey("properties")));
-    }
-
-    // +system, -properties
-    {
-      arangodb::velocypack::Builder builder;
-      builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
-      builder.close();
-      auto slice = builder.slice();
-
-      EXPECT_TRUE((7 == slice.length()));
-      EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
-                   slice.get("globallyUniqueId").isString() &&
-                   false == slice.get("globallyUniqueId").copyString().empty()));
-      EXPECT_TRUE((slice.get("id").copyString() == "1"));
-      EXPECT_TRUE((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() &&
-                   false == slice.get("isSystem").getBoolean()));
-      EXPECT_TRUE((slice.get("name").copyString() == "testView"));
-      EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::DATA_SOURCE_TYPE.name()));
-      EXPECT_TRUE((false == slice.get("deleted").getBool()));
-      EXPECT_TRUE((slice.hasKey("planId")));
       EXPECT_TRUE((!slice.hasKey("properties")));
     }
   }
@@ -711,8 +684,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_NE(nullptr, logicalView);
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                         arangodb::LogicalDataSource::Serialize::Detailed));
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
     ASSERT_TRUE(builder.slice().hasKey("links"));
     auto links = builder.slice().get("links");
@@ -776,7 +748,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     EXPECT_TRUE((false == logicalView->visitCollections(
                               [](TRI_voc_cid_t) -> bool { return false; })));
 
-    // simulate heartbeat thread (remove index from current)
+    // simulate heartbeat thread (remove index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                         std::to_string(logicalCollection->id()) +
@@ -873,8 +845,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     {
       VPackBuilder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
       builder.close();
 
       arangodb::iresearch::IResearchViewMeta meta;
@@ -912,9 +883,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        fullyUpdatedView->properties(builder,
-                                     arangodb::LogicalDataSource::makeFlags(
-                                         arangodb::LogicalDataSource::Serialize::Detailed));
+        fullyUpdatedView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -931,8 +900,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                      arangodb::LogicalDataSource::Serialize::Detailed));
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -968,9 +936,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        partiallyUpdatedView->properties(builder,
-                                         arangodb::LogicalDataSource::makeFlags(
-                                             arangodb::LogicalDataSource::Serialize::Detailed));
+        partiallyUpdatedView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -990,6 +956,265 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 
     // there is no more view
     ASSERT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  }
+}
+
+
+TEST_F(IResearchViewCoordinatorTest, test_properties) {
+  ASSERT_NE(nullptr, arangodb::ClusterInfo::instance());
+  auto& ci = *arangodb::ClusterInfo::instance();
+
+  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+
+  createTestDatabase(vocbase);
+
+  // create collections
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
+  {
+    auto const collectionId = "100";
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": \"testCollection\", "
+        "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
+
+    EXPECT_TRUE(ci.createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, 1, false,
+                                               collectionJson->slice(), 0.0, false, nullptr).ok());
+
+    logicalCollection = ci.getCollection(vocbase->name(), collectionId);
+    ASSERT_NE(nullptr, logicalCollection);
+  }
+
+  // new view definition with links
+  auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }"
+  );
+
+  auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
+    "{  \"links\": { "
+    "    \"testCollection\": { "
+    "      \"id\":1, "
+    "      \"includeAllFields\":true, "
+    "      \"analyzers\": [\"inPlace\"], "
+    "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", \"type\":\"identity\", \"properties\":{}, \"features\":[] } ]"
+    "    } "
+    "  } }");
+
+  auto viewId = std::to_string(ci.uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+  EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice()).ok());
+  auto logicalView = ci.getView(vocbase->name(), viewId);
+  ASSERT_NE(nullptr, logicalView);
+
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const path = "/Current/Collections/" + vocbase->name() + "/" +
+                      std::to_string(logicalCollection->id());
+    auto const value = arangodb::velocypack::Parser::fromJson(
+        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+  }
+
+  ASSERT_TRUE(logicalView->properties(viewUpdateJson->slice(), false).ok());
+  logicalView = ci.getView(vocbase->name(), viewId);
+  ASSERT_NE(nullptr, logicalView);
+
+  // check serialization for listing
+  {
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::List);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(4, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+  }
+
+  // check serialization for properties
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    VPackBuilder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(13, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    { // links
+      tmpSlice = slice.get("links");
+      EXPECT_TRUE(tmpSlice.isObject());
+      EXPECT_EQ(1, tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("testCollection");
+      EXPECT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(5, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                  1 == tmpSlice2.get("analyzers").length() &&
+                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+    }
+  }
+
+  // check serialization for persistence
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(16, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("planId").isString() && "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("deleted").isBool() && !slice.get("deleted").getBool());
+    EXPECT_TRUE(slice.get("isSystem").isBool() && !slice.get("isSystem").getBool());
+
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("version");
+    EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() && 1 == tmpSlice.getNumber<uint32_t>());
+  }
+
+  // check serialization for inventory
+  {
+    VPackSlice tmpSlice, tmpSlice2;
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    builder.close();
+
+    auto slice = builder.slice();
+    EXPECT_TRUE(slice.isObject());
+    EXPECT_EQ(13, slice.length());
+    EXPECT_TRUE(slice.get("name").isString() && "testView" == slice.get("name").copyString());
+    EXPECT_TRUE(slice.get("type").isString() && "arangosearch" == slice.get("type").copyString());
+    EXPECT_TRUE(slice.get("id").isString() && "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty());
+    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() && 10000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() && 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() && 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+    { // consolidation policy
+      tmpSlice = slice.get("consolidationPolicy");
+      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("type");
+      EXPECT_TRUE(tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString());
+      tmpSlice2 = tmpSlice.get("segmentsMin");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+      tmpSlice2 = tmpSlice.get("minScore");
+      EXPECT_TRUE(tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>()));
+    }
+    tmpSlice = slice.get("writebufferActive");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferIdle");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("writebufferSizeMax");
+    EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+    tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    { // links
+      tmpSlice = slice.get("links");
+      EXPECT_TRUE(tmpSlice.isObject());
+      EXPECT_EQ(1, tmpSlice.length());
+      tmpSlice2 = tmpSlice.get("testCollection");
+      EXPECT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(7, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                  1 == tmpSlice2.get("analyzers").length() &&
+                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+      EXPECT_TRUE(tmpSlice2.get("fields").isObject() && 0 == tmpSlice2.get("fields").length());
+      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() && tmpSlice2.get("includeAllFields").getBool());
+      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() && !tmpSlice2.get("trackListPositions").getBool());
+      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() && "none" == tmpSlice2.get("storeValues").copyString());
+
+      tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
+      ASSERT_TRUE(tmpSlice2.isArray());
+      ASSERT_EQ(1, tmpSlice2.length());
+      tmpSlice2 = tmpSlice2.at(0);
+      ASSERT_TRUE(tmpSlice2.isObject());
+      EXPECT_EQ(4, tmpSlice2.length());
+      EXPECT_TRUE(tmpSlice2.get("name").isString() && "inPlace" == tmpSlice2.get("name").copyString());
+      EXPECT_TRUE(tmpSlice2.get("type").isString() && "identity" == tmpSlice2.get("type").copyString());
+      EXPECT_TRUE(tmpSlice2.get("properties").isObject() && 0 == tmpSlice2.get("properties").length());
+      EXPECT_TRUE(tmpSlice2.get("features").isArray() && 0 == tmpSlice2.get("features").length());
+    }
   }
 }
 
@@ -1042,9 +1267,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     VPackBuilder builder;
 
     builder.openObject();
-    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                              arangodb::LogicalDataSource::Serialize::Detailed))
-                    .ok());
+    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
     EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
@@ -1141,10 +1364,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
       builder.clear();
       builder.openObject();
-      EXPECT_TRUE(fullyUpdatedView
-                      ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                                arangodb::LogicalDataSource::Serialize::Detailed))
-                      .ok());
+      EXPECT_TRUE(fullyUpdatedView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
       EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
       EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
@@ -1322,8 +1542,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -1566,8 +1785,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -1889,8 +2107,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2074,8 +2291,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2517,8 +2733,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2717,8 +2932,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2847,8 +3061,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -3113,8 +3326,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -3369,8 +3581,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -3510,8 +3721,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       VPackBuilder info;
       info.openObject();
-      view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                                 arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
       info.close();
 
       auto const properties = info.slice();
@@ -3631,8 +3841,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       VPackBuilder info;
       info.openObject();
-      view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                                 arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
       info.close();
 
       auto const properties = info.slice();
@@ -3753,10 +3962,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::makeFlags(
-                                arangodb::LogicalDataSource::Serialize::Detailed,
-                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -3812,10 +4018,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::makeFlags(
-                                arangodb::LogicalDataSource::Serialize::Detailed,
-                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -3919,10 +4122,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder,
-                              arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed,
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -3950,10 +4150,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder,
-                              arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed,
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4508,10 +4705,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::makeFlags(
-                                arangodb::LogicalDataSource::Serialize::Detailed,
-                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -4568,10 +4762,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::makeFlags(
-                                arangodb::LogicalDataSource::Serialize::Detailed,
-                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -4674,10 +4865,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder,
-                              arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed,
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4705,10 +4893,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder,
-                              arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed,
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
