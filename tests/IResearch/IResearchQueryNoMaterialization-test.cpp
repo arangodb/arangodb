@@ -185,8 +185,8 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
     auto found = false;
     for (auto const node : nodes) {
-      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringView() == "EnumerateViewNode") {
-        EXPECT_TRUE(node.hasKey("isNoMaterialization") && node.get("isNoMaterialization").isBool() && node.get("isNoMaterialization").getBool());
+      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringRef() == "EnumerateViewNode") {
+        EXPECT_TRUE(node.hasKey("noMaterialization") && node.get("noMaterialization").isBool() && node.get("noMaterialization").getBool());
         ASSERT_TRUE(node.hasKey("viewValuesVars") && node.get("viewValuesVars").isArray());
         ASSERT_EQ(numOfColumns, node.get("viewValuesVars").length());
         arangodb::velocypack::ArrayIterator columnFields(node.get("viewValuesVars"));

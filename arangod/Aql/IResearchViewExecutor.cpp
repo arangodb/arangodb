@@ -95,7 +95,7 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
   return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
-inline std::pair<int, IResearchViewNode::ViewValuesRegisters::const_iterator> getStoredColumnsInfo(IResearchViewNode::ViewValuesRegisters const& columnsFieldsRegs) {
+inline std::pair<ptrdiff_t, IResearchViewNode::ViewValuesRegisters::const_iterator> getStoredColumnsInfo(IResearchViewNode::ViewValuesRegisters const& columnsFieldsRegs) {
   auto max = (--columnsFieldsRegs.cend())->first;
   TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
   auto columnFieldsRegs = columnsFieldsRegs.cbegin();
@@ -739,13 +739,10 @@ void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const
                                                              std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders) {
   irs::columnstore_reader::values_reader_f reader = storedValuesReaders[index];
   TRI_ASSERT(reader);
-  irs::bytes_ref value; // column value
-  auto ok = reader(doc.value, value);
+  auto ok = reader(doc.value, storedValue[index]);
   TRI_ASSERT(ok);
-  if (value.null()) {
+  if (storedValue[index].null()) {
     storedValue[index] = ref<irs::byte_type>(VPackSlice::nullSlice());
-  } else {
-    storedValue[index] = std::move(value);
   }
 }
 

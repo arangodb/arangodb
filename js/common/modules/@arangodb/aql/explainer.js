@@ -1142,7 +1142,7 @@ function processQuery(query, explain, planIndex) {
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
           viewAnnotation += ' with late materialization';
-        } else if (node.hasOwnProperty('isNoMaterialization') && node.isNoMaterialization) {
+        } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
         }
         viewAnnotation += ' */';

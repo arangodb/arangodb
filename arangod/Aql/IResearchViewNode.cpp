@@ -709,7 +709,7 @@ const char* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
 const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
 const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
-const char* NODE_VIEW_IS_NO_MATERIALIZATION = "isNoMaterialization";
+const char* NODE_VIEW_NO_MATERIALIZATION = "noMaterialization";
 
 void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
                       IResearchViewNode::ViewVariable const& fieldVar) {
@@ -721,7 +721,7 @@ void addViewValuesVar(VPackBuilder& nodes, std::string& fieldName,
 
 void extractViewValuesVar(aql::VariableGenerator const* vars,
                           IResearchViewNode::ViewValuesVars& viewValuesVars,
-                          int const columnNumber,
+                          ptrdiff_t const columnNumber,
                           velocypack::Slice const& fieldVar) {
   auto const fieldNumberSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_FIELD_NUMBER);
   if (!fieldNumberSlice.isNumber<size_t>()) {
@@ -783,7 +783,7 @@ namespace iresearch {
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
 
-const int IResearchViewNode::SortColumnNumber = -1;
+const ptrdiff_t IResearchViewNode::SortColumnNumber = -1;
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
                                      TRI_vocbase_t& vocbase,
@@ -797,7 +797,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
       _outVariable(&outVariable),
       _outNonMaterializedDocId(nullptr),
       _outNonMaterializedColPtr(nullptr),
-      _isNoMaterialization(false),
+      _noMaterialization(false),
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(filterCondition ? filterCondition : &ALL),
@@ -975,19 +975,19 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     }
   }
 
-  if (base.hasKey(NODE_VIEW_IS_NO_MATERIALIZATION)) {
-    auto const isNoMaterializationSlice = base.get(NODE_VIEW_IS_NO_MATERIALIZATION);
-    if (!isNoMaterializationSlice.isBool()) {
+  if (base.hasKey(NODE_VIEW_NO_MATERIALIZATION)) {
+    auto const noMaterializationSlice = base.get(NODE_VIEW_NO_MATERIALIZATION);
+    if (!noMaterializationSlice.isBool()) {
       THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_BAD_PARAMETER, "\"isNoMaterialization\" %s should be a bool value",
-          isNoMaterializationSlice.toString().c_str());
+          TRI_ERROR_BAD_PARAMETER, "\"noMaterialization\" %s should be a bool value",
+          noMaterializationSlice.toString().c_str());
     }
-    _isNoMaterialization = isNoMaterializationSlice.getBool();
+    _noMaterialization = noMaterializationSlice.getBool();
   } else {
-    _isNoMaterialization = false;
+    _noMaterialization = false;
   }
 
-  if (isLateMaterialized() || isNoMaterialization()) {
+  if (isLateMaterialized() || noMaterialization()) {
     auto const* vars = plan.getAst()->variables();
     TRI_ASSERT(vars);
 
@@ -1005,7 +1005,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
               TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].columnNumber\" %s should be a number",
               columnNumberSlice.toString().c_str());
         }
-        auto const columnNumber = columnNumberSlice.getNumber<int>();
+        auto const columnNumber = columnNumberSlice.getNumber<ptrdiff_t>();
         auto const viewStoredValuesVarsSlice = columnFieldsVars.get(NODE_VIEW_STORED_VALUES_VARS);
         if (!viewStoredValuesVarsSlice.isArray()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1044,7 +1044,7 @@ void IResearchViewNode::planNodeRegisters(
     varInfo.try_emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
   }
 
-  if (isLateMaterialized() || isNoMaterialization()) {
+  if (isLateMaterialized() || noMaterialization()) {
     if (isLateMaterialized()) {
       ++nrRegsHere[depth];
       ++nrRegs[depth];
@@ -1053,7 +1053,7 @@ void IResearchViewNode::planNodeRegisters(
       ++nrRegs[depth];
       varInfo.try_emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
     } else if (_outNonMaterializedViewVars.empty() && _scorers.empty()) {
-      // there is no variable if isNoMaterialization()
+      // there is no variable if noMaterialization()
       ++nrRegsHere[depth];
       ++nrRegs[depth];
       ++totalNrRegs;
@@ -1107,8 +1107,8 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     _outNonMaterializedColPtr->toVelocyPack(nodes);
   }
 
-  if (_isNoMaterialization) {
-    nodes.add(NODE_VIEW_IS_NO_MATERIALIZATION, VPackValue(_isNoMaterialization));
+  if (_noMaterialization) {
+    nodes.add(NODE_VIEW_NO_MATERIALIZATION, VPackValue(_noMaterialization));
   }
 
   // stored values
@@ -1118,7 +1118,7 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VARS);
     std::string fieldName;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
-      if (columnFieldsVars.first >= 0) { // not SortColumnNumber
+      if (SortColumnNumber != columnFieldsVars.first) {
         VPackObjectBuilder objectScope(&nodes);
         auto const& columns = storedValues.columns();
         auto const storedColumnNumber = static_cast<size_t>(columnFieldsVars.first);
@@ -1133,7 +1133,7 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
           fieldName = columns[storedColumnNumber].fields[fieldVar.fieldNum].first;
           addViewValuesVar(nodes, fieldName, fieldVar);
         }
-      } else { // SortColumnNumber
+      } else {
         TRI_ASSERT(SortColumnNumber == columnFieldsVars.first);
         for (auto const& fieldVar : columnFieldsVars.second) {
           VPackObjectBuilder objectScope(&nodes);
@@ -1258,7 +1258,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
   if (outNonMaterializedColId != nullptr && outNonMaterializedDocId != nullptr) {
     node->setLateMaterialized(*outNonMaterializedColId, *outNonMaterializedDocId);
   }
-  node->_isNoMaterialization = _isNoMaterialization;
+  node->_noMaterialization = _noMaterialization;
   node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
@@ -1289,7 +1289,7 @@ void IResearchViewNode::getVariablesUsedHere(
     aql::Ast::getReferencedVariables(scorer.node, vars);
   }
 
-  if (isNoMaterialization()) {
+  if (noMaterialization()) {
     vars.erase(_outVariable);
   }
 }
@@ -1301,14 +1301,14 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
   // collection + docId or document
   if (isLateMaterialized()) {
     reserve += 2;
-  } else if (!isNoMaterialization()) {
+  } else if (!noMaterialization()) {
     reserve += 1;
   }
   vars.reserve(reserve);
 
   std::transform(_scorers.cbegin(), _scorers.cend(), std::back_inserter(vars),
     [](auto const& scorer) { return scorer.var; });
-  if (isLateMaterialized() || isNoMaterialization()) {
+  if (isLateMaterialized() || noMaterialization()) {
     if (isLateMaterialized()) {
       vars.emplace_back(_outNonMaterializedColPtr);
       vars.emplace_back(_outNonMaterializedDocId);
@@ -1333,7 +1333,7 @@ std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInpu
     ::arangodb::containers::HashSet<aql::Variable const*> vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
-    if (isNoMaterialization()) {
+    if (noMaterialization()) {
       vars.erase(_outVariable);
     }
 
@@ -1450,10 +1450,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   aql::RegisterCount numDocumentRegs = 0;
   MaterializeType materializeType = MaterializeType::Undefined;
   if (isLateMaterialized()) {
-    TRI_ASSERT(!isNoMaterialization());
+    TRI_ASSERT(!noMaterialization());
     materializeType = MaterializeType::LateMaterialize;
     numDocumentRegs += 2;
-  } else if (isNoMaterialization()) {
+  } else if (noMaterialization()) {
     TRI_ASSERT(options().noMaterialization);
     materializeType = MaterializeType::NotMaterialize;
     // Register for a loop

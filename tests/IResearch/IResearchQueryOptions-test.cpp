@@ -1077,8 +1077,8 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
     auto found = false;
     for (auto const node : nodes) {
-      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringView() == "EnumerateViewNode") {
-        EXPECT_TRUE(node.hasKey("isNoMaterialization") && node.get("isNoMaterialization").isBool() && node.get("isNoMaterialization").getBool());
+      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringRef() == "EnumerateViewNode") {
+        EXPECT_TRUE(node.hasKey("noMaterialization") && node.get("noMaterialization").isBool() && node.get("noMaterialization").getBool());
         found = true;
         break;
       }
@@ -1114,7 +1114,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     auto found = false;
     for (auto const node : nodes) {
       if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringView() == "EnumerateViewNode") {
-        EXPECT_FALSE(node.hasKey("isNoMaterialization"));
+        EXPECT_FALSE(node.hasKey("noMaterialization"));
         found = true;
         break;
       }

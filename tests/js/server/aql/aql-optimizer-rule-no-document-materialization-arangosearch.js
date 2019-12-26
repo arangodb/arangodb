@@ -119,14 +119,14 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertFalse(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].hasOwnProperty('isNoMaterialization'));
+      })[0].hasOwnProperty('noMaterialization'));
     },
     testNotAppliedDueToFalseOptions() {
       let query = "FOR d IN " + vn + " OPTIONS {noMaterialization: false} SORT d.obj.h DESC LIMIT 10 RETURN d.obj.f";
       let plan = AQL_EXPLAIN(query).plan;
       assertFalse(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].hasOwnProperty('isNoMaterialization'));
+      })[0].hasOwnProperty('noMaterialization'));
     },
     testNotAppliedDueToSubqueryFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] " +
@@ -136,7 +136,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertFalse(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].hasOwnProperty('isNoMaterialization'));
+      })[0].hasOwnProperty('noMaterialization'));
     },
     testQueryResultsWithSubqueryFullDocumentAccess() {
       let query = "FOR d IN " + vn + " SEARCH d.obj.a.a1 IN [0, 10] " +
@@ -148,7 +148,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
         return obj.type === "SubqueryNode";
       })[0].subquery.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([14, 4]);
@@ -166,7 +166,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([14, 4]);
@@ -181,7 +181,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
       result.json.forEach(function(doc) {
@@ -193,7 +193,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([14, 4]);
@@ -208,7 +208,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
     },
@@ -217,7 +217,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
     },
@@ -226,7 +226,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([11, 1]);
@@ -241,7 +241,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([14, 4]);
@@ -257,7 +257,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(4, result.json.length);
       let expected = new Set(['c1', 'c_1']);
@@ -270,7 +270,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([cn + "/c0", cn + "/c1"]);
@@ -285,7 +285,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set(["testVertices/c1", "testVertices/c0"]);
@@ -300,7 +300,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertTrue(plan.nodes.filter(obj => {
         return obj.type === "EnumerateViewNode";
-      })[0].isNoMaterialization);
+      })[0].noMaterialization);
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([25, 35]);

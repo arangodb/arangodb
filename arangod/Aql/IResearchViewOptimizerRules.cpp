@@ -324,7 +324,7 @@ struct ColumnVariant {
 
 bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredValues const& storedValues,
                      latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>& node,
-                     std::unordered_map<int, std::vector<ColumnVariant>>& usedColumnsCounter) {
+                     std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>>& usedColumnsCounter) {
   // check all node attributes to be in sort
   for (auto& nodeAttr : node.attrs) {
     auto found = false;
@@ -341,7 +341,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
       ++fieldNum;
     }
     // try to find in other columns
-    int columnNum = 0;
+    ptrdiff_t columnNum = 0;
     for (auto const& column : storedValues.columns()) {
       fieldNum = 0;
       for (auto const& field : column.fields) {
@@ -363,8 +363,8 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
   return true;
 }
 
-void setAttributesMaxMatchedColumns(std::unordered_map<int, std::vector<ColumnVariant>>& usedColumnsCounter) {
-  std::vector<std::pair<int, std::vector<ColumnVariant>>> columnVariants;
+void setAttributesMaxMatchedColumns(std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>>& usedColumnsCounter) {
+  std::vector<std::pair<ptrdiff_t, std::vector<ColumnVariant>>> columnVariants;
   columnVariants.reserve(usedColumnsCounter.size());
   columnVariants.assign(std::make_move_iterator(usedColumnsCounter.begin()), std::make_move_iterator(usedColumnsCounter.end()));
   // first is max size one
@@ -396,7 +396,7 @@ void setAttributesMaxMatchedColumns(std::unordered_map<int, std::vector<ColumnVa
 void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
                                   arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
   std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>> nodesToChange;
-  std::unordered_map<int, std::vector<ColumnVariant>> usedColumnsCounter;
+  std::unordered_map<ptrdiff_t, std::vector<ColumnVariant>> usedColumnsCounter;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
@@ -529,7 +529,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
     auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
     if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
-      if (viewNode.isNoMaterialization() || viewNode.isLateMaterialized()) {
+      if (viewNode.noMaterialization() || viewNode.isLateMaterialized()) {
         continue; // loop is already optimized
       }
       ExecutionNode* current = limitNode->getFirstDependency();

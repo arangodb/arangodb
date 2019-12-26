@@ -898,7 +898,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":{\"fieldNumber\":0, \"id\":101}, "
-        "\"isNoMaterialization\":false, "
+        "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
         std::to_string(logicalView->id()) + "\" }");
@@ -922,7 +922,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":\"0\", \"id\":101}], "
-        "\"isNoMaterialization\":false, "
+        "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
         std::to_string(logicalView->id()) + "\" }");
@@ -946,7 +946,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":0, \"id\":\"101\"}], "
-        "\"isNoMaterialization\":false, "
+        "\"noMaterialization\":false, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
         std::to_string(logicalView->id()) + "\" }");
@@ -961,7 +961,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
       EXPECT_TRUE(false);
     }
   }
-  // with invalid no materialization (invalid isNoMaterialization)
+  // with invalid no materialization (invalid noMaterialization)
   {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
@@ -970,7 +970,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"viewValuesVars\":[{\"fieldNumber\":0, \"id\":101}], "
-        "\"isNoMaterialization\":1, "
+        "\"noMaterialization\":1, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
         std::to_string(logicalView->id()) + "\" }");

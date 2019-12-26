@@ -191,15 +191,15 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     _outNonMaterializedColPtr = &colPtrVariable;
   }
 
-  bool isNoMaterialization() const noexcept {
-    return _isNoMaterialization;
+  bool noMaterialization() const noexcept {
+    return _noMaterialization;
   }
 
   void setNoMaterialization() noexcept {
-    _isNoMaterialization = true;
+    _noMaterialization = true;
   }
 
-  static const int SortColumnNumber;
+  static const ptrdiff_t SortColumnNumber;
 
   // A variable with a field number in a column
   struct ViewVariable {
@@ -209,12 +209,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   // A variable with column and field numbers
   struct ViewVariableWithColumn : ViewVariable {
-    int columnNum;
+    ptrdiff_t columnNum;
   };
 
-  using ViewValuesVars = std::unordered_map<int, std::vector<ViewVariable>>;
+  using ViewValuesVars = std::unordered_map<ptrdiff_t, std::vector<ViewVariable>>;
 
-  using ViewValuesRegisters = std::map<int, std::map<size_t, aql::RegisterId>>;
+  using ViewValuesRegisters = std::map<ptrdiff_t, std::map<size_t, aql::RegisterId>>;
 
   using ViewVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariableWithColumn>;
 
@@ -288,7 +288,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ViewValuesVars _outNonMaterializedViewVars;
 
   /// @brief is no materialization should be applied
-  bool _isNoMaterialization;
+  bool _noMaterialization;
 
   OptimizationState _optState;
 
