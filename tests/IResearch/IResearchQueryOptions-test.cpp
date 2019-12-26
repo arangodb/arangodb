@@ -1113,7 +1113,7 @@ TEST_F(IResearchQueryOptionsTest, noMaterialization) {
     arangodb::velocypack::ArrayIterator nodes(explanation.get("nodes"));
     auto found = false;
     for (auto const node : nodes) {
-      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringView() == "EnumerateViewNode") {
+      if (node.hasKey("type") && node.get("type").isString() && node.get("type").stringRef() == "EnumerateViewNode") {
         EXPECT_FALSE(node.hasKey("noMaterialization"));
         found = true;
         break;
