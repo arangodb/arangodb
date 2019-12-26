@@ -396,6 +396,7 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
   return result;
 }
 
+
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
@@ -498,11 +499,12 @@ std::string mangleStringIdentity(std::string name) {
 void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryString,
                            irs::filter const& expectedFilter,
                            arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
-                           std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
+                           std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
+                           std::string const& optionsString /*= " { }"*/
 ) {
   auto options = arangodb::velocypack::Parser::fromJson(
       //    "{ \"tracing\" : 1 }"
-      "{ }");
+      optionsString);
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
