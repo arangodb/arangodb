@@ -26,6 +26,7 @@
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewStoredValues.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -364,7 +365,10 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view);
     ASSERT_TRUE(link);
     irs::directory_reader const snapshotReader = link->snapshot();
-    std::string const columns[] = {"@_PK", "_id", "foo", "foo\1str\1value", "str", "value"};
+    std::string const columns[] = {"@_PK", "_id", "foo", std::string("foo") +
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "str" +
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "value",
+                                   "str", "value"};
     for (auto const& segment : snapshotReader) {
       auto col = segment.columns();
       auto doc = segment.docs_iterator();

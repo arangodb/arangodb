@@ -37,16 +37,15 @@ bool CalculationNodeVarFinder::before(ExecutionNode* en) {
     TRI_ASSERT(enterSubquery(nullptr, nullptr));
     return false;
   }
+  _currentUsedVars.clear();
   en->getVariablesUsedHere(_currentUsedVars);
   if (_currentUsedVars.find(_lookingFor) != _currentUsedVars.end()) {
     if (ExecutionNode::CALCULATION != type) {
       _out.clear();
-      _currentUsedVars.clear();
       return true;
     }
     _out.emplace_back(en);
   }
-  _currentUsedVars.clear();
 
   return false;
 }
@@ -62,15 +61,14 @@ bool CalculationNodeVarExistenceFinder::before(ExecutionNode* en) {
     TRI_ASSERT(enterSubquery(nullptr, nullptr));
     return false;
   }
+  _currentUsedVars.clear();
   en->getVariablesUsedHere(_currentUsedVars);
   if (_currentUsedVars.find(_lookingFor) != _currentUsedVars.end()) {
     if (ExecutionNode::CALCULATION != type) {
-      _currentUsedVars.clear();
       return true;
     }
     _isCalculationNodesFound = true;
   }
-  _currentUsedVars.clear();
 
   return false;
 }

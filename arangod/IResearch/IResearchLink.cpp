@@ -173,6 +173,8 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
           // _id field
           if (slice.isCustom()) {
+            TRI_ASSERT(1 == storedValue.second.size() &&
+                       storedValue.second[0].name == arangodb::StaticStrings::IdString);
             buffer.reset();
             VPackBuilder builder(buffer);
             builder.add(VPackValue(arangodb::transaction::helpers::extractIdString(
