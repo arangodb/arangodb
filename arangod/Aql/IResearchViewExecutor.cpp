@@ -653,9 +653,8 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContex
   TRI_ASSERT(columnNum < storedValues.size());
   auto const& storedValue = storedValues[columnNum];
   TRI_ASSERT(!storedValue.empty());
-  auto s = storedValue.c_str();
   auto totalSize = storedValue.size();
-  auto slice = VPackSlice(s);
+  auto slice = VPackSlice(storedValue.c_str());
   size_t size = 0;
   size_t i = 0;
   for (auto const& [fieldNum, registerId] : fieldsRegs) {
@@ -665,7 +664,7 @@ inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContex
       if (ADB_UNLIKELY(size > totalSize)) {
         return false;
       }
-      slice = VPackSlice(s + slice.byteSize());
+      slice = VPackSlice(slice.start() + slice.byteSize());
       ++i;
     }
     TRI_ASSERT(!slice.isNone());
