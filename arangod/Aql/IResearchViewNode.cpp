@@ -1123,13 +1123,12 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
         auto const& columns = storedValues.columns();
         auto const storedColumnNumber = static_cast<size_t>(columnFieldsVars.first);
         TRI_ASSERT(storedColumnNumber < columns.size());
-        nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(columnFieldsVars.first));
+        nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(static_cast<size_t>(columnFieldsVars.first)));
         VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_STORED_VALUES_VARS);
         for (auto const& fieldVar : columnFieldsVars.second) {
           VPackObjectBuilder objectScope(&nodes);
           fieldName.clear();
           TRI_ASSERT(fieldVar.fieldNum < columns[storedColumnNumber].fields.size());
-          nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(columnFieldsVars.first));
           fieldName = columns[storedColumnNumber].fields[fieldVar.fieldNum].first;
           addViewValuesVar(nodes, fieldName, fieldVar);
         }
