@@ -1,8 +1,11 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #10371: AQL Error when using a custom ArangoSearch analyzer on a
+  cluster deployment.
+
 * Fixed internal issue #656: While executing large amount of concurrent
-  insert/removes iresearch seems to leak open file handles. This results in
+  insert/removes ArangoSearch seems to leak open file handles. This results in
   error 32 in cleanup (observed only on Windows as Linux doesn`t have file
   sharing locks).
 
