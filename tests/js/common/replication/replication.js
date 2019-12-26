@@ -2488,8 +2488,7 @@ function ReplicationSyncSuite () {
           connectionRetryWaitTime: 1
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertTrue(err.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
                    err.errorNum === errors.ERROR_REPLICATION_MASTER_ERROR.code ||
                    err.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);

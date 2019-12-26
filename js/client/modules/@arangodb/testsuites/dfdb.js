@@ -57,7 +57,7 @@ function dfdb (options) {
 
   let results = { failed: 0 };
 
-  results.dfdb = pu.executeAndWait(pu.ARANGOD_BIN, args, options, 'dfdb', dataDir, false, options.coreCheck);
+  results.dfdb = pu.executeAndWait(pu.ARANGOD_BIN, args, options, 'dfdb', dataDir, options.coreCheck);
 
   print();
   results.dfdb.failed = results.dfdb.status ? 0 : 1;

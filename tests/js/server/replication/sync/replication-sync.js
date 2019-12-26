@@ -1606,6 +1606,9 @@ function ReplicationSuite () {
       db._drop(cn);
 
       connectToSlave();
+      try {
+        db._dropView(cn + 'View');
+      } catch (ignored) {}
       db._drop(cn);
     }
   };
