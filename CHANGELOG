@@ -1,4 +1,4 @@
-v3.4.9 (XXX-XX-XX)
+v3.4.9 (XXXX-XX-XX)
 -------------------
 
 * Fixed UPSERT matching.
@@ -14,6 +14,19 @@ v3.4.9 (XXX-XX-XX)
 
   This will now correctly insert a document instead of updating the existing,
   that only partially machtes the upsert-expression.
+
+* The _users collection is now properly restored when using arangorestore.
+
+* Updated arangosync to 0.7.1.
+
+* Fixed issue #10470: The WebUI now shows potential errors and details which
+  occured using _api/import (e.g. unique constraint violated).
+
+* Make the timeouts for replication requests (for active failover and master-slave 
+  replication configurable via startup options:
+
+      --replication.connect-timeout
+      --replication.request-timeout
 
 * Fixed ArangoSearch index removes being discarded on commiting consolidation
   results with pending removes after some segments under consolidation were

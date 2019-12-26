@@ -1341,6 +1341,7 @@ function ReplicationSuite () {
 
       db._dropView('UnitTestsSyncView');
       db._dropView('UnitTestsSyncViewRenamed');
+      db._dropView(cn + 'View');
       db._drop(cn);
       db._drop(cn2);
 
@@ -1350,6 +1351,7 @@ function ReplicationSuite () {
 
       db._dropView('UnitTestsSyncView');
       db._dropView('UnitTestsSyncViewRenamed');
+      db._dropView(cn + 'View');
       db._drop(cn);
       db._drop(cn2);
       db._drop(cn + 'Renamed');
