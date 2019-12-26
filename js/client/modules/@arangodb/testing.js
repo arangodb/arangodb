@@ -25,6 +25,23 @@
 // @author Max Neunhoeffer
 // /////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
+const fs = require('fs');
+const yaml = require('js-yaml');
+const internal = require('internal');
+const platform = internal.platform;
+
+const pu = require('@arangodb/process-utils');
+const cu = require('@arangodb/crash-utils');
+const tu = require('@arangodb/test-utils');
+
+const BLUE = require('internal').COLORS.COLOR_BLUE;
+const CYAN = require('internal').COLORS.COLOR_CYAN;
+const GREEN = require('internal').COLORS.COLOR_GREEN;
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
+const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+
 let functionsDocumentation = {
   'all': 'run all tests (marked with [x])',
   'find': 'searches all testcases, and eventually filters them by `--test`, ' +
@@ -74,9 +91,12 @@ let optionsDocumentation = [
   '   - `agency`: if set to true agency tests are done',
   '   - `agencySize`: number of agents in agency',
   '   - `agencySupervision`: run supervision in agency',
-  '   - `test`: path to single test to execute for "single" test target',
-  '   - `cleanup`: if set to true (the default), the cluster data files',
-  '     and logs are removed after termination of the test.',
+  '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
+  '   - `isAsan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
+  '   - `test`: path to single test to execute for "single" test target, ',
+  '             or pattern to filter for other suites',
+  '   - `cleanup`: if set to false the data files',
+  '                and logs are not removed after termination of the test.',
   '',
   '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `build`: the directory containing the binaries',
@@ -126,7 +146,7 @@ const optionsDefaults = {
   'agencyWaitForSync': false,
   'agencySupervision': true,
   'build': '',
-  'buildType': '',
+  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
   'cluster': false,
   'concurrency': 3,
@@ -147,7 +167,6 @@ const optionsDefaults = {
   'loopSleepWhen': 1,
   'minPort': 1024,
   'maxPort': 32768,
-  'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
   'protocol': 'tcp',
@@ -164,6 +183,8 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
+  'oneTestTimeout': 2700,
+  'isAsan': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
@@ -181,21 +202,6 @@ const optionsDefaults = {
   'testCase': undefined,
   'disableMonitor': false
 };
-
-const _ = require('lodash');
-const fs = require('fs');
-const yaml = require('js-yaml');
-
-const pu = require('@arangodb/process-utils');
-const cu = require('@arangodb/crash-utils');
-const tu = require('@arangodb/test-utils');
-
-const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
-const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test functions for all
@@ -256,7 +262,9 @@ const internalMembers = [
   'crashed',
   'ok',
   'message',
-  'suiteName'
+  'suiteName',
+  'startupTime',
+  'testDuration'
 ];
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -501,7 +509,28 @@ function findTestCases(options) {
   return [found, allTestFiles];
 }
 
+function isClusterTest(options) {
+  let rc = false;
+  if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+    if (typeof (options.test) === 'string') {
+      rc = (options.test.search('-cluster') >= 0);
+    } else {
+      options.test.forEach(
+        filter => {
+          if (filter.search('-cluster') >= 0) {
+            rc = true;
+          }
+        }
+      );
+    }
+  }
+  return rc;
+}
+
 function findTest(options) {
+  if (isClusterTest(options)) {
+    options.cluster = true;
+  }
   let rc = findTestCases(options);
   if (rc[0]) {
     print(rc[1]);
@@ -537,7 +566,6 @@ function findTest(options) {
   }
 }
 
-
 function autoTest(options) {
   if (!options.hasOwnProperty('test') || (typeof (options.test) === 'undefined')) {
     return {
@@ -554,6 +582,9 @@ function autoTest(options) {
         }
       }
     };
+  }
+  if (isClusterTest(options)) {
+    options.cluster = true;
   }
   let rc = findTestCases(options);
   if (rc[0]) {
@@ -690,6 +721,9 @@ function iterateTests(cases, options, jsonReply) {
       delete result.status;
       delete result.failed;
       delete result.crashed;
+      delete result.startupTime;
+      delete result.testDuration;
+      delete result.shutdown;
 
       status = Object.values(result).every(testCase => testCase.status === true);
       let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
@@ -768,7 +802,21 @@ function unitTest (cases, options) {
     };
   }
 
-  pu.setupBinaries(options.build, options.buildType, options.configDir);
+  try {
+    pu.setupBinaries(options.build, options.buildType, options.configDir);
+  }
+  catch (err) {
+    print(err);
+    return {
+      status: false,
+      crashed: true,
+      ALL: [{
+        status: false,
+        failed: 1,
+        message: err.message
+      }]
+    };
+  }
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 
