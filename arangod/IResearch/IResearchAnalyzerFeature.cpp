@@ -634,7 +634,7 @@ arangodb::Result visitAnalyzers(
 
     std::vector<arangodb::ClusterCommRequest> requests(1);
     auto& request = requests[0];
-    request.path = "/_api/cursor";
+    request.path = "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase.name()) + "/_api/cursor";
     request.body = std::shared_ptr<std::string const>(std::shared_ptr<std::string const>(), &BODY);
     request.requestType = arangodb::rest::RequestType::POST;
 
