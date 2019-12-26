@@ -4,6 +4,14 @@ v3.5.4 (XXXX-XX-XX)
 * Fixed issue #10725: Wrong document count shown inside an empty collection in
   the web UI.
 
+* Fixed issue #10371: AQL Error when using a custom ArangoSearch analyzer on a
+  cluster deployment.
+
+* Fixed internal issue #656: While executing large amount of concurrent
+  insert/removes ArangoSearch seems to leak open file handles. This results in
+  error 32 in cleanup (observed only on Windows as Linux doesn`t have file
+  sharing locks).
+
 * Fixed internal issue #4748: Editing a single edgeDefinition using the graph
   API failed if it was not shared between all available graphs.
 

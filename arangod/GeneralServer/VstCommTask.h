@@ -65,13 +65,11 @@ class VstCommTask final : public GeneralCommTask {
   // internal addResponse
   void addResponse(GeneralResponse&, RequestStatistics*) override;
 
-  bool allowDirectHandling() const override final { return false; }
-
  private:
   // process the VST 1000 request type
   void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
 
-  // reets the internal state this method can be called to clean up when the
+  // resets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
 
