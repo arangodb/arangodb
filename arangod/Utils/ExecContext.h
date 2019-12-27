@@ -39,6 +39,7 @@ class Methods;
 /// context for convencience
 class ExecContext : public RequestContext {
  protected:
+  friend struct ExecContextSuperuserScope;
   enum class Type { Default, Internal };
 
   ExecContext(ExecContext::Type type, std::string const& user,
@@ -143,6 +144,7 @@ class ExecContext : public RequestContext {
   /// level of current database
   auth::Level _databaseAuthLevel;
 
+ private:
   static ExecContext SUPERUSER;
 };
 
@@ -158,6 +160,25 @@ struct ExecContextScope {
  private:
   ExecContext const* _old;
 };
+
+struct ExecContextSuperuserScope {
+  explicit ExecContextSuperuserScope()
+      : _old(ExecContext::CURRENT) {
+    ExecContext::CURRENT = &ExecContext::SUPERUSER;
+  }
+
+  explicit ExecContextSuperuserScope(bool cond) : _old(ExecContext::CURRENT) {
+    if (cond) {
+      ExecContext::CURRENT = &ExecContext::SUPERUSER;
+    }
+  }
+
+  ~ExecContextSuperuserScope() { ExecContext::CURRENT = _old; }
+
+ private:
+  ExecContext const* _old;
+};
+
 }  // namespace arangodb
 
 #endif
