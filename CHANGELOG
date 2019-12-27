@@ -4,6 +4,39 @@ v3.4.9 (XXXX-XX-XX)
 * Bugfix: An AQL ternary expression with the condition being true at query
   compile time would not execute its false branch.
 
+* Fixed GET _api/gharial to also include the name property in every returned graph.
+  This is a consistency fix within the API as all other APIs include the name.
+  As a work around the returned _key can be used, which is identical to the name.
+
+* Fixed permissions for dump/restore.
+
+* Allow the optimizer to use indexes when a collection attribute is compared to an
+  expansion followed by an attribute name, e.g. `doc.value IN something[*].name`.
+
+* Fixed issue #10440: Incorrect sorting with sort criteria partially covered 
+  by index.
+
+* Fixed UPSERT matching.
+
+  Empty objects in the `UPSERT { ... }` expression will not be omitted anymore:
+
+      db._collection("col").insert({ "find" : "me" });
+      db._query(` UPSERT { "find" : "me", "foo" : {} }
+                  UPDATE { "foo"  : "not gonna happen" }
+                  INSERT { "find" : "me", "foo"  : {} }
+                  INTO col
+      `)
+
+  This will now correctly insert a document instead of updating the existing,
+  that only partially machtes the upsert-expression.
+
+* In the RocksDB engine, automatically flush more exotic column families
+  10 minutes after server startup, plus every 12 hours while the server is
+  running. This should prevent data from more exotic column families to
+  stay only in WAL and memtables, which may block WAL journals collection.
+
+* The _users collection is now properly restored when using arangorestore.
+
 * Updated arangosync to 0.7.1.
 
 * Fixed issue #10470: The WebUI now shows potential errors and details which
