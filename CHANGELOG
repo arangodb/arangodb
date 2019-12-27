@@ -1,6 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Shard synchronisation readlock aware of rebootId.
+
 * Fixed undefined behavior on node delete.
 
 * Fixed agency invalid operation.
