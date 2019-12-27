@@ -5,6 +5,8 @@ v3.4.9 (XXXX-XX-XX)
   This is a consistency fix within the API as all other APIs include the name.
   As a work around the returned _key can be used, which is identical to the name.
 
+* Fixed permissions for dump/restore.
+
 * Allow the optimizer to use indexes when a collection attribute is compared to an
   expansion followed by an attribute name, e.g. `doc.value IN something[*].name`.
 
