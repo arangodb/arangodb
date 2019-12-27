@@ -159,8 +159,12 @@ bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
 
 void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode) {
   if (oldNode == plan->root()) {
-    for (auto* dep : oldNode->getDependencies()) {
-      newNode->addDependency(dep);
+    // intentional copy, the dependencies are changed in the loop
+    std::vector<ExecutionNode*> deps = oldNode->getDependencies();
+    for (auto* x : deps) {
+      TRI_ASSERT(x != nullptr);
+      newNode->addDependency(x);
+      oldNode->removeDependency(x);
     }
     plan->root(newNode, true);
   } else {
