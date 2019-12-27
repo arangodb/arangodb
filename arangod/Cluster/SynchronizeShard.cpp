@@ -423,13 +423,13 @@ arangodb::Result SynchronizeShard::getReadLock(
   // The POST request thus is answered immediately back to the caller.
   // The servers (<=3.3) with lower versions hold the POST request for as long
   // as the corresponding DELETE_REQ has not been successfully submitted.
-  
+
   using namespace std::chrono;
   auto const start = steady_clock::now();
   auto cc = arangodb::ClusterComm::instance();
 
   // nullptr only happens during controlled shutdown
-  if (cc == nullptr) {  
+  if (cc == nullptr) {
     return arangodb::Result(
       TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
   }
@@ -439,14 +439,14 @@ arangodb::Result SynchronizeShard::getReadLock(
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
-    body.add("serverId", VPackValue(basics::StringUtils::itoa(ServerIdFeature::getId())));
+    body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId()));
     body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
 
   auto const url = DB + database + REPL_HOLD_READ_LOCK;
 
   // Try to POST the lock body. If POST fails, we should just exit and retry
-  // SynchroShard anew. 
+  // SynchroShard anew.
   auto postres = cc->syncRequest(
     TRI_NewTickServer(), endpoint, rest::RequestType::POST, url, body.toJson(),
     std::unordered_map<std::string, std::string>(), timeout);
@@ -456,23 +456,23 @@ arangodb::Result SynchronizeShard::getReadLock(
     if (postres->result->getHttpReturnCode() == 200) { // Habemus clausum, we have a lock
       return arangodb::Result();
     }
-    
+
     LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
       << "startReadLockOnLeader: couldn't POST lock body, "
       << postres->result->getHttpReturnMessage() << ", giving up.";
-  
-    // We MUSTN'T exit without trying to clean up a lock that was maybe acquired   
+
+    // We MUSTN'T exit without trying to clean up a lock that was maybe acquired
     if (postres->status == CL_COMM_SENT) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
         "startReadLockOnLeader: couldn't POST lock body, giving up.");
     }
-    
+
   } else {
     LOG_TOPIC("600aa", DEBUG, Logger::MAINTENANCE)
       << "startReadLockOnLeader: couldn't POST lock body, giving up.";
   }
-  
+
   double timeLeft =
     double(timeout) - duration<double>(steady_clock::now()-start).count() ;
   if (timeLeft < 60.0) {
@@ -1139,6 +1139,6 @@ void SynchronizeShard::setState(ActionState state) {
         << "SynchronizeShard: synchronization completed for shard " << shard;
     }
     _feature.incShardVersion(shard);
-  } 
+  }
   ActionBase::setState(state);
 }

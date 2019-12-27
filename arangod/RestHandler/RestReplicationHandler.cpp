@@ -3125,7 +3125,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
     ClusterInfo& ci = *ClusterInfo::instance();
 
   std::string vn = _vocbase.name();
-  
+
   try {
     std::function<void(void)> f =
       [=]() {
@@ -3140,12 +3140,13 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
     std::string comment = std::string("SynchronizeShard from ") + serverId +
       " for " + col.name() + " access mode " + AccessMode::typeString(access);
-    auto rGuard = std::make_unique<CallbackGuard>(
-      ci.rebootTracker().callMeOnChange(
-        RebootTracker::PeerState(serverId, rebootId), f, comment));
-
+    std::unique_ptr<CallbackGuard> rGuard = nullptr;
+    if (!serverId.empty()) {
+      rGuard = std::make_unique<CallbackGuard>(
+        ci.rebootTracker().callMeOnChange(
+          RebootTracker::PeerState(serverId, rebootId), f, comment));
+    }
     queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
-
   } catch (...) {
     // For compatibility we only return this error
     return {TRI_ERROR_TRANSACTION_INTERNAL, "cannot begin read transaction"};
