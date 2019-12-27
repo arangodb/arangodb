@@ -3076,7 +3076,6 @@ Result RestReplicationHandler::createBlockingTransaction(
     std::string comment = std::string("SynchronizeShard from ") + serverId +
                           " for " + col.name() + " access mode " +
                           AccessMode::typeString(access);
-
     std::unique_ptr<CallbackGuard> rGuard = nullptr;
     if (!serverId.empty()) {
       rGuard = std::make_unique<CallbackGuard>(
