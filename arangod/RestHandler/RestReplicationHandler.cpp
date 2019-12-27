@@ -3076,10 +3076,13 @@ Result RestReplicationHandler::createBlockingTransaction(
     std::string comment = std::string("SynchronizeShard from ") + serverId +
                           " for " + col.name() + " access mode " +
                           AccessMode::typeString(access);
-    auto rGuard = std::make_unique<CallbackGuard>(
+
+    std::unique_ptr<CallbackGuard> rGuard = nullptr;
+    if (!serverId.empty()) {
+      rGuard = std::make_unique<CallbackGuard>(
         ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
                                           f, comment));
-
+    }
     queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
 
   } catch (...) {
