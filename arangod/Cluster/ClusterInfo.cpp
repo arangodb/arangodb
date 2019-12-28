@@ -287,7 +287,7 @@ void ClusterInfo::cleanup() {
   theInstance->_plannedViews.clear();
   theInstance->_plannedCollections.clear();
   theInstance->_shards.clear();
-  theInstance->_shardKeys.clear();
+  theInstance->_shardToName.clear();
   theInstance->_shardIds.clear();
   theInstance->_currentCollections.clear();
 }
@@ -613,7 +613,7 @@ void ClusterInfo::loadPlan() {
                                                      //    >
       decltype(_shards) newShards;
       decltype(_shardServers) newShardServers;
-      decltype(_shardKeys) newShardKeys;
+      decltype(_shardToName) newShardToName;
 
       bool swapDatabases = false;
       bool swapCollections = false;
@@ -926,15 +926,15 @@ void ClusterInfo::loadPlan() {
                 databaseCollections.emplace(collectionId, newCollection);
               }
 
-              auto shardKeys =
-                  std::make_shared<std::vector<std::string>>(newCollection->shardKeys());
-              newShardKeys.emplace(collectionId, std::move(shardKeys));
-
               auto shardIDs = newCollection->shardIds();
               auto shards = std::make_shared<std::vector<std::string>>();
+              shards->reserve(shardIDs->size());
+              newShardToName.reserve(shardIDs->size());
+
               for (auto const& p : *shardIDs) {
                 shards->push_back(p.first);
                 newShardServers.emplace(p.first, p.second);
+                newShardToName.emplace(p.first, newCollection->name());
               }
               // Sort by the number in the shard ID ("s0000001" for example):
               std::sort(shards->begin(), shards->end(),
@@ -990,7 +990,7 @@ void ClusterInfo::loadPlan() {
       if (swapCollections) {
         _plannedCollections.swap(newCollections);
         _shards.swap(newShards);
-        _shardKeys.swap(newShardKeys);
+        _shardToName.swap(newShardToName);
         _shardServers.swap(newShardServers);
       }
       if (swapViews) {
@@ -3885,6 +3885,16 @@ arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
       << "Strange, did not find shard in _shardServers: " << shardId;
   return arangodb::Result(TRI_ERROR_FAILED);
+}
+
+CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _shardToName.find(shardId);
+  if (it != _shardToName.end()) {
+    return it->second;
+  }
+  return StaticStrings::Empty;
 }
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {

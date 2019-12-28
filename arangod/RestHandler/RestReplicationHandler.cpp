@@ -112,15 +112,12 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
 
 static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& col,
                                     std::string const& claimLeaderId) {
-
-  std::vector<std::string> agencyPath = {
-    "Plan",
-    "Collections",
-    col->vocbase().name(),
-    std::to_string(col->planId()),
-    "shards",
-    col->name()
-  };
+  std::vector<std::string> agencyPath = {"Plan",
+                                         "Collections",
+                                         col->vocbase().name(),
+                                         std::to_string(col->planId()),
+                                         "shards",
+                                         col->name()};
 
   std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
 
@@ -245,6 +242,12 @@ bool RestReplicationHandler::isCoordinatorError() {
 
 // main function that dispatches the different routes and commands
 RestStatus RestReplicationHandler::execute() {
+  auto res = testPermissions();
+  if (!res.ok()) {
+    generateError(res);
+    return RestStatus::DONE;
+  }
+
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffixes = _request->suffixes();
@@ -547,9 +550,97 @@ BAD_CALL:
   return RestStatus::DONE;
 }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief update the leader of a shard
-  //////////////////////////////////////////////////////////////////////////////
+Result RestReplicationHandler::testPermissions() {
+  if (!_request->authenticated()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string user = _request->user();
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
+  if (len >= 1) {
+    auto const type = _request->requestType();
+    std::string const& command = suffixes[0];
+    if ((command == "batch") || (command == "inventory" && type == rest::RequestType::GET) ||
+        (command == "dump" && type == rest::RequestType::GET) ||
+        (command == "restore-collection" && type == rest::RequestType::PUT)) {
+      if (command == "dump") {
+        // check dump collection permissions (at least ro needed)
+        std::string collectionName = _request->value("collection");
+
+        if (ServerState::instance()->isCoordinator()) {
+          // We have a shard id, need to translate
+          auto ci = ClusterInfo::instance();
+          collectionName = ci->getCollectionNameForShard(collectionName);
+        }
+
+        if (!collectionName.empty()) {
+          auto& exec = ExecContext::CURRENT;
+          ExecContextSuperuserScope escope(exec->isAdminUser());
+          if (!exec->isAdminUser() &&
+              !exec->canUseCollection(collectionName, auth::Level::RO)) {
+            // not enough rights
+            return Result(TRI_ERROR_FORBIDDEN);
+          }
+        } else {
+          // not found, return 404
+          return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        }
+      } else if (command == "restore-collection") {
+        VPackSlice const slice = _request->payload();
+        VPackSlice const parameters = slice.get("parameters");
+        if (parameters.isObject()) {
+          if (parameters.get("name").isString()) {
+            std::string collectionName = parameters.get("name").copyString();
+            if (!collectionName.empty()) {
+              std::string dbName = _request->databaseName();
+              TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(dbName);
+              if (vocbase == nullptr) {
+                return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+              }
+
+              std::string const& overwriteCollection =
+                  _request->value("overwrite");
+
+              auto& exec = ExecContext::CURRENT;
+              ExecContextSuperuserScope escope(exec->isSuperuser());
+
+              if (overwriteCollection == "true" ||
+                  vocbase->lookupCollection(collectionName) == nullptr) {
+                // 1.) re-create collection, means: overwrite=true (rw database)
+                // OR 2.) not existing, new collection (rw database)
+                if (!exec->isAdminUser() && !exec->canUseDatabase(dbName, auth::Level::RW)) {
+                  return Result(TRI_ERROR_FORBIDDEN);
+                }
+              } else {
+                // 3u) Existing collection (ro database, rw collection)
+                // no overwrite. restoring into an existing collection
+                if (!exec->isAdminUser() &&
+                    !exec->canUseCollection(collectionName, auth::Level::RW)) {
+                  return Result(TRI_ERROR_FORBIDDEN);
+                }
+              }
+            } else {
+              return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                            "empty collection name");
+            }
+          } else {
+            return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "invalid collection name type");
+          }
+        } else {
+          return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "invalid collection parameter type");
+        }
+      }
+    }
+  }
+  return Result(TRI_ERROR_NO_ERROR);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief update the leader of a shard
+//////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSetTheLeader() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
@@ -596,7 +687,8 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   if (!oldLeaderIdSlice.isEqualString(currentLeader)) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN, "old leader not as expected");
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "old leader not as expected");
     return;
   }
 
@@ -887,9 +979,9 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
     if (name.isObject()) {
       name = name.get("name");
       if (name.isString() && !name.copyString().empty() && name.copyString()[0] == '_') {
-        // system collection... it may have been created in the meantime by a background action
-        // collection should be there now - as long as the collection is there in the end
-        // we are satisfied
+        // system collection... it may have been created in the meantime by a
+        // background action collection should be there now - as long as the
+        // collection is there in the end we are satisfied
         res.reset();
       }
     }
@@ -1250,15 +1342,22 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   s = parameters.get(StaticStrings::ReplicationFactor);
   if (s.isString() && s.copyString() == "satellite") {
     // set "satellite" replicationFactor to the default replication factor
-    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>(
+        "Cluster");
 
     uint32_t replicationFactor = cl->systemReplicationFactor();
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
-    changes.push_back(std::string("changed 'replicationFactor' attribute value to ") + std::to_string(replicationFactor));;
+    changes.push_back(
+        std::string("changed 'replicationFactor' attribute value to ") +
+        std::to_string(replicationFactor));
+    ;
   }
 
   if (!changes.empty()) {
-    LOG_TOPIC(INFO, Logger::CLUSTER) << "rewrote info for collection '" << name << "' on restore for usage with the community version. the following changes were applied: " << basics::StringUtils::join(changes, ". ");
+    LOG_TOPIC(INFO, Logger::CLUSTER)
+        << "rewrote info for collection '"
+        << name << "' on restore for usage with the community version. the following changes were applied: "
+        << basics::StringUtils::join(changes, ". ");
   }
 #endif
 
@@ -2383,7 +2482,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   col->followers()->add(followerId);
 
-  { // untrack the (async) replication client, so the WAL may be cleaned
+  {  // untrack the (async) replication client, so the WAL may be cleaned
     TRI_server_id_t const serverId = StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "serverId", ""));
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
