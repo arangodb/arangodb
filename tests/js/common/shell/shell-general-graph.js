@@ -980,6 +980,22 @@ function GeneralGraphCreationSuite() {
       }
     },
 
+    test_editEdgeDefinitionFromExistingGraph4: function () {
+      // create two graphs, each of them has a "not-shared" edgeDefinition, then modify one of those.
+      // This is not allowed to fail.
+      var dr1 = graph._relation(ec1, _.cloneDeep([vc1]), _.cloneDeep([vc2])),
+        dr2 = graph._relation(ec2, _.cloneDeep([vc1]), _.cloneDeep([vc4])),
+        dr3 = graph._relation(ec1, _.cloneDeep([vc5]), _.cloneDeep([vc5])),
+        g1 = graph._create(gN1, _.cloneDeep([dr1])),
+        g2 = graph._create(gN2, _.cloneDeep([dr2]));
+
+      g1._editEdgeDefinitions(_.cloneDeep(dr3));
+      g1 = graph._graph(gN1);
+
+      assertEqual([dr3], g1.__edgeDefinitions);
+      assertEqual(g1._orphanCollections().sort(), [vc1, vc2].sort());
+    },
+
     test_createGraphAndDropAVertexCollectionAfterwards: function () {
       try {
         var gr = graph._create("gg",

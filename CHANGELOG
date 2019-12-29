@@ -1,6 +1,23 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #656: While executing large amount of concurrent
+  insert/removes iresearch seems to leak open file handles. This results in
+  error 32 in cleanup (observed only on Windows as Linux doesn`t have file
+  sharing locks).
+
+* Fixed issue #10725: Wrong document count shown inside an empty collection in
+  the web UI.
+
+* Fixed internal issue #4748: Editing a single edgeDefinition using the graph
+  API failed if it was not shared between all available graphs.
+
+* Fixed a bug in smart graph bfs traversals that might violate path uniqueness
+  requirements in rare cases.
+
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
 * Fixed GET _api/gharial to also include the name property in every returned graph.
   This is a consistency fix within the API as all other APIs include the name.
   As a work around the returned _key can be used, which is identical to the name.
