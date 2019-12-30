@@ -9939,21 +9939,21 @@ TEST_F(IResearchQueryOptimizationTest, test_178) {
     auto& root = expected;
     // left part B && C
     {
-      auto& and = root.add<irs::And>();
-      and.add<irs::by_term>()
+      auto& andFilter = root.add<irs::And>();
+      andFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("B");
-      and.add<irs::by_term>()
+      andFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("C");
     }
     // right part B && A
     {
-      auto& and = root.add<irs::And>();
-      and.add<irs::by_term>()
+      auto& andFilter = root.add<irs::And>();
+      andFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("B");
-      and.add<irs::by_term>()
+      andFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
     }
@@ -9965,11 +9965,11 @@ TEST_F(IResearchQueryOptimizationTest, test_178) {
       .field(mangleStringIdentity("values"))
       .term("B");
     {
-      auto& or = root.add<irs::Or>();
-      or.add<irs::by_term>()
+      auto& filter = root.add<irs::Or>();
+      filter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("C");
-      or.add<irs::by_term>()
+      filter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
     }
@@ -10030,9 +10030,9 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
-      auto& and = root.add<irs::And>();
+      auto& andFilter = root.add<irs::And>();
       {
-        auto& part = and.add<irs::Or>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("A");
@@ -10041,7 +10041,7 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
           .term("C");
       }
       {
-        auto& part = and.add<irs::Or>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("B");
@@ -10051,9 +10051,9 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
       }
     }
     {
-      auto& and = root.add<irs::And>();
+      auto& andFilter = root.add<irs::And>();
       {
-        auto& part = and.add<irs::Or>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("A");
@@ -10062,7 +10062,7 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
           .term("C");
       }
       {
-        auto& part = and.add<irs::Or>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("A");
@@ -10076,18 +10076,18 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
   auto nonConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>();
     {
-      auto& or = root.add<irs::Or>();
-      or.add<irs::by_term>()
+      auto& filter = root.add<irs::Or>();
+      filter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
-      or.add<irs::by_term>()
+      filter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("C");
     }
     {
-      auto& or = root.add<irs::Or>();
+      auto& filter = root.add<irs::Or>();
       {
-        auto& or2 = or.add<irs::Or>();
+        auto& or2 = filter.add<irs::Or>();
         or2.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("B");
@@ -10096,7 +10096,7 @@ TEST_F(IResearchQueryOptimizationTest, test_179) {
           .term("C");
       }
       {
-        auto& or2 = or .add<irs::Or>();
+        auto& or2 = filter .add<irs::Or>();
         or2.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("A");
@@ -10164,8 +10164,8 @@ TEST_F(IResearchQueryOptimizationTest, test_180) {
     {
       
       {
-        auto& and = root.add<irs::And>();
-        auto& part = and.add<irs::Or>();
+        auto& andFilter = root.add<irs::And>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("A");
@@ -10174,8 +10174,8 @@ TEST_F(IResearchQueryOptimizationTest, test_180) {
           .term("C");
       }
       {
-        auto& and = root.add<irs::And>();
-        auto& part = and.add<irs::Or>();
+        auto& andFilter = root.add<irs::And>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("B");
@@ -10184,8 +10184,8 @@ TEST_F(IResearchQueryOptimizationTest, test_180) {
           .term("C");
       }
       {
-        auto& and = root.add<irs::And>();
-        auto& part = and.add<irs::Or>();
+        auto& andFilter = root.add<irs::And>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("A");
@@ -10199,29 +10199,29 @@ TEST_F(IResearchQueryOptimizationTest, test_180) {
   auto nonConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
-      auto& or = root.add<irs::And>().add<irs::Or>();
-      or .add<irs::by_term>()
+      auto& filter = root.add<irs::And>().add<irs::Or>();
+      filter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
-      or .add<irs::by_term>()
+      filter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("C");
     }
     {
-      auto& or = root.add<irs::And>().add<irs::Or>();
-      or.add<irs::by_term>()
+      auto& orFilter = root.add<irs::And>().add<irs::Or>();
+      orFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("B");
-      or.add<irs::by_term>()
+      orFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("C");
     }
     {
-      auto& or = root.add<irs::And>().add<irs::Or>();
-      or.add<irs::by_term>()
+      auto& orFilter = root.add<irs::And>().add<irs::Or>();
+      orFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
-      or.add<irs::by_term>()
+      orFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("B");
     }
@@ -10282,18 +10282,18 @@ TEST_F(IResearchQueryOptimizationTest, test_181) {
   auto dnfConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
-      auto& or = root.add<irs::And>().add<irs::Or>();
-      or.add<irs::by_term>()
+      auto& orFilter = root.add<irs::And>().add<irs::Or>();
+      orFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
-      or.add<irs::by_term>()
+      orFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("C");
     }
     {
-      auto& and = root.add<irs::And>();
+      auto& andFilter = root.add<irs::And>();
       {
-        auto& part = and.add<irs::Or>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("B");
@@ -10302,7 +10302,7 @@ TEST_F(IResearchQueryOptimizationTest, test_181) {
           .term("C");
       }
       {
-        auto& part = and.add<irs::Or>();
+        auto& part = andFilter.add<irs::Or>();
         part.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("A");
@@ -10315,31 +10315,31 @@ TEST_F(IResearchQueryOptimizationTest, test_181) {
 
   auto nonConvertedExpected = [](irs::Or& expected) {
     {
-      auto& or = expected.add<irs::And>().add<irs::Or>();
-      or .add<irs::by_term>()
+      auto& orFilter = expected.add<irs::And>().add<irs::Or>();
+      orFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
-      or .add<irs::by_term>()
+      orFilter.add<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("C");
     }
     {
-      auto& and = expected.add<irs::And>();
+      auto& andFilter = expected.add<irs::And>();
       {
-        auto& or = and.add<irs::Or>();
-        or.add<irs::by_term>()
+        auto& orFilter = andFilter.add<irs::Or>();
+        orFilter.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("B");
-        or.add<irs::by_term>()
+        orFilter.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("C");
       }
       {
-        auto& or = and.add<irs::Or>();
-        or.add<irs::by_term>()
+        auto& orFilter = andFilter.add<irs::Or>();
+        orFilter.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("A");
-        or.add<irs::by_term>()
+        orFilter.add<irs::by_term>()
           .field(mangleStringIdentity("values"))
           .term("B");
       }
@@ -10570,13 +10570,13 @@ TEST_F(IResearchQueryOptimizationTest, test_184) {
     // returned documents are the same
     if (optimizeType >= disabledDnfOptimizationStart) {
       irs::Or expected;
-      auto& and = expected.add<irs::And>();
-      auto& left = and.add<irs::Or>();
+      auto& andFilter = expected.add<irs::And>();
+      auto& left = andFilter.add<irs::Or>();
       left.add<irs::by_term>().field(mangleStringIdentity("values"))
         .term("A");
       left.add<irs::by_term>().field(mangleStringIdentity("values"))
         .term("B");
-      auto& right = and.add<irs::Or>();
+      auto& right = andFilter.add<irs::Or>();
       right.add<irs::by_term>().field(mangleStringIdentity("values"))
         .term("A");
       right.add<irs::by_term>().field(mangleStringIdentity("values"))
@@ -10627,13 +10627,13 @@ TEST_F(IResearchQueryOptimizationTest, test_185) {
     // returned documents are the same
     if (optimizeType >= disabledDnfOptimizationStart) {
       irs::Or expected;
-      auto& and = expected.add<irs::And>();
-      auto& left = and.add<irs::Or>();
+      auto& andFilter = expected.add<irs::And>();
+      auto& left = andFilter.add<irs::Or>();
       left.add<irs::by_term>().field(mangleStringIdentity("values"))
         .term("A");
       left.add<irs::by_term>().field(mangleStringIdentity("values"))
         .term("B");
-      auto& right = and.add<irs::Or>();
+      auto& right = andFilter.add<irs::Or>();
       right.add<irs::by_term>().field(mangleStringIdentity("values"))
         .term("A");
       right.add<irs::by_term>().field(mangleStringIdentity("values"))
