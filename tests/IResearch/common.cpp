@@ -111,10 +111,10 @@ namespace iresearch {
     return os;
   }
 
-  std::ostream& operator<<(std::ostream& os, Or const& or ) {
+  std::ostream& operator<<(std::ostream& os, Or const& filter ) {
     os << "OR[";
-    for (auto it = or .begin(); it != or.end(); ++it) {
-      if (it != or.begin()) {
+    for (auto it = filter.begin(); it != filter.end(); ++it) {
+      if (it != filter.begin()) {
         os << " || ";
       }
       os << *it;
@@ -123,8 +123,8 @@ namespace iresearch {
     return os;
   }
 
-  std::ostream& operator<<(std::ostream& os, Not const& not) {
-    os << "NOT[" << *not.filter() << "]";
+  std::ostream& operator<<(std::ostream& os, Not const& filter) {
+    os << "NOT[" << *filter.filter() << "]";
     return os;
   }
 
