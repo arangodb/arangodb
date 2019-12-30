@@ -353,7 +353,7 @@ bool ServerState::unregister() {
                                        AgencySimpleOperationType::INCREMENT_OP));
 
   AgencyWriteTransaction unregisterTransaction(operations);
-  AgencyComm comm;
+  AgencyComm comm(_server);
   AgencyCommResult r = comm.sendTransactionWithFailover(unregisterTransaction);
   return r.successful();
 }
@@ -392,7 +392,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                        std::string const& advEndpoint) {
   WRITE_LOCKER(writeLocker, _lock);
 
-  AgencyComm comm;
+  AgencyComm comm(_server);
   if (!checkEngineEquality(comm)) {
     LOG_TOPIC("1e2da", FATAL, arangodb::Logger::ENGINES)
         << "the usage of different storage engines in the "
@@ -1033,7 +1033,7 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
                                          builder.slice()));
 
     AgencyWriteTransaction readonlyMode(operations);
-    AgencyComm comm;
+    AgencyComm comm(_server);
     AgencyCommResult r = comm.sendTransactionWithFailover(readonlyMode);
     if (!r.successful()) {
       return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());

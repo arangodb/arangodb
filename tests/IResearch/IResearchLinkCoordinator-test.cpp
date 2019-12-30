@@ -168,7 +168,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm()
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
     }
@@ -242,7 +242,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id\": { \"indexes\" : [ ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm()
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
     }
@@ -320,7 +320,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm()
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
     }

@@ -1131,20 +1131,22 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
           VPackParser::fromJson(
               "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"1\" "
               "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } }");  // '1' must match 'idString' in ClusterInfo::ensureIndexCoordinatorInner(...)
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                      .setValue(colPath, colValue->slice(), 0.0)
+                      .successful());
       auto const dummyPath = "/Plan/Collections";
       auto const dummyValue = VPackParser::fromJson(
           "{ \"_system\": { \"" + std::to_string(logicalCollection->id()) +
           "\": { \"name\": \"testCollection\", "
           "\"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                      .setValue(dummyPath, dummyValue->slice(), 0.0)
+                      .successful());
       auto const versionPath = "/Plan/Version";
       auto const versionValue =
           VPackParser::fromJson(std::to_string(ci.getPlanVersion() + 1));
-      EXPECT_TRUE((arangodb::AgencyComm()
+      EXPECT_TRUE((arangodb::AgencyComm(server.server())
                        .setValue(versionPath, versionValue->slice(), 0.0)
                        .successful()));  // force loadPlan() update
       ci.invalidateCurrent();            // force reload of 'Current'

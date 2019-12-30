@@ -125,7 +125,7 @@ static Result checkPlanLeaderDirect(std::shared_ptr<LogicalCollection> const& co
 
   std::string shardAgencyPathString = StringUtils::join(agencyPath, '/');
 
-  AgencyComm ac;
+  AgencyComm ac(col->vocbase().server());
   AgencyCommResult res = ac.getValues(shardAgencyPathString);
 
   if (res.successful()) {

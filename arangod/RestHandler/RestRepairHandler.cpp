@@ -332,7 +332,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
                                                   CollectionID const& collectionId,
                                                   std::string const& dbAndCollectionName,
                                                   std::list<RepairOperation> const& repairOperations) {
-  AgencyComm comm;
+  AgencyComm comm(server());
 
   size_t opNum = 0;
   for (auto& op : repairOperations) {
@@ -425,7 +425,7 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
     std::array<std::string const, N> const& agencyKeyArray) {
   std::array<VPackBufferPtr, N> resultArray;
 
-  AgencyComm agency;
+  AgencyComm agency(server());
 
   std::vector<std::string> paths;
 

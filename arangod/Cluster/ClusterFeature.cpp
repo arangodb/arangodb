@@ -369,7 +369,7 @@ void ClusterFeature::prepare() {
   }
 
   // create callback registery
-  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(agencyCallbacksPath()));
+  _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
 
   // Initialize ClusterInfo library:
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
@@ -489,7 +489,7 @@ void ClusterFeature::start() {
   ServerState::instance()->setState(ServerState::STATE_STARTUP);
 
   // the agency about our state
-  AgencyComm comm;
+  AgencyComm comm(server());
   comm.sendServerState(0.0);
 
   std::string const version = comm.version();
@@ -562,7 +562,7 @@ void ClusterFeature::unprepare() {
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
-  AgencyComm comm;
+  AgencyComm comm(server());
   comm.sendServerState(0.0);
 
   if (_heartbeatThread != nullptr) {

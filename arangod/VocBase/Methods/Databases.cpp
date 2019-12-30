@@ -93,7 +93,7 @@ std::vector<std::string> Databases::list(application_features::ApplicationServer
 
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
-    AgencyComm agency;
+    AgencyComm agency(vocbase->server());
     AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error

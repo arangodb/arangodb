@@ -183,7 +183,7 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry)
     : _server(server),
-      _agency(),
+      _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _planVersion(0),
@@ -273,7 +273,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 /// @brief produces an agency dump and logs it
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  AgencyComm ac;
+  AgencyComm ac(_server);
   AgencyCommResult ag = ac.getValues("/");
 
   if (ag.successful()) {
@@ -1520,7 +1520,7 @@ void ClusterInfo::buildFinalSlice(CreateDatabaseInfo const& database,
 // This waits for the database described in `database` to turn up in `Current`
 // and no DBServer is allowed to report an error.
 Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database) {
-  AgencyComm ac;
+  AgencyComm ac(_server);
   AgencyCommResult res;
 
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
@@ -1619,7 +1619,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
 // Start creating a database in a coordinator by entering it into Plan/Databases with,
 // status flag `isBuilding`; this makes the database invisible to the outside world.
 Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const& database) {
-  AgencyComm ac;
+  AgencyComm ac(_server);
   AgencyCommResult res;
 
   // Instruct the Agency to enter the creation of the new database
@@ -1672,7 +1672,7 @@ Result ClusterInfo::createIsBuildingDatabaseCoordinator(CreateDatabaseInfo const
 // Finalize creation of database in cluster by removing isBuilding, coordinator, and coordinatorRebootId;
 // as precondition that the entry we put in createIsBuildingDatabaseCoordinator is still in Plan/ unchanged.
 Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& database) {
-  AgencyComm ac;
+  AgencyComm ac(_server);
 
   VPackBuilder pcBuilder;
   buildIsBuildingSlice(database, pcBuilder);
@@ -1709,7 +1709,7 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
 
 // This function can only return on success or when the cluster is shutting down.
 Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& database) {
-  AgencyComm ac;
+  AgencyComm ac(_server);
 
   VPackBuilder builder;
   buildIsBuildingSlice(database, builder);
@@ -1769,7 +1769,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     return Result(TRI_ERROR_FORBIDDEN);
   }
 
-  AgencyComm ac;
+  AgencyComm ac(_server);
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
@@ -1946,7 +1946,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
   auto isCleaned = std::make_shared<bool>(false);
 
-  AgencyComm ac;
+  AgencyComm ac(_server);
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
 
   auto cbGuard = scopeGuard([&] {
@@ -2348,7 +2348,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
-  AgencyComm ac;
+  AgencyComm ac(_server);
   AgencyCommResult res;
 
   // First check that no other collection has a distributeShardsLike
@@ -2521,7 +2521,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
                                                        std::string const& collectionID,
                                                        LogicalCollection const* info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  AgencyComm ac;
+  AgencyComm ac(_server);
   AgencyCommResult res;
 
   AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
@@ -2633,7 +2633,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
     }
   }
 
-  AgencyComm ac;
+  AgencyComm ac(_server);
 
   // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
@@ -2703,7 +2703,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
       {{"Plan/Databases/" + databaseName, AgencyPrecondition::Type::EMPTY, false},
        {"Plan/Views/" + databaseName + "/" + viewID, AgencyPrecondition::Type::EMPTY, false}}};
 
-  AgencyComm ac;
+  AgencyComm ac(_server);
   auto const res = ac.sendTransactionWithFailover(trans);
 
   // Update our own cache
@@ -2743,7 +2743,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
                                                  std::string const& viewID,
                                                  VPackSlice const& json) {
   // TRI_ASSERT(ServerState::instance()->isCoordinator());
-  AgencyComm ac;
+  AgencyComm ac(_server);
 
   auto res = ac.getValues("Plan/Views/" + databaseName + "/" + viewID);
 
@@ -2787,7 +2787,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
                                                    std::string const& collectionID,
                                                    TRI_vocbase_col_status_e status) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  AgencyComm ac;
+  AgencyComm ac(_server);
   AgencyCommResult res;
 
   AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
@@ -2936,7 +2936,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
                                                 std::string const& idString,
                                                 VPackSlice const& slice, bool create,
                                                 VPackBuilder& resultBuilder, double timeout) {
-  AgencyComm ac;
+  AgencyComm ac(_server);
 
   using namespace std::chrono;
 
@@ -3305,7 +3305,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
     double timeout  // request timeout
 ) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  AgencyComm ac;
+  AgencyComm ac(_server);
 
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;

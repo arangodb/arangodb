@@ -441,7 +441,9 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
           "} ] } }");
-      EXPECT_TRUE((arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful()));
+      EXPECT_TRUE((arangodb::AgencyComm(server.server())
+                       .setValue(path, value->slice(), 0.0)
+                       .successful()));
     }
 
     arangodb::LogicalView::ptr logicalView;
@@ -519,7 +521,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
         (ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok()));
 
     // get current plan version
-    auto planVersion = arangodb::tests::getCurrentPlanVersion();
+    auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
     auto view = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE(nullptr != view);
@@ -537,12 +539,12 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE(
         (TRI_ERROR_ARANGO_DUPLICATE_NAME ==
          ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).errorNumber()));
-    EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());
+    EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));
     EXPECT_TRUE(view == ci.getView(vocbase->name(), view->name()));
 
     // drop view
     EXPECT_TRUE(view->drop().ok());
-    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
     // check there is no more view
     ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
@@ -563,7 +565,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE("42" == viewId);
 
     // get current plan version
-    auto planVersion = arangodb::tests::getCurrentPlanVersion();
+    auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
     auto view = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE(nullptr != view);
@@ -581,12 +583,12 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
     EXPECT_TRUE(
         (TRI_ERROR_ARANGO_DUPLICATE_NAME ==
          ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).errorNumber()));
-    EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());
+    EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));
     EXPECT_TRUE(view == ci.getView(vocbase->name(), view->name()));
 
     // drop view
     EXPECT_TRUE(view->drop().ok());
-    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
     // check there is no more view
     ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
@@ -636,7 +638,9 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
           "} ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                      .setValue(path, value->slice(), 0.0)
+                      .successful());
     }
     ASSERT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
   }
@@ -735,7 +739,9 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
           "} ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                      .setValue(path, value->slice(), 0.0)
+                      .successful());
     }
 
     EXPECT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
@@ -752,7 +758,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                         std::to_string(logicalCollection->id()) +
                         "/shard-id-does-not-matter/indexes";
-      EXPECT_TRUE(arangodb::AgencyComm().removeValues(path, false).successful());
+      EXPECT_TRUE(
+          arangodb::AgencyComm(server.server()).removeValues(path, false).successful());
     }
   }
 
@@ -825,7 +832,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
         (ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok()));
 
     // get current plan version
-    auto planVersion = arangodb::tests::getCurrentPlanVersion();
+    auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
     auto view = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE(nullptr != view);
@@ -861,8 +868,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
           "{ \"cleanupIntervalStep\": 42, \"consolidationIntervalMsec\": 50 "
           "}");
       EXPECT_TRUE(view->properties(props->slice(), false).ok());
-      EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-      planVersion = arangodb::tests::getCurrentPlanVersion();
+      EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+      planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
       fullyUpdatedView = ci.getView(vocbase->name(), viewId);
       EXPECT_TRUE(fullyUpdatedView != view);  // different objects
@@ -914,8 +921,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       auto props = arangodb::velocypack::Parser::fromJson(
           "{ \"consolidationIntervalMsec\": 42 }");
       EXPECT_TRUE(fullyUpdatedView->properties(props->slice(), true).ok());
-      EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-      planVersion = arangodb::tests::getCurrentPlanVersion();
+      EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+      planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
       auto partiallyUpdatedView = ci.getView(vocbase->name(), viewId);
       EXPECT_TRUE(partiallyUpdatedView != view);  // different objects
@@ -950,7 +957,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 
     // drop view
     EXPECT_TRUE(view->drop().ok());
-    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
     // there is no more view
     ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
@@ -1006,7 +1013,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
                       std::to_string(logicalCollection->id());
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(path, value->slice(), 0.0)
+                    .successful());
   }
 
   ASSERT_TRUE(logicalView->properties(viewUpdateJson->slice(), false).ok());
@@ -1242,7 +1251,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok());
 
   // get current plan version
-  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
   auto view = ci.getView(vocbase->name(), viewId);
   EXPECT_NE(nullptr, view);
@@ -1311,8 +1320,8 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
     // update properties
     EXPECT_TRUE(view->properties(newProperties->slice(), false).ok());
-    EXPECT_EQ(planVersion, arangodb::tests::getCurrentPlanVersion());  // plan version hasn't been changed as nothing to update
-    planVersion = arangodb::tests::getCurrentPlanVersion();
+    EXPECT_EQ(planVersion, arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version hasn't been changed as nothing to update
+    planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
     fullyUpdatedView = ci.getView(vocbase->name(), viewId);
     EXPECT_EQ(fullyUpdatedView, view);  // same objects as nothing to update
@@ -1336,8 +1345,8 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
     // update properties
     EXPECT_TRUE(view->properties(newProperties->slice(), false).ok());
-    EXPECT_LT(planVersion, arangodb::tests::getCurrentPlanVersion());  // plan version changed
-    planVersion = arangodb::tests::getCurrentPlanVersion();
+    EXPECT_LT(planVersion, arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+    planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
     fullyUpdatedView = ci.getView(vocbase->name(), viewId);
     EXPECT_NE(fullyUpdatedView, view);  // different objects
@@ -1457,7 +1466,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
                                       "/" + std::to_string(logicalCollection3->id());
 
   // get current plan version
-  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
   ci.loadCurrent();
 
@@ -1476,7 +1485,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
@@ -1484,7 +1493,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
@@ -1492,7 +1501,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
   }
@@ -1506,8 +1515,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       "  \"testCollection3\" : { \"id\": \"3\" } "
       "} }");
   EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // add links
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -1781,14 +1790,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   }
 
   EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // same properties -> should not affect plan version
-  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());  // plan did't change version
+  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
   // remove testCollection2 link
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
@@ -1798,8 +1807,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
       "  \"2\" : null "
       "} }");
   EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -2000,20 +2009,20 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
   }
 
   EXPECT_TRUE(view->drop().ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
   // there is no more view
   ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
@@ -2111,7 +2120,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
                                       "/" + std::to_string(logicalCollection3->id());
 
   // get current plan version
-  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
   ci.loadCurrent();
 
@@ -2130,7 +2139,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
@@ -2138,7 +2147,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
   }
@@ -2151,8 +2160,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       "  \"testCollection3\" : { \"id\": \"3\" } "
       "} }");
   EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // add links
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -2348,7 +2357,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   }
 
   EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // same properties -> should not affect plan version
-  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());  // plan did't change version
+  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
   // remove testCollection2 link
   // simulate heartbeat thread (create index in current)
@@ -2356,7 +2365,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
@@ -2366,8 +2375,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
       "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
       "} }");
   EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -2646,7 +2655,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     auto const updateJson = arangodb::velocypack::Parser::fromJson("{ }");
     EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());  // empty properties -> should not affect plan version
-    EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());  // plan did't change version
+    EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
   }
 
   // drop view
@@ -2654,27 +2663,27 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
   }
 
   EXPECT_TRUE(view->drop().ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
   // there is no more view
   ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
@@ -2813,7 +2822,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
                                       "/" + std::to_string(logicalCollection3->id());
 
   // get current plan version
-  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
   ci.loadCurrent();
 
@@ -2832,7 +2841,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
@@ -2840,7 +2849,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
   }
@@ -2853,8 +2862,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
       "  \"testCollection3\" : { \"id\": \"3\" } "
       "} }");
   EXPECT_TRUE(view->properties(linksJson->slice(), false).ok());  // add link
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -3050,17 +3059,17 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   }
 
   EXPECT_TRUE(view->properties(linksJson->slice(), false).ok());  // same properties -> should not affect plan version
-  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());  // plan did't change version
+  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
   EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // same properties -> should not affect plan version
-  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());  // plan did't change version
+  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
   // replace links with testCollection2 link
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
@@ -3068,14 +3077,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
   }
@@ -3085,8 +3094,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
       "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
       "} }");
   EXPECT_TRUE(view->properties(updateJson->slice(), false).ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -3211,14 +3220,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\" : \"1\" "
         "} ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
@@ -3230,8 +3239,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
       "  \"2\" : null "
       "} }");
   EXPECT_TRUE(view->properties(updateJson->slice(), false).ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -3355,13 +3364,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
 
   EXPECT_TRUE(view->drop().ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
   // there is no more view
   ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
@@ -3459,7 +3468,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
                                       "/" + std::to_string(logicalCollection3->id());
 
   // get current plan version
-  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
   ci.loadCurrent();
 
@@ -3478,7 +3487,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
@@ -3486,7 +3495,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
@@ -3494,7 +3503,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
   }
@@ -3508,8 +3517,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
       "  \"testCollection3\" : { \"id\": \"3\" } "
       "} }");
   EXPECT_TRUE(view->properties(linksJson->slice(), false).ok());  // add link
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   auto oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -3784,31 +3793,31 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   }
 
   EXPECT_TRUE(view->properties(linksJson->slice(), false).ok());  // same properties -> should not affect plan version
-  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());  // plan did't change version
+  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
   EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // same properties -> should not affect plan version
-  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());  // plan did't change version
+  EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
   // remove all links
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm()
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
   }
@@ -3816,8 +3825,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   auto const updateJson =
       arangodb::velocypack::Parser::fromJson("{ \"links\": {} }");
   EXPECT_TRUE(view->properties(updateJson->slice(), false).ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-  planVersion = arangodb::tests::getCurrentPlanVersion();
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
   oldView = view;
   view = ci.getView(vocbase->name(), viewId);   // get new version of the view
   EXPECT_TRUE(view != oldView);                 // different objects
@@ -3884,7 +3893,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
 
   // drop view
   EXPECT_TRUE(view->drop().ok());
-  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+  EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
   // there is no more view
   ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
@@ -3920,7 +3929,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                                      "/" + std::to_string(logicalCollection->id());
 
   // get current plan version
-  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
   // update link
   {
@@ -3941,7 +3950,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
           "} ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm()
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
     }
@@ -3950,8 +3959,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
         "{ \"links\": { \"testCollection\" : { \"includeAllFields\" : true } "
         "} }");
     EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // add link
-    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-    planVersion = arangodb::tests::getCurrentPlanVersion();
+    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+    planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
     auto oldView = view;
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
@@ -4076,13 +4085,13 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     }
 
     EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // same properties -> should not affect plan version
-    EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion());  // plan did't change version
+    EXPECT_TRUE(planVersion == arangodb::tests::getCurrentPlanVersion(server.server()));  // plan did't change version
 
     // simulate heartbeat thread (drop index from current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm()
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
     }
@@ -4093,8 +4102,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
              logicalCollection.get(),
              arangodb::velocypack::Parser::fromJson(std::to_string(linkId))->slice())
              .ok()));
-    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());  // plan version changed
-    planVersion = arangodb::tests::getCurrentPlanVersion();
+    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));  // plan version changed
+    planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
     oldView = view;
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
         ci.getView(vocbase->name(), viewId));   // get new version of the view
@@ -4139,7 +4148,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
 
     // drop view
     EXPECT_TRUE(view->drop().ok());
-    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
     // there is no more view
     ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));
@@ -4345,7 +4354,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"1\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path, value->slice(), 0.0)
+                        .successful());
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -4538,7 +4549,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"2\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path, value->slice(), 0.0)
+                        .successful());
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -4559,7 +4572,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"3\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path, value->slice(), 0.0)
+                        .successful());
       }
     }
 
@@ -4685,8 +4700,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const value1 = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"4\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path0, value0->slice(), 0.0).successful());
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path1, value1->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path0, value0->slice(), 0.0)
+                        .successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path1, value1->slice(), 0.0)
+                        .successful());
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -4834,8 +4853,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const value1 = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"6\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path0, value0->slice(), 0.0).successful());
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path1, value1->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path0, value0->slice(), 0.0)
+                        .successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path1, value1->slice(), 0.0)
+                        .successful());
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -4858,7 +4881,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection1->id()) +
                           "/shard-id-does-not-matter/indexes";
-        EXPECT_TRUE(arangodb::AgencyComm().removeValues(path, false).successful());
+        EXPECT_TRUE(
+            arangodb::AgencyComm(server.server()).removeValues(path, false).successful());
       }
     }
 
@@ -5080,7 +5104,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"1\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path, value->slice(), 0.0)
+                        .successful());
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -5273,7 +5299,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"2\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path, value->slice(), 0.0)
+                        .successful());
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -5292,7 +5320,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection->id()) +
                           "/shard-id-does-not-matter/indexes";
-        EXPECT_TRUE(arangodb::AgencyComm().removeValues(path, false).successful());
+        EXPECT_TRUE(
+            arangodb::AgencyComm(server.server()).removeValues(path, false).successful());
       }
     }
 
@@ -5412,7 +5441,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"3\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path, value->slice(), 0.0)
+                        .successful());
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -5438,8 +5469,11 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const value = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"4\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().removeValues(path0, false).successful());
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path1, value->slice(), 0.0).successful());
+        EXPECT_TRUE(
+            arangodb::AgencyComm(server.server()).removeValues(path0, false).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path1, value->slice(), 0.0)
+                        .successful());
       }
     }
 
@@ -5573,8 +5607,12 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const value1 = arangodb::velocypack::Parser::fromJson(
             "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
             "\"6\" } ] } }");
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path0, value0->slice(), 0.0).successful());
-        EXPECT_TRUE(arangodb::AgencyComm().setValue(path1, value1->slice(), 0.0).successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path0, value0->slice(), 0.0)
+                        .successful());
+        EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                        .setValue(path1, value1->slice(), 0.0)
+                        .successful());
       }
 
       auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -5597,7 +5635,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection1->id()) +
                           "/shard-id-does-not-matter/indexes";
-        EXPECT_TRUE(arangodb::AgencyComm().removeValues(path, false).successful());
+        EXPECT_TRUE(
+            arangodb::AgencyComm(server.server()).removeValues(path, false).successful());
       }
     }
 
@@ -5685,7 +5724,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
         (ci.createViewCoordinator(vocbase->name(), viewId, json->slice()).ok()));
 
     // get current plan version
-    auto planVersion = arangodb::tests::getCurrentPlanVersion();
+    auto planVersion = arangodb::tests::getCurrentPlanVersion(server.server());
 
     auto view = ci.getView(vocbase->name(), viewId);
     ASSERT_TRUE(nullptr != view);
@@ -5735,7 +5774,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
 
     // drop view
     EXPECT_TRUE(view->drop().ok());
-    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion());
+    EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(server.server()));
 
     // check there is no more view
     ASSERT_TRUE(nullptr == ci.getView(vocbase->name(), view->name()));

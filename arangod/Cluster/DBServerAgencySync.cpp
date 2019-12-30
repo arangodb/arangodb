@@ -125,7 +125,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
   TRI_ASSERT(AgencyCommManager::isEnabled());
-  AgencyComm comm;
+  AgencyComm comm(_server);
 
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;

@@ -790,7 +790,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
         // TODO: This one asserts with "not an object". No idea why.
         // "{ \"id\": \"1\" }" );
         "{ \"id\": { \"id\": \"1\" } }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(path, value->slice(), 0.0)
+                    .successful());
   }
 
   ASSERT_TRUE(
@@ -817,7 +819,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(path, value->slice(), 0.0)
+                    .successful());
   }
 
   arangodb::velocypack::Builder tmp;
@@ -843,7 +847,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(path, value->slice(), 0.0)
+                    .successful());
   }
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);

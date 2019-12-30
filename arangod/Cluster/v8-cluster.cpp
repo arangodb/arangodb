@@ -155,7 +155,8 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     shouldThrow = TRI_ObjectToBoolean(isolate, args[5]);
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
 
@@ -187,7 +188,8 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.createDirectory(key);
 
   if (!result.successful()) {
@@ -234,7 +236,8 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   if (!comm.increaseVersion(key)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to increase version");
@@ -259,7 +262,8 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
@@ -307,7 +311,8 @@ static void JS_APIAgency(std::string const& envelope,
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert query to JSON");
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.sendWithFailover(arangodb::rest::RequestType::POST,
                             AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
@@ -372,7 +377,8 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     recursive = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.removeValues(key, recursive);
 
   if (!result.successful()) {
@@ -411,7 +417,8 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ttl = TRI_ObjectToDouble(isolate, args[2]);
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.setValue(key, builder.slice(), ttl);
 
   if (!result.successful()) {
@@ -438,7 +445,8 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder builder;
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.sendWithFailover(arangodb::rest::RequestType::GET,
                             AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
@@ -538,7 +546,8 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     timeout = TRI_ObjectToDouble(isolate, args[1]);
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   uint64_t result = comm.uniqid(count, timeout);
 
   std::string const value = StringUtils::itoa(result);
@@ -561,7 +570,8 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("version()");
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   std::string const version = comm.version();
 
   TRI_V8_RETURN_STD_STRING(version);
@@ -1158,14 +1168,14 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
   ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
 
   if (AgencyCommManager::isEnabled()) {
-    AgencyComm comm;
+    TRI_GET_GLOBALS();
+    AgencyComm comm(v8g->_server);
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
     if (result.successful()) {
       result = comm.increment("Current/Version");
     }
-    TRI_GET_GLOBALS();
     if (!result.successful() && result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
         !v8g->_server.isStopping()) {
       // gracefully ignore any shutdown errors here

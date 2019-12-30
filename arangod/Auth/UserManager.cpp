@@ -409,7 +409,7 @@ void auth::UserManager::triggerGlobalReload() {
   }
 
   // tell other coordinators to reload as well
-  AgencyComm agency;
+  AgencyComm agency(_server);
 
   AgencyWriteTransaction incrementVersion(
       {AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});

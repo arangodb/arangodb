@@ -116,7 +116,7 @@ void RestClusterHandler::handleCommandEndpoints() {
 
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
-    AgencyComm agency;
+    AgencyComm agency(server());
 
     AgencyReadTransaction trx(std::vector<std::string>(
         {AgencyCommManager::path(healthPath), AgencyCommManager::path(leaderPath)}));
