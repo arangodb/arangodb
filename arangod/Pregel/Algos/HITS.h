@@ -46,8 +46,9 @@ namespace algos {
 
 struct HITS : public SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>> {
  public:
-  explicit HITS(VPackSlice userParams)
-      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>("HITS", userParams) {}
+  explicit HITS(application_features::ApplicationServer& server, VPackSlice userParams)
+      : SimpleAlgorithm<HITSValue, int8_t, SenderMessage<double>>(server, "HITS", userParams) {
+  }
 
   GraphFormat<HITSValue, int8_t>* inputFormat() const override;
   MessageFormat<SenderMessage<double>>* messageFormat() const override {

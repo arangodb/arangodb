@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -93,7 +94,7 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
     TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
     TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
 
-    auto insert = _blockers.emplace(trxId, seq);
+    auto insert = _blockers.try_emplace(trxId, seq);
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!insert.second || !crosslist.second) {
       return res.reset(TRI_ERROR_INTERNAL);
@@ -136,10 +137,8 @@ rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber 
   return maxCommitSeq;
 }
 
-rocksdb::SequenceNumber RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq,
-                                                          bool& didWork) {
-  rocksdb::SequenceNumber appliedSeq = _count._committedSeq;
-
+bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
+  bool didWork = false;
   decltype(_bufferedAdjs) swapper;
   {
     std::lock_guard<std::mutex> guard(_bufferLock);
@@ -155,7 +154,6 @@ rocksdb::SequenceNumber RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumbe
 
   auto it = _stagedAdjs.begin();
   while (it != _stagedAdjs.end() && it->first <= commitSeq) {
-    appliedSeq = std::max(appliedSeq, it->first);
     if (it->second.adjustment > 0) {
       _count._added += it->second.adjustment;
     } else if (it->second.adjustment < 0) {
@@ -167,23 +165,18 @@ rocksdb::SequenceNumber RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumbe
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
-  TRI_ASSERT(appliedSeq >= _count._committedSeq);
-  _count._committedSeq = appliedSeq;
-  return appliedSeq;
-}
-
-/// @brief get the current count
-RocksDBMetadata::DocCount RocksDBMetadata::loadCount() {
-  return _count;
+  _count._committedSeq = commitSeq;
+  return didWork;
 }
 
 /// @brief buffer a counter adjustment
 void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                             TRI_voc_rid_t revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
+  TRI_ASSERT(seq > _count._committedSeq);
   std::lock_guard<std::mutex> guard(_bufferLock);
-  _bufferedAdjs.emplace(seq, Adjustment{revId, adj});
-  
+  _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
+
   // update immediately to ensure the user sees a correct value
   if (revId != 0) {
     _revisionId.store(revId);
@@ -198,9 +191,9 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 
 /// @brief serialize the collection metadata
 Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
-                                            LogicalCollection& coll, bool force,
-                                            VPackBuilder& tmp,
-                                            rocksdb::SequenceNumber& appliedSeq) {
+                                      LogicalCollection& coll, bool force,
+                                      VPackBuilder& tmp,
+                                      rocksdb::SequenceNumber& appliedSeq) {
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   
   Result res;
@@ -208,18 +201,11 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     return res;
   }
 
-  bool didWork = false;
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
-  const rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
-  TRI_ASSERT(commitSeq <= appliedSeq);
-  TRI_ASSERT(commitSeq <= maxCommitSeq);
+  bool didWork = applyAdjustments(maxCommitSeq);
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
   TRI_ASSERT(maxCommitSeq != UINT64_MAX);
-  if (didWork) {
-    appliedSeq = commitSeq;
-  } else {
-    appliedSeq = maxCommitSeq;
-  }
+  appliedSeq = maxCommitSeq;
 
   RocksDBKey key;
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();

@@ -7,6 +7,23 @@
 @RESTBODYPARAM{name,string,required,string}
 Has to contain a valid database name.
 
+@RESTBODYPARAM{options,object,optional,get_api_database_new_USERS}
+Optional object which can contain the following attributes:
+
+@RESTSTRUCT{sharding,get_api_database_new_USERS,string,optional,string}
+The sharding method to use for new collections in this database. Valid values
+are: "", "flexible", or "single". The first two are equivalent.
+
+@RESTSTRUCT{replicationFactor,get_api_database_new_USERS,string,optional,}
+Default replication factor for new collections created in this database.
+Special values include "satellite", which will replicate the collection to
+every DB-server, and 1, which disables replication.
+
+@RESTSTRUCT{writeConcern,get_api_database_new_USERS,number,optional,}
+Default minimum replication factor for new collections created in this database.
+If there are less than minReplicationFactor replicas available the collection
+will become read-only.
+
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 Has to be an array of user objects to initially create for the new database.
 User information will not be changed for users that already exist.
@@ -66,7 +83,11 @@ Creating a database named *example*.
     }
 
     var data = {
-      name: name
+      name: name,
+      options: {
+        sharding: "flexible",
+        replicationFactor: 3
+      }
     };
     var response = logCurlRequest('POST', url, data);
 
@@ -76,7 +97,9 @@ Creating a database named *example*.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Creating a database named *mydb* with two users.
+Creating a database named *mydb* with two users, flexible sharding and
+default replication factor of 3 for collections that will be part of
+the newly created database.
 
 @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreateUsers}
     var url = "/_api/database";
@@ -91,13 +114,13 @@ Creating a database named *mydb* with two users.
       name: name,
       users: [
         {
-          username : "admin",
-          passwd : "secret",
+          username: "admin",
+          passwd: "secret",
           active: true
         },
         {
-          username : "tester",
-          passwd : "test001",
+          username: "tester",
+          passwd: "test001",
           active: false
         }
       ]
@@ -110,4 +133,3 @@ Creating a database named *mydb* with two users.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -52,7 +52,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   bool async() const { return _async; }
-  uint64_t concurrency() const { return _concurreny; }
+  uint64_t concurrency() const { return _concurrency; }
   uint64_t operations() const { return _operations; }
   uint64_t batchSize() const { return _batchSize; }
   bool keepAlive() const { return _keepAlive; }
@@ -71,12 +71,12 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
  private:
   void status(std::string const& value);
-  bool report(ClientFeature*, std::vector<BenchRunResult>);
-  void printResult(BenchRunResult const& result);
+  bool report(ClientFeature&, std::vector<BenchRunResult>, double minTime, double maxTime, double avgTime, std::string const& histogram, VPackBuilder& builder);
+  void printResult(BenchRunResult const& result, VPackBuilder& builder);
   bool writeJunitReport(BenchRunResult const& result);
 
   bool _async;
-  uint64_t _concurreny;
+  uint64_t _concurrency;
   uint64_t _operations;
   uint64_t _batchSize;
   bool _keepAlive;
@@ -89,12 +89,17 @@ class BenchFeature final : public application_features::ApplicationFeature {
   bool _quiet;
   uint64_t _runs;
   std::string _junitReportFile;
+  std::string _jsonReportFile;
   uint64_t _replicationFactor;
   uint64_t _numberOfShards;
   bool _waitForSync;
 
   int* _result;
 
+  uint64_t _histogramNumIntervals;
+  double _histogramIntervalSize;
+  std::vector<double> _percentiles;
+  
   static void updateStartCounter();
   static int getStartCounter();
 

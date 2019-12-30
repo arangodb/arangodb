@@ -28,6 +28,7 @@
 #include <thread>
 #include <valarray>
 
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "Logger/LogMacros.h"
@@ -46,11 +47,13 @@ using namespace arangodb::rest;
 using namespace arangodb::rest_repair;
 using namespace arangodb::cluster_repairs;
 
-RestRepairHandler::RestRepairHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestRepairHandler::RestRepairHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestRepairHandler::execute() {
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }
@@ -104,8 +107,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
   try {
     rest::ResponseCode responseCode = rest::ResponseCode::OK;
 
-    ClusterInfo* clusterInfo = ClusterInfo::instance();
-    if (clusterInfo == nullptr) {
+    if (!server().hasFeature<ClusterFeature>()) {
       LOG_TOPIC("b57dc", ERR, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::repairDistributeShardsLike: "
           << "No ClusterInfo instance";
@@ -113,9 +115,10 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
       return RestStatus::DONE;
     }
+    ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-    clusterInfo->loadPlan();
-    std::shared_ptr<VPackBuilder> planBuilder = clusterInfo->getPlan();
+    clusterInfo.loadPlan();
+    std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
     VPackSlice plan = planBuilder->slice();
 
@@ -183,15 +186,15 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     generateResult(responseCode, response, errorOccurred);
 
-    clusterInfo->loadPlan();
+    clusterInfo.loadPlan();
   } catch (basics::Exception const& e) {
     LOG_TOPIC("78521", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
         << "Caught exception: " << e.message();
     generateError(rest::ResponseCode::SERVER_ERROR, e.code());
 
-    if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
-      clusterInfo->loadPlan();
+    if (server().hasFeature<ClusterFeature>()) {
+      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
     }
   }
   return RestStatus::DONE;
@@ -261,7 +264,7 @@ bool RestRepairHandler::repairCollection(DatabaseID const& databaseId,
   for (auto const& op : repairOperations) {
     RepairOperationToVPackVisitor addToVPack(response);
 
-    boost::apply_visitor(addToVPack, op);
+    std::visit(addToVPack, op);
   }
 
   response.close();
@@ -335,19 +338,20 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
   size_t opNum = 0;
   for (auto& op : repairOperations) {
     opNum += 1;
-    auto visitor = RepairOperationToTransactionVisitor();
-    auto trxJobPair = boost::apply_visitor(visitor, op);
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    auto visitor = RepairOperationToTransactionVisitor(ci);
+    auto trxJobPair = std::visit(visitor, op);
 
     AgencyWriteTransaction& wtrx = trxJobPair.first;
-    boost::optional<uint64_t> waitForJobId = trxJobPair.second;
+    std::optional<uint64_t> waitForJobId = trxJobPair.second;
 
     LOG_TOPIC("6f32d", DEBUG, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::executeRepairOperations: "
         << "Sending a transaction to the agency";
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
-    if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
-      clusterInfo->loadPlan();
+    if (server().hasFeature<ClusterFeature>()) {
+      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
     }
     if (!result.successful()) {
       std::stringstream errMsg;
@@ -374,9 +378,9 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
     if (waitForJobId) {
       LOG_TOPIC("e6252", DEBUG, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::executeRepairOperations: "
-          << "Waiting for job " << waitForJobId.get();
+          << "Waiting for job " << waitForJobId.value();
       bool previousJobFinished = false;
-      std::string jobId = std::to_string(waitForJobId.get());
+      std::string jobId = std::to_string(waitForJobId.value());
 
       while (!previousJobFinished) {
         ResultT<bool> jobFinishedResult = jobFinished(jobId);
@@ -537,7 +541,7 @@ ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const 
 }
 
 void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNumber) {
-  boost::optional<const char*> errorDetails;
+  std::optional<const char*> errorDetails;
 
   switch (errorNumber) {
     case TRI_ERROR_CLUSTER_REPAIRS_FAILED:
@@ -626,8 +630,8 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNu
         ;
   }
 
-  if (errorDetails.is_initialized()) {
-    builder.add("errorDetails", VPackValue(errorDetails.get()));
+  if (errorDetails.has_value()) {
+    builder.add("errorDetails", VPackValue(errorDetails.value()));
   }
 }
 
@@ -635,8 +639,7 @@ bool RestRepairHandler::pretendOnly() { return _pretendOnly; }
 
 ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databaseId,
                                                         CollectionID const& collectionId) {
-  ClusterInfo* clusterInfo = ClusterInfo::instance();
-  if (clusterInfo == nullptr) {
+  if (!server().hasFeature<ClusterFeature>()) {
     LOG_TOPIC("1cd7a", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::checkReplicationFactor: "
         << "No ClusterInfo instance";
@@ -644,10 +647,11 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
 
     return ResultT<bool>::error(TRI_ERROR_INTERNAL);
   }
+  ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-  clusterInfo->loadPlan();
+  clusterInfo.loadPlan();
   std::shared_ptr<LogicalCollection> const collection =
-      clusterInfo->getCollection(databaseId, collectionId);
+      clusterInfo.getCollection(databaseId, collectionId);
   std::shared_ptr<ShardMap> const shardMap = collection->shardIds();
 
   for (auto const& it : *shardMap) {

@@ -30,9 +30,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RocksDBRestCollectionHandler::RocksDBRestCollectionHandler(GeneralRequest* request,
+RocksDBRestCollectionHandler::RocksDBRestCollectionHandler(application_features::ApplicationServer& server,
+                                                           GeneralRequest* request,
                                                            GeneralResponse* response)
-    : RestCollectionHandler(request, response) {}
+    : RestCollectionHandler(server, request, response) {}
 
 Result RocksDBRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
                                                            std::string const& suffix,

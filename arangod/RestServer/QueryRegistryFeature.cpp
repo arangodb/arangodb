@@ -27,6 +27,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -46,19 +47,19 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackSlowQueries(true),
       _trackBindVars(true),
       _failOnWarning(false),
+      _queryCacheIncludeSystem(false),
       _smartJoins(true),
       _queryMemoryLimit(0),
       _maxQueryPlans(128),
-      _slowQueryThreshold(10.0),
-      _slowStreamingQueryThreshold(10.0),
-      _queryCacheMode("off"),
       _queryCacheMaxResultsCount(0),
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
-      _queryCacheIncludeSystem(false),
-      _queryRegistryTTL(0) {
+      _slowQueryThreshold(10.0),
+      _slowStreamingQueryThreshold(10.0),
+      _queryRegistryTTL(0.0),
+      _queryCacheMode("off") {
   setOptional(false);
-  startsAfter("V8Phase");
+  startsAfter<V8FeaturePhase>();
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _queryCacheMaxResultsCount = properties.maxResultsCount;

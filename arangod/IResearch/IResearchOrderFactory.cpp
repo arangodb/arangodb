@@ -24,20 +24,20 @@
 // otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
 #if defined(_MSC_VER)
 #include "date/date.h"
-#undef NOEXCEPT
 #endif
-
-#include "search/scorers.hpp"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
 #include "Basics/fasthash.h"
-#include "IResearchFeature.h"
-#include "IResearchOrderFactory.h"
-#include "VelocyPackHelper.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchOrderFactory.h"
+#include "IResearch/VelocyPackHelper.h"
+
+#include <search/scorers.hpp>
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        OrderFactory dependencies
@@ -285,7 +285,7 @@ void ScorerReplacer::replace(aql::CalculationNode& node) {
       // create variable
       auto* var = ast->variables()->createTemporaryVariable();
 
-      it = _dedup.emplace(key, var).first;
+      it = _dedup.try_emplace(key, var).first;
     }
 
     return ast->createNodeReference(it->second);

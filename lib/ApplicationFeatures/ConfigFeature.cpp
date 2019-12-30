@@ -25,6 +25,7 @@
 #include <stdlib.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileResultString.h"
@@ -34,6 +35,7 @@
 #include "Basics/directories.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/IniFileParser.h"
 #include "ProgramOptions/Option.h"
@@ -53,8 +55,8 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer& server,
       _checkConfiguration(false),
       _progname(progname) {
   setOptional(false);
-  startsAfter("Logger");
-  startsAfter("ShellColors");
+  startsAfter<LoggerFeature>();
+  startsAfter<ShellColorsFeature>();
 }
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -99,11 +101,9 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   bool fatal = true;
 
-  auto version = dynamic_cast<VersionFeature*>(
-      application_features::ApplicationServer::lookupFeature("Version"));
-
-  if (version != nullptr && version->printVersion()) {
-    fatal = false;
+  auto& server = application_features::ApplicationServer::server();
+  if (server.hasFeature<VersionFeature>()) {
+    fatal = !server.getFeature<VersionFeature>().printVersion();
   }
 
   // always prefer an explicitly given config file

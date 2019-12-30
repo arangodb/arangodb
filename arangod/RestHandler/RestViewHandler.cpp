@@ -50,8 +50,9 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-RestViewHandler::RestViewHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestViewHandler::RestViewHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   auto view = CollectionNameResolver(_vocbase).getView(nameOrId);
@@ -81,8 +82,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                                 LogicalDataSource::Serialize::Detailed));
+    auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       generateError(res);
@@ -99,10 +99,9 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   builder.openObject();
 
-  auto res =
-      view->properties(builder, LogicalDataSource::makeFlags(
-                                    detailed ? LogicalDataSource::Serialize::Detailed
-                                             : LogicalDataSource::Serialize::Basics));
+  auto const context = detailed ? LogicalDataSource::Serialization::Properties
+                                : LogicalDataSource::Serialization::List;
+  auto res = view->properties(builder, context);
 
   builder.close();
 
@@ -141,12 +140,6 @@ RestStatus RestViewHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::createView() {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -170,6 +163,13 @@ void RestViewHandler::createView() {
     events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
+
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
+    return;
+  }
+
 
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);
@@ -223,8 +223,7 @@ void RestViewHandler::createView() {
     velocypack::Builder builder;
 
     builder.openObject();
-    res = view->properties(builder, LogicalDataSource::makeFlags(
-                                        LogicalDataSource::Serialize::Detailed));
+    res = view->properties(builder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       generateError(res);
@@ -304,8 +303,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
         viewBuilder.openObject();
 
-        auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                                     LogicalDataSource::Serialize::Detailed));
+        auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
         if (!res.ok()) {
           generateError(res);
@@ -346,9 +344,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
       builderCurrent.openObject();
 
-      auto resCurrent =
-          view->properties(builderCurrent, LogicalDataSource::makeFlags(
-                                               LogicalDataSource::Serialize::Detailed));
+      auto resCurrent = view->properties(builderCurrent,
+                                         LogicalDataSource::Serialization::Properties);
 
       if (!resCurrent.ok()) {
         generateError(resCurrent);
@@ -377,8 +374,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     updated.openObject();
 
-    auto res = view->properties(updated, LogicalDataSource::makeFlags(
-                                             LogicalDataSource::Serialize::Detailed));
+    auto res = view->properties(updated, LogicalDataSource::Serialization::Properties);
 
     updated.close();
 
@@ -521,9 +517,7 @@ void RestViewHandler::getViews() {
 
         viewBuilder.openObject();
 
-        if (!view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                               LogicalDataSource::Serialize::Detailed))
-                 .ok()) {
+        if (!view->properties(viewBuilder, LogicalDataSource::Serialization::Properties).ok()) {
           continue;  // skip view
         }
       } catch (...) {
@@ -535,7 +529,7 @@ void RestViewHandler::getViews() {
       viewBuilder.openObject();
 
       try {
-        auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags());
+        auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::List);
 
         if (!res.ok()) {
           generateError(res);

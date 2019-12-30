@@ -42,7 +42,7 @@ struct Sink {
   Sink(Sink const&) = delete;
   Sink& operator=(Sink const&) = delete;
 
-  virtual ~Sink() {}
+  virtual ~Sink() = default;
   virtual void push_back(char c) = 0;
   virtual void append(std::string const& p) = 0;
   virtual void append(char const* p) = 0;

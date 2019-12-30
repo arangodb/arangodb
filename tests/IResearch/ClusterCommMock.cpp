@@ -46,7 +46,8 @@ ClusterCommMock::Request::Request(
    _type(type) {
 }
 
-ClusterCommMock::ClusterCommMock(): arangodb::ClusterComm(false) { // false same as in ClusterCommTest.cpp
+ClusterCommMock::ClusterCommMock(arangodb::application_features::ApplicationServer& server)
+    : arangodb::ClusterComm(server, false) {  // false same as in ClusterCommTest.cpp
 }
 
 arangodb::OperationID ClusterCommMock::asyncRequest(

@@ -27,13 +27,16 @@
 #include "Agency/AgencyStrings.h"
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ActionDescription.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/DatabaseTailingSyncer.h"
@@ -84,7 +87,7 @@ std::string const TTL("ttl");
 using namespace std::chrono;
 
 SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescription const& desc)
-    : ActionBase(feature, desc) {
+  : ActionBase(feature, desc) {
   std::stringstream error;
 
   if (!desc.has(COLLECTION)) {
@@ -119,19 +122,11 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
-SynchronizeShard::~SynchronizeShard() {}
-
-class SynchronizeShardCallback : public arangodb::ClusterCommCallback {
- public:
-  explicit SynchronizeShardCallback(SynchronizeShard* callee) {}
-  virtual bool operator()(arangodb::ClusterCommResult*) override final {
-    return true;
-  }
-};
+SynchronizeShard::~SynchronizeShard() = default;
 
 static std::stringstream& AppendShardInformationToMessage(
-    std::string const& database, std::string const& shard, std::string const& planId,
-    std::chrono::system_clock::time_point const& startTime, std::stringstream& msg) {
+  std::string const& database, std::string const& shard, std::string const& planId,
+  std::chrono::system_clock::time_point const& startTime, std::stringstream& msg) {
   auto const endTime = system_clock::now();
   msg << "local shard: '" << database << "/" << shard << "', "
       << "for central: '" << database << "/" << planId << "', "
@@ -140,27 +135,29 @@ static std::stringstream& AppendShardInformationToMessage(
   return msg;
 }
 
-static arangodb::Result getReadLockId(std::string const& endpoint,
+static arangodb::Result getReadLockId(network::ConnectionPool* pool,
+                                      std::string const& endpoint,
                                       std::string const& database, std::string const& clientId,
                                       double timeout, uint64_t& id) {
   std::string error("startReadLockOnLeader: Failed to get read lock - ");
 
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) {  // nullptr only happens during controlled shutdown
+  if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
   }
 
-  auto comres =
-      cc->syncRequest(TRI_NewTickServer(), endpoint, rest::RequestType::GET,
-                      DB + database + REPL_HOLD_READ_LOCK, std::string(),
-                      std::unordered_map<std::string, std::string>(), timeout);
+  network::RequestOptions options;
+  options.database = database;
+  options.timeout = network::Timeout(timeout);
+  options.skipScheduler = true; // hack to speed up future.get()
+  
+  auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
+                                  REPL_HOLD_READ_LOCK,
+                                  VPackBuffer<uint8_t>(), options)
+                 .get();
 
-  auto result = comres->result;
-
-  if (result != nullptr && result->getHttpReturnCode() == 200) {
-    auto const idv = result->getBodyVelocyPack();
-    auto const& idSlice = idv->slice();
+  if (res.ok() && res.response->statusCode() == fuerte::StatusOK) {
+    auto const idSlice = res.response->slice();
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
     try {
@@ -171,11 +168,7 @@ static arangodb::Result getReadLockId(std::string const& endpoint,
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
   } else {
-    if (result) {
-      error.append(result->getHttpReturnMessage());
-    } else {
-      error.append(comres->stringifyErrorMessage());
-    }
+    error.append(network::fuerteToArangoErrorMessage(res));
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
 
@@ -189,13 +182,13 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   Result res = trx.begin();
-  if (!res.ok()) {
+  if (res.fail()) {
     LOG_TOPIC("5be16", ERR, Logger::MAINTENANCE) << "Failed to start count transaction: " << res;
     return res;
   }
 
   OperationResult opResult =
-      trx.count(collectionName, arangodb::transaction::CountType::Normal);
+    trx.count(collectionName, arangodb::transaction::CountType::Normal);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
@@ -211,19 +204,16 @@ static arangodb::Result collectionCount(std::shared_ptr<arangodb::LogicalCollect
   return opResult.result;
 }
 
-static arangodb::Result addShardFollower(std::string const& endpoint,
-                                         std::string const& database,
-                                         std::string const& shard, uint64_t lockJobId,
-                                         std::string const& clientId,
-                                         SyncerId const syncerId,
-                                         std::string const& clientInfoString,
-                                         double timeout = 120.0) {
+static arangodb::Result addShardFollower(
+    network::ConnectionPool* pool, std::string const& endpoint,
+    std::string const& database, std::string const& shard, uint64_t lockJobId,
+    std::string const& clientId, SyncerId const syncerId,
+    std::string const& clientInfoString, double timeout = 120.0) {
   LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
       << "addShardFollower: tell the leader to put us into the follower "
          "list...";
 
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) {  // nullptr only happens during controlled shutdown
+  if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
   }
@@ -235,16 +225,18 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
     auto collection = vocbase->lookupCollection(shard);
     if (collection == nullptr) {
       std::string errorMsg(
-          "SynchronizeShard::addShardFollower: Failed to lookup collection ");
+        "SynchronizeShard::addShardFollower: Failed to lookup collection ");
       errorMsg += shard;
       LOG_TOPIC("4a8db", ERR, Logger::MAINTENANCE) << errorMsg;
       return arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
     }
 
     uint64_t docCount;
-    Result res = collectionCount(collection, docCount);
-    if (res.fail()) {
-      return res;
+    {
+      Result res = collectionCount(collection, docCount);
+      if (res.fail()) {
+        return res;
+      }
     }
     VPackBuilder body;
     {
@@ -278,17 +270,21 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
       }
     }
 
-    auto comres =
-        cc->syncRequest(TRI_NewTickServer(), endpoint, rest::RequestType::PUT,
-                        DB + database + REPL_ADD_FOLLOWER, body.toJson(),
-                        std::unordered_map<std::string, std::string>(), timeout);
+    network::RequestOptions options;
+    options.database = database;
+    options.timeout = network::Timeout(timeout);
+    options.skipScheduler = true; // hack to speed up future.get()
+    
+    auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
+                                    REPL_ADD_FOLLOWER,
+                                    std::move(*body.steal()), options)
+                   .get();
 
-    auto result = comres->result;
     std::string errorMessage(
         "addShardFollower: could not add us to the leader's follower list. ");
-    if (result == nullptr || result->getHttpReturnCode() != 200) {
+    if (res.fail() || res.response->statusCode() != fuerte::StatusOK) {
       if (lockJobId != 0) {
-        errorMessage += comres->stringifyErrorMessage();
+        errorMessage += network::fuerteToArangoErrorMessage(res);
         LOG_TOPIC("22e0a", ERR, Logger::MAINTENANCE) << errorMessage;
       } else {
         errorMessage += "With shortcut (can happen, no problem).";
@@ -301,7 +297,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
     return arangodb::Result();
   } catch (std::exception const& e) {
     std::string errorMsg(
-        "SynchronizeShard::addShardFollower: Failed to lookup database ");
+      "SynchronizeShard::addShardFollower: Failed to lookup database ");
     errorMsg += database;
     errorMsg += " exception: ";
     errorMsg += e.what();
@@ -310,12 +306,12 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
   }
 }
 
-static arangodb::Result cancelReadLockOnLeader(std::string const& endpoint,
+static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
+                                               std::string const& endpoint,
                                                std::string const& database, uint64_t lockJobId,
                                                std::string const& clientId,
                                                double timeout = 10.0) {
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) {  // nullptr only happens during controlled shutdown
+  if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "cancelReadLockOnLeader: Shutting down");
   }
@@ -326,16 +322,18 @@ static arangodb::Result cancelReadLockOnLeader(std::string const& endpoint,
     body.add(ID, VPackValue(std::to_string(lockJobId)));
   }
 
-  auto comres =
-      cc->syncRequest(TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ,
-                      DB + database + REPL_HOLD_READ_LOCK, body.toJson(),
-                      std::unordered_map<std::string, std::string>(), timeout);
+  network::RequestOptions options;
+  options.database = database;
+  options.timeout = network::Timeout(timeout);
+  options.skipScheduler = true; // hack to speed up future.get()
+  
+  auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
+                                  REPL_HOLD_READ_LOCK,
+                                  std::move(*body.steal()), options)
+                 .get();
 
-  auto result = comres->result;
-
-  if (result != nullptr && result->getHttpReturnCode() == 404) {
-    auto const vp = result->getBodyVelocyPack();
-    auto const& slice = vp->slice();
+  if (res.ok() && res.response && res.response->statusCode() == fuerte::StatusNotFound) {
+    auto const slice = res.response->slice();
     if (slice.isObject()) {
       VPackSlice s = slice.get(StaticStrings::ErrorNum);
       if (s.isNumber()) {
@@ -348,8 +346,14 @@ static arangodb::Result cancelReadLockOnLeader(std::string const& endpoint,
     }
   }
 
-  if (result == nullptr || result->getHttpReturnCode() != 200) {
-    auto errorMessage = comres->stringifyErrorMessage();
+  if (res.fail() || res.response->statusCode() != fuerte::StatusOK) {
+    auto errorMessage = network::fuerteToArangoErrorMessage(res);
+    // rebuild body since we stole it earlier
+    VPackBuilder body;
+    {
+      VPackObjectBuilder b(&body);
+      body.add(ID, VPackValue(std::to_string(lockJobId)));
+    }
     LOG_TOPIC("52924", ERR, Logger::MAINTENANCE)
         << "cancelReadLockOnLeader: exception caught for " << body.toJson()
         << ": " << errorMessage;
@@ -360,46 +364,43 @@ static arangodb::Result cancelReadLockOnLeader(std::string const& endpoint,
   return arangodb::Result();
 }
 
-static arangodb::Result cancelBarrier(std::string const& endpoint,
+static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
+                                      std::string const& endpoint,
                                       std::string const& database, int64_t barrierId,
                                       std::string const& clientId, double timeout = 120.0) {
   if (barrierId <= 0) {
     return Result();
   }
 
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) {  // nullptr only happens during controlled shutdown
+  if (pool == nullptr) {  // nullptr only happens during controlled shutdown
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
                             "startReadLockOnLeader: Shutting down");
   }
 
-  auto comres =
-      cc->syncRequest(TRI_NewTickServer(), endpoint, rest::RequestType::DELETE_REQ,
-                      DB + database + REPL_BARRIER_API + std::to_string(barrierId),
-                      std::string(),
-                      std::unordered_map<std::string, std::string>(), timeout);
+  network::RequestOptions options;
+  options.database = database;
+  options.timeout = network::Timeout(timeout);
+  options.skipScheduler = true; // hack to speed up future.get()
+  
+  auto res =
+      network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
+                           REPL_BARRIER_API + std::to_string(barrierId),
+                           VPackBuffer<uint8_t>(), options)
+          .get();
 
-  // I'm sure that syncRequest cannot return null. But the check doesn't hurt
-  // and is preferable over a segfault.
-  TRI_ASSERT(comres != nullptr);
-  if (comres == nullptr) {
-    LOG_TOPIC("00aa2", ERR, Logger::MAINTENANCE)
-        << "CancelBarrier: error: syncRequest returned null";
-    return arangodb::Result{TRI_ERROR_INTERNAL};
-  }
-
-  if (comres->status == CL_COMM_SENT) {
-    auto result = comres->result;
-    if (result == nullptr ||
-        (result->getHttpReturnCode() != 200 && result->getHttpReturnCode() != 204)) {
-      std::string errorMessage = comres->stringifyErrorMessage();
-      LOG_TOPIC("f5733", ERR, Logger::MAINTENANCE) << "CancelBarrier: error" << errorMessage;
+  if (res.ok()) {
+    auto* response = res.response.get();
+    if (response->statusCode() != fuerte::StatusOK &&
+        response->statusCode() != fuerte::StatusNoContent) {
+      std::string errorMessage = "got status " + std::to_string(response->statusCode());
+      LOG_TOPIC("f5733", ERR, Logger::MAINTENANCE)
+          << "CancelBarrier: error '" << errorMessage << "'";
       return arangodb::Result(TRI_ERROR_INTERNAL, errorMessage);
     }
   } else {
     std::string error(
         "CancelBarrier: failed to send message to leader : status ");
-    error += ClusterCommResult::stringifyStatus(comres->status);
+    error += network::fuerteToArangoErrorMessage(res);
     LOG_TOPIC("1c48a", ERR, Logger::MAINTENANCE) << error;
     return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
@@ -409,123 +410,109 @@ static arangodb::Result cancelBarrier(std::string const& endpoint,
 }
 
 static inline bool isStopping() {
-  return application_features::ApplicationServer::isStopping();
+  auto& server = application_features::ApplicationServer::server();
+  return server.isStopping();
 }
 
-arangodb::Result SynchronizeShard::getReadLock(std::string const& endpoint,
-                                               std::string const& database,
-                                               std::string const& collection,
-                                               std::string const& clientId, uint64_t rlid,
-                                               bool soft, double timeout) {
-  auto cc = arangodb::ClusterComm::instance();
-  if (cc == nullptr) {  // nullptr only happens during controlled shutdown
+arangodb::Result SynchronizeShard::getReadLock(
+  network::ConnectionPool* pool,
+  std::string const& endpoint, std::string const& database,
+  std::string const& collection, std::string const& clientId,
+  uint64_t rlid, bool soft, double timeout) {
+
+  // This function can be implemented in a more robust manner for server
+  // versions > 3.4. Starting with 3.4 the POST requests to the read lock API
+  // terminates the server side thread as soon as the lock request comes in.
+  // The POST request thus is answered immediately back to the caller.
+  // The servers (<=3.3) with lower versions hold the POST request for as long
+  // as the corresponding DELETE_REQ has not been successfully submitted.
+  
+  using namespace std::chrono;
+  auto const start = steady_clock::now();
+
+  // nullptr only happens during controlled shutdown
+  if (pool == nullptr) {
     return arangodb::Result(TRI_ERROR_SHUTTING_DOWN,
-                            "startReadLockOnLeader: Shutting down");
+                            "cancelReadLockOnLeader: Shutting down");
   }
 
   VPackBuilder body;
-  {
-    VPackObjectBuilder o(&body);
+  { VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
-    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft));
+    body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
+    body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId()));
+    body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
+  auto buf = body.steal();
+
+  auto const url = DB + database + REPL_HOLD_READ_LOCK;
+
+  // Try to POST the lock body. If POST fails, we should just exit and retry
+  // SynchroShard anew. 
+  network::RequestOptions options;
+    options.timeout = network::Timeout(timeout);
+    auto res = network::sendRequest(
+      pool, endpoint, fuerte::RestVerb::Post,
+      url, *buf, options).get();
+
+  if (!res.fail() && res.response->statusCode() == fuerte::StatusOK) {
+    // Habemus clausum, we have a lock
+    return arangodb::Result();
+  }
+    
+  LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
+    << "startReadLockOnLeader: couldn't POST lock body, "
+    << network::fuerteToArangoErrorMessage(res) << ", giving up.";
+
+  // We MUSTN'T exit without trying to clean up a lock that was maybe acquired
+  if (res.error == fuerte::Error::CouldNotConnect) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      "startReadLockOnLeader: couldn't POST lock body, giving up.");
+  }
+  
+  double timeLeft =
+    double(timeout) - duration<double>(steady_clock::now()-start).count() ;
+  if (timeLeft < 60.0) {
+    timeLeft = 60.0;
   }
 
-  auto url = DB + database + REPL_HOLD_READ_LOCK;
-
-  cc->asyncRequest(TRI_NewTickServer(), endpoint, rest::RequestType::POST, url,
-                   std::make_shared<std::string>(body.toJson()),
-                   std::unordered_map<std::string, std::string>(),
-                   std::make_shared<SynchronizeShardCallback>(this), timeout, true, timeout);
-
-  // Intentionally do not look at the outcome, even in case of an error
-  // we must make sure that the read lock on the leader is not active!
-  // This is done automatically below.
-
-  double sleepTime = 0.5;
-  size_t count = 0;
-  size_t maxTries = static_cast<size_t>(std::floor(600.0 / sleepTime));
-  while (++count < maxTries) {  // wait for some time until read lock established:
-
-    if (isStopping()) {
-      return arangodb::Result(TRI_ERROR_SHUTTING_DOWN);
-    }
-
-    // Now check that we hold the read lock:
-    auto putres = cc->syncRequest(TRI_NewTickServer(), endpoint,
-                                  rest::RequestType::PUT, url, body.toJson(),
-                                  std::unordered_map<std::string, std::string>(), timeout);
-
-    auto result = putres->result;
-    if (result != nullptr && result->getHttpReturnCode() == 200) {
-      auto const vp = putres->result->getBodyVelocyPack();
-      auto const& slice = vp->slice();
-      TRI_ASSERT(slice.isObject());
-      VPackSlice lockHeld = slice.get("lockHeld");
-      if (lockHeld.isBoolean() && lockHeld.getBool()) {
-        return arangodb::Result();
-      }
-      LOG_TOPIC("b681f", DEBUG, Logger::MAINTENANCE)
-          << "startReadLockOnLeader: Lock not yet acquired...";
-    } else {
-      if (result != nullptr && result->getHttpReturnCode() == 404) {
-        auto const vp = result->getBodyVelocyPack();
-        auto const& slice = vp->slice();
-        if (slice.isObject()) {
-          VPackSlice s = slice.get(StaticStrings::ErrorNum);
-          if (s.isNumber()) {
-            int errorNum = s.getNumber<int>();
-            if (errorNum == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
-              // database is gone. we can now give up
-              break;
-            }
-          }
-        }
-        // fall-through to other cases intentional here
-      }
-
-      LOG_TOPIC("a82bc", DEBUG, Logger::MAINTENANCE)
-          << "startReadLockOnLeader: Do not see read lock yet:"
-          << putres->stringifyErrorMessage();
-    }
-
-    std::this_thread::sleep_for(duration<double>(sleepTime));
-  }
-
-  LOG_TOPIC("75e2b", ERR, Logger::MAINTENANCE) << "startReadLockOnLeader: giving up";
-
+  // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   try {
-    auto r = cc->syncRequest(TRI_NewTickServer(), endpoint,
-                             rest::RequestType::DELETE_REQ, url, body.toJson(),
-                             std::unordered_map<std::string, std::string>(), timeout);
-    if (r->result == nullptr || r->result->getHttpReturnCode() != 200) {
+    auto r = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, url,
+                                  *buf, options)
+                 .get();
+    if (r.fail() || r.response->statusCode() != fuerte::StatusOK) {
+      std::string addendum = network::fuerteToArangoErrorMessage(r);
       LOG_TOPIC("4f34d", ERR, Logger::MAINTENANCE)
-          << "startReadLockOnLeader: cancelation error for shard - " << collection
-          << " " << r->getErrorCode() << ": " << r->stringifyErrorMessage();
+          << "startReadLockOnLeader: cancelation error for shard - "
+          << collection << ": " << addendum;
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("7fcc9", ERR, Logger::MAINTENANCE)
-        << "startReadLockOnLeader: exception in cancel: " << e.what();
+      << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
-
-  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
-                          "startReadLockOnLeader: giving up");
+  return arangodb::Result(
+    TRI_ERROR_CLUSTER_TIMEOUT, "startReadLockOnLeader: giving up");
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
-    std::string const& endpoint, std::string const& database, std::string const& collection,
-    std::string const& clientId, uint64_t& rlid, bool soft, double timeout) {
+  std::string const& endpoint, std::string const& database, std::string const& collection,
+  std::string const& clientId, uint64_t& rlid, bool soft, double timeout) {
   // Read lock id
   rlid = 0;
-  arangodb::Result result = getReadLockId(endpoint, database, clientId, timeout, rlid);
+  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  arangodb::Result result =
+      getReadLockId(pool, endpoint, database, clientId, timeout, rlid);
   if (!result.ok()) {
     LOG_TOPIC("2e5ae", ERR, Logger::MAINTENANCE) << result.errorMessage();
     return result;
   }
   LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE) << "Got read lock id: " << rlid;
 
-  result = getReadLock(endpoint, database, collection, clientId, rlid, soft, timeout);
+  result = getReadLock(pool, endpoint, database, collection, clientId, rlid, soft, timeout);
 
   return result;
 }
@@ -536,6 +523,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     std::shared_ptr<arangodb::LogicalCollection> const& col,
     VPackSlice const& config, std::string const& clientInfoString,
     ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
+
   auto& vocbase = col->vocbase();
 
   auto database = vocbase.name();
@@ -549,7 +537,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   }
 
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(config, database);
+      ReplicationApplierConfiguration::fromVelocyPack(vocbase.server(), config, database);
   configuration.setClientInfo(clientInfoString);
   configuration.validate();
 
@@ -601,17 +589,17 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   } catch (arangodb::basics::Exception const& ex) {
     std::string s("cannot sync from remote endpoint: ");
     s += ex.what() + std::string(". last progress message was '") +
-         syncer->progress() + "'";
+      syncer->progress() + "'";
     return Result(ex.code(), s);
   } catch (std::exception const& ex) {
     std::string s("cannot sync from remote endpoint: ");
     s += ex.what() + std::string(". last progress message was '") +
-         syncer->progress() + "'";
+      syncer->progress() + "'";
     return Result(TRI_ERROR_INTERNAL, s);
   } catch (...) {
     std::string s(
-        "cannot sync from remote endpoint: unknown exception. last progress "
-        "message was '");
+      "cannot sync from remote endpoint: unknown exception. last progress "
+      "message was '");
     s += syncer->progress() + "'";
     return Result(TRI_ERROR_INTERNAL, s);
   }
@@ -629,8 +617,9 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
+  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(conf, database);
+      ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
   configuration.validate();
 
@@ -666,8 +655,9 @@ static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
+  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(conf, database);
+      ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
   configuration.validate();
 
@@ -707,7 +697,7 @@ bool SynchronizeShard::first() {
       << "SynchronizeShard: synchronizing shard '" << database << "/" << shard
       << "' for central '" << database << "/" << planId << "'";
 
-  auto* clusterInfo = ClusterInfo::instance();
+  auto& clusterInfo = feature().server().getFeature<ClusterFeature>().clusterInfo();
   auto const ourselves = arangodb::ServerState::instance()->getId();
   auto startTime = system_clock::now();
   auto const startTimeStr = timepointToString(startTime);
@@ -723,7 +713,7 @@ bool SynchronizeShard::first() {
     }
 
     std::vector<std::string> planned;
-    auto result = clusterInfo->getShardServers(shard, planned);
+    auto result = clusterInfo.getShardServers(shard, planned);
 
     if (!result.ok() ||
         std::find(planned.begin(), planned.end(), ourselves) == planned.end() ||
@@ -737,7 +727,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    auto ci = clusterInfo->getCollectionNT(database, planId);
+    auto ci = clusterInfo.getCollectionNT(database, planId);
     if (ci == nullptr) {
       std::stringstream msg;
       msg << "exception in getCollection, ";
@@ -749,7 +739,7 @@ bool SynchronizeShard::first() {
 
     std::string const cid = std::to_string(ci->id());
     std::shared_ptr<CollectionInfoCurrent> cic =
-        ClusterInfo::instance()->getCollectionCurrent(database, cid);
+        clusterInfo.getCollectionCurrent(database, cid);
     std::vector<std::string> current = cic->servers(shard);
 
     if (current.empty()) {
@@ -791,7 +781,7 @@ bool SynchronizeShard::first() {
       return false;
     }
 
-    auto ep = clusterInfo->getServerEndpoint(leader);
+    auto ep = clusterInfo.getServerEndpoint(leader);
     uint64_t docCount;
     if (!collectionCount(collection, docCount).ok()) {
       std::stringstream error;
@@ -817,13 +807,15 @@ bool SynchronizeShard::first() {
           << database << "/" << shard << "' for central '" << database << "/"
           << planId << "'";
       try {
-        auto asResult =
-            addShardFollower(ep, database, shard, 0, clientId, SyncerId{}, _clientInfoString, 60.0);
+        NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+        network::ConnectionPool* pool = nf.pool();
+        auto asResult = addShardFollower(pool, ep, database, shard, 0, clientId,
+                                         SyncerId{}, _clientInfoString, 60.0);
 
         if (asResult.ok()) {
           if (Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE)) {
             std::stringstream msg;
-            msg << "synchronizeOneShard: shortcut worked, done, ";
+            msg << "SynchronizeShard: shortcut worked, done, ";
             AppendShardInformationToMessage(database, shard, planId, startTime, msg);
             LOG_TOPIC("f4a5b", DEBUG, Logger::MAINTENANCE) << msg.str();
           }
@@ -851,7 +843,7 @@ bool SynchronizeShard::first() {
 
       if (isStopping()) {
         std::string errorMessage(
-            "synchronizeOneShard: synchronization failed for shard ");
+          "SynchronizeShard: synchronization failed for shard ");
         errorMessage += shard + ": shutdown in progress, giving up";
         LOG_TOPIC("a0f9a", INFO, Logger::MAINTENANCE) << errorMessage;
         _result.reset(TRI_ERROR_SHUTTING_DOWN, errorMessage);
@@ -915,15 +907,15 @@ bool SynchronizeShard::first() {
       // From here on, we have to call `cancelBarrier` in case of errors
       // as well as in the success case!
       auto barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
-      TRI_DEFER(cancelBarrier(ep, database, barrierId, clientId));
+      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+      network::ConnectionPool* pool = nf.pool();
+      TRI_DEFER(cancelBarrier(pool, ep, database, barrierId, clientId));
 
       VPackSlice collections = sy.get(COLLECTIONS);
 
       if (collections.length() == 0 || collections[0].get("name").copyString() != shard) {
         std::stringstream error;
-        error
-            << "shard " << shard
-            << " seems to be gone from leader, this "
+        error << "shard " << shard << " seems to be gone from leader, this "
                "can happen if a collection was dropped during synchronization!";
         LOG_TOPIC("664ae", WARN, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
@@ -931,13 +923,13 @@ bool SynchronizeShard::first() {
       }
 
       auto lastTick =
-          arangodb::basics::VelocyPackHelper::readNumericValue<TRI_voc_tick_t>(sy, LAST_LOG_TICK,
-                                                                               0);
+        arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_tick_t>(
+          sy, LAST_LOG_TICK, 0);
       VPackBuilder builder;
 
       ResultT<TRI_voc_tick_t> tickResult =
-          catchupWithReadLock(ep, database, *collection, clientId, shard,
-                              leader, lastTick, builder);
+        catchupWithReadLock(ep, database, *collection, clientId, shard,
+                            leader, lastTick, builder);
       if (!tickResult.ok()) {
         LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << syncRes.errorMessage();
         _result.reset(tickResult.result());
@@ -985,9 +977,9 @@ bool SynchronizeShard::first() {
 }
 
 ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
-    std::string const& ep, std::string const& database, LogicalCollection const& collection,
-    std::string const& clientId, std::string const& shard,
-    std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
+  std::string const& ep, std::string const& database, LogicalCollection const& collection,
+  std::string const& clientId, std::string const& shard,
+  std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
   bool didTimeout = true;
   int tries = 0;
   double timeout = 300.0;
@@ -996,7 +988,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 
     if (isStopping()) {
       std::string errorMessage =
-          "synchronizeOneShard: startReadLockOnLeader (soft): shutting down";
+        "SynchronizeShard: startReadLockOnLeader (soft): shutting down";
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_SHUTTING_DOWN, errorMessage);
     }
 
@@ -1011,19 +1003,21 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
                                        clientId, lockJobId, true, timeout);
     if (!res.ok()) {
       std::string errorMessage =
-          "synchronizeOneShard: error in startReadLockOnLeader (soft):" + res.errorMessage();
+        "SynchronizeShard: error in startReadLockOnLeader (soft):" + res.errorMessage();
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
     }
 
-    auto readLockGuard = arangodb::scopeGuard([&]() {
+    auto readLockGuard = arangodb::scopeGuard([&, this]() {
       // Always cancel the read lock.
       // Reported seperately
-      auto res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+      network::ConnectionPool* pool = nf.pool();
+      auto res = cancelReadLockOnLeader(pool, ep, database, lockJobId, clientId, 60.0);
       if (!res.ok()) {
         LOG_TOPIC("b15ee", INFO, Logger::MAINTENANCE)
             << "Could not cancel soft read lock on leader: " << res.errorMessage();
-      }
-    });
+        }
+      });
 
     LOG_TOPIC("5eb37", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
@@ -1052,13 +1046,15 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 
     if (!res.ok()) {
       std::string errorMessage(
-          "synchronizeOneshard: error in syncCollectionCatchup: ");
+        "synchronizeOneshard: error in syncCollectionCatchup: ");
       errorMessage += res.errorMessage();
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
     }
 
     // Stop the read lock again:
-    res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+    NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    res = cancelReadLockOnLeader(pool, ep, database, lockJobId, clientId, 60.0);
     // We removed the readlock
     readLockGuard.cancel();
     if (!res.ok()) {
@@ -1071,7 +1067,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     lastLogTick = tickReached;
     if (didTimeout) {
       LOG_TOPIC("e516e", INFO, Logger::MAINTENANCE)
-          << "Renewing softLock for " << shard << " on leader: " << leader;
+        << "Renewing softLock for " << shard << " on leader: " << leader;
     }
   }
   if (didTimeout) {
@@ -1094,18 +1090,20 @@ Result SynchronizeShard::catchupWithExclusiveLock(
                                      lockJobId, false);
   if (!res.ok()) {
     std::string errorMessage =
-        "synchronizeOneShard: error in startReadLockOnLeader (hard):" + res.errorMessage();
+      "SynchronizeShard: error in startReadLockOnLeader (hard):" + res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
-  auto readLockGuard = arangodb::scopeGuard([&]() {
+  auto readLockGuard = arangodb::scopeGuard([&, this]() {
     // Always cancel the read lock.
     // Reported seperately
-    auto res = cancelReadLockOnLeader(ep, database, lockJobId, clientId, 60.0);
+    NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    auto res = cancelReadLockOnLeader(pool, ep, database, lockJobId, clientId, 60.0);
     if (!res.ok()) {
       LOG_TOPIC("067a8", INFO, Logger::MAINTENANCE)
           << "Could not cancel hard read lock on leader: " << res.errorMessage();
-    }
-  });
+      }
+    });
 
   LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
 
@@ -1125,16 +1123,19 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   if (!res.ok()) {
     std::string errorMessage(
-        "synchronizeOneshard: error in syncCollectionFinalize: ");
+      "synchronizeOneshard: error in syncCollectionFinalize: ");
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
 
-  res = addShardFollower(ep, database, shard, lockJobId, clientId, syncerId, _clientInfoString, 60.0);
+  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  res = addShardFollower(pool, ep, database, shard, lockJobId, clientId,
+                         syncerId, _clientInfoString, 60.0);
 
   if (!res.ok()) {
     std::string errorMessage(
-        "synchronizeOneshard: error in addShardFollower: ");
+      "synchronizeOneshard: error in addShardFollower: ");
     errorMessage += res.errorMessage();
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
@@ -1148,9 +1149,12 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
 void SynchronizeShard::setState(ActionState state) {
   if ((COMPLETE == state || FAILED == state) && _state != state) {
-    TRI_ASSERT(_description.has("shard"));
-    _feature.incShardVersion(_description.get("shard"));
+    auto const& shard = _description.get("shard");
+    if (COMPLETE == state) {
+      LOG_TOPIC("50827", INFO, Logger::MAINTENANCE)
+        << "SynchronizeShard: synchronization completed for shard " << shard;
+    }
+    _feature.incShardVersion(shard);
   }
-
   ActionBase::setState(state);
 }

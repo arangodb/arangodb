@@ -61,7 +61,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief Send a request to the server and wait into a response it received.
   /// @param r request that is copied
   std::unique_ptr<Response> sendRequest(Request const& r) {
-    std::unique_ptr<Request> copy(new Request(r));
+    auto copy = std::make_unique<Request>(r);
     return sendRequest(std::move(copy));
   }
 
@@ -77,7 +77,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
   MessageID sendRequest(Request const& r, RequestCallback cb) {
-    std::unique_ptr<Request> copy(new Request(r));
+    auto copy = std::make_unique<Request>(r);
     return sendRequest(std::move(copy), cb);
   }
 
@@ -102,7 +102,9 @@ class Connection : public std::enable_shared_from_this<Connection> {
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
     if (_config._onFailure) {
-      _config._onFailure(errorCode, errorMessage);
+      try {
+        _config._onFailure(errorCode, errorMessage);
+      } catch(...) {}
     }
   }
 

@@ -26,24 +26,33 @@
 #ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Stats.h"
-#include "Aql/types.h"
+#include "Aql/InputAqlItemRow.h"
 #include "DocumentProducingHelper.h"
-#include "Utils/OperationCursor.h"
 
 #include <memory>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
+struct OperationCursor;
+namespace transaction {
+class Methods;
+}
 namespace aql {
 
-class InputAqlItemRow;
+struct Collection;
+class EnumerateCollectionStats;
+class ExecutionEngine;
 class ExecutorInfos;
+class Expression;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+struct Variable;
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateCollectionExecutorInfos : public ExecutorInfos {
@@ -53,7 +62,8 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
-      std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+      Expression* filter,
+      std::vector<std::string> const& projections,
       std::vector<size_t> const& coveringIndexAttributePositions,
       bool useRawDocumentPointers, bool random);
 
@@ -62,24 +72,24 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos const&) = delete;
   ~EnumerateCollectionExecutorInfos() = default;
 
-  ExecutionEngine* getEngine() { return _engine; };
-  Collection const* getCollection() const { return _collection; }
-  Variable const* getOutVariable() const { return _outVariable; }
-  std::vector<std::string> const& getProjections() const noexcept { return _projections; }
-  transaction::Methods* getTrxPtr() const { return _trxPtr; }
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept {
-    return _coveringIndexAttributePositions;
-  }
-  bool getProduceResult() const { return _produceResult; }
-  bool getUseRawDocumentPointers() const { return _useRawDocumentPointers; }
-  bool getRandom() const { return _random; }
-  RegisterId getOutputRegisterId() const { return _outputRegisterId; }
+  ExecutionEngine* getEngine();
+  Collection const* getCollection() const;
+  Variable const* getOutVariable() const;
+  Query* getQuery() const;
+  transaction::Methods* getTrxPtr() const;
+  Expression* getFilter() const;
+  std::vector<std::string> const& getProjections() const noexcept;
+  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
+  bool getProduceResult() const;
+  bool getUseRawDocumentPointers() const;
+  bool getRandom() const;
+  RegisterId getOutputRegisterId() const;
 
  private:
   ExecutionEngine* _engine;
   Collection const* _collection;
   Variable const* _outVariable;
-  transaction::Methods* _trxPtr;
+  Expression* _filter;
   std::vector<std::string> const& _projections;
   std::vector<size_t> const& _coveringIndexAttributePositions;
   RegisterId _outputRegisterId;
@@ -94,11 +104,11 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
 class EnumerateCollectionExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     /* With some more modifications this could be turned to true. Actually the
    output of this block is input * itemsInCollection */
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateCollectionExecutorInfos;
@@ -119,29 +129,22 @@ class EnumerateCollectionExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
 
-  void setProducingFunction(DocumentProducingFunction const& documentProducer) {
-    _documentProducer = documentProducer;
-  }
-
   void initializeCursor();
 
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
 
-  void setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
-    _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
-  }
+  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
 
   /// @brief whether or not we are allowed to use the covering index
   /// optimization in a callback
-  bool getAllowCoveringIndexOptimization() const noexcept {
-    return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
-  }
+  bool getAllowCoveringIndexOptimization() const noexcept;
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
-  DocumentProducingFunction _documentProducer;
+  IndexIterator::DocumentCallback _documentProducer;
+  IndexIterator::DocumentCallback _documentSkipper;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutionState _state;
   bool _cursorHasMore;

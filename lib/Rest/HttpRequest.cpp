@@ -48,7 +48,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, char const* heade
       _vpackBuilder(nullptr),
       _version(ProtocolVersion::UNKNOWN),
       _allowMethodOverride(allowMethodOverride) {
-        _contentType = ContentType::JSON;
+        _contentType = ContentType::UNSET;
         _contentTypeResponse = ContentType::JSON;
   if (0 < length) {
     auto buff = std::make_unique<char[]>(length + 1);
@@ -99,7 +99,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
       char* e = lineBegin;
 
       for (; e < end && *e != ' ' && *e != '\n'; ++e) {
-        *e = ::tolower(*e);
+        *e = ::StringUtils::tolower(*e);
       }
 
       // store key and value
@@ -211,7 +211,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
           // get ride of "//"
           char* g = f;
 
-          // do NOT url-decode the path, we need to distingush between
+          // do NOT url-decode the path, we need to distinguish between
           // "/document/a/b" and "/document/a%2fb"
 
           while (f < valueEnd && *f != '?' && *f != ' ' && *f != '\n') {
@@ -325,7 +325,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
       char* e = lineBegin;
 
       for (; e < end && *e != ':' && *e != '\n'; ++e) {
-        *e = ::tolower(*e);
+        *e = StringUtils::tolower(*e);
       }
 
       // store key and value
@@ -534,8 +534,8 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
   }
 }
 
-void HttpRequest::setHeaderV2(std::string key, std::string value) {
-  StringUtils::tolowerInPlace(&key); // always lowercase key
+void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
+  StringUtils::tolowerInPlace(key); // always lowercase key
   
   if (key == StaticStrings::ContentLength) {
     _contentLength = NumberUtils::atoi_zero<int64_t>(value.c_str(), value.c_str() + value.size());
@@ -545,9 +545,19 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
   
   if (key == StaticStrings::Accept && value == StaticStrings::MimeTypeVPack) {
     _contentTypeResponse = ContentType::VPACK;
-  } else if (key == StaticStrings::ContentTypeHeader && value == StaticStrings::MimeTypeVPack) {
-    _contentType = ContentType::VPACK; // don't insert this header!!
-    return;
+  } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
+    if (value == StaticStrings::MimeTypeVPack) {
+      _contentType = ContentType::VPACK; // don't insert this header!!
+      return;
+    }
+    else if ((value.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
+             (memcmp(value.c_str(),
+                     StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                     StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+      // ignore encoding etc.
+      _contentType = ContentType::JSON;
+      return;
+    }
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
@@ -570,7 +580,7 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
     if (key == "x-http-method" ||
         key == "x-method-override" ||
         key == "x-http-method-override") {
-      StringUtils::tolowerInPlace(&value);
+      StringUtils::tolowerInPlace(value);
       _type = findRequestType(value.c_str(), value.size());
       // don't insert this header!!
       return;
@@ -720,13 +730,22 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
     _acceptEncoding = EncodingType::DEFLATE;
-  } else if (keyLength == StaticStrings::ContentTypeHeader.size() &&
-             valueLength == StaticStrings::MimeTypeVPack.size() &&
-             memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&
-             memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
-    _contentType = ContentType::VPACK;
-    // don't insert this header!!
-    return;
+  } else if ((_contentType == ContentType::UNSET) &&
+             (keyLength == StaticStrings::ContentTypeHeader.size()) &&
+             (memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0)) {
+    if (valueLength == StaticStrings::MimeTypeVPack.size() &&
+        memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
+      _contentType = ContentType::VPACK;
+      // don't insert this header!!
+      return;
+    }
+    if (valueLength >= StaticStrings::MimeTypeJsonNoEncoding.size() &&
+        memcmp(value, StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+               StaticStrings::MimeTypeJsonNoEncoding.length()) == 0) {
+      _contentType = ContentType::JSON;
+      // don't insert this header!!
+      return;
+    }
   }
 
   if (keyLength == 6 && memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
@@ -742,7 +761,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
         (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
         (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0)) {
       std::string overriddenType(value, valueLength);
-      StringUtils::tolowerInPlace(&overriddenType);
+      StringUtils::tolowerInPlace(overriddenType);
 
       _type = findRequestType(overriddenType.c_str(), overriddenType.size());
 
@@ -890,8 +909,7 @@ VPackStringRef HttpRequest::rawPayload() const {
 
 VPackSlice HttpRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
-
-  if (_contentType == ContentType::JSON) {
+  if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
     if (!_body.empty()) {
       if (!_vpackBuilder) {
         VPackParser parser(options);

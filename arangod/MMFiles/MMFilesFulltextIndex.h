@@ -109,7 +109,7 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
                                std::set<TRI_voc_rid_t>&& docs)
       : IndexIterator(collection, trx), _docs(std::move(docs)), _pos(_docs.begin()) {}
 
-  ~MMFilesFulltextIndexIterator() {}
+  ~MMFilesFulltextIndexIterator() = default;
 
   char const* typeName() const override { return "fulltext-index-iterator"; }
 

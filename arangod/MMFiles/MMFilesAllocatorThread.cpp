@@ -32,8 +32,8 @@ using namespace arangodb;
 /// @brief wait interval for the allocator thread when idle
 uint64_t const MMFilesAllocatorThread::Interval = 500 * 1000;
 
-MMFilesAllocatorThread::MMFilesAllocatorThread(MMFilesLogfileManager* logfileManager)
-    : Thread("WalAllocator"),
+MMFilesAllocatorThread::MMFilesAllocatorThread(MMFilesLogfileManager& logfileManager)
+    : Thread(logfileManager.server(), "WalAllocator"),
       _logfileManager(logfileManager),
       _condition(),
       _recoveryLock(),
@@ -86,7 +86,7 @@ void MMFilesAllocatorThread::signal(uint32_t markerSize) {
 
 /// @brief creates a new reserve logfile
 int MMFilesAllocatorThread::createReserveLogfile(uint32_t size) {
-  return _logfileManager->createReserveLogfile(size);
+  return _logfileManager.createReserveLogfile(size);
 }
 
 /// @brief main loop
@@ -104,7 +104,7 @@ void MMFilesAllocatorThread::run() {
     bool worked = false;
 
     try {
-      if (requestedSize == 0 && !inRecovery() && !_logfileManager->hasReserveLogfiles()) {
+      if (requestedSize == 0 && !inRecovery() && !_logfileManager.hasReserveLogfiles()) {
         // reset allocator status
         {
           CONDITION_LOCKER(guard, _allocatorResultCondition);
@@ -114,7 +114,7 @@ void MMFilesAllocatorThread::run() {
         // only create reserve files if we are not in the recovery mode
         worked = true;
         res = createReserveLogfile(0);
-      } else if (requestedSize > 0 && _logfileManager->logfileCreationAllowed(requestedSize)) {
+      } else if (requestedSize > 0 && _logfileManager.logfileCreationAllowed(requestedSize)) {
         // reset allocator status
         {
           CONDITION_LOCKER(guard, _allocatorResultCondition);

@@ -71,7 +71,7 @@ class GeneralServer;
 //     responses are identified by a request id.
 //
 // (4) Error handling: In case of an error `addErrorResponse()` will be
-//     called. This will call `addResponse()` with an error indicator, which in
+//     called. This will call `sendResponse()` with an error indicator, which in
 //     turn will end the responding request.
 //
 class CommTask : public std::enable_shared_from_this<CommTask> {
@@ -101,10 +101,6 @@ protected:
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
                             RequestStatistics*) = 0;
 
-  /// @brief whether or not requests of this CommTask can be executed directly,
-  /// inside the IO thread
-  virtual bool allowDirectHandling() const = 0;
-
  protected:
   
   enum class Flow : bool { Continue = true, Abort = false };
@@ -114,23 +110,20 @@ protected:
   /// response if execution is supposed to be aborted
   Flow prepareExecution(GeneralRequest&);
 
-  /// Must be called from addResponse, before response is rendered
+  /// Must be called from sendResponse, before response is rendered
   void finishExecution(GeneralResponse&) const;
 
   /// Push this request into the execution pipeline
   void executeRequest(std::unique_ptr<GeneralRequest>,
                       std::unique_ptr<GeneralResponse>);
 
-  void setStatistics(uint64_t, RequestStatistics*);
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);
 
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum, std::string const&);
-  void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum);
+                        uint64_t messageId, int errorNum, char const* errorMessage = nullptr);
   
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic

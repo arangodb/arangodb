@@ -32,6 +32,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/ExecContext.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -127,9 +128,12 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   _vpack.reserve(maxDocuments);
 
   MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
+  
+  TRI_ASSERT(trx.isLocked(_collection, AccessMode::Type::READ));
+  trx.transactionContextPtr()->pinData(_collection);
+  
   ManagedDocumentResult mmdr;
-  trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr,
-                                                mmColl](LocalDocumentId const& token) {
+  mmColl->invokeOnAllElements(&trx, [this, &limit, &trx, &mmdr, mmColl](LocalDocumentId const& token) {
     if (limit == 0) {
       return false;
     }

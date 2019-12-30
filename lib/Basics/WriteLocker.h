@@ -30,7 +30,7 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 #include "Logger/Logger.h"
 #endif
 
@@ -53,18 +53,17 @@
   arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
       &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 /// @brief write locker
 /// A WriteLocker write-locks a read-write lock during its lifetime and unlocks
 /// the lock when it is destroyed.
 template <class LockType>
 class WriteLocker {
+ public:
   WriteLocker(WriteLocker const&) = delete;
   WriteLocker& operator=(WriteLocker const&) = delete;
 
- public:
   /// @brief acquires a write-lock
   /// The constructors acquire a write lock, the destructor unlocks the lock.
   WriteLocker(LockType* readWriteLock, LockerType type, bool condition,
@@ -72,14 +71,14 @@ class WriteLocker {
       : _readWriteLock(readWriteLock),
         _file(file),
         _line(line),
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
         _isLocked(false),
         _time(0.0) {
 #else
         _isLocked(false) {
 #endif
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     // fetch current time
     double t = TRI_microtime();
 #endif
@@ -96,19 +95,20 @@ class WriteLocker {
       }
     }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     // add elapsed time to time tracker
     _time = TRI_microtime() - t;
 #endif
   }
 
   /// @brief releases the write-lock
-  ~WriteLocker() {
+  ~WriteLocker() noexcept {
     if (_isLocked) {
+      static_assert(noexcept(_readWriteLock->unlockWrite()));
       _readWriteLock->unlockWrite();
     }
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
       LOG_TOPIC("95aa0", INFO, arangodb::Logger::PERFORMANCE)
           << "WriteLocker " << _file << ":" << _line << " took " << _time << " s";
@@ -117,7 +117,7 @@ class WriteLocker {
   }
 
   /// @brief whether or not we acquired the lock
-  bool isLocked() const noexcept { return _isLocked; }
+  [[nodiscard]] bool isLocked() const noexcept { return _isLocked; }
 
   /// @brief eventually acquire the write lock
   void lockEventual() {
@@ -127,7 +127,7 @@ class WriteLocker {
     TRI_ASSERT(_isLocked);
   }
 
-  bool tryLock() {
+  [[nodiscard]] bool tryLock() {
     TRI_ASSERT(!_isLocked);
     if (_readWriteLock->tryWriteLock()) {
       _isLocked = true;
@@ -174,13 +174,12 @@ class WriteLocker {
   /// @brief whether or not the lock was acquired
   bool _isLocked;
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
   /// @brief lock time
   double _time;
 #endif
 };
 
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics
 
 #endif

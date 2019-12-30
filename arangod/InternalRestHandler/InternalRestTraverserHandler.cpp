@@ -36,10 +36,10 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
-InternalRestTraverserHandler::InternalRestTraverserHandler(GeneralRequest* request,
-                                                           GeneralResponse* response,
-                                                           TraverserEngineRegistry* engineRegistry)
-    : RestVocbaseBaseHandler(request, response), _registry(engineRegistry) {
+InternalRestTraverserHandler::InternalRestTraverserHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, TraverserEngineRegistry* engineRegistry)
+    : RestVocbaseBaseHandler(server, request, response), _registry(engineRegistry) {
   TRI_ASSERT(_registry != nullptr);
 }
 

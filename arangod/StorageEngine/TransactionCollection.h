@@ -62,7 +62,7 @@ class TransactionCollection {
     return _collection;  // vocbase collection pointer
   }
 
-  std::string collectionName() const;
+  std::string const& collectionName() const;
 
   AccessMode::Type accessType() const { return _accessType; }
   

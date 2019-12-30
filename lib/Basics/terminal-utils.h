@@ -45,7 +45,7 @@ struct TRI_TerminalSize {
 /// @brief returns the terminal size
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_TerminalSize TRI_DefaultTerminalSize(void);
+TRI_TerminalSize TRI_DefaultTerminalSize();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)

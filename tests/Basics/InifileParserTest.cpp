@@ -65,6 +65,10 @@ TEST(InifileParserTest, test_options) {
   std::string aStringValueWithAnInlineComment = "gaw";
   std::string anotherStringValueWithAnInlineComment = "gaw";
   std::string aStringValueNotSet = "meow";
+
+  std::unordered_set<std::string> soundsPorksMake = { "foo", "bar", "blub", "snuggles", "slurp", "oink" };
+  std::vector<std::string> porkSounds = {"slurp"};
+  std::vector<std::string> strangePorkSounds = {"slurp", "snuggles"};
   
   ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
   options.addSection("rocksdb", "bla");
@@ -98,6 +102,14 @@ TEST(InifileParserTest, test_options) {
   options.addOption("--pork.a-string-value-with-an-inline-comment", "bla", new StringParameter(&aStringValueWithAnInlineComment));
   options.addOption("--pork.another-string-value-with-an-inline-comment", "bla", new StringParameter(&anotherStringValueWithAnInlineComment));
   options.addOption("--pork.a-string-value-not-set", "bla", new StringParameter(&aStringValueNotSet));
+  options.addOption("--pork.sounds", "which sounds do pigs make?",
+                    new DiscreteValuesVectorParameter<StringParameter>(&porkSounds, soundsPorksMake),
+                    arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+
+  options.addOption("--pork.strange-sounds", "which strange sounds do pigs make?",
+                    new DiscreteValuesVectorParameter<StringParameter>(&strangePorkSounds, soundsPorksMake),
+                    arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+
 
   auto contents = R"data(
 [rocksdb]
@@ -107,7 +119,7 @@ total-write-buffer-size = 536870912
 max-write-buffer-number = 4
 max-total-wal-size = 1024000 # 1M
 
-# Read buffers
+# Read buffers 
 block-cache-size = 268435456
 enforce-block-cache-size-limit = true
 
@@ -130,6 +142,9 @@ a-string-value-empty =
 a-string-value = 486hbsbq,r
 a-string-value-with-an-inline-comment = abc#def h
 another-string-value-with-an-inline-comment = abc  #def h
+sounds = foo
+sounds = oink
+sounds = snuggles
 )data";
   
   IniFileParser parser(&options);
@@ -167,4 +182,27 @@ another-string-value-with-an-inline-comment = abc  #def h
   ASSERT_EQ("abc#def h", aStringValueWithAnInlineComment);
   ASSERT_EQ("abc  #def h", anotherStringValueWithAnInlineComment);
   ASSERT_EQ("meow", aStringValueNotSet);
+  auto findPorkSound = [&porkSounds](std::string sound) {
+                         return std::find(porkSounds.begin(), porkSounds.end(), sound);
+                           };
+  ASSERT_EQ(porkSounds.size(), 3);
+  ASSERT_EQ(findPorkSound("meow"), porkSounds.end());
+  // the default value should have been removed:
+  ASSERT_EQ(findPorkSound("slurp"), porkSounds.end());
+  auto it = porkSounds.begin();
+  ASSERT_EQ(findPorkSound("foo"), it);
+  it++;
+  ASSERT_EQ(findPorkSound("oink"), it);
+  it++;
+  ASSERT_EQ(findPorkSound("snuggles"), it);
+
+  auto findStrangePorkSound = [&strangePorkSounds](std::string sound) {
+                         return std::find(strangePorkSounds.begin(), strangePorkSounds.end(), sound);
+                           };
+  ASSERT_EQ(strangePorkSounds.size(), 2);
+  it = strangePorkSounds.begin();
+  ASSERT_EQ(findStrangePorkSound("slurp"), it);
+  it++;
+  ASSERT_EQ(findStrangePorkSound("snuggles"), it);
+  ASSERT_EQ(findStrangePorkSound("blub"), strangePorkSounds.end());
 }

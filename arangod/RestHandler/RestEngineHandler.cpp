@@ -33,18 +33,21 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEngineHandler::RestEngineHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestEngineHandler::RestEngineHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
-  
+
   if (type != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
+
   handleGet();
   return RestStatus::DONE;
 }
@@ -63,15 +66,13 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
 
-  if (!security->canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-    return; 
+    return;
   }
 
   // access to engine stats is disallowed in hardened mode

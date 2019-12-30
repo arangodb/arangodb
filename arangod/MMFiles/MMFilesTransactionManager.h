@@ -36,7 +36,7 @@ class MMFilesTransactionManager final : public TransactionManager {
 
  public:
   MMFilesTransactionManager() : TransactionManager() {}
-  ~MMFilesTransactionManager() {}
+  ~MMFilesTransactionManager() = default;
 
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override;

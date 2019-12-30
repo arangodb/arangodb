@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_COLLECTION_H
 #define ARANGOD_AQL_COLLECTION_H 1
 
-#include "Basics/Common.h"
+#include "Cluster/ClusterTypes.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
@@ -43,40 +43,31 @@ struct Collection {
 
   Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
 
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TRI_vocbase_t* vocbase() const;
 
   /// @brief upgrade the access type to exclusive
   void setExclusiveAccess();
 
-  AccessMode::Type accessType() const { return _accessType; }
-  void accessType(AccessMode::Type type) { _accessType = type; }
+  AccessMode::Type accessType() const;
+  void accessType(AccessMode::Type type);
 
-  bool isReadWrite() const { return _isReadWrite; }
+  bool isReadWrite() const;
 
-  void isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
+  void isReadWrite(bool isReadWrite);
 
   /// @brief set the current shard
-  void setCurrentShard(std::string const& shard) { _currentShard = shard; }
+  void setCurrentShard(std::string const& shard);
 
   /// @brief remove the current shard
-  void resetCurrentShard() { _currentShard.clear(); }
+  void resetCurrentShard();
 
   /// @brief get the collection id
   TRI_voc_cid_t id() const;
 
   /// @brief returns the name of the collection, translated for the sharding
   /// case. this will return _currentShard if it is set, and name otherwise
-  std::string const& name() const {
-    if (!_currentShard.empty()) {
-      // sharding case: return the current shard name instead of the collection
-      // name
-      return _currentShard;
-    }
+  std::string const& name() const;
 
-    // non-sharding case: simply return the name
-    return _name;
-  }
-  
   /// @brief collection type
   TRI_col_type_e type() const;
 
@@ -128,6 +119,22 @@ struct Collection {
   /// if no smart join attribute is present)
   std::string const& smartJoinAttribute() const;
 
+  /// @brief add a mapping of shard => server id
+  /// for later lookup on DistributeNodes
+  void addShardToServer(ShardID const& sid, ServerID const& server) const {
+    // Cannot add the same shard twice!
+    TRI_ASSERT(_shardToServerMapping.find(sid) == _shardToServerMapping.end());
+    _shardToServerMapping.try_emplace(sid, server);
+  }
+
+  /// @brief lookup the server responsible for the given shard.
+  ServerID const& getServerForShard(ShardID const& sid) const {
+    auto const& it = _shardToServerMapping.find(sid);
+    // Every shard in question has been registered!
+    TRI_ASSERT(it != _shardToServerMapping.end());
+    return it->second;
+  }
+
  private:
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
@@ -142,6 +149,11 @@ struct Collection {
   AccessMode::Type _accessType;
 
   bool _isReadWrite;
+
+  /// @brief a constant mapping for shards => ServerName as they ware planned
+  /// at the beginning. This way we can distribute data to servers without
+  /// asking the Agency periodically, or even suffer from failover scenarios.
+  mutable std::unordered_map<ShardID, ServerID> _shardToServerMapping;
 };
 }  // namespace aql
 }  // namespace arangodb

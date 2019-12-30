@@ -37,6 +37,7 @@ class GraphStore;
 class Conductor;
 
 class RecoveryManager {
+  ClusterInfo& _ci;
   Mutex _lock;
   AgencyComm _agency;
   // AgencyCallbackRegistry* _agencyCallbackRegistry;  // weak
@@ -51,7 +52,7 @@ class RecoveryManager {
   void _renewPrimaryServer(ShardID const& shard);
 
  public:
-  RecoveryManager();
+  explicit RecoveryManager(ClusterInfo&);
   ~RecoveryManager();
 
   void monitorCollections(DatabaseID const& database,

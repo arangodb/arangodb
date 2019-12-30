@@ -35,7 +35,7 @@ class LogicalCollection;
 
 class MMFilesCleanupThread final : public Thread {
  public:
-  explicit MMFilesCleanupThread(TRI_vocbase_t* vocbase);
+  explicit MMFilesCleanupThread(TRI_vocbase_t& vocbase);
   ~MMFilesCleanupThread();
 
   void signal();
@@ -54,7 +54,7 @@ class MMFilesCleanupThread final : public Thread {
   void cleanupCollection(arangodb::LogicalCollection* collection);
 
  private:
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 
   arangodb::basics::ConditionVariable _condition;
 };

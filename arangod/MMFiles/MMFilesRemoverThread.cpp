@@ -33,8 +33,10 @@ using namespace arangodb;
 /// @brief wait interval for the remover thread when idle
 uint64_t const MMFilesRemoverThread::Interval = 2000000;
 
-MMFilesRemoverThread::MMFilesRemoverThread(MMFilesLogfileManager* logfileManager)
-    : Thread("WalRemover"), _logfileManager(logfileManager), _condition() {}
+MMFilesRemoverThread::MMFilesRemoverThread(MMFilesLogfileManager& logfileManager)
+    : Thread(logfileManager.server(), "WalRemover"),
+      _logfileManager(logfileManager),
+      _condition() {}
 
 /// @brief begin shutdown sequence
 void MMFilesRemoverThread::beginShutdown() {
@@ -52,11 +54,11 @@ void MMFilesRemoverThread::run() {
     bool worked = false;
 
     try {
-      worked = _logfileManager->removeLogfiles();
+      worked = _logfileManager.removeLogfiles();
 
       if (++iterations == 5) {
         iterations = 0;
-        _logfileManager->collectLogfileBarriers();
+        _logfileManager.collectLogfileBarriers();
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();

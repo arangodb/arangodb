@@ -64,7 +64,7 @@ function runSetup () {
     } catch (err2) {}
   }
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

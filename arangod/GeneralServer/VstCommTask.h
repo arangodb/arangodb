@@ -26,10 +26,9 @@
 #define ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H 1
 
 #include "Basics/Common.h"
-
 #include "GeneralServer/GeneralCommTask.h"
-#include "lib/Rest/VstRequest.h"
-#include "lib/Rest/VstResponse.h"
+#include "Rest/VstRequest.h"
+#include "Rest/VstResponse.h"
 
 #include <boost/lockfree/queue.hpp>
 #include <fuerte/detail/vst.h>
@@ -45,8 +44,6 @@ class VstCommTask final : public GeneralCommTask<T> {
               std::unique_ptr<AsioSocket<T>> socket,
               fuerte::vst::VSTVersion v);
   ~VstCommTask();
-
-  bool allowDirectHandling() const override { return false; }
 
  protected:
 
@@ -101,6 +98,7 @@ class VstCommTask final : public GeneralCommTask<T> {
   };
   
   struct ResponseItem {
+    RequestStatistics* stat;
     velocypack::Buffer<uint8_t> metadata;
     std::unique_ptr<GeneralResponse> response;
     std::vector<asio_ns::const_buffer> buffers;

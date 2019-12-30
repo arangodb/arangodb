@@ -46,8 +46,10 @@ namespace algos {
 
 struct AsyncSCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
-  explicit AsyncSCC(VPackSlice userParams)
-      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>("AsyncSCC", userParams) {}
+  explicit AsyncSCC(application_features::ApplicationServer& server, VPackSlice userParams)
+      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(server,
+                                                                   "AsyncSCC",
+                                                                   userParams) {}
 
   bool supportsAsyncMode() const override { return true; }
 

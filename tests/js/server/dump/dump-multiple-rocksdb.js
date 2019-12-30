@@ -89,8 +89,17 @@ function dumpTestSuite () {
       assertEqual(100000, c.count());
 
       // test all documents
-      for (var i = 0; i < 100000; ++i) {
-        var doc = c.document("test" + i);
+      let docs = [], results = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push("test" + i);
+        if (docs.length === 10000) {
+          results = results.concat(c.document(docs));
+          docs = [];
+        }
+      }
+
+      for (let i = 0; i < 100000; ++i) {
+        let doc = results[i];
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
@@ -157,13 +166,11 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(9000, c.count());
 
-      var i;
-      for (i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         if (i % 10 === 0) {
           assertFalse(c.exists("test" + i));
-        }
-        else {
-          var doc = c.document("test" + i);
+        } else {
+          let doc = c.document("test" + i);
           assertEqual(i, doc.value1);
 
           if (i < 1000) {

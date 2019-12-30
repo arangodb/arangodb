@@ -453,7 +453,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
                 return Index::sortWeight(lhs) < Index::sortWeight(rhs);
               });
 
-    arangodb::HashSet<int> operatorsFound;
+    ::arangodb::containers::HashSet<int> operatorsFound;
     for (auto& it : nodes) {
       if (it->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
         // ignore all != operators here
@@ -474,7 +474,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   // must edit in place, no access to AST; TODO change so we can replace with
   // copy
   TEMPORARILY_UNLOCK_NODE(node);
-  node->removeMembers();
+  node->clearMembers();
 
   for (auto& it : children) {
     TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
@@ -484,8 +484,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   return node;
 }
 
-bool SortedIndexAttributeMatcher::isDuplicateOperator(arangodb::aql::AstNode const* node,
-                                                      arangodb::HashSet<int> const& operatorsFound) {
+bool SortedIndexAttributeMatcher::isDuplicateOperator(
+    arangodb::aql::AstNode const* node,
+    ::arangodb::containers::HashSet<int> const& operatorsFound) {
   auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator

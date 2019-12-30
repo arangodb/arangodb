@@ -36,12 +36,12 @@ using namespace arangodb::graph::cacheFactory;
 
 TraverserCache* cacheFactory::CreateCache(
     arangodb::aql::Query* query, bool activateDocumentCache,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
+    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const* opts) {
   if (ServerState::instance()->isCoordinator()) {
-    return new ClusterTraverserCache(query, engines);
+    return new ClusterTraverserCache(query, engines, opts);
   }
   if (activateDocumentCache) {
-    return new TraverserDocumentCache(query);
+    return new TraverserDocumentCache(query, opts);
   }
-  return new TraverserCache(query);
+  return new TraverserCache(query, opts);
 }

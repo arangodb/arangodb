@@ -28,8 +28,9 @@ function testSuite() {
 
   const name = "TestAuthAnalyzer";
 
-  if(!users.exists('bob'))
+  if (!users.exists('bob')) {
     users.save(user, ''); // password must be empty otherwise switchUser will not work
+  }
 
   // analyzers can only be changed from the `_system` database
   // analyzer API does not support database selection via the usual `_db/<dbname>/_api/<api>`

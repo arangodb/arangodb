@@ -710,6 +710,8 @@ double ShapeContainer::area(geo::Ellipsoid const& e) {
   double area = 0.0;
   struct geod_geodesic g;
   geod_init(&g, e.equator_radius(), e.flattening());
+  double A = 0.0;
+  double P = 0.0;
 
   switch (_type) {
     case Type::S2_LATLNGRECT: {
@@ -722,7 +724,6 @@ double ShapeContainer::area(geo::Ellipsoid const& e) {
       geod_polygon_addpoint(&g, &p, rect->lat_hi().degrees(), rect->lng_hi().degrees());
       geod_polygon_addpoint(&g, &p, rect->lat_hi().degrees(), rect->lng_lo().degrees());
 
-      double A, P;
       geod_polygon_compute(&g, &p, 0, 1, &A, &P);
       area = A;
     } break;
@@ -740,7 +741,6 @@ double ShapeContainer::area(geo::Ellipsoid const& e) {
           geod_polygon_addpoint(&g, &p, latLng.lat().degrees(), latLng.lng().degrees());
         }
 
-        double A, P;
         geod_polygon_compute(&g, &p, /*reverse*/ false, /*sign*/ true, &A, &P);
         area += A;
       }

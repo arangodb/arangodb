@@ -25,12 +25,18 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/VocbaseInfo.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace methods {
 
 /// Common code for the db._database(),
@@ -38,11 +44,18 @@ struct Databases {
   static TRI_vocbase_t* lookup(std::string const& dbname);
   static TRI_vocbase_t* lookup(TRI_voc_tick_t);
   static std::vector<std::string> list(std::string const& user = "");
-  static arangodb::Result info(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result);
-  static arangodb::Result create(std::string const& dbName,
-                                 arangodb::velocypack::Slice const& users,
-                                 arangodb::velocypack::Slice const& options);
+  static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
+  static arangodb::Result create(application_features::ApplicationServer& server,
+                                 std::string const& dbName, VPackSlice const& users,
+                                 VPackSlice const& options);
   static arangodb::Result drop(TRI_vocbase_t* systemVocbase, std::string const& dbName);
+
+ private:
+  /// @brief will retry for at most <timeout> seconds
+  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info, int64_t timeout);
+
+  static arangodb::Result createCoordinator(CreateDatabaseInfo const& info);
+  static arangodb::Result createOther(CreateDatabaseInfo const& info);
 };
 }  // namespace methods
 }  // namespace arangodb

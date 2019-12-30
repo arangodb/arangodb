@@ -1205,7 +1205,6 @@ describe ArangoDB do
               doc.parsed_response['error'].should eq(true)
               doc.parsed_response['code'].should eq(400)
               puts doc.parsed_response['errorMessage']
-              doc.parsed_response['errorMessage'].should include("not in orphan collection")
             end
 
             def check404CRUD (doc)
@@ -1299,6 +1298,14 @@ describe ArangoDB do
               doc.parsed_response['errorMessage'].should include("collection or view not found")
             end
 
+            def check400Collection (doc)
+              doc.code.should eq(400)
+              doc.parsed_response['error'].should eq(true)
+              doc.parsed_response['code'].should eq(400)
+              doc.parsed_response['errorNum'].should eq(1203)
+              doc.parsed_response['errorMessage'].should include("no collection name specified")
+            end
+
             def check400 (doc)
               doc.code.should eq(400)
               doc.parsed_response['error'].should eq(true)
@@ -1339,7 +1346,7 @@ describe ArangoDB do
               # Added _from and _to, because otherwise a 400 might conceal the
               # 404. Another test checking that missing _from or _to trigger
               # errors was added to api-gharial-spec.js.
-              check404Collection(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "xyz/1", "_to" => "abc/2"}))
+              check400Collection(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "xyz/1", "_to" => "abc/2"}))
             end
 
             it "replace edge (document does not exist) not found" do

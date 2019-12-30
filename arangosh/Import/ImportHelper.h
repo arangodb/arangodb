@@ -66,6 +66,8 @@ struct ImportStatistics {
 
   arangodb::Mutex _mutex;
   QuickHistogram _histogram;
+
+  explicit ImportStatistics(application_features::ApplicationServer&);
 };
 
 class ImportHelper {
@@ -81,7 +83,7 @@ class ImportHelper {
   ImportHelper& operator=(ImportHelper const&) = delete;
 
  public:
-  ImportHelper(ClientFeature const* client, std::string const& endpoint,
+  ImportHelper(ClientFeature const& client, std::string const& endpoint,
                httpclient::SimpleHttpClientParams const& params, uint64_t maxUploadSize,
                uint32_t threadCount, bool autoUploadSize = false);
 
@@ -286,6 +288,7 @@ class ImportHelper {
   void waitForSenders();
 
  private:
+  ClientFeature const& _clientFeature;
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
   std::atomic<uint64_t> _maxUploadSize;
   std::atomic<uint64_t> _periodByteCount;

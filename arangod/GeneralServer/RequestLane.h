@@ -23,11 +23,7 @@
 #ifndef ARANGOD_GENERAL_SERVER_LANE_H
 #define ARANGOD_GENERAL_SERVER_LANE_H 1
 
-#include "Basics/Common.h"
-
 namespace arangodb {
-class GeneralRequest;
-
 enum class RequestLane {
   // For requests that do not block or wait for something.
   // This ignores blocks that can occur when delivering
@@ -102,7 +98,11 @@ enum class RequestLane {
   // AGENCY_CALLBACK`
 };
 
-enum class RequestPriority { HIGH, MED, LOW };
+enum class RequestPriority { 
+  HIGH = 0, 
+  MED = 1, 
+  LOW = 2 
+};
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
   switch (lane) {

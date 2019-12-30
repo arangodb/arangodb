@@ -116,7 +116,7 @@ var ArangoError = require('@arangodb').ArangoError;
 // / @brief append the waitForSync parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._appendSyncParameter = function (url, waitForSync) {
+let appendSyncParameter = function (url, waitForSync) {
   if (waitForSync) {
     if (url.indexOf('?') === -1) {
       url += '?';
@@ -132,7 +132,7 @@ ArangoCollection.prototype._appendSyncParameter = function (url, waitForSync) {
 // / @brief append some boolean parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._appendBoolParameter = function (url, name, val) {
+let appendBoolParameter = function (url, name, val) {
   if (url.indexOf('?') === -1) {
     url += '?';
   }else {
@@ -356,6 +356,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'indexBuckets': true,
     'replicationFactor': true,
     'minReplicationFactor': true,
+    'writeConcern': true,
     'distributeShardsLike': false,
     'shardingStrategy': false,
     'cacheEnabled': true
@@ -635,8 +636,7 @@ ArangoCollection.prototype.rename = function (name) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.refresh = function () {
-  var requestResult = this._database._connection.GET(
-    this._database._collectionurl(this._id) + '?useId=true');
+  var requestResult = this._database._connection.GET(this._database._collectionurl(this._id));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -946,22 +946,22 @@ ArangoCollection.prototype.save =
 
     // the following parameters are optional, so we only append them if necessary
     if (options.waitForSync) {
-      url = this._appendSyncParameter(url, options.waitForSync);
+      url = appendSyncParameter(url, options.waitForSync);
     }
     if (options.returnNew) {
-      url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
+      url = appendBoolParameter(url, 'returnNew', options.returnNew);
     }
 
     if (options.returnOld) {
-      url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+      url = appendBoolParameter(url, 'returnOld', options.returnOld);
     }
 
     if (options.silent) {
-      url = this._appendBoolParameter(url, 'silent', options.silent);
+      url = appendBoolParameter(url, 'silent', options.silent);
     }
 
     if (options.overwrite) {
-      url = this._appendBoolParameter(url, 'overwrite', options.overwrite);
+      url = appendBoolParameter(url, 'overwrite', options.overwrite);
     }
 
     let headers = {};
@@ -1051,13 +1051,13 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     url = this._documenturl(id);
   }
 
-  url = this._appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
+  url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
   if (options.returnOld) {
-    url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    url = appendBoolParameter(url, 'returnOld', options.returnOld);
   }
   if (options.silent) {
-    url = this._appendBoolParameter(url, 'silent', options.silent);
+    url = appendBoolParameter(url, 'silent', options.silent);
   }
 
   let headers = {};
@@ -1193,19 +1193,19 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     url = this._documenturl(id);
   }
 
-  url = this._appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
+  url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
   if (waitForSync) {
-    url = this._appendSyncParameter(url, waitForSync);
+    url = appendSyncParameter(url, waitForSync);
   }
   if (options.returnOld) {
-    url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    url = appendBoolParameter(url, 'returnOld', options.returnOld);
   }
   if (options.returnNew) {
-    url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
+    url = appendBoolParameter(url, 'returnNew', options.returnNew);
   }
   if (options.silent) {
-    url = this._appendBoolParameter(url, 'silent', options.silent);
+    url = appendBoolParameter(url, 'silent', options.silent);
   }
 
   let headers ={};
@@ -1311,19 +1311,19 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = this._documenturl(id) + params;
   }
 
-  url = this._appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
+  url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
   if (waitForSync) {
-    url = this._appendSyncParameter(url, waitForSync);
+    url = appendSyncParameter(url, waitForSync);
   }
   if (options.returnOld) {
-    url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    url = appendBoolParameter(url, 'returnOld', options.returnOld);
   }
   if (options.returnNew) {
-    url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
+    url = appendBoolParameter(url, 'returnNew', options.returnNew);
   }
   if (options.silent) {
-    url = this._appendBoolParameter(url, 'silent', options.silent);
+    url = appendBoolParameter(url, 'silent', options.silent);
   }
 
   let headers = {};

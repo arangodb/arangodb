@@ -47,7 +47,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
   CustomTypeHandler(TRI_vocbase_t& vocbase, CollectionNameResolver const& resolver)
       : vocbase(vocbase), resolver(resolver) {}
 
-  ~CustomTypeHandler() {}
+  ~CustomTypeHandler() = default;
 
   void dump(VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));

@@ -83,12 +83,13 @@ class GeneralRequest {
   explicit GeneralRequest(ConnectionInfo const& connectionInfo)
       : _connectionInfo(connectionInfo),
         _requestContext(nullptr),
-        _isRequestContextOwner(false),
-        _authenticated(false),
+        _authenticationMethod(rest::AuthenticationMethod::NONE),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
         _contentTypeResponse(ContentType::UNSET),
-        _acceptEncoding(EncodingType::UNSET) {}
+        _acceptEncoding(EncodingType::UNSET),
+        _isRequestContextOwner(false),
+        _authenticated(false) {}
 
   virtual ~GeneralRequest();
 
@@ -110,7 +111,6 @@ class GeneralRequest {
   // @brief User sending this request
   TEST_VIRTUAL std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
-  void setUser(std::string&& user) { _user = std::move(user); }
 
   /// @brief the request context depends on the application
   TEST_VIRTUAL RequestContext* requestContext() const {
@@ -167,9 +167,13 @@ class GeneralRequest {
     return _headers;
   }
 
+  void removeHeader(std::string key) {
+    _headers.erase(key);
+  }
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void addHeader(std::string key, std::string value) {
-    _headers.emplace(std::move(key), std::move(value));
+    _headers.try_emplace(std::move(key), std::move(value));
   }
 #endif
 
@@ -202,6 +206,7 @@ class GeneralRequest {
     return std::make_shared<velocypack::Builder>(payload());
   };
 
+  virtual void setDefaultContentType() = 0;
   /// @brieg should reflect the Content-Type header
   ContentType contentType() const { return _contentType; }
   /// @brief should generally reflect the Accept header
@@ -225,20 +230,21 @@ class GeneralRequest {
 
   // request context
   RequestContext* _requestContext;
-  bool _isRequestContextOwner;
-  bool _authenticated;
-
-  rest::AuthenticationMethod _authenticationMethod = rest::AuthenticationMethod::NONE;
+  
+  rest::AuthenticationMethod _authenticationMethod;
 
   // information about the payload
   RequestType _type;  // GET, POST, ..
+  ContentType _contentType;  // UNSET, VPACK, JSON
+  ContentType _contentTypeResponse;
+  EncodingType _acceptEncoding;
+  bool _isRequestContextOwner;
+  bool _authenticated;
+  
   std::string _fullUrl;
   std::string _requestPath;
   std::string _prefix;  // part of path matched by rest route
   std::vector<std::string> _suffixes;
-  ContentType _contentType;  // UNSET, VPACK, JSON
-  ContentType _contentTypeResponse;
-  EncodingType _acceptEncoding;
 
   std::unordered_map<std::string, std::string> _headers;
   std::unordered_map<std::string, std::string> _values;

@@ -37,9 +37,11 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Methods.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -62,7 +64,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::string const& algoName, VPackSlice const& config)
     : _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
-      _algorithm(AlgoRegistry::createAlgorithm(algoName, config)),
+      _algorithm(AlgoRegistry::createAlgorithm(vocbase.server(), algoName, config)),
       _vertexCollections(vertexCollections),
       _edgeCollections(edgeCollections) {
   if (!config.isObject()) {
@@ -92,7 +94,7 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_lazyLoading) {
     LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
-  _useMemoryMaps = VelocyPackHelper::readBooleanValue(_userParams.slice(),
+  _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
                                                       Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
@@ -495,25 +497,25 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
 
-    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId()));
     allShards.push_back(collectionID);
     serverMap[ss->getId()][collectionID].push_back(collectionID);
 
   } else if (ss->isCoordinator()) {  // we are in the cluster
 
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::shared_ptr<LogicalCollection> lc = ci->getCollection(vocbase->name(), collectionID);
+    ClusterInfo& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+    std::shared_ptr<LogicalCollection> lc = ci.getCollection(vocbase->name(), collectionID);
     if (lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
-    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci->getShardList(std::to_string(lc->id()));
+        ci.getShardList(std::to_string(lc->id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {
-      std::shared_ptr<std::vector<ServerID>> servers = ci->getResponsibleServer(shard);
+      std::shared_ptr<std::vector<ServerID>> servers = ci.getResponsibleServer(shard);
       if (servers->size() > 0) {
         serverMap[(*servers)[0]][lc->name()].push_back(shard);
       }
@@ -556,14 +558,17 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   }
 
   std::string coordinatorId = ServerState::instance()->getId();
-  std::vector<ClusterCommRequest> requests;
+  auto const& nf = _vocbaseGuard.database().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  std::vector<futures::Future<network::Response>> responses;
 
   for (auto const& it : vertexMap) {
     ServerID const& server = it.first;
     std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap = it.second;
     std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap = edgeMap[it.first];
 
-    VPackBuilder b;
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder b(buffer);
     b.openObject();
     b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
     b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
@@ -574,7 +579,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     b.add(Utils::lazyLoadingKey, VPackValue(_lazyLoading));
     b.add(Utils::useMemoryMaps, VPackValue(_useMemoryMaps));
     if (additional.isObject()) {
-      for (auto const& pair : VPackObjectIterator(additional)) {
+      for (auto pair : VPackObjectIterator(additional)) {
         b.add(pair.key.copyString(), pair.value);
       }
     }
@@ -634,17 +639,31 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
 
       return TRI_ERROR_NO_ERROR;
     } else {
-      auto body = std::make_shared<std::string const>(b.toJson());
-      requests.emplace_back("server:" + server, rest::RequestType::POST, path, body);
+      
+      network::RequestOptions reqOpts;
+      reqOpts.timeout = network::Timeout(5.0 * 60.0);
+      
+      responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
+                                                  path, std::move(buffer), reqOpts));
+      
       LOG_TOPIC("6ae66", DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
   }
-
-  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-  size_t nrGood =
-      cc->performRequests(requests, 5.0 * 60.0, LogTopic("Pregel Conductor"), false);
-  Utils::printResponses(requests);
-  return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
+  
+  size_t nrGood = 0;
+  futures::collectAll(responses).thenValue([&nrGood](auto const& results) {
+    for (auto const& tryRes : results) {
+      network::Response const& r = tryRes.get();  // throws exceptions upwards
+      if (r.ok() && r.response->statusCode() < 400) {
+        nrGood++;
+      } else {
+        LOG_TOPIC("6ae67", ERR, Logger::PREGEL) << "received error from worker: '"
+          << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
+      }
+    }
+  }).wait();
+  
+  return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
 int Conductor::_finalizeWorkers() {
@@ -809,10 +828,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
     }
     return TRI_ERROR_NO_ERROR;
   }
-
-  // cluster case
-  std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-
+  
   if (_dbServers.size() == 0) {
     LOG_TOPIC("a14fa", WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
@@ -820,23 +836,37 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
 
   std::string base = Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix);
   auto body = std::make_shared<std::string const>(message.toJson());
-  std::vector<ClusterCommRequest> requests;
+  
+  VPackBuffer<uint8_t> buffer;
+  buffer.append(message.data(), message.size());
 
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(5.0 * 60.0);
+  reqOpts.skipScheduler = true;
+  
+  auto const& nf = _vocbaseGuard.database().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  std::vector<futures::Future<network::Response>> responses;
+  
   for (auto const& server : _dbServers) {
-    requests.emplace_back("server:" + server, rest::RequestType::POST, base + path, body);
+    responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
+                                                base + path, buffer, reqOpts));
   }
-
-  size_t nrGood =
-      cc->performRequests(requests, 5.0 * 60.0, LogTopic("Pregel Conductor"), false);
-  LOG_TOPIC("9de62", TRACE, Logger::PREGEL)
-      << "Send " << path << " to " << nrGood << " servers";
-  Utils::printResponses(requests);
-  if (handle && nrGood == requests.size()) {
-    for (ClusterCommRequest const& req : requests) {
-      handle(req.result.answer->payload());
+  
+  size_t nrGood = 0;
+  futures::collectAll(responses).thenValue([&](auto results) {
+    for (auto const& tryRes : results) {
+       network::Response const& res = tryRes.get();  // throws exceptions upwards
+      if (res.ok() && res.response->statusCode() < 400) {
+        nrGood++;
+        if (handle) {
+          handle(res.response->slice());
+        }
+      }
     }
-  }
-  return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
+  }).wait();
+  
+  return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
 void Conductor::_ensureUniqueResponse(VPackSlice body) {

@@ -45,14 +45,14 @@ template<typename T, typename U> size_t offsetOf (U T::*member) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST(CStructureSizeTest, tst_basic_elements) {
-  EXPECT_TRUE(4 == (int) sizeof(TRI_col_type_e));
-  EXPECT_TRUE(1 == (int) sizeof(MMFilesMarkerType));
-  EXPECT_TRUE(4 == (int) sizeof(MMFilesDatafileVersionType));
-  EXPECT_TRUE(8 == (int) sizeof(TRI_voc_cid_t));
-  EXPECT_TRUE(4 == (int) sizeof(TRI_voc_crc_t));
-  EXPECT_TRUE(8 == (int) sizeof(TRI_voc_tid_t));
-  EXPECT_TRUE(8 == (int) sizeof(TRI_voc_rid_t));
-  EXPECT_TRUE(8 == (int) sizeof(TRI_voc_tick_t));
+  EXPECT_EQ(4, (int) sizeof(TRI_col_type_e));
+  EXPECT_EQ(1, (int) sizeof(MMFilesMarkerType));
+  EXPECT_EQ(4, (int) sizeof(MMFilesDatafileVersionType));
+  EXPECT_EQ(8, (int) sizeof(TRI_voc_cid_t));
+  EXPECT_EQ(4, (int) sizeof(TRI_voc_crc_t));
+  EXPECT_EQ(8, (int) sizeof(TRI_voc_tid_t));
+  EXPECT_EQ(8, (int) sizeof(TRI_voc_rid_t));
+  EXPECT_EQ(8, (int) sizeof(TRI_voc_tick_t));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,12 +63,12 @@ TEST(CStructureSizeTest, tst_df_marker) {
   size_t s = sizeof(MMFilesMarker);
 
   MMFilesMarker m; 
-  EXPECT_TRUE(16 == (int) s);
-  EXPECT_TRUE(s % 8 == 0); 
+  EXPECT_EQ(16, (int) s);
+  EXPECT_EQ(s % 8, 0); 
 
-  EXPECT_TRUE(0 == (int) m.offsetOfSize());
-  EXPECT_TRUE(4 == (int) m.offsetOfCrc());
-  EXPECT_TRUE(8 == (int) m.offsetOfTypeAndTick());
+  EXPECT_EQ(0, (int) m.offsetOfSize());
+  EXPECT_EQ(4, (int) m.offsetOfCrc());
+  EXPECT_EQ(8, (int) m.offsetOfTypeAndTick());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78,12 +78,12 @@ TEST(CStructureSizeTest, tst_df_marker) {
 TEST(CStructureSizeTest, tst_df_header_marker) {
   size_t s = sizeof(MMFilesDatafileHeaderMarker);
 
-  EXPECT_TRUE(16 + 16 == (int) s);
-  EXPECT_TRUE(s % 8 == 0); 
+  EXPECT_EQ(16 + 16, (int) s);
+  EXPECT_EQ(s % 8, 0); 
 
-  EXPECT_TRUE(16 == (int) offsetOf(&MMFilesDatafileHeaderMarker::_version));
-  EXPECT_TRUE(20 == (int) offsetOf(&MMFilesDatafileHeaderMarker::_maximalSize));
-  EXPECT_TRUE(24 == (int) offsetOf(&MMFilesDatafileHeaderMarker::_fid));
+  EXPECT_EQ(16, (int) offsetOf(&MMFilesDatafileHeaderMarker::_version));
+  EXPECT_EQ(20, (int) offsetOf(&MMFilesDatafileHeaderMarker::_maximalSize));
+  EXPECT_EQ(24, (int) offsetOf(&MMFilesDatafileHeaderMarker::_fid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,8 +93,8 @@ TEST(CStructureSizeTest, tst_df_header_marker) {
 TEST(CStructureSizeTest, tst_df_footer_marker) {
   size_t s = sizeof(MMFilesDatafileFooterMarker);
 
-  EXPECT_TRUE(16 == (int) s);
-  EXPECT_TRUE(s % 8 == 0); 
+  EXPECT_EQ(16, (int) s);
+  EXPECT_EQ(s % 8, 0); 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,10 +104,10 @@ TEST(CStructureSizeTest, tst_df_footer_marker) {
 TEST(CStructureSizeTest, tst_col_header_marker) {
   size_t s = sizeof(MMFilesCollectionHeaderMarker);
 
-  EXPECT_TRUE(16 + 8 == (int) s); // base + own size
-  EXPECT_TRUE(s % 8 == 0); 
+  EXPECT_EQ(16 + 8, (int) s); // base + own size
+  EXPECT_EQ(s % 8, 0); 
 
-  EXPECT_TRUE(16 == (int) offsetOf(&MMFilesCollectionHeaderMarker::_cid));
+  EXPECT_EQ(16, (int) offsetOf(&MMFilesCollectionHeaderMarker::_cid));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,9 +117,9 @@ TEST(CStructureSizeTest, tst_col_header_marker) {
 TEST(CStructureSizeTest, tst_df_prologue_marker) {
   size_t s = sizeof(MMFilesPrologueMarker);
 
-  EXPECT_TRUE(16 + 16 == (int) s);
-  EXPECT_TRUE(s % 8 == 0); 
+  EXPECT_EQ(16 + 16, (int) s);
+  EXPECT_EQ(s % 8, 0); 
 
-  EXPECT_TRUE(16 == (int) offsetOf(&MMFilesPrologueMarker::_databaseId));
-  EXPECT_TRUE(24 == (int) offsetOf(&MMFilesPrologueMarker::_collectionId));
+  EXPECT_EQ(16, (int) offsetOf(&MMFilesPrologueMarker::_databaseId));
+  EXPECT_EQ(24, (int) offsetOf(&MMFilesPrologueMarker::_collectionId));
 }

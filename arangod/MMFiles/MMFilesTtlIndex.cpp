@@ -45,7 +45,7 @@ MMFilesTtlIndex::MMFilesTtlIndex(
 #endif
 }
 
-MMFilesTtlIndex::~MMFilesTtlIndex() {}
+MMFilesTtlIndex::~MMFilesTtlIndex() = default;
 
 /// @brief Test if this index matches the definition
 bool MMFilesTtlIndex::matchesDefinition(VPackSlice const& info) const {

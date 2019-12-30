@@ -43,6 +43,7 @@
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -144,6 +145,11 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto guard =
       scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
 
+  // need superuser scope to ensure we can sync all collections and keep seq
+  // numbers in sync; background index creation will call this function as user,
+  // and can lead to seq numbers getting out of sync
+  ExecContextSuperuserScope superuser;
+
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto const maxSeqNr = _db->GetLatestSequenceNumber();
@@ -204,7 +210,13 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
-  TRI_ASSERT(_lastSync.load() <= minSeqNr);
+  auto const lastSync = _lastSync.load();
+  if (minSeqNr < lastSync) {
+    LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
+    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+    return Result(); // do not move backwards in time
+  }
+  TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
     _lastSync.store(minSeqNr);
     return Result();  // nothing was written

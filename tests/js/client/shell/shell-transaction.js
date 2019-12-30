@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -72,7 +72,7 @@ function transactionRevisionsSuite () {
 
     setUp: function () {
       db._drop(cn);
-      c = db._create(cn);
+      c = db._create(cn, {numberOfShards: 4});
     },
 
     tearDown: function () {
@@ -426,7 +426,7 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testListTransactions: function () {
-      db._create(cn);
+      db._create(cn, {numberOfShards: 4});
       let trx1, trx2, trx3;
       
       let obj = {
@@ -512,7 +512,7 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testAbortTransaction: function () {
-      db._create(cn);
+      db._create(cn, {numberOfShards: 4});
       let cleanup = [];
       
       let obj = {
@@ -559,7 +559,7 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCommitTransaction: function () {
-      db._create(cn);
+      db._create(cn, {numberOfShards: 4});
       let cleanup = [];
       
       let obj = {
@@ -605,7 +605,7 @@ function transactionInvocationSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testStatusTransaction: function () {
-      db._create(cn);
+      db._create(cn, {numberOfShards: 4});
       let cleanup = [];
       
       let obj = {
@@ -649,7 +649,110 @@ function transactionInvocationSuite () {
           try { trx.abort(); } catch (err) {}
         });
       }
-    }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort write transactions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortWriteTransactions: function () {
+      db._create(cn, {numberOfShards: 2});
+      let trx1, trx2, trx3;
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        trx1 = db._createTransaction(obj);
+        trx2 = db._createTransaction(obj);
+        trx3 = db._createTransaction(obj);
+        
+        let trx = db._transactions();
+        // the following assertions are not safe, as transactions have
+        // an idle timeout of 10 seconds, and we cannot guarantee any
+        // runtime performance in our test environment
+        // assertInList(trx, trx1);
+        // assertInList(trx, trx2);
+        // assertInList(trx, trx3);
+        
+        let result = arango.DELETE("/_api/transaction/write");
+        assertEqual(result.code, 200);
+
+        trx = db._transactions();
+        assertNotInList(trx, trx1);
+        assertNotInList(trx, trx2);
+        assertNotInList(trx, trx3);
+      } finally {
+        if (trx1 && trx1._id) {
+          try { trx1.abort(); } catch (err) {}
+        }
+        if (trx2 && trx2._id) {
+          try { trx2.abort(); } catch (err) {}
+        }
+        if (trx3 && trx3._id) {
+          try { trx3.abort(); } catch (err) {}
+        }
+      }
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort write transactions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortWriteTransactionAQL: function () {
+      db._create(cn, {numberOfShards: 2});
+      let trx1;
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        trx1 = db._createTransaction(obj);
+        let result = arango.POST_RAW("/_api/cursor", {
+          query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
+        }, { 
+          "x-arango-trx-id" : trx1._id,
+          "x-arango-async" : "store"
+        });
+
+        let jobId = result.headers["x-arango-async-id"];
+
+        let tries = 0;
+        while (++tries < 60) {
+          result = arango.PUT_RAW("/_api/job/" + jobId, {});
+          if (result.code === 204) {
+            break;
+          }
+          require("internal").wait(0.5, false);
+        }
+        
+        let trx = db._transactions();
+        assertInList(trx, trx1);
+       
+        result = arango.DELETE("/_api/transaction/write");
+        assertEqual(result.code, 200);
+
+        tries = 0;
+        while (++tries < 60) {
+          result = arango.PUT_RAW("/_api/job/" + jobId, {});
+          if (result.code === 410) {
+            break;
+          }
+          require("internal").wait(0.5, false);
+        }
+        assertEqual(410, result.code);
+      } finally {
+        if (trx1 && trx1._id) {
+          try { trx1.abort(); } catch (err) {}
+        }
+      }
+    },
 
   };
 }
@@ -674,10 +777,10 @@ function transactionCollectionsSuite () {
 
     setUp: function () {
       db._drop(cn1);
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4});
 
       db._drop(cn2);
-      c2 = db._create(cn2);
+      c2 = db._create(cn2, {numberOfShards: 4});
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1336,8 +1439,6 @@ function transactionCollectionsSuite () {
         }
 
         assertEqual(10, tc1.count());
-        assertEqual(10, tc2.count());
-
       } catch(err) {
         fail("Transaction failed with: " + JSON.stringify(err));
       } finally {
@@ -1443,7 +1544,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testSingleRead1: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo', a: 1 });
 
       let obj = {
@@ -1474,7 +1575,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testSingleRead2: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo', a: 1 });
 
       let obj = {
@@ -1505,7 +1606,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testScan1: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       for (let i = 0; i < 100; ++i) {
         c1.save({ _key: 'foo' + i, a: i });
       }
@@ -1542,7 +1643,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testScan2: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       for (let i = 0; i < 100; ++i) {
         c1.save({ _key: 'foo' + i, a: i });
       }
@@ -1581,7 +1682,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testSingleInsert: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
 
       let obj = {
         collections: {
@@ -1613,7 +1714,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testMultiInsert: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
 
       let obj = {
         collections: {
@@ -1646,7 +1747,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testInsertWithExisting: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
 
@@ -1681,7 +1782,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testReplace: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo', a: 1 });
       c1.save({ _key: 'bar', b: 2, c: 3 });
 
@@ -1723,7 +1824,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testReplaceReplace: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo', a: 1 });
 
       let obj = {
@@ -1766,7 +1867,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUpdate: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo', a: 1 });
       c1.save({ _key: 'bar', b: 2 });
       c1.save({ _key: 'baz', c: 3 });
@@ -1816,7 +1917,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRemove: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo', a: 1 });
       c1.save({ _key: 'bar', b: 2 });
       c1.save({ _key: 'baz', c: 3 });
@@ -1852,7 +1953,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTruncateEmpty: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
 
       let obj = {
         collections: {
@@ -1885,7 +1986,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTruncateNonEmpty: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
 
       for (let i = 0; i < 100; ++i) {
         c1.save({ a: i });
@@ -1921,7 +2022,7 @@ function transactionOperationsSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testTruncateAndAdd: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
 
       for (let i = 0; i < 100; ++i) {
         c1.save({ a: i });
@@ -2003,7 +2104,7 @@ function transactionBarriersSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testBarriersOutsideCommit: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
 
       let docs = [ ];
 
@@ -2052,7 +2153,7 @@ function transactionBarriersSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testBarriersOutsideRollback: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
 
       let docs = [ ];
       let obj = {
@@ -2131,7 +2232,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackAfterFlush: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
 
       // begin trx
       let trx = db._createTransaction({
@@ -2166,7 +2267,7 @@ function transactionRollbackSuite () {
 
     // TODO revision is not a supported El-Cheapo API
     /*testRollbackRevision: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo' });
 
       let r = c1.revision();
@@ -2222,7 +2323,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackInsert: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
       c1.save({ _key: 'meow' });
@@ -2258,7 +2359,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackInsertSecondaryIndexes: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo', value: 'foo', a: 1 });
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
@@ -2297,12 +2398,60 @@ function transactionRollbackSuite () {
       assertEqual(3, c1.count());
     },
 
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: rollback inserts w/ secondary indexes
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testRollbackInsertSecondaryIndexesCustomSharding: function () {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
+      let d1 = c1.save({ value: 'foo', a: 1 });
+      let d2 = c1.save({ value: 'bar', a: 1 });
+      let d3 = c1.save({ value: 'meow' });
+
+      c1.ensureHashIndex('value');
+      c1.ensureSkiplist('value');
+      let good = false;
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ value: 'tom' });
+        tc1.save({ value: 'tim' });
+        tc1.save({ value: 'tam' });
+        tc1.save({ value: 'troet', a: 2 });
+        tc1.save({ value: 'floxx', a: 2 });
+
+        assertEqual(8, tc1.count());
+
+        good = true;
+      } finally {
+        trx.abort(); // rollback
+      }
+      // end trx
+
+      assertEqual(true, good);
+
+      assertEqual(3, c1.count());
+      assertEqual(d1._rev, c1.document(d1._key)._rev);
+      assertEqual(d2._rev, c1.document(d2._key)._rev);
+      assertEqual(d3._rev, c1.document(d3._key)._rev);
+    },
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: rollback inserts
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackInsertUpdate: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
       c1.save({ _key: 'meow' });
@@ -2342,13 +2491,59 @@ function transactionRollbackSuite () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: rollback inserts
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testRollbackInsertUpdateCustomSharding: function () {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
+      let d1 = c1.save({ value: 'foo' });
+      let d2 = c1.save({ value: 'bar' });
+      let d3 = c1.save({ value: 'meow' });
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        
+        let d4 = tc1.save({ value: 'tom' });
+        let d5 = tc1.save({ value: 'tim' });
+        let d6 = tc1.save({ value: 'tam' });
+
+        tc1.update(d4._key, { });
+        tc1.update(d5._key, { });
+        tc1.update(d6._key, { });
+        tc1.update(d2._key, { });
+        tc1.remove(d1._key);
+        tc1.remove(d2._key);
+        tc1.remove(d3._key);
+        tc1.remove(d4._key);
+
+        assertEqual(2, tc1.count());
+      } finally {
+        trx.abort(); // rollback
+      }
+      // end trx
+
+      assertEqual(3, c1.count());
+      assertEqual(d1._rev, c1.document(d1._key)._rev);
+      assertEqual(d2._rev, c1.document(d2._key)._rev);
+      assertEqual(d3._rev, c1.document(d3._key)._rev);
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: rollback update
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUpdate: function () {
       var d1, d2, d3;
 
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       d1 = c1.save({ _key: 'foo', a: 1 });
       d2 = c1.save({ _key: 'bar', a: 2 });
       d3 = c1.save({ _key: 'meow', a: 3 });
@@ -2386,10 +2581,50 @@ function transactionRollbackSuite () {
     // / @brief test: rollback update
     // //////////////////////////////////////////////////////////////////////////////
 
+    testRollbackUpdateCustomSharding: function () {
+
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
+      let d1 = c1.save({ value: 'foo', a: 1 });
+      let d2 = c1.save({ value: 'bar', a: 2 });
+      let d3 = c1.save({ value: 'meow', a: 3 });
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.update(d1, { a: 4 });
+        tc1.update(d2, { a: 5 });
+        tc1.update(d3, { a: 6 });
+
+        assertEqual(3, tc1.count());
+
+      } finally {
+        trx.abort(); // rollback
+      }
+      // end trx
+
+      assertEqual(3, c1.count());
+      assertEqual([ d1._key, d2._key, d3._key ], sortedKeys(c1));
+      assertEqual(d1._rev, c1.document(d1._key)._rev);
+      assertEqual(d2._rev, c1.document(d2._key)._rev);
+      assertEqual(d3._rev, c1.document(d3._key)._rev);
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: rollback update
+    // //////////////////////////////////////////////////////////////////////////////
+
     testRollbackUpdateUpdate: function () {
       var d1, d2, d3;
 
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       d1 = c1.save({ _key: 'foo', a: 1 });
       d2 = c1.save({ _key: 'bar', a: 2 });
       d3 = c1.save({ _key: 'meow', a: 3 });
@@ -2437,7 +2672,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUpdateSecondaryIndexes: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo', value: 'foo', a: 1 });
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
@@ -2478,7 +2713,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemove: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
       c1.save({ _key: 'meow' });
@@ -2513,8 +2748,46 @@ function transactionRollbackSuite () {
     // / @brief test: rollback remove
     // //////////////////////////////////////////////////////////////////////////////
 
+    testRollbackRemoveCustomSharding: function () {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
+      let d1 = c1.save({ value: 'foo' });
+      let d2 = c1.save({ value: 'bar' });
+      let d3 = c1.save({ value: 'meow' });
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.remove(d3._key);
+        tc1.remove(d1._key);
+
+        assertEqual(1, tc1.count());
+        assertTrue(tc1.document(d2._key) !== undefined);
+
+      } finally {
+        trx.abort(); // rollback
+      }
+      // end trx
+
+      assertEqual(3, c1.count());
+      assertEqual(d1._rev, c1.document(d1._key)._rev);
+      assertEqual(d2._rev, c1.document(d2._key)._rev);
+      assertEqual(d3._rev, c1.document(d3._key)._rev);
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: rollback remove
+    // //////////////////////////////////////////////////////////////////////////////
+
     testRollbackRemoveMulti: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo' });
 
       let obj = {
@@ -2543,11 +2816,44 @@ function transactionRollbackSuite () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: rollback remove
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testRollbackRemoveMultiCustomSharding: function () {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2, shardKeys: ['value']});
+      let d1 = c1.save({ value: 'foo' });
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        
+        for (let i = 0; i < 100; ++i) {
+          tc1.save({ value: 'foo' + i });
+        }
+
+        assertEqual(101, tc1.count());
+      } finally {
+        trx.abort(); // rollback
+      }
+      // end trx
+
+      assertEqual(1, c1.count());
+      assertEqual([ d1._key ], sortedKeys(c1));
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: rollback remove w/ secondary indexes
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemoveSecondaryIndexes: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo', value: 'foo', a: 1 });
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
@@ -2589,7 +2895,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackRemoveInsertSecondaryIndexes: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
       c1.save({ _key: 'foo', value: 'foo', a: 1 });
       c1.save({ _key: 'bar', value: 'bar', a: 1 });
       c1.save({ _key: 'meow', value: 'meow' });
@@ -2634,7 +2940,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackTruncateEmpty: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
 
       let obj = {
         collections: {
@@ -2666,7 +2972,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackTruncateNonEmpty: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       for (let i = 0; i < 100; ++i) {
         c1.save({ _key: 'foo' + i });
       }
@@ -2702,7 +3008,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUniquePrimary: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       let d1 = c1.save({ _key: 'foo' });
 
       let obj = {
@@ -2737,7 +3043,45 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackUniqueSecondary: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 1, replicationFactor: 2});
+      c1.ensureUniqueConstraint('name');
+      let d1 = c1.save({ name: 'foo' });
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+
+      // begin trx
+      let trx = db._createTransaction(obj);
+      try {
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.save({ name: 'bar' });
+        tc1.save({ name: 'baz' });
+        tc1.save({ name: 'foo' });
+        fail();
+      
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      } finally {
+        trx.abort(); // rollback
+      }
+      // end trx
+      
+      assertEqual(1, c1.count());
+      assertEqual('foo', c1.toArray()[0].name);
+      assertEqual(d1._rev, c1.toArray()[0]._rev);
+    },
+
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx rollback with unique constraint violation + custom sharding
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testRollbackUniqueSecondaryCustomShard: function () {
+      c1 = db._create(cn1, {numberOfShards: 2, replicationFactor: 2, shardKeys:['name']});
       c1.ensureUniqueConstraint('name');
       let d1 = c1.save({ name: 'foo' });
 
@@ -2774,7 +3118,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackMixed1: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
 
       for (let i = 0; i < 100; ++i) {
         c1.save({ _key: 'key' + i, value: i });
@@ -2814,7 +3158,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackMixed2: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
 
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
@@ -2857,7 +3201,7 @@ function transactionRollbackSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackMixed3: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
 
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
@@ -2952,7 +3296,7 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCountDuring: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       assertEqual(0, c1.count());
 
       let obj = {
@@ -3000,7 +3344,7 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCountCommitAfterFlush: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
       assertEqual(2, c1.count());
@@ -3041,7 +3385,7 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCountCommit: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
       assertEqual(2, c1.count());
@@ -3078,7 +3422,7 @@ function transactionCountSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCountRollback: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
       c1.save({ _key: 'foo' });
       c1.save({ _key: 'bar' });
       assertEqual(2, c1.count());
@@ -3167,8 +3511,8 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testInserts: function () {
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      c2 = db._create(cn2, {numberOfShards: 2});
 
       let obj = {
         collections: {
@@ -3200,8 +3544,8 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUpdates: function () {
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      c2 = db._create(cn2, {numberOfShards: 2});
 
       var i;
       for (i = 0; i < 10; ++i) {
@@ -3241,8 +3585,8 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testDeletes: function () {
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      c2 = db._create(cn2, {numberOfShards: 2});
 
       var i;
       for (i = 0; i < 10; ++i) {
@@ -3281,8 +3625,8 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testDeleteReload: function () {
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      c2 = db._create(cn2, {numberOfShards: 2});
 
       var i;
       for (i = 0; i < 10; ++i) {
@@ -3327,8 +3671,8 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCommitReload: function () {
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      c2 = db._create(cn2, {numberOfShards: 2});
 
       let obj = {
         collections: {
@@ -3376,8 +3720,8 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testRollbackReload: function () {
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
+      c2 = db._create(cn2, {numberOfShards: 2});
 
       c1.save({ _key: 'a1' });
       c2.save({ _key: 'b1', a: 1 });
@@ -3433,7 +3777,7 @@ function transactionCrossCollectionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testUnloadReloadAbortedTrx: function () {
-      c1 = db._create(cn1);
+      c1 = db._create(cn1, {numberOfShards: 3, replicationFactor: 2});
 
       for (let i = 0; i < 10; ++i) {
         c1.save({ _key: 'a' + i, a: i });
@@ -3806,7 +4150,6 @@ function transactionAQLStreamSuite () {
   };
 }
 
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
@@ -3842,15 +4185,22 @@ function transactionTTLStreamSuite () {
 
     testAbortIdleTrx: function () {
       let trx = db._createTransaction({
-        collections: { read: cn }
+        collections: { write: cn }
       });
 
-      internal.sleep(12);
-      try {
-        trx.collection(cn).save({key:'val'});
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+      trx.collection(cn).save({value:'val'});
+
+      let x = 60;
+      do {
+        internal.sleep(1);
+
+        if (trx.status().status === "aborted") {
+          return;
+        }
+
+      } while(--x > 0);
+      if (x <= 0) {
+        fail(); // should not be reached
       }
     }
   };

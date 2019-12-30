@@ -83,7 +83,7 @@ class MMFilesEngine final : public StorageEngine {
   bool supportsDfdb() const override { return true; }
 
   bool useRawDocumentPointers() override { return true; }
-  
+
   void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -107,7 +107,7 @@ class MMFilesEngine final : public StorageEngine {
                     std::shared_ptr<VPackBuilder>& builderSPtr) override;
   WalAccess const* walAccess() const override;
 
-  std::unique_ptr<transaction::Manager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tick_t, transaction::Options const& options) override;
@@ -171,13 +171,13 @@ class MMFilesEngine final : public StorageEngine {
 
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override {}
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& parameters,
-                                                      bool isUpgrade, int&) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& ,
+                                                      bool isUpgrade) override;
+
+  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
                                                 int& status) override {
-    status = TRI_ERROR_NO_ERROR;
-    return createDatabaseMMFiles(id, args);
+    status = TRI_ERROR_NO_ERROR; //lol
+    return createDatabaseMMFiles(std::move(info));
   }
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
 
@@ -206,8 +206,7 @@ class MMFilesEngine final : public StorageEngine {
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
-  std::unique_ptr<TRI_vocbase_t> createDatabaseMMFiles(TRI_voc_tick_t id,
-                                                       velocypack::Slice const& data);
+  std::unique_ptr<TRI_vocbase_t> createDatabaseMMFiles(arangodb::CreateDatabaseInfo&&);
 
  public:
   // asks the storage engine to create a collection as specified in the VPack
@@ -338,7 +337,7 @@ class MMFilesEngine final : public StorageEngine {
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection, bool ignoreErrors);
 
   /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() override;
+  void addOptimizerRules(aql::OptimizerRulesFeature&) override;
 
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
@@ -412,8 +411,7 @@ class MMFilesEngine final : public StorageEngine {
   std::string indexFilename(TRI_idx_iid_t indexId) const;
 
   /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      std::string const& name,
+  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(arangodb::CreateDatabaseInfo&&,
                                                       bool wasCleanShutdown, bool isUpgrade);
 
   /// @brief note the maximum local tick
@@ -461,6 +459,9 @@ class MMFilesEngine final : public StorageEngine {
   int beginShutdownCompactor(TRI_vocbase_t* vocbase);
   // stop and delete the compactor thread for the database
   int stopCompactor(TRI_vocbase_t* vocbase);
+
+  // stop and delete the compactor and cleanup threads for all databases
+  void stopAllThreads();
 
   /// @brief writes a drop-database marker into the log
   int writeDropMarker(TRI_voc_tick_t id, std::string const& name);

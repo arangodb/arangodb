@@ -76,7 +76,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-FailedFollower::~FailedFollower() {}
+FailedFollower::~FailedFollower() = default;
 
 void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
@@ -153,7 +153,7 @@ bool FailedFollower::start(bool& aborts) {
   // been removed by RemoveFollower already, in which case we simply stop:
   bool found = false;
   if (planned.isArray()) {
-    for (auto const& s : VPackArrayIterator(planned)) {
+    for (VPackSlice s : VPackArrayIterator(planned)) {
       if (s.isString() && _from == s.copyString()) {
         found = true;
         break;
@@ -347,13 +347,12 @@ arangodb::Result FailedFollower::abort(std::string const& reason) {
                   "Failed aborting failedFollower job beyond pending stage");
   }
 
-  Result result;
   // Can now only be TODO
   if (_status == TODO) {
     finish("", "", false, "job aborted: " + reason);
-    return result;
+    return Result{};
   }
 
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
-  return result;
+  return Result{};
 }

@@ -39,29 +39,31 @@ function aqlVPackExternalsTestSuite () {
 
   const collName = "UnitTestsVPackExternals";
   const edgeColl = "UnitTestsVPackEdges";
-  const cleanUp = function () {
-    db._drop(collName);
-    db._drop(edgeColl);
-  };
 
   return {
 
-    setUp: function () {
-      cleanUp();
+    setUpAll: function () {
+      db._drop(collName);
+      db._drop(edgeColl);
       let coll = db._create(collName);
-
+      let docs = [];
       for (let i = 1000; i < 5000; ++i) {
-        coll.save({_key: "test" + i, value: "test" + i});
+        docs.push({_key: "test" + i, value: "test" + i});
       }
+      coll.insert(docs);
 
       let ecoll = db._createEdgeCollection(edgeColl);
-
+      docs = [];
       for(let i = 1001; i < 3000; ++i) {
-        ecoll.save({_from: collName + "/test1000", _to: collName + "/test" + i});
+        docs.push({_from: collName + "/test1000", _to: collName + "/test" + i});
       }
+      ecoll.insert(docs);
     },
 
-    tearDown: cleanUp,
+    tearDownAll: function () {
+      db._drop(collName);
+      db._drop(edgeColl);
+    },
     
     testCustom: function () {
       const query = `FOR x IN ${collName} FILTER x IN [${JSON.stringify(db[collName].any())}] RETURN x`;
@@ -75,13 +77,6 @@ function aqlVPackExternalsTestSuite () {
       assertTrue(cursor.hasNext());
     },
     
-    testCustomSubquery2: function () {
-      db[collName].insert({ value: db[collName].any() });
-      const query = `FOR x IN ${collName} FILTER x.value IN (FOR doc IN ${collName} RETURN doc) RETURN x`;
-      const cursor = db._query(query);
-      assertTrue(cursor.hasNext());
-    },
-
     testPlainExternal: function () {
       const query = `FOR x IN ${collName} SORT x._key RETURN x`;
       const cursor = db._query(query);
@@ -155,6 +150,56 @@ function aqlVPackExternalsTestSuite () {
       }
     },
 
+    testExternalInTraversalMerge: function () {
+      const query = `WITH ${collName} LET s = (FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} RETURN n) RETURN MERGE(s)`;
+      const cursor = db._query(query);
+      const doc = cursor.next();
+      assertTrue(doc.hasOwnProperty('_key'));
+      assertTrue(doc.hasOwnProperty('_rev'));
+      assertTrue(doc.hasOwnProperty('_id'));
+      assertFalse(cursor.hasNext());
+    }
+  };
+}
+
+
+function aqlVPackExternalsModifyTestSuite () {
+
+  const collName = "UnitTestsVPackExternals";
+  const edgeColl = "UnitTestsVPackEdges";
+
+  return {
+
+    setUp: function () {
+      db._drop(collName);
+      db._drop(edgeColl);
+      let coll = db._create(collName);
+      let docs = [];
+      for (let i = 1000; i < 5000; ++i) {
+        docs.push({_key: "test" + i, value: "test" + i});
+      }
+      coll.insert(docs);
+
+      let ecoll = db._createEdgeCollection(edgeColl);
+      docs = [];
+      for(let i = 1001; i < 3000; ++i) {
+        docs.push({_from: collName + "/test1000", _to: collName + "/test" + i});
+      }
+      ecoll.insert(docs);
+    },
+
+    tearDown: function () {
+      db._drop(collName);
+      db._drop(edgeColl);
+    },
+
+    testCustomSubquery2: function () {
+      db[collName].insert({ value: db[collName].any() });
+      const query = `FOR x IN ${collName} FILTER x.value IN (FOR doc IN ${collName} RETURN doc) RETURN x`;
+      const cursor = db._query(query);
+      assertTrue(cursor.hasNext());
+    },
+
     testExternalAttributeAccess: function () {
       let coll = db._collection(collName);
       let ecoll = db._collection(edgeColl);
@@ -207,21 +252,9 @@ function aqlVPackExternalsTestSuite () {
       const query = `LET us = (FOR u1 IN ${collName} FILTER u1.username == "test1" FOR u2 IN ${collName} FILTER u2.username == "test2" RETURN { u1, u2 }) FOR u IN us FOR msg IN ${edgeColl} FILTER msg._from == u.u1._id && msg._to == u.u2._id RETURN msg._id`; 
       const result = db._query(query).toArray();
       assertEqual(edgeColl + "/test1", result[0]);
-    },
-
-    testExternalInTraversalMerge: function () {
-      const query = `WITH ${collName} LET s = (FOR n IN OUTBOUND "${collName}/test1000" ${edgeColl} RETURN n) RETURN MERGE(s)`;
-      const cursor = db._query(query);
-      const doc = cursor.next();
-      assertTrue(doc.hasOwnProperty('_key'));
-      assertTrue(doc.hasOwnProperty('_rev'));
-      assertTrue(doc.hasOwnProperty('_id'));
-      assertFalse(cursor.hasNext());
     }
-
   };
-
 }
-
-jsunity.run(aqlVPackExternalsTestSuite);
+  jsunity.run(aqlVPackExternalsTestSuite);
+  jsunity.run(aqlVPackExternalsModifyTestSuite);
 return jsunity.done();

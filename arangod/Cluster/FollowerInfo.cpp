@@ -146,7 +146,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
             "unable to remove follower"};
   }
 
-  if (application_features::ApplicationServer::isStopping()) {
+  if (_docColl->vocbase().server().isStopping()) {
     // If we are already shutting down, we cannot be trusted any more with
     // such an important decision like dropping a follower.
     return {TRI_ERROR_SHUTTING_DOWN};
@@ -196,7 +196,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
     // +1 for the leader (me)
-    if (_followers->size() + 1 < _docColl->minReplicationFactor()) {
+    if (_followers->size() + 1 < _docColl->writeConcern()) {
       _canWrite = false;
     }
     // we are finished
@@ -306,7 +306,7 @@ bool FollowerInfo::updateFailoverCandidates() {
 #endif
     return _canWrite;
   }
-  TRI_ASSERT(_followers->size() + 1 >= _docColl->minReplicationFactor());
+  TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
   // Update both lists (we use a copy here, as we are modifying them in other places individually!)
   _failoverCandidates = std::make_shared<std::vector<ServerID> const>(*_followers);
   // Just be sure
@@ -345,7 +345,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   AgencyComm ac;
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
-      LOG_TOPIC("8972a", WARN, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
+      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
     AgencyReadTransaction trx(std::vector<std::string>(
@@ -400,7 +400,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
     }
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(500ms);
-  } while (!application_features::ApplicationServer::isStopping());
+  } while (!_docColl->vocbase().server().isStopping());
   return TRI_ERROR_SHUTTING_DOWN;
 }
 
@@ -445,7 +445,7 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
     VPackObjectBuilder b(&newValue);
     // Copy all but SERVERS and FailoverCandidates.
     // They will be injected later.
-    for (auto const& it : VPackObjectIterator(oldValue)) {
+    for (auto it : VPackObjectIterator(oldValue)) {
       if (!it.key.isEqualString(maintenance::SERVERS) &&
           !it.key.isEqualString(StaticStrings::FailoverCandidates)) {
         newValue.add(it.key);

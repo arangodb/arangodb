@@ -35,7 +35,7 @@ arangodb::LogicalDataSource::Type const& dataSourceType();
 arangodb::LogTopic& logTopic();
 
 ADB_IGNORE_UNUSED static auto& DATA_SOURCE_TYPE = dataSourceType();
-ADB_IGNORE_UNUSED static auto& TOPIC = logTopic();
+ADB_IGNORE_UNUSED extern arangodb::LogTopic TOPIC;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current implementation version of the iresearch interface
@@ -63,6 +63,12 @@ struct StaticStrings {
   static std::string const ViewIdField;
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch Link definition denoting the
+  ///        referenced analyzer definitions
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::string const AnalyzerDefinitionsField;
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the analyzer definition denoting the
   ///        corresponding analyzer name
   ////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +91,12 @@ struct StaticStrings {
   ///        corresponding analyzer features
   ////////////////////////////////////////////////////////////////////////////////
   static std::string const AnalyzerFeaturesField;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the name of the field in the IResearch Link definition denoting the
+  ///        primary sort
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::string const PrimarySortField;
 };
 
 }  // namespace iresearch

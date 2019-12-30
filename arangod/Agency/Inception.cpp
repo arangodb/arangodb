@@ -24,21 +24,79 @@
 #include "Inception.h"
 
 #include "Agency/Agent.h"
-#include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 
 #include <chrono>
-#include <numeric>
 #include <thread>
 
 using namespace arangodb::consensus;
 
-Inception::Inception() : Thread("Inception"), _agent(nullptr) {}
+namespace {
+void handleGossipResponse(arangodb::network::Response const& r,
+                          arangodb::consensus::Agent* agent,
+                          size_t version) {
+  using namespace arangodb;
+  std::string newLocation;
 
-Inception::Inception(Agent* agent) : Thread("Inception"), _agent(agent) {}
+  if (r.ok()) {
+    velocypack::Slice payload = r.response->slice();
+
+    switch (r.response->statusCode()) {
+      case 200:  // Digest other configuration
+        LOG_TOPIC("4995a", DEBUG, Logger::AGENCY)
+            << "Got result of gossip message, code: 200"
+            << " body: " << payload.toJson();
+        agent->gossip(payload, true, version);
+        break;
+
+      case 307:  // Add new endpoint to gossip peers
+        bool found;
+        newLocation = r.response->header.metaByKey("location", found);
+
+        if (found) {
+          if (newLocation.compare(0, 5, "https") == 0) {
+            newLocation = newLocation.replace(0, 5, "ssl");
+          } else if (newLocation.compare(0, 4, "http") == 0) {
+            newLocation = newLocation.replace(0, 4, "tcp");
+          } else {
+            LOG_TOPIC("60be0", FATAL, Logger::AGENCY)
+                << "Invalid URL specified as gossip endpoint";
+            FATAL_ERROR_EXIT();
+          }
+
+          LOG_TOPIC("4c822", DEBUG, Logger::AGENCY) << "Got redirect to " << newLocation
+                                           << ". Adding peer to gossip peers";
+          bool added = agent->addGossipPeer(newLocation);
+          if (added) {
+            LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY) << "Added " << newLocation << " to gossip peers";
+          } else {
+            LOG_TOPIC("4fcf3", DEBUG, Logger::AGENCY) << "Endpoint " << newLocation << " already known";
+          }
+        } else {
+          LOG_TOPIC("1886b", ERR, Logger::AGENCY) << "Redirect lacks 'Location' header";
+        }
+        break;
+
+      default:
+        LOG_TOPIC("bed89", ERR, Logger::AGENCY) << "Got error " << r.response->statusCode()
+        << " from gossip endpoint";
+        std::this_thread::sleep_for(std::chrono::seconds(40));
+        break;
+    }
+  }
+
+  LOG_TOPIC("e2ef9", DEBUG, Logger::AGENCY)
+      << "Got error from gossip message, status:" << fuerte::to_string(r.error);
+}
+}
+
+Inception::Inception(Agent& agent)
+    : Thread(agent.server(), "Inception"), _agent(agent) {}
 
 // Shutdown if not already
 Inception::~Inception() {
@@ -50,16 +108,14 @@ Inception::~Inception() {
 /// - Create outgoing gossip.
 /// - Send to all peers
 void Inception::gossip() {
-  if (this->isStopping() || _agent->isStopping()) {
+  if (this->isStopping() || _agent.isStopping()) {
     return;
   }
+  
+  
+  auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
-  auto cc = ClusterComm::instance();
-
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
 
   LOG_TOPIC("7b6f3", INFO, Logger::AGENCY) << "Entering gossip phase ...";
   using namespace std::chrono;
@@ -67,24 +123,28 @@ void Inception::gossip() {
   auto startTime = steady_clock::now();
   seconds timeout(3600);
   long waitInterval = 250000;
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(1);
 
   CONDITION_LOCKER(guard, _cv);
 
-  while (!this->isStopping() && !_agent->isStopping()) {
-    auto const config = _agent->config();  // get a copy of conf
+  while (!this->isStopping() && !_agent.isStopping()) {
+    auto const config = _agent.config();  // get a copy of conf
     auto const version = config.version();
 
     // Build gossip message
-    auto out = std::make_shared<Builder>();
-    out->openObject();
-    out->add("endpoint", VPackValue(config.endpoint()));
-    out->add("id", VPackValue(config.id()));
-    out->add("pool", VPackValue(VPackValueType::Object));
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder out(buffer);
+    out.openObject();
+    out.add("endpoint", VPackValue(config.endpoint()));
+    out.add("id", VPackValue(config.id()));
+    out.add("pool", VPackValue(VPackValueType::Object));
     for (auto const& i : config.pool()) {
-      out->add(i.first, VPackValue(i.second));
+      out.add(i.first, VPackValue(i.second));
     }
-    out->close();
-    out->close();
+    out.close();
+    out.close();
 
     auto const path = privApiPrefix + "gossip";
 
@@ -99,24 +159,23 @@ void Inception::gossip() {
           }
         }
         LOG_TOPIC("cc3fd", DEBUG, Logger::AGENCY)
-            << "Sending gossip message 1: " << out->toJson() << " to peer " << p;
-        if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+            << "Sending gossip message 1: " << out.toJson() << " to peer " << p;
+        if (this->isStopping() || _agent.isStopping()) {
           return;
         }
-        CoordTransactionID coordTrxId = TRI_NewTickServer();
-        std::unordered_map<std::string, std::string> hf;
-        cc->asyncRequest(coordTrxId, p, rest::RequestType::POST, path,
-                         std::make_shared<std::string>(out->toJson()), hf,
-                         std::make_shared<GossipCallback>(_agent, version), 1.0,
-                         true, 0.5);
+
+        network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
+                             buffer, reqOpts).thenValue([=](network::Response r) {
+          ::handleGossipResponse(r, &_agent, version);
+        });
       }
     }
 
     if (config.poolComplete()) {
-      _agent->activateAgency();
+      _agent.activateAgency();
       return;
     }
-
+    
     // pool entries
     bool complete = true;
     for (auto const& pair : config.pool()) {
@@ -129,17 +188,16 @@ void Inception::gossip() {
         }
         complete = false;
         LOG_TOPIC("07338", DEBUG, Logger::AGENCY)
-            << "Sending gossip message 2: " << out->toJson()
+            << "Sending gossip message 2: " << out.toJson()
             << " to pool member " << pair.second;
-        if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+        if (this->isStopping() || _agent.isStopping()) {
           return;
         }
-        CoordTransactionID coordTrxId = TRI_NewTickServer();
-        std::unordered_map<std::string, std::string> hf;
-        cc->asyncRequest(coordTrxId, pair.second, rest::RequestType::POST, path,
-                         std::make_shared<std::string>(out->toJson()), hf,
-                         std::make_shared<GossipCallback>(_agent, version), 1.0,
-                         true, 0.5);
+
+        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
+                             buffer, reqOpts).thenValue([=](network::Response r) {
+          ::handleGossipResponse(r, &_agent, version);
+        });
       }
     }
 
@@ -149,7 +207,7 @@ void Inception::gossip() {
         LOG_TOPIC("d04d7", INFO, Logger::AGENCY)
             << "Agent pool completed. Stopping "
                "active gossipping. Starting RAFT process.";
-        _agent->activateAgency();
+        _agent.activateAgency();
         break;
       }
     }
@@ -178,14 +236,7 @@ void Inception::gossip() {
 }
 
 bool Inception::restartingActiveAgent() {
-  if (this->isStopping() || _agent->isStopping()) {
-    return false;
-  }
-
-  auto cc = ClusterComm::instance();
-
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
+  if (this->isStopping() || _agent.isStopping()) {
     return false;
   }
 
@@ -194,28 +245,35 @@ bool Inception::restartingActiveAgent() {
   using namespace std::chrono;
 
   auto const path = pubApiPrefix + "config";
-  auto const myConfig = _agent->config();
+  auto const myConfig = _agent.config();
   auto const startTime = steady_clock::now();
   auto active = myConfig.active();
   auto const& clientId = myConfig.id();
   auto const& clientEp = myConfig.endpoint();
   auto const majority = myConfig.size() / 2 + 1;
 
-  Builder greeting;
+  VPackBuffer<uint8_t> greetBuffer;
   {
+    Builder greeting(greetBuffer);
     VPackObjectBuilder b(&greeting);
     greeting.add(clientId, VPackValue(clientEp));
   }
-  auto const& greetstr = greeting.toJson();
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(2);
+  reqOpts.skipScheduler = true; // hack to speed up future.get()
 
   seconds const timeout(3600);
   long waitInterval(500000);
+  
+  auto const& nf = _agent.server().getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
   CONDITION_LOCKER(guard, _cv);
 
   active.erase(std::remove(active.begin(), active.end(), myConfig.id()), active.end());
 
-  while (!this->isStopping() && !_agent->isStopping()) {
+  while (!this->isStopping() && !_agent.isStopping()) {
     active.erase(std::remove(active.begin(), active.end(), ""), active.end());
 
     if (active.size() < majority) {
@@ -227,19 +285,18 @@ bool Inception::restartingActiveAgent() {
 
     auto gp = myConfig.gossipPeers();
     std::vector<std::string> informed;
-    CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
-    for (auto const& p : gp) {
-      if (this->isStopping() && _agent->isStopping() && cc == nullptr) {
+    for (std::string const& p : gp) {
+      if (this->isStopping() || _agent.isStopping()) {
         return false;
       }
-      auto comres = cc->syncRequest(coordinatorTransactionID, p,
-                                    rest::RequestType::POST, path, greetstr,
-                                    std::unordered_map<std::string, std::string>(), 2.0);
-
-      if (comres->status == CL_COMM_SENT && comres->result->getHttpReturnCode() == 200) {
-        auto const theirConfigVP = comres->result->getBodyVelocyPack();
-        auto const& theirConfig = theirConfigVP->slice();
+      
+      auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
+                                         greetBuffer, reqOpts).get();
+      
+      if (comres.ok() && comres.response->statusCode() == fuerte::StatusOK) {
+        
+        VPackSlice const theirConfig = comres.slice();
 
         if (!theirConfig.isObject()) {
           continue;
@@ -251,32 +308,30 @@ bool Inception::restartingActiveAgent() {
         }
         auto const& theirId = tcc.get("id").copyString();
 
-        _agent->updatePeerEndpoint(theirId, p);
+        _agent.updatePeerEndpoint(theirId, p);
         informed.push_back(p);
       }
     }
 
-    auto pool = _agent->config().pool();
+    // ServerId to endpoint map
+    std::unordered_map<std::string, std::string> pool = _agent.config().pool();
     for (auto const& i : informed) {
       active.erase(std::remove(active.begin(), active.end(), i), active.end());
     }
-
+    
     for (auto& p : pool) {
       if (p.first != myConfig.id() && p.first != "") {
-        if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+        if (this->isStopping() || _agent.isStopping()) {
           return false;
         }
-
-        CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-        auto comres =
-            cc->syncRequest(coordinatorTransactionID, p.second,
-                            rest::RequestType::POST, path, greetstr,
-                            std::unordered_map<std::string, std::string>(), 2.0);
-
-        if (comres->status == CL_COMM_SENT) {
+        
+        auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post, path,
+                                           greetBuffer, reqOpts).get();
+        
+        if (comres.ok()) {
           try {
-            auto const theirConfigVP = comres->result->getBodyVelocyPack();
-            auto const& theirConfig = theirConfigVP->slice();
+            VPackSlice theirConfig = comres.slice();
+          
             auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
             auto const& tcc = theirConfig.get("configuration");
             auto const& theirId = tcc.get("id").copyString();
@@ -292,25 +347,25 @@ bool Inception::restartingActiveAgent() {
 
               // Contact leader to update endpoint
               if (theirLeaderId != theirId) {
-                if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+                if (this->isStopping() || _agent.isStopping()) {
                   return false;
                 }
-                comres =
-                    cc->syncRequest(coordinatorTransactionID, theirLeaderEp,
-                                    rest::RequestType::POST, path, greetstr,
-                                    std::unordered_map<std::string, std::string>(), 2.0);
+                
+                comres = network::sendRequest(cp, theirLeaderEp, fuerte::RestVerb::Post, path,
+                                              greetBuffer, reqOpts).get();
+                
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.
-                if (comres->status != CL_COMM_SENT) {
+                if (comres.fail()) {
                   continue;
                 }
+                theirConfig = comres.slice();
               }
-              auto const theirConfigL = comres->result->getBodyVelocyPack();
-              auto const& lcc = theirConfigL->slice().get("configuration");
+              auto const& lcc = theirConfig.get("configuration");
               auto agency = std::make_shared<Builder>();
               {
                 VPackObjectBuilder b(agency.get());
-                agency->add("term", theirConfigL->slice().get("term"));
+                agency->add("term", theirConfig.get("term"));
                 agency->add("id", VPackValue(theirLeaderId));
                 agency->add("active", lcc.get("active"));
                 agency->add("pool", lcc.get("pool"));
@@ -318,7 +373,7 @@ bool Inception::restartingActiveAgent() {
                 agency->add("max ping", lcc.get("max ping"));
                 agency->add("timeoutMult", lcc.get("timeoutMult"));
               }
-              _agent->notify(agency);
+              _agent.notify(agency);
               return true;
             }
 
@@ -408,20 +463,20 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 // @brief Thread main
 void Inception::run() {
   auto server = ServerState::instance();
-  while (server->isMaintenance() && !this->isStopping() && !_agent->isStopping()) {
+  while (server->isMaintenance() && !this->isStopping() && !_agent.isStopping()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LOG_TOPIC("1b613", DEBUG, Logger::AGENCY)
         << "Waiting for RestHandlerFactory to exit maintenance mode before we "
            " start gossip protocol...";
   }
 
-  config_t config = _agent->config();
+  config_t config = _agent.config();
 
   // Are we starting from persisted pool?
   if (config.startup() == "persistence") {
     if (restartingActiveAgent()) {
       LOG_TOPIC("79fd7", INFO, Logger::AGENCY) << "Activating agent.";
-      _agent->ready(true);
+      _agent.ready(true);
     } else {
       if (!this->isStopping()) {
         LOG_TOPIC("27391", FATAL, Logger::AGENCY)
@@ -436,8 +491,8 @@ void Inception::run() {
   gossip();
 
   // No complete pool after gossip?
-  config = _agent->config();
-  if (!_agent->ready() && !config.poolComplete()) {
+  config = _agent.config();
+  if (!_agent.ready() && !config.poolComplete()) {
     if (!this->isStopping()) {
       LOG_TOPIC("68763", FATAL, Logger::AGENCY)
           << "Failed to build environment for RAFT algorithm. Bailing out!";
@@ -446,7 +501,7 @@ void Inception::run() {
   }
 
   LOG_TOPIC("c1d8f", INFO, Logger::AGENCY) << "Activating agent.";
-  _agent->ready(true);
+  _agent.ready(true);
 }
 
 // @brief Graceful shutdown

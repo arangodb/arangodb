@@ -51,7 +51,7 @@ class ReturnExecutorTest : public ::testing::Test {
   RegisterId inputRegister;
 
   ReturnExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         registersToKeep(make_shared_unordered_set()),
         inputRegister(0) {}
@@ -59,43 +59,43 @@ class ReturnExecutorTest : public ::testing::Test {
 
 TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerDoesNotWait) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
-  auto& outputRegisters = infos.getOutputRegisters();
+  auto const& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
   OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
-  auto& outputRegisters = infos.getOutputRegisters();
+  auto const& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
   OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
-  auto& outputRegisters = infos.getOutputRegisters();
+  auto const& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->buffer(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->buffer(), false);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
@@ -103,23 +103,23 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
                        infos.registersToClear());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 
   // verify result
   AqlValue value;
@@ -127,15 +127,15 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
   for (std::size_t index = 0; index < 3; index++) {
     value = block->getValue(index, 0);
     ASSERT_TRUE(value.isBoolean());
-    ASSERT_TRUE(value.toBoolean() == input->slice().at(index).at(0).getBool());
+    ASSERT_EQ(value.toBoolean(), input->slice().at(index).at(0).getBool());
   }
 }
 
 TEST_F(ReturnExecutorTest, RowsUpstreamProducerWaits) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
-  auto& outputRegisters = infos.getOutputRegisters();
+  auto const& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
@@ -143,35 +143,35 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerWaits) {
                        infos.registersToClear()};
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(row.produced());
   row.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 }
 
 }  // namespace aql

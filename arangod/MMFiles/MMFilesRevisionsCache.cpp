@@ -33,7 +33,7 @@ MMFilesRevisionsCache::MMFilesRevisionsCache()
     : _positions(MMFilesRevisionsCacheHelper(), 8,
                  []() -> std::string { return "mmfiles revisions"; }) {}
 
-MMFilesRevisionsCache::~MMFilesRevisionsCache() {}
+MMFilesRevisionsCache::~MMFilesRevisionsCache() = default;
 
 MMFilesDocumentPosition MMFilesRevisionsCache::lookup(LocalDocumentId const& documentId) const {
   TRI_ASSERT(documentId.isSet());

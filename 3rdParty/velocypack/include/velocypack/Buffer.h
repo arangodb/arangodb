@@ -28,7 +28,9 @@
 #define VELOCYPACK_BUFFER_H 1
 
 #include <cstring>
+#include <cstdlib>
 #include <string>
+#include <new>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -38,6 +40,8 @@ namespace velocypack {
 
 template <typename T>
 class Buffer {
+  static_assert(sizeof(T) == 1, "expecting sizeof(T) to be 1");
+
  public:
   Buffer() noexcept : _buffer(_local), _capacity(sizeof(_local)), _size(0) {
     poison(_buffer, _capacity);
@@ -51,11 +55,12 @@ class Buffer {
 
   Buffer(Buffer const& that) : Buffer() {
     if (that._size > 0) {
-      if (that._size > sizeof(_local)) {
-        _buffer = new T[checkOverflow(that._size)];
+      if (that._size > sizeof(that._local)) {
+        _buffer = static_cast<T*>(malloc(checkOverflow(that._size)));
+        ensureValidPointer(_buffer);
         _capacity = that._size;
-      }
-      else {
+      } else {
+        VELOCYPACK_ASSERT(_buffer == &_local[0]);
         _capacity = sizeof(_local);
       }
       memcpy(_buffer, that._buffer, checkOverflow(that._size));
@@ -69,15 +74,15 @@ class Buffer {
         // our own buffer is big enough to hold the data
         initWithNone();
         memcpy(_buffer, that._buffer, checkOverflow(that._size));
-      }
-      else {
+      } else {
         // our own buffer is not big enough to hold the data
-        auto buffer = new T[checkOverflow(that._size)];
-        initWithNone();
+        T* buffer = static_cast<T*>(malloc(checkOverflow(that._size)));
+        ensureValidPointer(buffer);
+        buffer[0] = '\x00';
         memcpy(buffer, that._buffer, checkOverflow(that._size));
 
         if (_buffer != _local) {
-          delete[] _buffer;
+          free(_buffer);
         }
         _buffer = buffer;
         _capacity = that._size;
@@ -89,8 +94,11 @@ class Buffer {
   }
 
   Buffer(Buffer&& that) noexcept : _buffer(_local), _capacity(sizeof(_local)) {
+    poison(_buffer, _capacity);
+    initWithNone();
     if (that._buffer == that._local) {
-      memcpy(_buffer, that._buffer, static_cast<std::size_t>(that._size));
+      VELOCYPACK_ASSERT(that._capacity == sizeof(that._local));
+      memcpy(_buffer, that._buffer, checkOverflow(that._size));
     } else {
       _buffer = that._buffer;
       _capacity = that._capacity;
@@ -99,16 +107,20 @@ class Buffer {
     }
     _size = that._size;
     that._size = 0;
+    that.initWithNone();
   }
 
   Buffer& operator=(Buffer&& that) noexcept {
     if (this != &that) {
+      if (_buffer != _local) {
+        free(_buffer);
+      }
       if (that._buffer == that._local) {
-        memcpy(_buffer, that._buffer, static_cast<std::size_t>(that._size));
+        _buffer = _local;
+        _capacity = sizeof(_local);
+        initWithNone();
+        memcpy(_buffer, that._buffer, checkOverflow(that._size));
       } else {
-        if (_buffer != _local) {
-          delete[] _buffer;
-        }
         _buffer = that._buffer;
         _capacity = that._capacity;
         that._buffer = that._local;
@@ -116,13 +128,14 @@ class Buffer {
       }
       _size = that._size;
       that._size = 0;
+      that.initWithNone();
     }
     return *this;
   }
 
   ~Buffer() { 
     if (_buffer != _local) {
-      delete[] _buffer;
+      free(_buffer);
     }
   }
 
@@ -174,7 +187,7 @@ class Buffer {
   void clear() noexcept {
     _size = 0;
     if (_buffer != _local) {
-      delete[] _buffer;
+      free(_buffer);
       _buffer = _local;
       _capacity = sizeof(_local);
       poison(_buffer, _capacity);
@@ -242,6 +255,12 @@ class Buffer {
  private:
   // initialize Buffer with a None value
   inline void initWithNone() noexcept { _buffer[0] = '\x00'; }
+
+  inline void ensureValidPointer(T* ptr) const {
+    if (VELOCYPACK_UNLIKELY(ptr == nullptr)) {
+      throw std::bad_alloc();
+    }
+  }
   
   // poison buffer memory, used only for debugging
 #ifdef VELOCYPACK_DEBUG
@@ -265,13 +284,22 @@ class Buffer {
     VELOCYPACK_ASSERT(newLen > _size);
 
     // intentionally do not initialize memory here
-    T* p = new T[checkOverflow(newLen)];
-    poison(p, newLen);
-    // copy old data
-    memcpy(p, _buffer, checkOverflow(_size));
+    // intentionally also do not care about alignments here, as we
+    // expect T to be 1-byte-aignable
+    VELOCYPACK_ASSERT(newLen > 0);
+    T* p;
     if (_buffer != _local) {
-      delete[] _buffer;
+      p = static_cast<T*>(realloc(_buffer, checkOverflow(newLen)));
+      ensureValidPointer(p);
+      // realloc will have copied the old data
+    } else {
+      p = static_cast<T*>(malloc(checkOverflow(newLen)));
+      ensureValidPointer(p);
+      // copy existing data into buffer
+      memcpy(p, _buffer, checkOverflow(_size));
     }
+    poison(p + _capacity, newLen - _capacity);
+
     _buffer = p;
     _capacity = newLen;
     
@@ -287,6 +315,7 @@ class Buffer {
 };
 
 typedef Buffer<char> CharBuffer;
+typedef Buffer<uint8_t> UInt8Buffer;
 
 template<typename T>
 struct BufferNonDeleter {

@@ -1,0 +1,33 @@
+R"=(
+{
+  "DAV": {
+    "pass": "xxx",
+    "type": "webdav",
+    "url": "https://dav.domain.com",
+    "user": "jon",
+    "vendor": "other"
+  },
+  "S3": {
+    "type": "s3",
+    "provider": "aws",
+    "env_auth": "false",
+    "access_key_id": "HARUKIMURAKAMI",
+    "secret_access_key": "507a553nSichFitn355UndFahr7@uglichkei77e57en",
+    "region": "us-west-2",
+    "acl": "private"
+  },
+  "local": {
+    "type": "local",
+    "copy-links": "false",
+    "links": "false",
+    "one_file_system": "true"
+  },
+  "gcs": {
+    "type": "google cloud storage",
+    "project_number": "kubernetes-test-project-xxxxxx",
+    "service_account_credentials": "{ \"type\": \"service_account\", \"project_id\": \"a-xxxxxx\", \"private_key_id\": \"71e5dcf6547bb0c90451d629c41fbbe8ce0de91a\", \"private_key\": \"-----BEGIN PRIVATE KEY-----\\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDDb9a41rwTjZd+\\nem3pKgW1KVgqnEb0FFMB17Dadn6FCBN/kyERgZZrTbVhKYTIn4W/Rp92conHPXnF\\nbkZtEuRm41imkTQX3SOrPRdALAggP5LyH11XLglbntWX/YFDFyusMh05y7i/z3Bv\\niKwFfqwUGAVyYZn/1LxR4EWCWJqLpMnPZwXVFm/0XiB8HASRMT25+jj1ZM4ORZuG\\nHnk2WQOsPXySZkdIWD8rAqfAavpoGG5FAH3HMSf42dtXC7DpeCJrk3KCrUmH1TAx\\nswrOYWMoRg9aZvrsE7V5exnwMZSiERbm3MY7yWorooZJfax2lia+StDFAVlox1pV\\nnypH6kTpAgMBAAECggEADMXkM3frWl7Maip/wPerYFP3rG9CzuR+KVZqu1h3u+OT\\nfKjFxkJhLZmqU1OWl1Mft2ja9q+VNCWfLglfRnUv4s6UhmxiinW8RU6MlLfb/xmQ\\nlcz5eX9rgqauoIyjtFoRE2PCF7sqE7UvzMZSsdg90GFih797xGXnufUtrc9zKFGr\\nVXDTIY6tyk8eDWaxcUZnnOg06czBrYw8TtVqu1aAM+IERi0MRZAoIoiLjGTDFliH\\n5ZelcarnklSnHh9ldCsS0tTmgEY2cg+bnEkSQbzfr0AT2Sbr0uedUrm6i1gEpBYX\\nakgAShv/QXAYgOXn+jH7qFxd11vNGab6pS5WVK6GFQKBgQDkSFcdjh3c5wWisbAa\\nWr+oT1vpTyHH/Oqv2HdmZa1ekZw2rcbKSxlP8QxsnsfzMdAOuOQUj/YmEJrUJD/I\\nPGxLwtFDDIX5J9Iz2MLQCXs5cjK+JmAg7ru0SfvvXJC2I3ljrx5NSPULTWfqV10D\\nxYakr7OjinrBw4OLRL/HdB8bjQKBgQDbKo/pF1UiQZpkvzciaUFfbXfYrnRsTBUE\\nFtw3z6Am9NBUqLtA4tzYBnI+e2eALOg1Gtk+r+zr7bOX2YSG2OoCrwz2/E3pJ6Hx\\nT8xKrcLcHEM3Ei6g3LMIO5Tn13nXewHv47sIFek4/oMrsAAA254XuYJ/+n24JaQi\\n+F5vwD5JzQKBgH1c1KpgXznujIO5/LGcYF/3pMvNLwn6dI842ukasUibwiOs7tws\\nvavO/jmwQLHnCxDqrCY2oMBqofwaJAS8WeSJCg4+FFytZ5wdT26bplX3xrHxtRyg\\nvefWMUpTlQzRElqR0pwyko8wZP6mF2h40uYhrw8Cf0NlMRoMGR1ZQbQJAoGBAKog\\nou+kjhB2blwQVsMeg4GJH0QTQAqlEJdJC49DW6WB2ootJJZcxGPotRwtfQ1xTpuS\\niNrxg28s6IFSd16Z2SVWLzE2b2AyxLHmaMX7lkx4n/CK66kxSMR2Q8Oob0tGkB1g\\nYNoI8C6u2rG6AHaqBFGUTmn7z0V36q6+r8f9qhxtAoGAOmiCzEOvM1dO/GbniGH8\\nUyr+i/ijhLiv0TRkPQ0a4JRrGj0XIFTHbHxe04t2tl4z3LTkdm1jUf5BfGuf6kTZ\\n1jaQEu8sx9mi7uSojciYujfyQe9GAY/i7il+t6ecCXjXBJg/QwWnJKuSjZ8PmZpo\\nqe2RFSoR2tD0bOBW1ea4C4M=\\n-----END PRIVATE KEY-----\\n\", \"client_email\": \"a-xxxxxx.iam.gserviceaccount.com\", \"client_id\": \"cd306c9a02b032b81252438528cd5b20\", \"auth_uri\": \"https://accounts.google.com/o/oauth2/auth\", \"token_uri\": \"https://oauth2.googleapis.com/token\", \"auth_provider_x509_cert_url\": \"https://www.googleapis.com/oauth2/v1/certs\", \"client_x509_cert_url\": \"https://www.googleapis.com/robot/v1/metadata/x509/a-xxxxxx.iam.gserviceaccount.com\" }",
+    "location": "europe-west3",
+    "storage_class": "REGIONAL"
+  }
+}
+)="

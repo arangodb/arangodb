@@ -32,16 +32,20 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Functions.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cmath>
+
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 
 namespace arangodb {
 namespace tests {
@@ -118,7 +122,7 @@ struct TestDate {
 
   void validateResult(AqlValue const& result) const {
     ASSERT_TRUE(result.isBoolean());
-    ASSERT_TRUE(result.toBoolean() == _isValid);
+    ASSERT_EQ(result.toBoolean(), _isValid);
   }
 
  private:
@@ -169,14 +173,14 @@ struct TestDate {
   }
 
   void buildParams(VPackFunctionParameters& input) const {
-    for (auto const& it : VPackArrayIterator(_argBuilder.slice())) {
+    for (VPackSlice it : VPackArrayIterator(_argBuilder.slice())) {
       input.emplace_back(it);
     }
   }
 
   void validateResult(AqlValue const& result) const {
     ASSERT_TRUE(result.isBoolean());
-    ASSERT_TRUE(result.toBoolean() == _isValid);
+    ASSERT_EQ(result.toBoolean(), _isValid);
   }
 
  private:
@@ -423,7 +427,7 @@ struct TestDate {
 
   void buildParams(VPackFunctionParameters& input) const {
     VPackSlice s = _input->slice();
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       input.emplace_back(it);
     }
   }
@@ -432,7 +436,7 @@ struct TestDate {
     ASSERT_TRUE(result.isString());
     auto res = result.slice();
     std::string ref = res.copyString();  // Readability in test Tool
-    ASSERT_TRUE(ref == _result);
+    ASSERT_EQ(ref, _result);
   }
 
  private:

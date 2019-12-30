@@ -51,7 +51,7 @@ function optimizerRuleTestSuite () {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsOptimizerTest");
       db._create("UnitTestsOptimizerTest");
     },
@@ -60,7 +60,7 @@ function optimizerRuleTestSuite () {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsOptimizerTest");
     },
 

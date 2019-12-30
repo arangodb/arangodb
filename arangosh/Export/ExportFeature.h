@@ -56,14 +56,14 @@ class ExportFeature final : public application_features::ApplicationFeature,
  private:
   void collectionExport(httpclient::SimpleHttpClient* httpClient);
   void queryExport(httpclient::SimpleHttpClient* httpClient);
-  void writeFirstLine(ManagedDirectory::File & fd, std::string const& fileName, std::string const& collection);
-  void writeBatch(ManagedDirectory::File & fd, VPackArrayIterator it, std::string const& fileName);
+  void writeFirstLine(ManagedDirectory::File& fd, std::string const& fileName, std::string const& collection);
+  void writeBatch(ManagedDirectory::File& fd, VPackArrayIterator it, std::string const& fileName);
   void graphExport(httpclient::SimpleHttpClient* httpClient);
-  void writeGraphBatch(ManagedDirectory::File &fd, VPackArrayIterator it, std::string const& fileName);
-  void xgmmlWriteOneAtt(ManagedDirectory::File & fd, std::string const& fileName, VPackSlice const& slice,
+  void writeGraphBatch(ManagedDirectory::File& fd, VPackArrayIterator it, std::string const& fileName);
+  void xgmmlWriteOneAtt(ManagedDirectory::File& fd, VPackSlice const& slice,
                         std::string const& name, int deep = 0);
 
-  void writeToFile(ManagedDirectory::File & fd, std::string const& string, std::string const& fileName);
+  void writeToFile(ManagedDirectory::File& fd, std::string const& string);
   std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient,
                                          std::string const& url, arangodb::rest::RequestType,
                                          std::string postBody = "");

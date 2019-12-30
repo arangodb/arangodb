@@ -28,6 +28,8 @@
 
 #include "Aql/ExecutionStats.h"
 
+#include <cstddef>
+
 namespace arangodb {
 namespace aql {
 
@@ -84,40 +86,49 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
 
 class EnumerateCollectionStats {
  public:
-  EnumerateCollectionStats() noexcept : _scannedFull(0) {}
+  EnumerateCollectionStats() noexcept 
+    : _scannedFull(0), _filtered(0) {}
 
-  void incrScanned(size_t const scanned) noexcept { _scannedFull += scanned; }
+  void incrScanned(size_t scanned) noexcept { _scannedFull += scanned; }
+  void incrFiltered(size_t filtered) noexcept { _filtered += filtered; }
 
   std::size_t getScanned() const noexcept { return _scannedFull; }
+  std::size_t getFiltered() const noexcept { return _filtered; }
 
  private:
   std::size_t _scannedFull;
+  std::size_t _filtered;
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   EnumerateCollectionStats const& enumerateCollectionStats) noexcept {
   executionStats.scannedFull += enumerateCollectionStats.getScanned();
+  executionStats.filtered += enumerateCollectionStats.getFiltered();
   return executionStats;
 }
 
 class IndexStats {
  public:
-  IndexStats() noexcept : _scannedIndex(0) {}
+  IndexStats() noexcept : _scannedIndex(0), _filtered(0) {}
 
   void incrScanned() noexcept { _scannedIndex++; }
-  void incrScanned(size_t value) noexcept {
-    _scannedIndex = _scannedIndex + value;
-  }
+  void incrScanned(size_t value) noexcept { _scannedIndex += value; }
+  
+  void incrFiltered() noexcept { _filtered++; }
+  void incrFiltered(size_t value) noexcept { _filtered += value; }
 
   std::size_t getScanned() const noexcept { return _scannedIndex; }
+  std::size_t getFiltered() const noexcept { return _filtered; }
 
  private:
   std::size_t _scannedIndex;
+  std::size_t _filtered;
 };
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                                  IndexStats const& enumerateCollectionStats) noexcept {
-  executionStats.scannedIndex += enumerateCollectionStats.getScanned();
+                                  IndexStats const& indexStats) noexcept {
+  executionStats.scannedIndex += indexStats.getScanned();
+  executionStats.filtered += indexStats.getFiltered();
   return executionStats;
 }
 

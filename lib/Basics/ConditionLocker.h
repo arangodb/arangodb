@@ -31,7 +31,7 @@
 #include <chrono>
 
 /// @brief construct locker with file and line information
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
 #define CONDITION_LOCKER(a, b) \
   arangodb::basics::ConditionLocker a(&(b), __FILE__, __LINE__)
@@ -61,7 +61,7 @@ class ConditionLocker {
 ///
 /// The constructor locks the condition variable, the destructor unlocks
 /// the condition variable
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
   ConditionLocker(ConditionVariable* conditionVariable, char const* file, int line);
 
@@ -108,7 +108,7 @@ class ConditionLocker {
   /// @brief lock state
   bool _isLocked;
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
   /// @brief file
   char const* _file;

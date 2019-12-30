@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_NGRAM_TOKEN_STREAM_H
@@ -30,64 +29,120 @@
 NS_ROOT
 NS_BEGIN(analysis)
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ngram_token_stream
 /// @brief produces ngram from a specified input in a range of 
 //         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
-class ngram_token_stream: public analyzer, util::noncopyable {
+
+class ngram_token_stream_base : public analyzer, util::noncopyable {
  public:
-  struct options_t {
-    options_t() : min_gram(0), max_gram(0), preserve_original(true) {}
-    options_t(size_t min, size_t max, bool original) {
-      min_gram = min;
-      max_gram = max;
-      preserve_original = original;
-    }
+   enum class InputType {
+     Binary, // input is treaten as generic bytes 
+     UTF8,   // input is treaten as ut8-encoded symbols
+   };
 
-    size_t min_gram;
-    size_t max_gram;
-    bool preserve_original; // emit input data as a token
-  };
+   struct Options {
+     Options() noexcept
+       : min_gram(0), max_gram(0),
+         stream_bytes_type(InputType::Binary) ,
+         preserve_original(true) { 
+     }
+     Options(size_t min, size_t max, bool original)
+         : min_gram(min), max_gram(max),
+           stream_bytes_type(InputType::Binary),
+           preserve_original(original) {
+     }
+     Options(size_t min, size_t max,
+             bool original,
+             InputType stream_type,
+             const irs::bytes_ref start,
+             const irs::bytes_ref end)
+         : start_marker(start),
+           end_marker(end),
+           min_gram(min), max_gram(max),
+           stream_bytes_type(stream_type),
+           preserve_original(original) {
+     }
 
-  DECLARE_ANALYZER_TYPE();
+     irs::bstring start_marker; // marker of ngrams at the beginning of stream
+     irs::bstring end_marker; // marker of ngrams at the end of strem
+     size_t min_gram;
+     size_t max_gram;
+     InputType stream_bytes_type;
+     bool preserve_original; // emit input data as a token
+   };
+   DECLARE_ANALYZER_TYPE();
 
-  DECLARE_FACTORY(const options_t& options);
+   static void init(); // for trigering registration in a static build
 
-  static void init(); // for trigering registration in a static build
+   ngram_token_stream_base(const Options& options);
 
-  //ngram_token_stream(size_t n, bool preserve_original)
-  //  : ngram_token_stream(n, n, preserve_original) {
- //}
+   virtual const attribute_view& attributes() const noexcept override {
+     return attrs_;
+   }
 
-  ngram_token_stream(const options_t& options);
+   virtual bool reset(const string_ref& data) noexcept override;
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
+   size_t min_gram() const noexcept { return options_.min_gram; }
+   size_t max_gram() const noexcept { return options_.max_gram; }
+   bool preserve_original() const noexcept { return options_.preserve_original; }
 
-  virtual bool next() NOEXCEPT override;
-  virtual bool reset(const string_ref& data) NOEXCEPT override;
+ protected:
+   void emit_original() noexcept;
 
-  size_t min_gram() const NOEXCEPT { return options_.min_gram; }
-  size_t max_gram() const NOEXCEPT { return options_.max_gram; }
-  bool preserve_original() const NOEXCEPT { return options_.preserve_original; }
+   class term_attribute final : public irs::term_attribute {
+   public:
+     void value(const bytes_ref& value) { value_ = value; }
+   };
+
+   Options options_;
+   attribute_view attrs_;
+   bytes_ref data_; // data to process
+   increment inc_;
+   offset offset_;
+   term_attribute term_;
+   const byte_type* begin_{};
+   const byte_type* data_end_{};
+   const byte_type* ngram_end_{};
+   size_t length_{};
+  
+   enum class EmitOriginal {
+     None,
+     WithoutMarkers,
+     WithStartMarker,
+     WithEndMarker
+   };
+
+   EmitOriginal emit_original_{ EmitOriginal::None };
+
+   // buffer for emitting ngram with start/stop marker
+   // we need continious memory for value so can not use
+   // pointers to input memory block
+   bstring marked_term_buffer_;
+
+   // increment value for next token
+   uint32_t next_inc_val_{ 0 };
+
+   // Aux flags to speed up marker properties access;
+   bool start_marker_empty_;
+   bool end_marker_empty_;
+};
+
+
+template<ngram_token_stream_base::InputType StreamType>
+class ngram_token_stream: public ngram_token_stream_base {
+ public:
+  
+  DECLARE_FACTORY(const ngram_token_stream_base::Options& options);
+
+  ngram_token_stream(const ngram_token_stream_base::Options& options);
+  
+  virtual bool next() noexcept override;
 
  private:
-  class term_attribute final: public irs::term_attribute {
-   public:
-    void value(const bytes_ref& value) { value_ = value; }
-  };
-
-  options_t options_;
-  attribute_view attrs_;
-  bytes_ref data_; // data to process
-  increment inc_;
-  offset offset_;
-  term_attribute term_;
-  const byte_type* begin_{};
-  size_t length_{};
-  bool emit_original_{ false };
+  inline bool next_symbol(const byte_type*& it) const noexcept;
 }; // ngram_token_stream
 
 

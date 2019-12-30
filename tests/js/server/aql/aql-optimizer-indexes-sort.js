@@ -44,9 +44,11 @@ function optimizerIndexesSortTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
+      let docs = [];
       for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, value: i % 10 });
+        docs.push({ _key: "test" + i, value: i % 10 });
       }
+      c.insert(docs);
 
       c.ensureSkiplist("value");
     },

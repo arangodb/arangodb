@@ -59,9 +59,9 @@ router.get('/index.html', (req, res) => {
   if (encoding && encoding.indexOf('gzip') >= 0) {
     // gzip-encode?
     res.set('Content-Encoding', 'gzip');
-    res.sendFile(module.context.fileName('frontend/build/index-min.html.gz'));
+    res.sendFile(module.context.fileName('react/build/index.html.gz'));
   } else {
-    res.sendFile(module.context.fileName('frontend/build/index-min.html'));
+    res.sendFile(module.context.fileName('react/build/index.html'));
   }
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.set('X-Frame-Options', 'DENY');
@@ -90,7 +90,11 @@ router.get('/config.js', function (req, res) {
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
-      foxxApiEnabled: !internal.isFoxxApiDisabled()
+      foxxApiEnabled: !internal.isFoxxApiDisabled(),
+      minReplicationFactor: internal.minReplicationFactor,
+      maxReplicationFactor: internal.maxReplicationFactor,
+      defaultReplicationFactor: internal.defaultReplicationFactor,
+      maxNumberOfShards: internal.maxNumberOfShards
     })}`
   );
 })
@@ -367,15 +371,6 @@ authRouter.post('/graph-examples/create/:name', function (req, res) {
 
 authRouter.post('/job', function (req, res) {
   let frontend = db._collection('_frontend');
-  if (!frontend) {
-    frontend = db._create('_frontend', { 
-      isSystem: true,
-      waitForSync: false,
-      journalSize: 1024 * 1024, 
-      replicationFactor: internal.DEFAULT_REPLICATION_FACTOR_SYSTEM,
-      distributeShardsLike: '_graphs' 
-    });
-  }
   frontend.save(Object.assign(req.body, {model: 'job'}));
   res.json(true);
 })

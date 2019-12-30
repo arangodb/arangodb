@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global assertEqual, assertTrue, fail, AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
+/* global AQL_EXECUTE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Spec for the AQL FOR x IN GRAPH name statement
@@ -31,6 +31,7 @@
 'use strict';
 
 const jsunity = require('jsunity');
+const {assertEqual, assertTrue, fail} = jsunity.jsUnity.assertions;
 
 const internal = require('internal');
 const db = internal.db;
@@ -72,6 +73,236 @@ var createBaseGraph = function () {
   edge.EB = ec.save(vertex.E, vertex.B, {})._id;
   edge.FE = ec.save(vertex.F, vertex.E, {})._id;
 };
+
+function invalidStartVertexSuite() {
+  const gn = 'UnitTestGraph';
+
+  return {
+
+    setUpAll: function () {
+      db._drop(gn + 'v1');
+      db._drop(gn + 'v2');
+      db._drop(gn + 'e');
+
+      let c;
+      c = db._create(gn + 'v1', { numberOfShards: 1 });
+      c.insert({ _key: "test" });
+
+      c = db._create(gn + 'v2', { numberOfShards: 1 });
+      c.insert({ _key: "test" });
+
+      c = db._createEdgeCollection(gn + 'e', { numberOfShards: 1 });
+      c.insert({ _from: gn + "v2/test", _to: gn + "v1/test" });
+    },
+
+    tearDownAll: function () {
+      db._drop(gn + 'v1');
+      db._drop(gn + 'v2');
+      db._drop(gn + 'e');
+    },
+    
+    testTraversalNullStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        try {
+          let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} null ${gn + 'e'} RETURN {v, e}`;
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+    
+    testTraversalNumberStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} -123 ${gn + 'e'} RETURN {v, e}`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testTraversalEmptyStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} '' ${gn + 'e'} RETURN {v, e}`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+    
+    testShortestPathNullStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH null TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN {v, e}`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+    
+    testShortestPathNumberStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH -123 TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN {v, e}`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testShortestPathEmptyStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '' TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN {v, e}`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+
+    testShortestPathEmptyEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '${vn + 'v1'}/1' TO '' ${gn + 'e'} RETURN {v, e}`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+    
+    testShortestPathNullEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '${vn + 'v1'}/1' TO null ${gn + 'e'} RETURN {v, e}`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+    
+    testShortestPathNumberEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '${vn + 'v1'}/1' TO -123 ${gn + 'e'} RETURN {v, e}`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testShortestPathBothEmpty: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v, e IN ${direction} SHORTEST_PATH '' TO '' ${gn + 'e'} RETURN {v, e}`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+
+    testKShortestPathsNullStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS null TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+    
+    testKShortestsPathNumberStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS -123 TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testKShortestPathsEmptyStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '' TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+
+    testKShortestPathsEmptyEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '${vn + 'v1'}/1' TO '' ${gn + 'e'} RETURN v`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+    
+    testKShortestPathsNullEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '${vn + 'v1'}/1' TO null ${gn + 'e'} RETURN v`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+    
+    testKShortestPathsNumberEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '${vn + 'v1'}/1' TO -123 ${gn + 'e'} RETURN v`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testKShortestPathsBothEmpty: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function(direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '' TO '' ${gn + 'e'} RETURN v`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    }
+
+  };
+}
 
 function simpleInboundOutboundSuite() {
   const gn = 'UnitTestGraph';
@@ -668,7 +899,7 @@ function multiCollectionGraphSuite() {
       /* this test is intended to trigger the clone functionality. */
       var query = 'FOR t IN ' + vn +
         ' FOR s IN ' + vn2 +
-        ' FOR x, e, p IN OUTBOUND t ' + en + ' SORT x._key RETURN {vertex: x, path: p}';
+        ' FOR x, e, p IN OUTBOUND t ' + en + ' SORT x._key, e._key RETURN {vertex: x, path: p}';
       var result = db._query(query).toArray();
       var plans = AQL_EXPLAIN(query, {}, opts).plans;
       plans.forEach(function (plan) {
@@ -1566,46 +1797,66 @@ function complexInternaSuite() {
     },
 
     testSkipSome: function () {
-      var query = `WITH ${vn}
+      const query = `WITH ${vn}
       FOR x, e, p IN 1..2 OUTBOUND @startId @@eCol
       LIMIT 4, 100
       RETURN p.vertices[1]._key`;
-      var startId = vn + '/test';
-      var bindVars = {
+      const startId = vn + '/start';
+      const bindVars = {
         '@eCol': en,
         'startId': startId
       };
       vc.save({ _key: startId.split('/')[1] });
 
       // Insert amount many edges and vertices into the collections.
-      for (var i = 0; i < 3; ++i) {
-        var tmp = vc.save({ _key: '' + i })._id;
+      for (let i = 0; i < 3; ++i) {
+        const tmp = vc.save({ _key: '' + i })._id;
         ec.save(startId, tmp, {});
-        for (var k = 0; k < 3; ++k) {
-          var tmp2 = vc.save({ _key: '' + i + '_' + k })._id;
+        for (let k = 0; k < 3; ++k) {
+          const tmp2 = vc.save({ _key: '' + i + '_' + k })._id;
           ec.save(tmp, tmp2, {});
         }
       }
 
+      /*
+                   /-> 0_0
+               -> 0 -> 0_1
+             /     \-> 0_2
+            |
+            |      /-> 1_0
+         start -> 1 -> 1_1
+            |      \-> 1_2
+            |
+             \     /-> 2_0
+               -> 2 -> 2_1
+                   \-> 2_2
+       */
+
+      const isValidResult = result => {
+        return true
+          // all results must be depth 1 vertices
+          && result.every(v => -1 !== ['0', '1', '2'].indexOf(v))
+          // we expect exactly 8 results
+          && result.length === 8
+          // but only two different vertices (because we skipped one subtree)
+          && _.uniq(result).length === 2
+          // first one (any) of the subtrees must be returned, then the other
+          && _.uniq(result.slice(0, 4)).length === 1
+          && _.uniq(result.slice(4, 8)).length === 1;
+      };
+
       // Check that we can get all of them out again.
-      var result = db._query(query, bindVars).toArray();
-      // Internally: The Query selects elements in chunks, check that nothing is lost.
-      assertEqual(result.length, 8);
+      const result = db._query(query, bindVars).toArray();
+      assertTrue(isValidResult(result), result);
 
       // Each of the 3 parts of this graph contains of 4 nodes, one connected to the start.
       // And 3 connected to the first one. As we do a depth first traversal we expect to skip
       // exactly one sub-tree. Therefor we expect exactly two sub-trees to be traversed.
-      var seen = {};
-      for (var r of result) {
-        if (!seen.hasOwnProperty(r)) {
-          seen[r] = true;
-        }
-      }
-      assertEqual(Object.keys(seen).length, 2);
-      var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
+
+      const plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
-        var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
-        assertEqual(jsonResult, result, query);
+        const jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
+        assertTrue(isValidResult(jsonResult), JSON.stringify({jsonResult, plan}));
       });
     },
 
@@ -2022,6 +2273,20 @@ function complexFilteringSuite() {
     },
 
     tearDownAll: cleanup,
+
+    testPruneWithSubquery: function () {
+      let query = `FOR v,e,p IN 1..100 OUTBOUND @start @ecol PRUNE 2 <= LENGTH(FOR w IN p.vertices FILTER w._id == v._id RETURN 1) RETURN p`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.Tri1
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
 
     testVertexEarlyPruneHighDepth: function () {
       var query = `WITH ${vn}
@@ -4138,6 +4403,7 @@ function pruneTraversalSuite() {
   return testObj;
 }
 
+jsunity.run(invalidStartVertexSuite);
 jsunity.run(simpleInboundOutboundSuite);
 jsunity.run(limitSuite);
 jsunity.run(nestedSuite);

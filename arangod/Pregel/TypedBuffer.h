@@ -54,7 +54,7 @@ struct TypedBuffer {
   static_assert(std::is_default_constructible<T>::value, "");
   
   /// close file (see close() )
-  virtual ~TypedBuffer() {}
+  virtual ~TypedBuffer() = default;
   TypedBuffer() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
 
   /// end usage of the structure
@@ -126,6 +126,7 @@ class VectorTypedBuffer : public TypedBuffer<T> {
     close();
   }
 
+  // cppcheck-suppress virtualCallInConstructor
   void close() override {
     if (this->_begin == nullptr) {
       return;
@@ -232,6 +233,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
   }
 
   /// close file
+  // cppcheck-suppress virtualCallInConstructor
   void close() override {
     if (this->_begin == nullptr) {
       // already closed or not opened

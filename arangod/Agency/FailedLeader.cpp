@@ -79,7 +79,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-FailedLeader::~FailedLeader() {}
+FailedLeader::~FailedLeader() = default;
 
 void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 

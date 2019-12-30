@@ -132,6 +132,7 @@
     "ERROR_REPLICATION_WRONG_CHECKSUM" : { "code" : 1416, "message" : "wrong checksum" },
     "ERROR_REPLICATION_SHARD_NONEMPTY" : { "code" : 1417, "message" : "shard not empty" },
     "ERROR_CLUSTER_SERVER_UNKNOWN" : { "code" : 1449, "message" : "got a request from an unkown server" },
+    "ERROR_CLUSTER_TOO_MANY_SHARDS" : { "code" : 1450, "message" : "too many shards" },
     "ERROR_CLUSTER_COLLECTION_ID_EXISTS" : { "code" : 1453, "message" : "collection ID already exists" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN" : { "code" : 1454, "message" : "could not create collection in plan" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION" : { "code" : 1456, "message" : "could not create collection" },
@@ -259,8 +260,8 @@
     "ERROR_GRAPH_NOT_FOUND"        : { "code" : 1924, "message" : "graph '%s' not found" },
     "ERROR_GRAPH_DUPLICATE"        : { "code" : 1925, "message" : "graph already exists" },
     "ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST" : { "code" : 1926, "message" : "vertex collection does not exist or is not part of the graph" },
-    "ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX" : { "code" : 1927, "message" : "not a vertex collection" },
-    "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "not in orphan collection" },
+    "ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX" : { "code" : 1927, "message" : "collection not a vertex collection" },
+    "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "collection is not in list of orphan collections" },
     "ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF" : { "code" : 1929, "message" : "collection already used in edge def" },
     "ERROR_GRAPH_EDGE_COLLECTION_NOT_USED" : { "code" : 1930, "message" : "edge collection not used in graph" },
     "ERROR_GRAPH_NO_GRAPH_COLLECTION" : { "code" : 1932, "message" : "collection _graphs does not exist" },
@@ -282,6 +283,7 @@
     "ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT" : { "code" : 2001, "message" : "could not connect to server" },
     "ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" },
     "ERROR_SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
+    "ERROR_WAS_ERLAUBE"            : { "code" : 2019, "message" : "was erlaube?!" },
     "ERROR_COMMUNICATOR_REQUEST_ABORTED" : { "code" : 2100, "message" : "Request aborted" },
     "ERROR_COMMUNICATOR_DISABLED"  : { "code" : 2101, "message" : "Communication was disabled" },
     "ERROR_INTERNAL_AQL"           : { "code" : 2200, "message" : "General internal AQL error" },
@@ -353,7 +355,8 @@
     "ERROR_REMOTE_REPOSITORY_CONFIG_BAD" : { "code" :  7008, "message" : " \"remote hotback repository configuration error\"" },
     "ERROR_LOCAL_LOCK_FAILED"      : { "code" :  7009, "message" : " \"some db servers cannot be reached for transaction locks\"" },
     "ERROR_LOCAL_LOCK_RETRY"       : { "code" :  7010, "message" : " \"some db servers cannot be reached for transaction locks\"" },
-    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" }
+    "ERROR_HOT_BACKUP_CONFLICT"    : { "code" :  7011, "message" : " \"hot backup conflict\"" },
+    "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" :  7012, "message" : " \"hot backup not all db servers reachable\"" }
   };
 
   // For compatibility with <= 3.3

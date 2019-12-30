@@ -49,10 +49,12 @@ StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;
 StatusCode constexpr StatusNotFound = 404;
 StatusCode constexpr StatusMethodNotAllowed = 405;
+StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
 StatusCode constexpr StatusInternalError = 500;
-StatusCode constexpr StatusUnavailable = 505;
+StatusCode constexpr StatusUnavailable = 503;
+StatusCode constexpr StatusVersionNotSupported = 505;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition
@@ -71,6 +73,8 @@ enum class Error : uint16_t {
   WriteError = 1103,
 
   Canceled = 1104,
+  
+  VstUnauthorized = 2000,
 
   ProtocolError = 3000,
 };
@@ -107,6 +111,7 @@ enum class RestVerb {
   Options = 6
 };
 std::string to_string(RestVerb type);
+RestVerb from_string(std::string const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       MessageType
@@ -127,21 +132,21 @@ std::string to_string(MessageType type);
 // --SECTION--                                                     SocketType
 // -----------------------------------------------------------------------------
 
-enum class SocketType { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
+enum class SocketType : uint8_t { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
 std::string to_string(SocketType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     ProtocolType
 // -----------------------------------------------------------------------------
 
-enum class ProtocolType { Undefined = 0, Http = 1, Vst = 2 };
+enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Vst = 2 };
 std::string to_string(ProtocolType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ContentType
 // -----------------------------------------------------------------------------
 
-enum class ContentType { Unset, Custom, VPack, Dump, Json, Html, Text };
+enum class ContentType : uint8_t { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
 ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
 

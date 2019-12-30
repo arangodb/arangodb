@@ -85,8 +85,12 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
 
     return nullptr;
   }
-  
-  if (application_features::ApplicationServer::isStopping()) {
+
+  TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
+  // DatabaseGuard constructor which on failure
+  // would fail Task constructor
+
+  if (vocbase->server().isStopping()) {
     ec = TRI_ERROR_SHUTTING_DOWN;
     return nullptr;
   }
@@ -100,7 +104,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
   
   MUTEX_LOCKER(guard, _tasksLock);
 
-  if (!_tasks.emplace(id, std::make_pair(user, task)).second) {
+  if (!_tasks.try_emplace(id, user, task).second) {
     ec = TRI_ERROR_TASK_DUPLICATE_ID;
 
     return {nullptr};
@@ -189,7 +193,13 @@ void Task::shutdownTasks() {
 
     if (++iterations % 10 == 0) {
       LOG_TOPIC("3966b", INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+    } else if (iterations >= 25) {
+      LOG_TOPIC("54653", INFO, Logger::FIXME) << "giving up waiting for unfinished tasks";
+      MUTEX_LOCKER(guard, _tasksLock);
+      _tasks.clear();
+      break;
     }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 }
@@ -242,7 +252,7 @@ Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbas
       _offset(0),
       _interval(0) {}
 
-Task::~Task() {}
+Task::~Task() = default;
 
 void Task::setOffset(double offset) {
   _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
@@ -290,7 +300,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // permissions might have changed since starting this task
-    if (application_features::ApplicationServer::isStopping() || !allowContinue) {
+    if (_dbGuard->database().server().isStopping() || !allowContinue) {
       Task::unregisterTask(_id, true);
       return;
     }
@@ -303,7 +313,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
                                                  : execContext.get());
             work(execContext.get());
 
-            if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
+            if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
               // requeue the task
               bool queued = basics::function_utils::retryUntilTimeout(
                   [this]() -> bool { return queue(_interval); }, Logger::FIXME,

@@ -164,17 +164,14 @@
       data.type = parseInt(object.collType, 10);
       if (object.shards) {
         data.numberOfShards = object.shards;
-        data.shardKeys = object.shardKeys;
       }
+      data.shardKeys = object.shardKeys;
 
       if (object.smartJoinAttribute &&
           object.smartJoinAttribute !== '') {
         data.smartJoinAttribute = object.smartJoinAttribute;
       }
-      if (object.distributeShardsLike &&
-          object.distributeShardsLike !== '') {
-        data.distributeShardsLike = object.distributeShardsLike;
-      }
+      data.distributeShardsLike = object.distributeShardsLike;
 
       var pattern = new RegExp(/^[0-9]+$/);
       if (object.replicationFactor) {

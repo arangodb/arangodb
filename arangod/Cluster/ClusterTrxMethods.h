@@ -24,6 +24,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_TRX_METHODS_H 1
 
 #include "Basics/Common.h"
+#include "Futures/Future.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
@@ -34,41 +35,33 @@ namespace arangodb {
 struct OperationOptions;
 class TransactionState;
 
-class ClusterTrxMethods {
- public:
-  // wrapper Class for static functions.
-  // Cannot be instanciated.
-  ClusterTrxMethods() = delete;
-  ~ClusterTrxMethods() = delete;
+namespace ClusterTrxMethods {
+using arangodb::futures::Future;
 
-  /// @brief begin a transaction on all followers
-  static arangodb::Result beginTransactionOnLeaders(TransactionState&,
-                                                    std::vector<ServerID> const& leaders);
+/// @brief begin a transaction on all followers
+Future<arangodb::Result> beginTransactionOnLeaders(TransactionState&,
+                                                   std::vector<ServerID> const& leaders);
 
-  /// @brief begin a transaction on all followers
-  static arangodb::Result beginTransactionOnFollowers(transaction::Methods& trx,
-                                                      arangodb::FollowerInfo& info,
-                                                      std::vector<ServerID> const& followers);
+/// @brief commit a transaction on a subordinate
+Future<arangodb::Result> commitTransaction(transaction::Methods& trx);
 
-  /// @brief commit a transaction on a subordinate
-  static arangodb::Result commitTransaction(transaction::Methods& trx);
+/// @brief commit a transaction on a subordinate
+Future<arangodb::Result> abortTransaction(transaction::Methods& trx);
 
-  /// @brief commit a transaction on a subordinate
-  static arangodb::Result abortTransaction(transaction::Methods& trx);
+/// @brief add the transaction ID header for servers
+template <typename MapT>
+void addTransactionHeader(transaction::Methods const& trx,
+                          ServerID const& server, MapT& headers);
 
-  /// @brief add the transaction ID header for servers
-  static void addTransactionHeader(transaction::Methods const& trx, ServerID const& server,
-                                   std::unordered_map<std::string, std::string>& headers);
+/// @brief add transaction ID header for setting up AQL snippets
+template <typename MapT>
+void addAQLTransactionHeader(transaction::Methods const& trx,
+                             ServerID const& server, MapT& headers);
 
-  /// @brief add transaction ID header for setting up AQL snippets
-  static void addAQLTransactionHeader(transaction::Methods const& trx, ServerID const& server,
-                                      std::unordered_map<std::string, std::string>& headers);
-
-  /// @brief check whether this is any kind el cheapo transaction
-  static bool isElCheapo(transaction::Methods const& trx);
-  static bool isElCheapo(TransactionState const& state);
-};
-
+/// @brief check whether this is a kind el cheapo transaction
+bool isElCheapo(transaction::Methods const& trx);
+bool isElCheapo(TransactionState const& state);
+}  // namespace ClusterTrxMethods
 }  // namespace arangodb
 
 #endif

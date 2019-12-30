@@ -32,7 +32,7 @@ namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : virtual public application_features::ApplicationFeature {
+class AgencyFeature : public application_features::ApplicationFeature {
  public:
   static consensus::Agent* AGENT;
 

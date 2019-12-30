@@ -34,6 +34,7 @@ var analyzers = require("@arangodb/analyzers");
 const db = arangodb.db;
 
 const replication = require('@arangodb/replication');
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const compareTicks = replication.compareTicks;
 const console = require('console');
@@ -45,12 +46,12 @@ const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
 
 const connectToMaster = function () {
-  arango.reconnect(masterEndpoint, db._name(), 'root', '');
+  reconnectRetry(masterEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
 const connectToSlave = function () {
-  arango.reconnect(slaveEndpoint, db._name(), 'root', '');
+  reconnectRetry(slaveEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
@@ -1342,6 +1343,7 @@ function ReplicationSuite () {
 
       db._dropView('UnitTestsSyncView');
       db._dropView('UnitTestsSyncViewRenamed');
+      db._dropView(cn + 'View');
       db._drop(cn);
       db._drop(cn2);
 
@@ -1351,6 +1353,7 @@ function ReplicationSuite () {
 
       db._dropView('UnitTestsSyncView');
       db._dropView('UnitTestsSyncViewRenamed');
+      db._dropView(cn + 'View');
       db._drop(cn);
       db._drop(cn2);
       db._drop(cn + 'Renamed');

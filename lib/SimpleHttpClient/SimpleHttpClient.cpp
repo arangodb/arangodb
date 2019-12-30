@@ -40,7 +40,7 @@
 #include "SimpleHttpClient.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -191,7 +191,8 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
       break;
     }
 
-    if (application_features::ApplicationServer::isStopping()) {
+    auto& server = application_features::ApplicationServer::server();
+    if (server.isStopping()) {
       // abort this client, will also lead to exiting this loop next
       setAborted(true);
     }
@@ -261,9 +262,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   // reset error message
   _errorMessage = "";
 
-  auto comm =
-      application_features::ApplicationServer::getFeature<arangodb::application_features::CommunicationFeaturePhase>(
-          "CommunicationPhase");
+  auto& server = application_features::ApplicationServer::server();
+  auto& comm = server.getFeature<application_features::CommunicationFeaturePhase>();
 
   // set body
   setRequest(method, rewriteLocation(location), body, bodyLength, headers);
@@ -418,7 +418,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
         break;
     }
 
-    if (!comm->getCommAllowed()) {
+    if (!comm.getCommAllowed()) {
       setErrorMessage("Command locally aborted");
       return nullptr;
     }

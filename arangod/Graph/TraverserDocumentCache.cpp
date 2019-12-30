@@ -41,11 +41,12 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserDocumentCache::TraverserDocumentCache(aql::Query* query)
-    : TraverserCache(query), _cache(nullptr) {
+TraverserDocumentCache::TraverserDocumentCache(aql::Query* query, BaseOptions const* options)
+    : TraverserCache(query, options), _cache(nullptr) {
   auto cacheManager = CacheManagerFeature::MANAGER;
   if (cacheManager != nullptr) {
     _cache = cacheManager->createCache(cache::CacheType::Plain);

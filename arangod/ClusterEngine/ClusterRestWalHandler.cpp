@@ -20,11 +20,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterRestWalHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "ClusterRestWalHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Manager.h"
@@ -36,8 +37,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-ClusterRestWalHandler::ClusterRestWalHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+ClusterRestWalHandler::ClusterRestWalHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus ClusterRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -144,7 +147,8 @@ void ClusterRestWalHandler::flush() {
     }
   }
 
-  int res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
+  auto& feature = server().getFeature<ClusterFeature>();
+  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }

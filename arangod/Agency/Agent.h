@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgencyStrings.h"
-#include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Compactor.h"
@@ -37,6 +36,7 @@
 #include "Agency/Supervision.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/MetricsFeature.h"
 
 struct TRI_vocbase_t;
 
@@ -46,7 +46,7 @@ namespace consensus {
 class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(config_t const&);
+  explicit Agent(application_features::ApplicationServer& server, config_t const&);
 
   /// @brief Clean up
   ~Agent();
@@ -146,7 +146,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void resign(term_t otherTerm = 0);
 
   /// @brief collect store callbacks for removal
-  void trashStoreCallback(std::string const& url, query_t const& body);
+  void trashStoreCallback(std::string const& url, velocypack::Slice body);
 
  private:
 
@@ -166,7 +166,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
-  void sendEmptyAppendEntriesRPC(std::string followerId);
+  void sendEmptyAppendEntriesRPC(std::string const& followerId);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -176,7 +176,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   bool booting();
 
   /// @brief Gossip in
-  query_t gossip(query_t const&, bool callback = false, size_t version = 0);
+  query_t gossip(velocypack::Slice, bool callback = false, size_t version = 0);
 
   /// @brief Persisted agents
   bool persistedAgents();
@@ -188,6 +188,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   index_t index();
 
   /// @brief Start orderly shutdown of threads
+  // cppcheck-suppress virtualCallInConstructor
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
@@ -476,8 +477,16 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
+  Counter& _write_ok;
+  Counter& _write_no_leader;
+  Counter& _read_ok;
+  Counter& _read_no_leader;
+  Histogram<double>& _write_hist_msec;
+  
 };
 }  // namespace consensus
 }  // namespace arangodb
 
 #endif
+ 

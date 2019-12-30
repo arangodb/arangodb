@@ -39,6 +39,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
 ///
@@ -141,6 +145,12 @@ std::string TRI_Dirname(std::string const& path);
 std::string TRI_Basename(char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the basename
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_Basename(std::string const& path);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of files in path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -212,7 +222,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length);
 /// @brief slurps in a file that is encrypted and return unencrypted contents
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* length);
+char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

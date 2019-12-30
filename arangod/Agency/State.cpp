@@ -37,9 +37,11 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -69,7 +71,7 @@ State::State()
       _cur(0) {}
 
 /// Default dtor
-State::~State() {}
+State::~State() = default;
 
 inline static std::string timestamp(uint64_t m) {
 
@@ -376,7 +378,7 @@ index_t State::logFollower(query_t const& transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent, "snapshot");
+      Store snapshot(_agent->server(), _agent, "snapshot");
       snapshot = slices[0];
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
@@ -1111,7 +1113,7 @@ bool State::compact(index_t cind, index_t keep) {
   _nextCompactionAfter = (std::max)(_nextCompactionAfter.load(),
                                     cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent, "snapshot");
+  Store snapshot(_agent->server(), _agent, "snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1500,7 +1502,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 
   VPackSlice result = queryResult.data->slice();
 
-  Store store(nullptr);
+  Store store(vocbase.server(), nullptr);
   index = 0;
   term = 0;
   if (result.isArray() && result.length() == 1) {

@@ -171,6 +171,8 @@ struct Parameter {
   Parameter() = default;
   virtual ~Parameter() {}
 
+  virtual void flushValue() {}
+
   virtual bool requiresValue() const { return true; }
   virtual std::string name() const = 0;
   virtual std::string valueString() const = 0;
@@ -444,6 +446,8 @@ struct DiscreteValuesParameter : public T {
     return T::set(value);
   }
 
+  
+  // cppcheck-suppress virtualCallInConstructor ; bogus warning
   std::string description() const override {
     std::string msg("Possible values: ");
     std::vector<std::string> values;
@@ -472,7 +476,6 @@ template <typename T>
 struct VectorParameter : public Parameter {
   explicit VectorParameter(std::vector<typename T::ValueType>* ptr)
       : ptr(ptr) {}
-
   std::string name() const override {
     typename T::ValueType dummy;
     T param(&dummy);
@@ -500,6 +503,10 @@ struct VectorParameter : public Parameter {
     return result;
   }
 
+  void flushValue() override {
+    ptr->clear();
+  }
+
   void toVPack(VPackBuilder& builder) const override {
     builder.openArray();
     for (size_t i = 0; i < ptr->size(); ++i) {
@@ -510,6 +517,100 @@ struct VectorParameter : public Parameter {
 
   std::vector<typename T::ValueType>* ptr;
 };
+
+// specialized type for a vector of discrete values (defined in the unordered_set)
+// this templated type needs a concrete value type
+template <typename T>
+struct DiscreteValuesVectorParameter : public Parameter {
+  explicit DiscreteValuesVectorParameter(std::vector<typename T::ValueType>* ptr,
+                                         std::unordered_set<typename T::ValueType> const& allowed)
+      : ptr(ptr),
+        allowed(allowed) {
+    for (size_t i = 0; i < ptr->size(); ++i) {
+      if (allowed.find(ptr->at(i)) == allowed.end()) {
+        // default value is not in list of allowed values
+        std::string msg("invalid default value for DiscreteValues parameter: '");
+        msg.append(stringifyValue(ptr->at(i)));
+        msg.append("'. ");
+        msg.append(description());
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+      }
+    }
+  }
+
+  std::string name() const override {
+    typename T::ValueType dummy;
+    T param(&dummy);
+    return std::string(param.name()) + "...";
+  }
+
+  void flushValue() override {
+    ptr->clear();
+  }
+
+  std::string valueString() const override {
+    std::string value;
+    for (size_t i = 0; i < ptr->size(); ++i) {
+      if (i > 0) {
+        value.append(", ");
+      }
+      value.append(stringifyValue(ptr->at(i)));
+    }
+    return value;
+  }
+
+  std::string set(std::string const& value) override {
+    auto it = allowed.find(fromString<typename T::ValueType>(value));
+
+    if (it == allowed.end()) {
+      std::string msg("invalid value '");
+      msg.append(value);
+      msg.append("'. ");
+      msg.append(description());
+      return msg;
+    }
+
+    typename T::ValueType dummy;
+    T param(&dummy);
+    std::string result = param.set(value);
+
+    if (result.empty()) {
+      ptr->push_back(*(param.ptr));
+    }
+    return result;
+  }
+
+  void toVPack(VPackBuilder& builder) const override {
+    builder.openArray();
+    for (size_t i = 0; i < ptr->size(); ++i) {
+      builder.add(VPackValue(ptr->at(i)));
+    }
+    builder.close();
+  }
+
+  std::string description() const override {
+    std::string msg("Possible values: ");
+    std::vector<std::string> values;
+    for (auto const& it : allowed) {
+      values.emplace_back(stringifyValue(it));
+    }
+    std::sort(values.begin(), values.end());
+
+    size_t i = 0;
+    for (auto const& it : values) {
+      if (i > 0) {
+        msg.append(", ");
+      }
+      msg.append(it);
+      ++i;
+    }
+    return msg;
+  }
+
+  std::vector<typename T::ValueType>* ptr;
+  std::unordered_set<typename T::ValueType> allowed;
+};
+
 
 // a type that's useful for obsolete parameters that do nothing
 struct ObsoleteParameter : public Parameter {

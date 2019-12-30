@@ -20,18 +20,18 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
-#include "Cluster/RebootTracker.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/SupervisedScheduler.h"
-
-#include "Mocks/Servers.h"
-
-#include "lib/Logger/Logger.h"
-
 #include <memory>
 #include <type_traits>
+
+#include "gtest/gtest.h"
+
+#include "Mocks/LogLevels.h"
+#include "Mocks/Servers.h"
+
+#include "Cluster/RebootTracker.h"
+#include "Logger/Logger.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/SupervisedScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -130,32 +130,30 @@ TEST_F(CallbackGuardTest, test_move_operator_eq_explicit) {
                             "its old callback again";
 }
 
-class RebootTrackerTest : public ::testing::Test {
+class RebootTrackerTest : public ::testing::Test,
+                          public LogSuppressor<Logger::CLUSTER, LogLevel::WARN> {
  protected:
-// MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler needs 64.
-// Disable warning:
+// MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler
+// needs 64. Disable warning:
 #if (_MSC_VER >= 1)
 #pragma warning(push)
 #pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
 #endif
   RebootTrackerTest()
-      : scheduler(std::make_unique<SupervisedScheduler>(2, 64, 128, 1024 * 1024, 4096)), mockApplicationServer() {
-    // Suppress this INFO message:
-    // When trying to register callback '': The server PRMR-srv-A is not known. If this server joined the cluster in the last seconds, this can happen.
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::WARN);
-  }
+      : mockApplicationServer(),
+        scheduler(std::make_unique<SupervisedScheduler>(mockApplicationServer.server(),
+                                                        2, 64, 128, 1024 * 1024, 4096)) {}
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
   using PeerState = RebootTracker::PeerState;
 
+  MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
   static_assert(std::is_same<decltype(*SchedulerFeature::SCHEDULER), decltype(*scheduler)>::value,
                 "Use the correct scheduler in the tests");
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
-  MockEmptyServer mockApplicationServer;
 
   void SetUp() { scheduler->start(); }
   void TearDown() { scheduler->shutdown(); }

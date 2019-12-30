@@ -71,6 +71,3 @@ level = info
 
 [rocksdb]
 # encryption-keyfile=/your-encryption-file
-
-[backup:enterprise]
-api-enabled = false

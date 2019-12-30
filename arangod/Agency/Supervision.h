@@ -90,7 +90,7 @@ class Supervision : public arangodb::CriticalThread {
   };
 
   /// @brief Construct sanity checking
-  Supervision();
+  explicit Supervision(application_features::ApplicationServer& server);
 
   /// @brief Default dtor
   ~Supervision();
@@ -136,6 +136,9 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Check for orphaned index creations, which have been successfully built
   void readyOrphanedIndexCreations();
 
+  /// @brief Check for orphaned index creations, which have been successfully built
+  void checkBrokenCreatedDatabases();
+
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
@@ -154,7 +157,7 @@ class Supervision : public arangodb::CriticalThread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
-  // @brief 
+  // @brief
   void cleanupFinishedAndFailedJobs();
 
   void workJobs();
@@ -185,6 +188,10 @@ class Supervision : public arangodb::CriticalThread {
 
   bool handleJobs();
   void handleShutdown();
+  bool verifyCoordinatorRebootID(std::string const& coordinatorID,
+                                 uint64_t wantedRebootID, bool& coordinatorFound);
+  void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
+                            uint64_t rebootID, bool coordinatorFound);
 
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);

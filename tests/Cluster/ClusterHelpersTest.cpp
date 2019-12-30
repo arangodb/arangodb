@@ -38,7 +38,7 @@ TEST(ComparingServerListsTest, comparing_non_array_slices_will_return_false) {
   VPackBuilder a;
   VPackBuilder b;
 
-  ASSERT_TRUE(ClusterHelpers::compareServerLists(a.slice(), b.slice()) == false);
+  ASSERT_FALSE(ClusterHelpers::compareServerLists(a.slice(), b.slice()));
 }
 
 TEST(ComparingServerListsTest, comparing_same_server_vpack_lists_returns_true) {
@@ -53,21 +53,21 @@ TEST(ComparingServerListsTest, comparing_same_server_vpack_lists_returns_true) {
     VPackArrayBuilder ba(&b);
     b.add(VPackValue("test"));
   }
-  ASSERT_TRUE(ClusterHelpers::compareServerLists(a.slice(), b.slice()) == true);
+  ASSERT_TRUE(ClusterHelpers::compareServerLists(a.slice(), b.slice()));
 }
 
 TEST(ComparingServerListsTest, comparing_same_server_lists_returns_true) {
   std::vector<std::string> a{"test"};
   std::vector<std::string> b{"test"};
 
-  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b) == true);
+  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b));
 }
 
 TEST(ComparingServerListsTest, comparing_same_server_lists_with_multiple_entries_returns_true) {
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test", "test1", "test2"};
 
-  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b) == true);
+  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b));
 }
 
 TEST(ComparingServerListsTest,
@@ -75,7 +75,7 @@ TEST(ComparingServerListsTest,
   std::vector<std::string> a{"test", "test1"};
   std::vector<std::string> b{"test", "test1", "test2"};
 
-  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b) == false);
+  ASSERT_FALSE(ClusterHelpers::compareServerLists(a, b));
 }
 
 TEST(ComparingServerListsTest,
@@ -83,7 +83,7 @@ TEST(ComparingServerListsTest,
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test", "test1"};
 
-  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b) == false);
+  ASSERT_FALSE(ClusterHelpers::compareServerLists(a, b));
 }
 
 TEST(ComparingServerListsTest,
@@ -91,7 +91,7 @@ TEST(ComparingServerListsTest,
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test", "test2", "test1"};
 
-  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b) == true);
+  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b));
 }
 
 TEST(ComparingServerListsTest,
@@ -99,5 +99,5 @@ TEST(ComparingServerListsTest,
   std::vector<std::string> a{"test", "test1", "test2"};
   std::vector<std::string> b{"test2", "test", "test1"};
 
-  ASSERT_TRUE(ClusterHelpers::compareServerLists(a, b) == false);
+  ASSERT_FALSE(ClusterHelpers::compareServerLists(a, b));
 }

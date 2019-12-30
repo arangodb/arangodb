@@ -22,6 +22,7 @@
 
 #include "FoxxQueuesFeature.h"
 
+#include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb::application_features;
@@ -34,7 +35,7 @@ FoxxQueuesFeature::FoxxQueuesFeature(application_features::ApplicationServer& se
       _pollInterval(1.0),
       _enabled(true) {
   setOptional(true);
-  startsAfter("ServerPhase");
+  startsAfter<ServerFeaturePhase>();
 }
 
 void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -38,6 +38,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -89,7 +90,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
       _startTime(TRI_microtime()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
   if (!_supportsColors) {
     _colors = false;
   }
@@ -113,7 +114,8 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("console", "Configure the console");
 
   options->addOption("--console.colors", "enable color support",
-                     new BooleanParameter(&_colors));
+                     new BooleanParameter(&_colors),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--console.auto-complete", "enable auto completion",
                      new BooleanParameter(&_autoComplete));
@@ -194,7 +196,7 @@ void ConsoleFeature::_print(std::string const& s) {
   if (pos == std::string::npos) {
     _print2(s);
   } else {
-    std::vector<std::string> lines = StringUtils::split(s, '\x1b', '\0');
+    std::vector<std::string> lines = StringUtils::split(s, '\x1b');
 
     int i = 0;
 

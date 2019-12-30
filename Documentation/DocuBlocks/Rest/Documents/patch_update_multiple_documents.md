@@ -2,7 +2,7 @@
 @startDocuBlock patch_update_document_MULTI
 @brief updates multiple documents
 
-@RESTHEADER{PATCH /_api/document/{collection},Update documents,updateDocument }
+@RESTHEADER{PATCH /_api/document/{collection},Update documents,updateDocuments}
 
 @RESTALLBODYPARAM{documents,json,required}
 A JSON representation of an array of document updates as objects.
@@ -10,8 +10,7 @@ A JSON representation of an array of document updates as objects.
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection,string,required}
-This URL parameter is the name of the collection in which the
-documents are updated.
+Name of the *collection* in which the documents are to be updated.
 
 @RESTQUERYPARAMETERS
 
@@ -33,14 +32,14 @@ value. If set to *true*, objects will be merged. The default is
 Wait until the new documents have been synced to disk.
 
 @RESTQUERYPARAM{ignoreRevs,boolean,optional}
-By default, or if this is set to *true*, the *_rev* attributes in 
+By default, or if this is set to *true*, the *_rev* attributes in
 the given documents are ignored. If this is set to *false*, then
 any *_rev* attribute given in a body document is taken as a
 precondition. The document is only updated if the current revision
 is the one specified.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
-Return additionally the complete previous revision of the changed 
+Return additionally the complete previous revision of the changed
 documents under the attribute *old* in the result.
 
 @RESTQUERYPARAM{returnNew,boolean,optional}
@@ -56,6 +55,9 @@ patch documents will be added to the existing documents if they do
 not yet exist, and overwritten in the existing documents if they do
 exist there.
 
+The value of the `_key` attribute as well as attributes
+used as sharding keys may not be changed.
+
 Setting an attribute value to *null* in the patch documents will cause a
 value of *null* to be saved for the attribute by default.
 
@@ -64,8 +66,10 @@ document in the body and its value does not match the revision of
 the corresponding document in the database, the precondition is
 violated.
 
-If the document exists and can be updated, then an *HTTP 201* or
-an *HTTP 202* is returned (depending on *waitForSync*, see below).
+Cluster only: The patch document _may_ contain
+values for the collection's pre-defined shard keys. Values for the shard keys
+are treated as hints to improve performance. Should the shard keys
+values be incorrect ArangoDB may answer with a *not found* error
 
 Optionally, the query parameter *waitForSync* can be used to force
 synchronization of the document replacement operation to disk even in case
@@ -79,9 +83,9 @@ synchronization for collections that have a default *waitForSync* value
 of *true*.
 
 The body of the response contains a JSON array of the same length
-as the input array with the information about the handle and the
+as the input array with the information about the identifier and the
 revision of the updated documents. In each entry, the attribute
-*_id* contains the known *document-handle* of each updated document,
+*_id* contains the known *document-id* of each updated document,
 *_key* contains the key which uniquely identifies a document in a
 given collection, and the attribute *_rev* contains the new document
 revision. In case of an error or violated precondition, an error
@@ -107,12 +111,10 @@ cases the error 1200 "revision conflict" and in 10 cases the error
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-is returned if the documents were updated successfully and
-*waitForSync* was *true*.
+is returned if *waitForSync* was *true* and operations were processed.
 
 @RESTRETURNCODE{202}
-is returned if the documents were updated successfully and
-*waitForSync* was *false*.
+is returned if *waitForSync* was *false* and operations were processed.
 
 @RESTRETURNCODE{400}
 is returned if the body does not contain a valid JSON representation
@@ -123,4 +125,3 @@ an error document in this case.
 is returned if the collection was not found.
 
 @endDocuBlock
-

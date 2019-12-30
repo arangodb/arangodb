@@ -24,10 +24,10 @@
 #ifndef ARANGOD_MMFILES_MMFILES_REVISIONS_CACHE_H
 #define ARANGOD_MMFILES_MMFILES_REVISIONS_CACHE_H 1
 
-#include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/fasthash.h"
+#include "Containers/AssocUnique.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
@@ -88,7 +88,7 @@ class MMFilesRevisionsCache {
  private:
   mutable arangodb::basics::ReadWriteLock _lock;
 
-  arangodb::basics::AssocUnique<LocalDocumentId::BaseType, MMFilesDocumentPosition, MMFilesRevisionsCacheHelper> _positions;
+  ::arangodb::containers::AssocUnique<LocalDocumentId::BaseType, MMFilesDocumentPosition, MMFilesRevisionsCacheHelper> _positions;
 };
 
 }  // namespace arangodb

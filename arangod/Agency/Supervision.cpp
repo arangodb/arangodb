@@ -159,8 +159,8 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision()
-    : arangodb::CriticalThread("Supervision"),
+Supervision::Supervision(application_features::ApplicationServer& server)
+    : arangodb::CriticalThread(server, "Supervision"),
       _agent(nullptr),
       _snapshot("Supervision"),
       _transient("Transient"),
@@ -618,7 +618,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       }
     } else {
       LOG_TOPIC("a55cd", INFO, Logger::SUPERVISION)
-          << "Short name for << " << serverID
+          << "Short name for " << serverID
           << " not yet available.  Skipping health check.";
     }  // else
 
@@ -892,7 +892,7 @@ void Supervision::run() {
   }
 
   if (shutdown) {
-    ApplicationServer::server->beginShutdown();
+    _server.beginShutdown();
   }
 }
 
@@ -1129,6 +1129,9 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("00789", TRACE, Logger::SUPERVISION) << "Begin readyOrphanedIndexCreations";
   readyOrphanedIndexCreations();
 
+  LOG_TOPIC("00790", TRACE, Logger::SUPERVISION) << "Begin checkBrokenCreatedDatabases";
+  checkBrokenCreatedDatabases();
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -1149,7 +1152,7 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
 
-  auto cleanup = [&](std::string prefix, size_t limit) {
+  auto cleanup = [&](std::string const& prefix, size_t limit) {
     auto const& jobs = _snapshot.hasAsChildren(prefix).first;
     if (jobs.size() <= 2 * limit) {
       return;
@@ -1166,8 +1169,8 @@ void Supervision::cleanupFinishedAndFailedJobs() {
       }
     }
     std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
-        return a.second < b.second;
-      });
+      return a.second < b.second;
+    });
     size_t toBeDeleted = v.size() - limit;  // known to be positive
     LOG_TOPIC("98451", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted << " old jobs"
       " in " << prefix;
@@ -1275,7 +1278,129 @@ void Supervision::workJobs() {
       .run(dummy);
     LOG_TOPIC("99006", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
   }
+}
 
+bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID,
+                                            uint64_t wantedRebootID, bool& coordinatorFound) {
+  // check if the coordinator exists in health
+  std::string const& health = serverHealth(coordinatorID);
+  LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
+    << "verifyCoordinatorRebootID: coordinatorID="
+    << coordinatorID << " health=" << health;
+
+  // if the server is not found, health is an empty string
+  coordinatorFound = health.empty();
+  if (health != "GOOD" && health != "BAD") {
+    return false;
+  }
+
+  // now lookup reboot id
+  std::pair<uint64_t, bool> rebootID = _snapshot.hasAsUInt(curServersKnown + coordinatorID + "/" + StaticStrings::RebootId);
+  LOG_TOPIC("54326", DEBUG, Logger::SUPERVISION)
+    << "verifyCoordinatorRebootID: rebootId=" << rebootID.first
+    << " bool=" << rebootID.second;
+  return rebootID.second && rebootID.first == wantedRebootID;
+}
+
+void Supervision::deleteBrokenDatabase(std::string const& database,
+                                       std::string const& coordinatorID,
+                                       uint64_t rebootID, bool coordinatorFound) {
+  auto envelope = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(envelope.get());
+    {
+      VPackArrayBuilder trx(envelope.get());
+      {
+        VPackObjectBuilder operation(envelope.get());
+
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + "/" + PLAN_VERSION);
+          envelope->add("op", VPackValue("increment"));
+        }
+
+        // delete the database from Plan/Databases
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + planDBPrefix + database);
+          envelope->add("op", VPackValue("delete"));
+        }
+
+        // delete the database from Plan/Collections
+        {
+          VPackObjectBuilder o(envelope.get(), _agencyPrefix + planColPrefix + database);
+          envelope->add("op", VPackValue("delete"));
+        }
+      }
+      {
+        // precondition that this database is still in Plan and is building
+        VPackObjectBuilder preconditions(envelope.get());
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseIsBuilding, VPackValue(true));
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinatorRebootId, VPackValue(rebootID));
+        envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinator, VPackValue(coordinatorID));
+
+        {
+          VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + "/" + coordinatorID);
+          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+        }
+      }
+    }
+  }
+
+
+  write_ret_t res = _agent->write(envelope);
+  if (!res.successful()) {
+    LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
+        << "failed to delete broken database in agency. Will retry.";
+  }
+}
+
+void Supervision::checkBrokenCreatedDatabases() {
+  _lock.assertLockedByCurrentThread();
+
+  // check if snapshot has databases
+  std::pair<Node const&, bool> databases = _snapshot.hasAsNode(planDBPrefix);
+  if (!databases.second) {
+    return;
+  }
+
+  // dbpair is <std::string, std::shared_ptr<Node>>
+  for (auto const& dbpair : databases.first.children()) {
+    std::shared_ptr<Node> const& db = dbpair.second;
+
+    LOG_TOPIC("24152", DEBUG, Logger::SUPERVISION)
+      << "checkBrokenDbs: " << *db;
+
+    // check if isBuilding is set and it is true
+    std::pair<bool, bool> isBuilding = db->hasAsBool(StaticStrings::DatabaseIsBuilding);
+    if (isBuilding.first && isBuilding.second) {
+
+      // this database is currently being built
+      //  check if the coordinator exists and its reboot is the same as specified
+      std::pair<uint64_t, bool> rebootID = db->hasAsUInt(StaticStrings::DatabaseCoordinatorRebootId);
+      std::pair<std::string, bool> coordinatorID = db->hasAsString(StaticStrings::DatabaseCoordinator);
+
+      bool keepDatabase = true;
+      bool coordinatorFound = false;
+
+      if (rebootID.second && coordinatorID.second) {
+        keepDatabase = verifyCoordinatorRebootID(coordinatorID.first,
+                                                 rebootID.first, coordinatorFound);
+        // incomplete data, should not happen
+      } else {
+        //          v---- Please note this awesome log-id
+        LOG_TOPIC("dbbad", WARN, Logger::SUPERVISION)
+          << "database has set `isBuilding` but is missing coordinatorID and rebootID";
+      }
+
+      // check if the server is still able to finish the initalisation
+      if (!keepDatabase) {
+        LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
+          << "checkBrokenCreatedDatabases: removing skeleton database with name " << dbpair.first;
+        // delete this database and all of its collections
+        deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first, coordinatorFound);
+      }
+    }
+  }
 }
 
 void Supervision::readyOrphanedIndexCreations() {
@@ -1374,7 +1499,7 @@ void Supervision::readyOrphanedIndexCreations() {
 
           write_ret_t res = _agent->write(envelope);
           if (!res.successful()) {
-            LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
+            LOG_TOPIC("3848f", DEBUG, Logger::SUPERVISION)
                 << "failed to report ready index to agency. Will retry.";
           }
         }
@@ -1418,12 +1543,12 @@ void Supervision::enforceReplication() {
       auto const& col = *(col_.second);
 
       size_t replicationFactor;
-      auto replFact = col.hasAsUInt("replicationFactor");
+      auto replFact = col.hasAsUInt(StaticStrings::ReplicationFactor);
       if (replFact.second) {
         replicationFactor = replFact.first;
       } else {
-        auto replFact2 = col.hasAsString("replicationFactor");
-        if (replFact2.second && replFact2.first == "satellite") {
+        auto replFact2 = col.hasAsString(StaticStrings::ReplicationFactor);
+        if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
           replicationFactor = Job::countGoodOrBadServersInList(_snapshot, available);
@@ -1434,7 +1559,7 @@ void Supervision::enforceReplication() {
         }
       }
 
-      bool clone = col.has("distributeShardsLike");
+      bool clone = col.has(StaticStrings::DistributeShardsLike);
 
       if (!clone) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards

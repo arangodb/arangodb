@@ -29,6 +29,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/BaseOptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -44,17 +45,18 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserCache::TraverserCache(aql::Query* query)
+TraverserCache::TraverserCache(aql::Query* query, BaseOptions const* opts)
     : _mmdr(new ManagedDocumentResult{}),
       _query(query),
       _trx(query->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
+      _stringHeap(new StringHeap{4096}), /* arbitrary block-size may be adjusted for performance */
+      _baseOptions(opts) {
 }
 
-TraverserCache::~TraverserCache() {}
-  
+TraverserCache::~TraverserCache() = default;
+
 void TraverserCache::clear() {
   _stringHeap->clear();
   _persistedStrings.clear();
@@ -96,7 +98,18 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
+
+  std::string collectionName = id.substr(0,pos).toString();
+
+  auto const& map = _baseOptions->collectionToShard();
+  if (!map.empty()) {
+    auto found = map.find(collectionName);
+    if (found != map.end()) {
+      collectionName = found->second;
+    }
+  }
+
+  Result res = _trx->documentFastPathLocal(collectionName,
                                            id.substr(pos + 1), *_mmdr, true);
   if (res.ok()) {
     ++_insertedDocuments;

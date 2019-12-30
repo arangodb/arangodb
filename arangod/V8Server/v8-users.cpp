@@ -49,14 +49,12 @@ namespace {
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::Result existsCollection(std::string const& database, std::string const& collection) {
-  auto* databaseFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-          "Database");
-
-  if (!databaseFeature) {
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  if (!server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
 
   static const std::string wildcard("*");
 
@@ -64,7 +62,7 @@ arangodb::Result existsCollection(std::string const& database, std::string const
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature->lookupDatabase(database);
+  auto* vocbase = databaseFeature.lookupDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

@@ -89,7 +89,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
   void compute(MessageIterator<uint64_t> const& messages) override {
     SLPAValue* val = mutableVertexData();
     if (globalSuperstep() == 0) {
-      val->memory.emplace(val->nodeId, 1);
+      val->memory.try_emplace(val->nodeId, 1);
       val->numCommunities = 1;
     }
 
@@ -131,26 +131,19 @@ VertexComputation<SLPAValue, int8_t, uint64_t>* SLPA::createComputation(WorkerCo
 
 struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
   std::string resField;
-  std::atomic<uint64_t> vertexIdRange;
   uint64_t step = 1;
   double threshold;
   unsigned maxCommunities;
 
-  explicit SLPAGraphFormat(std::string const& result, double thr, unsigned mc)
-      : resField(result), vertexIdRange(0), threshold(thr), maxCommunities(mc) {}
+  explicit SLPAGraphFormat(application_features::ApplicationServer& server,
+                           std::string const& result, double thr, unsigned mc)
+      : GraphFormat<SLPAValue, int8_t>(server),
+        resField(result),
+        threshold(thr),
+        maxCommunities(mc) {}
 
   size_t estimatedVertexSize() const override { return sizeof(LPValue); };
   size_t estimatedEdgeSize() const override { return 0; };
-
-  void willLoadVertices(uint64_t count) override {
-    // if we aren't running in a cluster it doesn't matter
-    if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
-      if (ci) {  // get a counter range from the agency
-        vertexIdRange = ci->uniqid(count);
-      }
-    }
-  }
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         SLPAValue& value) override {
@@ -209,7 +202,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
 };
 
 GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
-  return new SLPAGraphFormat(_resultField, _threshold, _maxCommunities);
+  return new SLPAGraphFormat(_server, _resultField, _threshold, _maxCommunities);
 }
 
 WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {

@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestPleaseUpgradeHandler : public rest::RestHandler {
  public:
-  explicit RestPleaseUpgradeHandler(GeneralRequest*, GeneralResponse*);
+  explicit RestPleaseUpgradeHandler(application_features::ApplicationServer&,
+                                    GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestPleaseUpgradeHandler"; }

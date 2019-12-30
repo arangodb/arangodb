@@ -79,8 +79,8 @@ class PregelFeature final : public application_features::ApplicationFeature {
     return nullptr;
   }
 
-  static void handleConductorRequest(std::string const& path, VPackSlice const& body,
-                                     VPackBuilder& outResponse);
+  static void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
+                                     VPackSlice const& body, VPackBuilder& outResponse);
   static void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                                   VPackSlice const& body, VPackBuilder& outBuilder);
 

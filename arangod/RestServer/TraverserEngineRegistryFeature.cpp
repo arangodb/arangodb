@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraverserEngineRegistryFeature.h"
+
 #include "Cluster/TraverserEngineRegistry.h"
+#include "FeaturePhases/V8FeaturePhase.h"
 
 using namespace arangodb::application_features;
 
@@ -33,7 +35,7 @@ std::atomic<traverser::TraverserEngineRegistry*> TraverserEngineRegistryFeature:
 TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TraverserEngineRegistry") {
   setOptional(false);
-  startsAfter("V8Phase");
+  startsAfter<V8FeaturePhase>();
 }
 
 void TraverserEngineRegistryFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {

@@ -77,8 +77,34 @@ class StaticStrings {
   static std::string const ReplicationHeaderFromPresent;
   static std::string const ReplicationHeaderActive;
 
-  // database and collection names
+  // database names
   static std::string const SystemDatabase;
+
+  // collection names
+  static std::string const AnalyzersCollection;
+  static std::string const LegacyAnalyzersCollection;
+  static std::string const UsersCollection;
+  static std::string const GraphsCollection;
+  static std::string const AqlFunctionsCollection;
+  static std::string const QueuesCollection;
+  static std::string const JobsCollection;
+  static std::string const AppsCollection;
+  static std::string const AppBundlesCollection;
+  static std::string const ModulesCollection;
+  static std::string const FishbowlCollection;
+  static std::string const FrontendCollection;
+  static std::string const StatisticsCollection;
+  static std::string const Statistics15Collection;
+  static std::string const StatisticsRawCollection;
+
+  // database definition fields
+  static std::string const DatabaseId;
+  static std::string const DatabaseName;
+  static std::string const DatabaseOptions;
+  static std::string const DatabaseCoordinator;
+  static std::string const DatabaseCoordinatorRebootId;
+  static std::string const DatabaseIsBuilding;
+  static std::string const Properties;
 
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker
@@ -160,7 +186,6 @@ class StaticStrings {
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
   static std::string const RequestForwardedTo;
-  static std::string const ResponseCode;
   static std::string const Server;
   static std::string const TransferEncoding;
   static std::string const TransactionBody;
@@ -171,7 +196,10 @@ class StaticStrings {
   static std::string const XArangoFrontend;
 
   // mime types
+  static std::string const MimeTypeDump;
+  static std::string const MimeTypeHtml;
   static std::string const MimeTypeJson;
+  static std::string const MimeTypeJsonNoEncoding;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
@@ -192,6 +220,9 @@ class StaticStrings {
   static std::string const ShardKeys;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
+  static std::string const Sharding;
+  static std::string const Satellite;
+  static std::string const WriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -218,6 +249,13 @@ class StaticStrings {
   static std::string const LastValue;
   static std::string const checksumFileJs;
   static std::string const IsBuilding;
+  static std::string const RebootId;
+  static std::string const New;
+  static std::string const Old;
+  static std::string const UpgradeEnvName;
+  static std::string const BackupToDeleteName;
+  static std::string const BackupSearchToDeleteName;
+  static std::string const SerializationFormat;
 };
 }  // namespace arangodb
 

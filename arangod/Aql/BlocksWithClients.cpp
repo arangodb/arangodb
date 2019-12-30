@@ -32,13 +32,11 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Aql/WakeupQueryCallback.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -63,18 +61,24 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
 BlocksWithClients::BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
-                                   std::vector<std::string> const& shardIds)
+                                     std::vector<std::string> const& shardIds)
     : ExecutionBlock(engine, ep),
       _nrClients(shardIds.size()),
+      _type(ScatterNode::ScatterType::SHARD),
       _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
-    _shardIdMap.emplace(std::make_pair(shardIds[i], i));
+    _shardIdMap.try_emplace(shardIds[i], i);
   }
+  auto scatter = ExecutionNode::castTo<ScatterNode const*>(ep);
+  TRI_ASSERT(scatter != nullptr);
+  _type = scatter->getScatterType();
 }
 
 std::pair<ExecutionState, bool> BlocksWithClients::getBlock(size_t atMost) {
-  throwIfKilled();  // check if we were aborted
+  if (_engine->getQuery()->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
 
   auto res = _dependencies[0]->getSome(atMost);
   if (res.first == ExecutionState::WAITING) {
@@ -112,20 +116,24 @@ std::pair<ExecutionState, Result> BlocksWithClients::shutdown(int errorCode) {
 /// corresponding to <shardId>
 size_t BlocksWithClients::getClientId(std::string const& shardId) const {
   if (shardId.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "got empty shard id");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "got empty distribution id");
   }
-
   auto it = _shardIdMap.find(shardId);
   if (it == _shardIdMap.end()) {
-    std::string message("AQL: unknown shard id ");
+    std::string message("AQL: unknown distribution id ");
     message.append(shardId);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
-  return ((*it).second);
+  return it->second;
 }
 
-void BlocksWithClients::throwIfKilled() {
-  if (_engine->getQuery()->killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
+std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClients::getSome(size_t) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+std::pair<ExecutionState, size_t> BlocksWithClients::skipSome(size_t) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

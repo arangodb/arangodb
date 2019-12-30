@@ -27,7 +27,6 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ResourceUsage.h"
 
-#include <arangod/Aql/ExecutionState.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {

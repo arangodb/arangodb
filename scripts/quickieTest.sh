@@ -6,7 +6,7 @@ trap "rm -rf ${JSLINTOUT}" EXIT
 JSLINTPID="$!"
 
 scripts/unittest shell_server --test tests/js/common/shell/shell-quickie.js "$@"
-scripts/unittest shell_server --test tests/js/common/shell/shell-quickie.js --cluster true --agencySupervision false "$@"
+scripts/unittest shell_server --test tests/js/common/shell/shell-quickie.js --cluster true --agencySupervision true "$@"
 scripts/unittest shell_client --test tests/js/common/shell/shell-quickie.js "$@"
 scripts/unittest shell_client --test tests/js/common/shell/shell-quickie.js --cluster true --agencySize 1 "$@"
 

@@ -23,16 +23,19 @@
 #ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
-#include <memory>
-
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <llhttp.h>
 #include <velocypack/StringRef.h>
+#include <memory>
 
 namespace arangodb {
 class HttpRequest;
+
+namespace basics {
+class StringBuffer;
+}
 
 namespace rest {
 
@@ -45,10 +48,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void start() override;
 
  protected:
-  
-  bool allowDirectHandling() const override {
-    return this->_protocol->context.clients() <= 1;
-  }
   
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
@@ -85,20 +84,28 @@ private:
   ResponseCode handleAuthHeader(HttpRequest& request);
   /// decompress content
   bool handleContentEncoding(HttpRequest&);
+  
+  // called on IO context thread
+  void writeResponse(RequestStatistics* stat);
 
  private:
   /// the node http-parser
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;
+  
+  velocypack::Buffer<uint8_t> _header;
 
   // ==== parser state ====
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
   std::string _origin;  // value of the HTTP origin header the client sent (if
   std::unique_ptr<HttpRequest> _request;
+  std::unique_ptr<basics::StringBuffer> _response;
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;
+
+  bool const _allowMethodOverride;  /// allow method override
 };
 }  // namespace rest
 }  // namespace arangodb

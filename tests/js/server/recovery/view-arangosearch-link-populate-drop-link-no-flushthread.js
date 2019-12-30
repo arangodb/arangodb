@@ -56,7 +56,7 @@ function runSetup () {
 
   c.save({ name: 'crashme' }, { waitForSync: true });
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

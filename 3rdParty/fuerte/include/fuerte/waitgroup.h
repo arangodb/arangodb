@@ -41,7 +41,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 class WaitGroup {
  public:
   WaitGroup() : _counter(0) {}
-  ~WaitGroup() {}
+  ~WaitGroup() = default;
 
   // Prevent copying
   WaitGroup(WaitGroup const& other) = delete;
@@ -109,7 +109,7 @@ class WaitGroup {
 class WaitGroupDone {
  public:
   WaitGroupDone(WaitGroup& wg) : _wg(wg) {}
-  ~WaitGroupDone() { _wg.done(); }
+  ~WaitGroupDone() noexcept { _wg.done(); }
 
   // Prevent copying
   WaitGroupDone(WaitGroupDone const& other) = delete;

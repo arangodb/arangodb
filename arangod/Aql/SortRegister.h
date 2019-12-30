@@ -33,7 +33,7 @@ namespace aql {
 /// @brief sort element for block, consisting of register, sort direction,
 /// and a possible attribute path to dig into the document
 struct SortRegister {
-  SortRegister(SortRegister&) = delete; //we can not copy the ireseach scorer
+  SortRegister(SortRegister&) = delete;  // we can not copy the ireseach scorer
   SortRegister(SortRegister&&) = default;
 
   std::vector<std::string> const& attributePath;
@@ -42,8 +42,7 @@ struct SortRegister {
 
   SortRegister(RegisterId reg, SortElement const& element) noexcept;
 
-  static void fill(ExecutionPlan const& /*execPlan*/,
-                   ExecutionNode::RegisterPlan const& regPlan,
+  static void fill(ExecutionPlan const& /*execPlan*/, RegisterPlan const& regPlan,
                    std::vector<SortElement> const& elements,
                    std::vector<SortRegister>& sortRegisters);
 };  // SortRegister

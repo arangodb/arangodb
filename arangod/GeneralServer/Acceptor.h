@@ -37,7 +37,7 @@ class Acceptor {
 
  public:
   Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint);
-  virtual ~Acceptor() {}
+  virtual ~Acceptor() = default;
 
  public:
   virtual void open() = 0;

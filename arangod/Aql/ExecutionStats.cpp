@@ -46,7 +46,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
     builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
   }
   builder.add("executionTime", VPackValue(executionTime));
-  
+
   builder.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
 
   if (!nodes.empty()) {
@@ -85,7 +85,16 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   // intentionally no modification of executionTime
 
   for (auto const& pair : summand.nodes) {
-    auto result = nodes.insert(pair);
+    size_t nid = pair.first;
+    auto const& alias = _nodeAliases.find(nid);
+    if (alias != _nodeAliases.end()) {
+      nid = alias->second;
+      if (nid == std::numeric_limits<size_t>::max()) {
+        // ignore this value, it is an intenral node that we do not want to expose
+        continue;
+      }
+    }
+    auto result = nodes.insert({nid, pair.second});
     if (!result.second) {
       result.first->second += pair.second;
     }
@@ -135,7 +144,37 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
       node.calls = val.get("calls").getNumber<size_t>();
       node.items = val.get("items").getNumber<size_t>();
       node.runtime = val.get("runtime").getNumber<double>();
-      nodes.emplace(nid, node);
+      auto const& alias = _nodeAliases.find(nid);
+      if (alias != _nodeAliases.end()) {
+        nid = alias->second;
+      }
+      nodes.try_emplace(nid, node);
     }
   }
+}
+
+void ExecutionStats::setExecutionTime(double value) { executionTime = value; }
+
+void ExecutionStats::setPeakMemoryUsage(size_t value) {
+  peakMemoryUsage = value;
+}
+
+void ExecutionStats::clear() {
+  writesExecuted = 0;
+  writesIgnored = 0;
+  scannedFull = 0;
+  scannedIndex = 0;
+  filtered = 0;
+  requests = 0;
+  fullCount = 0;
+  count = 0;
+  executionTime = 0.0;
+  peakMemoryUsage = 0;
+}
+
+ExecutionStats::Node& ExecutionStats::Node::operator+=(ExecutionStats::Node const& other) {
+  calls += other.calls;
+  items += other.items;
+  runtime += other.runtime;
+  return *this;
 }

@@ -36,7 +36,7 @@ namespace graph {
 
 class TraverserDocumentCache final : public TraverserCache {
  public:
-  explicit TraverserDocumentCache(aql::Query* query);
+  explicit TraverserDocumentCache(aql::Query* query, BaseOptions const*);
 
   ~TraverserDocumentCache();
 

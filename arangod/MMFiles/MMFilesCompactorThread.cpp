@@ -594,7 +594,9 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   } catch (...) {
   }
 
-  trx.commit();
+  res = trx.commit();
+  // not much we can do about it here
+  (void) res;
 
   // remove all datafile statistics that we don't need anymore
   for (size_t i = 1; i < n; ++i) {
@@ -955,7 +957,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
 }
 
 MMFilesCompactorThread::MMFilesCompactorThread(TRI_vocbase_t& vocbase)
-    : Thread("MMFilesCompactor"), _vocbase(vocbase) {}
+    : Thread(vocbase.server(), "MMFilesCompactor"), _vocbase(vocbase) {}
 
 MMFilesCompactorThread::~MMFilesCompactorThread() { shutdown(); }
 

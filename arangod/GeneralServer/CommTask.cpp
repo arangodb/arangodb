@@ -158,7 +158,8 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
   // Step 1: In the shutdown phase we simply return 503:
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_SHUTTING_DOWN);
     return Flow::Abort;
@@ -188,7 +189,8 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
         LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
         addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
-                         req.messageId(), TRI_ERROR_FORBIDDEN);
+                         req.messageId(), TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                         "service unavailable due to startup or maintenance mode");
         return Flow::Abort;
       }
       break;
@@ -200,7 +202,7 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
         break;  // continue with auth check
       }
     }
-    // intentionally falls through
+    [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
@@ -304,7 +306,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
-  
+
   // store the message id for error handling
   uint64_t messageId = 0UL;
   if (request) {
@@ -318,8 +320,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
+  auto& server = _server.server();
   std::shared_ptr<RestHandler> handler(
-      GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
+      GeneralServerFeature::HANDLER_FACTORY->createHandler(server, std::move(request),
                                                            std::move(response)));
 
   // give up, if we cannot find a handler
@@ -332,9 +335,14 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   }
 
   // forward to correct server if necessary
-  bool forwarded = handler->forwardRequest();
+  bool forwarded;
+  auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    sendResponse(handler->stealResponse(), handler->stealStatistics());
+    RequestStatistics::SET_SUPERUSER(statistics(messageId));
+    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler), messageId](
+                                 futures::Try<Result> && /*ignored*/) -> void {
+      self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
+    });
     return;
   }
 
@@ -382,29 +390,26 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-
-void CommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  if (stat == nullptr) {
-    auto it = _statisticsMap.find(id);
-    if (it != _statisticsMap.end()) {
-      it->second->release();
-      _statisticsMap.erase(it);
-    }
-  } else {
-    auto result = _statisticsMap.insert({id, stat});
-    if (!result.second) {
-      result.first->second->release();
-      result.first->second = stat;
-    }
-  }
-}
-
-
 RequestStatistics* CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics* stat = RequestStatistics::acquire();
-  setStatistics(id, stat);
+  
+  {
+    std::lock_guard<std::mutex> guard(_statisticsMutex);
+    if (stat == nullptr) {
+      auto it = _statisticsMap.find(id);
+      if (it != _statisticsMap.end()) {
+        it->second->release();
+        _statisticsMap.erase(it);
+      }
+    } else {
+      auto result = _statisticsMap.insert({id, stat});
+      if (!result.second) {
+        result.first->second->release();
+        result.first->second = stat;
+      }
+    }
+  }
+  
   return stat;
 }
 
@@ -439,24 +444,23 @@ RequestStatistics* CommTask::stealStatistics(uint64_t id) {
 /// @brief send response including error response body
 
 void CommTask::addErrorResponse(rest::ResponseCode code,
-                                          rest::ContentType respType, uint64_t messageId,
-                                          int errorNum, std::string const& msg) {
+                                rest::ContentType respType, uint64_t messageId,
+                                int errorNum, char const* errorMessage /* = nullptr */) {
+  if (errorMessage == nullptr) {
+    errorMessage = TRI_errno_string(errorNum);
+  }
+  TRI_ASSERT(errorMessage != nullptr);
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(msg));
-  builder.add(StaticStrings::Code, VPackValue((int)code));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
   builder.close();
 
   addSimpleResponse(code, respType, messageId, std::move(buffer));
-}
-
-
-void CommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respType,
-                                          uint64_t messageId, int errorNum) {
-  addErrorResponse(code, respType, messageId, errorNum, TRI_errno_string(errorNum));
 }
 
 // -----------------------------------------------------------------------------
@@ -468,9 +472,8 @@ void CommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respT
 // and scheduled later when the number of used threads decreases
 
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-
   RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
-  
+
   RequestLane lane = handler->getRequestLane();
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
@@ -478,14 +481,14 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
-  auto cb = [self = shared_from_this(), handler = std::move(handler)]() {
+  auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
     RequestStatistics::SET_QUEUE_END(handler->statistics());
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
       // Pass the response the io context
       self->sendResponse(handler->stealResponse(), handler->stealStatistics());
     });
   };
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling());
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb));
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
@@ -498,7 +501,8 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 // handle a request which came in with the x-arango-async header
 bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                   uint64_t* jobId) {
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     return false;
   }
 

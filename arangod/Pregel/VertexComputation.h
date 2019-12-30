@@ -52,7 +52,7 @@ class VertexContext {
   Vertex<V,E>* _vertexEntry = nullptr;
 
  public:
-  virtual ~VertexContext() {}
+  virtual ~VertexContext() = default;
 
   template <typename T>
   inline void aggregate(std::string const& name, T const& value) {
@@ -115,7 +115,7 @@ class VertexComputation : public VertexContext<V, E, M> {
   bool _enterNextGSS = false;
 
  public:
-  virtual ~VertexComputation() {}
+  virtual ~VertexComputation() = default;
 
   void sendMessage(Edge<E> const* edge, M const& data) {
     _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
@@ -154,7 +154,7 @@ class VertexCompensation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
 
  public:
-  virtual ~VertexCompensation() {}
+  virtual ~VertexCompensation() = default;
   virtual void compensate(bool inLostPartition) = 0;
 };
 }  // namespace pregel

@@ -32,7 +32,8 @@ namespace arangodb {
 /// Storage engine agnostic handler for using the WalAccess interface
 class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestWalAccessHandler(GeneralRequest*, GeneralResponse*);
+  RestWalAccessHandler(application_features::ApplicationServer&,
+                       GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestWalAccessHandler"; }

@@ -41,11 +41,8 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "IResearch/IResearchRocksDBLink.h"
 
 using namespace arangodb;
 
@@ -403,7 +400,7 @@ void RocksDBIndexFactory::prepareIndexes(
 
           from.openObject();
 
-          for (auto const& f : VPackObjectIterator(v)) {
+          for (auto f : VPackObjectIterator(v)) {
             if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               from.add(VPackValue(StaticStrings::IndexFields));
               from.openArray();
@@ -420,7 +417,7 @@ void RocksDBIndexFactory::prepareIndexes(
           VPackBuilder to;
 
           to.openObject();
-          for (auto const& f : VPackObjectIterator(v)) {
+          for (auto f : VPackObjectIterator(v)) {
             if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               to.add(VPackValue(StaticStrings::IndexFields));
               to.openArray();

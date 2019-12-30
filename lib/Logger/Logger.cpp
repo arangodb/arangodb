@@ -317,12 +317,6 @@ void Logger::log(char const* function, char const* file, int line,
   }
 #endif
 
-  if (!_active.load(std::memory_order_relaxed)) {
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, message.data(), message.size(), true);
-    return;
-  }
-
   std::stringstream out;
   LogTimeFormats::writeTime(out, _timeFormat);
   out << ' ';
@@ -385,32 +379,43 @@ void Logger::log(char const* function, char const* file, int line,
   // generate the complete message
   out << message;
   std::string ostreamContent = out.str();
+ 
+  if (!_active.load(std::memory_order_relaxed)) {
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                          level, ostreamContent.data(), ostreamContent.size(), true);
+    return;
+  }
+
   size_t offset = ostreamContent.size() - message.size();
   auto msg = std::make_unique<LogMessage>(level, topicId, std::move(ostreamContent), offset);
 
   // now either queue or output the message
+  bool handled = false;
   if (_threaded) {
     try {
-      _loggingThread->log(msg);
-      bool const isDirectLogLevel =
-          (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
-      if (isDirectLogLevel) {
-        _loggingThread->flush();
+      handled = _loggingThread->log(msg);
+      if (handled) {
+        bool const isDirectLogLevel =
+            (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+        if (isDirectLogLevel) {
+          _loggingThread->flush();
+        }
       }
-      return;
     } catch (...) {
       // fall-through to non-threaded logging
     }
   }
 
-  LogAppender::log(msg.get());
+  if (!handled) {
+    LogAppender::log(msg.get());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(bool threaded) {
+void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
   MUTEX_LOCKER(locker, _initializeMutex);
 
   if (_active) {
@@ -425,7 +430,7 @@ void Logger::initialize(bool threaded) {
   _threaded = threaded;
 
   if (threaded) {
-    _loggingThread = std::make_unique<LogThread>("Logging");
+    _loggingThread = std::make_unique<LogThread>(server, "Logging");
     _loggingThread->start();
   }
 }

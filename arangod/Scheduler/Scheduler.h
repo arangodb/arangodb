@@ -37,6 +37,9 @@
 #include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace velocypack {
 class Builder;
 }
@@ -47,7 +50,7 @@ class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler();
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -60,8 +63,7 @@ class Scheduler {
 
   // Enqueues a task - this is implemented on the specific scheduler
   // May throw.
-  virtual bool queue(RequestLane lane, std::function<void()>,
-                     bool allowDirectHandling = false) ADB_WARN_UNUSED_RESULT = 0;
+  virtual bool queue(RequestLane lane, std::function<void()>) ADB_WARN_UNUSED_RESULT = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
@@ -88,7 +90,7 @@ class Scheduler {
 
     explicit WorkItem(std::function<void(bool canceled)>&& handler,
                       RequestLane lane, Scheduler* scheduler)
-        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler){};
+        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler) {}
 
    private:
     // This is not copyable or movable
@@ -122,6 +124,9 @@ class Scheduler {
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
   };
+
+ protected:
+  application_features::ApplicationServer& _server;
 
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks

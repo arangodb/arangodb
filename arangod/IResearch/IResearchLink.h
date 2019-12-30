@@ -29,10 +29,11 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "Indexes/Index.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchViewMeta.h"
 #include "IResearchVPackComparer.h"
-#include "Indexes/Index.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
 
 namespace arangodb {
@@ -164,7 +165,7 @@ class IResearchLink {
   /// @brief amount of memory in bytes occupied by this iResearch Link
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  size_t memory() const;
+  void toVelocyPackStats(VPackBuilder& builder) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a jSON description of a IResearchLink object
@@ -218,7 +219,29 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   Result unload();
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lookup referenced analyzer
+  ////////////////////////////////////////////////////////////////////////////////
+  AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get stored values
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchViewStoredValues const& storedValues() const;
+
  protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief index stats
+  //////////////////////////////////////////////////////////////////////////////
+  struct Stats {
+    size_t docsCount{};       // total number of documents
+    size_t liveDocsCount{};   // number of live documents
+    size_t numBufferedDocs{}; // number of buffered docs
+    size_t indexSize{};       // size of the index in bytes
+    size_t numSegments{};     // number of segments
+    size_t numFiles{};        // number of files
+  };
+
   typedef std::function<void(irs::directory&)> InitCallback;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -238,6 +261,11 @@ class IResearchLink {
   /// @brief link was created during recovery
   ////////////////////////////////////////////////////////////////////////////////
   bool createdInRecovery() const noexcept { return _createdInRecovery; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get index stats for current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  Stats stats() const;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -310,6 +338,9 @@ class IResearchLink {
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
+
+irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
+                                arangodb::iresearch::IResearchLink const& link);
 
 }  // namespace iresearch
 }  // namespace arangodb

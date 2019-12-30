@@ -33,16 +33,16 @@
 
 TEST(IResearchVelocyPackHelperTest, test_defaults) {
   arangodb::iresearch::ObjectIterator it;
-  EXPECT_TRUE(0U == it.depth());
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_EQ(0U, it.depth());
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(), it);
 
   size_t calls_count = 0;
   auto visitor = [&calls_count](arangodb::iresearch::IteratorValue const&) {
     ++calls_count;
   };
   it.visit(visitor);
-  EXPECT_TRUE(0U == calls_count);
+  EXPECT_EQ(0U, calls_count);
   // we not able to move the invalid iterator forward
 }
 
@@ -58,13 +58,13 @@ TEST(IResearchVelocyPackHelperTest, test_getstring) {
 
     EXPECT_TRUE(
         (arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
-    EXPECT_TRUE((seen));
-    EXPECT_TRUE((buf0 == "value"));
+    EXPECT_TRUE(seen);
+    EXPECT_EQ(buf0, "value");
 
     EXPECT_TRUE(
         (arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
-    EXPECT_TRUE((seen));
-    EXPECT_TRUE((buf1 == "value"));
+    EXPECT_TRUE(seen);
+    EXPECT_EQ(buf1, "value");
   }
 
   // missing key
@@ -77,15 +77,15 @@ TEST(IResearchVelocyPackHelperTest, test_getstring) {
 
     EXPECT_TRUE(
         (arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
-    EXPECT_TRUE((!seen));
-    EXPECT_TRUE((buf0 == "abc"));
+    EXPECT_FALSE(seen);
+    EXPECT_EQ(buf0, "abc");
 
     seen = true;
 
     EXPECT_TRUE(
         (arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
-    EXPECT_TRUE((!seen));
-    EXPECT_TRUE((buf1 == "abc"));
+    EXPECT_FALSE(seen);
+    EXPECT_EQ(buf1, "abc");
   }
 
   // non-string value
@@ -98,11 +98,11 @@ TEST(IResearchVelocyPackHelperTest, test_getstring) {
 
     EXPECT_TRUE(
         (!arangodb::iresearch::getString(buf0, slice, "key", seen, "abc")));
-    EXPECT_TRUE((seen));
+    EXPECT_TRUE(seen);
 
     EXPECT_TRUE(
         (!arangodb::iresearch::getString(buf1, slice, "key", seen, "abc")));
-    EXPECT_TRUE((seen));
+    EXPECT_TRUE(seen);
   }
 }
 
@@ -112,22 +112,22 @@ TEST(IResearchVelocyPackHelperTest, test_empty_object) {
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  EXPECT_TRUE(1U == it.depth());
+  EXPECT_EQ(1U, it.depth());
   EXPECT_TRUE(it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(slice), it);
 
   auto& value = it.value(0);  // value at level 0
-  EXPECT_TRUE(0U == value.pos);
-  EXPECT_TRUE(VPackValueType::Object == value.type);
+  EXPECT_EQ(0U, value.pos);
+  EXPECT_EQ(VPackValueType::Object, value.type);
   EXPECT_TRUE(value.key.isNone());
   EXPECT_TRUE(value.value.isNone());
-  EXPECT_TRUE(&value == &*it);
+  EXPECT_EQ(&value, &*it);
 
   ++it;
 
-  EXPECT_TRUE(0U == it.depth());
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_EQ(0U, it.depth());
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(), it);
 }
 
 TEST(IResearchVelocyPackHelperTest, test_subarray_of_emptyobjects) {
@@ -136,15 +136,15 @@ TEST(IResearchVelocyPackHelperTest, test_subarray_of_emptyobjects) {
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  EXPECT_TRUE(2U == it.depth());
+  EXPECT_EQ(2U, it.depth());
   EXPECT_TRUE(it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(slice), it);
 
   // check value at level 0
   {
     auto& value = it.value(0);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Array, value.type);
     EXPECT_TRUE(value.key.isObject());
     EXPECT_TRUE(value.value.isObject());
   }
@@ -152,23 +152,23 @@ TEST(IResearchVelocyPackHelperTest, test_subarray_of_emptyobjects) {
   // check value at level 1
   {
     auto& value = it.value(1);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Object, value.type);
     EXPECT_TRUE(value.key.isNone());
     EXPECT_TRUE(value.value.isNone());
-    EXPECT_TRUE(&value == &*it);
+    EXPECT_EQ(&value, &*it);
   }
 
   {
     auto const prev = it;
-    EXPECT_TRUE(prev == it++);
+    EXPECT_EQ(prev, it++);
   }
 
   // check value at level 0
   {
     auto& value = it.value(0);
-    EXPECT_TRUE(1U == value.pos);
-    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_EQ(1U, value.pos);
+    EXPECT_EQ(VPackValueType::Array, value.type);
     EXPECT_TRUE(value.key.isObject());
     EXPECT_TRUE(value.value.isObject());
   }
@@ -176,11 +176,11 @@ TEST(IResearchVelocyPackHelperTest, test_subarray_of_emptyobjects) {
   // check value at level 1
   {
     auto& value = it.value(1);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Object, value.type);
     EXPECT_TRUE(value.key.isNone());
     EXPECT_TRUE(value.value.isNone());
-    EXPECT_TRUE(&value == &*it);
+    EXPECT_EQ(&value, &*it);
   }
 
   ++it;
@@ -188,8 +188,8 @@ TEST(IResearchVelocyPackHelperTest, test_subarray_of_emptyobjects) {
   // check value at level 0
   {
     auto& value = it.value(0);
-    EXPECT_TRUE(2U == value.pos);
-    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_EQ(2U, value.pos);
+    EXPECT_EQ(VPackValueType::Array, value.type);
     EXPECT_TRUE(value.key.isObject());
     EXPECT_TRUE(value.value.isObject());
   }
@@ -197,21 +197,21 @@ TEST(IResearchVelocyPackHelperTest, test_subarray_of_emptyobjects) {
   // check value at level 1
   {
     auto& value = it.value(1);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Object, value.type);
     EXPECT_TRUE(value.key.isNone());
     EXPECT_TRUE(value.value.isNone());
-    EXPECT_TRUE(&value == &*it);
+    EXPECT_EQ(&value, &*it);
   }
 
   {
     auto const prev = it;
-    EXPECT_TRUE(prev == it++);
+    EXPECT_EQ(prev, it++);
   }
 
-  EXPECT_TRUE(0U == it.depth());
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_EQ(0U, it.depth());
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(), it);
 }
 
 TEST(IResearchVelocyPackHelperTest, test_small_plain_object) {
@@ -223,24 +223,24 @@ TEST(IResearchVelocyPackHelperTest, test_small_plain_object) {
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  EXPECT_TRUE(1U == it.depth());
+  EXPECT_EQ(1U, it.depth());
   EXPECT_TRUE(it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(slice), it);
 
   auto& value = *it;
 
-  EXPECT_TRUE(0U == value.pos);
-  EXPECT_TRUE(VPackValueType::Object == value.type);
+  EXPECT_EQ(0U, value.pos);
+  EXPECT_EQ(VPackValueType::Object, value.type);
   EXPECT_TRUE(value.key.isString());
-  EXPECT_TRUE("boost" == value.key.copyString());
+  EXPECT_EQ("boost", value.key.copyString());
   EXPECT_TRUE(value.value.isString());
-  EXPECT_TRUE("10" == value.value.copyString());
+  EXPECT_EQ("10", value.value.copyString());
 
   ++it;
 
-  EXPECT_TRUE(0U == it.depth());
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_EQ(0U, it.depth());
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(), it);
 }
 
 TEST(IResearchVelocyPackHelperTest, test_empty_subarray) {
@@ -249,9 +249,9 @@ TEST(IResearchVelocyPackHelperTest, test_empty_subarray) {
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  EXPECT_TRUE(3U == it.depth());
+  EXPECT_EQ(3U, it.depth());
   EXPECT_TRUE(it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(slice), it);
 
   // check that ObjectIterator::visit & ObjectIterator::value operates on the same values
   {
@@ -268,8 +268,8 @@ TEST(IResearchVelocyPackHelperTest, test_empty_subarray) {
   // check value at level 0
   {
     auto& value = it.value(0);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Array, value.type);
     EXPECT_TRUE(value.key.isArray());
     EXPECT_TRUE(value.value.isArray());
   }
@@ -277,8 +277,8 @@ TEST(IResearchVelocyPackHelperTest, test_empty_subarray) {
   // check value at level 1
   {
     auto& value = it.value(1);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Array, value.type);
     EXPECT_TRUE(value.key.isArray());
     EXPECT_TRUE(value.value.isArray());
   }
@@ -286,18 +286,18 @@ TEST(IResearchVelocyPackHelperTest, test_empty_subarray) {
   // check value at level 2
   {
     auto& value = it.value(2);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Array == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Array, value.type);
     EXPECT_TRUE(value.key.isNone());
     EXPECT_TRUE(value.value.isNone());
-    EXPECT_TRUE(&value == &*it);
+    EXPECT_EQ(&value, &*it);
   }
 
   ++it;
 
-  EXPECT_TRUE(0U == it.depth());
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_EQ(0U, it.depth());
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(), it);
 }
 
 TEST(IResearchVelocyPackHelperTest, test_empty_subobject) {
@@ -307,9 +307,9 @@ TEST(IResearchVelocyPackHelperTest, test_empty_subobject) {
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  EXPECT_TRUE(3U == it.depth());
+  EXPECT_EQ(3U, it.depth());
   EXPECT_TRUE(it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(slice), it);
 
   // check that ObjectIterator::visit & ObjectIterator::value operates on the same values
   {
@@ -326,38 +326,38 @@ TEST(IResearchVelocyPackHelperTest, test_empty_subobject) {
   // check value at level 0
   {
     auto& value = it.value(0);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Object, value.type);
     EXPECT_TRUE(value.key.isString());
-    EXPECT_TRUE("sub0" == value.key.copyString());
+    EXPECT_EQ("sub0", value.key.copyString());
     EXPECT_TRUE(value.value.isObject());
   }
 
   // check value at level 1
   {
     auto& value = it.value(1);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Object, value.type);
     EXPECT_TRUE(value.key.isString());
-    EXPECT_TRUE("sub1" == value.key.copyString());
+    EXPECT_EQ("sub1", value.key.copyString());
     EXPECT_TRUE(value.value.isObject());
   }
 
   // check value at level 2
   {
     auto& value = it.value(2);
-    EXPECT_TRUE(0U == value.pos);
-    EXPECT_TRUE(VPackValueType::Object == value.type);
+    EXPECT_EQ(0U, value.pos);
+    EXPECT_EQ(VPackValueType::Object, value.type);
     EXPECT_TRUE(value.key.isNone());
     EXPECT_TRUE(value.value.isNone());
-    EXPECT_TRUE(&value == &*it);
+    EXPECT_EQ(&value, &*it);
   }
 
   ++it;
 
-  EXPECT_TRUE(0U == it.depth());
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_EQ(0U, it.depth());
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(), it);
 }
 
 TEST(IResearchVelocyPackHelperTest, test_empty_array) {
@@ -366,22 +366,22 @@ TEST(IResearchVelocyPackHelperTest, test_empty_array) {
 
   arangodb::iresearch::ObjectIterator it(slice);
 
-  EXPECT_TRUE(1U == it.depth());
+  EXPECT_EQ(1U, it.depth());
   EXPECT_TRUE(it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator(slice) == it);
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(slice), it);
 
   auto& value = it.value(0);  // value at level 0
-  EXPECT_TRUE(0U == value.pos);
-  EXPECT_TRUE(VPackValueType::Array == value.type);
+  EXPECT_EQ(0U, value.pos);
+  EXPECT_EQ(VPackValueType::Array, value.type);
   EXPECT_TRUE(value.key.isNone());
   EXPECT_TRUE(value.value.isNone());
-  EXPECT_TRUE(&value == &*it);
+  EXPECT_EQ(&value, &*it);
 
   ++it;
 
-  EXPECT_TRUE(0U == it.depth());
-  EXPECT_TRUE(!it.valid());
-  EXPECT_TRUE(arangodb::iresearch::ObjectIterator() == it);
+  EXPECT_EQ(0U, it.depth());
+  EXPECT_FALSE(it.valid());
+  EXPECT_EQ(arangodb::iresearch::ObjectIterator(), it);
 }
 
 TEST(IResearchVelocyPackHelperTest, test_complex_object) {

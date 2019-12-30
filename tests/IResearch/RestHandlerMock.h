@@ -42,6 +42,9 @@ struct GeneralRequestMock: public arangodb::GeneralRequest {
   ~GeneralRequestMock();
   using arangodb::GeneralRequest::addSuffix;
   virtual size_t contentLength() const override;
+  virtual void setDefaultContentType() override {
+    _contentType = arangodb::rest::ContentType::VPACK;
+  }
   virtual arangodb::velocypack::StringRef rawPayload() const override;
   virtual arangodb::velocypack::Slice payload(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
@@ -50,6 +53,9 @@ struct GeneralRequestMock: public arangodb::GeneralRequest {
 
 struct GeneralResponseMock: public arangodb::GeneralResponse {
   arangodb::velocypack::Builder _payload;
+  virtual bool isResponseEmpty() const override {
+    return _payload.isEmpty();
+  }
 
   GeneralResponseMock(arangodb::ResponseCode code = arangodb::ResponseCode::OK);
   virtual void addPayload(arangodb::velocypack::Buffer<uint8_t>&& buffer, arangodb::velocypack::Options const* options = nullptr, bool resolveExternals = true) override;

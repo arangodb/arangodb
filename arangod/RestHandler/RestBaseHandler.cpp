@@ -39,25 +39,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBaseHandler::RestBaseHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestHandler(request, response) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body as VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success) {
-  try {
-    success = true;
-    return _request->toVelocyPackBuilderPtr();
-  } catch (VPackException const& e) {
-    std::string errmsg("VPackError error: ");
-    errmsg.append(e.what());
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
-  }
-  success = false;
-  return std::make_shared<VPackBuilder>();
-}
+RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the body as VelocyPack

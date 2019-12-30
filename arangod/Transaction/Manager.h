@@ -51,6 +51,7 @@ class Slice;
 
 namespace transaction {
 class Context;
+class ManagerFeature;
 struct Options;
 
 /// @brief Tracks TransasctionState instances
@@ -75,13 +76,13 @@ class Manager final {
 
    public:
     MetaType type;            /// managed, AQL or tombstone
-    double usedTimeSecs;      /// last time used
-    TransactionState* state;  /// Transaction, may be nullptr
-    std::string user;         /// user owning the transaction
     /// @brief  final TRX state that is valid if this is a tombstone
     /// necessary to avoid getting error on a 'diamond' commit or accidantally
     /// repeated commit / abort messages
     transaction::Status finalStatus;
+    double usedTimeSecs;      /// last time used
+    TransactionState* state;  /// Transaction, may be nullptr
+    std::string user;         /// user owning the transaction
     /// cheap usage lock for *state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -92,8 +93,9 @@ class Manager final {
   Manager(Manager const&) = delete;
   Manager& operator=(Manager const&) = delete;
 
-  explicit Manager(bool keepData)
-      : _keepTransactionData(keepData),
+  explicit Manager(ManagerFeature& feature, bool keepData)
+      : _feature(feature),
+        _keepTransactionData(keepData),
         _nrRunning(0),
         _disallowInserts(false),
         _writeLockHeld(false) {}
@@ -154,7 +156,10 @@ class Manager final {
   bool garbageCollect(bool abortAll);
 
   /// @brief abort all transactions matching
-  bool abortManagedTrx(std::function<bool(TransactionState const&)>);
+  bool abortManagedTrx(std::function<bool(TransactionState const&, std::string const&)>);
+
+  /// @brief abort all managed write transactions
+  Result abortAllManagedWriteTrx(std::string const& username, bool fanout);
 
   /// @brief convert the list of running transactions to a VelocyPack array
   /// the array must be opened already.
@@ -191,7 +196,10 @@ class Manager final {
   }
 
  private:
-  // hashes the transaction id into a bucket
+  /// @brief performs a status change on a transaction using a timeout
+  Result statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status);
+  
+  /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TRI_voc_tid_t tid) const {
     return std::hash<TRI_voc_cid_t>()(tid) % numBuckets;
   }
@@ -200,6 +208,8 @@ class Manager final {
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx const&)> const&) const;
+
+  ManagerFeature& _feature;
 
   /// @brief will be true only for MMFiles
   bool const _keepTransactionData;

@@ -293,7 +293,7 @@ class V8Completer : public Completer {
     std::string prefix;
 
     if (*text != '\0') {
-      std::vector<std::string> splitted = basics::StringUtils::split(text, '.', '\0');
+      std::vector<std::string> splitted = basics::StringUtils::split(text, '.');
 
       if (1 < splitted.size()) {
         for (size_t i = 0; i < splitted.size() - 1; ++i) {

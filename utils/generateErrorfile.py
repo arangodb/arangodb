@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+from __future__ import print_function
 import csv, sys, os.path, re
 
 # wrap text after x characters
@@ -30,7 +31,7 @@ def genJsFile(errors):
       + "  var internal = require(\"internal\");\n"\
       + "\n"\
       + "  internal.errors = {\n"
-  
+
   # print individual errors
   i = 0
   for e in errors:
@@ -38,8 +39,8 @@ def genJsFile(errors):
     msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
     out = out\
         + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
- 
-    i = i + 1 
+
+    i = i + 1
 
     if i < len(errors):
       out = out + ",\n"
@@ -90,12 +91,12 @@ def genCHeaderFile(errors):
   wiki = "/// Error codes and meanings\n"\
        + "/// The following errors might be raised when running ArangoDB:\n"\
        + "\n\n"
-  
+
   header =   "#ifndef ARANGODB_BASICS_VOC_ERRORS_H\n"\
            + "#define ARANGODB_BASICS_VOC_ERRORS_H 1\n"\
            + "\n"\
            + wiki
- 
+
   # print individual errors
   for e in errors:
     header = header\
@@ -104,7 +105,7 @@ def genCHeaderFile(errors):
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
            + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"\
            + "\n"
-           
+
   header = header + "\n"\
            + "/// register all errors for ArangoDB\n"\
            + "void TRI_InitializeErrorMessages();\n"\
@@ -116,34 +117,38 @@ def genCHeaderFile(errors):
   return header
 
 
-# define some globals 
+# define some globals
 prologue = "/// auto-generated file generated from errors.dat\n"\
          + "\n"
-  
+
 if len(sys.argv) < 3:
-  print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
-  sys.exit()
+  print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
+  sys.exit(1)
 
 source = sys.argv[1]
 
 # read input file
-errors = csv.reader(open(source, "rb"))
-errorsList = []
 
-r1 = re.compile(r'^#.*')
+erros = []
+with open(source) as source_fh:
+    errors = csv.reader(open(source, "r"))
 
-for e in errors:
-  if len(e) == 0:
-    continue
+    errorsList = []
 
-  if r1.match(e[0]):
-    continue
+    r1 = re.compile(r'^#.*')
 
-  if e[0] == "" or e[1] == "" or e[2] == "" or e[3] == "":
-    print >> sys.stderr, "invalid error declaration file: %s" % (source)
-    sys.exit()
+    for e in errors:
+      if len(e) == 0:
+        continue
 
-  errorsList.append(e)
+      if r1.match(e[0]):
+        continue
+
+      if e[0] == "" or e[1] == "" or e[2] == "" or e[3] == "":
+        print("invalid error declaration file: {}".format(source), file=sys.stderr)
+        sys.exit()
+
+      errorsList.append(e)
 
 outfile = sys.argv[2]
 extension = os.path.splitext(outfile)[1]
@@ -160,10 +165,8 @@ elif extension == ".h":
 elif extension == ".cpp":
   out = genCFile(errorsList, filename)
 else:
-  print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
-  sys.exit()
+  print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
+  sys.exit(1)
 
-outFile = open(outfile, "wb")
-outFile.write(out)
-outFile.close()
-
+with open(outfile, "w") as out_fh:
+    out_fh.write(out)
