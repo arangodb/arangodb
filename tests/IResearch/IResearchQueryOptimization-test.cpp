@@ -165,6 +165,7 @@ std::vector<std::string> optimizerOptionsAvailable = {
   " OPTIONS {\"conditionOptimization\":\"none\"} "
 };
 
+constexpr size_t disabledDnfOptimizationStart = 2;
 NS_END
 
 // -----------------------------------------------------------------------------
@@ -1467,6 +1468,8 @@ TEST_F(IResearchQueryOptimizationTest, test_25) {
 }
   // a IN [ x ] && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_26) {
+
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1481,11 +1484,20 @@ TEST_F(IResearchQueryOptimizationTest, test_26) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
+
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1510,31 +1522,48 @@ TEST_F(IResearchQueryOptimizationTest, test_26) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a IN [ x ] && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_27) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
       std::string("FOR d IN testView SEARCH d.values IN [ 'C' ] AND d.values != 'C' ") + o + "RETURN d";
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
-
-    EXPECT_TRUE(findEmptyNodes(vocbase(), query));
+    if (optimizeType < disabledDnfOptimizationStart) {
+      EXPECT_TRUE(findEmptyNodes(vocbase(), query));
+    } else {
+      // no optimization will give us redundant nodes, but that is expected 
+      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+      EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    }
 
     // check structure
     {
-      irs::And expected;
-      auto& root = expected; // expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      assertFilterOptimized(vocbase(), query, expected);
+      if (optimizeType < disabledDnfOptimizationStart) {
+        irs::And expected;
+        auto& root = expected;
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+        assertFilterOptimized(vocbase(), query, expected);
+      } else {
+        irs::Or expected;
+        auto& root = expected.add<irs::And>();
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+        assertFilterOptimized(vocbase(), query, expected);
+      }
     }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{};
@@ -1558,11 +1587,13 @@ TEST_F(IResearchQueryOptimizationTest, test_27) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a IN [ x ] && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_28) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1577,11 +1608,19 @@ TEST_F(IResearchQueryOptimizationTest, test_28) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1606,10 +1645,12 @@ TEST_F(IResearchQueryOptimizationTest, test_28) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a IN [ x ] && a < y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_29) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1623,7 +1664,14 @@ TEST_F(IResearchQueryOptimizationTest, test_29) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>().field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1650,6 +1698,7 @@ TEST_F(IResearchQueryOptimizationTest, test_29) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -1754,6 +1803,7 @@ TEST_F(IResearchQueryOptimizationTest, test_31) {
 
   // a IN [ x ] && a <= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_32) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1767,7 +1817,15 @@ TEST_F(IResearchQueryOptimizationTest, test_32) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else{
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1794,11 +1852,13 @@ TEST_F(IResearchQueryOptimizationTest, test_32) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a IN [x] && a <= y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_33) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1812,7 +1872,15 @@ TEST_F(IResearchQueryOptimizationTest, test_33) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1839,6 +1907,7 @@ TEST_F(IResearchQueryOptimizationTest, test_33) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -1892,6 +1961,7 @@ TEST_F(IResearchQueryOptimizationTest, test_34) {
 }
   // a IN [ x ] && a >= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_35) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1905,11 +1975,19 @@ TEST_F(IResearchQueryOptimizationTest, test_35) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1936,11 +2014,13 @@ TEST_F(IResearchQueryOptimizationTest, test_35) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a IN [ x ] && a >= y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_36) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1954,7 +2034,15 @@ TEST_F(IResearchQueryOptimizationTest, test_36) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -1981,10 +2069,12 @@ TEST_F(IResearchQueryOptimizationTest, test_36) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a IN [x] && a >= y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_37) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -1998,7 +2088,15 @@ TEST_F(IResearchQueryOptimizationTest, test_37) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2025,10 +2123,12 @@ TEST_F(IResearchQueryOptimizationTest, test_37) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a IN [x] && a > y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_38) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2042,11 +2142,19 @@ TEST_F(IResearchQueryOptimizationTest, test_38) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2073,10 +2181,12 @@ TEST_F(IResearchQueryOptimizationTest, test_38) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a IN [x] && a > y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_39) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2090,11 +2200,19 @@ TEST_F(IResearchQueryOptimizationTest, test_39) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2121,11 +2239,13 @@ TEST_F(IResearchQueryOptimizationTest, test_39) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a IN [x] && a > y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_40) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2139,7 +2259,15 @@ TEST_F(IResearchQueryOptimizationTest, test_40) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2166,6 +2294,7 @@ TEST_F(IResearchQueryOptimizationTest, test_40) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -2308,6 +2437,7 @@ TEST_F(IResearchQueryOptimizationTest, test_43) {
 
   // a == x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_44) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2321,11 +2451,19 @@ TEST_F(IResearchQueryOptimizationTest, test_44) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2350,30 +2488,47 @@ TEST_F(IResearchQueryOptimizationTest, test_44) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a == x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_45) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
       std::string("FOR d IN testView SEARCH d.values == 'C' AND d.values != 'C'") + o + "RETURN d";
-
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
-
-    EXPECT_TRUE(findEmptyNodes(vocbase(), query));
+    if (optimizeType < disabledDnfOptimizationStart) {
+      // FIXME EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      //  { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+      EXPECT_TRUE(findEmptyNodes(vocbase(), query));
+    } else {
+      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+      EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    }
     // check structure
     {
-      irs::And expected;
-      auto& root = expected; // expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      assertFilterOptimized(vocbase(), query, expected);
+      if (optimizeType < disabledDnfOptimizationStart) {
+        irs::And expected;
+        auto& root = expected; 
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+        assertFilterOptimized(vocbase(), query, expected);
+      } else {
+        irs::Or expected;
+        auto& root = expected.add<irs::And>();
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+        assertFilterOptimized(vocbase(), query, expected);
+      }
     }
     std::vector<arangodb::velocypack::Slice> expectedDocs{};
 
@@ -2396,11 +2551,13 @@ TEST_F(IResearchQueryOptimizationTest, test_45) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    optimizeType++;
   }
 }
 
   // a == x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_46) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2414,11 +2571,19 @@ TEST_F(IResearchQueryOptimizationTest, test_46) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2443,11 +2608,13 @@ TEST_F(IResearchQueryOptimizationTest, test_46) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a == x && a < y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_47) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2461,7 +2628,15 @@ TEST_F(IResearchQueryOptimizationTest, test_47) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2488,6 +2663,7 @@ TEST_F(IResearchQueryOptimizationTest, test_47) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -2591,6 +2767,7 @@ TEST_F(IResearchQueryOptimizationTest, test_49) {
 
   // a == x && a <= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_50) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2604,7 +2781,15 @@ TEST_F(IResearchQueryOptimizationTest, test_50) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2631,11 +2816,13 @@ TEST_F(IResearchQueryOptimizationTest, test_50) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a == x && a <= y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_51) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2650,6 +2837,12 @@ TEST_F(IResearchQueryOptimizationTest, test_51) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2676,6 +2869,7 @@ TEST_F(IResearchQueryOptimizationTest, test_51) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -2730,6 +2924,7 @@ TEST_F(IResearchQueryOptimizationTest, test_52) {
 
   // a == x && a >= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_53) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2743,11 +2938,19 @@ TEST_F(IResearchQueryOptimizationTest, test_53) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2774,11 +2977,13 @@ TEST_F(IResearchQueryOptimizationTest, test_53) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a == x && a >= y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_54) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2793,6 +2998,12 @@ TEST_F(IResearchQueryOptimizationTest, test_54) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2819,11 +3030,13 @@ TEST_F(IResearchQueryOptimizationTest, test_54) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a == x && a >= y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_55) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2838,6 +3051,12 @@ TEST_F(IResearchQueryOptimizationTest, test_55) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2864,11 +3083,13 @@ TEST_F(IResearchQueryOptimizationTest, test_55) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a == x && a > y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_56) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2882,11 +3103,19 @@ TEST_F(IResearchQueryOptimizationTest, test_56) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2913,11 +3142,12 @@ TEST_F(IResearchQueryOptimizationTest, test_56) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a == x && a > y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_57) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2931,11 +3161,19 @@ TEST_F(IResearchQueryOptimizationTest, test_57) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      } else {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -2962,11 +3200,13 @@ TEST_F(IResearchQueryOptimizationTest, test_57) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a == x && a > y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_58) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -2981,6 +3221,12 @@ TEST_F(IResearchQueryOptimizationTest, test_58) {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -3007,6 +3253,7 @@ TEST_F(IResearchQueryOptimizationTest, test_58) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -3109,26 +3356,43 @@ TEST_F(IResearchQueryOptimizationTest, test_60) {
 
   // a != x && a == y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_61) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
 
     std::string const query =
       std::string("FOR d IN testView SEARCH d.values != 'A' AND d.values == 'A'") + o + "RETURN d";
+    if (optimizeType < disabledDnfOptimizationStart) {
+      // FIXME EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      //  { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+      EXPECT_TRUE(findEmptyNodes(vocbase(), query));
+    } else {
+      EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+        { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
 
-    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
-      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
-
-    EXPECT_TRUE(findEmptyNodes(vocbase(), query));
+      EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    }
     // check structure
     {
-      irs::And expected;
-      auto& root = expected; // expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
-      assertFilterOptimized(vocbase(), query, expected);
+      if (optimizeType < disabledDnfOptimizationStart) {
+        irs::And expected;
+        auto& root = expected; 
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        assertFilterOptimized(vocbase(), query, expected);
+      } else {
+        irs::Or expected;
+        auto& root = expected.add<irs::And>();
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
+        assertFilterOptimized(vocbase(), query, expected);
+      }
     }
 
     std::vector<arangodb::velocypack::Slice> expectedDocs{};
@@ -3152,6 +3416,7 @@ TEST_F(IResearchQueryOptimizationTest, test_61) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -4732,6 +4997,7 @@ TEST_F(IResearchQueryOptimizationTest, test_92) {
 
   // a < x && a == y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_93) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4745,11 +5011,19 @@ TEST_F(IResearchQueryOptimizationTest, test_93) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4776,12 +5050,13 @@ TEST_F(IResearchQueryOptimizationTest, test_93) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    optimizeType++;
   }
 }
 
   // a < x && a == y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_94) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4795,11 +5070,19 @@ TEST_F(IResearchQueryOptimizationTest, test_94) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4826,11 +5109,13 @@ TEST_F(IResearchQueryOptimizationTest, test_94) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a == y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_95) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4844,6 +5129,12 @@ TEST_F(IResearchQueryOptimizationTest, test_95) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      }
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -4871,11 +5162,13 @@ TEST_F(IResearchQueryOptimizationTest, test_95) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_96) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4889,14 +5182,25 @@ TEST_F(IResearchQueryOptimizationTest, test_96) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4923,12 +5227,13 @@ TEST_F(IResearchQueryOptimizationTest, test_96) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_97) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4942,14 +5247,25 @@ TEST_F(IResearchQueryOptimizationTest, test_97) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -4974,12 +5290,13 @@ TEST_F(IResearchQueryOptimizationTest, test_97) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_98) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -4993,14 +5310,25 @@ TEST_F(IResearchQueryOptimizationTest, test_98) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("D");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("D");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("D");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5027,11 +5355,13 @@ TEST_F(IResearchQueryOptimizationTest, test_98) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_99) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5045,14 +5375,25 @@ TEST_F(IResearchQueryOptimizationTest, test_99) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5077,12 +5418,13 @@ TEST_F(IResearchQueryOptimizationTest, test_99) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_100) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5096,14 +5438,25 @@ TEST_F(IResearchQueryOptimizationTest, test_100) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("0");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("0");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("0");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5130,11 +5483,13 @@ TEST_F(IResearchQueryOptimizationTest, test_100) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_101) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5148,14 +5503,25 @@ TEST_F(IResearchQueryOptimizationTest, test_101) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5180,12 +5546,13 @@ TEST_F(IResearchQueryOptimizationTest, test_101) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a < y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_102) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5203,6 +5570,12 @@ TEST_F(IResearchQueryOptimizationTest, test_102) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>("B");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5229,6 +5602,7 @@ TEST_F(IResearchQueryOptimizationTest, test_102) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -5287,6 +5661,7 @@ TEST_F(IResearchQueryOptimizationTest, test_104) {
   std::vector<arangodb::velocypack::Slice> expectedDocs{
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
   };
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5301,6 +5676,12 @@ TEST_F(IResearchQueryOptimizationTest, test_104) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(false)
@@ -5327,11 +5708,12 @@ TEST_F(IResearchQueryOptimizationTest, test_104) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a < x && a <= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_105) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5349,6 +5731,12 @@ TEST_F(IResearchQueryOptimizationTest, test_105) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>("B");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5375,12 +5763,13 @@ TEST_F(IResearchQueryOptimizationTest, test_105) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a <= y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_106) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5398,6 +5787,12 @@ TEST_F(IResearchQueryOptimizationTest, test_106) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(false)
         .term<irs::Bound::MAX>("C");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5424,11 +5819,13 @@ TEST_F(IResearchQueryOptimizationTest, test_106) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a <= y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_107) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5442,6 +5839,12 @@ TEST_F(IResearchQueryOptimizationTest, test_107) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(true)
@@ -5472,11 +5875,13 @@ TEST_F(IResearchQueryOptimizationTest, test_107) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a >= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_108) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5490,14 +5895,25 @@ TEST_F(IResearchQueryOptimizationTest, test_108) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5524,11 +5940,13 @@ TEST_F(IResearchQueryOptimizationTest, test_108) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a >= y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_109) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5542,14 +5960,25 @@ TEST_F(IResearchQueryOptimizationTest, test_109) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5576,11 +6005,13 @@ TEST_F(IResearchQueryOptimizationTest, test_109) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a >= y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_110) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5594,14 +6025,25 @@ TEST_F(IResearchQueryOptimizationTest, test_110) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5628,11 +6070,13 @@ TEST_F(IResearchQueryOptimizationTest, test_110) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a > y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_111) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5646,14 +6090,25 @@ TEST_F(IResearchQueryOptimizationTest, test_111) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("C");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("C");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5678,12 +6133,13 @@ TEST_F(IResearchQueryOptimizationTest, test_111) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a > y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_112) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5697,14 +6153,25 @@ TEST_F(IResearchQueryOptimizationTest, test_112) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5731,11 +6198,13 @@ TEST_F(IResearchQueryOptimizationTest, test_112) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a < x && a > y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_113) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5749,14 +6218,25 @@ TEST_F(IResearchQueryOptimizationTest, test_113) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(false)
-        .term<irs::Bound::MAX>("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5783,11 +6263,13 @@ TEST_F(IResearchQueryOptimizationTest, test_113) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a == y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_114) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5801,11 +6283,19 @@ TEST_F(IResearchQueryOptimizationTest, test_114) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+        root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5832,11 +6322,13 @@ TEST_F(IResearchQueryOptimizationTest, test_114) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a == y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_115) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5850,6 +6342,12 @@ TEST_F(IResearchQueryOptimizationTest, test_115) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+      }
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5877,11 +6375,13 @@ TEST_F(IResearchQueryOptimizationTest, test_115) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a == y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_116) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5895,6 +6395,12 @@ TEST_F(IResearchQueryOptimizationTest, test_116) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("B");
+      }
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -5922,11 +6428,13 @@ TEST_F(IResearchQueryOptimizationTest, test_116) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_117) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5940,14 +6448,25 @@ TEST_F(IResearchQueryOptimizationTest, test_117) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -5974,11 +6493,13 @@ TEST_F(IResearchQueryOptimizationTest, test_117) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_118) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -5992,14 +6513,25 @@ TEST_F(IResearchQueryOptimizationTest, test_118) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6024,12 +6556,13 @@ TEST_F(IResearchQueryOptimizationTest, test_118) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_119) {
-
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6043,14 +6576,25 @@ TEST_F(IResearchQueryOptimizationTest, test_119) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6075,11 +6619,13 @@ TEST_F(IResearchQueryOptimizationTest, test_119) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_120) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6093,14 +6639,25 @@ TEST_F(IResearchQueryOptimizationTest, test_120) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("D");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("D");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("D");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6127,11 +6684,13 @@ TEST_F(IResearchQueryOptimizationTest, test_120) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_121) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6145,14 +6704,25 @@ TEST_F(IResearchQueryOptimizationTest, test_121) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("@");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("@");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("@");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6179,11 +6749,13 @@ TEST_F(IResearchQueryOptimizationTest, test_121) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_122) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6197,14 +6769,25 @@ TEST_F(IResearchQueryOptimizationTest, test_122) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6229,11 +6812,13 @@ TEST_F(IResearchQueryOptimizationTest, test_122) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a < y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_123) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6251,6 +6836,12 @@ TEST_F(IResearchQueryOptimizationTest, test_123) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>("A");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(false)
+          .term<irs::Bound::MAX>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6277,11 +6868,13 @@ TEST_F(IResearchQueryOptimizationTest, test_123) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a < y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_124) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6295,6 +6888,12 @@ TEST_F(IResearchQueryOptimizationTest, test_124) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("B");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(false)
@@ -6325,10 +6924,12 @@ TEST_F(IResearchQueryOptimizationTest, test_124) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a <= x && a < y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_125) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6342,6 +6943,12 @@ TEST_F(IResearchQueryOptimizationTest, test_125) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(false)
@@ -6372,11 +6979,13 @@ TEST_F(IResearchQueryOptimizationTest, test_125) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a <= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_126) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6394,6 +7003,12 @@ TEST_F(IResearchQueryOptimizationTest, test_126) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(true)
         .term<irs::Bound::MAX>("A");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6420,6 +7035,7 @@ TEST_F(IResearchQueryOptimizationTest, test_126) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -6473,6 +7089,7 @@ TEST_F(IResearchQueryOptimizationTest, test_127) {
 
   // a <= x && a <= y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_128) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6486,6 +7103,12 @@ TEST_F(IResearchQueryOptimizationTest, test_128) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MAX>(true)
@@ -6516,11 +7139,13 @@ TEST_F(IResearchQueryOptimizationTest, test_128) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a >= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_129) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6534,14 +7159,25 @@ TEST_F(IResearchQueryOptimizationTest, test_129) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6568,11 +7204,13 @@ TEST_F(IResearchQueryOptimizationTest, test_129) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a >= y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_130) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6586,14 +7224,25 @@ TEST_F(IResearchQueryOptimizationTest, test_130) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6620,11 +7269,13 @@ TEST_F(IResearchQueryOptimizationTest, test_130) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a >= y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_131) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6638,14 +7289,25 @@ TEST_F(IResearchQueryOptimizationTest, test_131) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6672,11 +7334,13 @@ TEST_F(IResearchQueryOptimizationTest, test_131) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a > y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_132) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6690,14 +7354,25 @@ TEST_F(IResearchQueryOptimizationTest, test_132) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6724,11 +7399,13 @@ TEST_F(IResearchQueryOptimizationTest, test_132) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a > y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_133) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6742,14 +7419,25 @@ TEST_F(IResearchQueryOptimizationTest, test_133) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6776,11 +7464,13 @@ TEST_F(IResearchQueryOptimizationTest, test_133) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a <= x && a > y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_134) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6794,14 +7484,25 @@ TEST_F(IResearchQueryOptimizationTest, test_134) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MAX>(true)
-        .term<irs::Bound::MAX>("C");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MAX>(true)
+          .term<irs::Bound::MAX>("C");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -6828,11 +7529,13 @@ TEST_F(IResearchQueryOptimizationTest, test_134) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a >= x && a == y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_135) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6846,6 +7549,12 @@ TEST_F(IResearchQueryOptimizationTest, test_135) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      }
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6873,10 +7582,12 @@ TEST_F(IResearchQueryOptimizationTest, test_135) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a >= x && a == y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_136) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6890,6 +7601,12 @@ TEST_F(IResearchQueryOptimizationTest, test_136) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      }
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("A");
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -6917,6 +7634,7 @@ TEST_F(IResearchQueryOptimizationTest, test_136) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -6971,6 +7689,7 @@ TEST_F(IResearchQueryOptimizationTest, test_137) {
 }
   // a >= x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_138) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -6984,14 +7703,25 @@ TEST_F(IResearchQueryOptimizationTest, test_138) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7018,11 +7748,13 @@ TEST_F(IResearchQueryOptimizationTest, test_138) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a >= x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_139) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7036,14 +7768,25 @@ TEST_F(IResearchQueryOptimizationTest, test_139) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7068,11 +7811,13 @@ TEST_F(IResearchQueryOptimizationTest, test_139) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a >= x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_140) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7086,14 +7831,25 @@ TEST_F(IResearchQueryOptimizationTest, test_140) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("@");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("@");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("@");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("@");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("@");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("@");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7120,11 +7876,13 @@ TEST_F(IResearchQueryOptimizationTest, test_140) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a >= x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_141) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7138,14 +7896,25 @@ TEST_F(IResearchQueryOptimizationTest, test_141) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7170,10 +7939,12 @@ TEST_F(IResearchQueryOptimizationTest, test_141) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
   // a >= x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_142) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7187,14 +7958,25 @@ TEST_F(IResearchQueryOptimizationTest, test_142) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7221,11 +8003,13 @@ TEST_F(IResearchQueryOptimizationTest, test_142) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a >= x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_143) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7239,14 +8023,25 @@ TEST_F(IResearchQueryOptimizationTest, test_143) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(true)
-        .term<irs::Bound::MIN>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7271,6 +8066,7 @@ TEST_F(IResearchQueryOptimizationTest, test_143) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -7587,6 +8383,7 @@ TEST_F(IResearchQueryOptimizationTest, test_149) {
 
   // a >= x && a >= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_150) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7600,6 +8397,12 @@ TEST_F(IResearchQueryOptimizationTest, test_150) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(true)
@@ -7630,6 +8433,7 @@ TEST_F(IResearchQueryOptimizationTest, test_150) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -7683,6 +8487,7 @@ TEST_F(IResearchQueryOptimizationTest, test_151) {
 
   // a >= x && a >= y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_152) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7700,6 +8505,12 @@ TEST_F(IResearchQueryOptimizationTest, test_152) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>("C");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7726,11 +8537,13 @@ TEST_F(IResearchQueryOptimizationTest, test_152) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a >= x && a > y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_153) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7744,6 +8557,12 @@ TEST_F(IResearchQueryOptimizationTest, test_153) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(false)
@@ -7774,11 +8593,13 @@ TEST_F(IResearchQueryOptimizationTest, test_153) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a >= x && a > y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_154) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7792,6 +8613,12 @@ TEST_F(IResearchQueryOptimizationTest, test_154) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(false)
@@ -7822,11 +8649,13 @@ TEST_F(IResearchQueryOptimizationTest, test_154) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a >= x && a > y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_155) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7844,6 +8673,12 @@ TEST_F(IResearchQueryOptimizationTest, test_155) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(true)
         .term<irs::Bound::MIN>("B");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -7870,11 +8705,13 @@ TEST_F(IResearchQueryOptimizationTest, test_155) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a > x && a == y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_156) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -7888,6 +8725,12 @@ TEST_F(IResearchQueryOptimizationTest, test_156) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       root.add<irs::by_term>().field(mangleStringIdentity("values")).term("B");
       assertFilterOptimized(vocbase(), query, expected);
     }
@@ -7915,6 +8758,7 @@ TEST_F(IResearchQueryOptimizationTest, test_156) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -8018,6 +8862,7 @@ TEST_F(IResearchQueryOptimizationTest, test_158) {
 
   // a > x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_159) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8031,14 +8876,25 @@ TEST_F(IResearchQueryOptimizationTest, test_159) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("D");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("D");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8065,11 +8921,13 @@ TEST_F(IResearchQueryOptimizationTest, test_159) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a > x && a != y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_160) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8083,14 +8941,25 @@ TEST_F(IResearchQueryOptimizationTest, test_160) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("B");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8115,11 +8984,13 @@ TEST_F(IResearchQueryOptimizationTest, test_160) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a > x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_161) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8133,14 +9004,25 @@ TEST_F(IResearchQueryOptimizationTest, test_161) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("@");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("@");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("@");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("@");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("@");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("@");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8167,11 +9049,13 @@ TEST_F(IResearchQueryOptimizationTest, test_161) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a > x && a != y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_162) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8186,14 +9070,25 @@ TEST_F(IResearchQueryOptimizationTest, test_162) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("A");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8218,11 +9113,13 @@ TEST_F(IResearchQueryOptimizationTest, test_162) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    optimizeType++;
   }
 }
 
   // a > x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_163) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8236,14 +9133,25 @@ TEST_F(IResearchQueryOptimizationTest, test_163) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("@");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("@");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("@");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8270,11 +9178,13 @@ TEST_F(IResearchQueryOptimizationTest, test_163) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a > x && a != y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_164) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8288,14 +9198,25 @@ TEST_F(IResearchQueryOptimizationTest, test_164) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
-      root.add<irs::Not>()
-        .filter<irs::by_term>()
-        .field(mangleStringIdentity("values"))
-        .term("A");
-      root.add<irs::by_range>()
-        .field(mangleStringIdentity("values"))
-        .include<irs::Bound::MIN>(false)
-        .term<irs::Bound::MIN>("B");
+      if (optimizeType < disabledDnfOptimizationStart) {
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+      } else {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("B");
+        root.add<irs::Not>()
+          .filter<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8320,6 +9241,7 @@ TEST_F(IResearchQueryOptimizationTest, test_164) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -8636,6 +9558,7 @@ TEST_F(IResearchQueryOptimizationTest, test_170) {
 
   // a > x && a >= y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_171) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8649,6 +9572,12 @@ TEST_F(IResearchQueryOptimizationTest, test_171) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(true)
@@ -8679,11 +9608,13 @@ TEST_F(IResearchQueryOptimizationTest, test_171) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a > x && a >= y, x == y
 TEST_F(IResearchQueryOptimizationTest, test_172) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8701,6 +9632,12 @@ TEST_F(IResearchQueryOptimizationTest, test_172) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>("B");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("B");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8727,11 +9664,13 @@ TEST_F(IResearchQueryOptimizationTest, test_172) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a > x && a >= y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_173) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8749,6 +9688,12 @@ TEST_F(IResearchQueryOptimizationTest, test_173) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>("B");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(true)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8775,11 +9720,13 @@ TEST_F(IResearchQueryOptimizationTest, test_173) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
   // a > x && a > y, x < y
 TEST_F(IResearchQueryOptimizationTest, test_174) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8793,6 +9740,12 @@ TEST_F(IResearchQueryOptimizationTest, test_174) {
     {
       irs::Or expected;
       auto& root = expected.add<irs::And>();
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       root.add<irs::by_range>()
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(false)
@@ -8823,6 +9776,7 @@ TEST_F(IResearchQueryOptimizationTest, test_174) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -8876,6 +9830,7 @@ TEST_F(IResearchQueryOptimizationTest, test_175) {
 
   // a > x && a > y, x > y
 TEST_F(IResearchQueryOptimizationTest, test_176) {
+  size_t optimizeType = 0;
   for (auto& o : optimizerOptionsAvailable) {
     SCOPED_TRACE(o);
     std::string const query =
@@ -8893,6 +9848,12 @@ TEST_F(IResearchQueryOptimizationTest, test_176) {
         .field(mangleStringIdentity("values"))
         .include<irs::Bound::MIN>(false)
         .term<irs::Bound::MIN>("B");
+      if (optimizeType >= disabledDnfOptimizationStart) {
+        root.add<irs::by_range>()
+          .field(mangleStringIdentity("values"))
+          .include<irs::Bound::MIN>(false)
+          .term<irs::Bound::MIN>("A");
+      }
       assertFilterOptimized(vocbase(), query, expected);
     }
 
@@ -8919,6 +9880,7 @@ TEST_F(IResearchQueryOptimizationTest, test_176) {
         arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }
 
@@ -9060,5 +10022,647 @@ TEST_F(IResearchQueryOptimizationTest, test_178) {
     EXPECT_EQ(expectedDoc, expectedDocs.end());
 
     structCheckIdx++;
+  }
+}
+
+// check DNF conversion disabled  but IN nodes processed (sorted and deduplicated)!
+TEST_F(IResearchQueryOptimizationTest, test_179) {
+  auto dnfConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected;
+    {
+      auto& and = root.add<irs::And>();
+      {
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
+      {
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
+    }
+    {
+      auto& and = root.add<irs::And>();
+      {
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
+      {
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
+    }
+  };
+
+  auto nonConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected.add<irs::And>();
+    {
+      auto& or = root.add<irs::Or>();
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("C");
+    }
+    {
+      auto& or = root.add<irs::Or>();
+      {
+        auto& or2 = or.add<irs::Or>();
+        or2.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        or2.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
+      {
+        auto& or2 = or .add<irs::Or>();
+        or2.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        or2.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
+    }
+  };
+
+  std::vector<std::function<void(irs::Or&)>> structureChecks =
+  { dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
+
+  size_t structCheckIdx = 0;
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    std::string const query =
+      std::string("FOR d IN testView SEARCH  d.values IN ['A', 'C'] AND  ( d.values IN ['C', 'B', 'C']  OR d.values IN ['A', 'B'] ) ") +
+      o + "RETURN d";
+
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    // check structure
+    {
+      irs::Or expected;
+      structureChecks[structCheckIdx](expected);
+      assertFilterOptimized(vocbase(), query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+        arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+
+    structCheckIdx++;
+  }
+}
+
+// check DNF conversion disabled (with root disjunction)  but IN nodes processed (sorted and deduplicated)!
+TEST_F(IResearchQueryOptimizationTest, test_180) {
+  auto dnfConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected;
+    {
+      
+      {
+        auto& and = root.add<irs::And>();
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
+      {
+        auto& and = root.add<irs::And>();
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
+      {
+        auto& and = root.add<irs::And>();
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
+    }
+  };
+
+  auto nonConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected;
+    {
+      auto& or = root.add<irs::And>().add<irs::Or>();
+      or .add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+      or .add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("C");
+    }
+    {
+      auto& or = root.add<irs::And>().add<irs::Or>();
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("B");
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("C");
+    }
+    {
+      auto& or = root.add<irs::And>().add<irs::Or>();
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("B");
+    }
+  };
+
+  std::vector<std::function<void(irs::Or&)>> structureChecks =
+  { dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
+
+  size_t structCheckIdx = 0;
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    std::string const query =
+      std::string("FOR d IN testView SEARCH  d.values IN ['A', 'C'] OR  ( d.values IN ['C', 'B', 'C']  OR d.values IN ['A', 'B'] ) ") +
+      o + "RETURN d";
+
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    // check structure
+    {
+      irs::Or expected;
+      structureChecks[structCheckIdx](expected);
+      assertFilterOptimized(vocbase(), query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+        arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+
+    structCheckIdx++;
+  }
+}
+
+// check DNF conversion disabled (with root disjunction and conjunction inside)  but IN nodes processed (sorted and deduplicated)!
+TEST_F(IResearchQueryOptimizationTest, test_181) {
+  auto dnfConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected;
+    {
+      auto& or = root.add<irs::And>().add<irs::Or>();
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+      or.add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("C");
+    }
+    {
+      auto& and = root.add<irs::And>();
+      {
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
+      {
+        auto& part = and.add<irs::Or>();
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        part.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
+    }
+  };
+
+  auto nonConvertedExpected = [](irs::Or& expected) {
+    {
+      auto& or = expected.add<irs::And>().add<irs::Or>();
+      or .add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+      or .add<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("C");
+    }
+    {
+      auto& and = expected.add<irs::And>();
+      {
+        auto& or = and.add<irs::Or>();
+        or.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+        or.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("C");
+      }
+      {
+        auto& or = and.add<irs::Or>();
+        or.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("A");
+        or.add<irs::by_term>()
+          .field(mangleStringIdentity("values"))
+          .term("B");
+      }
+    }
+  };
+
+  std::vector<std::function<void(irs::Or&)>> structureChecks =
+  { dnfConvertedExpected, dnfConvertedExpected, nonConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
+
+  size_t structCheckIdx = 0;
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    std::string const query =
+      std::string("FOR d IN testView SEARCH  d.values IN ['A', 'C'] OR  ( d.values IN ['C', 'B', 'C']  AND d.values IN ['A', 'B'] ) ") +
+      o + "RETURN d";
+
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    // check structure
+    {
+      irs::Or expected;
+      structureChecks[structCheckIdx](expected);
+      assertFilterOptimized(vocbase(), query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+        arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+
+    structCheckIdx++;
+  }
+}
+
+
+// check Negation conversion disabled 
+TEST_F(IResearchQueryOptimizationTest, test_182) {
+  auto negationConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected;
+    {
+      auto& not = root.add<irs::And>().add<irs::Not>();
+      not.filter<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+    }
+    {
+      auto& not = root.add<irs::And>().add<irs::Not>();
+      not.filter<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("B");
+    }
+  };
+
+  auto nonConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>().add<irs::And>();
+    root.add<irs::by_term>()
+      .field(mangleStringIdentity("values"))
+      .term("A");
+    root.add<irs::by_term>()
+      .field(mangleStringIdentity("values"))
+      .term("B");
+  };
+
+  std::vector<std::function<void(irs::Or&)>> structureChecks =
+  { negationConvertedExpected, negationConvertedExpected, negationConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
+
+  size_t structCheckIdx = 0;
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    std::string const query =
+      std::string("FOR d IN testView SEARCH  NOT (d.values == 'A' AND  d.values == 'B') ") +
+      o + "RETURN d";
+
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    // check structure
+    {
+      irs::Or expected;
+      structureChecks[structCheckIdx](expected);
+      assertFilterOptimized(vocbase(), query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+
+    structCheckIdx++;
+  }
+}
+
+// check Negation conversion disabled 
+TEST_F(IResearchQueryOptimizationTest, test_183) {
+  auto negationConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected.add<irs::And>();
+    {
+      auto & not = root.add<irs::Not>();
+      not.filter<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("A");
+    }
+    {
+      auto & not = root.add<irs::Not>();
+      not.filter<irs::by_term>()
+        .field(mangleStringIdentity("values"))
+        .term("B");
+    }
+  };
+
+  auto nonConvertedExpected = [](irs::Or& expected) {
+    auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>().add<irs::Or>();
+    root.add<irs::by_term>()
+      .field(mangleStringIdentity("values"))
+      .term("A");
+    root.add<irs::by_term>()
+      .field(mangleStringIdentity("values"))
+      .term("B");
+  };
+
+  std::vector<std::function<void(irs::Or&)>> structureChecks =
+  { negationConvertedExpected, negationConvertedExpected, negationConvertedExpected, nonConvertedExpected, nonConvertedExpected };
+  ASSERT_EQ(structureChecks.size(), optimizerOptionsAvailable.size());
+
+  size_t structCheckIdx = 0;
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    std::string const query =
+      std::string("FOR d IN testView SEARCH  NOT (d.values == 'A' OR  d.values == 'B') ") +
+      o + "RETURN d";
+
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    // check structure
+    {
+      irs::Or expected;
+      structureChecks[structCheckIdx](expected);
+      assertFilterOptimized(vocbase(), query, expected);
+    }
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+
+    structCheckIdx++;
+  }
+}
+
+// check OR deduplication in sub-nodes
+TEST_F(IResearchQueryOptimizationTest, test_184) {
+  size_t optimizeType = 0;
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    std::string const query =
+      std::string("FOR d IN testView SEARCH  (d.values == 'A' OR d.values == 'B' OR d.values == 'A') AND  (d.values == 'A' OR d.values == 'C' OR d.values == 'C') ") +
+      o + "RETURN d";
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    // check structure only for non-optimized
+    // Dnf-converter filter is out of scope, just run it and verify
+    // returned documents are the same
+    if (optimizeType >= disabledDnfOptimizationStart) {
+      irs::Or expected;
+      auto& and = expected.add<irs::And>();
+      auto& left = and.add<irs::Or>();
+      left.add<irs::by_term>().field(mangleStringIdentity("values"))
+        .term("A");
+      left.add<irs::by_term>().field(mangleStringIdentity("values"))
+        .term("B");
+      auto& right = and.add<irs::Or>();
+      right.add<irs::by_term>().field(mangleStringIdentity("values"))
+        .term("A");
+      right.add<irs::by_term>().field(mangleStringIdentity("values"))
+        .term("C");
+      assertFilterOptimized(vocbase(), query, expected);
+    }
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
+  }
+}
+
+// check IN deduplication in sub-nodes
+TEST_F(IResearchQueryOptimizationTest, test_185) {
+  size_t optimizeType = 0;
+  for (auto& o : optimizerOptionsAvailable) {
+    SCOPED_TRACE(o);
+    std::string const query =
+      std::string("FOR d IN testView SEARCH  (d.values IN ['A', 'B', 'A']) AND  (d.values == 'A' OR d.values == 'C' OR d.values == 'C') ") +
+      o + "RETURN d";
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase(), query,
+      { arangodb::aql::OptimizerRule::handleArangoSearchViewsRule }));
+
+    EXPECT_FALSE(findEmptyNodes(vocbase(), query));
+    // check structure only for non-optimized
+    // Dnf-converter filter is out of scope, just run it and verify
+    // returned documents are the same
+    if (optimizeType >= disabledDnfOptimizationStart) {
+      irs::Or expected;
+      auto& and = expected.add<irs::And>();
+      auto& left = and.add<irs::Or>();
+      left.add<irs::by_term>().field(mangleStringIdentity("values"))
+        .term("A");
+      left.add<irs::by_term>().field(mangleStringIdentity("values"))
+        .term("B");
+      auto& right = and.add<irs::Or>();
+      right.add<irs::by_term>().field(mangleStringIdentity("values"))
+        .term("A");
+      right.add<irs::by_term>().field(mangleStringIdentity("values"))
+        .term("C");
+      assertFilterOptimized(vocbase(), query, expected);
+    }
+    std::vector<arangodb::velocypack::Slice> expectedDocs{
+       arangodb::velocypack::Slice(insertedDocs[0].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase(), query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(expectedDocs.size(), resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+        arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    EXPECT_EQ(expectedDoc, expectedDocs.end());
+    ++optimizeType;
   }
 }

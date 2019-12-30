@@ -47,9 +47,9 @@ struct Variable;
 // note to maintainers:
 // 
 enum class ConditionOptimization {
-  None,        // only generic optimizations are made (e.g. AND to n-ry AND )
-  NoNegation, // no conversions to negation normal form. Implies NoDNF!
-  NoDNF,      // no conversions to DNF are made
+  None,       // only generic optimizations are made (e.g. AND to n-ry AND, sorting and deduplicating IN nodes )
+  NoNegation, // no conversions to negation normal form. Implies NoDNF and no optimization.
+  NoDNF,      // no conversions to DNF are made and no condition optimization
   Auto,       // all existing condition optimizations are applied
 
 };
@@ -194,6 +194,16 @@ class Condition {
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);
 
+  /// @brief optimize the condition expression tree which is non-DnfConverted
+  /// does only basic deduplicating of conditions
+  void optimizeNonDnf();
+
+  /// @brief deduplicates conditions in AND/OR node
+  void deduplicateJunctionNode(AstNode* unlockedNode);
+
+  /// @brief recursively deduplicates and sorts members in  IN/AND/OR nodes in subtree
+  void deduplicateComparsionsRecursive(AstNode* p);
+
   /// @brief registers an attribute access for a particular (collection)
   /// variable
   void storeAttributeAccess(
@@ -219,14 +229,15 @@ class Condition {
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);
 
-  /// @brief converts binary to n-ary, comparision normal and negation normal
-  ///        form
-  AstNode* transformNodePreorder(AstNode*, bool noNegationConversion = false);
+  /// @brief converts binary to n-ary, comparision normal and negation normal form
+  AstNode* transformNodePreorder(
+      AstNode*, 
+      ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
 
   /// @brief converts from negation normal to disjunctive normal form
-  /// @param noDNFConversion skip converting condition to DNF. May be useful if 
-  ///                        DNF conversion takes more time than executing original condition
-  AstNode* transformNodePostorder(AstNode*, bool noDNFConversion = false);
+  AstNode* transformNodePostorder(
+      AstNode*, 
+      ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step
