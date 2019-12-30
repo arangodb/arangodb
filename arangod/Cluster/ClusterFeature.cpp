@@ -477,7 +477,7 @@ void ClusterFeature::prepare() {
 
 void ClusterFeature::start() {
   if (ServerState::instance()->isAgent() || _enableCluster) {
-    ClusterComm::initialize();
+    ClusterComm::initialize(server());
   }
 
   // return if cluster is disabled
