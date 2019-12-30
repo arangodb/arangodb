@@ -187,44 +187,22 @@ class ShortestPathExecutor {
 
  private:
   /**
-   * @brief Fetch input row(s) and compute path
-   *
-   * @return false if we are done and no path could be found.
-   *
-   * TODO: remove me when new executor interface is active
-   */
-  [[nodiscard]] bool fetchPath();
-
-  /**
-   * @brief compute the correct return state
-   *
-   * @return DONE if no more is expected
-   * TODO: remove me when new executor interface is active
-   */
-  [[nodiscard]] ExecutionState computeState() const;
-
-  /**
    * @brief get the id of a input vertex
-   * Result will be in id parameter, it
-   * is guaranteed that the memory
-   * is managed until the next call of fetchPath.
-   *
-   * TODO: remove me when new executor interface is active
+   * Result will be written into the given Slice.
+   * This is either managed by the handed in builder (might be overwritten),
+   * or by the handed in row, or a constant value in the options.
+   * In any case it will stay valid at least until the reference to the input
+   * row is lost, or the builder is resetted.
    */
-  [[nodiscard]] bool getVertexId(bool isTarget, arangodb::velocypack::Slice& id);
-
-  // TODO: These are the methods used for the new executor interface.
   [[nodiscard]] bool getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
                                  InputAqlItemRow& row, Builder& builder, Slice& id);
-  [[nodiscard]] bool getStartVertexId(InputAqlItemRow& row, arangodb::velocypack::Slice& id);
-  [[nodiscard]] bool getEndVertexId(InputAqlItemRow& row, arangodb::velocypack::Slice& id);
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
   InputAqlItemRow _inputRow;
-  ExecutionState _rowState;
 
+  // Internal state machine, are we requesting data / checking if a path exists
+  // or do we write output.
   enum class State { PATH_FETCH, PATH_OUTPUT };
   State _myState;
 
