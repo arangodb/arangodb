@@ -10402,14 +10402,14 @@ TEST_F(IResearchQueryOptimizationTest, test_182) {
   auto negationConvertedExpected = [](irs::Or& expected) {
     auto& root = expected;
     {
-      auto& not = root.add<irs::And>().add<irs::Not>();
-      not.filter<irs::by_term>()
+      auto& notFilter = root.add<irs::And>().add<irs::Not>();
+      notFilter.filter<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
     }
     {
-      auto& not = root.add<irs::And>().add<irs::Not>();
-      not.filter<irs::by_term>()
+      auto& notFilter = root.add<irs::And>().add<irs::Not>();
+      notFilter.filter<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("B");
     }
@@ -10480,14 +10480,14 @@ TEST_F(IResearchQueryOptimizationTest, test_183) {
   auto negationConvertedExpected = [](irs::Or& expected) {
     auto& root = expected.add<irs::And>();
     {
-      auto & not = root.add<irs::Not>();
-      not.filter<irs::by_term>()
+      auto & notFilter = root.add<irs::Not>();
+      notFilter.filter<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("A");
     }
     {
-      auto & not = root.add<irs::Not>();
-      not.filter<irs::by_term>()
+      auto & notFilter = root.add<irs::Not>();
+      notFilter.filter<irs::by_term>()
         .field(mangleStringIdentity("values"))
         .term("B");
     }
