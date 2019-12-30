@@ -1096,10 +1096,8 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
-  
   ServerStatistics const& serverInfo =
-    application_features::ApplicationServer::server().
-    getFeature<MetricsFeature>().serverStatistics();
+      _vocbase.server().getFeature<MetricsFeature>().serverStatistics();
 
   builder.openObject();
   if (!_clusterId.empty()) {

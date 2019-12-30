@@ -412,7 +412,7 @@ stats::Descriptions::Descriptions(V8DealerFeature& dealer)
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  auto& server = application_features::ApplicationServer::server();
+  auto& server = _dealer.server();
 
   ServerStatistics const& info =
     server.getFeature<MetricsFeature>().serverStatistics();

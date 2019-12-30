@@ -152,7 +152,8 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
     return invalid;
   }
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
+  TRI_ASSERT(ctx.trx);
+  auto& server = ctx.trx->vocbase().server();
   if (!server.hasFeature<IResearchAnalyzerFeature>()) {
     LOG_TOPIC("03314", WARN, arangodb::iresearch::TOPIC)
         << "'" << IResearchAnalyzerFeature::name()
@@ -197,7 +198,6 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
   auto& shortName = result._shortName;
 
   if (ctx.trx) {
-    auto& server = arangodb::application_features::ApplicationServer::server();
     auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
                           ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
                           : nullptr;
@@ -1555,7 +1555,8 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
       return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
     }
 
-    auto& server = arangodb::application_features::ApplicationServer::server();
+    TRI_ASSERT(ctx.trx);
+    auto& server = ctx.trx->vocbase().server();
     if (!server.hasFeature<IResearchAnalyzerFeature>()) {
       auto message =
           "'"s + IResearchAnalyzerFeature::name() +
@@ -1568,7 +1569,6 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
     shortName = analyzerIdValue;
 
     if (ctx.trx) {
-      auto& server = arangodb::application_features::ApplicationServer::server();
       auto sysVocbase =
           server.hasFeature<arangodb::SystemDatabaseFeature>()
               ? server.getFeature<arangodb::SystemDatabaseFeature>().use()

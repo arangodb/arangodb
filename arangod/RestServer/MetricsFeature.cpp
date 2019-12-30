@@ -62,7 +62,8 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
 
 void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   _serverStatistics = std::make_unique<ServerStatistics>(
-    std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count());
+      *this, std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch())
+                 .count());
   options->addOption("--server.export-metrics-api",
                      "turn metrics API on or off",
                      new BooleanParameter(&_export),

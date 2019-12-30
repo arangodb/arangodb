@@ -885,10 +885,9 @@ inline std::string normalizedAnalyzerName(
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
-bool analyzerInUse(irs::string_ref const& dbName,
+bool analyzerInUse(arangodb::application_features::ApplicationServer& server,
+                   irs::string_ref const& dbName,
                    arangodb::iresearch::AnalyzerPool::ptr const& analyzerPtr) {
-  using arangodb::application_features::ApplicationServer;
-
   TRI_ASSERT(analyzerPtr);
 
   if (analyzerPtr.use_count() > 1) { // +1 for ref in '_analyzers'
@@ -934,8 +933,6 @@ bool analyzerInUse(irs::string_ref const& dbName,
 
     return found;
   };
-
-  auto& server = ApplicationServer::server();
 
   TRI_vocbase_t* vocbase{};
 
@@ -2176,7 +2173,7 @@ Result IResearchAnalyzerFeature::remove(
       };
     }
 
-    if (!force && analyzerInUse(split.first, pool)) { // +1 for ref in '_analyzers'
+    if (!force && analyzerInUse(server(), split.first, pool)) {  // +1 for ref in '_analyzers'
       return {
         TRI_ERROR_ARANGO_CONFLICT,
         "analyzer in-use while removing arangosearch analyzer '" + std::string(name)+ "'"
