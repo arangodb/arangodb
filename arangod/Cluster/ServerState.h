@@ -32,6 +32,9 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class AgencyComm;
 class Result;
 
@@ -68,7 +71,7 @@ class ServerState {
   };
 
  public:
-  ServerState();
+  explicit ServerState(application_features::ApplicationServer&);
 
   ~ServerState();
 
@@ -292,6 +295,8 @@ class ServerState {
   bool isUuid(std::string const& value) const;
 
  private:
+  application_features::ApplicationServer& _server;
+
   /// @brief server role
   std::atomic<RoleEnum> _role;
 
