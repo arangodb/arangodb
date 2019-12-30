@@ -74,13 +74,14 @@ extern const char* ARGV0;  // defined in main.cpp
 
 // GTEST printers for IResearch filters
 namespace iresearch {
-  std::ostream& operator<<(std::ostream& os, const filter& filter);
-  std::ostream& operator<<(std::ostream& os, const by_range& range) {
+  std::ostream& operator<<(std::ostream& os, filter const& filter);
+
+  std::ostream& operator<<(std::ostream& os, by_range const& range) {
     os << "Range(" << range.field();
-    std::string termValueMin(iresearch::ref_cast<char>(range.term<iresearch::Bound::MIN>()));
-    std::string termValueMax(iresearch::ref_cast<char>(range.term<iresearch::Bound::MAX>()));
+    std::string termValueMin(ref_cast<char>(range.term<Bound::MIN>()));
+    std::string termValueMax(ref_cast<char>(range.term<Bound::MAX>()));
     if (!termValueMin.empty()) {
-      os << " " << (range.include<iresearch::Bound::MIN>() ? ">=" : ">") << termValueMin;
+      os << " " << (range.include<Bound::MIN>() ? ">=" : ">") << termValueMin;
     }
     if (!termValueMax.empty()) {
       if (!termValueMin.empty()) {
@@ -88,18 +89,20 @@ namespace iresearch {
       } else {
         os << " ";
       }
-      os << (range.include<iresearch::Bound::MAX>() ? "<=" : "<") << termValueMax;
+      os << (range.include<Bound::MAX>() ? "<=" : "<") << termValueMax;
     }
     return os << ")";
   }
-  std::ostream& operator<<(std::ostream& os, const by_term& term) {
-    std::string termValue(iresearch::ref_cast<char>(term.term()));
+
+  std::ostream& operator<<(std::ostream& os, by_term const& term) {
+    std::string termValue(ref_cast<char>(term.term()));
     return os << "Term(" << term.field() << "=" << termValue << ")";
   }
-  std::ostream& operator<<(std::ostream& os, const And& and) {
+
+  std::ostream& operator<<(std::ostream& os, And const& filter) {
     os << "AND[";
-    for (auto it = and.begin(); it != and.end(); ++it) {
-      if (it != and.begin()) {
+    for (auto it = filter.begin(); it != filter.end(); ++it) {
+      if (it != filter.begin()) {
         os << " && ";
       }
       os << *it;
@@ -107,7 +110,8 @@ namespace iresearch {
     os << "]";
     return os;
   }
-  std::ostream& operator<<(std::ostream& os, const Or& or ) {
+
+  std::ostream& operator<<(std::ostream& os, Or const& or ) {
     os << "OR[";
     for (auto it = or .begin(); it != or.end(); ++it) {
       if (it != or.begin()) {
@@ -118,23 +122,24 @@ namespace iresearch {
     os << "]";
     return os;
   }
-  std::ostream& operator<<(std::ostream& os, const Not & not) {
+
+  std::ostream& operator<<(std::ostream& os, Not const& not) {
     os << "NOT[" << *not.filter() << "]";
     return os;
   }
 
-  std::ostream& operator<<(std::ostream& os, const filter& filter) {
+  std::ostream& operator<<(std::ostream& os, filter const& filter) {
     const auto& type = filter.type();
     if (type == And::type()) {
-      return os << static_cast<const And&>(filter);
+      return os << static_cast<And const&>(filter);
     } else if (type == Or::type()) {
-      return os << static_cast<const Or&>(filter);
+      return os << static_cast<Or const&>(filter);
     } else if (type == Not::type()) {
-      return os << static_cast<const Not&>(filter);
+      return os << static_cast<Not const&>(filter);
     } else if (type == by_term::type()) {
-      return os << static_cast<const by_term&>(filter);
+      return os << static_cast<by_term const&>(filter);
     } else if (type == by_range::type()) {
-      return os << static_cast<const by_range&>(filter);
+      return os << static_cast<by_range const&>(filter);
     } else {
       return os << "[Unknown filter]";
     }
