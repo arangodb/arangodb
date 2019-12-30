@@ -693,16 +693,13 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "(restore/upload/download operation)",
                      new StringParameter(&_options.identifier));
 
-  //  options->addOption("--include-search", "whether to include ArangoSearch data",
-  //                     new BooleanParameter(&_options.includeSearch));
-
   options->addOption(
       "--label",
       "an additional label to add to the backup identifier (create operation)",
       new StringParameter(&_options.label));
 
   options->addOption("--max-wait-for-lock",
-                     "maximum time to wait in seconds to aquire a lock on "
+                     "maximum time to wait in seconds to acquire a lock on "
                      "all necessary resources (create operation)",
                      new DoubleParameter(&_options.maxWaitForLock));
 

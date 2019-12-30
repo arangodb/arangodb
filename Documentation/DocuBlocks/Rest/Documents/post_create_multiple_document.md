@@ -57,7 +57,7 @@ the URL part or the query parameter collection respectively counts.
 If *silent* is not set to *true*, the body of the response contains an
 array of JSON objects with the following attributes:
 
-  - *_id* contains the document handle of the newly created document
+  - *_id* contains the document identifier of the newly created document
   - *_key* contains the document key
   - *_rev* contains the document revision
 

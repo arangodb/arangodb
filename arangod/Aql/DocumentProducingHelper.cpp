@@ -75,7 +75,7 @@ template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
                                                  DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token, VPackSlice slice) {
-    if (checkUniqueness) {
+    if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
@@ -122,7 +122,7 @@ template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
                                                  DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token, VPackSlice slice) {
-    if (checkUniqueness) {
+    if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
@@ -162,7 +162,7 @@ template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::DocumentCopy,
                                                  DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token, VPackSlice slice) {
-    if (checkUniqueness) {
+    if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
@@ -201,12 +201,14 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
 
 template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::buildDocumentCallback(DocumentProducingFunctionContext& context) {
-  if (!skip && !context.getProduceResult()) {
-    // This callback is disallowed use getNullCallback instead
-    TRI_ASSERT(false);
-    return [](LocalDocumentId const&, VPackSlice slice) -> bool {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
-    };
+  if constexpr (!skip) {
+    if (!context.getProduceResult()) {
+      // This callback is disallowed use getNullCallback instead
+      TRI_ASSERT(false);
+      return [](LocalDocumentId const&, VPackSlice slice) -> bool {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
+      };
+    }
   }
     
   if (!context.getProjections().empty()) {
@@ -236,13 +238,13 @@ std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
   return [&context](LocalDocumentId const& token) {
     TRI_ASSERT(!context.hasFilter());
 
-    if (checkUniqueness) {
+    if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
       }
     }
-    
+
     context.incrScanned();
 
     InputAqlItemRow const& input = context.getInputRow();
@@ -402,13 +404,15 @@ template <bool checkUniqueness, bool skip>
 IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
                                                  DocumentProducingFunctionContext& context) {
   return [&context](LocalDocumentId const& token, VPackSlice slice) {
-    if (checkUniqueness) {
+    if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
       }
     }
-   
+
+    context.incrScanned();
+
     bool checkFilter = context.hasFilter();
     if (checkFilter && !context.getAllowCoveringIndexOptimization()) {
       if (!context.checkFilter(slice)) {
@@ -465,10 +469,14 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     }
 
     b->close();
-      
+
     if (checkFilter && !context.checkFilter(b->slice())) {
       context.incrFiltered();
       return false;
+    }
+
+    if constexpr (skip) {
+      return true;
     }
 
     AqlValue v(b.get());
@@ -477,7 +485,6 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
     output.moveValueInto(registerId, input, guard);
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
 
     return true;
   };
