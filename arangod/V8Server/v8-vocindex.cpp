@@ -140,7 +140,7 @@ static void JS_DropIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   if (args.Length() != 1) {
     events::DropIndex(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
-    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-handle>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-id>)");
   }
 
   VPackBuilder builder;

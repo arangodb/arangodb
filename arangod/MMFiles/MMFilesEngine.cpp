@@ -235,6 +235,11 @@ void MMFilesEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 void MMFilesEngine::prepare() {
   TRI_ASSERT(&(server().getFeature<EngineSelectorFeature>().engine()) == this);
 
+  LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
+      << "The MMFiles storage engine is deprecated starting with ArangoDB "
+         "v3.6.0 and will be removed in a future version. "
+      << "Please plan for a migration to the RocksDB engine.";
+
   // get base path from DatabaseServerFeature
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   _basePath = databasePathFeature.directory();
@@ -1575,7 +1580,7 @@ void MMFilesEngine::dropIndexWalMarker(TRI_vocbase_t* vocbase, TRI_voc_cid_t col
 static bool UnloadCollectionCallback(LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
 
-  WRITE_LOCKER_EVENTUAL(locker, collection->lock());
+  WRITE_LOCKER_EVENTUAL(locker, collection->statusLock());
 
   if (collection->status() != TRI_VOC_COL_STATUS_UNLOADING) {
     return false;

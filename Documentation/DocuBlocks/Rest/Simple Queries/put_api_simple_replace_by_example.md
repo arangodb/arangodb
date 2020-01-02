@@ -34,7 +34,6 @@ replace at most. If *limit* is specified but is less than the number
 of documents in the collection, it is undefined which of the documents
 will be replaced.
 
-
 @RESTDESCRIPTION
 
 This will find all documents in the collection that match the specified
@@ -112,4 +111,3 @@ Using new Signature for attributes WaitForSync and limit
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

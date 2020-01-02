@@ -23,6 +23,7 @@
 
 #include "sort.hpp"
 
+#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "utils/memory_pool.hpp"
@@ -33,7 +34,7 @@ NS_ROOT
 // --SECTION--                                                             sort
 // ----------------------------------------------------------------------------
 
-sort::sort(const type_id& type) NOEXCEPT
+sort::sort(const type_id& type) noexcept
   : type_(&type) {
 }
 
@@ -59,7 +60,7 @@ const order::prepared& order::prepared::unordered() {
   return ord;
 }
 
-order::prepared::prepared(order::prepared&& rhs) NOEXCEPT
+order::prepared::prepared(order::prepared&& rhs) noexcept
   : order_(std::move(rhs.order_)),
     features_(std::move(rhs.features_)),
     score_size_(rhs.score_size_),
@@ -68,7 +69,7 @@ order::prepared::prepared(order::prepared&& rhs) NOEXCEPT
   rhs.stats_size_ = 0;
 }
 
-order::prepared& order::prepared::operator=(order::prepared&& rhs) NOEXCEPT {
+order::prepared& order::prepared::operator=(order::prepared&& rhs) noexcept {
   if (this != &rhs) {
     order_ = std::move(rhs.order_);
     features_ = std::move(rhs.features_);
@@ -128,11 +129,11 @@ order::prepared order::prepare() const {
     }
 
     const auto score_size = prepared->score_size();
-    assert(score_size.second <= ALIGNOF(MAX_ALIGN_T));
+    assert(score_size.second <= alignof(MAX_ALIGN_T));
     assert(math::is_power2(score_size.second)); // math::is_power2(0) returns true
 
     const auto stats_size = prepared->stats_size();
-    assert(stats_size.second <= ALIGNOF(MAX_ALIGN_T));
+    assert(stats_size.second <= alignof(MAX_ALIGN_T));
     assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
 
     stats_align = std::max(stats_align, stats_size.second);
@@ -165,10 +166,10 @@ order::prepared order::prepare() const {
 
 order::prepared::collectors::collectors(
     const order::prepared& buckets,
-    size_t terms_count
-): buckets_(buckets.order_) {
-   field_collectors_.reserve(buckets_.size());
-   term_collectors_.reserve(buckets_.size() * terms_count);
+    size_t terms_count)
+  : buckets_(buckets.order_) {
+  field_collectors_.reserve(buckets_.size());
+  term_collectors_.reserve(buckets_.size() * terms_count);
 
   // add field collectors from each bucket
   for (auto& entry: buckets_) {
@@ -186,16 +187,15 @@ order::prepared::collectors::collectors(
   }
 }
 
-order::prepared::collectors::collectors(collectors&& other) NOEXCEPT
+order::prepared::collectors::collectors(collectors&& other) noexcept
   : buckets_(other.buckets_),
     field_collectors_(std::move(other.field_collectors_)),
     term_collectors_(std::move(other.term_collectors_)) {
 }
 
 void order::prepared::collectors::collect(
-  const sub_reader& segment,
-  const term_reader& field
-) const {
+    const sub_reader& segment,
+    const term_reader& field) const {
   for (auto& entry: field_collectors_) {
     if (entry) { // may be null if prepare_field_collector() returned nullptr
       entry->collect(segment, field);
@@ -204,14 +204,14 @@ void order::prepared::collectors::collect(
 }
 
 void order::prepared::collectors::collect(
-  const sub_reader& segment,
-  const term_reader& field,
-  size_t term_offset,
-  const attribute_view& term_attrs
-) const {
+    const sub_reader& segment,
+    const term_reader& field,
+    size_t term_offset,
+    const attribute_view& term_attrs) const {
   for (size_t i = 0, count = buckets_.size(); i < count; ++i) {
-    assert(i * buckets_.size() + term_offset < term_collectors_.size()); // enforced by allocation in the constructor
-    auto& entry = term_collectors_[term_offset * buckets_.size() + i];
+    const auto idx = term_offset * buckets_.size() + i;
+    assert(idx < term_collectors_.size()); // enforced by allocation in the constructor
+    auto& entry = term_collectors_[idx];
 
     if (entry) { // may be null if prepare_term_collector() returned nullptr
       entry->collect(segment, field, term_attrs);
@@ -301,13 +301,13 @@ order::prepared::scorers::scorers(
   }
 }
 
-order::prepared::scorers::scorers(order::prepared::scorers&& other) NOEXCEPT
+order::prepared::scorers::scorers(order::prepared::scorers&& other) noexcept
   : scorers_(std::move(other.scorers_)) {
 }
 
 order::prepared::scorers& order::prepared::scorers::operator=(
     order::prepared::scorers&& other
-) NOEXCEPT {
+) noexcept {
   if (this != &other) {
     scorers_ = std::move(other.scorers_);
   }

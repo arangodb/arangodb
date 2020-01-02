@@ -34,6 +34,7 @@
 #include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/MoveShard.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
 #include "Cluster/ResultT.h"

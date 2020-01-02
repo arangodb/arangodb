@@ -65,6 +65,7 @@ add_library(arango_iresearch
   IResearch/IResearchView.cpp IResearch/IResearchView.h
   IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
   IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
+  IResearch/IResearchViewStoredValues.cpp IResearch/IResearchViewStoredValues.h
   IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
@@ -235,6 +236,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/BlockCollector.cpp
   Aql/BlocksWithClients.cpp
   Aql/CalculationExecutor.cpp
+  Aql/CalculationNodeVarFinder.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp

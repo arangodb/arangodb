@@ -674,6 +674,7 @@ arangodb::Result MaintenanceFeature::storeShardError(
     auto emplaced = _shardErrors.try_emplace(std::move(key), std::move(error)).second;
     if (!emplaced) {
       std::stringstream error;
+      // cppcheck-suppress accessMoved; try_emplace leaves the movables intact
       error << "shard " << key << " already has pending error";
       LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
       return Result(TRI_ERROR_FAILED, error.str());

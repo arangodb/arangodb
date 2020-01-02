@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -113,6 +114,7 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx,
+                                       arangodb::transaction::Methods const& trx,
                                        arangodb::iresearch::FieldIterator& body,
                                        arangodb::velocypack::Slice const& document,
                                        arangodb::LocalDocumentId const& documentId,
@@ -132,7 +134,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
     if (arangodb::iresearch::ValueStorage::NONE == field._storeValues) {
       doc.insert<irs::Action::INDEX>(field);
     } else {
-      doc.insert<irs::Action::INDEX_AND_STORE>(field);
+      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
     }
 
     ++body;
@@ -155,6 +157,54 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
     }
   }
 
+  // Stored value field
+  {
+    struct StoredValue {
+      StoredValue(arangodb::transaction::Methods const& trx, arangodb::velocypack::Slice const& document) : trx(trx), document(document) {}
+
+      bool write(irs::data_output& out) const {
+        auto size = fields->size();
+        for (auto const& storedValue : *fields) {
+          auto slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
+          // null value optimization
+          if (1 == size && slice.isNull()) {
+            return true;
+          }
+
+          // _id field
+          if (slice.isCustom()) {
+            TRI_ASSERT(1 == storedValue.second.size() &&
+                       storedValue.second[0].name == arangodb::StaticStrings::IdString);
+            buffer.reset();
+            VPackBuilder builder(buffer);
+            builder.add(VPackValue(arangodb::transaction::helpers::extractIdString(
+              trx.resolver(), slice, document)));
+            slice = builder.slice();
+            // a builder is destroyed but a buffer is alive
+          }
+          out.write_bytes(slice.start(), slice.byteSize());
+        }
+        return true;
+      }
+
+      irs::string_ref const& name() const noexcept {
+        return fieldName;
+      }
+
+      mutable VPackBuffer<uint8_t> buffer;
+      arangodb::transaction::Methods const& trx;
+      arangodb::velocypack::Slice const& document;
+      irs::string_ref fieldName;
+      std::vector<std::pair<std::string, std::vector<arangodb::basics::AttributeName>>> const* fields;
+    } field(trx, document); // StoredValue
+
+    for (auto const& column : meta._storedValues.columns()) {
+      field.fieldName = column.name;
+      field.fields = &column.fields;
+      doc.insert<irs::Action::STORE>(field);
+    }
+  }
+
   // System fields
 
   // Indexed and Stored: LocalDocumentId
@@ -162,7 +212,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   arangodb::iresearch::Field::setPkValue(const_cast<arangodb::iresearch::Field&>(field), docPk);
-  doc.insert<irs::Action::INDEX_AND_STORE>(field);
+  doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (!doc) {
     return {
@@ -377,7 +427,7 @@ void IResearchLink::batchInsert(
     auto const end = batch.end();
     try {
       for (FieldIterator body(trx); begin != end; ++begin) {
-        auto const res = insertDocument(ctx, body, begin->second, begin->first, _meta, id());
+        auto const res = insertDocument(ctx, trx, body, begin->second, begin->first, _meta, id());
 
         if (!res.ok()) {
           LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
@@ -1382,7 +1432,7 @@ Result IResearchLink::insert(
     try {
       FieldIterator body(trx);
 
-      return insertDocument(ctx, body, doc, documentId, _meta, id());
+      return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
     } catch (basics::Exception const& e) {
       return {
         e.code(),
@@ -1805,6 +1855,10 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
   builder.add("indexSize", VPackValue(stats.indexSize));
+}
+
+IResearchViewStoredValues const& IResearchLink::storedValues() const {
+  return _meta._storedValues;
 }
 
 }  // namespace iresearch

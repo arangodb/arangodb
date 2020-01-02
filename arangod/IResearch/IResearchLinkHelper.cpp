@@ -281,7 +281,7 @@ arangodb::Result modifyLinks( // modify links
     //        arangodb::Index::Compare(...)
     //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, true, view.vocbase(), &view.primarySort() // args
+      normalized, link, true, view.vocbase(), &view.primarySort(), &view.storedValues(), link.get(arangodb::StaticStrings::IndexId)
     );
 
     if (!res.ok()) {
@@ -664,7 +664,9 @@ namespace iresearch {
     arangodb::velocypack::Slice definition, // source definition
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
-    IResearchViewSort const* primarySort /* = nullptr */
+    IResearchViewSort const* primarySort, /* = nullptr */
+    IResearchViewStoredValues const* storedValues, /* = nullptr */
+    arangodb::velocypack::Slice idSlice /* = arangodb::velocypack::Slice()*/ // id for normalized
 ) {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
@@ -698,11 +700,18 @@ namespace iresearch {
   );
 
   // copy over IResearch Link identifier
-  if (definition.hasKey(arangodb::StaticStrings::IndexId)) {
-    normalized.add( // preserve field
-      arangodb::StaticStrings::IndexId, // key
-      definition.get(arangodb::StaticStrings::IndexId) // value
-    );
+  if (!idSlice.isNone()) {
+    if (idSlice.isNumber()) {
+      normalized.add(
+        arangodb::StaticStrings::IndexId,
+        arangodb::velocypack::Value(std::to_string(idSlice.getNumericValue<uint64_t>()))
+      );
+    } else {
+      normalized.add(
+        arangodb::StaticStrings::IndexId,
+        idSlice
+      );
+    }
   }
 
   // copy over IResearch View identifier
@@ -724,7 +733,12 @@ namespace iresearch {
     meta._sort = *primarySort;
   }
 
-  if (!meta.json(vocbase.server(), normalized, isCreation, nullptr, &vocbase)) {  // 'isCreation' is set when forPersistence
+  if (storedValues) {
+    // normalize stored values if specified
+    meta._storedValues = *storedValues;
+  }
+
+  if (!meta.json(vocbase.server(), normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
       "error generating arangosearch link normalized definition" // message

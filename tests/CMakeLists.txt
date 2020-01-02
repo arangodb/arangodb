@@ -20,6 +20,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
+  Agency/NodeTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
@@ -168,12 +169,14 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryJoin-test.cpp
   IResearch/IResearchQueryLateMaterialization-test.cpp
   IResearch/IResearchQueryMinMatch-test.cpp
+  IResearch/IResearchQueryNoMaterialization-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
   IResearch/IResearchQueryOptimization-test.cpp
   IResearch/IResearchQueryOptions-test.cpp
   IResearch/IResearchQueryOr-test.cpp
   IResearch/IResearchQueryPhrase-test.cpp
+  IResearch/IResearchQueryWildcard-test.cpp
   IResearch/IResearchQueryScorer-test.cpp
   IResearch/IResearchQuerySelectAll-test.cpp
   IResearch/IResearchQueryStartsWith-test.cpp

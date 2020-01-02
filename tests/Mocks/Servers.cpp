@@ -61,7 +61,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Servers.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -70,8 +70,10 @@
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
-#include "../IResearch/AgencyMock.h"
-#include "../IResearch/common.h"
+#include "Servers.h"
+
+#include "IResearch/AgencyMock.h"
+#include "IResearch/common.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"

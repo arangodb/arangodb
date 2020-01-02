@@ -238,7 +238,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer0\", \"type\": \"identity\" } ], \
-      \"analyzers\": [\"testAnalyzer0\" ] \
+      \"analyzers\": [\"testAnalyzer0\" ], \
+      \"storedValues\":[[], [\"\"], \"\", \"test.t\", [\"a.a\", \"b.b\"]] \
     }");
     arangodb::velocypack::Builder builder;
     builder.openObject();
@@ -258,7 +259,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"analyzerDefinitions\": [ \
         { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
       ], \
-      \"analyzers\": [\"testAnalyzer0\" ] \
+      \"analyzers\": [\"testAnalyzer0\" ], \
+      \"storedValues\":[[\"test.t\"], [\"a.a\", \"b.b\"]] \
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
@@ -322,7 +324,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer1\", \"type\": \"identity\" } ], \
-      \"analyzers\": [\"testAnalyzer1\" ] \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[[], [\"\"], \"\", \"test.t\", [\"a.a\", \"b.b\"]] \
     }");
     auto before = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
@@ -346,7 +349,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"analyzerDefinitions\": [ \
         { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
       ], \
-      \"analyzers\": [\"testAnalyzer1\" ] \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[[\"test.t\"], [\"a.a\", \"b.b\"]] \
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }

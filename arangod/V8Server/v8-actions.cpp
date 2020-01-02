@@ -448,7 +448,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
           request->setDefaultContentType();
           digesteable = true;
         }
-      } catch ( ... ) {} 
+      } catch ( ... ) {}
       // ok, no json/vpack after all ;-)
       auto raw = request->rawPayload();
       headers[StaticStrings::ContentLength] =
@@ -462,14 +462,14 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         return;
       }
     }
-                                     
+
     if (rest::ContentType::JSON == request->contentType()) {
       VPackStringRef body = request->rawPayload();
       req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size()));
       headers[StaticStrings::ContentLength] =
           StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
-      // the VPACK is passed as it is to to Javascript
+      // the VPACK is passed as it is to to JavaScript
       // FIXME not every VPack can be converted to JSON
       VPackSlice slice = request->payload();
       std::string jsonString = slice.toJson();
@@ -679,7 +679,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   if (TRI_HasProperty(context, isolate, res, BodyKey)) {
     // check if we should apply result transformations
     // transformations turn the result from one type into another
-    // a Javascript action can request transformations by
+    // a JavaScript action can request transformations by
     // putting a list of transformations into the res.transformations
     // array, e.g. res.transformations = [ "base64encode" ]
     TRI_GET_GLOBAL_STRING(TransformationsKey);
@@ -1361,6 +1361,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Handle<v8::Object> partObject = v8::Object::New(isolate);
         partObject->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headersObject);
 
+        // cppcheck-suppress nullPointerArithmetic ; cannot get here, if data is nullptr
         V8Buffer* buffer = V8Buffer::New(isolate, data, end - data);
         auto localHandle = v8::Local<v8::Object>::New(isolate, buffer->_handle);
 
@@ -1451,14 +1452,14 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
 
   network::Headers headers;
   fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(3600);
 
   std::vector<futures::Future<network::Response>> futures;
   futures.reserve(DBServers.size());
-  
+
   // Have to propagate to DB Servers
   for (auto const& sid : DBServers) {
     VPackBuffer<uint8_t> buffer(body.size());
@@ -1759,7 +1760,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                                    "SYS_DEBUG_SHOULD_FAILAT"),
                                JS_DebugShouldFailAt);
 #endif
-  
+
   // poll interval for Foxx queues
   TRI_GET_GLOBALS();
   FoxxQueuesFeature& foxxQueuesFeature = v8g->_server.getFeature<FoxxQueuesFeature>();

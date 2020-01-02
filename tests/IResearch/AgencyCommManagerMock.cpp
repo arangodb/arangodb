@@ -86,9 +86,9 @@ int EndpointMock::port() const {
 #ifndef _WIN32
 GeneralClientConnectionMock::GeneralClientConnectionMock(arangodb::application_features::ApplicationServer& server)
     : GeneralClientConnection(server, &endpoint, 0, 0, 0),
-      nil(file_open((const file_path_t) nullptr, "rw")) {
-  _socket.fileDescriptor = file_no(nil.get()); // must be a readable/writable descriptor
-  }
+      nil(irs::file_utils::open(IR_DEVNULL, irs::file_utils::OpenMode::Write, 0)) {
+  _socket.fileDescriptor = handle_cast(nil.get()); // must be a readable/writable descriptor
+}
 #else
 GeneralClientConnectionMock::GeneralClientConnectionMock(arangodb::application_features::ApplicationServer& server)
     : GeneralClientConnection(server, &endpoint, 0, 0, 0) {

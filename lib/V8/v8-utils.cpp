@@ -146,7 +146,7 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(v8::Isolate* isolate, v8::Handle<v8::Value> c
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() { TRI_Free(_str); }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a Javascript error object
+/// @brief create a JavaScript error object
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
@@ -443,7 +443,7 @@ static void JS_Base64Encode(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a Javascript snippet, but does not execute it
+/// @brief parses a JavaScript snippet, but does not execute it
 ///
 /// @FUN{internal.parse(@FA{script})}
 ///
@@ -517,7 +517,7 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a Javascript file, but does not execute it
+/// @brief parses a JavaScript file, but does not execute it
 ///
 /// @FUN{internal.parseFile(@FA{filename})}
 ///
@@ -5205,7 +5205,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
       }
     } else {
       LOG_TOPIC("837e5", ERR, arangodb::Logger::FIXME)
-          << "no output function defined in Javascript context";
+          << "no output function defined in JavaScript context";
     }
   }
 

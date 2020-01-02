@@ -47,6 +47,16 @@ function TtlSuite () {
       numServers = Object.values(collection.shards(true)).filter(function(value, index, self) {
         return self.indexOf(value) === index;
       }).length;
+      // if there are multiple servers involved, we increase by 3, in order to avoid continuing
+      // in case the the *same* server reports multiple times. this would break the simple
+      // "how many times did it run check" in case the jobs are executed in the following order:
+      // - job run on server 1
+      // - job run on server 2
+      // - job run on server 1 (3 executions, but not from 3 different servers!)
+      // - job run on server 3
+      // - job run on server 2
+      // - job run on server 3
+      numServers *= 3;
     } catch (err) {
       // collection.shards() will throw when not running in cluster mode
       numServers = 1;
@@ -508,7 +518,7 @@ function TtlSuite () {
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
+      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000); 
 
       assertEqual(1, db._collection(cn).count());
       assertEqual(dt, db._collection(cn).any().dateCreated);

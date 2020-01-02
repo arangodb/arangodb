@@ -51,8 +51,8 @@
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ticks.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -76,6 +76,16 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
 }
 
 ClusterEngine::~ClusterEngine() = default;
+
+void ClusterEngine::setActualEngine(StorageEngine* e) {
+  _actualEngine = e;
+  if (isMMFiles()) {
+    LOG_TOPIC("6ab73", WARN, arangodb::Logger::STARTUP)
+        << "The MMFiles storage engine is deprecated starting with ArangoDB "
+           "v3.6.0 and will be removed in a future version. "
+        << "Please plan for a migration to the RocksDB engine.";
+  }
+}
 
 bool ClusterEngine::isRocksDB() const {
   return !ClusterEngine::Mocking && _actualEngine &&
@@ -129,12 +139,11 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
 }
 
 std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContextData() {
-  return std::unique_ptr<transaction::ContextData>(); // not used by coordinator
+  return std::unique_ptr<transaction::ContextData>();  // not used by coordinator
 }
 
-std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(TRI_vocbase_t& vocbase,
-                                                                        TRI_voc_tid_t tid,
-                                                                        transaction::Options const& options) {
+std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
+    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options) {
   return std::make_unique<ClusterTransactionState>(vocbase, tid, options);
 }
 
@@ -206,15 +215,12 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::CreateDatabaseInfo&& info,
                                                            bool isUpgrade) {
-
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
-
 }
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(arangodb::CreateDatabaseInfo&& info,
-    int& status) {
-
-  //error lol
+                                                             int& status) {
+  // error lol
   status = TRI_ERROR_INTERNAL;
   auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
   status = TRI_ERROR_NO_ERROR;
@@ -242,12 +248,12 @@ void ClusterEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
 
 // current recovery state
 RecoveryState ClusterEngine::recoveryState() {
-  return RecoveryState::DONE; // never in recovery
+  return RecoveryState::DONE;  // never in recovery
 }
 
 // current recovery tick
 TRI_voc_tick_t ClusterEngine::recoveryTick() {
-  return 0; // never in recovery
+  return 0;  // never in recovery
 }
 
 void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {

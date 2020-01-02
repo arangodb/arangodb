@@ -81,6 +81,15 @@ struct BoostScorer : public irs::sort {
       score_cast(dst) += score_cast(src);
     }
 
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
+      const size_t size, size_t offset) const  override {
+      auto& casted_dst = score_cast(dst + offset);
+      casted_dst = 0.f;
+      for (size_t i = 0; i < size; ++i) {
+        casted_dst += score_cast(src_start[i] + offset);
+      }
+    }
+
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
@@ -107,20 +116,21 @@ struct BoostScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
         irs::attribute_view const&, irs::boost_t boost) const override {
-      struct ScoreCtx : public irs::sort::score_ctx {
+      struct ScoreCtx : public irs::score_ctx {
         ScoreCtx(irs::boost_t score) : scr(score) {}
 
         irs::boost_t scr;
       };
 
-      return {std::make_unique<ScoreCtx>(boost),
-              [](const void* ctx, irs::byte_type* score_buf) noexcept {
-                  auto & state = *static_cast<const ScoreCtx*>(ctx);
-      irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
-    }
+      return {
+        std::make_unique<ScoreCtx>(boost),
+        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
+          auto & state = *static_cast<const ScoreCtx*>(ctx);
+          irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
+      }
   };
 }
 };  // namespace
@@ -155,6 +165,15 @@ struct CustomScorer : public irs::sort {
       score_cast(dst) += score_cast(src);
     }
 
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
+      const size_t size, size_t offset) const  override {
+      auto& casted_dst = score_cast(dst + offset);
+      casted_dst = 0.f;
+      for (size_t i = 0; i < size; ++i) {
+        casted_dst += score_cast(src_start[i] + offset);
+      }
+    }
+
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
@@ -181,17 +200,17 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
         irs::attribute_view const&, irs::boost_t) const override {
-      struct ScoreCtx : public irs::sort::score_ctx {
+      struct ScoreCtx : public irs::score_ctx {
         ScoreCtx(float_t score) : i(score) {}
 
         float_t i;
       };
 
       return {std::make_unique<ScoreCtx>(i),
-              [](const void* ctx, irs::byte_type* score_buf) noexcept {
+              [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
                   auto & state = *static_cast<const ScoreCtx*>(ctx);
       irs::sort::score_cast<float_t>(score_buf) = state.i;
     }

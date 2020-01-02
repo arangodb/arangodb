@@ -1,12 +1,12 @@
 @startDocuBlock post_create_document
 @brief creates documents
 
-@RESTHEADER{POST /_api/document/{collection}, Create document, insertDocument}
+@RESTHEADER{POST /_api/document/{collection},Create document,insertDocument}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection,string,required}
-The *collection* in which the collection is to be created.
+Name of the *collection* in which the document is to be created.
 
 @RESTALLBODYPARAM{data,json,required}
 A JSON representation of a single document.
@@ -31,7 +31,7 @@ Additionally return the complete old document under the attribute *old*
 in the result. Only available if the overwrite option is used.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the created document. This option can be used to
 save some network traffic.
 
@@ -53,10 +53,10 @@ contains the path to the newly created document. The *Etag* header field
 contains the revision of the document. Both are only set in the single
 document case.
 
-If *silent* is not set to *true*, the body of the response contains a 
+If *silent* is not set to *true*, the body of the response contains a
 JSON object with the following attributes:
 
-  - *_id* contains the document handle of the newly created document
+  - *_id* contains the document identifier of the newly created document
   - *_key* contains the document key
   - *_rev* contains the document revision
 
@@ -238,4 +238,3 @@ Use of returnNew:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

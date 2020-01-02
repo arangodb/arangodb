@@ -374,6 +374,8 @@ void auth::UserManager::createRootUser() {
     // No action
     LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
   }
+
+  triggerGlobalReload();
 }
 
 VPackBuilder auth::UserManager::allUsers() {

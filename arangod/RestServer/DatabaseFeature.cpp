@@ -792,7 +792,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
         return true;  // try next DataSource
       };
 
-      vocbase->visitDataSources(visitor, true);  // aquire a write lock to avoid potential deadlocks
+      vocbase->visitDataSources(visitor, true);  // acquire a write lock to avoid potential deadlocks
 
       if (TRI_ERROR_NO_ERROR != res) {
         events::DropDatabase(name, res);

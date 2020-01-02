@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ERROR_H
@@ -52,14 +51,14 @@ enum class ErrorCode : uint32_t {
 
 #define DECLARE_ERROR_CODE(class_name) \
   static const ErrorCode CODE = ErrorCode::class_name; \
-  virtual iresearch::ErrorCode code() const NOEXCEPT override { return CODE; }
+  virtual iresearch::ErrorCode code() const noexcept override { return CODE; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API error_base: std::exception {
-  virtual ErrorCode code() const NOEXCEPT { return ErrorCode::undefined_error; }
-  virtual const char* what() const NOEXCEPT override;
+  virtual ErrorCode code() const noexcept { return ErrorCode::undefined_error; }
+  virtual const char* what() const noexcept override;
 }; // error_base
 
 //////////////////////////////////////////////////////////////////////////////
@@ -73,11 +72,11 @@ class IRESEARCH_API detailed_error_base : public error_base {
     : error_(error) {
   }
 
-  explicit detailed_error_base(std::string&& error) NOEXCEPT
+  explicit detailed_error_base(std::string&& error) noexcept
     : error_(std::move(error)) {
   }
 
-  virtual const char* what() const NOEXCEPT override {
+  virtual const char* what() const noexcept override {
     return error_.c_str();
   }
 
@@ -93,7 +92,7 @@ class IRESEARCH_API detailed_error_base : public error_base {
 struct IRESEARCH_API not_supported : error_base {
   DECLARE_ERROR_CODE(not_supported);
 
-  virtual const char* what() const NOEXCEPT override;
+  virtual const char* what() const noexcept override;
 }; // not_supported
 
 //////////////////////////////////////////////////////////////////////////////
@@ -116,7 +115,7 @@ struct IRESEARCH_API io_error : detailed_error_base {
 struct IRESEARCH_API eof_error : io_error {
   DECLARE_ERROR_CODE(eof_error);
 
-  virtual const char* what() const NOEXCEPT override;
+  virtual const char* what() const noexcept override;
 }; // eof_error
 
 //////////////////////////////////////////////////////////////////////////////
@@ -127,7 +126,7 @@ class IRESEARCH_API lock_obtain_failed : public error_base {
   DECLARE_ERROR_CODE(lock_obtain_failed);
 
   explicit lock_obtain_failed(const irs::string_ref& filename = "");
-  virtual const char* what() const NOEXCEPT override;
+  virtual const char* what() const noexcept override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -143,7 +142,7 @@ class IRESEARCH_API file_not_found: public error_base {
   DECLARE_ERROR_CODE(file_not_found);
 
   explicit file_not_found(const irs::string_ref& filename = "");
-  virtual const char* what() const NOEXCEPT override;
+  virtual const char* what() const noexcept override;
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -157,7 +156,7 @@ class IRESEARCH_API file_not_found: public error_base {
 struct IRESEARCH_API index_not_found : error_base {
   DECLARE_ERROR_CODE(index_not_found);
 
-  virtual const char* what() const NOEXCEPT override;
+  virtual const char* what() const noexcept override;
 }; // index_not_found
 
 //////////////////////////////////////////////////////////////////////////////
@@ -178,7 +177,7 @@ struct IRESEARCH_API index_error : detailed_error_base {
 struct IRESEARCH_API not_impl_error : error_base {
   DECLARE_ERROR_CODE(not_impl_error);
 
-  virtual const char* what() const NOEXCEPT override;
+  virtual const char* what() const noexcept override;
 }; // not_impl_error
 
 //////////////////////////////////////////////////////////////////////////////
@@ -187,7 +186,7 @@ struct IRESEARCH_API not_impl_error : error_base {
 struct IRESEARCH_API illegal_argument : error_base {
   DECLARE_ERROR_CODE(illegal_argument);
 
-  virtual const char* what() const NOEXCEPT override;
+  virtual const char* what() const noexcept override;
 }; // illegal_argument
 
 //////////////////////////////////////////////////////////////////////////////
@@ -196,7 +195,7 @@ struct IRESEARCH_API illegal_argument : error_base {
 struct IRESEARCH_API illegal_state: error_base {
   DECLARE_ERROR_CODE(illegal_state);
 
-  virtual const char* what() const NOEXCEPT override;
+  virtual const char* what() const noexcept override;
 }; // illegal_state
 
 NS_END

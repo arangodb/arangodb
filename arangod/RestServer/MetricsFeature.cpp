@@ -118,5 +118,6 @@ Counter& MetricsFeature::counter (
 }
 
 ServerStatistics& MetricsFeature::serverStatistics() {
+  _serverStatistics->_uptime = StatisticsFeature::time() - _serverStatistics->_startTime;
   return *_serverStatistics;
 }
