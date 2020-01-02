@@ -38,10 +38,26 @@ class CalculationNodeVarFinder final : public WalkerWorker<ExecutionNode> {
   ::arangodb::containers::HashSet<Variable const*> _currentUsedVars;
 
  public:
-  CalculationNodeVarFinder(Variable const* var, ::arangodb::containers::SmallVector<ExecutionNode*>&);
+  CalculationNodeVarFinder(Variable const* var, ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
+
+  bool before(ExecutionNode*) override final;
+};
+
+class CalculationNodeVarExistenceFinder final : public WalkerWorker<ExecutionNode> {
+  Variable const* _lookingFor;
+
+  ::arangodb::containers::HashSet<Variable const*> _currentUsedVars;
+
+  bool _isCalculationNodesFound;
+
+ public:
+  CalculationNodeVarExistenceFinder(Variable const* var) noexcept;
 
   bool before(ExecutionNode*) override final;
 
+  bool isCalculationNodesFound() const noexcept {
+    return _isCalculationNodesFound;
+  }
 };
 }  // namespace aql
 }  // namespace arangodb
