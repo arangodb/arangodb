@@ -239,103 +239,70 @@ class ShortestPathExecutorTest
     }
   }
 
-  void TestExecutor(bool waiting, ShortestPathExecutorInfos& infos,
+  void TestExecutor(ShortestPathExecutorInfos& infos,
                     std::shared_ptr<VPackBuilder> const& input,
                     std::vector<std::pair<std::string, std::string>> const& resultPaths) {
-    if (waiting) {
-      TestExecutorWaiting(infos, input, resultPaths);
-    } else {
-      TestExecutorNotWaiting(infos, input, resultPaths);
-    }
-  }
-
-  void TestExecutorWaiting(ShortestPathExecutorInfos& infos,
-                           std::shared_ptr<VPackBuilder> const& input,
-                           std::vector<std::pair<std::string, std::string>> const& resultPaths) {
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+
+    SharedAqlItemBlockPtr inputBlock =
+        vPackBufferToAqlItemBlock(itemBlockManager, input->buffer());
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 4)};
 
-    NoStats stats{};
-    ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
+    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+        itemBlockManager, input->steal(), false);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
-    // Fetch fullPath
-    for (size_t i = 0; i < resultPaths.size(); ++i) {
-      EXPECT_EQ(state, ExecutionState::HASMORE);
-      // if we pull, we always wait
-      std::tie(state, stats) = testee.produceRows(result);
-      EXPECT_EQ(state, ExecutionState::WAITING);
-      EXPECT_FALSE(result.produced());
-      state = ExecutionState::HASMORE;  // For simplicity on path fetching.
-      auto path = finder.findPath(resultPaths[i]);
-      for (ADB_IGNORE_UNUSED auto const& v : path) {
-        ASSERT_EQ(state, ExecutionState::HASMORE);
-        std::tie(state, stats) = testee.produceRows(result);
-        EXPECT_TRUE(result.produced());
-        result.advanceRow();
-      }
-      auto gotCalledWith = finder.calledAt(i);
-      EXPECT_EQ(gotCalledWith.first, resultPaths[i].first);
-      EXPECT_EQ(gotCalledWith.second, resultPaths[i].second);
-    }
-    if (resultPaths.empty()) {
-      // Fetch at least twice, one waiting
-      std::tie(state, stats) = testee.produceRows(result);
-      EXPECT_EQ(state, ExecutionState::WAITING);
-      EXPECT_FALSE(result.produced());
-      // One no findings
-      std::tie(state, stats) = testee.produceRows(result);
+    {
+      // Test that a correct call is created on an empty input
+      AqlItemBlockInputRange emptyRange{ExecutorState::HASMORE};
+      auto const [state, stats, call] = testee.produceRows(emptyRange, result);
+      EXPECT_EQ(state, ExecutorState::HASMORE);
+      // Call, noOffSet, noLimits, noFullCount
+      EXPECT_EQ(call.offset, 0);
+      EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(call.softLimit));
+      EXPECT_FALSE(call.hasHardLimit());
+      EXPECT_FALSE(call.needsFullCount());
+      // TODO Test stats ?
+      ASSERT_FALSE(result.produced());
+      EXPECT_EQ(result.numRowsWritten(), 0);
     }
 
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_FALSE(result.produced());
-    ValidateResult(infos, result, resultPaths);
+    {
+      // Fetch fullPath
+      auto inputRange =
+          inputBlock == nullptr
+              ? AqlItemBlockInputRange{ExecutorState::DONE}
+              : AqlItemBlockInputRange{ExecutorState::DONE, inputBlock, 0, 1000};
+      auto const [state, stats, call] = testee.produceRows(inputRange, result);
+      EXPECT_EQ(state, ExecutorState::DONE);
+
+      // This Call is actually not required if this fails ok to remove.
+      // noOffSet, noLimits, noFullCount
+      EXPECT_EQ(call.offset, 0);
+      EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(call.softLimit));
+      EXPECT_FALSE(call.hasHardLimit());
+      EXPECT_FALSE(call.needsFullCount());
+
+      // TODO Test stats ?
+
+      // Now tests the paths, we expect to have found all.
+      // Test order of Invocation
+      for (size_t i = 0; i < resultPaths.size(); ++i) {
+        auto path = finder.findPath(resultPaths[i]);
+        auto gotCalledWith = finder.calledAt(i);
+        EXPECT_EQ(gotCalledWith.first, resultPaths[i].first);
+        EXPECT_EQ(gotCalledWith.second, resultPaths[i].second);
+      }
+      // Test Result Contents.
+      ValidateResult(infos, result, resultPaths);
+    }
   }
 
-  void TestExecutorNotWaiting(ShortestPathExecutorInfos& infos,
-                              std::shared_ptr<VPackBuilder> const& input,
-                              std::vector<std::pair<std::string, std::string>> const& resultPaths) {
-    ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 4)};
-
-    NoStats stats{};
-    ExecutionState state = ExecutionState::HASMORE;
-    auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
-
-    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
-    OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear());
-    ShortestPathExecutor testee(fetcher, infos);
-    // Fetch fullPath
-    for (size_t i = 0; i < resultPaths.size(); ++i) {
-      EXPECT_EQ(state, ExecutionState::HASMORE);
-      auto path = finder.findPath(resultPaths[i]);
-      for (ADB_IGNORE_UNUSED auto const& v : path) {
-        ASSERT_EQ(state, ExecutionState::HASMORE);
-        std::tie(state, stats) = testee.produceRows(result);
-        EXPECT_TRUE(result.produced());
-        result.advanceRow();
-      }
-      auto gotCalledWith = finder.calledAt(i);
-      EXPECT_EQ(gotCalledWith.first, resultPaths[i].first);
-      EXPECT_EQ(gotCalledWith.second, resultPaths[i].second);
-    }
-    if (resultPaths.empty()) {
-      // We need to fetch once
-      std::tie(state, stats) = testee.produceRows(result);
-    }
-    EXPECT_FALSE(result.produced());
-    EXPECT_EQ(state, ExecutionState::DONE);
-    ValidateResult(infos, result, resultPaths);
-  }
-
-  void RunSimpleTest(bool waiting, ShortestPathExecutorInfos::InputVertex&& source,
+  void RunSimpleTest(ShortestPathExecutorInfos::InputVertex&& source,
                      ShortestPathExecutorInfos::InputVertex&& target) {
     RegisterId vOutReg = 2;
     mocks::MockAqlServer server{};
@@ -365,11 +332,11 @@ class ShortestPathExecutorTest
     std::vector<std::pair<std::string, std::string>> resultPaths;
     resultPaths.clear();
     input = VPackParser::fromJson(R"([["vertex/source","vertex/target"]])");
-    TestExecutor(waiting, infos, input, resultPaths);
+    TestExecutor(infos, input, resultPaths);
   }
 
-  void RunTestWithNoRowsUpstream(bool waiting, ShortestPathExecutorInfos::InputVertex&& source,
-                                 ShortestPathExecutorInfos::InputVertex&& target,
+  void RunTestWithNoRowsUpstream(ShortestPathExecutorInfos::InputVertex source,
+                                 ShortestPathExecutorInfos::InputVertex target,
                                  bool useEdgeOutput) {
     RegisterId vOutReg = 2;
     RegisterId eOutReg = 3;
@@ -404,11 +371,10 @@ class ShortestPathExecutorTest
     std::vector<std::pair<std::string, std::string>> resultPaths;
     resultPaths.clear();
     input = VPackParser::fromJson("[]");
-    TestExecutor(waiting, infos, input, resultPaths);
+    TestExecutor(infos, input, resultPaths);
   }
 
-  void RunTestWithRowsUpstreamNoPaths(bool waiting,
-                                      ShortestPathExecutorInfos::InputVertex&& source,
+  void RunTestWithRowsUpstreamNoPaths(ShortestPathExecutorInfos::InputVertex&& source,
                                       ShortestPathExecutorInfos::InputVertex&& target,
                                       bool useEdgeOutput) {
     RegisterId vOutReg = 2;
@@ -443,12 +409,11 @@ class ShortestPathExecutorTest
 
     std::vector<std::pair<std::string, std::string>> resultPaths;
     input = VPackParser::fromJson(R"([["vertex/source","vertex/target"]])");
-    TestExecutor(waiting, infos, input, resultPaths);
+    TestExecutor(infos, input, resultPaths);
   }
 
-  void RunTestWithRowsUpstreamOnePath(bool waiting,
-                                      ShortestPathExecutorInfos::InputVertex&& source,
-                                      ShortestPathExecutorInfos::InputVertex&& target,
+  void RunTestWithRowsUpstreamOnePath(ShortestPathExecutorInfos::InputVertex source,
+                                      ShortestPathExecutorInfos::InputVertex target,
                                       bool useEdgeOutput) {
     RegisterId vOutReg = 2;
     RegisterId eOutReg = 3;
@@ -486,12 +451,11 @@ class ShortestPathExecutorTest
     finder.addPath(std::vector<std::string>{"vertex/source", "vertex/intermed",
                                             "vertex/target"});
     resultPaths.emplace_back(std::make_pair("vertex/source", "vertex/target"));
-    TestExecutor(waiting, infos, input, resultPaths);
+    TestExecutor(infos, input, resultPaths);
   }
 
-  void RunTestWithMultipleRowsUpstream(bool waiting,
-                                       ShortestPathExecutorInfos::InputVertex&& source,
-                                       ShortestPathExecutorInfos::InputVertex&& target,
+  void RunTestWithMultipleRowsUpstream(ShortestPathExecutorInfos::InputVertex source,
+                                       ShortestPathExecutorInfos::InputVertex target,
                                        bool useEdgeOutput) {
     RegisterId vOutReg = 2;
     RegisterId eOutReg = 3;
@@ -558,379 +522,121 @@ class ShortestPathExecutorTest
             std::make_pair("vertex/source", "vertex/target"));
       }
     }
-    TestExecutor(waiting, infos, input, resultPaths);
+    TestExecutor(infos, input, resultPaths);
   }
 };
 
 // simple tests
 
-TEST_F(ShortestPathExecutorTest, Waiting_TestingInvalidInputs_UsingBrokenStartVertex) {
-  RunSimpleTest(true, std::move(brokenSource), std::move(constTarget));
+TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenStartVertex) {
+  RunSimpleTest(std::move(brokenSource), std::move(constTarget));
 }
 
-TEST_F(ShortestPathExecutorTest, Waiting_TestingInvalidInputs_UsingBrokenEndVertex) {
-  RunSimpleTest(true, std::move(constSource), std::move(brokenTarget));
+TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenEndVertex) {
+  RunSimpleTest(std::move(constSource), std::move(brokenTarget));
 }
 
-TEST_F(ShortestPathExecutorTest, Waiting_TestingInvalidInputs_UsingBrokenStartAndEndVertex) {
-  RunSimpleTest(true, std::move(brokenSource), std::move(brokenTarget));
+TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenStartAndEndVertex) {
+  RunSimpleTest(std::move(brokenSource), std::move(brokenTarget));
 }
 
-TEST_F(ShortestPathExecutorTest, NotWaiting_TestingInvalidInputs_UsingBrokenStartVertex) {
-  RunSimpleTest(false, std::move(brokenSource), std::move(constTarget));
-}
+class ShortestPathExecutorTestInputs
+    : public ShortestPathExecutorTest,
+      public ::testing::WithParamInterface<std::tuple<ShortestPathExecutorInfos::InputVertex, ShortestPathExecutorInfos::InputVertex, bool>> {
+ public:
+  ShortestPathExecutorTestInputs() {}
 
-TEST_F(ShortestPathExecutorTest, NotWaiting_TestingInvalidInputs_UsingBrokenEndVertex) {
-  RunSimpleTest(false, std::move(constSource), std::move(brokenTarget));
-}
-
-TEST_F(ShortestPathExecutorTest, NotWaiting_TestingInvalidInputs_UsingBrokenStartAndEndVertex) {
-  RunSimpleTest(false, std::move(brokenSource), std::move(brokenTarget));
-}
+  std::string TraceOutput() const {
+    auto const& [source, target, useEdge] = GetParam();
+    std::string res = "Source: ";
+    if (source.type == ::arangodb::aql::ShortestPathExecutorInfos::InputVertex::Type::CONSTANT) {
+      res += "constant";
+    } else {
+      res += "register";
+    }
+    res += " Target: ";
+    if (target.type == ::arangodb::aql::ShortestPathExecutorInfos::InputVertex::Type::CONSTANT) {
+      res += "constant";
+    } else {
+      res += "register";
+    }
+    res += " Using EdgeOutput: ";
+    if (useEdge) {
+      res += "true";
+    } else {
+      res += "false";
+    }
+    return res;
+  }
+};
 
 // no rows
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_NoRows_UsingVertexOutputOnly_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithNoRowsUpstream(true, std::move(constSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_NoRows_UsingVertexOutputOnly_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithNoRowsUpstream(true, std::move(constSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_NoRows_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithNoRowsUpstream(true, std::move(regSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_NoRows_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithNoRowsUpstream(true, std::move(regSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_NoRows_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithNoRowsUpstream(true, std::move(constSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_NoRows_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithNoRowsUpstream(true, std::move(constSource), std::move(regTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_NoRows_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithNoRowsUpstream(true, std::move(regSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_NoRows_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithNoRowsUpstream(true, std::move(regSource), std::move(regTarget), true);
+TEST_P(ShortestPathExecutorTestInputs, no_rows) {
+  SCOPED_TRACE(TraceOutput());
+  auto const& [source, target, useEdge] = GetParam();
+  RunTestWithNoRowsUpstream(source, target, useEdge);
 }
 
 // with rows, no path
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsNoPath_UsingVertexOutputOnly_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(constSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsNoPath_UsingVertexOutputOnly_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(constSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsNoPath_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(regSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsNoPath_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(regSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsNoPath_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(constSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsNoPath_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(constSource), std::move(regTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsNoPath_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(regSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsNoPath_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(regSource), std::move(regTarget), true);
+TEST_P(ShortestPathExecutorTestInputs, with_rows_no_path) {
+  SCOPED_TRACE(TraceOutput());
+  auto const& [source, target, useEdge] = GetParam();
+  RunTestWithRowsUpstreamOnePath(source, target, useEdge);
 }
 
 // with rows, one path
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsOnePath_UsingVertexOutputOnly_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(constSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsOnePath_UsingVertexOutputOnly_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(constSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsOnePath_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(regSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsOnePath_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(regSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsOnePath_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(constSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsOnePath_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(constSource), std::move(regTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsOnePath_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(regSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithRowsOnePath_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(true, std::move(regSource), std::move(regTarget), true);
+TEST_P(ShortestPathExecutorTestInputs, with_rows_one_path) {
+  SCOPED_TRACE(TraceOutput());
+  auto const& [source, target, useEdge] = GetParam();
+  RunTestWithRowsUpstreamOnePath(source, target, useEdge);
 }
 
 // with multiple rows
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithMultipleRows_UsingVertexOutputOnly_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithMultipleRowsUpstream(true, std::move(constSource),
-                                  std::move(constTarget), false);
+TEST_P(ShortestPathExecutorTestInputs, with_multiple_rows_path) {
+  SCOPED_TRACE(TraceOutput());
+  auto const& [source, target, useEdge] = GetParam();
+  RunTestWithMultipleRowsUpstream(source, target, useEdge);
 }
 
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithMultipleRows_UsingVertexOutputOnly_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithMultipleRowsUpstream(true, std::move(constSource), std::move(regTarget), false);
-}
+static const ShortestPathExecutorInfos::InputVertex constSource2{
+    "vertex/source"};
+static const ShortestPathExecutorInfos::InputVertex constTarget2{
+    "vertex/target"};
+static const ShortestPathExecutorInfos::InputVertex regSource2{0};
+static const ShortestPathExecutorInfos::InputVertex regTarget2{1};
 
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithMultipleRows_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithMultipleRowsUpstream(true, std::move(regSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithMultipleRows_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithMultipleRowsUpstream(true, std::move(regSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithMultipleRows_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithMultipleRowsUpstream(true, std::move(constSource),
-                                  std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithMultipleRows_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithMultipleRowsUpstream(true, std::move(constSource), std::move(regTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithMultipleRows_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithMultipleRowsUpstream(true, std::move(regSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       Waiting_WithMultipleRows_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithMultipleRowsUpstream(true, std::move(regSource), std::move(regTarget), true);
-}
-
-// no rows
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_NoRows_UsingVertexOutputOnly_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithNoRowsUpstream(false, std::move(constSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_NoRows_UsingVertexOutputOnly_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithNoRowsUpstream(false, std::move(constSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_NoRows_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithNoRowsUpstream(false, std::move(regSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_NoRows_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithNoRowsUpstream(false, std::move(regSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_NoRows_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithNoRowsUpstream(false, std::move(constSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_NoRows_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithNoRowsUpstream(false, std::move(constSource), std::move(regTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_NoRows_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithNoRowsUpstream(false, std::move(regSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_NoRows_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithNoRowsUpstream(false, std::move(regSource), std::move(regTarget), true);
-}
-
-// with rows, no path
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsNoPath_UsingVertexOutputOnly_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(constSource),
-                                 std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsNoPath_UsingVertexOutputOnly_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(constSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsNoPath_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(regSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsNoPath_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(regSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsNoPath_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(constSource),
-                                 std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsNoPath_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(constSource), std::move(regTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsNoPath_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(regSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsNoPath_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(regSource), std::move(regTarget), true);
-}
-
-// with rows, one path
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsOnePath_UsingVertexOutputOnly_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(constSource),
-                                 std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsOnePath_UsingVertexOutputOnly_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(constSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsOnePath_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(regSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsOnePath_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(regSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsOnePath_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(constSource),
-                                 std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsOnePath_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(constSource), std::move(regTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsOnePath_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(regSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithRowsOnePath_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithRowsUpstreamOnePath(false, std::move(regSource), std::move(regTarget), true);
-}
-
-// with multiple rows
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithMultipleRows_UsingVertexOutputOnly_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithMultipleRowsUpstream(false, std::move(constSource),
-                                  std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithMultipleRows_UsingVertexOutputOnly_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithMultipleRowsUpstream(false, std::move(constSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithMultipleRows_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithMultipleRowsUpstream(false, std::move(regSource), std::move(constTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithMultipleRows_UsingVertexOutputOnly_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithMultipleRowsUpstream(false, std::move(regSource), std::move(regTarget), false);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithMultipleRows_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingConstantTargetInput) {
-  RunTestWithMultipleRowsUpstream(false, std::move(constSource),
-                                  std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithMultipleRows_UsingVertexAndEdgeOutput_UsingConstantSourceInput_UsingRegisterTargetInput) {
-  RunTestWithMultipleRowsUpstream(false, std::move(constSource), std::move(regTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithMultipleRows_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingConstantTargetInput) {
-  RunTestWithMultipleRowsUpstream(false, std::move(regSource), std::move(constTarget), true);
-}
-
-TEST_F(ShortestPathExecutorTest,
-       NotWaiting_WithMultipleRows_UsingVertexAndEdgeOutput_UsingRegisterSourceInput_UsingRegisterTargetInput) {
-  RunTestWithMultipleRowsUpstream(false, std::move(regSource), std::move(regTarget), true);
-}
+INSTANTIATE_TEST_CASE_P(
+    ShortestPathExecutorPaths, ShortestPathExecutorTestInputs,
+    testing::Values(std::tuple{constSource2, constTarget2, false},
+                    std::tuple{constSource2, constTarget2, true},
+                    std::tuple{constSource2, regTarget2, false},
+                    std::tuple{constSource2, regTarget2, true},
+                    std::tuple{regSource2, constTarget2, true},
+                    std::tuple{regSource2, constTarget2, false},
+                    std::tuple{regSource2, regTarget2, false},
+                    std::tuple{regSource2, regTarget2, true}),
+    [](testing::TestParamInfo<ShortestPathExecutorTestInputs::ParamType> const& info) {
+      auto const& [source, target, useEdge] = info.param;
+      std::string res = "";
+      if (source.type == ::arangodb::aql::ShortestPathExecutorInfos::InputVertex::Type::CONSTANT) {
+        res += "Constant";
+      } else {
+        res += "Register";
+      }
+      res += "";
+      if (target.type == ::arangodb::aql::ShortestPathExecutorInfos::InputVertex::Type::CONSTANT) {
+        res += "Constant";
+      } else {
+        res += "Register";
+      }
+      res += "";
+      if (useEdge) {
+        res += "True";
+      } else {
+        res += "False";
+      }
+      return res;
+    });
 
 }  // namespace aql
 }  // namespace tests
