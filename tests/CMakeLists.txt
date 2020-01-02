@@ -171,6 +171,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryJoin-test.cpp
   IResearch/IResearchQueryLateMaterialization-test.cpp
   IResearch/IResearchQueryMinMatch-test.cpp
+  IResearch/IResearchQueryNoMaterialization-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
   IResearch/IResearchQueryOptimization-test.cpp
