@@ -135,9 +135,24 @@ CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
  * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// Forward declaration of Test Executors.
+// only used as long as isNewStyleExecutor is required.
+namespace arangodb {
+namespace aql {
+class TestLambdaExecutor;
+}
+}  // namespace arangodb
+#endif
+
 template <class Executor>
 static bool constexpr isNewStyleExecutor() {
-  return std::is_same<Executor, FilterExecutor>::value;
+  return
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      std::is_same_v<Executor, TestLambdaExecutor> ||
+#endif
+      std::is_same_v<Executor, FilterExecutor>;
 }
 
 template <class Executor>
