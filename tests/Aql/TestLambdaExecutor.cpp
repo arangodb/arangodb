@@ -29,7 +29,22 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-TestLambdaExecutor::TestLambdaExecutor(Fetcher&, Infos&) {}
+LambdaExecutorInfos::LambdaExecutorInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    std::unordered_set<RegisterId> registersToClear,
+    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda)
+    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+                    nrOutputRegisters, registersToClear, registersToKeep),
+      _produceLambda(lambda) {}
+
+auto LambdaExecutorInfos::getLambda() const -> ProduceCall const& {
+  return _produceLambda;
+}
+
+TestLambdaExecutor::TestLambdaExecutor(Fetcher&, Infos& infos)
+    : _infos(infos) {}
 TestLambdaExecutor::~TestLambdaExecutor() {}
 
 auto TestLambdaExecutor::produceRows(OutputAqlItemRow& output)
@@ -40,11 +55,5 @@ auto TestLambdaExecutor::produceRows(OutputAqlItemRow& output)
 
 auto TestLambdaExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  return _produceLambda(input, output);
-}
-
-auto TestLambdaExecutor::setProduce(
-    std::function<std::tuple<ExecutorState, Stats, AqlCall>(AqlItemBlockInputRange& input, OutputAqlItemRow& output)> lambda)
-    -> void {
-  _produceLambda = lambda;
+  return _infos.getLambda()(input, output);
 }

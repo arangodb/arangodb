@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_TEST_LAMBDA_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -34,9 +35,30 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class OutputAqlItemRow;
 
-class ExecutorInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
+
+using ProduceCall =
+    std::function<std::tuple<ExecutorState, NoStats, AqlCall>(AqlItemBlockInputRange& input, OutputAqlItemRow& output)>;
+
+class LambdaExecutorInfos : public ExecutorInfos {
+ public:
+  LambdaExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+                      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                      std::unordered_set<RegisterId> registersToClear,
+                      std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda);
+
+  LambdaExecutorInfos() = delete;
+  LambdaExecutorInfos(LambdaExecutorInfos&&) = default;
+  LambdaExecutorInfos(LambdaExecutorInfos const&) = delete;
+  ~LambdaExecutorInfos() = default;
+
+  auto getLambda() const -> ProduceCall const&;
+
+ private:
+  ProduceCall _produceLambda;
+};
 
 class TestLambdaExecutor {
  public:
@@ -46,7 +68,7 @@ class TestLambdaExecutor {
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ExecutorInfos;
+  using Infos = LambdaExecutorInfos;
   using Stats = NoStats;
 
   TestLambdaExecutor() = delete;
@@ -60,11 +82,8 @@ class TestLambdaExecutor {
   auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  auto setProduce(std::function<std::tuple<ExecutorState, Stats, AqlCall>(AqlItemBlockInputRange& input, OutputAqlItemRow& output)> lambda)
-      -> void;
-
  private:
-  std::function<std::tuple<ExecutorState, Stats, AqlCall>(AqlItemBlockInputRange& input, OutputAqlItemRow& output)> _produceLambda;
+  Infos& _infos;
 };
 
 }  // namespace aql

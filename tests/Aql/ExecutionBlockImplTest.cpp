@@ -26,14 +26,20 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
+#include "Mocks/Servers.h"
 #include "TestEmptyExecutorHelper.h"
 #include "TestExecutorHelper.h"
+#include "TestLambdaExecutor.h"
 #include "WaitingExecutionBlockMock.h"
 #include "fakeit.hpp"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"
@@ -389,6 +395,67 @@ TEST_F(ExecutionBlockImplTest,
   std::tie(state, block) = testee.getSome(atMost);
   ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_EQ(block, nullptr);
+}
+
+// Test of the execute() Logic stack
+class ExecutionBlockImplExecuteTest : public ::testing::Test {
+ protected:
+  mocks::MockAqlServer server{};
+  ResourceMonitor monitor{};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
+
+  ExecutionBlockImplExecuteTest() {
+    auto engine =
+        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
+    fakedQuery->setEngine(engine.release());
+  }
+
+  LambdaExecutorInfos makeInfos(ProduceCall&& call) {
+    return LambdaExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
+                               0, 0, {}, {}, std::move(call));
+  }
+
+  std::unique_ptr<ExecutionBlock> createSingleton() {
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
+        fakedQuery->engine(), nullptr, IdExecutorInfos{0, {}, {}});
+  }
+};
+
+TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_unlimited_call) {
+  AqlCall fullCall{};
+  AqlCallStack stack{std::move(fullCall)};
+  ExecutionNode const* node = nullptr;
+  size_t nrCalls = 0;
+
+  ProduceCall execImpl = [&nrCalls](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, TestLambdaExecutor::Stats, AqlCall> {
+    auto const& clientCall = output.getClientCall();
+    if (nrCalls > 10) {
+      EXPECT_TRUE(false);
+      // This is emergency bailout, we ask way to often here
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    nrCalls++;
+    EXPECT_EQ(clientCall.getOffset(), 0);
+    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
+    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.hardLimit));
+    EXPECT_FALSE(clientCall.needsFullCount());
+    NoStats stats{};
+    AqlCall call{};
+    return {input.upstreamState(), stats, call};
+  };
+
+  ExecutionBlockImpl<TestLambdaExecutor> testee{fakedQuery->engine(), node,
+                                                makeInfos(std::move(execImpl))};
+  auto singleton = createSingleton();
+  testee.addDependency(singleton.get());
+  auto [state, skipped, block] = testee.execute(stack);
+
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(skipped, 0);
+  EXPECT_EQ(block, nullptr);
+  // Once with empty, once with the line by Singleton
+  EXPECT_EQ(nrCalls, 2);
 }
 
 }  // namespace aql
