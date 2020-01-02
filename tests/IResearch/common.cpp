@@ -81,6 +81,15 @@ struct BoostScorer : public irs::sort {
       score_cast(dst) += score_cast(src);
     }
 
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
+      const size_t size, size_t offset) const  override {
+      auto& casted_dst = score_cast(dst + offset);
+      casted_dst = 0.f;
+      for (size_t i = 0; i < size; ++i) {
+        casted_dst += score_cast(src_start[i] + offset);
+      }
+    }
+
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
@@ -154,6 +163,15 @@ struct CustomScorer : public irs::sort {
 
     virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
       score_cast(dst) += score_cast(src);
+    }
+
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
+      const size_t size, size_t offset) const  override {
+      auto& casted_dst = score_cast(dst + offset);
+      casted_dst = 0.f;
+      for (size_t i = 0; i < size; ++i) {
+        casted_dst += score_cast(src_start[i] + offset);
+      }
     }
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,

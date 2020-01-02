@@ -206,7 +206,7 @@ class StringWeightReverseIterator {
 
  private:
   const Label &first_;
-  const decltype(Weight::rest_) &rest_;
+  const std::list<Label> &rest_;
   bool fin_;  // In the final state?
   typename decltype(Weight::rest_)::const_reverse_iterator iter_;
 };

@@ -22,8 +22,6 @@ to a server-defined value if unspecified. It is thus recommended to set
 this value explicitly when creating the index.
 
 @RESTDESCRIPTION
-**NOTE** Swagger examples won't work due to the anchor.
-
 Creates a fulltext index for the collection *collection-name*, if
 it does not already exist. The call expects an object containing the index
 details.

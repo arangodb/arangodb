@@ -30,11 +30,11 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 enum NodeType { NODE, LEAF };
 enum Operation {
@@ -207,6 +207,9 @@ private:
   /// @brief Access private methods
   friend class Store;
 
+  // @brief check lifetime expiry
+  bool lifetimeExpired() const;
+
 public:
 
   /// @brief Create JSON representation of this node and below
@@ -333,6 +336,20 @@ public:
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
 
+  template<typename T>
+  auto getNumberUnlessExpiredWithDefault() -> T {
+    if (ADB_LIKELY(!lifetimeExpired())) {
+      try {
+        return this->slice().getNumber<T>();
+      } catch (...) {
+      }
+    }
+
+    return T{0};
+  }
+
+  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
+
  public:
   /// @brief Clear key value store
   void clear();
@@ -368,7 +385,7 @@ public:
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus
 
 #endif

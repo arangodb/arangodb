@@ -288,9 +288,8 @@ std::codecvt_base::result codecvtu_base<InternType>::do_unshift(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt16_facet final: public codecvtu_base<char16_t> {
  public:
-  MSVC2015_ONLY(static std::locale::id id;) // MSVC2015 requires a static instance of an 'id' member
-  MSVC2017_ONLY(static std::locale::id id;) // MSVC2017 requires a static instance of an 'id' member
-  MSVC2019_ONLY(static std::locale::id id;) // MSVC2019 requires a static instance of an 'id' member
+  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+
   codecvt16_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
@@ -320,9 +319,8 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
   ) const override;
 };
 
-MSVC2015_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2015 requires a static instance of an 'id' member
-MSVC2017_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2017 requires a static instance of an 'id' member
-MSVC2019_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2019 requires a static instance of an 'id' member
+MSVC_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC requires a static instance of an 'id' member
+
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
@@ -508,9 +506,8 @@ std::codecvt_base::result codecvt16_facet::do_out(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt32_facet final: public codecvtu_base<char32_t> {
  public:
-  MSVC2015_ONLY(static std::locale::id id;) // MSVC2015 requires a static instance of an 'id' member
-  MSVC2017_ONLY(static std::locale::id id;) // MSVC2017 requires a static instance of an 'id' member
-  MSVC2019_ONLY(static std::locale::id id;) // MSVC2019 requires a static instance of an 'id' member
+  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+
   codecvt32_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
@@ -540,9 +537,7 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
   ) const override;
 };
 
-MSVC2015_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2015 requires a static instance of an 'id' member
-MSVC2017_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2017 requires a static instance of an 'id' member
-MSVC2019_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2019 requires a static instance of an 'id' member
+MSVC_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC requires a static instance of an 'id' member
 
 bool codecvt32_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
