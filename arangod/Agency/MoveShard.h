@@ -69,7 +69,7 @@ struct MoveShard : public Job {
     return *this;
   }
  private:
-  [[nodiscard]] bool isSubJob() const { return !_parentJobId.empty(); }
+  [[nodiscard]] bool isSubJob() const noexcept { return !_parentJobId.empty(); }
   void addMoveShardToServerLock(Builder& ops) const;
   void addMoveShardFromServerLock(Builder& ops) const;
 
