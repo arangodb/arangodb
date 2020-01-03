@@ -37,10 +37,10 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
