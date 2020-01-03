@@ -883,8 +883,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   try {
     let result = testFunc();
     return result;
-  }
-  catch (ex) {
+  } catch (ex) {
     return {
       status: false,
       message: "test has thrown! '" + file + "' - " + ex.message || String(ex),

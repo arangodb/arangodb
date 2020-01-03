@@ -302,11 +302,23 @@ NodeType Node::type() const {
   return (_isArray || _value.size()) ? LEAF : NODE;
 }
 
+
+bool Node::lifetimeExpired() const {
+  using clock = std::chrono::system_clock;
+  return _ttl != clock::time_point() && _ttl < clock::now();
+}
+
 /// @brief lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
   Node* current = this;
 
   for (std::string const& key : pv) {
+
+    // Remove TTL for any nodes on the way down, if and only if the noted TTL
+    // is expired.
+    if (current->lifetimeExpired()) {
+      current->clear();
+    }
 
     auto& children = current->_children;
     auto  child = children.find(key);
@@ -345,9 +357,7 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
     auto const& children = current->_children;
     auto const  child = children.find(key);
 
-    if (child == children.end() ||
-        (child->second->_ttl != std::chrono::system_clock::time_point() &&
-         child->second->_ttl < std::chrono::system_clock::now())) {
+    if (child == children.end() || child->second->lifetimeExpired()) {
       throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
     }  else {
       current = child->second.get();
@@ -492,16 +502,13 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 /// Increment integer value or set 1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) {
-  size_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
-                   ? slice.get("step").getUInt() : 1;
+  auto inc = getIntWithDefault(slice, "step", 1);
+  auto pre = getNumberUnlessExpiredWithDefault<int64_t>();
+
   Builder tmp;
   {
     VPackObjectBuilder t(&tmp);
-    try {
-      tmp.add("tmp", Value(this->slice().getInt() + inc));
-    } catch (std::exception const&) {
-      tmp.add("tmp", Value(1));
-    }
+    tmp.add("tmp", Value(pre + inc));
   }
   *this = tmp.slice().get("tmp");
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
@@ -510,14 +517,13 @@ ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) 
 /// Decrement integer value or set -1
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) {
+  auto dec = getIntWithDefault(slice, "step", 1);
+  auto pre = getNumberUnlessExpiredWithDefault<std::int64_t>();
+
   Builder tmp;
   {
     VPackObjectBuilder t(&tmp);
-    try {
-      tmp.add("tmp", Value(this->slice().getInt() - 1));
-    } catch (std::exception const&) {
-      tmp.add("tmp", Value(-1));
-    }
+    tmp.add("tmp", Value(pre - dec));
   }
   *this = tmp.slice().get("tmp");
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
@@ -534,7 +540,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
     tmp.add(slice.get("new"));
@@ -567,7 +573,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
   {
     VPackArrayBuilder t(&tmp);
 
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       if (haveVal) {
         VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
@@ -613,7 +619,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<REPLACE>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
         if (VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true)) {
@@ -634,7 +640,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<POP>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       VPackArrayIterator it(this->slice());
       if (it.size() > 1) {
         size_t j = it.size() - 1;
@@ -661,7 +667,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
   {
     VPackArrayBuilder t(&tmp);
     tmp.add(slice.get("new"));
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
   }
@@ -673,9 +679,8 @@ ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
 template <>
 ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
   Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {  // If a
+  {    VPackArrayBuilder t(&tmp);
+    if (this->slice().isArray() && !lifetimeExpired()) {  // If a
       VPackArrayIterator it(this->slice());
       bool first = true;
       for (auto const& old : it) {
@@ -851,7 +856,7 @@ bool Node::isWriteUnlockable(std::string_view const& by) const {
 
 arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
-  
+
   if (oper == "delete") {
     return deleteMe();
   } else if (oper == "set") {  // "op":"set"
@@ -880,7 +885,7 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
     return handle<WRITE_LOCK>(slice);
   } else if (oper == "write-unlock") {
     return handle<WRITE_UNLOCK>(slice);
-  } 
+  }
 
   return ResultT<std::shared_ptr<Node>>::error(
     TRI_ERROR_FAILED,
@@ -1272,4 +1277,15 @@ void Node::clear() {
   } else {
     return _parent->removeChild(_nodeName);
   }
+}
+
+auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
+    -> std::int64_t {
+  if (slice.isObject()) {
+    Slice value = slice.get(key);
+    if (value.isInt()) {
+      return value.getInt();
+    }
+  }
+  return def;
 }

@@ -276,10 +276,9 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 bool Query::killed() const {
-  if(_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon()) {
-    if(TRI_microtime() > (_startTime + _queryOptions.maxRuntime)) {
-      return true;
-    }
+  if (_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon() &&
+      TRI_microtime() > (_startTime + _queryOptions.maxRuntime)) {
+    return true;
   }
   return _killed;
 }
@@ -1013,6 +1012,28 @@ ExecutionState Query::finalize(QueryResult& result) {
     result.extra = std::make_shared<VPackBuilder>();
     result.extra->openObject(true);
     if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+      if (ServerState::instance()->isCoordinator()) {
+        std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
+          arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+          arangodb::aql::ExecutionNode::INDEX,
+          arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
+          arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
+          arangodb::aql::ExecutionNode::UPSERT};
+
+        ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+        ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+        _plan->findNodesOfType(nodes, collectionNodeTypes, true);
+
+        for (auto& n : nodes) {
+          // clear shards so we get back the full collection name when serializing
+          // the plan
+          auto cn = dynamic_cast<CollectionAccessingNode*>(n);
+          if (cn) {
+            cn->setUsedShard("");
+          }
+        }
+      }
+
       result.extra->add(VPackValue("plan"));
       _plan->toVelocyPack(*result.extra, _ast.get(), false);
       // needed to happen before plan cleanup

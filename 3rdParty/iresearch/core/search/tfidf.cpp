@@ -280,7 +280,7 @@ struct norm_score_ctx final : public score_ctx {
   irs::norm norm_;
 }; // norm_score_ctx
 
-class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
+class sort final: public irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
  public:
   DEFINE_FACTORY_INLINE(prepared)
 

@@ -286,10 +286,10 @@ static void ExistsVocbaseVPack(bool useCollection,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a document idenfifier
+  // first and only argument should be a document identifier
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "exists(<document-handle> or <document-key> )");
+        "exists(<document-id> or <document-key> )");
   }
 
   TRI_vocbase_t* vocbase;
@@ -376,7 +376,7 @@ static void DocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // first and only argument should be a document handle or key or an object
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "document(<document-handle> or <document-key> or <object> or <array>)");
+        "document(<document-id> or <document-key> or <object> or <array>)");
   }
 
   OperationOptions options;
@@ -456,9 +456,9 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a document idenfifier
+  // first and only argument should be a document identifier
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-id>)");
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -773,7 +773,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   // first and only argument should be a document handle or key
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "binaryDocument(<document-handle> or <document-key>, <filename>)");
+        "binaryDocument(<document-id> or <document-key>, <filename>)");
   }
 
   OperationOptions options;
