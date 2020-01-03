@@ -24,6 +24,7 @@
 #include "Node.h"
 #include "Store.h"
 
+#include "AgencyStrings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -877,13 +878,13 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"
     return handle<REPLACE>(slice);
-  } else if (oper == "read-lock") {
+  } else if (oper == OP_READ_LOCK) {
     return handle<READ_LOCK>(slice);
-  } else if (oper == "read-unlock") {
+  } else if (oper == OP_READ_UNLOCK) {
     return handle<READ_UNLOCK>(slice);
-  } else if (oper == "write-lock") {
+  } else if (oper == OP_WRITE_LOCK) {
     return handle<WRITE_LOCK>(slice);
-  } else if (oper == "write-unlock") {
+  } else if (oper == OP_WRITE_UNLOCK) {
     return handle<WRITE_UNLOCK>(slice);
   }
 

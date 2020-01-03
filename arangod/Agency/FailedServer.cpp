@@ -103,6 +103,7 @@ bool FailedServer::start(bool& aborts) {
         } else {
           LOG_TOPIC("1479b", ERR, Logger::SUPERVISION)
               << "bad value in lock for server " << _server;
+          TRI_ASSERT(false);
         }
       }
     } else if (s.isString()) {
@@ -112,6 +113,7 @@ bool FailedServer::start(bool& aborts) {
     } else {
       LOG_TOPIC("1479c", ERR, Logger::SUPERVISION)
           << "bad value in lock for server " << _server;
+      TRI_ASSERT(false);
     }
   }
 

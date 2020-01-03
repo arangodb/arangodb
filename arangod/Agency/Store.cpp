@@ -475,7 +475,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (mode == FIRST_FAIL) {
             break;
           }
-        } else if (oper == "is-write-locked") {  // is-write-locked
+        } else if (oper == PREC_IS_WRITE_LOCKED) {  // is-write-locked
           // the lock is write locked by the given entity, if node and the value
           // are strings and both are equal.
           if (found && op.value.isString() && node->slice().isString()) {
@@ -487,7 +487,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (mode == FIRST_FAIL) {
             break;
           }
-        } else if (oper == "is-read-locked") {  // is-read-locked
+        } else if (oper == PREC_IS_READ_LOCKED) {  // is-read-locked
           // the lock is read locked by the given entity, if node is an
           // array of strings and the value is a string and if the value is
           // contained in the node array.
@@ -510,7 +510,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (mode == FIRST_FAIL) {
             break;
           }
-        } else if (oper == "can-read-lock") {  // can-read-lock
+        } else if (oper == PREC_CAN_READ_LOCK) {  // can-read-lock
           // a lock can be read locked if the node is either not found
           // or the node is readLockable.
           if (!found) {
@@ -522,7 +522,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               break;
             }
           }
-        } else if (oper == "can-write-lock") {  // can-write-lock
+        } else if (oper == PREC_CAN_WRITE_LOCK) {  // can-write-lock
           // a lock can be write locked if the node is either not found
           // or the node is writeLockable.
           if (!found) {
