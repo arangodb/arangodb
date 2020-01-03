@@ -110,6 +110,9 @@ struct delayedCalculator {
   bool constructed;
   T content;
   F constructor;
+
+  delayedCalculator(delayedCalculator const&) = delete;
+  delayedCalculator(delayedCalculator&&) noexcept = delete;
   template <typename U>
   explicit delayedCalculator(U&& c)
       : constructed(false), constructor(std::forward<U>(c)) {}
@@ -170,9 +173,9 @@ void buildHealthResult(VPackBuilder& builder,
           continue;
         }
         agents[agent.name].leader = true;
-        for (const auto& agent : VPackObjectIterator(lastAcked)) {
-          agents[agent.key.copyString()].lastAcked =
-              agent.value.get("lastAckedTime").getDouble();
+        for (const auto& agentIter : VPackObjectIterator(lastAcked)) {
+          agents[agentIter.key.copyString()].lastAcked =
+              agentIter.value.get("lastAckedTime").getDouble();
         }
       }
     }
@@ -187,7 +190,7 @@ void buildHealthResult(VPackBuilder& builder,
       std::string serverId = member.key.copyString();
 
       {
-        VPackObjectBuilder ob(&builder, serverId);
+        VPackObjectBuilder obMember(&builder, serverId);
 
         builder.add(VPackObjectIterator(member.value));
         if (serverId.compare(0, 4, "PRMR", 4) == 0) {
@@ -209,7 +212,7 @@ void buildHealthResult(VPackBuilder& builder,
       auto& member = memberTry.get();
 
       {
-        VPackObjectBuilder ob(&builder, member.name);
+        VPackObjectBuilder obMember(&builder, member.name);
 
         builder.add("Role", VPackValue("Agent"));
         builder.add("Endpoint", VPackValue(member.endpoint));
@@ -225,10 +228,10 @@ void buildHealthResult(VPackBuilder& builder,
         if (member.response.hasValue()) {
           if (auto& response = member.response.get();
               response.ok() && response.response->statusCode() == fuerte::StatusOK) {
-            VPackSlice config = response.slice();
-            builder.add("Engine", config.get("engine"));
-            builder.add("Version", config.get("version"));
-            builder.add("Leader", config.get("leaderId"));
+            VPackSlice localConfig = response.slice();
+            builder.add("Engine", localConfig.get("engine"));
+            builder.add("Version", localConfig.get("version"));
+            builder.add("Leader", localConfig.get("leaderId"));
             builder.add("Status", VPackValue("GOOD"));
           } else {
             builder.add("Status", VPackValue("BAD"));
@@ -365,7 +368,6 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
 
         // if the server is still in the list, it was neither in plan nor in current
         if (isResponsible) {
-          auto rootPath = arangodb::cluster::paths::root()->arango();
           auto planVersionPath = rootPath->plan()->version();
           // do a write transaction if server is no longer used
           VPackBuffer<uint8_t> trx;
@@ -1074,7 +1076,6 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
 
 RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionState(
     bool state, clock::time_point startTime) {
-
   if (startTime == clock::time_point()) {
     startTime = clock::now();
   }
@@ -1425,7 +1426,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                   network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                                        "/_api/agency/config", VPackBuffer<uint8_t>())
                       .then([endpoint = std::move(endpoint), memberName = std::move(memberName)](
-                                futures::Try<network::Response>&& resp) {
+                                futures::Try<network::Response>&& resp) mutable {
                         return futures::makeFuture(
                             ::agentConfigHealthResult{std::move(endpoint), std::move(memberName),
                                                       std::move(resp)});
@@ -1589,13 +1590,14 @@ void theSimpleStupidOne(std::map<std::string, std::unordered_set<CollectionShard
     moves.push_back(MoveShardDescription{pair->collection, pair->shard, fullest->first,
                                          emptiest->first, pair->isLeader});
     movedShards.insert(pair->shard);
-    emptiest->second.emplace(std::move(*pair));
+    emptiest->second.emplace(*pair);
     fullest->second.erase(pair);
   }
 }
 }  // namespace
 
-RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalanceShards(ReshardAlgorithm algorithm) {
+RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalanceShards(
+    const ReshardAlgorithm& algorithm) {
   // dbserver -> shards
   std::vector<MoveShardDescription> moves;
   std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;

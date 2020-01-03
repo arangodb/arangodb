@@ -163,7 +163,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
       std::function<void(ShardMap&, std::vector<MoveShardDescription>&)>;
 
  private:
-  FutureVoid handlePostRebalanceShards(ReshardAlgorithm);
+  FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
 };
 }  // namespace arangodb
 
