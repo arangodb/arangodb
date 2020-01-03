@@ -141,6 +141,7 @@ CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 // only used as long as isNewStyleExecutor is required.
 namespace arangodb {
 namespace aql {
+template <BlockPassthrough allowPass>
 class TestLambdaExecutor;
 }
 }  // namespace arangodb
@@ -150,7 +151,8 @@ template <class Executor>
 static bool constexpr isNewStyleExecutor() {
   return
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      std::is_same_v<Executor, TestLambdaExecutor> ||
+      std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Enable>> ||
+      std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Disable>> ||
 #endif
       std::is_same_v<Executor, FilterExecutor>;
 }
@@ -952,16 +954,18 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
     size_t nrItems, RegisterCount nrRegs) {
-  static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable ||
-                    !Executor::Properties::inputSizeRestrictsOutputSize,
-                "At most one of Properties::allowsBlockPassthrough or "
-                "Properties::inputSizeRestrictsOutputSize should be true for "
-                "each Executor");
-  static_assert(
-      (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) ==
-          hasFetchBlockForPassthrough<Executor>::value,
-      "Executors should implement the method fetchBlockForPassthrough() iff "
-      "Properties::allowsBlockPassthrough is true");
+  if constexpr (!isNewStyleExecutor<Executor>()) {
+    static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable ||
+                      !Executor::Properties::inputSizeRestrictsOutputSize,
+                  "At most one of Properties::allowsBlockPassthrough or "
+                  "Properties::inputSizeRestrictsOutputSize should be true for "
+                  "each Executor");
+    static_assert(
+        (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) ==
+            hasFetchBlockForPassthrough<Executor>::value,
+        "Executors should implement the method fetchBlockForPassthrough() iff "
+        "Properties::allowsBlockPassthrough is true");
+  }
   static_assert(
       Executor::Properties::inputSizeRestrictsOutputSize ==
           hasExpectedNumberOfRows<Executor>::value,
@@ -1110,7 +1114,9 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       // If we know that every input row produces exactly one output row (this
       // is a property of the executor), then we can just let the fetcher skip
       // the number of rows that we would like to skip.
-      return _rowFetcher.execute(call);
+      // Returning this will trigger to end in upstream state now, with the
+      // call that was handed it
+      return {inputRange.upstreamState(), 0, call};
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::GET_SOME) {
       // In all other cases, we skip by letting the executor produce rows, and
       // then throw them away.

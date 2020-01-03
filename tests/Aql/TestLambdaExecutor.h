@@ -25,6 +25,7 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -34,6 +35,7 @@ namespace aql {
 struct AqlCall;
 class AqlItemBlockInputRange;
 class OutputAqlItemRow;
+class SharedAqlItemBlockPtr;
 
 template <BlockPassthrough>
 class SingleRowFetcher;
@@ -60,11 +62,12 @@ class LambdaExecutorInfos : public ExecutorInfos {
   ProduceCall _produceLambda;
 };
 
+template <BlockPassthrough allowPass>
 class TestLambdaExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static const BlockPassthrough allowsBlockPassthrough = allowPass;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -76,6 +79,9 @@ class TestLambdaExecutor {
   TestLambdaExecutor(TestLambdaExecutor const&) = delete;
   TestLambdaExecutor(Fetcher&, Infos&);
   ~TestLambdaExecutor();
+
+  auto fetchBlockForPassthrough(size_t atMost)
+      -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>;
 
   auto produceRows(OutputAqlItemRow& output) -> std::tuple<ExecutionState, Stats>;
 
