@@ -543,18 +543,18 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               return Deleted::make_shared(shared_from_this());
             }
 
-            class MinReplicationFactor
-                : public StaticComponent<MinReplicationFactor, Collection> {
+            class WriteConcern
+                : public StaticComponent<WriteConcern, Collection> {
              public:
               constexpr char const* component() const noexcept {
-                return "minReplicationFactor";
+                return "writeConcern";
               }
 
               using BaseType::StaticComponent;
             };
 
-            std::shared_ptr<MinReplicationFactor const> minReplicationFactor() const {
-              return MinReplicationFactor::make_shared(shared_from_this());
+            std::shared_ptr<WriteConcern const> writeConcern() const {
+              return WriteConcern::make_shared(shared_from_this());
             }
 
             class CacheEnabled : public StaticComponent<CacheEnabled, Collection> {

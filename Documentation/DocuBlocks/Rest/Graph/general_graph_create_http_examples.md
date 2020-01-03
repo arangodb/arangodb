@@ -21,7 +21,7 @@ Name of the graph.
 An array of definitions for the relations of the graph.
 Each has the following type:
 
-@RESTBODYPARAM{isSmart,boolean,optional,boolean}
+@RESTBODYPARAM{isSmart,boolean,optional,}
 Define if the created graph should be smart.
 This only has effect in Enterprise Edition.
 
@@ -42,10 +42,12 @@ Cannot be modified later.
 @RESTSTRUCT{replicationFactor,post_api_gharial_create_opts,integer,required,}
 The replication factor used when initially creating collections for this graph.
 
-@RESTSTRUCT{minReplicationFactor,post_api_gharial_create_opts,integer,optional,}
-The minimal replication factor used for every new collection in the graph.
-If one shard has less than minReplicationFactor copies, we cannot write
-to this shard, but to all others.
+@RESTSTRUCT{writeConcern,post_api_gharial_create_opts,integer,optional,}
+how many copies of each shard are required to be in sync on the different
+DBServers for every new collection in the graph. If there are less then these
+many copies in the cluster a shard will refuse to write. Writes to shards with
+enough up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*.
 
 @RESTRETURNCODES
 
@@ -90,15 +92,14 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to create a graph you at least need to have the following privileges:
-
+In order to create a graph you at least need to have the following privileges:<br>
   1. `Administrate` access on the Database.
   2. `Read Only` access on every collection used within this graph.
 
@@ -110,7 +111,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -130,7 +131,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.

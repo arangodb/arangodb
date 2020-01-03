@@ -55,7 +55,7 @@ StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
 StatusCode constexpr StatusInternalError = 500;
 StatusCode constexpr StatusServiceUnavailable = 503;
-StatusCode constexpr StatusUnavailable = 505;
+StatusCode constexpr StatusVersionNotSupported = 505;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition

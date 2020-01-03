@@ -41,12 +41,12 @@ function aqlOptionsTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test timeout option
+/// @brief test maxRuntime option
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTimeOut : function () {
+    testMaxRuntime : function () {
       try {
-        internal.db._query("LET x = SLEEP(10) RETURN 1", {} /*bind*/, { timeout : 1} /*options*/);
+        internal.db._query("LET x = SLEEP(10) RETURN 1", {} /*bind*/, { maxRuntime : 1} /*options*/);
         fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_KILLED.code);

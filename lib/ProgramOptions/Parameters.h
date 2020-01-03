@@ -446,6 +446,8 @@ struct DiscreteValuesParameter : public T {
     return T::set(value);
   }
 
+  
+  // cppcheck-suppress virtualCallInConstructor ; bogus warning
   std::string description() const override {
     std::string msg("Possible values: ");
     std::vector<std::string> values;

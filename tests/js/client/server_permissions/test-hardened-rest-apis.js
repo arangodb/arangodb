@@ -100,6 +100,7 @@ function testSuite() {
       assertTrue(result.hasOwnProperty("serverInfo"));
       assertTrue(result.hasOwnProperty("server"));
       assertTrue(result.hasOwnProperty("pid"));
+      assertTrue(result.hasOwnProperty("foxxApi"));
     },
 
     testCanAccessAdminStatusRo : function() {
@@ -111,6 +112,19 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("serverInfo"));
       assertFalse(result.hasOwnProperty("server"));
       assertFalse(result.hasOwnProperty("pid"));
+      assertFalse(result.hasOwnProperty("foxxApi"));
+    },
+    
+    testCanAccessAdminMetricsRw : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      let result = arango.GET("/_admin/metrics");
+    },
+
+    testCanAccessAdminMetricsRo : function() {
+      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      let result = arango.GET("/_admin/metrics");
+      assertTrue(result.error);
+      assertEqual(403, result.code);
     },
     
     testCanAccessAdminLogRw : function() {

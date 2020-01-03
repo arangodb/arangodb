@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_STD_H
@@ -33,26 +32,40 @@ NS_ROOT
 
 NS_BEGIN(irstd)
 
+template<typename In, typename Out>
+struct adjust_const {
+  typedef Out value_type;
+  typedef Out& reference;
+  typedef Out* pointer;
+};
+
+template<typename In, typename Out>
+struct adjust_const<const In, Out> {
+  typedef const Out value_type;
+  typedef const Out& reference;
+  typedef const Out* pointer;
+};
+
 // constexpr versions of min/max functions (for prior c++14 environments)
 template<typename T> 
-CONSTEXPR const T& (max)(const T& a, const T& b) { 
+constexpr const T& (max)(const T& a, const T& b) { 
   return a < b ? b : a; 
 }
 
 template<typename T> 
-CONSTEXPR const T& (min)(const T& a, const T& b) { 
+constexpr const T& (min)(const T& a, const T& b) { 
   return a < b ? a : b; 
 }
 
 // converts reverse iterator to corresponding forward iterator
 // the function does not accept containers "end"
 template<typename ReverseIterator>
-CONSTEXPR typename ReverseIterator::iterator_type to_forward(ReverseIterator it) {
+constexpr typename ReverseIterator::iterator_type to_forward(ReverseIterator it) {
   return --(it.base());
 }
 
 template<typename Iterator>
-CONSTEXPR std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
+constexpr std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
   return std::reverse_iterator<Iterator>(it);
 }
 
@@ -184,13 +197,13 @@ template<typename Stream>
 class output_stream_iterator
     : public std::iterator<std::output_iterator_tag, void, void, void, void> {
   public:
-   explicit output_stream_iterator(Stream& strm) NOEXCEPT
+   explicit output_stream_iterator(Stream& strm) noexcept
      : strm_(&strm) {
    }
 
-    output_stream_iterator& operator*() NOEXCEPT { return *this; }
-    output_stream_iterator& operator++() NOEXCEPT { return *this; }
-    output_stream_iterator& operator++(int) NOEXCEPT { return *this; }
+    output_stream_iterator& operator*() noexcept { return *this; }
+    output_stream_iterator& operator++() noexcept { return *this; }
+    output_stream_iterator& operator++(int) noexcept { return *this; }
 
     template<typename T>
     output_stream_iterator& operator=(const T& value) {
@@ -218,16 +231,16 @@ class input_stream_iterator
   public:
    typedef typename Stream::int_type int_type;
 
-   explicit input_stream_iterator(Stream& strm) NOEXCEPT
+   explicit input_stream_iterator(Stream& strm) noexcept
      : strm_(&strm) {
    }
 
-    int_type operator*() const NOEXCEPT {
+    int_type operator*() const noexcept {
       return strm_->get();
     }
 
-    input_stream_iterator& operator++() NOEXCEPT { return *this; }
-    input_stream_iterator& operator++(int) NOEXCEPT { return *this; }
+    input_stream_iterator& operator++() noexcept { return *this; }
+    input_stream_iterator& operator++(int) noexcept { return *this; }
 
   private:
    Stream* strm_;

@@ -87,8 +87,8 @@ class SharedState {
   /// State will be OnlyResult
   /// Result held will be the `T` constructed from forwarded `args`
   template <typename... Args>
-  static SharedState<T>* make(in_place_t, Args&&... args) {
-    return new SharedState<T>(in_place, std::forward<Args>(args)...);
+  static SharedState<T>* make(std::in_place_t, Args&&... args) {
+    return new SharedState<T>(std::in_place, std::forward<Args>(args)...);
   }
 
   // not copyable
@@ -234,9 +234,9 @@ class SharedState {
 
   /// use to construct a ready future
   template <typename... Args>
-  explicit SharedState(in_place_t,
+  explicit SharedState(std::in_place_t,
                        Args&&... args) noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
-      : _result(in_place, std::forward<Args>(args)...),
+      : _result(std::in_place, std::forward<Args>(args)...),
         _state(State::OnlyResult),
         _attached(1) {}
 

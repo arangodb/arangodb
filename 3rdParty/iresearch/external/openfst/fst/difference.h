@@ -152,22 +152,50 @@ void Difference(const Fst<Arc> &ifst1, const Fst<Arc> &ifst2,
                 MutableFst<Arc> *ofst,
                 const DifferenceOptions &opts = DifferenceOptions()) {
   using M = Matcher<Fst<Arc>>;
-  if (opts.filter_type == AUTO_FILTER) {
-    CacheOptions nopts;
-    nopts.gc_limit = 0;  // Cache only the last state for fastest copy.
-    *ofst = DifferenceFst<Arc>(ifst1, ifst2, nopts);
-  } else if (opts.filter_type == SEQUENCE_FILTER) {
-    DifferenceFstOptions<Arc> dopts;
-    dopts.gc_limit = 0;  // Cache only the last state for fastest copy.
-    *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
-  } else if (opts.filter_type == ALT_SEQUENCE_FILTER) {
-    DifferenceFstOptions<Arc, M, AltSequenceComposeFilter<M>> dopts;
-    dopts.gc_limit = 0;  // Cache only the last state for fastest copy.
-    *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
-  } else if (opts.filter_type == MATCH_FILTER) {
-    DifferenceFstOptions<Arc, M, MatchComposeFilter<M>> dopts;
-    dopts.gc_limit = 0;  // Cache only the last state for fastest copy.
-    *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
+  // In each case, we cache only the last state for fastest copy.
+  switch (opts.filter_type) {
+    case AUTO_FILTER: {
+      CacheOptions nopts;
+      nopts.gc_limit = 0;
+      *ofst = DifferenceFst<Arc>(ifst1, ifst2, nopts);
+      break;
+    }
+    case SEQUENCE_FILTER: {
+      DifferenceFstOptions<Arc> dopts;
+      dopts.gc_limit = 0;
+      *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
+      break;
+    }
+    case ALT_SEQUENCE_FILTER: {
+      DifferenceFstOptions<Arc, M, AltSequenceComposeFilter<M>> dopts;
+      dopts.gc_limit = 0;
+      *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
+      break;
+    }
+    case MATCH_FILTER: {
+      DifferenceFstOptions<Arc, M, MatchComposeFilter<M>> dopts;
+      dopts.gc_limit = 0;
+      *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
+      break;
+    }
+    case NO_MATCH_FILTER: {
+      DifferenceFstOptions<Arc, M, NoMatchComposeFilter<M>> dopts;
+      dopts.gc_limit = 0;
+      *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
+      break;
+    }
+    case NULL_FILTER: {
+      DifferenceFstOptions<Arc, M, NullComposeFilter<M>> dopts;
+      dopts.gc_limit = 0;
+      *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
+      break;
+    }
+    case TRIVIAL_FILTER: {
+      DifferenceFstOptions<Arc, M, TrivialComposeFilter<M>> dopts;
+      dopts.gc_limit = 0;
+      *ofst = DifferenceFst<Arc>(ifst1, ifst2, dopts);
+      break;
+    }
   }
   if (opts.connect) Connect(ofst);
 }

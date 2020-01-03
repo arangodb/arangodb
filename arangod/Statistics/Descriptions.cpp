@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Simon Graetzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Descriptions.h"
@@ -411,7 +411,10 @@ stats::Descriptions::Descriptions()
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  ServerStatistics const& info = MetricsFeature::metrics()->serverStatistics();
+  auto& server = application_features::ApplicationServer::server();
+
+  ServerStatistics const& info =
+    server.getFeature<MetricsFeature>().serverStatistics();
   b.add("uptime", VPackValue(info._uptime));
   b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
@@ -422,7 +425,6 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits.load()));
   b.close();
 
-  auto& server = application_features::ApplicationServer::server();
   V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
   if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));

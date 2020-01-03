@@ -126,6 +126,7 @@ class VectorTypedBuffer : public TypedBuffer<T> {
     close();
   }
 
+  // cppcheck-suppress virtualCallInConstructor
   void close() override {
     if (this->_begin == nullptr) {
       return;
@@ -232,6 +233,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
   }
 
   /// close file
+  // cppcheck-suppress virtualCallInConstructor
   void close() override {
     if (this->_begin == nullptr) {
       // already closed or not opened

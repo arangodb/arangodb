@@ -115,7 +115,7 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
     VPackObjectBuilder preconditionDefinition(&builder);
     builder.add(VPackValue(key));
     {
-      VPackObjectBuilder preconditionDefinition(&builder);
+      VPackObjectBuilder preconditionDefinitionGuard(&builder);
       switch (type) {
         case AgencyPrecondition::Type::EMPTY:
           builder.add("oldEmpty", VPackValue(empty));
@@ -1767,7 +1767,7 @@ bool AgencyComm::tryInitializeStructure() {
       addEmptyVPackObject("Singles", builder);
       builder.add(VPackValue("ServersRegistered"));
       {
-        VPackObjectBuilder c(&builder);
+        VPackObjectBuilder c2(&builder);
         builder.add("Version", VPackValue(1));
       }
       addEmptyVPackObject("Databases", builder);

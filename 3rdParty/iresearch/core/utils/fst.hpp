@@ -18,15 +18,10 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FST_H
 #define IRESEARCH_FST_H
-
-#include "shared.hpp"
-#include "utils/string.hpp"
-#include "utils/noncopyable.hpp"
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4018)
@@ -61,6 +56,10 @@
 #endif
 
 #include <boost/functional/hash.hpp>
+
+#include "shared.hpp"
+#include "utils/string.hpp"
+#include "utils/noncopyable.hpp"
 
 NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
@@ -200,7 +199,7 @@ class fst_builder : util::noncopyable {
         label(label) {
     }
 
-    arc(arc&& rhs) NOEXCEPT
+    arc(arc&& rhs) noexcept
       : target(rhs.target),
         label(rhs.label),
         out(std::move(rhs.out)) {
@@ -235,7 +234,7 @@ class fst_builder : util::noncopyable {
   struct state : private util::noncopyable {
     state() = default;
 
-    state(state&& rhs) NOEXCEPT
+    state(state&& rhs) noexcept
       : arcs(std::move(rhs.arcs)),
         out(std::move(rhs.out)),
         final(rhs.final) {
