@@ -674,7 +674,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+          auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
           if (res.first == ExecutionState::WAITING) {
             return res.first;
           }
@@ -882,11 +882,11 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       uint32_t j = 0;
       ExecutionState state = ExecutionState::HASMORE;
       while (state != ExecutionState::DONE) {
-        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
         state = res.first;
         while (state == ExecutionState::WAITING) {
           ss->waitForAsyncWakeup();
-          res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+          res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
           state = res.first;
         }
         SharedAqlItemBlockPtr value = std::move(res.second);
