@@ -375,7 +375,7 @@ void ClusterFeature::prepare() {
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
 
   // create an instance (this will not yet create a thread)
-  ClusterComm::instance();
+  ClusterComm::initialize(server());
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -477,7 +477,7 @@ void ClusterFeature::prepare() {
 
 void ClusterFeature::start() {
   if (ServerState::instance()->isAgent() || _enableCluster) {
-    ClusterComm::initialize(server());
+    ClusterComm::start();
   }
 
   // return if cluster is disabled

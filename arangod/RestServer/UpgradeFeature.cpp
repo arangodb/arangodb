@@ -22,14 +22,14 @@
 
 #include "UpgradeFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/DaemonFeature.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
-#include "Basics/application-exit.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterFeature.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE

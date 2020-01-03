@@ -23,6 +23,7 @@
 
 #include "ExecutionEngine.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlResult.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"

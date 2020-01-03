@@ -21,6 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IndexFactory.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FloatingPoint.h"
@@ -28,7 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "IndexFactory.h"
 #include "Indexes/Index.h"
 #include "RestServer/BootstrapFeature.h"
 #include "VocBase/LogicalCollection.h"

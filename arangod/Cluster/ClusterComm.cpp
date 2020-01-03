@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
@@ -321,7 +322,6 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::initialize(application_features::ApplicationServer& server) {
-  //  auto i = instance();  // this will create the static instance
   int state = _theInstanceInit;
   if (state < 2) {
     // Try to set from 0 to 1:
@@ -346,9 +346,9 @@ void ClusterComm::initialize(application_features::ApplicationServer& server) {
       }
     }
   }
-
-  instance()->startBackgroundThreads();
 }
+
+void ClusterComm::start() { instance()->startBackgroundThreads(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down

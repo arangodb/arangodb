@@ -37,10 +37,11 @@
 #include "search/term_filter.hpp"
 #include "search/wildcard_filter.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
-#include "Aql/Range.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Range.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/ExpressionFilter.h"

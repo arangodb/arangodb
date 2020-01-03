@@ -27,6 +27,7 @@
 
 #include <velocypack/StringRef.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"

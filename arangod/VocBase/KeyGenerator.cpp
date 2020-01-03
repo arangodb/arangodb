@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KeyGenerator.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Endian.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"

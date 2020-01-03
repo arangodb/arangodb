@@ -27,6 +27,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogBuffer.h"

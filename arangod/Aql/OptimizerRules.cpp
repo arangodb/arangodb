@@ -24,6 +24,7 @@
 
 #include "OptimizerRules.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AstHelper.h"
 #include "Aql/ClusterNodes.h"

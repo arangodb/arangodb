@@ -28,15 +28,17 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/locale_utils.hpp"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ServerState.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "VelocyPackHelper.h"
 #include "Basics/VelocyPackHelper.h"
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
+#include "Cluster/ServerState.h"
 #include "IResearchLinkMeta.h"
 #include "Misc.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "VelocyPackHelper.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Iterator.h"
 
 namespace {
 

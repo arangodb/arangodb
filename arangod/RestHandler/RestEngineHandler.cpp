@@ -21,8 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "RestEngineHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
