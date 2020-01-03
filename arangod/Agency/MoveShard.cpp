@@ -682,7 +682,6 @@ JOB_STATUS MoveShard::pendingLeader() {
     finishedAfterTransaction = true;
   } else {
     // something seriously wrong here, fail job:
-    // TODO finish for move shard
     moveShardFinish(true, false, "something seriously wrong");
     return FAILED;
   }
