@@ -1,6 +1,8 @@
 devel
 -----
 
+* Supervision maintenance mode from "on" and TTL to expiry string.
+
 * Renamed document / index / vertex "handle" to "identifier" / "id" for
   consistency in documentation and error messages.
 
@@ -16,7 +18,7 @@ devel
   of HTTP 403.
 
 * Changed HTTP return code for an error case in /_api/cluster/agency-dump REST API.
-  Now, if the API is called on a server type other than coordinator, it will return 
+  Now, if the API is called on a server type other than coordinator, it will return
   HTTP 501 instead of HTTP 403.
 
 * Fixed undefined behavior on node delete.

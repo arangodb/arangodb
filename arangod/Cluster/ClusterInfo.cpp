@@ -25,6 +25,7 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/TimeString.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -4379,8 +4380,12 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       // Operations
       {
         VPackObjectBuilder o(&builder);
-        builder.add(backupKey + backupId, VPackValue(0));  // Hot backup key
-        builder.add(maintenanceKey, VPackValue("on"));  // Turn off supervision
+        builder.add(backupKey + backupId, VPackValue(0)); // Hot backup key
+        builder.add(                                      // Turn off supervision
+          maintenanceKey,
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::hours(1))));
       }
 
       // Preconditions
