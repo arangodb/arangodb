@@ -1,6 +1,8 @@
 v3.6.0 (XXXX-XX-XX)
 -------------------
 
+* Supervision maintenance mode from "on" and TTL to expiry string.
+
 * Do not create a reboot tracker for empty serverId ubin sync repl.
 
 * Update swagger.

@@ -184,6 +184,7 @@ Supervision::~Supervision() {
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const supervisionPrefix = "/Supervision";
+static std::string const supervisionMaintenance = "/Supervision/Maintenance";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
@@ -289,6 +290,7 @@ void Supervision::upgradeAgency() {
     fixPrototypeChain(builder);
     upgradeOne(builder);
     upgradeHealthRecords(builder);
+    upgradeMaintenance(builder);
   }
 
   LOG_TOPIC("f7315", DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
@@ -298,6 +300,28 @@ void Supervision::upgradeAgency() {
   }
 
   _upgraded = true;
+}
+
+
+void Supervision::upgradeMaintenance(VPackBuilder& builder) {
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(supervisionMaintenance)) {
+    TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
+    auto const maintenanceState = _snapshot.get(supervisionMaintenance).getString();
+    if (maintenanceState == "on") {
+      VPackArrayBuilder trx(&builder);
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(
+          supervisionMaintenance,
+          VPackValue(timepointToString(std::chrono::system_clock::now())));
+      }
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(supervisionMaintenance, VPackValue(maintenanceState));
+      }
+    }
+  }
 }
 
 void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
@@ -819,12 +843,24 @@ void Supervision::run() {
           updateSnapshot();
           LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
-          if (!_snapshot.has("Supervision/Maintenance")) {
-            reportStatus("Normal");
 
-            if (!_upgraded) {
-              upgradeAgency();
+          if (!_upgraded) {
+            upgradeAgency();
+          }
+
+          bool maintenanceMode = false;
+          if (_snapshot.has(supervisionMaintenance)) {
+            TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
+            auto const maintenanceExpires =
+              stringToTimepoint(_snapshot.get(supervisionMaintenance).getString());
+            if (maintenanceExpires >= std::chrono::system_clock::now()) {
+              maintenanceMode = true;
             }
+          }
+
+          if (!maintenanceMode) {
+
+            reportStatus("Normal");
 
             _haveAborts = false;
 
