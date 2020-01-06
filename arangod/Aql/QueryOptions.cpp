@@ -21,10 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "QueryOptions.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
-#include "QueryOptions.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
@@ -34,7 +35,7 @@
 
 using namespace arangodb::aql;
 
-QueryOptions::QueryOptions(QueryRegistryFeature& feature)
+QueryOptions::QueryOptions(arangodb::QueryRegistryFeature& feature)
     : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
