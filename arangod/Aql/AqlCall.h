@@ -57,7 +57,7 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static bool IsSkipSomeCall(AqlCall const& call) {
-    return !call.hasHardLimit() && call.getLimit() == 0 && call.getOffset() > 0;
+    return !call.hasHardLimit() && call.getOffset() > 0;
   }
 
   // TODO Remove me, this will not be necessary later

@@ -481,6 +481,12 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_unlimited_call) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     nrCalls++;
+    if (input.hasDataRow()) {
+      // We expact only the empty initial row, so just consume it
+      auto const [state, row] = input.nextDataRow();
+      EXPECT_EQ(state, ExecutorState::DONE);
+      EXPECT_TRUE(row.isInitialized());
+    }
     EXPECT_EQ(clientCall.getOffset(), 0);
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.hardLimit));
@@ -520,6 +526,12 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_softlimit_call) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     nrCalls++;
+    if (input.hasDataRow()) {
+      // We expact only the empty initial row, so just consume it
+      auto const [state, row] = input.nextDataRow();
+      EXPECT_EQ(state, ExecutorState::DONE);
+      EXPECT_TRUE(row.isInitialized());
+    }
     EXPECT_EQ(clientCall.getOffset(), 0);
     EXPECT_FALSE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.hardLimit));
@@ -560,6 +572,12 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_hardlimit_call) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     nrCalls++;
+    if (input.hasDataRow()) {
+      // We expact only the empty initial row, so just consume it
+      auto const [state, row] = input.nextDataRow();
+      EXPECT_EQ(state, ExecutorState::DONE);
+      EXPECT_TRUE(row.isInitialized());
+    }
     EXPECT_EQ(clientCall.getOffset(), 0);
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
     EXPECT_FALSE(std::holds_alternative<AqlCall::Infinity>(clientCall.hardLimit));
@@ -583,7 +601,7 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_hardlimit_call) {
   EXPECT_EQ(nrCalls, 2);
 }
 
-TEST_F(ExecutionBlockImplExecuteTest, DISABLED_test_toplevel_offset_call_passthrough) {
+TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_call_passthrough) {
   AqlCall fullCall{};
   fullCall.offset = 20;
   AqlCallStack stack{std::move(fullCall)};
@@ -656,7 +674,7 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_only_call_passthrough
   EXPECT_EQ(nrCalls, 0);
 }
 
-TEST_F(ExecutionBlockImplExecuteTest, DISABLED_test_toplevel_offset_call_execute) {
+TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_call_execute) {
   AqlCall fullCall{};
   fullCall.offset = 20;
   AqlCallStack stack{std::move(fullCall)};
