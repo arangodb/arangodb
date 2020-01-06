@@ -314,7 +314,9 @@ void Supervision::upgradeMaintenance(VPackBuilder& builder) {
         VPackObjectBuilder o(&builder);
         builder.add(
           supervisionMaintenance,
-          VPackValue(timepointToString(std::chrono::system_clock::now())));
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::hours(1))));
       }
       {
         VPackObjectBuilder o(&builder);
