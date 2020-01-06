@@ -4360,11 +4360,13 @@ std::string const writeURL = "_api/agency/write";
 std::vector<std::string> modepv = {"arango", "Supervision", "State", "Mode"};
 
 arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
-                                                  double const& timeout) {
+                                                  double const& timeout,
+                                                  bool& supervisionOff) {
   using namespace std::chrono;
 
   auto const endTime =
       steady_clock::now() + milliseconds(static_cast<uint64_t>(1.0e3 * timeout));
+  supervisionOff = false;
 
   LOG_TOPIC("e74e5", DEBUG, Logger::BACKUP)
       << "initiating agency lock for hot backup " << backupId;
@@ -4404,6 +4406,47 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           VPackObjectBuilder oe(&builder);
           builder.add("old", VPackSlice::emptyObjectSlice());
         }
+        builder.add(VPackValue(maintenanceKey));  // Supervision on
+        {
+          VPackObjectBuilder old(&builder);
+          builder.add("oldEmpty", VPackValue(true));
+        }
+      }
+    }
+
+    {
+      VPackArrayBuilder trx(&builder);
+
+      // Operations
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(backupKey + backupId, VPackValue(0));  // Hot backup key
+        builder.add(maintenanceKey, VPackValue("on"));  // Turn off maintenance
+      }
+
+      // Prevonditions
+      {
+        VPackObjectBuilder precs(&builder);
+        builder.add(VPackValue(backupKey));  // Backup key empty
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("oldEmpty", VPackValue(true));
+        }
+        builder.add(VPackValue(pendingKey));  // No jobs pending
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(toDoKey));  // No jobs to do
+        {
+          VPackObjectBuilder oe(&builder);
+          builder.add("old", VPackSlice::emptyObjectSlice());
+        }
+        builder.add(VPackValue(maintenanceKey));  // Supervision off
+        {
+          VPackObjectBuilder old(&builder);
+          builder.add("old", VPackValue("on"));
+        }
       }
     }
   }
@@ -4416,8 +4459,10 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       << "agency lock for hot backup " << backupId << " scheduled with "
       << builder.toJson();
 
-  // *** ATTENTION ***: If result was 412, we did not get the lock.
-  if (!result.successful()) {
+  // *** ATTENTION ***: Result will always be 412.
+  // So we're going to fail, if we have an error OTHER THAN 412:
+  if (!result.successful() &&
+      result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
     return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
                             "failed to acquire backup lock in agency");
   }
@@ -4428,7 +4473,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       << "agency lock response for backup id " << backupId << ": " << rv->toJson();
 
   if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
-      !rv->slice().get("results").isArray() || rv->slice().get("results").length() != 1) {
+      !rv->slice().get("results").isArray() || rv->slice().get("results").length() != 2) {
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
       "invalid agency result while acquiring backup lock");
@@ -4436,11 +4481,22 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
   auto ar = rv->slice().get("results");
 
   uint64_t first = ar[0].getNumber<uint64_t>();
+  uint64_t second = ar[1].getNumber<uint64_t>();
 
-  if (first == 0) {  // tough luck, should not happen, since we should have got 412 in this case
+  if (first == 0 && second == 0) {  // tough luck
     return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
                             "preconditions failed while trying to acquire "
                             "backup lock in the agency");
+  }
+
+  if (first > 0) {  // Supervision was on
+    LOG_TOPIC("b6c98", DEBUG, Logger::BACKUP)
+        << "agency lock found supervision on before";
+    supervisionOff = false;
+  } else {
+    LOG_TOPIC("bbb55", DEBUG, Logger::BACKUP)
+        << "agency lock found supervision off before";
+    supervisionOff = true;
   }
 
   double wait = 0.1;
@@ -4473,7 +4529,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
   }
 
-  agencyHotBackupUnlock(backupId, timeout);
+  agencyHotBackupUnlock(backupId, timeout, supervisionOff);
 
   return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -4481,7 +4537,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
 }
 
 arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
-                                                    double const& timeout) {
+                                                    double const& timeout,
+                                                    const bool& supervisionOff) {
   using namespace std::chrono;
 
   auto const endTime =
@@ -4502,17 +4559,21 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
           VPackObjectBuilder oo(&builder);
           builder.add("op", VPackValue("delete"));
         }
-        // Turn supervision on, if it was on before
-        builder.add(VPackValue(maintenanceKey));
-        VPackObjectBuilder d(&builder);
-        builder.add("op", VPackValue("delete"));
+        if (!supervisionOff) {  // Turn supervision on, if it was on before
+          builder.add(VPackValue(maintenanceKey));
+          VPackObjectBuilder d(&builder);
+          builder.add("op", VPackValue("delete"));
+        }
       }
     }
   }
 
+  // Try to establish hot backup lock in agency. Result will always be 412.
+  // Question is: How 412?
   auto result = _agency.sendWithFailover(arangodb::rest::RequestType::POST,
                                          timeout, writeURL, builder.slice());
-  if (!result.successful()) {
+  if (!result.successful() &&
+      result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
     return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
                             "failed to release backup lock in agency");
   }
