@@ -155,6 +155,9 @@ class GraphManager {
    */
   Result ensureCollections(Graph const* graph, bool waitForSync) const;
 
+  /// @brief check if only satellite collections are used
+  bool onlySatellitesUsed(Graph const* graph) const;
+
   /**
    * @brief Store the given graph
    *

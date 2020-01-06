@@ -598,6 +598,30 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
       vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
 };
 
+bool GraphManager::onlySatellitesUsed(Graph const* graph) const {
+  bool onlySatellites = true;
+
+  for (auto const& cname : graph->vertexCollections()) {
+    if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
+      onlySatellites = false;
+    }
+    if (!onlySatellites) {
+      break; // quick exit
+    }
+  }
+
+  for (auto const& cname : graph->edgeCollections()) {
+    if (!_vocbase.lookupCollection(cname).get()->isSatellite()) {
+      onlySatellites = false;
+    }
+    if (!onlySatellites) {
+      break; // quick exit
+    }
+  }
+
+  return onlySatellites;
+};
+
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                                          aql::QueryPart const queryPart) const {
   std::string const queryStr{
