@@ -4292,8 +4292,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
         builder.add(VPackValue(maintenanceKey));
         {
           VPackObjectBuilder value(&builder);
-          builder.add("new": VPackValue("on"));  // Turn off supervision
-          builder.add("ttl": VPackValue(uint64_t(std::ceil(timeout)));
+          builder.add("new", VPackValue("on"));  // Turn off supervision
+          builder.add("ttl", VPackValue(uint64_t(std::ceil(timeout)));
         }
       }
 
@@ -4333,8 +4333,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
         builder.add(VPackValue(maintenanceKey));
         {
           VPackObjectBuilder value(&builder);
-          builder.add("new": VPackValue("on"));  // Turn off supervision
-          builder.add("ttl": VPackValue(uint64_t(std::ceil(timeout)));
+          builder.add("new", VPackValue("on"));  // Turn off supervision
+          builder.add("ttl", VPackValue(uint64_t(std::ceil(timeout)));
         }
       }
 
