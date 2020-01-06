@@ -22,6 +22,7 @@
 
 #include "Graph.h"
 
+#include <Logger/LogMacros.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -80,20 +81,18 @@ size_t getWriteConcern(VPackSlice slice) {
   }
   return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor, 1);
 }
-}
+}  // namespace
 
 // From persistence
 Graph::Graph(velocypack::Slice const& slice)
     : _graphName(Helper::getStringValue(slice, StaticStrings::KeyString, "")),
       _vertexColls(),
       _edgeColls(),
-      _numberOfShards(Helper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
-                                                                           1)),
-      _replicationFactor(Helper::getNumericValue<uint64_t>(
-          slice, StaticStrings::ReplicationFactor, 1)),
+      _numberOfShards(Helper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards, 1)),
+      _replicationFactor(
+          Helper::getNumericValue<uint64_t>(slice, StaticStrings::ReplicationFactor, 1)),
       _writeConcern(::getWriteConcern(slice)),
-      _rev(Helper::getStringValue(slice, StaticStrings::RevString,
-                                                    "")) {
+      _rev(Helper::getStringValue(slice, StaticStrings::RevString, "")) {
   // If this happens we have a document without an _key Attribute.
   if (_graphName.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -116,6 +115,11 @@ Graph::Graph(velocypack::Slice const& slice)
   }
   if (slice.hasKey(StaticStrings::GraphOrphans)) {
     insertOrphanCollections(slice.get(StaticStrings::GraphOrphans));
+  }
+  if (slice.hasKey(StaticStrings::ReplicationFactor) &&
+      slice.get(StaticStrings::ReplicationFactor).isString() &&
+      slice.get(StaticStrings::ReplicationFactor).isEqualString(StaticStrings::Satellite)) {
+    setReplicationFactor(0);
   }
 }
 
@@ -140,9 +144,16 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
     insertOrphanCollections(info.get(StaticStrings::GraphOrphans));
   }
   if (options.isObject()) {
-    _numberOfShards = Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
-    _replicationFactor = Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
-    _writeConcern = ::getWriteConcern(options);
+    _numberOfShards =
+        Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
+    if (Helper::getStringValue(options.get(StaticStrings::ReplicationFactor),
+                               "1") == StaticStrings::Satellite) {
+      setReplicationFactor(0);
+    } else {
+      _replicationFactor =
+          Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+      _writeConcern = ::getWriteConcern(options);
+    }
   }
 }
 
@@ -303,9 +314,13 @@ void Graph::toPersistence(VPackBuilder& builder) const {
 
   // Cluster Information
   builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
-  builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-  builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern)); // deprecated
-  builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
+  if (isSatellite()) {
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+  } else {
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+    builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));  // deprecated
+    builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
+  }
   builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
 
   // EdgeDefinitions
@@ -679,17 +694,29 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
 
 bool Graph::isSmart() const { return false; }
 
+bool Graph::isSatellite() const {
+  if (replicationFactor() == 0) {
+    return true;
+  }
+  return false;
+}
+
 void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) const {
   TRI_ASSERT(builder.isOpenObject());
 
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
+
+  if (!isSatellite()) {
+    builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern()));  // deprecated
+    builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern()));
+  }
+
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
-  builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern())); // deprecated
-  builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern()));
 }
 
-std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(std::string const& collectionName) const {
+std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(
+    std::string const& collectionName) const {
   auto it = edgeDefinitions().find(collectionName);
   if (it == edgeDefinitions().end()) {
     TRI_ASSERT(!hasEdgeCollection(collectionName));

@@ -165,6 +165,7 @@ class Graph {
   std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(std::string const& collectionName) const;
 
   virtual bool isSmart() const;
+  virtual bool isSatellite() const;
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
@@ -287,6 +288,7 @@ class Graph {
   uint64_t _numberOfShards;
 
   /// @brief replication factor of this graph
+  /// if the value is set to 0, it will be threaten as a satellite graph
   uint64_t _replicationFactor;
 
   /// @brief write concern for this graph
