@@ -1,6 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* TTL value missing for hot backup maintenance mode.
+
 * Shard synchronisation readlock aware of rebootId.
 
 * Fixed undefined behavior on node delete.

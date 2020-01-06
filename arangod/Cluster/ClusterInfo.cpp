@@ -4289,7 +4289,12 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       {
         VPackObjectBuilder o(&builder);
         builder.add(backupKey + backupId, VPackValue(0));  // Hot backup key
-        builder.add(maintenanceKey, VPackValue("on"));  // Turn off supervision
+        builder.add(VPackValue(maintenanceKey));
+        {
+          VPackObjectBuilder value(&builder);
+          builder.add("new": VPackValue("on"));  // Turn off supervision
+          builder.add("ttl": VPackValue(uint64_t(std::ceil(timeout)));
+        }
       }
 
       // Preconditions
@@ -4325,7 +4330,12 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       {
         VPackObjectBuilder o(&builder);
         builder.add(backupKey + backupId, VPackValue(0));  // Hot backup key
-        builder.add(maintenanceKey, VPackValue("on"));  // Turn off maintenance
+        builder.add(VPackValue(maintenanceKey));
+        {
+          VPackObjectBuilder value(&builder);
+          builder.add("new": VPackValue("on"));  // Turn off supervision
+          builder.add("ttl": VPackValue(uint64_t(std::ceil(timeout)));
+        }
       }
 
       // Prevonditions
