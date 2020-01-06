@@ -41,6 +41,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -400,40 +401,70 @@ TEST_F(ExecutionBlockImplTest,
   ASSERT_EQ(block, nullptr);
 }
 
-// Test of the execute() Logic stack
-class ExecutionBlockImplExecuteTest : public ::testing::Test {
+class SharedExecutionBlockImplTest {
  protected:
   mocks::MockAqlServer server{};
   ResourceMonitor monitor{};
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
+  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
-  ExecutionBlockImplExecuteTest() {
+  SharedExecutionBlockImplTest() {
     auto engine =
         std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
     fakedQuery->setEngine(engine.release());
   }
 
-  LambdaExecutorInfos makeInfos(ProduceCall&& call, RegisterId read = 0,
-                                RegisterId write = 0) {
-    EXPECT_LE(read, write);
+  ExecutionNode* generateNodeDummy() {
+    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
+    auto res = dummy.get();
+    _execNodes.emplace_back(std::move(dummy));
+    return res;
+  }
+
+  LambdaExecutorInfos makeInfos(ProduceCall&& call, RegisterId read = RegisterPlan::MaxRegisterId,
+                                RegisterId write = RegisterPlan::MaxRegisterId) {
+    if (read != RegisterPlan::MaxRegisterId) {
+      EXPECT_LE(read, write);
+    } else if (write != RegisterPlan::MaxRegisterId) {
+      EXPECT_EQ(write, 0);
+    }
+
     auto readAble = make_shared_unordered_set();
     auto writeAble = make_shared_unordered_set();
-    if (read > 0) {
+    auto registersToKeep = std::unordered_set<RegisterId>{};
+    if (read != RegisterPlan::MaxRegisterId) {
       for (RegisterId i = 0; i <= read; ++i) {
         readAble->emplace(i);
+        registersToKeep.emplace(i);
       }
       for (RegisterId i = read + 1; i <= write; ++i) {
         writeAble->emplace(i);
       }
+    } else if (write != RegisterPlan::MaxRegisterId) {
+      for (RegisterId i = 0; i <= write; ++i) {
+        writeAble->emplace(i);
+      }
     }
-    return LambdaExecutorInfos(readAble, writeAble, read, write, {}, {}, std::move(call));
+    RegisterId regsToRead = (read == RegisterPlan::MaxRegisterId) ? 0 : read + 1;
+    RegisterId regsToWrite = (write == RegisterPlan::MaxRegisterId) ? 0 : write + 1;
+    return LambdaExecutorInfos(readAble, writeAble, regsToRead, regsToWrite, {},
+                               registersToKeep, std::move(call));
   }
 
   std::unique_ptr<ExecutionBlock> createSingleton() {
-    return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-        fakedQuery->engine(), nullptr, IdExecutorInfos{0, {}, {}});
+    auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
+        fakedQuery->engine(), generateNodeDummy(), IdExecutorInfos{0, {}, {}});
+    InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
+    auto const [state, result] = res->initializeCursor(inputRow);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_TRUE(result.ok());
+    return res;
   }
 };
+
+// Test of the execute() Logic stack
+class ExecutionBlockImplExecuteTest : public SharedExecutionBlockImplTest,
+                                      public ::testing::Test {};
 
 TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_unlimited_call) {
   AqlCall fullCall{};
@@ -721,20 +752,13 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_only_call_execute) {
 }
 
 class ExecutionBlockImplExecuteIntegrationTest
-    : public ExecutionBlockImplExecuteTest,
+    : public SharedExecutionBlockImplTest,
       public testing::TestWithParam<AqlCall> {
- public:
-  ExecutionBlockImplExecuteIntegrationTest()
-      : ExecutionBlockImplExecuteTest() {}
-
  protected:
-  std::unique_ptr<ExecutionBlock> _singleton = createSingleton();
-
   std::unique_ptr<ExecutionBlock> produceBlock(ExecutionBlock* dependency,
                                                std::shared_ptr<VPackBuilder> data,
                                                RegisterId outReg) {
     TRI_ASSERT(dependency != nullptr);
-    TRI_ASSERT(outReg > 0);
     TRI_ASSERT(data != nullptr);
     TRI_ASSERT(data->slice().isArray());
     auto writeData = [data, outReg](AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
@@ -753,8 +777,13 @@ class ExecutionBlockImplExecuteIntegrationTest
       AqlCall call{};
       return {inputRange.upstreamState(), NoStats{}, call};
     };
-    auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->engine(), nullptr, makeInfos(std::move(writeData), outReg - 1, outReg));
+    auto infos = outReg == 0
+                     ? makeInfos(std::move(writeData), RegisterPlan::MaxRegisterId, outReg)
+                     : makeInfos(std::move(writeData), outReg - 1, outReg);
+    auto producer =
+        std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->engine(),
+                                                        generateNodeDummy(),
+                                                        std::move(infos));
     producer->addDependency(dependency);
     return producer;
   }
@@ -772,13 +801,14 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->engine(), nullptr, makeInfos(std::move(forwardData), maxReg, maxReg));
+        fakedQuery->engine(), generateNodeDummy(),
+        makeInfos(std::move(forwardData), maxReg, maxReg));
     producer->addDependency(dependency);
     return producer;
   }
 
   void ValidateResult(std::shared_ptr<VPackBuilder> data, size_t skipped,
-                      SharedAqlItemBlockPtr result) {
+                      SharedAqlItemBlockPtr result, RegisterId testReg) {
     auto const& call = GetParam();
 
     TRI_ASSERT(data != nullptr);
@@ -787,26 +817,59 @@ class ExecutionBlockImplExecuteIntegrationTest
     VPackSlice expected = data->slice();
     VPackArrayIterator expectedIt{expected};
     // Skip Part
-    EXPECT_EQ(call.getOffset(), skipped);
-    for (size_t i = 0; i < call.getOffset(); ++i) {
+    size_t offset =
+        (std::min)(call.getOffset(), static_cast<size_t>(expected.length()));
+
+    EXPECT_EQ(offset, skipped);
+    for (size_t i = 0; i < offset; ++i) {
       // The first have been skipped
       expectedIt++;
     }
-
-    // GetSome part
-    EXPECT_EQ(call.getLimit(), result->numEntries());
-    for (size_t i = 0; i < call.getLimit(); ++i) {
-      // The next have to match
-      auto got = result->getValueReference(i, 1).slice();
-      EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *expectedIt, false))
-          << "Expected: " << expectedIt.value().toJson()
-          << " got: " << got.toJson() << " in row " << i;
-      expectedIt++;
+    size_t limit =
+        (std::min)(call.getLimit(), static_cast<size_t>(expected.length()) - offset);
+    if (result != nullptr) {
+      // GetSome part
+      EXPECT_EQ(limit, result->size());
+      for (size_t i = 0; i < limit; ++i) {
+        // The next have to match
+        auto got = result->getValueReference(i, testReg).slice();
+        EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *expectedIt, false))
+            << "Expected: " << expectedIt.value().toJson() << " got: " << got.toJson()
+            << " in row " << i << " and register " << testReg;
+        expectedIt++;
+      }
+    } else {
+      EXPECT_EQ(limit, 0);
     }
 
     // TODO test fullcount
   }
 };
+
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
+  auto singleton = createSingleton();
+
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openArray();
+  for (size_t i = 0; i < 1000; ++i) {
+    builder->add(VPackValue(i));
+  }
+  builder->close();
+  RegisterId outReg = 0;
+  auto producer = produceBlock(singleton.get(), builder, outReg);
+
+  auto const& call = GetParam();
+  AqlCallStack stack{call};
+  auto const [state, skipped, block] = producer->execute(stack);
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ValidateResult(builder, skipped, block, outReg);
+}
+
+static const AqlCall defaultCall{};
+static const AqlCall secondCall{};
+
+INSTANTIATE_TEST_CASE_P(ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,
+                        ::testing::Values(defaultCall, secondCall));
 
 }  // namespace aql
 }  // namespace tests
