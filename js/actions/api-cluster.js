@@ -183,7 +183,7 @@ actions.defineHttp({
 
     const expire = new Date();
     expire.setHours(expire.getHours() + 1);
-    
+
     let operations = {};
     if (body === "on") {
       operations['/arango/Supervision/Maintenance'] =
