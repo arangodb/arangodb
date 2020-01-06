@@ -1195,7 +1195,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           _engine->_stats += stats;
           if (state == ExecutorState::DONE) {
             execState = ExecState::SHADOWROWS;
-          } else if (clientCall.getLimit() > 0) {
+          } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
             executorRequest = call;
