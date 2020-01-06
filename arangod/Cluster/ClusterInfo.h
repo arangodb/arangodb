@@ -826,7 +826,7 @@ class ClusterInfo final {
    * @return          Operation's result
    */
   arangodb::Result agencyHotBackupLock(
-    std::string const& uuid, double const& timeout);
+    std::string const& uuid, double const& timeout, bool& supervisionOff);
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
@@ -835,7 +835,7 @@ class ClusterInfo final {
    * @return          Operation's result
    */
   arangodb::Result agencyHotBackupUnlock(
-    std::string const& uuid, double const& timeout);
+    std::string const& uuid, double const& timeout, const bool& supervisionOff);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout

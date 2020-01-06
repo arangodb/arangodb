@@ -4372,6 +4372,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
   LOG_TOPIC("e74e5", DEBUG, Logger::BACKUP)
       << "initiating agency lock for hot backup " << backupId;
 
+  auto const timeouti = static_cast<long>(std::ceil(timeout));
+
   VPackBuilder builder;
   {
     VPackArrayBuilder trxs(&builder);
@@ -4386,7 +4388,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           maintenanceKey,
           VPackValue(
             timepointToString(
-              std::chrono::system_clock::now() + std::chrono::seconds(std::ceil(timeout)))));
+              std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
       }
 
       // Preconditions
@@ -4426,7 +4428,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           maintenanceKey,
           VPackValue(
             timepointToString(
-              std::chrono::system_clock::now() + std::chrono::seconds(std::ceil(timeout)))));
+              std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
       }
 
       // Prevonditions
