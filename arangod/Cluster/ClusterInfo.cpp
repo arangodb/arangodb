@@ -4354,6 +4354,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
 
 std::string const backupKey = "/arango/Target/HotBackup/Create/";
 std::string const maintenanceKey = "/arango/Supervision/Maintenance";
+std::string const supervisionMode = "/arango/Supervision/State/Mode";
 std::string const toDoKey = "/arango/Target/ToDo";
 std::string const pendingKey = "/arango/Target/Pending";
 std::string const writeURL = "_api/agency/write";
@@ -4385,7 +4386,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           maintenanceKey,
           VPackValue(
             timepointToString(
-              std::chrono::system_clock::now() + std::chrono::hours(1))));
+              std::chrono::system_clock::now() + std::chrono::seconds(std::ceil(timeout)))));
       }
 
       // Preconditions
@@ -4406,10 +4407,10 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           VPackObjectBuilder oe(&builder);
           builder.add("old", VPackSlice::emptyObjectSlice());
         }
-        builder.add(VPackValue(maintenanceKey));  // Supervision on
+        builder.add(VPackValue(supervisionMode));  // Supervision on
         {
           VPackObjectBuilder old(&builder);
-          builder.add("oldEmpty", VPackValue(true));
+          builder.add("old", VPackValue("Normal"));
         }
       }
     }
@@ -4421,7 +4422,11 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       {
         VPackObjectBuilder o(&builder);
         builder.add(backupKey + backupId, VPackValue(0));  // Hot backup key
-        builder.add(maintenanceKey, VPackValue("on"));  // Turn off maintenance
+        builder.add(                                      // Turn off supervision
+          maintenanceKey,
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::seconds(std::ceil(timeout)))));
       }
 
       // Prevonditions
@@ -4442,10 +4447,10 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           VPackObjectBuilder oe(&builder);
           builder.add("old", VPackSlice::emptyObjectSlice());
         }
-        builder.add(VPackValue(maintenanceKey));  // Supervision off
+        builder.add(VPackValue(supervisionMode));  // Supervision off
         {
           VPackObjectBuilder old(&builder);
-          builder.add("old", VPackValue("on"));
+          builder.add("old", VPackValue("Maintenance"));
         }
       }
     }
