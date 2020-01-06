@@ -433,8 +433,10 @@ class ShortestPathExecutorTestInputs
     auto [source, target, useEdgeOutput] = GetParam();
     TokenTranslator& translator = *(static_cast<TokenTranslator*>(options.cache()));
     auto finderPtr = std::make_unique<FakePathFinder>(options, translator);
-    return ShortestPathExecutorInfos(inputRegisters, outputRegisters, 2, 4, {},
-                                     {0, 1}, std::move(finderPtr), std::move(registerMapping),
+    return ShortestPathExecutorInfos(inputRegisters, outputRegisters, 2, 4,
+                                     std::unordered_set<RegisterId>{},
+                                     std::unordered_set<RegisterId>{0, 1},
+                                     std::move(finderPtr), std::move(registerMapping),
                                      std::move(source), std::move(target));
   }
 };
