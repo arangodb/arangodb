@@ -184,7 +184,7 @@ actions.defineHttp({
     let operations = {};
     if (body === "on") {
       operations['/arango/Supervision/Maintenance'] =
-        {"op":"set","new":true,"ttl":3600};
+        {"op":"set","new":"on","ttl":3600};
     } else if (body === "off") {
       operations['/arango/Supervision/Maintenance'] = {"op":"delete"};
     } else {
