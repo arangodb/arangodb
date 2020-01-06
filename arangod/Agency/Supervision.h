@@ -110,6 +110,9 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Upgrade agency
   void upgradeAgency();
 
+  /// @brief Upgrade maintenance key, if "on"
+  void upgradeMaintenance(VPackBuilder& builder);
+
   static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";
   static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
