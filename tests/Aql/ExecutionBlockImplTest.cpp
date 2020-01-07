@@ -779,16 +779,24 @@ class ExecutionBlockImplExecuteIntegrationTest
     TRI_ASSERT(dependency != nullptr);
     TRI_ASSERT(data != nullptr);
     TRI_ASSERT(data->slice().isArray());
-    auto writeData = [data, outReg](AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+    // We make this a shared ptr just to make sure someone retains the data.
+    auto iterator = std::make_shared<VPackArrayIterator>(data->slice());
+    auto writeData = [data, outReg, iterator](AqlItemBlockInputRange& inputRange,
+                                              OutputAqlItemRow& output)
         -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       while (inputRange.hasDataRow() && !output.isFull()) {
-        auto const& [state, input] = inputRange.nextDataRow();
+        auto const& [state, input] = inputRange.peekDataRow();
         EXPECT_TRUE(input.isInitialized());
-        VPackSlice toWrite = data->slice();
-        EXPECT_GE(output.numRowsLeft(), toWrite.length());
-        for (auto const& inSlice : VPackArrayIterator(toWrite)) {
-          output.cloneValueInto(outReg, input, AqlValue{inSlice});
+        while (!output.isFull() && iterator->valid()) {
+          output.cloneValueInto(outReg, input, AqlValue{iterator->value()});
           output.advanceRow();
+          iterator->next();
+        }
+        if (!iterator->valid()) {
+          // Consume input
+          auto const& [state, input] = inputRange.nextDataRow();
+          EXPECT_TRUE(input.isInitialized());
+          iterator->reset();
         }
       }
       // We always use a default unlimited call here, we only have Singleton above.
@@ -884,10 +892,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
 }
 
 static const AqlCall defaultCall{};
-static const AqlCall secondCall{};
+static const AqlCall skipCall{.offset = 100};
 
 INSTANTIATE_TEST_CASE_P(ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,
-                        ::testing::Values(defaultCall, secondCall));
+                        ::testing::Values(defaultCall, skipCall));
 
 }  // namespace aql
 }  // namespace tests
