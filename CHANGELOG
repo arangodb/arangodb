@@ -1,6 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.2.
+
 * TTL value missing for hot backup maintenance mode.
 
 * Shard synchronisation readlock aware of rebootId.
@@ -50,8 +52,6 @@ v3.5.4 (XXXX-XX-XX)
   https://github.com/arangodb/docs.git
 
 * Fix execution ability in CentOS 6 regarding newer boost.
-
-* Updated arangosync to 0.7.1.
 
 
 v3.5.3 (2019-11-28)
