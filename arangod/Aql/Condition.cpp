@@ -752,11 +752,10 @@ void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/) {
     // already normalized
     return;
   }
-
+ 
   _root = transformNodePreorder(_root);
   _root = transformNodePostorder(_root);
   _root = fixRoot(_root, 0);
-
   optimize(plan, multivalued);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1011,7 +1010,7 @@ bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable 
       }
 
       if (invalid) {
-        andNode->removeMemberUnchecked(j);
+        andNode->removeMemberUncheckedUnordered(j);
         // repeat with some member index
         TRI_ASSERT(nAnd > 0);
         --nAnd;
@@ -1221,7 +1220,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                   _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
                                                  leftNode->getMemberUnchecked(0),
                                                  mergeInOperations(trx, leftNode, rightNode));
-              andNode->removeMemberUnchecked(rightPos);
+              andNode->removeMemberUncheckedUnordered(rightPos);
               andNode->changeMember(leftPos, merged);
               goto restartThisOrItem;
             } else if (rightNode->isSimpleComparisonOperator()) {
@@ -1248,7 +1247,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
               if (inNode->numMembers() == 0) {
                 // no values left after merging -> IMPOSSIBLE
-                _root->removeMemberUnchecked(r);
+                _root->removeMemberUncheckedUnordered(r); 
                 retry = true;
                 goto fastForwardToNextOrItem;
               }
@@ -1257,7 +1256,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
               leftNode->changeMember(1, inNode);
 
               // remove the other operator
-              andNode->removeMemberUnchecked(rightPos);
+              andNode->removeMemberUncheckedUnordered(rightPos);
               goto restartThisOrItem;
             }
           }
@@ -1273,25 +1272,26 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
               // impossible condition
               // j = positions.size();
               // we remove this one, so fast forward the loops to their end:
-              _root->removeMemberUnchecked(r);
+              _root->removeMemberUncheckedUnordered(r);
               retry = true;
               goto fastForwardToNextOrItem;
             }
             case CompareResult::SELF_CONTAINED_IN_OTHER: {
               TRI_ASSERT(!positions.empty());
-              andNode->removeMemberUnchecked(positions.at(0).first);
+              andNode->removeMemberUncheckedUnordered(positions.at(0).first);
               goto restartThisOrItem;
             }
             case CompareResult::OTHER_CONTAINED_IN_SELF: {
               TRI_ASSERT(j < positions.size());
-              andNode->removeMemberUnchecked(positions.at(j).first);
+              andNode->removeMemberUncheckedUnordered(positions.at(j).first);
               goto restartThisOrItem;
             }
             case CompareResult::CONVERT_EQUAL: {  // both ok, now transform to a
                                                   // == x (== y)
               TRI_ASSERT(!positions.empty());
               TRI_ASSERT(j < positions.size());
-              andNode->removeMemberUnchecked(positions.at(j).first);
+              TRI_ASSERT(positions.at(j).first > positions.at(0).first); // in this case remove will not spoil members indexes
+              andNode->removeMemberUncheckedUnordered(positions.at(j).first);
               auto origNode = andNode->getMemberUnchecked(positions.at(0).first);
               auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);
               for (size_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {

@@ -7,9 +7,9 @@ Drops the *index*.  If the index does not exist, then *false* is
 returned. If the index existed and was dropped, then *true* is
 returned.
 
-`db._dropIndex(index-handle)`
+`db._dropIndex(index-id)`
 
-Drops the index with *index-handle*.
+Drops the index with *index-id*.
 
 @EXAMPLE_ARANGOSH_OUTPUT{dropIndex}
 ~db._create("example");

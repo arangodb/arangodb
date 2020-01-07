@@ -108,6 +108,11 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
+    testNotAppliedDueToUpdateDoc() {
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] UPDATE d IN " + cn + " SORT d.foo DESC LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
     testNotAppliedDueToSubqueryWithDocumentAccess() {
       let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
                   "LET a = NOOPT(d.foo) " +
@@ -116,10 +121,40 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
+    testNotAppliedDueToSubqueryWithReturnDocument() {
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
+                  "LET a = NOOPT(d.foo) " +
+                  "LET e = SUM(FOR c IN " + vn + " LET p = NOOPT(CONCAT(d.foo, c.foo)) RETURN d) " +
+                  "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
     testQueryResultsWithSubqueryWithDocumentAccessByAttribute() {
       let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
                   "LET a = NOOPT(d.foo) " +
                   "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d.foo, c.foo) RETURN p) " +
+                  "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      if (!isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(4, result.json.length);
+        let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+        result.json.forEach(function(doc) {
+          assertTrue(expectedKeys.has(doc._key));
+          expectedKeys.delete(doc._key);
+        });
+        assertEqual(0, expectedKeys.size);
+      } else {
+        // on cluster this will not be applied as remote node placed before sort node
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      }
+    },
+    testQueryResultsWithInnerSubqueriesWithDocumentAccessByAttribute() {
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
+                  "LET a = NOOPT(d.foo) " +
+                  "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d.foo, c.foo) " +
+                    "LET f = SUM(FOR k IN " + svn + " LET r = CONCAT(c.foo, k.foo) RETURN CONCAT(c.value, r)) RETURN CONCAT(d.value, p, f)) " +
                   "SORT CONCAT(a, e) LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       if (!isCluster) {
