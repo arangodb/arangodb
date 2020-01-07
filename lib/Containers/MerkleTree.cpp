@@ -238,7 +238,7 @@ template <std::size_t const BranchingBits, std::size_t const LockStripes>
 void MerkleTree<BranchingBits, LockStripes>::insert(std::size_t key, std::size_t value) {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   if (key < meta().rangeMin) {
-    throw std::out_of_range("Key out of current range.");
+    throw std::out_of_range("Cannot insert, key out of current range.");
   }
 
   if (key >= meta().rangeMax) {
@@ -255,7 +255,7 @@ template <std::size_t const BranchingBits, std::size_t const LockStripes>
 void MerkleTree<BranchingBits, LockStripes>::remove(std::size_t key, std::size_t value) {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   if (key < meta().rangeMin || key >= meta().rangeMax) {
-    throw std::out_of_range("Key out of current range.");
+    throw std::out_of_range("Cannot remove, key out of current range.");
   }
 
   modify(key, value, /* isInsert */ false);

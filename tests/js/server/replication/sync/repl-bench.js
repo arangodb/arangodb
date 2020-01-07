@@ -58,14 +58,6 @@ const connectToSlave = function () {
   db._flushCache();
 };
 
-const collectionChecksum = function (name) {
-  return db._collection(name).checksum(true, true).checksum;
-};
-
-const collectionCount = function (name) {
-  return db._collection(name).count();
-};
-
 const compare = function (masterFunc, slaveInitFunc, slaveCompareFunc, incremental, system) {
   var state = {};
 
@@ -228,7 +220,7 @@ const singleRunCatchUp = () => {
   return result;
 };
 
-function ReplicationIncrementalKeyConflict() {
+function ReplicationBench() {
   'use strict';
 
   return {
@@ -254,9 +246,9 @@ function ReplicationIncrementalKeyConflict() {
       db._drop(cn);
     },
 
-    /*testHugeDiff: function () {
+    testHugeDiff: function () {
       runBench(singleRunHugeDiff);
-    },*/
+    },
 
     testCatchUp: function () {
       runBench(singleRunCatchUp);
@@ -266,6 +258,6 @@ function ReplicationIncrementalKeyConflict() {
 
 };
 
-jsunity.run(ReplicationIncrementalKeyConflict);
+jsunity.run(ReplicationBench);
 
 return jsunity.done();

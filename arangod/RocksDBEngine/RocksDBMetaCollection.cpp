@@ -32,9 +32,12 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 
@@ -355,6 +358,42 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   return tree;
 }
 
+std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(uint64_t batchId) {
+  EngineSelectorFeature& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  // first apply any updates that can be safely applied
+  RocksDBEngine* engine = rocksutils::globalRocksEngine();
+  rocksdb::DB* db = engine->db()->GetRootDB();
+  rocksdb::SequenceNumber safeSeq = meta().committableSeq(db->GetLatestSequenceNumber());
+  applyUpdates(safeSeq);
+
+  // now clone the tree so we can apply all updates consistent with our ongoing trx
+  std::shared_lock<std::shared_mutex> guard(_revisionBufferLock);
+  auto tree = _revisionTree.clone();
+  if (!tree) {
+    return nullptr;
+  }
+
+  {
+    // apply any which are buffered and older than our ongoing transaction start
+    RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+    RocksDBReplicationManager* manager = engine.replicationManager();
+    RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
+    if (!ctx) {
+      return nullptr;
+    }
+    rocksdb::Snapshot const* snapshot = ctx->snapshot();
+    rocksdb::SequenceNumber trxSeq = snapshot->GetSequenceNumber();
+    TRI_ASSERT(trxSeq != 0);
+    Result res = applyUpdatesForTransaction(*tree, trxSeq);
+    if (res.fail()) {
+      return nullptr;
+    }
+  }
+
+  return tree;
+}
+
 void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
                                           std::vector<TRI_voc_rid_t>&& inserts,
                                           std::vector<TRI_voc_rid_t>&& removals) {
@@ -378,65 +417,61 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
 
 rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
   rocksdb::SequenceNumber appliedSeq = 0;
+  std::unique_lock guard(_revisionBufferLock);
   Result res = basics::catchVoidToResult([&]() -> void {
-    std::vector<TRI_voc_rid_t> inserts;
-    std::vector<TRI_voc_rid_t> removals;
+    auto insertIt = _revisionInsertBuffers.begin();
+    auto removeIt = _revisionRemovalBuffers.begin();
 
-    // truncate will increase this sequence
-    rocksdb::SequenceNumber ignoreSeq = 0;
-    while (true) {
+    {
+      rocksdb::SequenceNumber ignoreSeq = 0;  // truncate will increase this sequence
       bool foundTruncate = false;
+      // check for a truncate marker
+      auto it = _revisionTruncateBuffer.begin();  // sorted ASC
+      while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
+        ignoreSeq = *it;
+        TRI_ASSERT(ignoreSeq != 0);
+        foundTruncate = true;
+        appliedSeq = std::max(appliedSeq, ignoreSeq);
+        it = _revisionTruncateBuffer.erase(it);
+      }
+      if (foundTruncate) {
+        TRI_ASSERT(ignoreSeq <= commitSeq);
+        while (insertIt != _revisionInsertBuffers.end() && insertIt->first <= ignoreSeq) {
+          insertIt = _revisionInsertBuffers.erase(insertIt);
+        }
+        while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= ignoreSeq) {
+          removeIt = _revisionRemovalBuffers.erase(removeIt);
+        }
+        _revisionTree.clear();  // clear estimates
+      }
+    }
+
+    while (true) {
+      std::vector<TRI_voc_rid_t> inserts;
+      std::vector<TRI_voc_rid_t> removals;
       // find out if we have buffers to apply
       {
-        std::unique_lock guard(_revisionBufferLock);
+        bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
+                           insertIt->first <= commitSeq;
+        bool haveRemovals = removeIt != _revisionRemovalBuffers.end() &&
+                            removeIt->first <= commitSeq;
 
-        {
-          // check for a truncate marker
-          auto it = _revisionTruncateBuffer.begin();  // sorted ASC
-          while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
-            ignoreSeq = *it;
-            TRI_ASSERT(ignoreSeq != 0);
-            foundTruncate = true;
-            appliedSeq = std::max(appliedSeq, ignoreSeq);
-            it = _revisionTruncateBuffer.erase(it);
-          }
-        }
-        TRI_ASSERT(ignoreSeq <= commitSeq);
+        bool applyInserts =
+            haveInserts && (!haveRemovals || removeIt->first >= insertIt->first);
+        bool applyRemovals = haveRemovals && !applyInserts;
 
         // check for inserts
-        auto it = _revisionInsertBuffers.begin();  // sorted ASC
-        while (it != _revisionInsertBuffers.end() && it->first <= commitSeq) {
-          if (it->first <= ignoreSeq) {
-            TRI_ASSERT(it->first <= appliedSeq);
-            it = _revisionInsertBuffers.erase(it);
-            continue;
-          }
-          inserts = std::move(it->second);
-          TRI_ASSERT(!inserts.empty());
-          appliedSeq = std::max(appliedSeq, it->first);
-          _revisionInsertBuffers.erase(it);
-
-          break;
+        if (applyInserts) {
+          inserts = std::move(insertIt->second);
+          appliedSeq = std::max(appliedSeq, insertIt->first);
+          insertIt = _revisionInsertBuffers.erase(insertIt);
         }
-
         // check for removals
-        it = _revisionRemovalBuffers.begin();  // sorted ASC
-        while (it != _revisionRemovalBuffers.end() && it->first <= commitSeq) {
-          if (it->first <= ignoreSeq) {
-            TRI_ASSERT(it->first <= appliedSeq);
-            it = _revisionRemovalBuffers.erase(it);
-            continue;
-          }
-          removals = std::move(it->second);
-          TRI_ASSERT(!removals.empty());
-          appliedSeq = std::max(appliedSeq, it->first);
-          _revisionRemovalBuffers.erase(it);
-          break;
+        if (applyRemovals) {
+          removals = std::move(removeIt->second);
+          appliedSeq = std::max(appliedSeq, removeIt->first);
+          removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
-      }
-
-      if (foundTruncate) {
-        _revisionTree.clear();  // clear estimates
       }
 
       // no inserts or removals left to apply, drop out of loop
@@ -445,16 +480,20 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
       }
 
       // apply inserts
-      for (auto const& rid : inserts) {
-        _revisionTree.insert(rid, TRI_FnvHashPod(rid));
+      if (!inserts.empty()) {
+        for (auto const& rid : inserts) {
+          _revisionTree.insert(rid, TRI_FnvHashPod(rid));
+        }
+        inserts.clear();
       }
-      inserts.clear();
 
       // apply removals
-      for (auto const& rid : removals) {
-        _revisionTree.remove(rid, TRI_FnvHashPod(rid));
+      if (!removals.empty()) {
+        for (auto const& rid : removals) {
+          _revisionTree.remove(rid, TRI_FnvHashPod(rid));
+        }
+        removals.clear();
       }
-      removals.clear();
     }  // </while(true)>
   });
   return appliedSeq;
@@ -463,53 +502,56 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
 Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTree& tree,
                                                          rocksdb::SequenceNumber commitSeq) const {
   Result res = basics::catchVoidToResult([&]() -> void {
-    // truncate will increase this sequence
-    rocksdb::SequenceNumber ignoreSeq = 0;
     auto insertIt = _revisionInsertBuffers.begin();
     auto removeIt = _revisionRemovalBuffers.begin();
-    while (true) {
+
+    {
+      rocksdb::SequenceNumber ignoreSeq = 0;  // truncate will increase this sequence
       bool foundTruncate = false;
+      // check for a truncate marker
+      auto it = _revisionTruncateBuffer.begin();  // sorted ASC
+      while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
+        ignoreSeq = *it;
+        TRI_ASSERT(ignoreSeq != 0);
+        foundTruncate = true;
+        ++it;
+      }
+      if (foundTruncate) {
+        TRI_ASSERT(ignoreSeq <= commitSeq);
+        while (insertIt != _revisionInsertBuffers.end() && insertIt->first <= ignoreSeq) {
+          ++insertIt;
+        }
+        while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= ignoreSeq) {
+          ++removeIt;
+        }
+        tree.clear();  // clear estimates
+      }
+    }
+
+    while (true) {
       std::vector<TRI_voc_rid_t> const* inserts = nullptr;
       std::vector<TRI_voc_rid_t> const* removals = nullptr;
       // find out if we have buffers to apply
       {
-        {
-          // check for a truncate marker
-          auto it = _revisionTruncateBuffer.begin();  // sorted ASC
-          while (it != _revisionTruncateBuffer.end() && *it <= commitSeq) {
-            ignoreSeq = *it;
-            TRI_ASSERT(ignoreSeq != 0);
-            foundTruncate = true;
-            ++it;
-          }
-        }
-        TRI_ASSERT(ignoreSeq <= commitSeq);
+        bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
+                           insertIt->first <= commitSeq;
+        bool haveRemovals = removeIt != _revisionRemovalBuffers.end() &&
+                            removeIt->first <= commitSeq;
+
+        bool applyInserts =
+            haveInserts && (!haveRemovals || removeIt->first >= insertIt->first);
+        bool applyRemovals = haveRemovals && !applyInserts;
 
         // check for inserts
-        while (insertIt != _revisionInsertBuffers.end() && insertIt->first <= commitSeq) {
-          if (insertIt->first <= ignoreSeq) {
-            ++insertIt;
-            continue;
-          }
+        if (applyInserts) {
           inserts = &insertIt->second;
           ++insertIt;
-          break;
         }
-
         // check for removals
-        while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= commitSeq) {
-          if (removeIt->first <= ignoreSeq) {
-            ++removeIt;
-            continue;
-          }
+        if (applyRemovals) {
           removals = &removeIt->second;
           ++removeIt;
-          break;
         }
-      }
-
-      if (foundTruncate) {
-        tree.clear();  // clear estimates
       }
 
       // no inserts or removals left to apply, drop out of loop

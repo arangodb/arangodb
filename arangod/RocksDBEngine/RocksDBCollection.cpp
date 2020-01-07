@@ -1198,27 +1198,6 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   return res;
 }
 
-/*std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(
-    transaction::Methods& trx) {
-  std::unique_ptr<ReplicationIterator> iter =
-      getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
-  RevisionReplicationIterator& it =
-      *static_cast<RevisionReplicationIterator*>(iter.get());
-
-  TRI_voc_rid_t rangeMin = _logicalCollection.minRevision();
-  std::size_t constexpr maxDepth = 6;
-  std::unique_ptr<containers::RevisionTree> tree =
-      std::make_unique<containers::RevisionTree>(maxDepth, static_cast<std::size_t>(rangeMin));
-
-  it.seek(rangeMin);
-  while (it.hasMore()) {
-    tree->insert(it.revision(), TRI_FnvHashPod(it.revision());
-    it.next();
-  }
-
-  return tree;
-}*/
-
 void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t diff) {
   auto seq = rocksutils::latestSequenceNumber();
   meta().adjustNumberDocuments(seq, /*revId*/ 0, diff);

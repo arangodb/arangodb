@@ -224,6 +224,7 @@ class PhysicalCollection {
 
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
       transaction::Methods& trx);
+  virtual std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId);
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

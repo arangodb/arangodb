@@ -533,6 +533,10 @@ std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
   return nullptr;
 }
 
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(uint64_t batchId) {
+  return nullptr;
+}
+
 /// @brief checks the revision of a document
 int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {

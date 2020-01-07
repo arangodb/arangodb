@@ -3007,19 +3007,13 @@ void RestReplicationHandler::handleCommandRevisionTree() {
     return;
   }
 
-  RevisionReplicationIterator& it =
-      *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
-
-  std::size_t constexpr maxDepth = 6;
-  std::size_t const rangeMin = static_cast<std::size_t>(ctx.collection->minRevision());
-  containers::RevisionTree tree(maxDepth, rangeMin);
-
-  while (it.hasMore()) {
-    tree.insert(it.revision(), TRI_FnvHashPod(it.revision())/*it.document().hashString()*/);
-    it.next();
+  auto tree = ctx.collection->getPhysical()->revisionTree(ctx.batchId);
+  if (!tree) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "could not generate revision tree");
+    return;
   }
-
-  std::string result = tree.serialize();
+  std::string result = tree->serialize();
 
   resetResponse(rest::ResponseCode::OK);
   _response->setContentType("application/octet-stream");

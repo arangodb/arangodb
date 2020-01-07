@@ -232,16 +232,18 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       VPackBuilder& tmp,
                                       rocksdb::SequenceNumber& appliedSeq) {
   TRI_ASSERT(appliedSeq != UINT64_MAX);
-  
+  TRI_ASSERT(appliedSeq > 0);
+
   Result res;
   if (coll.deleted()) {
     return res;
   }
 
   const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
-  bool didWork = applyAdjustments(maxCommitSeq);
   TRI_ASSERT(maxCommitSeq <= appliedSeq);
   TRI_ASSERT(maxCommitSeq != UINT64_MAX);
+  TRI_ASSERT(maxCommitSeq > 0);
+  bool didWork = applyAdjustments(maxCommitSeq);
   appliedSeq = maxCommitSeq;
 
   RocksDBKey key;

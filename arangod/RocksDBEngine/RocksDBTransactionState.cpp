@@ -123,7 +123,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
     // place blockers with an initial seq
-    prepareCollections();
+    if (!_blockers) {
+      prepareCollections();
+    }
 
     TRI_ASSERT(_readSnapshot == nullptr);
     if (isReadOnlyTransaction()) {
@@ -185,7 +187,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     }
 
     // update blockers with correct start seq
-    updateCollections();
+    if (_blockers) {
+      updateCollections();
+    }
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -259,7 +263,7 @@ void RocksDBTransactionState::commitCollections(rocksdb::SequenceNumber lastWrit
     }*/
     coll->commitCounts(id(), lastWritten, intermediate);
   }
-  _blockers = !intermediate;
+  _blockers = intermediate;
 }
 
 void RocksDBTransactionState::cleanupCollections() {
@@ -731,7 +735,8 @@ rocksdb::SequenceNumber RocksDBTransactionState::beginSeq() const {
   } else if (_readSnapshot) {
     return _readSnapshot->GetSequenceNumber();
   }
-  return 0;
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  return db->GetLatestSequenceNumber();
 }
 
 /// @brief constructor, leases a builder

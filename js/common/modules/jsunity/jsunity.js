@@ -568,8 +568,8 @@ var jsUnity = exports.jsUnity = (function () {
                   e = new Error(e);
                 }
                 else if (e instanceof require("@arangodb").ArangoError && (
-                  (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
-                    (e.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
+                  (e.errorNum === require("@arangodb").errors.ERROR_CLUSTER_TIMEOUT) ||
+                    (e.errorNum === require("@arangodb").errors.ERROR_LOCK_TIMEOUT)
                 )) {
                   skipTest = true;
                 }

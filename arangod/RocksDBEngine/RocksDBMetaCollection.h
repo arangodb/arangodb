@@ -79,6 +79,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void estimateSize(velocypack::Builder& builder);
 
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
+  std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
 
   /**
    * @brief Buffer updates to this collection to be applied when appropriate

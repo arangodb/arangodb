@@ -197,6 +197,7 @@ void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t b
   TRI_ASSERT(_collection != nullptr);
   // if (hasOperations() || !_trackedIndexOperations.empty()) {
   auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  TRI_ASSERT(beginSeq > 0);
   coll->meta().placeBlocker(trxId, beginSeq);
   //}
 }
@@ -205,6 +206,7 @@ void RocksDBTransactionCollection::updateTransaction(uint64_t trxId, uint64_t be
   TRI_ASSERT(_collection != nullptr);
   // if (hasOperations() || !_trackedIndexOperations.empty()) {
   auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  TRI_ASSERT(beginSeq > 0);
   coll->meta().updateBlocker(trxId, beginSeq);
   //}
 }
