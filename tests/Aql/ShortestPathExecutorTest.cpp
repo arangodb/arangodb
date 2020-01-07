@@ -401,11 +401,7 @@ TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenStartVertex) {
 
 TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenEndVertex) {
   RunSimpleTest(std::move(constSource), std::move(brokenTarget));
-}
 
-TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenStartAndEndVertex) {
-  RunSimpleTest(std::move(brokenSource), std::move(brokenTarget));
-}
 
 class ShortestPathExecutorTestInputs
     : public ShortestPathExecutorTest,
