@@ -100,7 +100,7 @@ function invalidStartVertexSuite() {
       db._drop(gn + 'v2');
       db._drop(gn + 'e');
     },
-    
+
     testTraversalNullStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -113,7 +113,7 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testTraversalNumberStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -136,7 +136,7 @@ function invalidStartVertexSuite() {
         assertTrue(res.warnings.length > 0);
       });
     },
-    
+
     testShortestPathNullStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -149,7 +149,7 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testShortestPathNumberStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -182,7 +182,7 @@ function invalidStartVertexSuite() {
         assertTrue(res.warnings.length > 0);
       });
     },
-    
+
     testShortestPathNullEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -195,7 +195,7 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testShortestPathNumberEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -231,7 +231,7 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testKShortestsPathNumberStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -264,7 +264,7 @@ function invalidStartVertexSuite() {
         assertTrue(res.warnings.length > 0);
       });
     },
-    
+
     testKShortestPathsNullEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -277,7 +277,7 @@ function invalidStartVertexSuite() {
         }
       });
     },
-    
+
     testKShortestPathsNumberEndVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function(direction) {
@@ -2937,6 +2937,54 @@ function brokenGraphSuite() {
   };
 }
 
+/*
+ *       A
+ *     ↙ ↲ ↘  // Edge from A to the edge connecting "A->B"
+ *   B       C
+ */
+function edgeConnectedFromVertexToEdge() {
+  return {
+    setUpAll: function () {
+      cleanup();
+
+      vc = db._createDocumentCollection(vn, { numberOfShards: 4 });
+      ec = db._createEdgeCollection(en, { numberOfShards: 4 });
+
+      vertex.A = vc.save({ _key: 'A' })._id;
+      vertex.B = vc.save({ _key: 'B' })._id;
+      vertex.C = vc.save({ _key: 'C' })._id;
+
+      // F is always 2 hops away and only reachable with alternating
+      // collections and directions
+
+      edge.AB = ec.save(vertex.A, vertex.B, {});
+      edge.AC = ec.save(vertex.A, vertex.C, {});
+      edge.AAB = ec.save(vertex.A, edge.AB, {}); // Edge from A to the edge connecting "A->B"
+    },
+
+    tearDownAll: function () {
+      cleanup();
+    },
+
+
+    testDuplicationCollections: function () {
+      var queries = [
+        [`WITH ${vn}, ${en} FOR x,y,z IN 1..10 OUTBOUND @start @@ec return x`, false]
+      ];
+
+      var bindVars = {
+        '@ec': en,
+        start: vertex.A
+      };
+
+      queries.forEach(function (query) {
+          // should work
+          db._query(query[0], bindVars).toArray();
+      });
+    }
+  };
+}
+
 function multiEdgeDirectionSuite() {
   const en2 = 'UnitTestEdgeCollection2';
   var ec2;
@@ -4415,6 +4463,7 @@ jsunity.run(complexInternaSuite);
 jsunity.run(optimizeInSuite);
 jsunity.run(complexFilteringSuite);
 jsunity.run(brokenGraphSuite);
+jsunity.run(edgeConnectedFromVertexToEdge);
 jsunity.run(multiEdgeDirectionSuite);
 jsunity.run(subQuerySuite);
 jsunity.run(optionsSuite);
