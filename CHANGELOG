@@ -1,4 +1,10 @@
-v3.6.0 (XXXX-XX-XX)
+v3.6.1 (XXXX-XX-XX)
+-------------------
+
+* Updated arangosync to 0.7.0.
+
+
+v3.6.0 (2020-01-08)
 -------------------
 
 * Do not create a reboot tracker for empty serverId ubin sync repl.
