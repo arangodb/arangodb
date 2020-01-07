@@ -401,11 +401,7 @@ TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenStartVertex) {
 
 TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenEndVertex) {
   RunSimpleTest(std::move(constSource), std::move(brokenTarget));
-}
 
-TEST_F(ShortestPathExecutorTest, TestingInvalidInputs_UsingBrokenStartAndEndVertex) {
-  RunSimpleTest(std::move(brokenSource), std::move(brokenTarget));
-}
 
 class ShortestPathExecutorTestInputs
     : public ShortestPathExecutorTest,
@@ -434,8 +430,8 @@ class ShortestPathExecutorTestInputs
     TokenTranslator& translator = *(static_cast<TokenTranslator*>(options.cache()));
     auto finderPtr = std::make_unique<FakePathFinder>(options, translator);
     return ShortestPathExecutorInfos(inputRegisters, outputRegisters, 2, 4,
-                                     std::unordered_set<RegisterId>{},
-                                     std::unordered_set<RegisterId>{0, 1},
+                                     std::unordered_set<RegisterId>(std::initializer_list<RegisterId>{}),
+                                     std::unordered_set<RegisterId>(std::initializer_list<RegisterId>{0, 1}),
                                      std::move(finderPtr), std::move(registerMapping),
                                      std::move(source), std::move(target));
   }
