@@ -7,7 +7,7 @@ Creates a new document in the *collection* from the given *data*. The
 *data* must be an object.
 
 The method returns a document with the attributes *_id* and *_rev*.
-The attribute *_id* contains the document handle of the newly created
+The attribute *_id* contains the document identifier of the newly created
 document, the attribute *_rev* contains the document revision.
 
 `collection.insert(data, waitForSync)`
