@@ -1,7 +1,12 @@
-v3.5.4 (XXXX-XX-XX)
+v3.5.5 (XXXX-XX-XX)
 -------------------
 
 * Supervision maintenance mode from "on" and TTL to expiry string.
+
+v3.5.4 (XXXX-XX-XX)
+-------------------
+
+* TTL value missing for hot backup maintenance mode.
 
 * Shard synchronisation readlock aware of rebootId.
 
