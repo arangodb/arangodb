@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_QUERY_OPTIONS_H 1
 
 #include <unordered_set>
+#include <vector>
 
 #include "Basics/Common.h"
 #include "Transaction/Options.h"
