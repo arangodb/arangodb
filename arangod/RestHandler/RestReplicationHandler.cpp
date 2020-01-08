@@ -3083,7 +3083,10 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
       if (!it.hasMore() || it.revision() <= range.at(0).getNumber<std::size_t>() ||
           it.revision() > range.at(1).getNumber<std::size_t>() ||
           (!subOpen && it.revision() <= range.at(1).getNumber<std::size_t>())) {
-        it.seek(std::max(ctx.resume, range.at(0).getNumber<std::size_t>()));
+        auto target = std::max(ctx.resume, range.at(0).getNumber<std::size_t>());
+        if (it.hasMore() && it.revision() < target) {
+          it.seek(target);
+        }
         TRI_ASSERT(!subOpen);
         response.openArray();
         subOpen = true;
@@ -3175,7 +3178,9 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
 
     for (std::size_t i = 0; i < body.length(); ++i) {
       TRI_voc_rid_t rev = body.at(i).getNumber<TRI_voc_rid_t>();
-      it.seek(rev);
+      if (it.hasMore() && it.revision() < rev) {
+        it.seek(rev);
+      }
       VPackSlice res =
           it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
       if (size + res.byteSize() > sizeLimit && !response.slice().isEmptyArray()) {

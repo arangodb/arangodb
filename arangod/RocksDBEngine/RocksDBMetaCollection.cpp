@@ -332,6 +332,9 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   std::shared_lock<std::shared_mutex> guard(_revisionBufferLock);
   auto tree = _revisionTree.clone();
+  if (!tree) {
+    return nullptr;
+  }
 
   {
     // apply any which are buffered and older than our ongoing transaction start
