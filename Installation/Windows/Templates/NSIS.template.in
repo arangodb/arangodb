@@ -75,7 +75,7 @@ Var ServiceUp                 ; did the service start?
 
 Var DATADIR
 Var APPDIR
-Var LOGFILE
+Var LOGDIR
 
 Var ini_DATADIR
 Var ini_APPDIR
@@ -598,7 +598,7 @@ continueUI:
 
   ${NSD_GetState} $Dlg1_CB_custom_logging $R0
   ${If} $R0 = ${BST_CHECKED}
-    StrCpy $LOGFILE "$LOCALAPPDATA\Arangodb-logs\"
+    StrCpy $LOGDIR "$LOCALAPPDATA\Arangodb-logs\"
   ${EndIf}
 
 
@@ -949,8 +949,8 @@ Section "-Core installation"
   ${If} $APPDIR != ""
     StrCpy $ini_APPDIR "[javascript]$\r$\napp-path = $APPDIR$\r$\n"
   ${EndIf}
-  ${If} $LOGFILE != ""
-    StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGFILE/arangod.log$\r$\n"
+  ${If} $LOGDIR != ""
+    StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGDIR/arangod.log$\r$\n"
   ${EndIf}
   StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR$ini_LOGFILE[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
   ${AnsiToUtf8} $newCfgValues $newCfgValuesUtf8
@@ -964,7 +964,7 @@ Section "-Core installation"
   call ReadINIFileKeys
   Delete "$newCfgValuesFile"
 
-  CreateDirectory $LOGFILE
+  CreateDirectory $LOGDIR
   CreateDirectory $APPDIR
   Call assignFileRights
   ${If} $UpgradeInstall == "1"
