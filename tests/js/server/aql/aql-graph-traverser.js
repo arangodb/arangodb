@@ -2954,7 +2954,6 @@ function edgeConnectedFromVertexToEdge() {
       vertex.B = vc.save({ _key: 'B' })._id;
       vertex.C = vc.save({ _key: 'C' })._id;
 
-      // F is always 2 hops away and only reachable with alternating
       // collections and directions
 
       edge.AB = ec.save(vertex.A, vertex.B, {});
