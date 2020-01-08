@@ -69,7 +69,7 @@ function startParameterTest(options, testpath, suiteName) {
       let instanceInfo;
       let shutdownStatus;
       let clonedOpts = _.clone(options);
-      let paramsFistRun = {};
+      let paramsFirstRun = {};
       let serverOptions = {};
 
       let fileContent = fs.read(testFile);
@@ -84,7 +84,7 @@ function startParameterTest(options, testpath, suiteName) {
       }
       if (runSetup) {
         delete paramsSecondRun.runSetup;
-        instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, suiteName, rootDir); // fist start
+        instanceInfo = pu.startInstance(options.protocol, options, paramsFirstRun, suiteName, rootDir); // first start
         pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
         try {
           print(BLUE + '================================================================================' + RESET);
@@ -116,7 +116,7 @@ function startParameterTest(options, testpath, suiteName) {
           };
         }
       } else {
-        instanceInfo = pu.startInstance(options.protocol, options, paramsSecondRun, suiteName, rootDir); // fist start
+        instanceInfo = pu.startInstance(options.protocol, options, paramsSecondRun, suiteName, rootDir); // one start
       }
 
       results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
