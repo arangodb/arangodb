@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_QUERY_OPTIONS_H
 #define ARANGOD_AQL_QUERY_OPTIONS_H 1
 
+#include <string>
 #include <unordered_set>
 #include <vector>
 
