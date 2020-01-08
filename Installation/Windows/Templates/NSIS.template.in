@@ -537,7 +537,7 @@ continueUI:
   ${NSD_CreateCheckBox} 0 -100 100% 6% "Choose custom install paths for databases and installation"
   Pop $Dlg1_CB_custom_path
 
-  ${NSD_CreateCheckBox} 0 -120 100% 6% "Enable ArangoDBs own logfiles"
+  ${NSD_CreateCheckBox} 0 -120 100% 6% "Enable ArangoDB's own logfiles"
   Pop $Dlg1_CB_custom_logging
   ${NSD_SetState} $Dlg1_CB_custom_logging ${BST_CHECKED}
 
@@ -950,7 +950,7 @@ Section "-Core installation"
     StrCpy $ini_APPDIR "[javascript]$\r$\napp-path = $APPDIR$\r$\n"
   ${EndIf}
   ${If} $LOGDIR != ""
-    StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGDIR/arangod.log$\r$\n"
+    StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGDIR\arangod.log$\r$\n"
   ${EndIf}
   StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR$ini_LOGFILE[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
   ${AnsiToUtf8} $newCfgValues $newCfgValuesUtf8
@@ -964,7 +964,9 @@ Section "-Core installation"
   call ReadINIFileKeys
   Delete "$newCfgValuesFile"
 
-  CreateDirectory $LOGDIR
+  ${If} $LOGDIR != ""
+    CreateDirectory $LOGDIR
+  ${EndIf}
   CreateDirectory $APPDIR
   Call assignFileRights
   ${If} $UpgradeInstall == "1"
