@@ -50,24 +50,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace arangodb {
-namespace aql {
-// Custom AqlCall printer.
-void PrintTo(const arangodb::aql::AqlCall& call, ::std::ostream* out) {
-  *out << "skip: " << call.offset << " softLimit: ";
-  auto limitPrinter =
-      arangodb::overload{[&out](size_t const& i) -> std::ostream& {
-                           return *out << i;
-                         },
-                         [&out](arangodb::aql::AqlCall::Infinity const&) -> std::ostream& {
-                           return *out << "unlimited";
-                         }};
-  std::visit(limitPrinter, call.softLimit);
-  *out << " hardLimit: ";
-  std::visit(limitPrinter, call.hardLimit);
-  *out << " fullCount: " << std::boolalpha << call.fullCount;
-}
-}  // namespace aql
-
 namespace tests {
 namespace aql {
 

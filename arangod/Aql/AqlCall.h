@@ -136,6 +136,31 @@ constexpr AqlCall::Limit operator+(size_t n, AqlCall::Limit const& a) {
   return a + n;
 }
 
+constexpr bool operator==(AqlCall::Limit const& a, size_t n) {
+  return std::visit(overload{[n](size_t const& i) -> bool { return i == n; },
+                             [](auto inf) -> bool { return false; }},
+                    a);
+}
+
+constexpr bool operator==(size_t n, AqlCall::Limit const& a) { return a == n; }
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const arangodb::aql::AqlCall::Limit& limit) {
+  return std::visit(arangodb::overload{[&out](size_t const& i) -> std::ostream& {
+                                         return out << i;
+                                       },
+                                       [&out](arangodb::aql::AqlCall::Infinity const&) -> std::ostream& {
+                                         return out << "unlimited";
+                                       }},
+                    limit);
+}
+
+inline std::ostream& operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) {
+  return out << "skip: " << call.getOffset() << " softLimit: " << call.softLimit
+             << " hardLimit: " << call.hardLimit
+             << " fullCount: " << std::boolalpha << call.fullCount;
+}
+
 }  // namespace aql
 }  // namespace arangodb
 
