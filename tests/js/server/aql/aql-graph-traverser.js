@@ -2967,7 +2967,7 @@ function edgeConnectedFromVertexToEdge() {
     },
 
 
-    testDuplicationCollections: function () {
+    testConnectedEdgeToAnotherEdge: function () {
       var queries = [
         [`WITH ${vn}, ${en} FOR x,y,z IN 1..10 OUTBOUND @start @@ec return x`, false]
       ];
