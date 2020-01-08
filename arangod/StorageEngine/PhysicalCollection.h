@@ -217,6 +217,11 @@ class PhysicalCollection {
                         bool lock, KeyLockInfo* keyLockInfo,
                         std::function<void()> const& cbDuringLock) = 0;
 
+  virtual Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                        ManagedDocumentResult& previous, OperationOptions& options,
+                        bool lock, KeyLockInfo* keyLockInfo,
+                        std::function<void()> const& cbDuringLock);
+
   /// @brief new object for insert, value must have _key set correctly.
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
                             bool isEdgeCollection, velocypack::Builder& builder,

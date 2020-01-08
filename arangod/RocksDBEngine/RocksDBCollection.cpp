@@ -1121,10 +1121,9 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
-                                 ManagedDocumentResult& previousMdr, OperationOptions& options,
-                                 bool /*lock*/, KeyLockInfo* /*keyLockInfo*/,
+                                 ManagedDocumentResult& previousMdr,
+                                 OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
                                  std::function<void()> const& cbDuringLock) {
-
   VPackSlice keySlice;
   if (slice.isString()) {
     keySlice = slice;
@@ -1140,11 +1139,35 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   if (!documentId.isSet()) {
     return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
   }
+
+  // Check old revision:
+  LocalDocumentId expectedId;
+  if (!options.ignoreRevs && slice.isObject()) {
+    expectedId = LocalDocumentId::create(TRI_ExtractRevisionId(slice));
+  }
+
+  return remove(trx, documentId, expectedId, previousMdr, options, cbDuringLock);
+}
+
+Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
+                                 ManagedDocumentResult& previousMdr,
+                                 OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
+                                 std::function<void()> const& cbDuringLock) {
+  return remove(trx, documentId, LocalDocumentId(), previousMdr, options, cbDuringLock);
+}
+
+Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
+                                 LocalDocumentId expectedId, ManagedDocumentResult& previousMdr,
+                                 OperationOptions& options,
+                                 std::function<void()> const& cbDuringLock) {
+  if (!documentId.isSet()) {
+    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+  }
   std::string* prevBuffer = previousMdr.setManaged();
   // uses either prevBuffer or avoids memcpy (if read hits block cache)
   rocksdb::PinnableSlice previousPS(prevBuffer);
   Result res = lookupDocumentVPack(&trx, documentId, previousPS,
-                                   /*readCache*/true, /*fillCache*/false);
+                                   /*readCache*/ true, /*fillCache*/ false);
   if (res.fail()) {
     return res;
   }
@@ -1155,10 +1178,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   TRI_ASSERT(previousMdr.revisionId() != 0);
 
   // Check old revision:
-  if (!options.ignoreRevs && slice.isObject()) {
-    TRI_voc_rid_t expectedRevisionId = TRI_ExtractRevisionId(slice);
-    res = checkRevision(&trx, expectedRevisionId, previousMdr.revisionId());
-
+  if (!options.ignoreRevs && expectedId.isSet()) {
+    res = checkRevision(&trx, expectedId.id(), previousMdr.revisionId());
     if (res.fail()) {
       return res;
     }
@@ -1185,7 +1206,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
     }
 
     bool hasPerformedIntermediateCommit = false;
-    res = state->addOperation(_logicalCollection.id(), newRevisionId(), TRI_VOC_DOCUMENT_OPERATION_REMOVE,
+    res = state->addOperation(_logicalCollection.id(), newRevisionId(),
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
 
     if (res.ok() && cbDuringLock != nullptr) {
@@ -1235,23 +1257,23 @@ void RocksDBCollection::figuresSpecific(arangodb::velocypack::Builder& builder) 
 }
 
 namespace {
-template<typename F>
+template <typename F>
 void reverseIdxOps(PhysicalCollection::IndexContainerType const& indexes,
-                   PhysicalCollection::IndexContainerType::const_iterator& it,
-                   F&& op) {
+                   PhysicalCollection::IndexContainerType::const_iterator& it, F&& op) {
   while (it != indexes.begin()) {
     it--;
     auto* rIdx = static_cast<RocksDBIndex*>(it->get());
     if (rIdx->needsReversal()) {
       if (std::forward<F>(op)(rIdx).fail()) {
-        // best effort for reverse failed. Let`s trigger full rollback  
+        // best effort for reverse failed. Let`s trigger full rollback
         // or we will end up with inconsistent storage and indexes
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Failed to reverse index operation.");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "Failed to reverse index operation.");
       }
     }
   }
 }
-}
+}  // namespace
 
 Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
@@ -1270,7 +1292,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     // blacklist new document to avoid caching without committing first
     blackListKey(key.ref());
   }
-    
+
   RocksDBMethods* mthds = state->rocksdbMethods();
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
@@ -1285,7 +1307,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 
   READ_LOCKER(guard, _indexesLock);
-  
+
   bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
@@ -1294,7 +1316,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
         ::reverseIdxOps(_indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
-          return rid->remove(*trx, mthds, documentId, doc,  Index::OperationMode::rollback);
+          return rid->remove(*trx, mthds, documentId, doc, Index::OperationMode::rollback);
         });
       }
       break;
@@ -1357,223 +1379,223 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                                      documentId.id());
 
   return res;
-}
-
-Result RocksDBCollection::updateDocument(transaction::Methods* trx,
-                                         LocalDocumentId const& oldDocumentId,
-                                         VPackSlice const& oldDoc,
-                                         LocalDocumentId const& newDocumentId,
-                                         VPackSlice const& newDoc,
-                                         OperationOptions& options) const {
-  // Coordinator doesn't know index internals
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  TRI_ASSERT(trx->state()->isRunning());
-  TRI_ASSERT(_objectId != 0);
-  Result res;
-
-  RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
-  RocksDBMethods* mthds = state->rocksdbMethods();
-  // disable indexing in this transaction if we are allowed to
-  IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
-
-  RocksDBKeyLeaser key(trx);
-  key->constructDocument(_objectId, oldDocumentId);
-  TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
-  blackListKey(key.ref());
-
-  rocksdb::Status s = mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
-  if (!s.ok()) {
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
-  key->constructDocument(_objectId, newDocumentId);
-  TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-  s = mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
-                          rocksdb::Slice(newDoc.startAs<char>(),
-                                         static_cast<size_t>(newDoc.byteSize())));
-  if (!s.ok()) {
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
-  }
-  
-  if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // blacklist new document to avoid caching without committing first
-    blackListKey(key.ref());
-  }
-    
-  READ_LOCKER(guard, _indexesLock);
-  bool needReversal = false;
-  for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
-    auto rIdx = static_cast<RocksDBIndex*>(it->get());
-    res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
-                       newDoc, options.indexOperationMode);
-    needReversal = needReversal || rIdx->needsReversal();
-    if (!res.ok()) {
-      if (needReversal && !trx->isSingleOperationTransaction()) {
-        ::reverseIdxOps(_indexes, it,
-                        [mthds, trx, &newDocumentId, &newDoc, &oldDocumentId, &oldDoc](RocksDBIndex* rid) {
-                          return rid->update(*trx, mthds, newDocumentId, newDoc, oldDocumentId,
-                                             oldDoc, Index::OperationMode::rollback);
-                        });
-      }
-      break;
-    }
-  }
+  Result RocksDBCollection::updateDocument(transaction::Methods* trx,
+                                           LocalDocumentId const& oldDocumentId,
+                                           VPackSlice const& oldDoc,
+                                           LocalDocumentId const& newDocumentId,
+                                           VPackSlice const& newDoc,
+                                           OperationOptions& options) const {
+    // Coordinator doesn't know index internals
+    TRI_ASSERT(!ServerState::instance()->isCoordinator());
+    TRI_ASSERT(trx->state()->isRunning());
+    TRI_ASSERT(_objectId != 0);
+    Result res;
 
-  RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
-                                                     oldDocumentId.id());
-  RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
-                                                     newDocumentId.id());
+    RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
+    RocksDBMethods* mthds = state->rocksdbMethods();
+    // disable indexing in this transaction if we are allowed to
+    IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
-  return res;
-}
-
-/// @brief lookup document in cache and / or rocksdb
-/// @param readCache attempt to read from cache
-/// @param fillCache fill cache with found document
-arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
-                                                        LocalDocumentId const& documentId,
-                                                        rocksdb::PinnableSlice& ps,
-                                                        bool readCache,
-                                                        bool fillCache) const {
-  TRI_ASSERT(trx->state()->isRunning());
-  TRI_ASSERT(_objectId != 0);
-  Result res;
-
-  RocksDBKeyLeaser key(trx);
-  key->constructDocument(_objectId, documentId);
-
-  bool lockTimeout = false;
-  if (readCache && useCache()) {
-    TRI_ASSERT(_cache != nullptr);
-    // check cache first for fast path
-    auto f = _cache->find(key->string().data(),
-                          static_cast<uint32_t>(key->string().size()));
-    if (f.found()) {  // copy finding into buffer
-      ps.PinSelf(rocksdb::Slice(reinterpret_cast<char const*>(f.value()->value()),
-                                f.value()->valueSize()));
-      // TODO we could potentially use the PinSlice method ?!
-      return res; // all good
-    }
-    if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-      // assuming someone is currently holding a write lock, which
-      // is why we cannot access the TransactionalBucket.
-      lockTimeout = true;  // we skip the insert in this case
-    }
-  }
-
-  RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
-
-  if (!s.ok()) {
-    LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
-    << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
-    << " objectID " << _objectId << " name: " << _logicalCollection.name();
-    return res.reset(rocksutils::convertStatus(s, rocksutils::document));
-  }
-
-  if (fillCache && useCache() && !lockTimeout) {
-    TRI_ASSERT(_cache != nullptr);
-    // write entry back to cache
-    auto entry =
-        cache::CachedValue::construct(key->string().data(),
-                                      static_cast<uint32_t>(key->string().size()),
-                                      ps.data(), static_cast<uint64_t>(ps.size()));
-    if (entry) {
-      auto status = _cache->insert(entry);
-      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        // the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
-      }
-    }
-  }
-
-  return res;
-}
-
-bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
-                                            LocalDocumentId const& documentId,
-                                            IndexIterator::DocumentCallback const& cb,
-                                            bool withCache) const {
-
-  if (withCache && useCache()) {
     RocksDBKeyLeaser key(trx);
-    key->constructDocument(_objectId, documentId);
-    TRI_ASSERT(_cache != nullptr);
-    // check cache first for fast path
-    auto f = _cache->find(key->string().data(),
-                          static_cast<uint32_t>(key->string().size()));
-    if (f.found()) {
-      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
-      return true;
+    key->constructDocument(_objectId, oldDocumentId);
+    TRI_ASSERT(key->containsLocalDocumentId(oldDocumentId));
+    blackListKey(key.ref());
+
+    rocksdb::Status s =
+        mthds->SingleDelete(RocksDBColumnFamily::documents(), key.ref());
+    if (!s.ok()) {
+      return res.reset(rocksutils::convertStatus(s, rocksutils::document));
     }
-  }
 
-  transaction::StringLeaser buffer(trx);
-  rocksdb::PinnableSlice ps(buffer.get());
-  Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/false, withCache);
-  if (res.ok()) {
-    TRI_ASSERT(ps.size() > 0);
-    cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
-    return true;
-  }
-  return false;
-}
+    key->constructDocument(_objectId, newDocumentId);
+    TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
+    s = mthds->PutUntracked(RocksDBColumnFamily::documents(), key.ref(),
+                            rocksdb::Slice(newDoc.startAs<char>(),
+                                           static_cast<size_t>(newDoc.byteSize())));
+    if (!s.ok()) {
+      return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    }
 
-void RocksDBCollection::createCache() const {
-  if (!_cacheEnabled || _cache || _logicalCollection.isAStub() ||
-      ServerState::instance()->isCoordinator()) {
-    // we leave this if we do not need the cache
-    // or if cache already created
-    return;
-  }
+    if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+      // blacklist new document to avoid caching without committing first
+      blackListKey(key.ref());
+    }
 
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cache.get() == nullptr);
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-  LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
-  _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
-  TRI_ASSERT(_cacheEnabled);
-}
-
-void RocksDBCollection::destroyCache() const {
-  if (!_cache) {
-    return;
-  }
-  TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
-  // must have a cache...
-  TRI_ASSERT(_cache.get() != nullptr);
-  LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
-  CacheManagerFeature::MANAGER->destroyCache(_cache);
-  _cache.reset();
-}
-
-// blacklist given key from transactional cache
-void RocksDBCollection::blackListKey(RocksDBKey const& k) const {
-  if (useCache()) {
-    TRI_ASSERT(_cache != nullptr);
-    bool blacklisted = false;
-    while (!blacklisted) {
-      auto status = _cache->blacklist(k.buffer()->data(),
-                                      static_cast<uint32_t>(k.buffer()->size()));
-      if (status.ok()) {
-        blacklisted = true;
-      } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
-        destroyCache();
+    READ_LOCKER(guard, _indexesLock);
+    bool needReversal = false;
+    for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
+      auto rIdx = static_cast<RocksDBIndex*>(it->get());
+      res = rIdx->update(*trx, mthds, oldDocumentId, oldDoc, newDocumentId,
+                         newDoc, options.indexOperationMode);
+      needReversal = needReversal || rIdx->needsReversal();
+      if (!res.ok()) {
+        if (needReversal && !trx->isSingleOperationTransaction()) {
+          ::reverseIdxOps(_indexes, it,
+                          [mthds, trx, &newDocumentId, &newDoc, &oldDocumentId,
+                           &oldDoc](RocksDBIndex* rid) {
+                            return rid->update(*trx, mthds, newDocumentId,
+                                               newDoc, oldDocumentId, oldDoc,
+                                               Index::OperationMode::rollback);
+                          });
+        }
         break;
       }
     }
-  }
-}
 
-/// @brief can use non transactional range delete in write ahead log
-bool RocksDBCollection::canUseRangeDeleteInWal() const {
-  if (ServerState::instance()->isSingleServer()) {
-    // disableWalFilePruning is used by createIndex
-    return _numIndexCreations.load(std::memory_order_acquire) == 0;
+    RocksDBTransactionState::toState(trx)->trackRemove(_logicalCollection.id(),
+                                                       oldDocumentId.id());
+    RocksDBTransactionState::toState(trx)->trackInsert(_logicalCollection.id(),
+                                                       newDocumentId.id());
+
+    return res;
   }
-  return false;
-}
+
+  /// @brief lookup document in cache and / or rocksdb
+  /// @param readCache attempt to read from cache
+  /// @param fillCache fill cache with found document
+  arangodb::Result RocksDBCollection::lookupDocumentVPack(
+      transaction::Methods* trx, LocalDocumentId const& documentId,
+      rocksdb::PinnableSlice& ps, bool readCache, bool fillCache) const {
+    TRI_ASSERT(trx->state()->isRunning());
+    TRI_ASSERT(_objectId != 0);
+    Result res;
+
+    RocksDBKeyLeaser key(trx);
+    key->constructDocument(_objectId, documentId);
+
+    bool lockTimeout = false;
+    if (readCache && useCache()) {
+      TRI_ASSERT(_cache != nullptr);
+      // check cache first for fast path
+      auto f = _cache->find(key->string().data(),
+                            static_cast<uint32_t>(key->string().size()));
+      if (f.found()) {  // copy finding into buffer
+        ps.PinSelf(rocksdb::Slice(reinterpret_cast<char const*>(f.value()->value()),
+                                  f.value()->valueSize()));
+        // TODO we could potentially use the PinSlice method ?!
+        return res;  // all good
+      }
+      if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+        // assuming someone is currently holding a write lock, which
+        // is why we cannot access the TransactionalBucket.
+        lockTimeout = true;  // we skip the insert in this case
+      }
+    }
+
+    RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+    rocksdb::Status s = mthd->Get(RocksDBColumnFamily::documents(), key->string(), &ps);
+
+    if (!s.ok()) {
+      LOG_TOPIC("f63dd", DEBUG, Logger::ENGINES)
+          << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
+          << " objectID " << _objectId << " name: " << _logicalCollection.name();
+      return res.reset(rocksutils::convertStatus(s, rocksutils::document));
+    }
+
+    if (fillCache && useCache() && !lockTimeout) {
+      TRI_ASSERT(_cache != nullptr);
+      // write entry back to cache
+      auto entry =
+          cache::CachedValue::construct(key->string().data(),
+                                        static_cast<uint32_t>(key->string().size()),
+                                        ps.data(), static_cast<uint64_t>(ps.size()));
+      if (entry) {
+        auto status = _cache->insert(entry);
+        if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+          // the writeLock uses cpu_relax internally, so we can try yield
+          std::this_thread::yield();
+          status = _cache->insert(entry);
+        }
+        if (status.fail()) {
+          delete entry;
+        }
+      }
+    }
+
+    return res;
+  }
+
+  bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
+                                              LocalDocumentId const& documentId,
+                                              IndexIterator::DocumentCallback const& cb,
+                                              bool withCache) const {
+    if (withCache && useCache()) {
+      RocksDBKeyLeaser key(trx);
+      key->constructDocument(_objectId, documentId);
+      TRI_ASSERT(_cache != nullptr);
+      // check cache first for fast path
+      auto f = _cache->find(key->string().data(),
+                            static_cast<uint32_t>(key->string().size()));
+      if (f.found()) {
+        cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
+        return true;
+      }
+    }
+
+    transaction::StringLeaser buffer(trx);
+    rocksdb::PinnableSlice ps(buffer.get());
+    Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/ false, withCache);
+    if (res.ok()) {
+      TRI_ASSERT(ps.size() > 0);
+      cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
+      return true;
+    }
+    return false;
+  }
+
+  void RocksDBCollection::createCache() const {
+    if (!_cacheEnabled || _cache || _logicalCollection.isAStub() ||
+        ServerState::instance()->isCoordinator()) {
+      // we leave this if we do not need the cache
+      // or if cache already created
+      return;
+    }
+
+    TRI_ASSERT(_cacheEnabled);
+    TRI_ASSERT(_cache.get() == nullptr);
+    TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+    LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
+    _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
+    TRI_ASSERT(_cacheEnabled);
+  }
+
+  void RocksDBCollection::destroyCache() const {
+    if (!_cache) {
+      return;
+    }
+    TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+    // must have a cache...
+    TRI_ASSERT(_cache.get() != nullptr);
+    LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
+    CacheManagerFeature::MANAGER->destroyCache(_cache);
+    _cache.reset();
+  }
+
+  // blacklist given key from transactional cache
+  void RocksDBCollection::blackListKey(RocksDBKey const& k) const {
+    if (useCache()) {
+      TRI_ASSERT(_cache != nullptr);
+      bool blacklisted = false;
+      while (!blacklisted) {
+        auto status = _cache->blacklist(k.buffer()->data(),
+                                        static_cast<uint32_t>(k.buffer()->size()));
+        if (status.ok()) {
+          blacklisted = true;
+        } else if (status.errorNumber() == TRI_ERROR_SHUTTING_DOWN) {
+          destroyCache();
+          break;
+        }
+      }
+    }
+  }
+
+  /// @brief can use non transactional range delete in write ahead log
+  bool RocksDBCollection::canUseRangeDeleteInWal() const {
+    if (ServerState::instance()->isSingleServer()) {
+      // disableWalFilePruning is used by createIndex
+      return _numIndexCreations.load(std::memory_order_acquire) == 0;
+    }
+    return false;
+  }

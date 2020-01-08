@@ -92,7 +92,7 @@ std::string const kDataString = "data";
 
 arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
                                  arangodb::LogicalCollection& collection,
-                                 std::vector<std::string>& toRemove,
+                                 std::vector<std::size_t>& toRemove,
                                  arangodb::InitialSyncerIncrementalSyncStats& stats) {
   using arangodb::PhysicalCollection;
   using arangodb::Result;
@@ -104,18 +104,14 @@ arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
 
   PhysicalCollection* physical = collection.getPhysical();
 
-  VPackBuilder builder;
   arangodb::ManagedDocumentResult mdr;
   arangodb::OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
 
-  for (std::string& docKey : toRemove) {
-    builder.clear();
-    builder.add(arangodb::velocypack::ValuePair(docKey.data(), docKey.size(),
-                                                arangodb::velocypack::ValueType::String));
-    auto r = physical->remove(trx, builder.slice(), mdr, options,
+  for (std::size_t rid : toRemove) {
+    auto r = physical->remove(trx, arangodb::LocalDocumentId::create(rid), mdr, options,
                               /*lock*/ false, nullptr, nullptr);
     if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // ignore not found, we remove conflicting docs ahead of time
@@ -1420,7 +1416,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     }
 
     std::vector<std::size_t> toFetch;
-    std::vector<std::string> toRemove;
+    std::vector<std::size_t> toRemove;
     const uint64_t documentsFound = treeLocal->count();
     RevisionReplicationIterator& local =
         *static_cast<RevisionReplicationIterator*>(iter.get());
@@ -1510,8 +1506,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         TRI_ASSERT(mixedBound <= currentRange.second);
 
         while (local.hasMore() && local.revision() < removalBound) {
-          std::string key = transaction::helpers::extractKeyString(local.document());
-          toRemove.emplace_back(key);
+          toRemove.emplace_back(local.revision());
           iterResume = std::max(iterResume, local.revision() + 1);
           local.next();
         }
@@ -1521,8 +1516,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
           TRI_voc_rid_t masterRev = masterSlice.at(index).getNumber<TRI_voc_rid_t>();
 
           if (local.revision() < masterRev) {
-            std::string key = transaction::helpers::extractKeyString(local.document());
-            toRemove.emplace_back(key);
+            toRemove.emplace_back(local.revision());
             iterResume = std::max(iterResume, local.revision() + 1);
             local.next();
           } else if (masterRev < local.revision()) {
@@ -1546,8 +1540,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
         while (local.hasMore() &&
                local.revision() <= std::min(requestResume, currentRange.second)) {
-          std::string key = transaction::helpers::extractKeyString(local.document());
-          toRemove.emplace_back(key);
+          toRemove.emplace_back(local.revision());
           iterResume = std::max(iterResume, local.revision() + 1);
           local.next();
         }

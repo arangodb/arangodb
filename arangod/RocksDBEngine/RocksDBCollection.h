@@ -135,9 +135,19 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 bool lock, KeyLockInfo* keyLockInfo,
                 std::function<void()> const& cbDuringLock) override;
 
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                ManagedDocumentResult& previous, OperationOptions& options,
+                bool lock, KeyLockInfo* keyLockInfo,
+                std::function<void()> const& cbDuringLock) override;
+
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;
+
+ protected:
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                LocalDocumentId expectedId, ManagedDocumentResult& previous,
+                OperationOptions& options, std::function<void()> const& cbDuringLock);
 
  private:
   /// @brief return engine-specific figures

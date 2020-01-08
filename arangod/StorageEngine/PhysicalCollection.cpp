@@ -617,6 +617,13 @@ std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
 
 void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {}
 
+Result PhysicalCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
+                                  ManagedDocumentResult& previous, OperationOptions& options,
+                                  bool lock, KeyLockInfo* keyLockInfo,
+                                  std::function<void()> const& cbDuringLock) {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& left,
                                                 const std::shared_ptr<Index>& right) const {
   // Primary index always first (but two primary indexes render comparsion
