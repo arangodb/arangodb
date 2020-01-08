@@ -50,6 +50,24 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace arangodb {
+namespace aql {
+// Custom AqlCall printer.
+void PrintTo(const arangodb::aql::AqlCall& call, ::std::ostream* out) {
+  *out << "skip: " << call.offset << " softLimit: ";
+  auto limitPrinter =
+      arangodb::overload{[&out](size_t const& i) -> std::ostream& {
+                           return *out << i;
+                         },
+                         [&out](arangodb::aql::AqlCall::Infinity const&) -> std::ostream& {
+                           return *out << "unlimited";
+                         }};
+  std::visit(limitPrinter, call.softLimit);
+  *out << " hardLimit: ";
+  std::visit(limitPrinter, call.hardLimit);
+  *out << " fullCount: " << std::boolalpha << call.fullCount;
+}
+}  // namespace aql
+
 namespace tests {
 namespace aql {
 
@@ -887,15 +905,74 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
   auto const& call = GetParam();
   AqlCallStack stack{call};
   auto const [state, skipped, block] = producer->execute(stack);
-  EXPECT_EQ(state, ExecutionState::DONE);
+  if (std::holds_alternative<size_t>(call.softLimit) && !call.hasHardLimit()) {
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+  } else {
+    EXPECT_EQ(state, ExecutionState::DONE);
+  }
+
   ValidateResult(builder, skipped, block, outReg);
 }
 
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
+  auto singleton = createSingleton();
+
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openArray();
+  for (size_t i = 0; i < 10; ++i) {
+    builder->add(VPackValue(i));
+  }
+  builder->close();
+  RegisterId outRegFirst = 0;
+  RegisterId outRegSecond = 1;
+  auto producerFirst = produceBlock(singleton.get(), builder, outRegFirst);
+  auto producer = produceBlock(producerFirst.get(), builder, outRegSecond);
+  auto const& call = GetParam();
+  AqlCallStack stack{call};
+  auto const [state, skipped, block] = producer->execute(stack);
+  if (call.getLimit() < 100) {
+    if (call.hasHardLimit()) {
+      // On hard limit we need to stop
+      EXPECT_EQ(state, ExecutionState::DONE);
+    } else {
+      // On soft limit we need to be able to produce more
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+    }
+  } else {
+    EXPECT_FALSE(call.hasHardLimit());
+    EXPECT_EQ(state, ExecutionState::DONE);
+  }
+
+  auto firstRegBuilder = std::make_shared<VPackBuilder>();
+  auto secondRegBuilder = std::make_shared<VPackBuilder>();
+  firstRegBuilder->openArray();
+  secondRegBuilder->openArray();
+  for (size_t i = 0; i < 10; ++i) {
+    // i => 0 -> 9
+    for (size_t j = 0; j < 10; ++j) {
+      // j => 0 -> 9
+      firstRegBuilder->add(VPackValue(i));
+      secondRegBuilder->add(VPackValue(j));
+    }
+  }
+  secondRegBuilder->close();
+  firstRegBuilder->close();
+  ValidateResult(firstRegBuilder, skipped, block, outRegFirst);
+  ValidateResult(secondRegBuilder, skipped, block, outRegSecond);
+}
+
 static const AqlCall defaultCall{};
-static const AqlCall skipCall{.offset = 100};
+static const AqlCall skipCall{.offset = 15};
+static const AqlCall softLimit{.softLimit = 35};
+static const AqlCall hardLimit{.hardLimit = 76};
+static const AqlCall fullCount{.hardLimit = 17, .fullCount = true};
+static const AqlCall skipAndSoftLimit{.offset = 16, .softLimit = 64};
+static const AqlCall skipAndHardLimit{.offset = 32, .hardLimit = 71};
+static const AqlCall skipAndHardLimitAndFullCount{.offset = 8, .hardLimit = 57, .fullCount = true};
 
 INSTANTIATE_TEST_CASE_P(ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,
-                        ::testing::Values(defaultCall, skipCall));
+                        ::testing::Values(defaultCall, skipCall, softLimit, hardLimit, /*fullCount,*/
+                                          skipAndSoftLimit, skipAndHardLimit));
 
 }  // namespace aql
 }  // namespace tests
