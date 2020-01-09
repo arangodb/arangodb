@@ -73,7 +73,7 @@ static constexpr char const* currentServersRegisteredPref =
 /// running
 ////////////////////////////////////////////////////////////////////////////////
 
-static ServerState* Instance;
+static ServerState* Instance = nullptr;
 
 ServerState::ServerState(application_features::ApplicationServer& server)
     : _server(server),

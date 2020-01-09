@@ -101,7 +101,7 @@ ERROR_ARANGO_DATADIR_INVALID,1201,"invalid database directory","Will be raised w
 ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier is unknown."
 ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,1203,"collection or view not found","Will be raised when a collection with the given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
-ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document identifier","Will be raised when a document identifier is corrupt."
+ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document handle","Will be raised when a document identifier is corrupt."
 ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maximal size of journal too small","Will be raised when the maximal size of the journal is too small."
 ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name duplicate is detected."
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."

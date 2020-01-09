@@ -376,7 +376,7 @@ constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            
 constexpr int TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING                     = 1204;
 
 /// 1205: ERROR_ARANGO_DOCUMENT_HANDLE_BAD
-/// "illegal document identifier"
+/// "illegal document handle"
 /// Will be raised when a document identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD                              = 1205;
 

@@ -54,7 +54,7 @@ enum ProfileLevel : uint32_t {
 };
 
 struct QueryOptions {
-  QueryOptions(QueryRegistryFeature&);
+  explicit QueryOptions(QueryRegistryFeature&);
   TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);

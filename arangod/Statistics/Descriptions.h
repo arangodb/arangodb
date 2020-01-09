@@ -77,7 +77,7 @@ struct Figure {
 
 class Descriptions final {
  public:
-  Descriptions(application_features::ApplicationServer&);
+  explicit Descriptions(application_features::ApplicationServer&);
 
   std::vector<stats::Group> const& groups() const { return _groups; }
 

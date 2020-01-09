@@ -510,7 +510,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* /*expressi
 
   TRI_ASSERT(trx);
   auto& server = trx->vocbase().server();
-  if( args.size() > 1) {
+  if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
                           ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
