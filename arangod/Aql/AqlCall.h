@@ -88,8 +88,12 @@ struct AqlCall {
   }
 
   void didSkip(std::size_t n) {
-    TRI_ASSERT(n <= offset);
-    offset -= n;
+    if (n <= offset) {
+      // TRI_ASSERT(n <= offset);
+      offset -= n;
+    } else {
+      TRI_ASSERT(fullCount);
+    }
   }
 
   void didProduce(std::size_t n) {

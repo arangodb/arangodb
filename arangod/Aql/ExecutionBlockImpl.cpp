@@ -1022,7 +1022,15 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
 }
 
 // TODO move me up
-enum ExecState { SKIP, PRODUCE, FULLCOUNT, UPSTREAM, SHADOWROWS, DONE };
+enum ExecState {
+  SKIP,
+  PRODUCE,
+  FASTFORWARD,
+  FULLCOUNT,
+  UPSTREAM,
+  SHADOWROWS,
+  DONE
+};
 
 // TODO clean me up
 namespace {
@@ -1039,6 +1047,10 @@ ExecState NextState(AqlCall const& call) {
   if (call.needsFullCount()) {
     // then fullcount
     return ExecState::FULLCOUNT;
+  }
+  if (call.hardLimit == 0) {
+    // We reached hardLimit, fast forward
+    return ExecState::FASTFORWARD;
   }
   // now we are done.
   return ExecState::DONE;
@@ -1121,11 +1133,18 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       // In all other cases, we skip by letting the executor produce rows, and
       // then throw them away.
 
+      // TODO: This is temporary, we plan to simply create an output block and
+      // let it internally handle offset and fullCount.
       size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
+      if (toSkip == 0) {
+        TRI_ASSERT(call.needsFullCount());
+        toSkip = DefaultBatchSize();
+      }
       AqlCall skipCall{};
       skipCall.softLimit = toSkip;
       skipCall.hardLimit = toSkip;
       skipCall.offset = 0;
+      skipCall.fullCount = call.fullCount;
 
       // we can't mess with _outputItemRow,
       auto skipOutput = allocateOutputBlock(std::move(skipCall));
@@ -1226,9 +1245,38 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           }
           break;
         }
+        case ExecState::FASTFORWARD: {
+          // We can either do FASTFORWARD or FULLCOUNT, difference is that
+          // fullcount counts what is produced now, FASTFORWARD simply drops
+          TRI_ASSERT(!_outputItemRow->getClientCall().needsFullCount());
+          // We can drop all dataRows from upstream
+
+          while (_lastRange.hasDataRow()) {
+            auto [state, row] = _lastRange.nextDataRow();
+            TRI_ASSERT(row.isInitialized());
+          }
+          if (_lastRange.upstreamState() == ExecutorState::DONE) {
+            execState = ExecState::SHADOWROWS;
+          } else {
+            // We need to request more, simply send hardLimit 0 upstream
+            executorRequest = AqlCall{.hardLimit = 0};
+            execState = ExecState::UPSTREAM;
+          }
+          break;
+        }
         case ExecState::FULLCOUNT: {
-          TRI_ASSERT(false);
-          // TODO: wat.
+          auto [state, skippedLocal, call] =
+              executeSkipRowsRange(_lastRange, _outputItemRow->getModifiableClientCall());
+          skipped += skippedLocal;
+
+          if (state == ExecutorState::DONE) {
+            execState = ExecState::SHADOWROWS;
+          } else {
+            // We need to request more
+            executorRequest = call;
+            execState = ExecState::UPSTREAM;
+          }
+          break;
         }
         case ExecState::UPSTREAM: {
           // If this triggers the executors produceRows function has returned
@@ -1291,7 +1339,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(false);
       }
     }
-
     auto outputBlock = _outputItemRow->stealBlock();
     // This is not strictly necessary here, as we shouldn't be called again
     // after DONE.

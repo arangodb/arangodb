@@ -846,7 +846,11 @@ class ExecutionBlockImplExecuteIntegrationTest
     size_t offset =
         (std::min)(call.getOffset(), static_cast<size_t>(expected.length()));
 
-    EXPECT_EQ(offset, skipped);
+    if (!call.needsFullCount()) {
+      // Otherweise skipped = offset + fullCount
+      EXPECT_EQ(offset, skipped);
+    }
+
     for (size_t i = 0; i < offset; ++i) {
       // The first have been skipped
       expectedIt++;
@@ -868,7 +872,12 @@ class ExecutionBlockImplExecuteIntegrationTest
       EXPECT_EQ(limit, 0);
     }
 
-    // TODO test fullcount
+    // Now test Fullcount
+    if (call.needsFullCount()) {
+      ASSERT_TRUE(expected.length() >= offset + limit);
+      size_t fullCount = expected.length() - offset - limit;
+      EXPECT_EQ(offset + fullCount, skipped);
+    }
   }
 };
 
@@ -953,8 +962,9 @@ static const AqlCall skipAndHardLimit{.offset = 32, .hardLimit = 71};
 static const AqlCall skipAndHardLimitAndFullCount{.offset = 8, .hardLimit = 57, .fullCount = true};
 
 INSTANTIATE_TEST_CASE_P(ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,
-                        ::testing::Values(defaultCall, skipCall, softLimit, hardLimit, /*fullCount,*/
-                                          skipAndSoftLimit, skipAndHardLimit));
+                        ::testing::Values(defaultCall, skipCall, softLimit, hardLimit,
+                                          fullCount, skipAndSoftLimit, skipAndHardLimit,
+                                          skipAndHardLimitAndFullCount));
 
 }  // namespace aql
 }  // namespace tests
