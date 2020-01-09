@@ -35,6 +35,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 
@@ -110,10 +112,10 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
   };
 
   struct Connection final : public fuerte::Connection {
-    Connection(AsyncAgencyCommPoolMock* mock, std::string const& endpoint)
+    Connection(AsyncAgencyCommPoolMock* mock, std::string  endpoint)
         : fuerte::Connection(fuerte::detail::ConnectionConfiguration()),
           _mock(mock),
-          _endpoint(endpoint) {}
+          _endpoint(std::move(endpoint)) {}
 
     std::size_t requestsLeft() const override { return 1; }
     State state() const override {
@@ -156,9 +158,9 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
     }
   };
 
-  AsyncAgencyCommPoolMock(network::ConnectionPool::Config const& c)
+  explicit AsyncAgencyCommPoolMock(network::ConnectionPool::Config const& c)
       : network::ConnectionPool(c) {}
-  ~AsyncAgencyCommPoolMock() { TRI_ASSERT(_requests.empty()); }
+  ~AsyncAgencyCommPoolMock() override { TRI_ASSERT(_requests.empty()); }
 
   std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder& cb) override {
     return std::make_shared<Connection>(this, cb.normalizedEndpoint());

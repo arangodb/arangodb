@@ -903,19 +903,6 @@ class IResearchFeatureTestDBServer
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()),
         _pool(nullptr) {
 
-    arangodb::AgencyCommHelper::initialize("arango");
-
-    arangodb::network::ConnectionPool::Config poolConfig;
-    poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    poolConfig.numIOThreads = 1;
-    poolConfig.minOpenConnections = 1;
-    poolConfig.maxOpenConnections = 3;
-    poolConfig.verifyHosts = false;
-    _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
-    arangodb::AgencyComm().ensureStructureInitialized();  // initialize agency
-
-    arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
-
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
@@ -926,6 +913,19 @@ class IResearchFeatureTestDBServer
     server.addFeature<arangodb::QueryRegistryFeature>(false);
     server.addFeature<arangodb::ServerSecurityFeature>(false);
     server.startFeatures();
+
+    arangodb::AgencyCommHelper::initialize("arango");
+
+    arangodb::network::ConnectionPool::Config poolConfig;
+    poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+    poolConfig.numIOThreads = 1;
+    poolConfig.minOpenConnections = 1;
+    poolConfig.maxOpenConnections = 3;
+    poolConfig.verifyHosts = false;
+    _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
+    arangodb::AsyncAgencyCommManager::initialize();
+    arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");
+    arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
 
     arangodb::AgencyComm().ensureStructureInitialized();  // initialize agency
   }
