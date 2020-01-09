@@ -60,5 +60,6 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
   builder.add("overwrite", VPackValue(overwrite));
+  builder.add("overwriteModeUpdate", VPackValue(overwriteModeUpdate));
   builder.add("ignoreRevs", VPackValue(ignoreRevs));
 }

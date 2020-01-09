@@ -1,5 +1,9 @@
 devel
 -----
+* Add update-insert operation similar to existing replace-insert functionality of insert.
+
+  Like for the existing variant the `overwrite` flag has to be set to true.
+  Then the update version can be selected by setting the `overwriteMode` to `"update"`.
 
 * Fix Windows client package JS installation paths.
 

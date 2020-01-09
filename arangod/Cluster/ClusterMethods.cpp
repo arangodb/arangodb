@@ -1327,7 +1327,10 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::ReturnNewString, (options.returnNew ? "true" : "false"))
            .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
-           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
+           .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
+           .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
+           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"))
+           .param(StaticStrings::OverWriteMode, (options.overwriteModeUpdate ? "update" : "replace"));
 
 
     // Now prepare the requests:

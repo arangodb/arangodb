@@ -712,6 +712,7 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node) {
   ModificationOptions options;
 
+
   // parse the modification options we got
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -738,6 +739,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
           options.exclusive = value->isTrue();
         } else if (name == "overwrite") {
           options.overwrite = value->isTrue();
+        } else if (name == "overwriteMode") {
+          options.overwriteModeUpdate = value->getString() == "update";
         } else if (name == "ignoreRevs") {
           options.ignoreRevs = value->isTrue();
         }

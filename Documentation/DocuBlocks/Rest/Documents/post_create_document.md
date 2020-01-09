@@ -40,6 +40,27 @@ If set to *true*, the insert becomes a replace-insert. If a document with the
 same *_key* already exists the new document is not rejected with unique
 constraint violated but will replace the old document.
 
+@RESTQUERYPARAM{overwriteMode,string,optional}
+If set to *update*, the replace-insert becomes a update-insert. If a document with the
+same *_key* already exists the new document is not rejected with unique
+constraint violated but will update the old document. This option
+requires the overwirte option to be set to have any effect.
+
+@RESTQUERYPARAM{keepNull,boolean,optional}
+If the intention is to delete existing attributes with the update-insert
+command, the URL query parameter *keepNull* can be used with a value of
+*false*. This will modify the behavior of the patch command to remove any
+attributes from the existing document that are contained in the patch document
+with an attribute value of *null*.
+This option controls the update-insert behavior.
+
+@RESTQUERYPARAM{mergeObjects,boolean,optional}
+Controls whether objects (not arrays) will be merged if present in both the
+existing and the update-insert document. If set to *false*, the value in the
+patch document will overwrite the existing document's value. If set to *true*,
+objects will be merged. The default is *true*.
+This option controls the update-insert behavior.
+
 @RESTDESCRIPTION
 Creates a new document from the document given in the body, unless there
 is already a document with the *_key* given. If no *_key* is given, a new

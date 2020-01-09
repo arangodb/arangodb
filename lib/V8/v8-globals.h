@@ -610,6 +610,9 @@ struct TRI_v8_global_t {
   /// @brief "overwrite" key
   v8::Persistent<v8::String> OverwriteKey;
 
+  /// @brief "overwriteMode" key
+  v8::Persistent<v8::String> OverwriteModeKey;
+
   /// @brief "parameters" key name
   v8::Persistent<v8::String> ParametersKey;
 
@@ -741,7 +744,7 @@ struct TRI_v8_global_t {
   std::atomic<size_t> _heapMax;
 
   std::atomic<size_t> _heapLow;
-  
+
  private:
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8

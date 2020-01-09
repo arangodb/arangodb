@@ -2383,6 +2383,55 @@ function DatabaseDocumentSuiteReturnStuff () {
 
     },
 
+    testInsertOverwriteMode : function () {
+      let doc = { _key : "Harry",
+                  type : "hunk",
+                  color: "black",
+                  hobbies : { "1" : "sleeping" }
+                };
+
+      let update = { _key : "Harry",
+                     color: "grey",
+                     age: 11
+                   };
+
+      let merged = {...doc, ...update};
+
+      collection.insert(doc);
+      var rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+
+      update.age = null;
+      merged.age = null;
+      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true, keepNull:true});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+
+      update.age = null;
+      delete merged.age;
+      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true, keepNull:false});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+
+      update.hobbies = { "2" : "eating" };
+      merged.hobbies = {...update.hobbies, ...merged.hobbies };
+      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true, keepNull:false});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+
+      update.hobbies = { "2" : "eating" };
+      merged.hobbies = update.hobbies;
+      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true, mergeObjects:false});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+    }, // testInsertOverwriteModeUpdate
+
   };
 }
 

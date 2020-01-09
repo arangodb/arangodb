@@ -967,7 +967,7 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
   auto opRes = collection->figures().get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
-  
+
   if (opRes.ok()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
   } else {
@@ -1180,7 +1180,7 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-  
+
   // return the current parameter set
   TRI_V8_RETURN(
       TRI_VPackToV8(isolate, builder.slice())->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
@@ -1880,9 +1880,11 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     }
   }
 
+
   OperationOptions options;
   if (argLength > optsIdx && args[optsIdx]->IsObject()) {
     v8::Handle<v8::Object> optionsObject = args[optsIdx].As<v8::Object>();
+
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
     if (TRI_HasProperty(context, isolate, optionsObject, WaitForSyncKey)) {
       options.waitForSync =
@@ -1892,6 +1894,22 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
       options.overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(OverwriteKey));
     }
+    TRI_GET_GLOBAL_STRING(OverwriteModeKey);
+    if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
+      if (TRI_ObjectToString(isolate, optionsObject->Get(OverwriteModeKey)) == "update" ) {
+        options.overwriteModeUpdate = true;
+      }
+      TRI_GET_GLOBAL_STRING(KeepNullKey);
+      if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
+        options.keepNull = TRI_ObjectToBoolean(isolate, optionsObject->Get(KeepNullKey));
+      }
+      TRI_GET_GLOBAL_STRING(MergeObjectsKey);
+      if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
+        options.mergeObjects =
+            TRI_ObjectToBoolean(isolate, optionsObject->Get(MergeObjectsKey));
+      }
+    }
+
     TRI_GET_GLOBAL_STRING(SilentKey);
     if (TRI_HasProperty(context, isolate, optionsObject, SilentKey)) {
       options.silent = TRI_ObjectToBoolean(isolate, optionsObject->Get(SilentKey));
