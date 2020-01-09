@@ -92,7 +92,8 @@ struct Comparator final : public WalkerWorker<ExecutionNode> {
   void after(ExecutionNode* en) final {}
 
   bool enterSubquery(ExecutionNode*, ExecutionNode* sub) final {
-    EXPECT_TRUE(_expectNormalSubqueries) << "Optimized plan must not contain SUBQUERY nodes";
+    EXPECT_TRUE(_expectNormalSubqueries)
+        << "Optimized plan must not contain SUBQUERY nodes";
     return false;
   }
 
@@ -136,14 +137,11 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
   void verifySubquerySplicing(std::string const& querystring,
                               size_t const expectedNumberOfSplicedSubqueries,
                               size_t const expectedNumberOfUnsplicedSubqueries = 0,
-                              const char* additionalOptions = "{}"
-                              ) {
+                              const char* additionalOptions = "{}") {
     auto const expectedNumberOfSubqueries =
         expectedNumberOfSplicedSubqueries + expectedNumberOfUnsplicedSubqueries;
-    ASSERT_NE(queryRegistry, nullptr)
-              << "query string: " << querystring;
-    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
-              << "query string: " << querystring;
+    ASSERT_NE(queryRegistry, nullptr) << "query string: " << querystring;
+    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
     auto const bindParameters = VPackParser::fromJson("{ }");
     arangodb::aql::Query notSplicedQuery(false, server.getSystemDatabase(),
@@ -151,12 +149,10 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
                                          disableRuleOptions(additionalOptions),
                                          arangodb::aql::PART_MAIN);
     notSplicedQuery.prepare(queryRegistry, SerializationFormat::SHADOWROWS);
-    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
-              << "query string: " << querystring;
+    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
     auto notSplicedPlan = notSplicedQuery.plan();
-    ASSERT_NE(notSplicedPlan, nullptr)
-              << "query string: " << querystring;
+    ASSERT_NE(notSplicedPlan, nullptr) << "query string: " << querystring;
 
     SmallVector<ExecutionNode*>::allocator_type::arena_type a;
     SmallVector<ExecutionNode*> notSplicedSubqueryNodes{a};
@@ -174,12 +170,10 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
                                       nullptr, enableRuleOptions(additionalOptions),
                                       arangodb::aql::PART_MAIN);
     splicedQuery.prepare(queryRegistry, SerializationFormat::SHADOWROWS);
-    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
-              << "query string: " << querystring;
+    ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0) << "query string: " << querystring;
 
     auto splicedPlan = splicedQuery.plan();
-    ASSERT_NE(splicedPlan, nullptr)
-              << "query string: " << querystring;
+    ASSERT_NE(splicedPlan, nullptr) << "query string: " << querystring;
 
     SmallVector<ExecutionNode*> splicedSubqueryNodes{a};
     SmallVector<ExecutionNode*> splicedSubqueryStartNodes{a};
@@ -193,22 +187,20 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     splicedPlan->findNodesOfType(splicedSubquerySingletonNodes,
                                  ExecutionNode::SINGLETON, true);
 
-    EXPECT_EQ(0, notSplicedSubqueryStartNodes.size())
-      << "query string: " << querystring;
-    EXPECT_EQ(0, notSplicedSubqueryEndNodes.size())
-              << "query string: " << querystring;
+    EXPECT_EQ(0, notSplicedSubqueryStartNodes.size()) << "query string: " << querystring;
+    EXPECT_EQ(0, notSplicedSubqueryEndNodes.size()) << "query string: " << querystring;
 
     EXPECT_EQ(expectedNumberOfUnsplicedSubqueries, splicedSubqueryNodes.size())
-              << "query string: " << querystring;
+        << "query string: " << querystring;
     EXPECT_EQ(expectedNumberOfSplicedSubqueries, splicedSubqueryStartNodes.size())
-              << "query string: " << querystring;
+        << "query string: " << querystring;
     EXPECT_EQ(expectedNumberOfSplicedSubqueries, splicedSubqueryEndNodes.size())
-              << "query string: " << querystring;
+        << "query string: " << querystring;
     EXPECT_EQ(expectedNumberOfSubqueries, notSplicedSubqueryNodes.size())
-              << "query string: " << querystring;
+        << "query string: " << querystring;
 
     EXPECT_EQ(splicedSubquerySingletonNodes.size(), 1 + expectedNumberOfUnsplicedSubqueries)
-              << "query string: " << querystring;
+        << "query string: " << querystring;
 
     // Make sure no nodes got lost (currently does not check SubqueryNodes,
     // SubqueryStartNode, SubqueryEndNode correctness)
@@ -431,10 +423,10 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermos
   verifyQueryResult(queryString, expected->slice());
 }
 
-// Must be changed as soon as the subquery implementation with shadow rows handle skipping,
-// and the splice-subqueries optimizer rule is changed to allow it.
-// This is a test for a specific problem where constant subqueries did not work
-// inside spliced subqueries correctly.
+// Must be changed as soon as the subquery implementation with shadow rows
+// handle skipping, and the splice-subqueries optimizer rule is changed to allow
+// it. This is a test for a specific problem where constant subqueries did not
+// work inside spliced subqueries correctly.
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermost_constant_skip) {
   auto const queryString = R"aql(
     FOR a IN 1..2

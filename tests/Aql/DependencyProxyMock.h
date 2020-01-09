@@ -51,6 +51,9 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
 
   std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
 
+  std::tuple<arangodb::aql::ExecutionState, size_t, arangodb::aql::SharedAqlItemBlockPtr> execute(
+      arangodb::aql::AqlCallStack& stack) override;
+
  private:
   using FetchBlockReturnItem =
       std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>;
@@ -76,6 +79,7 @@ class DependencyProxyMock : public ::arangodb::aql::DependencyProxy<passBlocksTh
 
   ::arangodb::aql::ResourceMonitor& _monitor;
   ::arangodb::aql::AqlItemBlockManager _itemBlockManager;
+  ::arangodb::aql::SharedAqlItemBlockPtr _block;
 };
 
 template <::arangodb::aql::BlockPassthrough passBlocksThrough>

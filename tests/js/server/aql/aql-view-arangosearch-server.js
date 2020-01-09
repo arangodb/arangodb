@@ -357,8 +357,9 @@ function iResearchFeatureAqlServerSideTestSuite () {
           if (db._engine().name === "rocksdb") {
             dbPath = fs.safeJoin(internal.db._path(), 'databases');
             let databases = fs.list(dbPath);
-            assertEqual(1, databases.length);
-            dbPath = fs.safeJoin(dbPath, databases[0]);
+            assertTrue(databases.length >= 1);
+            dbPath = fs.safeJoin(dbPath, 'database-' + db._id());
+            assertTrue(fs.isDirectory(dbPath));
           } else if (db._engine().name !== "mmfiles") {
             fail("Unknown storage engine"); // if new engine is introduced, test should be updated
           }          
@@ -395,8 +396,21 @@ function iResearchFeatureAqlServerSideTestSuite () {
         // on Single server we could also check fs (on cluster we are on 
         // coordinator, so nothing to do)
         // no new arangosearch folders should be present
-        let afterLinkCount = getLinksCount();
-        assertEqual(beforeLinkCount, afterLinkCount);
+        // due to race conditions in FS (on MACs specifically)
+        // we will do several attempts
+        let tryCount = 3;
+        while (tryCount > 0) {
+          let afterLinkCount = getLinksCount();
+          if (afterLinkCount === beforeLinkCount) {
+          	break; // all is ok.
+          }
+          if (tryCount > 0) {
+            tryCount--;
+            require('internal').sleep(5);
+          } else {
+            assertEqual(beforeLinkCount, afterLinkCount);
+          }
+        }
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);

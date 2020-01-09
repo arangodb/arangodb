@@ -205,6 +205,17 @@ struct custom_sort : public irs::sort {
       }
     }
 
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
+      const size_t size, size_t offset) const  override {
+      auto& casted_dst = score_cast(dst + offset);
+      casted_dst = irs::doc_limits::invalid();
+      for (size_t i = 0; i < size; ++i) {
+        if (sort_.scorer_add) {
+          sort_.scorer_add(casted_dst, score_cast(src_start[i] + offset));
+        }
+      }
+    }
+
     virtual bool less(irs::byte_type const* lhs, const irs::byte_type* rhs) const override {
       return sort_.scorer_less ? sort_.scorer_less(score_cast(lhs), score_cast(rhs)) : false;
     }

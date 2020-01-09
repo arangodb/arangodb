@@ -368,11 +368,11 @@ TEST_F(FilterExecutorTest, test_produce_datarange) {
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
   EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::DONE);
   EXPECT_EQ(stats.getFiltered(), 2);
   EXPECT_EQ(output.numRowsWritten(), 3);
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 }
 
 TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
@@ -387,23 +387,23 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
   SharedAqlItemBlockPtr inBlock =
       buildBlock<1>(itemBlockManager,
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
-
+  size_t hardLimit = 1000;
   AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
-
+  AqlCall limitedCall{};
+  limitedCall.hardLimit = hardLimit;
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
+                          infos.registersToClear(), std::move(limitedCall));
   EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(stats.getFiltered(), 2);
   EXPECT_EQ(output.numRowsWritten(), 3);
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
   // Test the Call we send to upstream
   EXPECT_EQ(call.offset, 0);
   EXPECT_FALSE(call.hasHardLimit());
-  // Avoid overfetching. I do not have a strong requirement on this
-  // test, however this is what we do right now.
-  EXPECT_EQ(call.getLimit(), 997);
+  // We have a given softLimit, so we do not do overfetching
+  EXPECT_EQ(call.getLimit(), hardLimit - 3);
   EXPECT_FALSE(call.fullCount);
 }
 
@@ -421,11 +421,14 @@ TEST_F(FilterExecutorTest, test_skip_datarange_need_more) {
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
   AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+  AqlCall clientCall;
+  clientCall.offset = 1000;
 
-  auto const [state, skipped, call] = testee.skipRowsRange(1000, input);
+  auto const [state, skipped, call] = testee.skipRowsRange(input, clientCall);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(skipped, 3);
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_EQ(clientCall.getOffset(), 1000 - 3);
+  EXPECT_FALSE(input.hasDataRow());
 
   // Test the Call we send to upstream
   EXPECT_EQ(call.offset, 0);
@@ -450,27 +453,29 @@ TEST_F(FilterExecutorTest, test_produce_datarange_has_more) {
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
   AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  block.reset(new AqlItemBlock(itemBlockManager, 2, 1));
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
-  auto const [state, stats, call] = testee.produceRows(2, input, output);
+
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(stats.getFiltered(), 1);
   EXPECT_EQ(output.numRowsWritten(), 2);
-  EXPECT_TRUE(input.hasMore());
+  EXPECT_TRUE(input.hasDataRow());
   // We still have two values in block: false and true
   {
     // pop false
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_FALSE(row.getValue(0).toBoolean());
   }
   {
     // pop true
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::DONE);
     EXPECT_TRUE(row.getValue(0).toBoolean());
   }
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 }
 
 TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
@@ -487,24 +492,27 @@ TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
   AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
-  auto const [state, skipped, call] = testee.skipRowsRange(2, input);
+  AqlCall clientCall;
+  clientCall.offset = 2;
+  auto const [state, skipped, call] = testee.skipRowsRange(input, clientCall);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(skipped, 2);
-  EXPECT_TRUE(input.hasMore());
+  EXPECT_EQ(clientCall.getOffset(), 0);
+  EXPECT_TRUE(input.hasDataRow());
   // We still have two values in block: false and true
   {
     // pop false
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_FALSE(row.getValue(0).toBoolean());
   }
   {
     // pop true
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::DONE);
     EXPECT_TRUE(row.getValue(0).toBoolean());
   }
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 }
 
 }  // namespace aql

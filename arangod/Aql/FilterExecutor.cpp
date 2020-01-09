@@ -101,48 +101,52 @@ std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t at
   return _fetcher.preFetchNumberOfRows(atMost);
 }
 
+// TODO Remove me, we are using the getSome skip variant here.
 std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
-    size_t offset, AqlItemBlockInputRange& inputRange) {
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
   ExecutorState state = ExecutorState::HASMORE;
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   size_t skipped = 0;
-  while (inputRange.hasMore() && skipped < offset) {
-    std::tie(state, input) = inputRange.next();
+  while (inputRange.hasDataRow() && skipped < call.getOffset()) {
+    std::tie(state, input) = inputRange.nextDataRow();
     if (!input) {
-      TRI_ASSERT(!inputRange.hasMore());
+      TRI_ASSERT(!inputRange.hasDataRow());
       break;
     }
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       skipped++;
     }
   }
+  call.didSkip(skipped);
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = offset - skipped;
+  upstreamCall.softLimit = call.getOffset();
   return {state, skipped, upstreamCall};
 }
 
 std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
-    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   TRI_IF_FAILURE("FilterExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   FilterStats stats{};
 
-  while (inputRange.hasMore() && limit > 0) {
-    TRI_ASSERT(!output.isFull());
-    auto const& [state, input] = inputRange.next();
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    auto const& [state, input] = inputRange.nextDataRow();
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       output.copyRow(input);
       output.advanceRow();
-      limit--;
     } else {
       stats.incrFiltered();
     }
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = limit;
-  return {inputRange.peek().first, stats, upstreamCall};
+  auto const& clientCall = output.getClientCall();
+  // This is a optimistic fetch. We do not do any overfetching here, only if we
+  // pass through all rows this fetch is correct, otherwise we have too few rows.
+  upstreamCall.softLimit = clientCall.getOffset() +
+                           (std::min)(clientCall.softLimit, clientCall.hardLimit);
+  return {inputRange.upstreamState(), stats, upstreamCall};
 }

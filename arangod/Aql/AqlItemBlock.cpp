@@ -72,7 +72,7 @@ inline void CopyValueOver(std::unordered_set<AqlValue>& cache, AqlValue const& a
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0) {
+    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
   // this compare value is arbitrary, but having so many registers in a single
@@ -901,6 +901,21 @@ void AqlItemBlock::steal(AqlValue const& value) {
 RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
+
+std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() {
+  // NOTE:
+  // Right now we can only support a range of datarows, that ends
+  // In a range of ShadowRows.
+  // After a shadow row, we do NOT know how to continue with
+  // The next Executor.
+  // So we can hardcode to return 0 -> firstShadowRow || endOfBlock
+  if (hasShadowRows()) {
+    auto const& shadows = getShadowRowIndexes();
+    TRI_ASSERT(!shadows.empty());
+    return {0, *shadows.begin()};
+  }
+  return {0, size()};
+}
 
 size_t AqlItemBlock::numEntries() const { return internalNrRegs() * _nrItems; }
 

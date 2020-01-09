@@ -498,9 +498,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
   TRI_ASSERT(parts.size() == conditionData.size());
 
   // clean up
-  while (root->numMembers()) {
-    root->removeMemberUnchecked(0);
-  }
+  root->clearMembers();
 
   usedIndexes.clear();
   std::unordered_set<std::string> seenIndexConditions;

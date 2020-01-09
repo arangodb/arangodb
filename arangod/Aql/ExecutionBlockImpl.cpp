@@ -82,7 +82,7 @@ using namespace arangodb::aql;
 namespace {
 
 std::string const doneString = "DONE";
-std::string const hasMoreString = "HASMORE";
+std::string const hasDataRowString = "HASMORE";
 std::string const waitingString = "WAITING";
 std::string const unknownString = "UNKNOWN";
 
@@ -91,7 +91,7 @@ std::string const& stateToString(aql::ExecutionState state) {
     case aql::ExecutionState::DONE:
       return doneString;
     case aql::ExecutionState::HASMORE:
-      return hasMoreString;
+      return hasDataRowString;
     case aql::ExecutionState::WAITING:
       return waitingString;
     default:
@@ -129,6 +129,16 @@ CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
 CREATE_HAS_MEMBER_CHECK(skipRows, hasSkipRows);
 CREATE_HAS_MEMBER_CHECK(fetchBlockForPassthrough, hasFetchBlockForPassthrough);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
+CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
+
+/*
+ * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
+ * TODO: This should be removed once all executors and fetchers are ported to the new style.
+ */
+template <class Executor>
+static bool constexpr isNewStyleExecutor() {
+  return std::is_same<Executor, FilterExecutor>::value;
+}
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -156,9 +166,15 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  traceGetSomeBegin(atMost);
-  auto result = getSomeWithoutTrace(atMost);
-  return traceGetSomeEnd(result.first, std::move(result.second));
+  if constexpr (isNewStyleExecutor<Executor>()) {
+    AqlCallStack stack{AqlCall::SimulateGetSome(atMost)};
+    auto const [state, skipped, block] = execute(stack);
+    return {state, block};
+  } else {
+    traceGetSomeBegin(atMost);
+    auto result = getSomeWithoutTrace(atMost);
+    return traceGetSomeEnd(result.first, std::move(result.second));
+  }
 }
 
 template <class Executor>
@@ -201,8 +217,10 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     }
     TRI_ASSERT(newBlock != nullptr);
     TRI_ASSERT(newBlock->size() > 0);
-    TRI_ASSERT(newBlock->size() <= atMost);
-    _outputItemRow = createOutputRow(newBlock);
+    // We cannot hold this assertion, if we are on a pass-through
+    // block and the upstream uses execute already.
+    // TRI_ASSERT(newBlock->size() <= atMost);
+    _outputItemRow = createOutputRow(newBlock, AqlCall{});
   }
 
   ExecutionState state = ExecutionState::HASMORE;
@@ -281,16 +299,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     }
 
     TRI_ASSERT(state == ExecutionState::HASMORE);
-    // When we're passing blocks through we have no control over the size of the
-    // output block.
-    // Plus, the ConstrainedSortExecutor will report an expectedNumberOfRows
-    // according to its heap size, thus resulting in a smaller allocated output
-    // block. However, it won't report DONE after, because a LIMIT block with
-    // fullCount must continue to count after the sorted output.
-    if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable &&
-                        !std::is_same<Executor, ConstrainedSortExecutor>::value) {
-      TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
-    }
+    TRI_ASSERT(_outputItemRow->isFull());
   }
 
   auto outputBlock = _outputItemRow->stealBlock();
@@ -302,16 +311,17 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 
 template <class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
-    SharedAqlItemBlockPtr& newBlock) const {
+    SharedAqlItemBlockPtr& newBlock, AqlCall&& call) {
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
-                                              infos().registersToClear(),
+                                              infos().registersToClear(), std::move(call),
                                               OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   } else {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
-                                              infos().registersToClear());
+                                              infos().registersToClear(),
+                                              std::move(call));
   }
 }
 
@@ -391,16 +401,26 @@ static SkipVariants constexpr skipType() {
   static_assert(
       useExecutor ==
           (std::is_same<Executor, IndexExecutor>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::Materialized>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterialized>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::Materialized>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterialized>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::Materialized>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::LateMaterialized>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::Materialized>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::NotMaterialize>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterialize>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::Materialize>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::NotMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::NotMaterialize>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterialize>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::Materialize>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::NotMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::NotMaterialize>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::LateMaterialize>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::Materialize>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::NotMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::LateMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::NotMaterialize>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::LateMaterialize>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::Materialize>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::NotMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::LateMaterialize | iresearch::MaterializeType::UseStoredValues>>::value ||
            std::is_same<Executor, EnumerateCollectionExecutor>::value ||
            std::is_same<Executor, LimitExecutor>::value ||
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
@@ -429,24 +449,39 @@ static SkipVariants constexpr skipType() {
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
-  traceSkipSomeBegin(atMost);
-  auto state = ExecutionState::HASMORE;
+  if constexpr (isNewStyleExecutor<Executor>()) {
+    AqlCallStack stack{AqlCall::SimulateSkipSome(atMost)};
+    auto const [state, skipped, block] = execute(stack);
 
-  while (state == ExecutionState::HASMORE && _skipped < atMost) {
-    auto res = skipSomeOnceWithoutTrace(atMost - _skipped);
-    TRI_ASSERT(state != ExecutionState::WAITING || res.second == 0);
-    state = res.first;
-    _skipped += res.second;
-    TRI_ASSERT(_skipped <= atMost);
+    // execute returns ExecutionState::DONE here, which stops execution after simulating a skip.
+    // If we indiscriminately return ExecutionState::HASMORE, then we end up in an infinite loop
+    //
+    // luckily we can dispose of this kludge once executors have been ported.
+    if (skipped < atMost && state == ExecutionState::DONE) {
+      return {ExecutionState::DONE, skipped};
+    } else {
+      return {ExecutionState::HASMORE, skipped};
+    }
+  } else {
+    traceSkipSomeBegin(atMost);
+    auto state = ExecutionState::HASMORE;
+
+    while (state == ExecutionState::HASMORE && _skipped < atMost) {
+      auto res = skipSomeOnceWithoutTrace(atMost - _skipped);
+      TRI_ASSERT(state != ExecutionState::WAITING || res.second == 0);
+      state = res.first;
+      _skipped += res.second;
+      TRI_ASSERT(_skipped <= atMost);
+    }
+
+    size_t skipped = 0;
+    if (state != ExecutionState::WAITING) {
+      std::swap(skipped, _skipped);
+    }
+
+    TRI_ASSERT(skipped <= atMost);
+    return traceSkipSomeEnd(state, skipped);
   }
-
-  size_t skipped = 0;
-  if (state != ExecutionState::WAITING) {
-    std::swap(skipped, _skipped);
-  }
-
-  TRI_ASSERT(skipped <= atMost);
-  return traceSkipSomeEnd(state, skipped);
 }
 
 template <class Executor>
@@ -548,6 +583,16 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
+  // TODO remove this IF
+  // These are new style executors
+  if constexpr (isNewStyleExecutor<Executor>()) {
+    // Only this executor is fully implemented
+    traceExecuteBegin(stack);
+    auto res = executeWithoutTrace(stack);
+    traceExecuteEnd(res);
+    return res;
+  }
+
   // Fall back to getSome/skipSome
   auto myCall = stack.popCall();
   TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall));
@@ -931,6 +976,25 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
       executor(), *_engine, nrItems, nrRegs);
 }
 
+// TODO: We need to define the size of this block based on Input / Executor / Subquery depth
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
+    -> std::unique_ptr<OutputAqlItemRow> {
+  size_t blockSize = ExecutionBlock::DefaultBatchSize();
+  SharedAqlItemBlockPtr newBlock =
+      _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
+  return createOutputRow(newBlock, std::move(call));
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
+  if (_outputItemRow == nullptr || _outputItemRow->isFull()) {
+    _outputItemRow = allocateOutputBlock(std::move(call));
+  } else {
+    _outputItemRow->setCall(std::move(call));
+  }
+}
+
 /// @brief request an AqlItemBlock from the memory manager
 template <class Executor>
 SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
@@ -938,13 +1002,293 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
+// TODO move me up
+enum ExecState { SKIP, PRODUCE, FULLCOUNT, UPSTREAM, SHADOWROWS, DONE };
+
+// TODO clean me up
+namespace {
+// This cannot return upstream call or shadowrows.
+ExecState NextState(AqlCall const& call) {
+  if (call.getOffset() > 0) {
+    // First skip
+    return ExecState::SKIP;
+  }
+  if (call.getLimit() > 0) {
+    // Then produce
+    return ExecState::PRODUCE;
+  }
+  if (call.needsFullCount()) {
+    // then fullcount
+    return ExecState::FULLCOUNT;
+  }
+  // now we are done.
+  return ExecState::DONE;
+}
+
+}  // namespace
+
+//
+// FETCHER:  if we have one output row per input row, we can skip
+//           directly by just calling the fetcher and see whether
+//           it produced any output.
+//           With the new architecture we should be able to just skip
+//           ahead on the input range, fetching new blocks when necessary
+// EXECUTOR: the executor has a specialised skipRowsRange method
+//           that will be called to skip
+// GET_SOME: we just request rows from the executor and then discard
+//           them
+//
+enum class SkipRowsRangeVariant { FETCHER, EXECUTOR, GET_SOME };
+
+// This function is just copy&pasted from above to decide which variant of skip
+// is used for which executor.
+template <class Executor>
+static SkipRowsRangeVariant constexpr skipRowsType() {
+  bool constexpr useFetcher =
+      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
+      !std::is_same<Executor, SubqueryExecutor<true>>::value;
+
+  bool constexpr useExecutor = hasSkipRowsRange<Executor>::value;
+
+  // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
+  // it may not be done for modification subqueries.
+  static_assert(useFetcher ==
+                    (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
+                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>>::value &&
+                      !std::is_same<Executor, SubqueryExecutor<true>>::value)),
+                "Unexpected fetcher for SkipVariants::FETCHER");
+
+  static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
+                "Fetcher is chosen for skipping, but has not skipRows method!");
+
+  static_assert(useExecutor == (std::is_same<Executor, FilterExecutor>::value),
+                "Unexpected executor for SkipVariants::EXECUTOR");
+
+  // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
+  static_assert(
+      !std::is_same<Executor, LimitExecutor>::value || useFetcher,
+      "LimitExecutor needs to implement skipRows() to work correctly");
+
+  if (useExecutor) {
+    return SkipRowsRangeVariant::EXECUTOR;
+  } else if (useFetcher) {
+    return SkipRowsRangeVariant::FETCHER;
+  } else {
+    return SkipRowsRangeVariant::GET_SOME;
+  }
+}
+
+// Let's do it the C++ way.
+template <class T>
+struct dependent_false : std::false_type {};
+
+template <class Executor>
+std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::executeSkipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  if constexpr (isNewStyleExecutor<Executor>()) {
+    if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
+      // If the executor has a method skipRowsRange, to skip outputs more
+      // efficiently than just producing them to subsequently discard them, then
+      // we use it
+      return _executor.skipRowsRange(inputRange, call);
+    } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
+      // If we know that every input row produces exactly one output row (this
+      // is a property of the executor), then we can just let the fetcher skip
+      // the number of rows that we would like to skip.
+      return _rowFetcher.execute(call);
+    } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::GET_SOME) {
+      // In all other cases, we skip by letting the executor produce rows, and
+      // then throw them away.
+
+      size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
+      AqlCall skipCall{};
+      skipCall.softLimit = toSkip;
+      skipCall.hardLimit = toSkip;
+      skipCall.offset = 0;
+
+      // we can't mess with _outputItemRow,
+      auto skipOutput = allocateOutputBlock(std::move(skipCall));
+      auto [state, stats, rescall] = _executor.produceRows(inputRange, *skipOutput);
+      auto skipped = skipOutput->numRowsWritten();
+
+      call.didSkip(skipped);
+      return std::make_tuple(state, skipped, rescall);
+    } else {
+      static_assert(dependent_false<Executor>::value,
+                    "This value of SkipRowsRangeVariant is not supported");
+      return std::make_tuple(ExecutorState::DONE, 0, call);
+    }
+  } else {
+    TRI_ASSERT(false);
+    return std::make_tuple(ExecutorState::DONE, 0, call);
+  }
+  // Compiler is unhappy without this.
+  return std::make_tuple(ExecutorState::DONE, 0, call);
+}
+
+// This is the central function of an executor, and it acts like a
+// coroutine: It can be called multiple times and keeps state across
+// calls.
+//
+// The intended behaviour of this function is best described in terms of
+// a state machine; the possible states are the ExecStates
+// SKIP, PRODUCE, FULLCOUNT, UPSTREAM, SHADOWROWS, DONE
+//
+// SKIP       skipping rows. How rows are skipped is determined by
+//            the Executor that is used. See SkipVariants
+// PRODUCE    calls produceRows of the executor
+// FULLCOUNT
+// UPSTREAM   fetches rows from the upstream executor(s) to be processed by
+//            our executor.
+// SHADOWROWS process any shadow rows
+// DONE       processing is done
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
-  // TODO implement!
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  if constexpr (isNewStyleExecutor<Executor>()) {
+    // Make sure there's a block allocated and set
+    // the call
+    ensureOutputBlock(stack.popCall());
+
+    auto skipped = size_t{0};
+
+    TRI_ASSERT(_outputItemRow);
+
+    auto execState = ::NextState(_outputItemRow->getClientCall());
+
+    if (_lastRange.hasShadowRow()) {
+      // We have not been able to move all shadowRows into the output last time.
+      // Continue from there.
+      // TODO test if this works with COUNT COLLECT
+      execState = ExecState::SHADOWROWS;
+    }
+
+    AqlCall executorRequest;
+    while (execState != ExecState::DONE && !_outputItemRow->allRowsUsed()) {
+      switch (execState) {
+        case ExecState::SKIP: {
+          auto const& clientCall = _outputItemRow->getClientCall();
+          auto [state, skippedLocal, call] =
+              executeSkipRowsRange(_lastRange, _outputItemRow->getModifiableClientCall());
+          skipped += skippedLocal;
+
+          if (state == ExecutorState::DONE) {
+            execState = ExecState::SHADOWROWS;
+          } else if (clientCall.getOffset() > 0) {
+            TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+            // We need to request more
+            executorRequest = call;
+            execState = ExecState::UPSTREAM;
+          } else {
+            // We are done with skipping. Skip is not allowed to request more
+            execState = ::NextState(clientCall);
+          }
+          break;
+        }
+        case ExecState::PRODUCE: {
+          auto const& clientCall = _outputItemRow->getClientCall();
+          TRI_ASSERT(clientCall.getLimit() > 0);
+          // Execute getSome
+          auto const [state, stats, call] =
+              _executor.produceRows(_lastRange, *_outputItemRow);
+          _engine->_stats += stats;
+          if (state == ExecutorState::DONE) {
+            execState = ExecState::SHADOWROWS;
+          } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
+            TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+            // We need to request more
+            executorRequest = call;
+            execState = ExecState::UPSTREAM;
+          } else {
+            // We are done with producing. Produce is not allowed to request more
+            execState = ::NextState(clientCall);
+          }
+          break;
+        }
+        case ExecState::FULLCOUNT: {
+          TRI_ASSERT(false);
+          // TODO: wat.
+        }
+        case ExecState::UPSTREAM: {
+          // If this triggers the executors produceRows function has returned
+          // HASMORE even if it knew that upstream has no further rows.
+          TRI_ASSERT(_upstreamState != ExecutionState::DONE);
+          TRI_ASSERT(!_lastRange.hasDataRow());
+          size_t skippedLocal = 0;
+          stack.pushCall(std::move(executorRequest));
+          std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
+          if (_upstreamState == ExecutionState::WAITING) {
+            // We do not return anything in WAITING state, also NOT skipped.
+            // TODO: Check if we need to leverage this restriction.
+            TRI_ASSERT(skipped == 0);
+            return {_upstreamState, 0, nullptr};
+          }
+          skipped += skippedLocal;
+          ensureOutputBlock(_outputItemRow->stealClientCall());
+          // Do we need to call it?
+          // clientCall.didSkip(skippedLocal);
+          execState = ::NextState(_outputItemRow->getClientCall());
+          break;
+        }
+        case ExecState::SHADOWROWS: {
+          // TODO: Check if there is a situation where we are at this point, but at the end of a block
+          // Or if we would not recognize this beforehand
+          // TODO: Check if we can have the situation that we are between two shadow rows here.
+          // E.g. LastRow is releveant shadowRow. NextRow is non-relevant shadowRow.
+          // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
+          // an empty input. Only exception might be COLLECT COUNT.
+          if (_lastRange.hasShadowRow()) {
+            auto const& [state, shadowRow] = _lastRange.nextShadowRow();
+            TRI_ASSERT(shadowRow.isInitialized());
+            _outputItemRow->copyRow(shadowRow);
+            if (shadowRow.isRelevant()) {
+              // We found a relevant shadow Row.
+              // We need to reset the Executor
+              // TODO: call reset!
+            }
+            TRI_ASSERT(_outputItemRow->produced());
+            _outputItemRow->advanceRow();
+            if (state == ExecutorState::DONE) {
+              if (_lastRange.hasDataRow()) {
+                // TODO this state is invalid, and can just show up now if we exclude SKIP
+                execState = ExecState::PRODUCE;
+              } else {
+                // Right now we cannot support to have more than one set of
+                // ShadowRows inside of a Range.
+                // We do not know how to continue with the above executor after a shadowrow.
+                TRI_ASSERT(!_lastRange.hasDataRow());
+                execState = ExecState::DONE;
+              }
+            }
+          } else {
+            execState = ExecState::DONE;
+          }
+          break;
+        }
+        default:
+          // unreachable
+          TRI_ASSERT(false);
+      }
+    }
+
+    auto outputBlock = _outputItemRow->stealBlock();
+    // This is not strictly necessary here, as we shouldn't be called again
+    // after DONE.
+    _outputItemRow.reset();
+    if (_lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
+      // We have skipped or/and return data, otherwise we cannot return HASMORE
+      TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
+      return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
+    }
+    return {_upstreamState, skipped, std::move(outputBlock)};
+  } else {
+    // TODO this branch must never be taken with an executor that has not been
+    //      converted yet
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 }
+
 /// @brief reset all internal states after processing a shadow row.
 template <class Executor>
 void ExecutionBlockImpl<Executor>::resetAfterShadowRow() {
@@ -992,16 +1336,35 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
+    false, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
+    false, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::NotMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialize>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
+    true, arangodb::iresearch::MaterializeType::NotMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<
+    true, arangodb::iresearch::MaterializeType::LateMaterialize | arangodb::iresearch::MaterializeType::UseStoredValues>>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;

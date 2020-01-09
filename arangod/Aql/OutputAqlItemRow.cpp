@@ -23,6 +23,15 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
+The following conditions need to hold true, we need to add c++ tests for this.
+
+  output.isFull() == output.numRowsLeft() > 0;
+  output.numRowsLeft() <= output.allocatedRows() - output.numRowsWritten();
+  output.numRowsLeft() <= output.softLimit();
+  output.softLimit() <= output.hardLimit();
+*/
+
 #include "OutputAqlItemRow.h"
 
 #include "Aql/AqlItemBlock.h"
@@ -41,13 +50,14 @@ OutputAqlItemRow::OutputAqlItemRow(
     std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-    CopyRowBehavior copyRowBehavior)
+    AqlCall&& clientCall, CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
       _baseIndex(0),
       _lastBaseIndex(0),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
+      _call(std::move(clientCall)),
       _doNotCopyInputRow(copyRowBehavior == CopyRowBehavior::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
       _registersToKeep(std::move(registersToKeep)),
@@ -187,6 +197,12 @@ void OutputAqlItemRow::advanceRow() {
   TRI_ASSERT(produced());
   TRI_ASSERT(allValuesWritten());
   TRI_ASSERT(_inputRowCopied);
+  if (!_block->isShadowRow(_baseIndex)) {
+    // We have written a data row into the output.
+    // Need to count it.
+    _call.didProduce(1);
+  }
+
   ++_baseIndex;
   _inputRowCopied = false;
   _numValuesWritten = 0;
@@ -196,6 +212,20 @@ void OutputAqlItemRow::toVelocyPack(velocypack::Options const* options, VPackBui
   TRI_ASSERT(produced());
   block().rowToSimpleVPack(_baseIndex, options, builder);
 }
+
+AqlCall::Limit OutputAqlItemRow::softLimit() const { return _call.softLimit; }
+
+AqlCall::Limit OutputAqlItemRow::hardLimit() const { return _call.hardLimit; }
+
+AqlCall const& OutputAqlItemRow::getClientCall() const { return _call; }
+
+AqlCall& OutputAqlItemRow::getModifiableClientCall() { return _call; };
+
+AqlCall&& OutputAqlItemRow::stealClientCall() { return std::move(_call); }
+
+void OutputAqlItemRow::setCall(AqlCall&& call) { _call = call; }
+
+void OutputAqlItemRow::didSkip(size_t n) { _call.didSkip(n); }
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   // numRowsWritten() inspects _block, so save this before resetting it!

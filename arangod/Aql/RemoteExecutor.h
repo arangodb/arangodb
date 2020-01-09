@@ -133,8 +133,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   bool _hasTriggeredShutdown;
 
-  //  bool _didReceiveShutdownRequest;
-
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceInitializeCursorRequest(velocypack::Slice slice);

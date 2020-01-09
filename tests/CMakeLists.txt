@@ -26,6 +26,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/SupervisionTest.cpp
   Aql/AllRowsFetcherTest.cpp
   Aql/AqlHelper.cpp
+  Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
@@ -169,6 +170,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryJoin-test.cpp
   IResearch/IResearchQueryLateMaterialization-test.cpp
   IResearch/IResearchQueryMinMatch-test.cpp
+  IResearch/IResearchQueryNoMaterialization-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
   IResearch/IResearchQueryOptimization-test.cpp
