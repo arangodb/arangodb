@@ -259,7 +259,7 @@ install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
 
 
 if (MSVC AND NOT(SKIP_PACKAGING))
-  # so we don't need to ship dll's twice, make it one directory:
+  # Make it the same directory so we don't ship DLLs twice (in bin/ on top of usr/bin):
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
   set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
 
