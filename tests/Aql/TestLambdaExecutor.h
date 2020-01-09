@@ -43,6 +43,9 @@ class SingleRowFetcher;
 using ProduceCall =
     std::function<std::tuple<ExecutorState, NoStats, AqlCall>(AqlItemBlockInputRange& input, OutputAqlItemRow& output)>;
 
+using SkipCall =
+    std::function<std::tuple<ExecutorState, size_t, AqlCall>(AqlItemBlockInputRange& input, AqlCall& call)>;
+
 class LambdaExecutorInfos : public ExecutorInfos {
  public:
   LambdaExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
@@ -60,6 +63,28 @@ class LambdaExecutorInfos : public ExecutorInfos {
 
  private:
   ProduceCall _produceLambda;
+};
+
+class LambdaSkipExecutorInfos : public ExecutorInfos {
+ public:
+  LambdaSkipExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                          std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                          std::unordered_set<RegisterId> registersToClear,
+                          std::unordered_set<RegisterId> registersToKeep,
+                          ProduceCall lambda, SkipCall skipLambda);
+
+  LambdaSkipExecutorInfos() = delete;
+  LambdaSkipExecutorInfos(LambdaSkipExecutorInfos&&) = default;
+  LambdaSkipExecutorInfos(LambdaSkipExecutorInfos const&) = delete;
+  ~LambdaSkipExecutorInfos() = default;
+
+  auto getLambda() const -> ProduceCall const&;
+  auto getSkipLambda() const -> SkipCall const&;
+
+ private:
+  ProduceCall _produceLambda;
+  SkipCall _skipLambda;
 };
 
 template <BlockPassthrough allowPass>
@@ -84,6 +109,38 @@ class TestLambdaExecutor {
       -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>;
 
   auto produceRows(OutputAqlItemRow& output) -> std::tuple<ExecutionState, Stats>;
+
+  auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+ private:
+  Infos& _infos;
+};
+
+class TestLambdaSkipExecutor {
+ public:
+  struct Properties {
+    static const bool preservesOrder = true;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static const bool inputSizeRestrictsOutputSize = false;
+  };
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
+  using Infos = LambdaSkipExecutorInfos;
+  using Stats = NoStats;
+
+  TestLambdaSkipExecutor() = delete;
+  TestLambdaSkipExecutor(TestLambdaSkipExecutor&&) = default;
+  TestLambdaSkipExecutor(TestLambdaSkipExecutor const&) = delete;
+  TestLambdaSkipExecutor(Fetcher&, Infos&);
+  ~TestLambdaSkipExecutor();
+
+  auto fetchBlockForPassthrough(size_t atMost)
+      -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>;
+
+  auto produceRows(OutputAqlItemRow& output) -> std::tuple<ExecutionState, Stats>;
+
+  auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
 
   auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;

@@ -143,7 +143,9 @@ namespace arangodb {
 namespace aql {
 template <BlockPassthrough allowPass>
 class TestLambdaExecutor;
-}
+
+class TestLambdaSkipExecutor;
+}  // namespace aql
 }  // namespace arangodb
 #endif
 
@@ -153,6 +155,7 @@ static bool constexpr isNewStyleExecutor() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
       std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Enable>> ||
       std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Disable>> ||
+      std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
       std::is_same_v<Executor, FilterExecutor>;
 }
@@ -1092,8 +1095,12 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor == (std::is_same<Executor, FilterExecutor>::value),
-                "Unexpected executor for SkipVariants::EXECUTOR");
+  static_assert(
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      useExecutor == (std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
+#endif
+          useExecutor == (std::is_same_v<Executor, FilterExecutor>),
+      "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
