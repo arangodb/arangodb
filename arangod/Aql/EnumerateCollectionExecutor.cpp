@@ -43,10 +43,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool EnumerateCollectionExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough EnumerateCollectionExecutor::Properties::allowsBlockPassthrough;
-constexpr bool EnumerateCollectionExecutor::Properties::inputSizeRestrictsOutputSize;
-
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
@@ -146,8 +142,9 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        std::to_string(maxWait) + ")");
   }
   if (_infos.getProduceResult()) {
-    this->setProducingFunction(buildCallback<false>(_documentProducingFunctionContext));
+    _documentProducer = buildDocumentCallback<false, false>(_documentProducingFunctionContext);
   }
+  _documentSkipper = buildDocumentCallback<false, true>(_documentProducingFunctionContext);
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -220,12 +217,12 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
     std::tie(_state, _input) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
-      return std::make_tuple(_state, stats, 0);  // tupple, cannot use initializer list due to build failure
+      return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
     }
 
     if (!_input) {
       TRI_ASSERT(_state == ExecutionState::DONE);
-      return std::make_tuple(_state, stats, 0);  // tupple, cannot use initializer list due to build failure
+      return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
     }
 
     _cursor->reset();
@@ -233,18 +230,31 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   }
 
   TRI_ASSERT(_input.isInitialized());
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
 
   uint64_t actuallySkipped = 0;
-  _cursor->skip(toSkip, actuallySkipped);
+  if (_infos.getFilter() == nullptr) {
+    _cursor->skip(toSkip, actuallySkipped);
+    stats.incrScanned(actuallySkipped);
+    _documentProducingFunctionContext.getAndResetNumScanned();
+  } else {
+    _cursor->nextDocument(_documentSkipper, toSkip);
+    size_t filtered = _documentProducingFunctionContext.getAndResetNumFiltered();
+    size_t scanned = _documentProducingFunctionContext.getAndResetNumScanned();
+    TRI_ASSERT(scanned >= filtered);
+    stats.incrFiltered(filtered);
+    stats.incrScanned(scanned);
+    actuallySkipped = scanned - filtered;
+  }
   _cursorHasMore = _cursor->hasMore();
-  stats.incrScanned(actuallySkipped);
 
   if (_state == ExecutionState::DONE && !_cursorHasMore) {
     return std::make_tuple(ExecutionState::DONE, stats,
-                           actuallySkipped);  // tupple, cannot use initializer list due to build failure
+                           actuallySkipped);  // tuple, cannot use initializer list due to build failure
   }
 
-  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tupple, cannot use initializer list due to build failure
+  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tuple, cannot use initializer list due to build failure
 }
 
 void EnumerateCollectionExecutor::initializeCursor() {
@@ -253,10 +263,6 @@ void EnumerateCollectionExecutor::initializeCursor() {
   setAllowCoveringIndexOptimization(true);
   _cursorHasMore = false;
   _cursor->reset();
-}
-
-void EnumerateCollectionExecutor::setProducingFunction(DocumentProducingFunction const& documentProducer) {
-  _documentProducer = documentProducer;
 }
 
 void EnumerateCollectionExecutor::setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {

@@ -26,6 +26,7 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/IResearchViewNode.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
@@ -65,16 +66,18 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       RegisterId firstOutputRegister, RegisterId numScoreRegisters,
       Query& query, std::vector<iresearch::Scorer> const& scorers,
       std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
+      iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan,
       Variable const& outVariable,
       aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility,
       VarInfoMap const& varInfoMap,
-      int depth);
+      int depth, iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
 
   RegisterId getOutputRegister() const noexcept;
   RegisterId getFirstScoreRegister() const noexcept;
   RegisterId getNumScoreRegisters() const noexcept;
+  iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
   Query& getQuery() const noexcept;
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
@@ -90,6 +93,8 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   // second - number of sort conditions to take into account
   std::pair<iresearch::IResearchViewSort const*, size_t> const& sort() const noexcept;
 
+  iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
+
   bool isScoreReg(RegisterId reg) const noexcept;
 
  private:
@@ -99,6 +104,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   Query& _query;
   std::vector<iresearch::Scorer> const& _scorers;
   std::pair<iresearch::IResearchViewSort const*, size_t> _sort;
+  iresearch::IResearchViewStoredValues const& _storedValues;
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   aql::AstNode const& _filterCondition;
@@ -106,6 +112,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   bool const _volatileFilter;
   VarInfoMap const& _varInfoMap;
   int const _depth;
+  iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {
@@ -164,11 +171,11 @@ class IResearchViewExecutorBase {
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
 
-    inline aql::RegisterId getNmColPtrOutReg() const noexcept {
+    aql::RegisterId getNmColPtrOutReg() const noexcept {
       return docOutReg;
     }
 
-    inline aql::RegisterId getNmDocIdOutReg() const noexcept {
+    aql::RegisterId getNmDocIdOutReg() const noexcept {
       return docOutReg + 1;
     }
   };  // ReadContext
@@ -241,8 +248,12 @@ class IResearchViewExecutorBase {
     // before and after.
     void assertSizeCoherence() const noexcept;
 
+    void pushStoredValue(std::vector<irs::bytes_ref>&& storedValue);
+
+    std::vector<irs::bytes_ref> const& getStoredValue(IndexReadBufferEntry bufferEntry) const noexcept;
+
    private:
-    // _keyBuffer, _scoreBuffer together hold all the
+    // _keyBuffer, _scoreBuffer, _sortValueBuffer together hold all the
     // information read from the iresearch index.
     // For the _scoreBuffer, it holds that
     //   _scoreBuffer.size() == _keyBuffer.size() * infos().getNumScoreRegisters()
@@ -253,6 +264,7 @@ class IResearchViewExecutorBase {
     // .
     std::vector<ValueType> _keyBuffer;
     std::vector<AqlValue> _scoreBuffer;
+    std::vector<std::vector<irs::bytes_ref>> _storedValueBuffer;
     std::size_t _numScoreRegisters;
     std::size_t _keyBaseIdx;
   };
@@ -279,6 +291,9 @@ class IResearchViewExecutorBase {
 
   void reset();
 
+  bool writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues, int columnNum,
+                        std::map<size_t, iresearch::IResearchViewNode::ViewVariableRegister> const& fieldsRegs);
+
  private:
   bool next(ReadContext& ctx);
 
@@ -300,10 +315,10 @@ class IResearchViewExecutorBase {
   bool _isInitialized;
 };  // IResearchViewExecutorBase
 
-template <bool ordered, bool materialized>
-class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExecutor<ordered, materialized>> {
+template <bool ordered, iresearch::MaterializeType materializeType>
+class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExecutor<ordered, materializeType>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ordered, materialized>>;
+  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ordered, materializeType>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -328,13 +343,16 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
 
   void reset();
 
+  void getStoredValue(std::vector<irs::bytes_ref>& storedValues, int max);
+
  private:
   // Returns true unless the iterator is exhausted. documentId will always be
   // written. It will always be unset when readPK returns false, but may also be
   // unset if readPK returns true.
   bool readPK(LocalDocumentId& documentId);
 
-  irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
+  irs::columnstore_reader::values_reader_f _pkReader;   // current primary key reader
+  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders; // current stored values readers
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
@@ -345,17 +363,17 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   irs::bytes_ref _scrVal;
 };  // IResearchViewExecutor
 
-template<bool ordered, bool materialized>
-struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materialized>> {
+template<bool ordered, iresearch::MaterializeType materializeType>
+struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materializeType>> {
   using IndexBufferValueType = LocalDocumentId;
   static constexpr bool Ordered = ordered;
-  static constexpr bool Materialized = materialized;
+  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
 };
 
-template <bool ordered, bool materialized>
-class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materialized>> {
+template <bool ordered, iresearch::MaterializeType materializeType>
+class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materializeType>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materialized>>;
+  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materializeType>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -374,7 +392,7 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
             irs::columnstore_reader::values_reader_f&& sortReader,
-           irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
+            irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;
@@ -421,11 +439,11 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
   irs::external_heap_iterator<MinHeapContext> _heap_it;
 };  // IResearchViewMergeExecutor
 
-template<bool ordered, bool materialized>
-struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materialized>> {
+template<bool ordered, iresearch::MaterializeType materializeType>
+struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materializeType>> {
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
-  static constexpr const bool Ordered = ordered;
-  static constexpr const bool Materialized = materialized;
+  static constexpr bool Ordered = ordered;
+  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
 };
 
 }  // namespace aql

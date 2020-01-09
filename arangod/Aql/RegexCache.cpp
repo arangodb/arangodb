@@ -22,8 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegexCache.h"
+
+#include "Aql/AqlValueMaterializer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include <Basics/StringUtils.h>
+#include "Basics/tryEmplaceHelper.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -94,20 +97,15 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression
 icu::RegexMatcher* RegexCache::fromCache(
     std::string const& pattern,
     std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
-  auto it = cache.find(pattern);
-
-  if (it != cache.end()) {
-    return (*it).second.get();
-  }
-
-  auto matcher = arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
-
-  auto p = matcher.get();
 
   // insert into cache, no matter if pattern is valid or not
-  cache.emplace(pattern, std::move(matcher));
+  auto matcherIter = cache.try_emplace(
+      pattern,
+      arangodb::lazyConstruct([&]{
+        return std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
+      })).first;
 
-  return p;
+  return matcherIter->second.get();
 }
 
 /// @brief compile a REGEX pattern from a string

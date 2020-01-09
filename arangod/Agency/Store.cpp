@@ -176,6 +176,7 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
     THROW_ARANGO_EXCEPTION_MESSAGE(30000,
                                    "Agency request syntax is [[<queries>]]");
   }
+
   return success;
 }
 
@@ -186,13 +187,13 @@ check_ret_t Store::applyTransaction(Slice const& query) {
   MUTEX_LOCKER(storeLocker, _storeLock);
   switch (query.length()) {
     case 1:  // No precondition
-      applies(query[0]);
+      ret.successful(applies(query[0]));
       break;
     case 2:  // precondition
     case 3:  // precondition + clientId
       ret = check(query[1], CheckMode::FULL);
       if (ret.successful()) {
-        applies(query[0]);
+        ret.successful(applies(query[0]));
       } else {  // precondition failed
         LOG_TOPIC("ded9e", TRACE, Logger::AGENCY) << "Precondition failed!";
       }
@@ -296,6 +297,9 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     
     auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* cp = nf.pool();
+    
+    network::RequestOptions reqOpts;
+    reqOpts.timeout = network::Timeout(2);
 
     // Callback
 
@@ -338,7 +342,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
         
         Agent* agent = _agent;
         network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
-                             *buffer, network::Timeout(1)).thenValue([=](network::Response r) {
+                             *buffer, reqOpts).thenValue([=](network::Response r) {
           if (r.fail() || r.response->statusCode() >= 400) {
             LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
               << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
@@ -710,8 +714,10 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     return abskeys[i1.first] < abskeys[i2.first]; 
   });
 
+  bool success = true;
+  
   for (const auto& i : idx) {
-    Slice value = i.second; 
+    Slice value = i.second;
 
     if (value.isObject() && value.hasKey("op")) {
       Slice const op = value.get("op");
@@ -759,14 +765,15 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           }
         }
       } else {
-        _node.hasAsWritableNode(abskeys.at(i.first)).first.applieOp(value);
+        auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).first.applyOp(value);
+        success &= ret.ok();
       }
     } else {
-      _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
+      success &= _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
     }
   }
 
-  return true;
+  return success;
 }
 
 // Clear my data

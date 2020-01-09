@@ -33,13 +33,10 @@
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-
-namespace transaction {
-class Methods;
-}
 
 struct KeyLockInfo;
 class LocalDocumentId;
@@ -130,7 +127,7 @@ class PhysicalCollection {
                        std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures();
+  virtual futures::Future<OperationResult> figures();
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
@@ -217,7 +214,7 @@ class PhysicalCollection {
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  virtual void figuresSpecific(arangodb::velocypack::Builder&) = 0;
 
   // SECTION: Document pre commit preperation
 

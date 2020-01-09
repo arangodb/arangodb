@@ -21,7 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionBlock.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
@@ -161,7 +164,7 @@ bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
 
 bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   _documentIds.clear();
-  _documentIds.reserve(limit);
+  _documentIds.reserve((std::min)(limit, aql::ExecutionBlock::DefaultBatchSize()));
 
   bool done = false;
   while (limit > 0) {
@@ -475,8 +478,8 @@ std::unique_ptr<IndexIterator> MMFilesPrimaryIndex::iteratorForCondition(
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, aap.attribute, aap.value);
-  } 
-  
+  }
+
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       aap.value->isArray()) {
     // a.b IN array

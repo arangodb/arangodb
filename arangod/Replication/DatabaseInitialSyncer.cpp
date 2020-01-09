@@ -108,9 +108,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
       _config{_state.applier,    _state.barrier, _batch,
               _state.connection, false,          _state.master,
               _progress,         _state,         vocbase} {
-  _state.vocbases.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(vocbase.name()),
-                          std::forward_as_tuple(vocbase));
+  _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
@@ -1095,7 +1093,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is
     // invalid)
-    _config.progress.processedCollections.emplace(masterCid, masterName);
+    _config.progress.processedCollections.try_emplace(masterCid, masterName);
 
     return Result();
   }
@@ -1357,6 +1355,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
                                                         bool incremental) {
   TRI_ASSERT(collSlices.isArray());
 
+  std::vector<std::pair<VPackSlice, VPackSlice>> systemCollections;
   std::vector<std::pair<VPackSlice, VPackSlice>> collections;
   for (VPackSlice it : VPackArrayIterator(collSlices)) {
     if (!it.isObject()) {
@@ -1412,10 +1411,46 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
       }
     }
 
-    collections.emplace_back(parameters, indexes);
+    if (masterName == StaticStrings::AnalyzersCollection) {
+      // _analyzers collection has to be restored before view creation
+      systemCollections.emplace_back(parameters, indexes);
+    } else {
+      collections.emplace_back(parameters, indexes);
+    }
   }
 
-  // STEP 1: now that the collections exist create the views
+  // STEP 1: validate collection declarations from master
+  // ----------------------------------------------------------------------------------
+
+  // STEP 2: drop and re-create collections locally if they are also present on
+  // the master
+  //  ------------------------------------------------------------------------------------
+
+  // iterate over all collections from the master...
+  std::array<SyncPhase, 2> phases{{PHASE_VALIDATE, PHASE_DROP_CREATE}};
+  for (auto const& phase : phases) {
+    Result r = iterateCollections(systemCollections, incremental, phase);
+
+    if (r.fail()) {
+      return r;
+    }
+
+    r = iterateCollections(collections, incremental, phase);
+
+    if (r.fail()) {
+      return r;
+    }
+  }
+
+  // STEP 3: restore data for system collections
+  // ----------------------------------------------------------------------------------
+  auto const res = iterateCollections(systemCollections, incremental, PHASE_DUMP);
+
+  if (res.fail()) {
+    return res;
+  }
+
+  // STEP 4: now that the collections exist create the views
   // this should be faster than re-indexing afterwards
   // ----------------------------------------------------------------------------------
 
@@ -1433,24 +1468,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     _config.progress.set("view creation skipped because of configuration");
   }
 
-  // STEP 2: validate collection declarations from master
-  // ----------------------------------------------------------------------------------
-
-  // STEP 3: drop and re-create collections locally if they are also present on
-  // the master
-  //  ------------------------------------------------------------------------------------
-
-  // iterate over all collections from the master...
-  std::array<SyncPhase, 2> phases{{PHASE_VALIDATE, PHASE_DROP_CREATE}};
-  for (auto const& phase : phases) {
-    Result r = iterateCollections(collections, incremental, phase);
-
-    if (r.fail()) {
-      return r;
-    }
-  }
-
-  // STEP 4: sync collection data from master and create initial indexes
+  // STEP 5: sync collection data from master and create initial indexes
   // ----------------------------------------------------------------------------------
 
   // now load the data into the collections

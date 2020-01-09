@@ -160,7 +160,7 @@ V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& se
 }
 
 void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.v8-options", "options to pass to v8",
                      new VectorParameter<StringParameter>(&_v8Options),
@@ -242,7 +242,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   {
     MUTEX_LOCKER(guard, _lock);
     try {
-      _isolateData.emplace(isolate, std::move(data));
+      _isolateData.try_emplace(isolate, std::move(data));
     } catch (...) {
       isolate->SetData(V8_INFO, nullptr);
       isolate->Dispose();

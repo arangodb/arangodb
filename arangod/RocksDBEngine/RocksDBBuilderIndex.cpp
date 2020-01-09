@@ -178,6 +178,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
   Result res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -214,9 +215,10 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
           ridx.estimator()->remove(hash);
         }
       } else {
+        uint64_t seq = rootDB->GetLatestSequenceNumber();
         // since cuckoo estimator uses a map with seq as key we need to 
-        ridx.estimator()->bufferUpdates(1, std::move(it->second.inserts),
-                                           std::move(it->second.removals));
+        ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
+                                             std::move(it->second.removals));
       }
     }
   };

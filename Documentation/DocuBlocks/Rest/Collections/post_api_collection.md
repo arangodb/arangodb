@@ -56,18 +56,17 @@ should be a JSON array containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
-*traditional*, *autoincrement*, *uuid* and *padded*.
-
+*traditional*, *autoincrement*, *uuid* and *padded*.<br>
 The *traditional* key generator generates numerical keys in ascending order.
-The *autoincrement* key generator generates numerical keys in ascending order, 
+The *autoincrement* key generator generates numerical keys in ascending order,
 the inital offset and the spacing can be configured
 The *padded* key generator generates keys of a fixed length (16 bytes) in
 ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
 engine, which will slightly benefit keys that are inserted in lexicographically
 ascending order. The key generator can be used in a single-server or cluster.
-The *uuid* key generator generates universally unique 128 bit keys, which 
+The *uuid* key generator generates universally unique 128 bit keys, which
 are stored in hexadecimal human-readable format. This key generator can be used
-in a single-server or cluster to generate "seemingly random" keys. The keys 
+in a single-server or cluster to generate "seemingly random" keys. The keys
 produced by this key generator are not lexicographically sorted.
 
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}
@@ -86,8 +85,7 @@ Not used for other key generator types.
 
 @RESTBODYPARAM{type,integer,optional,int64}
 (The default is *2*): the type of the collection to create.
-The following values for *type* are valid:
-
+The following values for *type* are valid:<br>
 - *2*: document collection
 - *3*: edge collection
 
@@ -124,12 +122,26 @@ and the hash value is used to determine the target shard.
 (The default is *1*): in a cluster, this attribute determines how many copies
 of each shard are kept on different DBServers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
-are kept. Any two copies reside on different DBServers. Replication between them is 
-synchronous, that is, every write operation to the "leader" copy will be replicated 
+are kept. Any two copies reside on different DBServers. Replication between them is
+synchronous, that is, every write operation to the "leader" copy will be replicated
 to all "follower" replicas, before the write operation is reported successful.
 
-If a server fails, this is detected automatically and one of the servers holding 
+If a server fails, this is detected automatically and one of the servers holding
 copies take over, usually without an error being reported.
+
+@RESTBODYPARAM{minReplicationFactor,integer,optional,int64}
+(optional, default is 1): in a cluster, this attribute determines how many
+desired copies of each shard are kept on different DBServers. The value 1 means
+that only one copy (no synchronous replication) is kept. A value of k means
+that desired k-1 replicas are kept.  If in a failover scenario a shard of a
+collection has less than minReplicationFactor many insync followers it will go
+into "read-only" mode and will reject writes until enough followers are insync
+again.
+
+**In more detail**: Having `minReplicationFactor == 1` means as soon as a
+"master-copy" is available of the data writes are allowed.  Having
+`minReplicationFactor > 1` requires additional insync copies on follower
+servers to allow writes.
 
 @RESTBODYPARAM{distributeShardsLike,string,optional,string}
 (The default is *""*): in an Enterprise Edition cluster, this attribute binds
@@ -142,10 +154,10 @@ collections alone will generate warnings (which can be overridden)
 about missing sharding prototype.
 
 @RESTBODYPARAM{shardingStrategy,string,optional,string}
-This attribute specifies the name of the sharding strategy to use for 
-the collection. Since ArangoDB 3.4 there are different sharding strategies 
-to select from when creating a new collection. The selected *shardingStrategy* 
-value will remain fixed for the collection and cannot be changed afterwards. 
+This attribute specifies the name of the sharding strategy to use for
+the collection. Since ArangoDB 3.4 there are different sharding strategies
+to select from when creating a new collection. The selected *shardingStrategy*
+value will remain fixed for the collection and cannot be changed afterwards.
 This is important to make the collection keep its sharding settings and
 always find documents already distributed to shards using the same
 initial sharding algorithm.
@@ -164,15 +176,15 @@ The available sharding strategies are:
 
 If no sharding strategy is specified, the default will be *hash* for
 all collections, and *enterprise-hash-smart-edge* for all smart edge
-collections (requires the *Enterprise Edition* of ArangoDB). 
-Manually overriding the sharding strategy does not yet provide a 
+collections (requires the *Enterprise Edition* of ArangoDB).
+Manually overriding the sharding strategy does not yet provide a
 benefit, but it may later in case other sharding strategies are added.
 
 @RESTBODYPARAM{smartJoinAttribute,string,optional,string}
 In an *Enterprise Edition* cluster, this attribute determines an attribute
-of the collection that must contain the shard key value of the referred-to 
-smart join collection. Additionally, the shard key for a document in this 
-collection must contain the value of this attribute, followed by a colon, 
+of the collection that must contain the shard key value of the referred-to
+smart join collection. Additionally, the shard key for a document in this
+collection must contain the value of this attribute, followed by a colon,
 followed by the actual primary key of the document.
 
 This feature can only be used in the *Enterprise Edition* and requires the
@@ -180,7 +192,7 @@ This feature can only be used in the *Enterprise Edition* and requires the
 of another collection. It also requires the *shardKeys* attribute of the
 collection to be set to a single shard key attribute, with an additional ':'
 at the end.
-A further restriction is that whenever documents are stored or updated in the 
+A further restriction is that whenever documents are stored or updated in the
 collection, the value stored in the *smartJoinAttribute* must be a string.
 
 @RESTQUERYPARAMETERS
@@ -256,4 +268,3 @@ If the *collection-name* is unknown, then a *HTTP 404* is returned.
     db._drop("testCollectionUsers");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

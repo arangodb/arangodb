@@ -105,7 +105,10 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow, bool) co
         value.append(". ");
         value.append(description);
       }
-      value += " (default: " + parameter->valueString() + ")";
+
+      if (!hasFlag(arangodb::options::Flags::Command)) {
+        value += " (default: " + parameter->valueString() + ")";
+      }
       if (hasIntroducedIn()) {
         value += " (introduced in " + introducedInString() + ")";
       }

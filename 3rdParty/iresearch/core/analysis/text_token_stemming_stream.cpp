@@ -78,6 +78,9 @@ bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
           return make_locale_from_name(
               json[LOCALE_PARAM_NAME.c_str()].GetString(), locale);
         }
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
+      [[fallthrough]];
+#endif
       default:  // fall through
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_stemming_stream from "

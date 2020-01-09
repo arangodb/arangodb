@@ -30,6 +30,7 @@
 #include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
 
+#include <Cluster/ResultT.h>
 #include <atomic>
 #include <thread>
 
@@ -40,13 +41,13 @@ class ApplicationServer;
 namespace basics {
 class Exception;
 }
-  
+
 namespace futures {
-template<typename T>
+template <typename T>
 class Future;
-template<typename T>
+template <typename T>
 class Try;
-}
+}  // namespace futures
 
 class GeneralRequest;
 class RequestStatistics;
@@ -74,7 +75,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
-
   GeneralResponse* response() const { return _response.get(); }
   std::unique_ptr<GeneralResponse> stealResponse() {
     return std::move(_response);
@@ -82,9 +82,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   application_features::ApplicationServer& server() { return _server; };
 
-  RequestStatistics* statistics() const { return _statistics.load(); }
-  RequestStatistics* stealStatistics() { return _statistics.exchange(nullptr); }
-
+  RequestStatistics* statistics() const { return _statistics; }
+  RequestStatistics* stealStatistics();
   void setStatistics(RequestStatistics* stat);
 
   /// Execute the rest handler state machine
@@ -94,8 +93,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     runHandlerStateMachine();
   }
 
-  /// Execute the rest handler state machine
-  void continueHandlerExecution();
+  /// Execute the rest handler state machine. Retry the wakeup,
+  /// returns true if _state == PAUSED, false otherwise
+  bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
   futures::Future<Result> forwardRequest(bool& forwarded);
@@ -108,6 +108,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
+
+  // return true if direct handler execution is allowed
+  bool allowDirectExecution() const { return _allowDirectExecution; }
 
   RequestLane getRequestLane() {
     bool found;
@@ -127,10 +130,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // you might need to implment this in you handler
   // if it will be executed in an async job
-  virtual bool cancel() {
-    _canceled.store(true);
-    return false;
-  }
+  virtual void cancel() { _canceled.store(true); }
 
   virtual void handleError(basics::Exception const&) = 0;
 
@@ -142,7 +142,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// handled by this server, the method should return an empty string.
   /// Otherwise, this method should return a valid short name for the
   /// target server.
-  virtual std::string forwardingTarget() { return ""; }
+  /// std::string -> empty string or valid short name
+  /// boolean -> should auth header and user be removed in that request
+  virtual ResultT<std::pair<std::string, bool>> forwardingTarget() {
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
 
   void resetResponse(rest::ResponseCode);
 
@@ -153,11 +157,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // generates an error
   void generateError(arangodb::Result const&);
-  
-  template<typename T>
+
+  template <typename T>
   RestStatus waitForFuture(futures::Future<T>&& f) {
-    if (f.isReady()) {  // fast-path out
-      f.result().throwIfFailed(); // just throw the error upwards
+    if (f.isReady()) {             // fast-path out
+      f.result().throwIfFailed();  // just throw the error upwards
       return RestStatus::DONE;
     }
     bool done = false;
@@ -166,11 +170,24 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {
-        thisPtr->continueHandlerExecution();
+        thisPtr->wakeupHandler();
       }
     });
     return done ? RestStatus::DONE : RestStatus::WAITING;
   }
+
+  enum class HandlerState : uint8_t {
+    PREPARE = 0,
+    EXECUTE,
+    PAUSED,
+    CONTINUED,
+    FINALIZE,
+    DONE,
+    FAILED
+  };
+
+  /// handler state machine
+  HandlerState state() const { return _state; }
 
  private:
   void runHandlerStateMachine();
@@ -181,34 +198,29 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ///        If isContinue == true it will call continueExecute()
   ///        otherwise execute() will be called
   void executeEngine(bool isContinue);
-  void shutdownEngine();
   void compressResponse();
 
  protected:
-  enum class HandlerState {
-    PREPARE,
-    EXECUTE,
-    PAUSED,
-    CONTINUED,
-    FINALIZE,
-    DONE,
-    FAILED
-  };
-
-  std::atomic<bool> _canceled;
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;
-  std::atomic<RequestStatistics*> _statistics;
-  HandlerState _state;
+  RequestStatistics* _statistics;
 
  private:
-  uint64_t _handlerId;
+  mutable Mutex _executionMutex;
 
   std::function<void(rest::RestHandler*)> _callback;
 
-  mutable Mutex _executionMutex;
+  uint64_t _handlerId;
+
   std::atomic<std::thread::id> _executionMutexOwner;
+
+  HandlerState _state;
+
+ protected:
+  std::atomic<bool> _canceled;
+
+  bool _allowDirectExecution = false;
 };
 
 }  // namespace rest

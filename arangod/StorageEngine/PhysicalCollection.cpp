@@ -210,7 +210,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(key, current.value);
+        newValues.try_emplace(key, current.value);
       }
 
       it.next();
@@ -549,9 +549,11 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
 }
 
 /// @brief return the figures for a collection
-futures::Future<std::shared_ptr<VPackBuilder>> PhysicalCollection::figures() {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
+futures::Future<OperationResult> PhysicalCollection::figures() {
+  auto buffer = std::make_shared<VPackBufferUInt8>();
+  VPackBuilder builder(buffer);
+  
+  builder.openObject();
 
   // add index information
   size_t sizeIndexes = memory();
@@ -572,15 +574,15 @@ futures::Future<std::shared_ptr<VPackBuilder>> PhysicalCollection::figures() {
     }
   }
 
-  builder->add("indexes", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(numIndexes));
-  builder->add("size", VPackValue(sizeIndexes));
-  builder->close();  // indexes
+  builder.add("indexes", VPackValue(VPackValueType::Object));
+  builder.add("count", VPackValue(numIndexes));
+  builder.add("size", VPackValue(sizeIndexes));
+  builder.close();  // indexes
 
   // add engine-specific figures
   figuresSpecific(builder);
-  builder->close();
-  return futures::makeFuture(builder);
+  builder.close();
+  return OperationResult(Result(), std::move(buffer));
 }
 
 

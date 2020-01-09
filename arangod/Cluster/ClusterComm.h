@@ -296,10 +296,10 @@ struct ClusterCommResult {
     auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
-      request->setHeaderV2(StaticStrings::ErrorCodes, errorCodes->second);
+      request->setHeaderV2(std::string(StaticStrings::ErrorCodes),
+                           std::string(errorCodes->second));
     }
-    request->setHeaderV2(StaticStrings::ResponseCode,
-                         GeneralResponse::responseString(answer_code));
+    
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
     result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(
@@ -465,7 +465,7 @@ class ClusterComm {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterComm(application_features::ApplicationServer&);
+  explicit ClusterComm(application_features::ApplicationServer&);
   explicit ClusterComm(ClusterComm const&);     // not implemented
   void operator=(ClusterComm const&);  // not implemented
 

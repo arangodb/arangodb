@@ -107,7 +107,7 @@ class converter_pool: private irs::util::noncopyable {
   converter_pool(std::string&& encoding)
     : encoding_(std::move(encoding)), pool_(POOL_SIZE) {}
   ptr get() { return pool_.emplace(encoding_).release(); }
-  const std::string& encoding() const NOEXCEPT { return encoding_; }
+  const std::string& encoding() const noexcept { return encoding_; }
 
  private:
   struct builder {
@@ -135,7 +135,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
   static auto generator = [](
       const irs::hashed_string_ref& key,
       const converter_pool& pool
-  ) NOEXCEPT->irs::hashed_string_ref {
+  ) noexcept->irs::hashed_string_ref {
     // reuse hash but point ref at value in pool
     return irs::hashed_string_ref(key.hash(), pool.encoding());
   };
@@ -195,15 +195,15 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
     return contexts_.emplace(converters_);
   }
 
-  const std::string& context_encoding() const NOEXCEPT {
+  const std::string& context_encoding() const noexcept {
     return converters_.encoding();
   }
 
-  virtual bool do_always_noconv() const NOEXCEPT final override {
+  virtual bool do_always_noconv() const noexcept final override {
     return false; // not an identity conversion
   }
 
-  virtual int do_encoding() const NOEXCEPT override = 0;
+  virtual int do_encoding() const noexcept override = 0;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -219,7 +219,7 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
     const extern_type* from_end,
     std::size_t max
   ) const final override;
-  virtual int do_max_length() const NOEXCEPT override = 0;
+  virtual int do_max_length() const noexcept override = 0;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -298,7 +298,7 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT override;
+  virtual int do_encoding() const noexcept override;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -308,7 +308,7 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
     intern_type* to_end,
     intern_type*& to_next
   ) const override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -352,7 +352,7 @@ bool codecvt16_facet::append(
   #pragma GCC diagnostic pop
 #endif
 
-int codecvt16_facet::do_encoding() const NOEXCEPT {
+int codecvt16_facet::do_encoding() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -429,7 +429,7 @@ std::codecvt_base::result codecvt16_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvt16_facet::do_max_length() const NOEXCEPT {
+int codecvt16_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -518,7 +518,7 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT final override;
+  virtual int do_encoding() const noexcept final override;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -528,7 +528,7 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
     intern_type* to_end,
     intern_type*& to_next
   ) const final override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -575,7 +575,7 @@ bool codecvt32_facet::append(
   return false;
 }
 
-int codecvt32_facet::do_encoding() const NOEXCEPT {
+int codecvt32_facet::do_encoding() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -724,7 +724,7 @@ std::codecvt_base::result codecvt32_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvt32_facet::do_max_length() const NOEXCEPT {
+int codecvt32_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -873,7 +873,7 @@ class codecvt8u_facet: public codecvtu_base<char> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT override { return 0; } // only non-zero for ASCII
+  virtual int do_encoding() const noexcept override { return 0; } // only non-zero for ASCII
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -883,7 +883,7 @@ class codecvt8u_facet: public codecvtu_base<char> {
     intern_type* to_end,
     intern_type*& to_next
   ) const override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -1059,7 +1059,7 @@ std::codecvt_base::result codecvt8u_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvt8u_facet::do_max_length() const NOEXCEPT {
+int codecvt8u_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -1232,11 +1232,11 @@ class codecvtwu_facet: public std::codecvt<wchar_t, char, mbstate_t> {
   }
 
  protected:
-  virtual bool do_always_noconv() const NOEXCEPT override {
+  virtual bool do_always_noconv() const noexcept override {
     return impl_.always_noconv();
   }
 
-  virtual int do_encoding() const NOEXCEPT override {
+  virtual int do_encoding() const noexcept override {
     return impl_.encoding();
   }
 
@@ -1270,7 +1270,7 @@ class codecvtwu_facet: public std::codecvt<wchar_t, char, mbstate_t> {
     return impl_.length(state, from, from_end, max);
   }
 
-  virtual int do_max_length() const NOEXCEPT override {
+  virtual int do_max_length() const noexcept override {
     return impl_.max_length();
   }
 
@@ -1367,19 +1367,19 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
     return contexts_.emplace(converters_int_, converters_ext_);
   }
 
-  const std::string& context_encoding_ext() const NOEXCEPT {
+  const std::string& context_encoding_ext() const noexcept {
     return converters_ext_.encoding();
   }
 
-  const std::string& context_encoding_int() const NOEXCEPT {
+  const std::string& context_encoding_int() const noexcept {
     return converters_int_.encoding();
   }
 
-  virtual bool do_always_noconv() const NOEXCEPT final override {
+  virtual bool do_always_noconv() const noexcept final override {
     return false; // not an identity conversion
   }
 
-  virtual int do_encoding() const NOEXCEPT override = 0;
+  virtual int do_encoding() const noexcept override = 0;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -1395,7 +1395,7 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
     const extern_type* from_end,
     std::size_t max
   ) const final override;
-  virtual int do_max_length() const NOEXCEPT override = 0;
+  virtual int do_max_length() const noexcept override = 0;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -1474,7 +1474,7 @@ class codecvt8_facet final: public codecvt_base<char> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT override;
+  virtual int do_encoding() const noexcept override;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -1484,7 +1484,7 @@ class codecvt8_facet final: public codecvt_base<char> {
     intern_type* to_end,
     intern_type*& to_next
   ) const override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -1567,7 +1567,7 @@ bool codecvt8_facet::append(
   return false;
 }
 
-int codecvt8_facet::do_encoding() const NOEXCEPT {
+int codecvt8_facet::do_encoding() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -1700,7 +1700,7 @@ std::codecvt_base::result codecvt8_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvt8_facet::do_max_length() const NOEXCEPT {
+int codecvt8_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -1845,7 +1845,7 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT override;
+  virtual int do_encoding() const noexcept override;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -1855,7 +1855,7 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
     intern_type* to_end,
     intern_type*& to_next
   ) const override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -1994,7 +1994,7 @@ bool codecvtw_facet::append(
   return false;
 }
 
-int codecvtw_facet::do_encoding() const NOEXCEPT {
+int codecvtw_facet::do_encoding() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -2179,7 +2179,7 @@ std::codecvt_base::result codecvtw_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvtw_facet::do_max_length() const NOEXCEPT {
+int codecvtw_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -3395,16 +3395,16 @@ class locale_info_facet: public std::locale::facet {
 
   locale_info_facet(const irs::string_ref& name);
   locale_info_facet(locale_info_facet const& other) = delete; // because of string_ref
-  locale_info_facet(locale_info_facet&& other) NOEXCEPT { *this = std::move(other); }
+  locale_info_facet(locale_info_facet&& other) noexcept { *this = std::move(other); }
   locale_info_facet& operator=(const locale_info_facet& other) = delete; // because of string_ref
-  locale_info_facet& operator=(locale_info_facet&& other) NOEXCEPT;
-  bool operator<(const locale_info_facet& other) const NOEXCEPT { return name_ < other.name_; }
-  const irs::string_ref& country() const NOEXCEPT { return country_; }
-  const irs::string_ref& encoding() const NOEXCEPT { return encoding_; }
-  const irs::string_ref& language() const NOEXCEPT { return language_; }
-  const std::string& name() const NOEXCEPT { return name_; }
-  bool unicode() const NOEXCEPT { return unicode_t::NONE != unicode_; }
-  const irs::string_ref& variant() const NOEXCEPT { return variant_; }
+  locale_info_facet& operator=(locale_info_facet&& other) noexcept;
+  bool operator<(const locale_info_facet& other) const noexcept { return name_ < other.name_; }
+  const irs::string_ref& country() const noexcept { return country_; }
+  const irs::string_ref& encoding() const noexcept { return encoding_; }
+  const irs::string_ref& language() const noexcept { return language_; }
+  const std::string& name() const noexcept { return name_; }
+  bool unicode() const noexcept { return unicode_t::NONE != unicode_; }
+  const irs::string_ref& variant() const noexcept { return variant_; }
 
  private:
   enum class unicode_t { NONE, UTF7, UTF8, UTF16, UTF32 };
@@ -3494,7 +3494,7 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
 
 locale_info_facet& locale_info_facet::operator=(
     locale_info_facet&& other
-) NOEXCEPT {
+) noexcept {
   if (this != &other) {
     const char* start = &(other.name_[0]);
     const char* end = start + other.name_.size();
@@ -3550,7 +3550,7 @@ const std::locale& get_locale(
   struct less_t {
     bool operator()(
         const locale_info_facet* lhs, const locale_info_facet* rhs
-    ) const NOEXCEPT {
+    ) const noexcept {
       return (!lhs && rhs) || (lhs && rhs && *lhs < *rhs);
     }
   };
@@ -3588,15 +3588,17 @@ const std::locale& get_locale(
   try {
     boost_locale = locale_genrator.generate(info.name());
   } catch(...) {
-    if (info.encoding().c_str() < info.name().c_str()
-        || info.encoding().c_str() >= info.name().c_str() + info.name().size()) {
+    auto* encoding = info.encoding().c_str();
+    auto* name = info.name().c_str();
+
+    if (encoding < name || encoding >= name + info.name().size()) {
       throw;
     }
 
     auto boost_locale_name = info.name();
 
     boost_locale_name.erase(
-      info.encoding().c_str() - info.name().c_str() - 1, // -1 for '_'
+      encoding - name - 1, // -1 for '_'
       info.encoding().size() + 1 // +1 for '_'
     ); // skip encoding
     boost_locale = locale_genrator.generate(boost_locale_name);
@@ -3663,7 +3665,7 @@ NS_BEGIN( locale_utils )
   ) {
     return std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(locale);
   }
-#elif defined(_MSC_VER) && _MSC_VER <= 1916 // MSVC2015/MSVC2017
+#elif defined(_MSC_VER) && _MSC_VER <= 1923// MSVC2015/MSVC2017/MSVC2019
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate

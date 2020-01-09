@@ -993,6 +993,10 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
     meta.openObject();
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
+    auto props = body.get("properties");
+    if (props.isObject()) {
+      meta.add("properties", props);
+    }
     meta.close();
 
     // save last tick in file

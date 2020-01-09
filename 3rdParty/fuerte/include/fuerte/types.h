@@ -53,7 +53,8 @@ StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
 StatusCode constexpr StatusInternalError = 500;
-StatusCode constexpr StatusUnavailable = 505;
+StatusCode constexpr StatusUnavailable = 503;
+StatusCode constexpr StatusVersionNotSupported = 505;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition
@@ -131,21 +132,21 @@ std::string to_string(MessageType type);
 // --SECTION--                                                     SocketType
 // -----------------------------------------------------------------------------
 
-enum class SocketType { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
+enum class SocketType : uint8_t { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
 std::string to_string(SocketType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     ProtocolType
 // -----------------------------------------------------------------------------
 
-enum class ProtocolType { Undefined = 0, Http = 1, Vst = 2 };
+enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Vst = 2 };
 std::string to_string(ProtocolType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ContentType
 // -----------------------------------------------------------------------------
 
-enum class ContentType { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
+enum class ContentType : uint8_t { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
 ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
 

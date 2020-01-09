@@ -41,7 +41,7 @@ class ClusterEngine final : public StorageEngine {
   explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
-  void setActualEngine(StorageEngine* e) { _actualEngine = e; }
+  void setActualEngine(StorageEngine* e);
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
@@ -68,7 +68,8 @@ class ClusterEngine final : public StorageEngine {
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
+                                                           TRI_voc_tid_t tid,
                                                            transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,

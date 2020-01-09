@@ -49,10 +49,6 @@ void throwArrayExpectedException(AqlValue const& value) {
 }
 }  // namespace
 
-constexpr bool EnumerateListExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough EnumerateListExecutor::Properties::allowsBlockPassthrough;
-constexpr bool EnumerateListExecutor::Properties::inputSizeRestrictsOutputSize;
-
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,

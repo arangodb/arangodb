@@ -34,6 +34,7 @@
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+#include "search/wildcard_filter.hpp"
 
 #include "IResearch/ExpressionContextMock.h"
 #include "IResearch/common.h"
@@ -46,6 +47,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
@@ -126,8 +128,9 @@ class IResearchFilterFunctionTest
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, unused);
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer
@@ -2610,10 +2613,6 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         &ExpressionContextMock::EMPTY);
     assertFilterFail(
         vocbase(),
-        "FOR d IN myView FILTER AnaLYZER(phrase(d.name, [ 'quick', '0', "
-        "'brown' ]), 'test_analyzer') RETURN d");
-    assertFilterFail(
-        vocbase(),
         "FOR d IN myView FILTER AnaLYZER(phrase(d.name, [ 'quick', null, "
         "'brown' ]), 'test_analyzer') RETURN d");
     assertFilterFail(
@@ -2629,6 +2628,24 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         "FOR d IN myView FILTER ANALYZER(phrase(d.name, [ 'quick', d.name, "
         "'brown' ]), 'test_analyzer') RETURN d",
         &ExpressionContextMock::EMPTY);
+  }
+
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleString("name", "test_analyzer"));
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
+      "k").push_back("0");
+    phrase.push_back("b").push_back("r").push_back("o").push_back("w").push_back(
+      "n");
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER AnaLYZER(phrase(d.name, [ 'quick', '0', "
+        "'brown' ]), 'test_analyzer') RETURN d", expected);
+    assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER AnaLYZER(phrase(d.name,  'quick', '0', "
+      "'brown'), 'test_analyzer') RETURN d");
   }
 
   // with offset, complex name, custom analyzer
@@ -3375,11 +3392,6 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     assertFilterFail(
         vocbase(),
         "FOR d IN myView FILTER analyzer(phrase(d.obj.properties.id.name, [ "
-        "'quick', 3, 'brown', '2', 'fox', 0, 'jumps' ]), 'test_analyzer') "
-        "RETURN d");
-    assertFilterFail(
-        vocbase(),
-        "FOR d IN myView FILTER analyzer(phrase(d.obj.properties.id.name, [ "
         "'quick', 3, 'brown', null, 'fox', 0, 'jumps' ]), 'test_analyzer') "
         "RETURN d");
     assertFilterFail(
@@ -3560,6 +3572,55 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         "'fox', 0.0, 'jumps' ], 'test_analyzer') RETURN d",
         expected, &ctx);
   }
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back(
+      "k");
+    phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back(
+      "n");
+    phrase.push_back("f").push_back("o").push_back("x");
+    phrase.push_back("j").push_back("u").push_back("m").push_back("p").push_back(
+      "s");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
+
+    // implicit zero offsets
+    assertFilterSuccess(
+      vocbase(),
+      "LET offset=2 LET input='bro' FOR d IN myView FILTER "
+      "analyzer(phrase(d.obj.properties.id.name, ['quick', offset+1, "
+      "CONCAT(input, 'wn'), 'fox', 'jumps']), 'test_analyzer') "
+      "RETURN d",
+      expected, &ctx); 
+
+    // explicit zero offsets on top level
+    assertFilterSuccess(
+      vocbase(),
+      "LET offset=2 LET input='bro' FOR d IN myView FILTER "
+      "analyzer(phrase(d.obj.properties.id.name, ['quick'], offset+1, "
+      "CONCAT(input, 'wn'), 0, ['f', 'o', 'x'], 0, ['j', 'u', 'mps']), 'test_analyzer') "
+      "RETURN d",
+      expected, &ctx);
+
+    // recurring arrays not allowed
+    assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER "
+      "analyzer(phrase(d.obj.properties.id.name, ['quick'], 3, "
+      "'123', 'wn', 0, ['f', 'o', 'x'], 0, ['j', ['u'], 'mps']), 'test_analyzer') "
+      "RETURN d", &ctx);
+
+    assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER "
+      "analyzer(phrase(d.obj.properties.id.name, ['quick', 3, "
+      "'123', 'wn', 0, 'f', 'o', 'x', 0, ['j'], 'u', 'mps']), 'test_analyzer') "
+      "RETURN d", &ctx);
+  }
 
   // multiple offsets, complex name, custom analyzer, invalid expressions
   // quick <...> <...> <...> brown <...> <...> fox jumps
@@ -3599,13 +3660,6 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         "analyzer(phrase(d.obj.properties.id.name, [ 'quick', "
         "TO_BOOL(offset+1), CONCAT(input, 'wn'), offset, 'fox', 0, 'jumps' ]), "
         "'test_analyzer') RETURN d",
-        &ctx);
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET offset=2 LET input='bro' FOR d IN myView FILTER "
-        "analyzer(phrase(d.obj.properties.id.name, [ 'quick', offset + 1.5, "
-        "'brown', TO_STRING(2), 'fox', 0, 'jumps' ]), 'test_analyzer') RETURN "
-        "d",
         &ctx);
     assertFilterExecutionFail(
         vocbase(),
@@ -3650,12 +3704,6 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
         "phrase(d.obj.properties.id.name, [ 'quick', TO_BOOL(offset+1), "
         "CONCAT(input, 'wn'), offset, 'fox', 0, 'jumps' ], 'test_analyzer') "
         "RETURN d",
-        &ctx);
-    assertFilterExecutionFail(
-        vocbase(),
-        "LET offset=2 LET input='bro' FOR d IN myView FILTER "
-        "phrase(d.obj.properties.id.name, [ 'quick', offset + 1.5, 'brown', "
-        "TO_STRING(2), 'fox', 0, 'jumps' ], 'test_analyzer') RETURN d",
         &ctx);
     assertFilterExecutionFail(
         vocbase(),
@@ -3712,9 +3760,10 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       vocbase(),
       "FOR d IN myView FILTER analyzer(phrase(d['name'], 'quick'), { \"a\": 7, "
       "\"b\": \"c\" }) RETURN d");
-  assertFilterFail(vocbase(),
-                   "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), "
-                   "'invalid_analyzer') RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), "
+      "'invalid_analyzer') RETURN d");
   assertFilterFail(
       vocbase(),
       "FOR d IN myView FILTER analyzer(phrase(d['name'], 'quick'), "
@@ -3847,9 +3896,10 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       vocbase(),
       "FOR d IN myView FILTER phrase(d.name, [ 'quick' ], 'invalid_analyzer') "
       "RETURN d");
-  assertFilterFail(vocbase(),
-                   "FOR d IN myView FILTER phrase(d['name'], [ 'quick' ], "
-                   "'invalid_analyzer') RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER phrase(d['name'], [ 'quick' ], "
+      "'invalid_analyzer') RETURN d");
 
   // wrong analylzer
   assertFilterFail(
@@ -3882,9 +3932,10 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
       vocbase(),
       "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), null) RETURN "
       "d");
-  assertFilterFail(vocbase(),
-                   "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), "
-                   "'invalidAnalyzer') RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick'), "
+      "'invalidAnalyzer') RETURN d");
   assertFilterExecutionFail(
       vocbase(),
       "FOR d IN myView FILTER analyzer(phrase(d.name, 'quick', 3, 'brown'), d) "
@@ -4722,6 +4773,169 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, 'abc', RAND() ? 128 : 10) "
       "RETURN d");
+}
+
+TEST_F(IResearchFilterFunctionTest, wildcard) {
+  // d.name LIKE 'foo'
+  {
+    irs::Or expected;
+    auto& wildcard = expected.add<irs::by_wildcard>();
+    wildcard.field(mangleStringIdentity("name")).scored_terms_limit(128).term("foo");
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER d.name LIKE 'foo' RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LIKE(d['name'], 'foo') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
+        expected);
+  }
+
+  // ANALYZER(d.name.foo LIKE 'foo%', 'test_analyzer')
+  {
+    irs::Or expected;
+    auto& wildcard = expected.add<irs::by_wildcard>();
+    wildcard.field(mangleString("name.foo", "test_analyzer")).scored_terms_limit(128).term("foo%");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(d.name.foo LIKE 'foo%', 'test_analyzer') RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(LIKE(d.name[_FORWARD_('foo')], 'foo%'), 'test_analyzer') RETURN d",
+        expected, &ctx);
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET x = 'foo' FOR d IN myView FILTER ANALYZER(LIKE(d.name[x], 'foo%'), 'test_analyzer') RETURN d",
+        expected,
+        &ctx);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(LIKE(d['name'].foo, 'foo%'), 'test_analyzer') RETURN d",
+        expected, &ctx);
+  }
+
+  // BOOST(ANALYZER(d.name[4] LIKE '_foo%', 'test_analyzer'), 0.5)
+  {
+    irs::Or expected;
+    auto& wildcard = expected.add<irs::by_wildcard>();
+    wildcard.field(mangleString("name[4]", "test_analyzer")).scored_terms_limit(128).term("_foo%").boost(0.5);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(d.name[4] LIKE '_foo%', 'test_analyzer'), 0.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d['name'][_FORWARD_(4)], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET x = 4 FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d['name'][x], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d.name[4], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
+        expected);
+  }
+
+  // invalid attribute access
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER [d] LIKE '_foo%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER d[*] LIKE '_foo%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER d.name[*] LIKE '_foo%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo[*].name, '_foo%') RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER 'foo' LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER [] LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER {} LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER null LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER true LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // non-deterministic attribute access
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(RAND() > 0.5 ? d.foo.name : d.foo.bar, '_foo%') RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // invalid pattern
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, true) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, null) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, 1) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, []) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, {}) RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, _FORWARD_({})) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, d) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // wrong number of arguments
+  assertFilterParseFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.name, 'abc', true, 'z') RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.name, 'abc', true) RETURN d");
+  assertFilterParseFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.name) RETURN d");
 }
 
 TEST_F(IResearchFilterFunctionTest, IN_RANGE) {

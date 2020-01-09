@@ -107,20 +107,21 @@ struct BoostScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
         irs::attribute_view const&, irs::boost_t boost) const override {
-      struct ScoreCtx : public irs::sort::score_ctx {
+      struct ScoreCtx : public irs::score_ctx {
         ScoreCtx(irs::boost_t score) : scr(score) {}
 
         irs::boost_t scr;
       };
 
-      return {std::make_unique<ScoreCtx>(boost),
-              [](const void* ctx, irs::byte_type* score_buf) noexcept {
-                  auto & state = *static_cast<const ScoreCtx*>(ctx);
-      irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
-    }
+      return {
+        std::make_unique<ScoreCtx>(boost),
+        [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
+          auto & state = *static_cast<const ScoreCtx*>(ctx);
+          irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
+      }
   };
 }
 };  // namespace
@@ -181,17 +182,17 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+    virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
         irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
         irs::attribute_view const&, irs::boost_t) const override {
-      struct ScoreCtx : public irs::sort::score_ctx {
+      struct ScoreCtx : public irs::score_ctx {
         ScoreCtx(float_t score) : i(score) {}
 
         float_t i;
       };
 
       return {std::make_unique<ScoreCtx>(i),
-              [](const void* ctx, irs::byte_type* score_buf) noexcept {
+              [](const irs::score_ctx* ctx, irs::byte_type* score_buf) noexcept {
                   auto & state = *static_cast<const ScoreCtx*>(ctx);
       irs::sort::score_cast<float_t>(score_buf) = state.i;
     }
@@ -363,12 +364,13 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
                              arangodb::aql::PART_MAIN);
 
   std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+  ss->resetWakeupHandler();
 
   arangodb::aql::QueryResult result;
   while (true) {
     auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncResponse();
+      ss->waitForAsyncWakeup();
     } else {
       break;
     }
@@ -469,7 +471,7 @@ std::string mangleString(std::string name, std::string suffix) {
 }
 
 std::string mangleStringIdentity(std::string name) {
-  arangodb::iresearch::kludge::mangleStringField(name, arangodb::iresearch::IResearchLinkMeta::Analyzer()  // args
+  arangodb::iresearch::kludge::mangleStringField(name, arangodb::iresearch::FieldMeta::Analyzer()  // args
   );
 
   return name;
@@ -698,6 +700,7 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/
 ) {
+  SCOPED_TRACE(testing::Message("assertFilter failed for query:<") << queryString << "> parseOk:" << parseOk << " execOk:" << execOk);
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),

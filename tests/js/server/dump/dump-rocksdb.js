@@ -90,8 +90,16 @@ function dumpTestSuite () {
       assertEqual(100000, c.count());
 
       // test all documents
-      for (var i = 0; i < 100000; ++i) {
-        var doc = c.document("test" + i);
+      let docs = [], results = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push("test" + i);
+        if (docs.length === 10000) {
+          results = results.concat(c.document(docs));
+          docs = [];
+        }
+      }
+      for (let i = 0; i < 100000; ++i) {
+        let doc = results[i];
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
@@ -158,13 +166,11 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(9000, c.count());
 
-      var i;
-      for (i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         if (i % 10 === 0) {
           assertFalse(c.exists("test" + i));
-        }
-        else {
-          var doc = c.document("test" + i);
+        } else {
+          let doc = c.document("test" + i);
           assertEqual(i, doc.value1);
 
           if (i < 1000) {
@@ -453,6 +459,7 @@ function dumpTestSuite () {
 /// @brief test custom analyzers restoring
 ////////////////////////////////////////////////////////////////////////////////
     testAnalyzers: function() {
+      assertNotEqual(null, db._collection("_analyzers"));
       assertEqual(1, db._analyzers.count()); // only 1 stored custom analyzer
 
       let analyzer = analyzers.analyzer("custom");
@@ -462,8 +469,17 @@ function dumpTestSuite () {
       assertEqual(" ", analyzer.properties().delimiter);
       assertEqual(1, analyzer.features().length);
       assertEqual("frequency", analyzer.features()[0]);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test link on analyzers collection
+////////////////////////////////////////////////////////////////////////////////
+    testIndexAnalyzerCollection : function() {
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
+    }
   };
 }
 

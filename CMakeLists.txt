@@ -85,7 +85,7 @@ option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from .
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "6")
+set(ARANGODB_VERSION_MINOR "7")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -772,8 +772,6 @@ if (USE_MAINTAINER_MODE)
   find_package(BISON)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
-  find_program(MARKDOWN_EXECUTABLE markdown)
-  find_program(HTML2TEXT_EXECUTABLE html2text)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif ()
@@ -810,7 +808,7 @@ set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
 set(IPO_ENABLED False)
 
 # Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
-if(USE_IPO STREQUAL "AUTO")
+if (USE_IPO STREQUAL "AUTO")
   # When USE_IPO=AUTO, enable IPO for optimized / release builds.
   # But to work around a g++ segfault triggered by using both -flto and
   # -fno-devirtualize-functions, we disable IPO when using google tests, because
@@ -827,7 +825,7 @@ if(USE_IPO STREQUAL "AUTO")
   else()
     set(IPO_ENABLED False)
   endif ()
-elseif(USE_IPO)
+elseif (USE_IPO)
   set(IPO_ENABLED True)
 else()
   set(IPO_ENABLED False)
@@ -835,6 +833,10 @@ endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+  
+if (IPO_ENABLED)
+  add_definitions("-DARANGODB_USE_IPO=1")
+endif()
 
 ################################################################################
 ## LIBRARY RESOLV
@@ -894,7 +896,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter ${BASE_FLAGS}")
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
@@ -913,7 +915,7 @@ elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter ${BASE_FLAGS}")
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
@@ -931,6 +933,8 @@ elseif (MSVC)
   if (VERBOSE)
     message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
   endif ()
+
+  set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
@@ -1030,7 +1034,7 @@ else ()
   else ()
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
   endif ()
-  string(REGEX MATCH  
+  string(REGEX MATCH
             "${OPENSSL_VERSION_PATTERN}"
             ARANGODB_REQUIRED_OPENSSL_VERSION
             "${ARANGODB_VERSIONS_CONTENT}")
@@ -1136,6 +1140,7 @@ endif ()
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
 
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
@@ -1150,6 +1155,7 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/function2)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
@@ -1381,3 +1387,6 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #     message(STATUS "${_variableName}=${${_variableName}}")
 #   endforeach ()
 # endif ()
+
+add_custom_target(arangodb
+        DEPENDS arangod arangosh arangodump arangoexport arangobackup arangoimport arangorestore)

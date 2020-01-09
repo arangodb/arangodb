@@ -28,6 +28,8 @@
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/cpu-relax.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -99,16 +101,16 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
     this->close();
     return false;
   }
-  
+
   // Inspect the data we've received so far.
   auto recvBuffs = this->_protocol->buffer.data();  // no copy
   auto cursor = asio_ns::buffer_cast<const uint8_t*>(recvBuffs);
   auto available = asio_ns::buffer_size(recvBuffs);
   // TODO technically buffer_cast is deprecated
-  
+
   size_t parsedBytes = 0;
   while (true) {
-    
+
     vst::Chunk chunk;
     vst::parser::ChunkState state = vst::parser::ChunkState::Invalid;
     if (_vstVersion == vst::VST1_1) {
@@ -116,29 +118,29 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
     } else if (_vstVersion == vst::VST1_0) {
       state = vst::parser::readChunkVST1_0(chunk, cursor, available);
     }
-    
+
     if (vst::parser::ChunkState::Incomplete == state) {
       break;
     } else if (vst::parser::ChunkState::Invalid == state) { // actually should never happen
       this->close();
       return false; // stop read loop
     }
-    
+
     // move cursors
     cursor += chunk.header.chunkLength();
     available -= chunk.header.chunkLength();
     parsedBytes += chunk.header.chunkLength();
-    
+
     // Process chunk
     if (!processChunk(chunk)) {
       this->close();
       return false; // stop read loop
     }
   }
-  
+
   // Remove consumed data from receive buffer.
   this->_protocol->buffer.consume(parsedBytes);
-  
+
   return true; // continue read loop
 }
 
@@ -155,11 +157,11 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
     << "\"vst-request\"; chunk was empty, this=" << this;
     return false; // close connection
   }
-  
+
   if (chunk.header.isFirst()) {
     RequestStatistics* stat = this->acquireStatistics(chunk.header.messageID());
     RequestStatistics::SET_READ_START(stat, TRI_microtime());
-    
+
     // single chunk optimization
     if (chunk.header.numberOfChunks() == 1) {
       VPackBuffer<uint8_t> buffer; // TODO lease buffers ?
@@ -168,18 +170,15 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
       return processMessage(std::move(buffer), chunk.header.messageID());
     }
   }
-  
-  Message* msg;
+
   // Find stored message for this chunk.
-  auto it = _messages.find(chunk.header.messageID());
-  if (it == _messages.end()) {
-    auto tmp = std::make_unique<Message>();
-    msg = tmp.get();
-    _messages.emplace(chunk.header.messageID(), std::move(tmp));
-  } else {
-    msg = it->second.get();
-  }
-  
+  auto it = _messages.try_emplace(
+    chunk.header.messageID(),
+    arangodb::lazyConstruct([&]{
+      return std::make_unique<Message>();
+    })).first;
+  Message* msg = it->second.get();
+
   // returns false if message gets too big
   if (!msg->addChunk(chunk)) {
     LOG_TOPIC("695fd", WARN, Logger::REQUESTS)
@@ -187,11 +186,11 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
     << "allowed, this=" << this;
     return false; // close connection
   }
-  
+
   if (!msg->assemble()) {
     return true; // wait for more chunks
   }
-  
+
   //this->_proto->timer.cancel();
   auto guard = scopeGuard([&] {
     _messages.erase(chunk.header.messageID());
@@ -207,7 +206,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
 
   auto ptr = buffer.data();
   auto len = buffer.byteSize();
-  
+
   // first part of the buffer contains the response buffer
   std::size_t headerLength = 0;
   MessageType mt = MessageType::Undefined;
@@ -219,13 +218,22 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     // error is handled below
   }
 
-  RequestStatistics::SET_READ_END(this->statistics(messageId));
-  
+  RequestStatistics* stat = this->statistics(messageId);
+  RequestStatistics::SET_READ_END(stat);
+  RequestStatistics::ADD_RECEIVED_BYTES(stat, buffer.size());
+
   // handle request types
   if (mt == MessageType::Authentication) {  // auth
     handleAuthHeader(VPackSlice(buffer.data()), messageId);
+    // Separate superuser traffic:
+    // Note that currently, velocystream traffic will never come from
+    // a forwarding, since we always forward with HTTP.
+    if (_authMethod != AuthenticationMethod::NONE && _authorized &&
+        this->_authToken._username.empty()) {
+      RequestStatistics::SET_SUPERUSER(stat);
+    }
   } else if (mt == MessageType::Request) {  // request
-    
+
     VPackSlice header(buffer.data());
     // the handler will take ownership of this pointer
     auto req = std::make_unique<VstRequest>(this->_connectionInfo,
@@ -239,14 +247,23 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       // if we don't call checkAuthentication we need to refresh
       this->_auth->userManager()->refreshUser(this->_authToken._username);
     }
-    
+
+    // Separate superuser traffic:
+    // Note that currently, velocystream traffic will never come from
+    // a forwarding, since we always forward with HTTP.
+    if (_authMethod != AuthenticationMethod::NONE && _authorized &&
+        this->_authToken._username.empty()) {
+      RequestStatistics::SET_SUPERUSER(stat);
+    }
+
     LOG_TOPIC("92fd6", DEBUG, Logger::REQUESTS)
     << "\"vst-request-begin\",\"" << (void*)this << "\",\""
     << this->_connectionInfo.clientAddress << "\",\""
     << VstRequest::translateMethod(req->requestType()) << "\",\""
+    << (req->databaseName().empty() ? "" : "/_db/" + req->databaseName())
     << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
     << "\"";
-    
+
     CommTask::Flow cont = this->prepareExecution(*req.get());
     if (cont == CommTask::Flow::Continue) {
       auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
@@ -275,11 +292,13 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
 #endif
 
   this->finishExecution(*baseRes);
-  
+
   auto resItem = std::make_unique<ResponseItem>();
   response.writeMessageHeader(resItem->metadata);
   resItem->response = std::move(baseRes);
-  
+  RequestStatistics::SET_WRITE_START(stat);
+  resItem->stat = stat;
+
   asio_ns::const_buffer payload;
   if (response.generateBody()) {
     payload = asio_ns::buffer(response.payload().data(),
@@ -288,23 +307,23 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   vst::message::prepareForNetwork(_vstVersion, response.messageId(),
                                   resItem->metadata, payload,
                                   resItem->buffers);
-  
+
   if (stat != nullptr) {
     LOG_TOPIC("cf80d", TRACE, Logger::REQUESTS)
     << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
     << static_cast<int>(response.responseCode()) << ","
     << this->_connectionInfo.clientAddress << "\"," << stat->timingsCsv();
   }
-  
+
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
   // and give some request information
-  LOG_TOPIC("92fd7", INFO, Logger::REQUESTS)
+  LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
   << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId() << "\",\""
   << this->_connectionInfo.clientAddress << "\",\""
   << static_cast<int>(response.responseCode()) << ","
   << "\"," << Logger::FIXED(totalTime, 6);
-  
+
   while (true) {
     if (_writeQueue.push(resItem.get())) {
       break;
@@ -312,11 +331,18 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
     cpu_relax();
   }
   resItem.release();
-  
+
   bool expected = _writing.load();
   if (false == expected) {
     if (_writing.compare_exchange_strong(expected, true)) {
-      doWrite(); // we managed to start writing
+      // we managed to start writing
+      if constexpr (SocketType::Ssl == T) {
+        this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
+          static_cast<VstCommTask<T>*>(self.get())->doWrite();
+        });
+      } else {
+        doWrite();
+      }
     }
   }
 }
@@ -324,9 +350,9 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
 template<SocketType T>
 void VstCommTask<T>::doWrite() {
   TRI_ASSERT(_writing.load() == true);
-  
+
   while(true) { // loop instead of using recursion
-    
+
     ResponseItem* tmp = nullptr;
     if (!_writeQueue.pop(tmp)) {
       // careful now, we need to consider that someone queues
@@ -335,8 +361,8 @@ void VstCommTask<T>::doWrite() {
       if (_writeQueue.empty()) {
         break; // done, someone else may restart
       }
-      // at this point
-      bool expected = false;
+
+      bool expected = false; // may fail in a race
       if (_writing.compare_exchange_strong(expected, true)) {
         continue; // we re-start writing
       }
@@ -345,12 +371,15 @@ void VstCommTask<T>::doWrite() {
     }
     TRI_ASSERT(tmp != nullptr);
     std::unique_ptr<ResponseItem> item(tmp);
-    
+
     auto& buffers = item->buffers;
-    auto cb = [self = CommTask::shared_from_this(),
-               item = std::move(item)](asio_ns::error_code ec,
-                                       size_t transferred) {
+    asio_ns::async_write(this->_protocol->socket, buffers,
+                         [self(CommTask::shared_from_this()), rsp(std::move(item))]
+                         (asio_ns::error_code ec, size_t transferred) {
+
       auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
+      RequestStatistics::SET_WRITE_END(rsp->stat);
+      RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
       if (ec) {
         LOG_TOPIC("5c6b4", INFO, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";
@@ -358,9 +387,10 @@ void VstCommTask<T>::doWrite() {
       } else {
         thisPtr->doWrite(); // write next one
       }
-    };
-    asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
-    
+      if (rsp->stat != nullptr) {
+        rsp->stat->release();
+      }
+    });
     break; // done
   }
 }
@@ -416,26 +446,26 @@ bool VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
     expectedChunks = chunk.header.numberOfChunks();
     expectedMsgSize = chunk.header.messageLength();
     chunks.reserve(expectedChunks);
-    
+
     TRI_ASSERT(buffer.empty());
     if (buffer.capacity() < chunk.header.messageLength()) {
       buffer.reserve(chunk.header.messageLength() - buffer.capacity());
     }
   }
-  
+
   // verify total message body size limit
   size_t newSize = buffer.size() + chunk.body.size();
   if (newSize > CommTask::MaximalBodySize ||
       (expectedMsgSize != 0 && expectedMsgSize < newSize)) {
     return false; // error
   }
-  
+
   uint8_t const* begin = reinterpret_cast<uint8_t const*>(chunk.body.data());
   size_t offset = buffer.size();
   buffer.append(begin, chunk.body.size());
   // Add chunk to index list
   chunks.push_back(ChunkInfo{chunk.header.index(), offset, chunk.body.size()});
-  
+
   return true;
 }
 
@@ -445,7 +475,7 @@ bool VstCommTask<T>::Message::assemble() {
   if (expectedChunks == 0 || chunks.size() < expectedChunks) {
     return false;
   }
-  
+
   // fast-path: chunks received in-order
   bool reject = false;
   for (size_t i = 0; i < expectedChunks; i++) {
@@ -457,12 +487,12 @@ bool VstCommTask<T>::Message::assemble() {
   if (!reject) { //  fast-path, chunks are in order
     return true;
   }
-  
+
   // We now have all chunks. Sort them by index.
   std::sort(chunks.begin(), chunks.end(), [](auto const& a, auto const& b) {
     return a.index < b.index;
   });
-  
+
   // Combine chunk content
   VPackBuffer<uint8_t> cp(std::move(buffer));
   buffer.clear();

@@ -73,7 +73,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cache(nullptr),
       _cacheEnabled(
           !collection.system() &&
-          basics::VelocyPackHelper::readBooleanValue(info, "cacheEnabled", false) &&
+          basics::VelocyPackHelper::getBooleanValue(info, "cacheEnabled", false) &&
           CacheManagerFeature::MANAGER != nullptr),
       _numIndexCreations(0) {
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
@@ -109,7 +109,7 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync)
 
   _cacheEnabled =
       !isSys &&
-      basics::VelocyPackHelper::readBooleanValue(slice, "cacheEnabled", _cacheEnabled) &&
+      basics::VelocyPackHelper::getBooleanValue(slice, "cacheEnabled", _cacheEnabled) &&
       CacheManagerFeature::MANAGER != nullptr;
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
@@ -245,6 +245,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   TRI_vocbase_col_status_e status;
+  if (!vocbase.use()) { // someone dropped the database
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
   Result res = vocbase.useCollection(&_logicalCollection, status);
 
   if (res.fail()) {
@@ -254,6 +257,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   auto colGuard = scopeGuard([&] {
     vocbase.releaseCollection(&_logicalCollection);
     _numIndexCreations.fetch_sub(1, std::memory_order_release);
+    vocbase.release();
   });
 
   RocksDBBuilderIndex::Locker locker(this);
@@ -362,10 +366,13 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     }
 
     // Step 4. fill index
-    const bool inBackground =
-    basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
+    bool const inBackground =
+        basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IndexInBackground, false);
     if (inBackground) {  // allow concurrent inserts into index
-      _indexes.emplace(buildIdx);
+      {
+        WRITE_LOCKER(guard, _indexesLock);
+        _indexes.emplace(buildIdx);
+      }
       res = buildIdx->fillIndexBackground(locker);
     } else {
       res = buildIdx->fillIndexForeground();
@@ -402,7 +409,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     if (!engine->inRecovery()) {  // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
-          LogicalDataSource::Serialization::Persistence);
+          LogicalDataSource::Serialization::PersistenceWithInProgress);
       VPackBuilder indexInfo;
       idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
@@ -484,7 +491,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   auto builder =  // RocksDB path
       _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
-          LogicalDataSource::Serialization::Persistence);
+          LogicalDataSource::Serialization::PersistenceWithInProgress);
 
   // log this event in the WAL and in the collection meta-data
   res = engine->writeCreateCollectionMarker( // write marker
@@ -719,6 +726,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 
   return readDocumentWithCallback(trx, documentId, [&revisionId](LocalDocumentId const&, VPackSlice doc) {
     revisionId = transaction::helpers::extractRevFromDocument(doc);
+    return true;
   });
 }
 
@@ -837,7 +845,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     if (options.returnNew) {
       resultMdr.setManaged(newSlice.begin());
       TRI_ASSERT(resultMdr.revisionId() == revisionId);
-    } else if(!options.silent) {  //  need to pass revId manually
+    } else if (!options.silent) {  //  need to pass revId manually
       transaction::BuilderLeaser keyBuilder(trx);
       keyBuilder->openObject(/*unindexed*/true);
       keyBuilder->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(newSlice));
@@ -1152,7 +1160,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 }
 
 /// @brief return engine-specific figures
-void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void RocksDBCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
@@ -1163,22 +1171,22 @@ void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
                               rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
                               rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
-  builder->add("documentsSize", VPackValue(out));
+  builder.add("documentsSize", VPackValue(out));
   bool cacheInUse = useCache();
-  builder->add("cacheInUse", VPackValue(cacheInUse));
+  builder.add("cacheInUse", VPackValue(cacheInUse));
   if (cacheInUse) {
-    builder->add("cacheSize", VPackValue(_cache->size()));
-    builder->add("cacheUsage", VPackValue(_cache->usage()));
+    builder.add("cacheSize", VPackValue(_cache->size()));
+    builder.add("cacheUsage", VPackValue(_cache->usage()));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;
-    builder->add("cacheLifeTimeHitRate", VPackValue(rate));
+    builder.add("cacheLifeTimeHitRate", VPackValue(rate));
     rate = hitRates.second;
     rate = std::isnan(rate) ? 0.0 : rate;
-    builder->add("cacheWindowedHitRate", VPackValue(rate));
+    builder.add("cacheWindowedHitRate", VPackValue(rate));
   } else {
-    builder->add("cacheSize", VPackValue(0));
-    builder->add("cacheUsage", VPackValue(0));
+    builder.add("cacheSize", VPackValue(0));
+    builder.add("cacheUsage", VPackValue(0));
   }
 }
 

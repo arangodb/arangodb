@@ -49,8 +49,7 @@ class MMFilesExportCursor final : public Cursor {
 
   size_t count() const override final;
 
-  std::pair<arangodb::aql::ExecutionState, Result> dump(velocypack::Builder& result,
-                                                        std::function<void()> const& ch) override final;
+  std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 

@@ -312,12 +312,15 @@ TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite) {
         std::string("FOR i IN 1.." + nDocsString +
                     " INSERT { _key: TO_STRING(i), value: i } INTO ") +
         collectionName +
-        " OPTIONS { overwrite: true } SORT NEW.value RETURN NEW.value";
+        " OPTIONS { overwrite: true } SORT NEW.value RETURN [OLD.value, NEW.value]";
 
     VPackBuilder builder;
     builder.openArray();
     for (size_t i = 1; i <= nDocs; i++) {
+      builder.openArray();
+      builder.add(VPackSlice::nullSlice());
       builder.add(VPackValue(i));
+      builder.close();
     }
     builder.close();
     AssertQueryHasResult(vocbase, query, builder.slice());

@@ -288,6 +288,8 @@ class GatherNode final : public ExecutionNode {
  public:
   enum class SortMode : uint32_t { MinElement, Heap, Default };
 
+  enum class Parallelism : uint32_t { Undefined, Parallel, Serial };
+
   /// @brief inspect dependencies starting from a specified 'node'
   /// and return first corresponding collection within
   /// a diamond if so exist
@@ -301,7 +303,8 @@ class GatherNode final : public ExecutionNode {
   }
 
   /// @brief constructor with an id
-  GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexcept;
+  GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, 
+             Parallelism parallelism = Parallelism::Undefined) noexcept;
 
   GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
              SortElementVector const& elements);
@@ -316,7 +319,7 @@ class GatherNode final : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto other = std::make_unique<GatherNode>(plan, _id, _sortmode);
+    auto other = std::make_unique<GatherNode>(plan, _id, _sortmode, _parallelism);
     other->setConstrainedSortLimit(constrainedSortLimit());
     return cloneHelper(std::move(other), withDependencies, withProperties);
   }
@@ -350,14 +353,25 @@ class GatherNode final : public ExecutionNode {
   size_t constrainedSortLimit() const noexcept;
 
   bool isSortingGather() const noexcept;
+  
+  void setParallelism(Parallelism value);
+  
+  /// no modification nodes, ScatterNodes etc
+  bool isParallelizable() const;
 
  private:
+  /// @brief the underlying database
+  TRI_vocbase_t* _vocbase;
+
   /// @brief sort elements, variable, ascending flags and possible attribute
   /// paths.
   SortElementVector _elements;
 
   /// @brief sorting mode
   SortMode _sortmode;
+  
+  /// @brief parallelism
+  Parallelism _parallelism;
 
   /// @brief In case this was created from a constrained heap sorting node, this
   /// is its limit (which is greater than zero). Otherwise, it's zero.

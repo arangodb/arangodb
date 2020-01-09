@@ -24,17 +24,16 @@
 #include "Aql/SubqueryEndExecutor.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::aql;
-
-constexpr bool SubqueryEndExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough SubqueryEndExecutor::Properties::allowsBlockPassthrough;
-constexpr bool SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize;
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
@@ -42,15 +41,29 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    transaction::Methods* trxPtr, RegisterId outReg)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    velocypack::Options const* const options, RegisterId inReg, RegisterId outReg)
+    : ExecutorInfos(std::move(readableInputRegisters),
+                    std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _trxPtr(trxPtr),
-      _outReg(outReg) {}
-
-SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&& other) = default;
+      _vpackOptions(options),
+      _outReg(outReg),
+      _inReg(inReg) {}
 
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
+
+bool SubqueryEndExecutorInfos::usesInputRegister() const noexcept {
+  return _inReg != RegisterPlan::MaxRegisterId;
+}
+
+velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions() const noexcept {
+  return _vpackOptions;
+}
+
+RegisterId SubqueryEndExecutorInfos::getOutputRegister() const noexcept {
+  return _outReg;
+}
+
+RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept { return _inReg; }
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos), _accumulator(nullptr), _state(ACCUMULATE) {
@@ -76,13 +89,10 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         }
 
         // We got a data row, put it into the accumulator
-        if (inputRow.isInitialized()) {
-          // Above is a RETURN which writes to register 0
-          // TODO: The RETURN node above is superflous and could be folded
-          //       into the SubqueryEndNode
+        if (inputRow.isInitialized() && _infos.usesInputRegister()) {
           TRI_ASSERT(_accumulator->isOpenArray());
-          AqlValue value = inputRow.getValue(0);
-          value.toVelocyPack(_infos.getTrxPtr(), *_accumulator, false);
+          AqlValue value = inputRow.getValue(_infos.getInputRegister());
+          value.toVelocyPack(_infos.vpackOptions(), *_accumulator, false);
         }
 
         // We have received DONE on data rows, so now
@@ -101,11 +111,23 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
           return {ExecutionState::WAITING, NoStats{}};
         }
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-        TRI_ASSERT(shadowRow.isInitialized() == true);
-        TRI_ASSERT(shadowRow.isRelevant() == true);
+
+        // This case happens when there are no inputs from the enclosing query,
+        // hence our companion SubqueryStartExecutor has not produced any rows
+        // (in particular not a ShadowRow), so we are done.
+        if (state == ExecutionState::DONE && !shadowRow.isInitialized()) {
+          /* We had better not accumulated any results if we get here */
+          TRI_ASSERT(_accumulator->slice().length() == 0);
+          resetAccumulator();
+          _state = RELEVANT_SHADOW_ROW_PENDING;
+          return {ExecutionState::DONE, NoStats{}};
+        }
 
         // Here we have all data *and* the relevant shadow row,
         // so we can now submit
+        TRI_ASSERT(shadowRow.isInitialized());
+        TRI_ASSERT(shadowRow.isRelevant());
+
         bool shouldDelete = true;
         AqlValue resultDocVec{_buffer.get(), shouldDelete};
         if (shouldDelete) {
@@ -114,7 +136,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         } else {
           // relinquish ownership of _buffer, as it now belongs to
           // resultDocVec
-          _buffer.reset();
+          _buffer.release();
         }
         AqlValueGuard guard{resultDocVec, true};
 

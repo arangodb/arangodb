@@ -25,6 +25,12 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Logger/LogMacros.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -119,7 +125,8 @@ std::pair<ExecutionState, ShadowAqlItemRow> MultiDependencySingleRowFetcher::fet
       } else {
         TRI_ASSERT(row.isInitialized());
         // All shadow rows must be equal!
-        TRI_ASSERT(row.equates(ShadowAqlItemRow{dep._currentBlock, dep._rowIndex}));
+        auto const options = _dependencyProxy->velocypackOptions();
+        TRI_ASSERT(row.equates(ShadowAqlItemRow{dep._currentBlock, dep._rowIndex}, options));
       }
     }
   }
@@ -328,7 +335,7 @@ bool MultiDependencySingleRowFetcher::isAtShadowRow(DependencyInfo const& depInf
 }
 
 bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const dependency,
-                                                                         size_t const atMost) {
+                                                            size_t const atMost) {
   MultiDependencySingleRowFetcher::DependencyInfo& depInfo = _dependencyInfos[dependency];
   if (!indexIsValid(depInfo) && !isDone(depInfo)) {
     // This returns the AqlItemBlock to the ItemBlockManager before fetching a

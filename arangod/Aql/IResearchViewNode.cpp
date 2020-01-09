@@ -484,7 +484,7 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
  public:
   typedef std::vector<std::pair<TRI_voc_cid_t, irs::sub_reader const*>> readers_t;
 
-  Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) NOEXCEPT
+  Snapshot(readers_t&& readers, uint64_t docs_count, uint64_t live_docs_count) noexcept
       : _readers(std::move(readers)),
         _docs_count(docs_count),
         _live_docs_count(live_docs_count) {}
@@ -495,26 +495,26 @@ class Snapshot : public IResearchView::Snapshot, private irs::util::noncopyable 
            ::arangodb::containers::HashSet<TRI_voc_cid_t> const& collections);
 
   /// @returns corresponding sub-reader
-  virtual const irs::sub_reader& operator[](size_t i) const NOEXCEPT override {
+  virtual const irs::sub_reader& operator[](size_t i) const noexcept override {
     assert(i < readers_.size());
     return *(_readers[i].second);
   }
 
-  virtual TRI_voc_cid_t cid(size_t i) const NOEXCEPT override {
+  virtual TRI_voc_cid_t cid(size_t i) const noexcept override {
     assert(i < readers_.size());
     return _readers[i].first;
   }
 
   /// @returns number of documents
-  virtual uint64_t docs_count() const NOEXCEPT override { return _docs_count; }
+  virtual uint64_t docs_count() const noexcept override { return _docs_count; }
 
   /// @returns number of live documents
-  virtual uint64_t live_docs_count() const NOEXCEPT override {
+  virtual uint64_t live_docs_count() const noexcept override {
     return _live_docs_count;
   }
 
   /// @returns total number of opened writers
-  virtual size_t size() const NOEXCEPT override { return _readers.size(); }
+  virtual size_t size() const noexcept override { return _readers.size(); }
 
  private:
   readers_t _readers;
@@ -640,6 +640,26 @@ SnapshotPtr snapshotSingleServer(IResearchViewNode const& node, transaction::Met
   return reader;
 }
 
+inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    return viewImpl.primarySort();
+  }
+
+  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  return viewImpl.primarySort();
+}
+
+inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const& view) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    return viewImpl.storedValues();
+  }
+
+  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  return viewImpl.storedValues();
+}
+
 const char* NODE_DATABASE_PARAM = "database";
 const char* NODE_VIEW_NAME_PARAM = "view";
 const char* NODE_VIEW_ID_PARAM = "viewId";
@@ -653,7 +673,126 @@ const char* NODE_OPTIONS_PARAM = "options";
 const char* NODE_VOLATILITY_PARAM = "volatility";
 const char* NODE_PRIMARY_SORT_PARAM = "primarySort";
 const char* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
+const char* NODE_VIEW_VALUES_VARS = "viewValuesVars";
+const char* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
+const char* NODE_VIEW_VALUES_VAR_COLUMN_NUMBER = "columnNumber";
+const char* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
+const char* NODE_VIEW_VALUES_VAR_POSTFIX = "postfix";
+const char* NODE_VIEW_VALUES_VAR_ID = "id";
+const char* NODE_VIEW_VALUES_VAR_NAME = "name";
+const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
 
+void addViewValuesVar(VPackBuilder& nodes, std::string const& fieldName,
+                      IResearchViewNode::ViewVariable const& fieldVar) {
+  nodes.add(NODE_VIEW_VALUES_VAR_FIELD_NUMBER, VPackValue(fieldVar.fieldNum));
+  nodes.add(NODE_VIEW_VALUES_VAR_ID, VPackValue(fieldVar.var->id));
+  nodes.add(NODE_VIEW_VALUES_VAR_NAME, VPackValue(fieldVar.var->name)); // for explainer.js
+  nodes.add(NODE_VIEW_VALUES_VAR_FIELD, VPackValue(fieldName)); // for explainer.js
+  if (!fieldVar.postfix.empty()) {
+    VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VAR_POSTFIX);
+    for (auto const& attr : fieldVar.postfix) {
+      nodes.add(VPackValue(attr));
+    }
+  }
+}
+
+void extractViewValuesVar(aql::VariableGenerator const* vars,
+                          IResearchViewNode::ViewValuesVars& viewValuesVars,
+                          int const columnNumber,
+                          velocypack::Slice const& fieldVar) {
+  auto const fieldNumberSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_FIELD_NUMBER);
+  if (!fieldNumberSlice.isNumber<size_t>()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(
+        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].fieldNumber\" %s should be a number",
+        fieldNumberSlice.toString().c_str());
+  }
+  auto const fieldNumber = fieldNumberSlice.getNumber<size_t>();
+
+  auto const varIdSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_ID);
+  if (!varIdSlice.isNumber<aql::VariableId>()) {
+    THROW_ARANGO_EXCEPTION_FORMAT(
+        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" variable id %s should be a number",
+        varIdSlice.toString().c_str());
+  }
+
+  auto const varId = varIdSlice.getNumber<aql::VariableId>();
+  auto const* var = vars->getVariable(varId);
+
+  if (!var) {
+    THROW_ARANGO_EXCEPTION_FORMAT(
+        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" unable to find variable by id %d",
+        varId);
+  }
+  std::vector<std::string> postfix;
+  if (fieldVar.hasKey(NODE_VIEW_VALUES_VAR_POSTFIX)) {
+    auto const postfixSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_POSTFIX);
+    if (!postfixSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "\"viewValuesVars[*].postfix\" attribute should be an array");
+    }
+    for (auto const attrSlice : velocypack::ArrayIterator(postfixSlice)) {
+      if (!attrSlice.isString()) {
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].postfix[*]\" %s should be a string",
+            attrSlice.toString().c_str());
+      }
+      VPackValueLength l;
+      char const* s = attrSlice.getString(l);
+      postfix.emplace_back(std::string(s, l));
+    }
+  }
+  viewValuesVars[columnNumber].emplace_back(IResearchViewNode::ViewVariable{fieldNumber, std::move(postfix), var});
+}
+
+std::unique_ptr<aql::ExecutionBlock> (*executors[])(aql::ExecutionEngine*, IResearchViewNode const*, aql::IResearchViewExecutorInfos&&) = {
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::Materialized>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::LateMaterialized>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::LateMaterializedWithVars>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::Materialized>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::LateMaterialized>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::LateMaterializedWithVars>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, MaterializeType::Materialized>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialized>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, MaterializeType::Materialized>>>(
+      engine, viewNode, std::move(infos));
+  },
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialized>>>(
+      engine, viewNode, std::move(infos));
+  }
+};
+
+inline size_t getExecutorIndex(bool sorted, bool ordered, MaterializeType materializeType) {
+  auto index = static_cast<int>(materializeType) + 3 * static_cast<int>(ordered) + 6 * static_cast<int>(sorted);
+  TRI_ASSERT(static_cast<std::size_t>(index) <= IRESEARCH_COUNTOF(executors));
+  return static_cast<std::size_t>(index < 9 ? index : index - 1);
+}
 
 }  // namespace
 
@@ -663,6 +802,8 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
+
+const int IResearchViewNode::SortColumnNumber = -1;
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
                                      TRI_vocbase_t& vocbase,
@@ -852,6 +993,41 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       _sort.second = primarySortBuckets;
     }
   }
+
+  if (isLateMaterialized()) {
+    auto const* vars = plan.getAst()->variables();
+    TRI_ASSERT(vars);
+
+    auto const viewValuesVarsSlice = base.get(NODE_VIEW_VALUES_VARS);
+    if (!viewValuesVarsSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "\"viewValuesVars\" attribute should be an array");
+    }
+    ViewValuesVars viewValuesVars;
+    for (auto const columnFieldsVars : velocypack::ArrayIterator(viewValuesVarsSlice)) {
+      if (columnFieldsVars.hasKey(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER)) { // not SortColumnNumber
+        auto const columnNumberSlice = columnFieldsVars.get(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER);
+        if (!columnNumberSlice.isNumber<size_t>()) {
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].columnNumber\" %s should be a number",
+              columnNumberSlice.toString().c_str());
+        }
+        auto const columnNumber = columnNumberSlice.getNumber<int>();
+        auto const viewStoredValuesVarsSlice = columnFieldsVars.get(NODE_VIEW_STORED_VALUES_VARS);
+        if (!viewStoredValuesVarsSlice.isArray()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_BAD_PARAMETER,
+                "\"viewValuesVars[*].viewStoredValuesVars\" attribute should be an array");
+        }
+        for (auto const fieldVar : velocypack::ArrayIterator(viewStoredValuesVarsSlice)) {
+          extractViewValuesVar(vars, viewValuesVars, columnNumber, fieldVar);
+        }
+      } else { // SortColumnNumber
+        extractViewValuesVar(vars, viewValuesVars, SortColumnNumber, columnFieldsVars);
+      }
+    }
+    _outNonMaterializedViewVars = std::move(viewValuesVars);
+  }
 }
 
 void IResearchViewNode::planNodeRegisters(
@@ -861,33 +1037,37 @@ void IResearchViewNode::planNodeRegisters(
   nrRegsHere.emplace_back(0);
 
   // create a copy of the last value here
-  // this is requried because back returns a reference and emplace/push_back
+  // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
   aql::RegisterCount const prevRegistersCount = nrRegs.back();
   nrRegs.emplace_back(prevRegistersCount);
-  //  if (isInInnerLoop()) {
-  //    return;
-  //  }
 
   // plan registers for output scores
   for (auto const& scorer : _scorers) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
   }
 
   // Plan register for document-id only block
   if (isLateMaterialized()) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
+    for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
+      for (auto const& fieldVar : columnFieldsVars.second) {
+        ++nrRegsHere[depth];
+        ++nrRegs[depth];
+        varInfo.try_emplace(fieldVar.var->id, aql::VarInfo(depth, totalNrRegs++));
+      }
+    }
   } else {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
   }
 }
 
@@ -899,8 +1079,6 @@ std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const
   return std::make_pair(irs::check_bit<0>(_volatilityMask),  // filter
                         irs::check_bit<1>(_volatilityMask));  // sort
 }
-
-
 
 /// @brief toVelocyPack, for EnumerateViewNode
 void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -926,6 +1104,41 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   if (_outNonMaterializedColPtr != nullptr) {
     nodes.add(VPackValue(NODE_OUT_NM_COL_PARAM));
     _outNonMaterializedColPtr->toVelocyPack(nodes);
+  }
+
+  // stored value
+  {
+    auto const& primarySort = ::primarySort(*_view);
+    auto const& storedValues = ::storedValues(*_view);
+    VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VARS);
+    std::string fieldName;
+    for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
+      if (columnFieldsVars.first >= 0) { // not SortColumnNumber
+        VPackObjectBuilder objectScope(&nodes);
+        auto const& columns = storedValues.columns();
+        auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnFieldsVars.first);
+        TRI_ASSERT(storedColumnNumber < columns.size());
+        nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(columnFieldsVars.first));
+        VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_STORED_VALUES_VARS);
+        for (auto const& fieldVar : columnFieldsVars.second) {
+          VPackObjectBuilder objectScope(&nodes);
+          fieldName.clear();
+          TRI_ASSERT(fieldVar.fieldNum < columns[storedColumnNumber].fields.size());
+          nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(columnFieldsVars.first));
+          fieldName = columns[storedColumnNumber].fields[fieldVar.fieldNum].first;
+          addViewValuesVar(nodes, fieldName, fieldVar);
+        }
+      } else { // SortColumnNumber
+        TRI_ASSERT(SortColumnNumber == columnFieldsVars.first);
+        for (auto const& fieldVar : columnFieldsVars.second) {
+          VPackObjectBuilder objectScope(&nodes);
+          fieldName.clear();
+          TRI_ASSERT(fieldVar.fieldNum < primarySort.fields().size());
+          basics::TRI_AttributeNamesToString(primarySort.fields()[fieldVar.fieldNum], fieldName, true);
+          addViewValuesVar(nodes, fieldName, fieldVar);
+        }
+      }
+    }
   }
 
   // filter condition
@@ -1009,6 +1222,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
   auto* outVariable = _outVariable;
   auto* outNonMaterializedDocId = _outNonMaterializedDocId;
   auto* outNonMaterializedColId = _outNonMaterializedColPtr;
+  auto outNonMaterializedViewVars = _outNonMaterializedViewVars;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
@@ -1020,6 +1234,11 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
       TRI_ASSERT(_outNonMaterializedDocId != nullptr);
       outNonMaterializedColId = plan->getAst()->variables()->createVariable(outNonMaterializedColId);
     }
+    for (auto& columnFieldsVars : outNonMaterializedViewVars) {
+      for (auto& fieldVar : columnFieldsVars.second) {
+        fieldVar.var = plan->getAst()->variables()->createVariable(fieldVar.var);
+      }
+    }
   }
 
   auto node =
@@ -1030,9 +1249,11 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
   node->_sort = _sort;
+  node->_optState = _optState;
   if (outNonMaterializedColId != nullptr && outNonMaterializedDocId != nullptr) {
     node->setLateMaterialized(outNonMaterializedColId, outNonMaterializedDocId);
   }
+  node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
 
@@ -1064,20 +1285,27 @@ void IResearchViewNode::getVariablesUsedHere(
 }
 
 std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHere() const {
-    std::vector<arangodb::aql::Variable const*> vars(_scorers.size() +
-                                                     // document or  collection + docId for late materialization
-                                                    (isLateMaterialized() ? 2 : 1));
+  std::vector<arangodb::aql::Variable const*> vars;
+  vars.reserve(_scorers.size() +
+               // document or collection + docId + vars for late materialization
+               (isLateMaterialized() ? 2 + _outNonMaterializedViewVars.size() : 1));
 
-    std::transform(_scorers.begin(), _scorers.end(), vars.begin(),
-      [](auto const& scorer) { return scorer.var; });
-    if (isLateMaterialized()) {
-      vars[vars.size() - 2] = _outNonMaterializedColPtr;
-      vars[vars.size() - 1] = _outNonMaterializedDocId;
-    } else {
-      vars[vars.size() - 1] = _outVariable;
+  std::transform(_scorers.cbegin(), _scorers.cend(), std::back_inserter(vars),
+    [](auto const& scorer) { return scorer.var; });
+  if (isLateMaterialized()) {
+    vars.emplace_back(_outNonMaterializedColPtr);
+    vars.emplace_back(_outNonMaterializedDocId);
+    for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
+      std::transform(columnFieldsVars.second.cbegin(),
+                     columnFieldsVars.second.cend(),
+                     std::back_inserter(vars),
+        [](auto const& fieldVar) { return fieldVar.var; });
     }
-    return vars;
+  } else {
+    vars.emplace_back(_outVariable);
   }
+  return vars;
+}
 
 std::shared_ptr<std::unordered_set<aql::RegisterId>> IResearchViewNode::calcInputRegs() const {
   std::shared_ptr<std::unordered_set<aql::RegisterId>> inputRegs =
@@ -1191,40 +1419,68 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       << "Finish getting snapshot for view '" << view.name() << "'";
 
   bool const ordered = !_scorers.empty();
-  bool const materialized = !isLateMaterialized();
+  MaterializeType materializeType = MaterializeType::Materialized;
+  if (isLateMaterialized()) {
+    materializeType = MaterializeType::LateMaterialized;
+  }
   // We have one output register for documents, which is always the first after
   // the input registers.
   auto const firstOutputRegister = getNrInputRegisters();
   auto numScoreRegisters = static_cast<aql::RegisterCount>(_scorers.size());
+  auto numViewVarsRegisters = std::accumulate(_outNonMaterializedViewVars.cbegin(), _outNonMaterializedViewVars.cend(),
+    static_cast<aql::RegisterCount>(0),
+    [](aql::RegisterCount const sum, auto const& columnFieldsVars) {
+      return sum + static_cast<aql::RegisterCount>(columnFieldsVars.second.size());
+    });
+  if (numViewVarsRegisters > 0) {
+    TRI_ASSERT(materializeType == MaterializeType::LateMaterialized);
+    materializeType = MaterializeType::LateMaterializedWithVars;
+  }
 
   aql::RegisterCount numDocumentRegs = 0;
   // We could be asked to produce only document/collection ids for later materialization or full document body at once
-  if (materialized) {
+  if (materializeType == MaterializeType::Materialized) {
     numDocumentRegs += 1;
   } else {
     numDocumentRegs += 2;
   }
 
   // We have one additional output register for each scorer, before
-  // the output register(s) for documents (one or two, depending on late materialization)
+  // the output register(s) for documents (one or two + vars, depending on late materialization)
   // These must of course fit in the
   // available registers. There may be unused registers reserved for later
   // blocks.
-  TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters <= getNrOutputRegisters());
+  TRI_ASSERT(getNrInputRegisters() + numDocumentRegs + numScoreRegisters + numViewVarsRegisters <= getNrOutputRegisters());
   std::shared_ptr<std::unordered_set<aql::RegisterId>> writableOutputRegisters =
       aql::make_shared_unordered_set();
-  writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters);
+  writableOutputRegisters->reserve(numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
   for (aql::RegisterId reg = firstOutputRegister;
-       reg < firstOutputRegister + numScoreRegisters + numDocumentRegs; reg++) {
+       reg < firstOutputRegister + numScoreRegisters + numDocumentRegs + numViewVarsRegisters; ++reg) {
     writableOutputRegisters->emplace(reg);
   }
 
-  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numScoreRegisters);
+  TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
   TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
   TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
                                                       writableOutputRegisters->end()));
   aql::ExecutorInfos infos =
       createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));
+
+  auto const& varInfos = getRegisterPlan()->varInfo;
+  ViewValuesRegisters outNonMaterializedViewRegs;
+  for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
+    for (auto const& fieldsVars : columnFieldsVars.second) {
+      auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
+      auto it = varInfos.find(fieldsVars.var->id);
+      TRI_ASSERT(it != varInfos.cend());
+      std::vector<irs::string_ref> postfix;
+      postfix.reserve(fieldsVars.postfix.size());
+      std::transform(fieldsVars.postfix.cbegin(), fieldsVars.postfix.cend(), std::back_inserter(postfix), [](auto const& attr) {
+        return irs::string_ref(attr.c_str(), attr.size());
+      });
+      fields.insert({fieldsVars.fieldNum, ViewVariableRegister{std::move(postfix), it->second.registerId}});
+    }
+  }
 
   aql::IResearchViewExecutorInfos executorInfos{std::move(infos),
                                                 reader,
@@ -1233,47 +1489,88 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 *engine.getQuery(),
                                                 scorers(),
                                                 _sort,
+                                                ::storedValues(*_view),
                                                 *plan(),
                                                 outVariable(),
                                                 filterCondition(),
                                                 volatility(),
                                                 getRegisterPlan()->varInfo,
-                                                getDepth()};
+                                                getDepth(),
+                                                std::move(outNonMaterializedViewRegs)};
 
-  if (_sort.first) {
-    TRI_ASSERT(!_sort.first->empty()); // guaranteed by optimizer rule
-    if (materialized) {
-      if (!ordered) {
-        return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, true>>>(
-          &engine, this, std::move(executorInfos));
-      }
+  TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty()); // guaranteed by optimizer rule
+  TRI_ASSERT(_sort.first == nullptr || materializeType != MaterializeType::LateMaterializedWithVars);
+  return ::executors[getExecutorIndex(_sort.first != nullptr, ordered, materializeType)](&engine, this, std::move(executorInfos));
+}
 
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, true>>>(
-        &engine, this, std::move(executorInfos));
-    } else {
-      if (!ordered) {
-        return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, false>>>(
-          &engine, this, std::move(executorInfos));
+bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const {
+  return _nodesToChange.find(calclulationNode) != _nodesToChange.cend(); // contains()
+}
+
+void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs<aql::latematerialized::AstAndColumnFieldData>> const& nodesToChange) {
+  TRI_ASSERT(!nodesToChange.empty());
+  TRI_ASSERT(_nodesToChange.empty());
+  _nodesToChange.clear();
+  for (auto& node : nodesToChange) {
+    auto& calcNodeData = _nodesToChange[node.node];
+    calcNodeData.reserve(node.attrs.size());
+    std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(calcNodeData, calcNodeData.end()),
+      [](auto const& attrAndField) {
+        return attrAndField.afData;
+      });
+  }
+}
+
+IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes,
+                                                                                           arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
+  TRI_ASSERT(!calcNodes.empty());
+  ViewVarsInfo uniqueVariables;
+  auto ast = calcNodes.back()->expression()->ast();
+  // at first use variables from simple expressions
+  for (auto calcNode : calcNodes) {
+    TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
+    auto const& calcNodeData = _nodesToChange[calcNode];
+    TRI_ASSERT(!calcNodeData.empty());
+    auto const& afData = calcNodeData[0];
+    if (afData.parentNode == nullptr) {
+      TRI_ASSERT(calcNodeData.size() == 1);
+      // we could add one redundant variable for each field only
+      if (uniqueVariables.try_emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+        calcNode->outVariable()}, afData.columnNumber}).second) {
+        toUnlink.emplace(calcNode);
       }
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, false>>>(
-        &engine, this, std::move(executorInfos));
     }
   }
-  if (materialized) {
-    if (!ordered) {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, true>>>(
-        &engine, this, std::move(executorInfos));
+  // create variables for complex expressions
+  for (auto calcNode : calcNodes) {
+    TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
+    auto const& calcNodeData = _nodesToChange[calcNode];
+    TRI_ASSERT(!calcNodeData.empty());
+    for (auto const& afData : calcNodeData) {
+      // create a variable if necessary
+      if (afData.parentNode != nullptr && uniqueVariables.find(afData.field) == uniqueVariables.cend()) {
+        uniqueVariables.emplace(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+          ast->variables()->createTemporaryVariable()}, afData.columnNumber});
+      }
     }
-    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, true>>>(
-      &engine, this, std::move(executorInfos));
-  } else {
-    if (!ordered) {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, false>>>(
-        &engine, this, std::move(executorInfos));
-    }
-    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, false>>>(
-      &engine, this, std::move(executorInfos));
   }
+  for (auto calcNode : calcNodes) {
+    TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
+    auto const& calcNodeData = _nodesToChange[calcNode];
+    for (auto const& afData : calcNodeData) {
+      auto it = uniqueVariables.find(afData.field);
+      TRI_ASSERT(it != uniqueVariables.cend());
+      auto newNode = ast->createNodeReference(it->second.var);
+      if (afData.parentNode != nullptr) {
+        TEMPORARILY_UNLOCK_NODE(afData.parentNode);
+        afData.parentNode->changeMember(afData.childNumber, newNode);
+      } else {
+        TRI_ASSERT(calcNodeData.size() == 1);
+        calcNode->expression()->replaceNode(newNode);
+      }
+    }
+  }
+  return uniqueVariables;
 }
 
 }  // namespace iresearch

@@ -25,6 +25,7 @@
 #include "Aql/AqlItemRowPrinter.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #include <velocypack/Slice.h>
 
@@ -34,6 +35,7 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
+constexpr auto options = &velocypack::Options::Defaults;
 
 void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFetcher& testee,
                                       std::vector<FetcherIOPair> const& inputOutputPairs) {
@@ -57,7 +59,9 @@ void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFet
         auto const& actualState = actual.first;
         auto const& actualRow = actual.second;
         EXPECT_EQ(expectedState, actualState) << "during step " << i;
-        EXPECT_TRUE(expectedRow.equates(actualRow)) << "  expected: " << expectedRow << "\n  actual: " << actualRow << "\n  during step " << i;
+        EXPECT_TRUE(expectedRow.equates(actualRow, options))
+            << "  expected: " << expectedRow << "\n  actual: " << actualRow
+            << "\n  during step " << i;
       }
       void operator()(ConcreteFetcherIOPair<SkipRowsForDependency> const& iop) {
         auto const& args = iop.first;
@@ -74,7 +78,9 @@ void arangodb::tests::aql::runFetcher(arangodb::aql::MultiDependencySingleRowFet
         auto const& actualState = actual.first;
         auto const& actualRow = actual.second;
         EXPECT_EQ(expectedState, actualState) << "during step " << i;
-        EXPECT_TRUE(expectedRow.equates(actualRow)) << "  expected: " << expectedRow << "\n  actual: " << actualRow << "\n  during step " << i;
+        EXPECT_TRUE(expectedRow.equates(actualRow, options))
+            << "  expected: " << expectedRow << "\n  actual: " << actualRow
+            << "\n  during step " << i;
       }
 
      private:

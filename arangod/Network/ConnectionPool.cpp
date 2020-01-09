@@ -25,6 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 
@@ -46,60 +47,45 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
-ConnectionPool::Ref ConnectionPool::leaseConnection(std::string const& str) {
-  fuerte::ConnectionBuilder builder;
-  builder.endpoint(str);
-  builder.protocolType(_config.protocol); // always overwrite protocol
-
-  std::string endpoint = builder.normalizedEndpoint();
-  
+network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint) {
   READ_LOCKER(guard, _lock);
   auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
     guard.unlock();
-    WRITE_LOCKER(wguard, _lock);
 
-    it = _connections.find(endpoint);  // check again
-    if (it == _connections.end()) {
-      auto it2 = _connections.emplace(endpoint, std::make_unique<ConnectionList>());
-      it = it2.first;
-    }
-    return selectConnection(*(it->second), builder);
+    auto tmp = std::make_unique<Bucket>(); //get memory outside lock
+    
+    WRITE_LOCKER(wguard, _lock);
+    auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
+    it = it2;
   }
-  return selectConnection(*(it->second), builder);
+  return selectConnection(it->first,*(it->second));
 }
 
 /// @brief drain all connections
 void ConnectionPool::drainConnections() {
   WRITE_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
-    ConnectionList& list = *(pair.second);
-    std::lock_guard<std::mutex> lock(list.mutex);
-    for (auto& c : list.connections) {
-      c->fuerte->cancel();
+    Bucket& buck = *(pair.second);
+    std::lock_guard<std::mutex> lock(buck.mutex);
+    for (Context& c : buck.list) {
+      c.fuerte->cancel();
     }
   }
 }
 
-
 /// @brief shutdown all connections
 void ConnectionPool::shutdown() {
-  drainConnections();
   WRITE_LOCKER(guard, _lock);
   _connections.clear();
 }
-  
-void ConnectionPool::removeBrokenConnections(ConnectionList& list) {
-  auto const now = std::chrono::steady_clock::now();
-  auto it = list.connections.begin();
-  while (it != list.connections.end()) {
-    auto& c = *it;
-    // lets not keep around diconnected fuerte connection objects
-    auto lastUsed = now - c->lastUsed;
-    if (c->fuerte->state() == fuerte::Connection::State::Failed ||
-        (c->fuerte->state() == fuerte::Connection::State::Disconnected &&
-         (lastUsed > std::chrono::seconds(5)))) {
-          it = list.connections.erase(it);
+
+void ConnectionPool::removeBrokenConnections(Bucket& buck) {
+  auto it = buck.list.begin();
+  while (it != buck.list.end()) {
+    // lets not keep around disconnected fuerte connection objects
+    if (it->fuerte->state() == fuerte::Connection::State::Failed) {
+      it = buck.list.erase(it);
     } else {
       it++;
     }
@@ -110,83 +96,73 @@ void ConnectionPool::removeBrokenConnections(ConnectionList& list) {
 void ConnectionPool::pruneConnections() {
   READ_LOCKER(guard, _lock);
 
-  const auto ttl = std::chrono::milliseconds(_config.connectionTtlMilli);
+  const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli * 2);
   for (auto& pair : _connections) {
-    ConnectionList& list = *(pair.second);
-    std::lock_guard<std::mutex> lock(list.mutex);
+    Bucket& buck = *(pair.second);
+    std::lock_guard<std::mutex> lock(buck.mutex);
 
     auto now = std::chrono::steady_clock::now();
 
-    removeBrokenConnections(list);
+    removeBrokenConnections(buck);
 
     // do not remove more connections than necessary
-    if (list.connections.size() <= _config.minOpenConnections) {
+    if (buck.list.size() <= _config.minOpenConnections) {
       continue;
     }
 
-    auto it = list.connections.begin();
-    while (it != list.connections.end()) {
-      Connection& c = *(it->get());
+    // first remove old connections
+    auto it = buck.list.begin();
+    while (it != buck.list.end()) {
+      std::shared_ptr<fuerte::Connection> const& c = it->fuerte;
 
-      size_t num = c.numLeased.load();
-      auto lastUsed = now - c.lastUsed;
-      TRI_ASSERT(lastUsed.count() >= 0);
-
-      if (num == 0 && lastUsed > ttl) {
-        it = list.connections.erase(it);
+      if ((now - it->leased) > ttl) {
+        it = buck.list.erase(it);
         // do not remove more connections than necessary
-        if (list.connections.size() <= _config.minOpenConnections) {
+        if (buck.list.size() <= _config.minOpenConnections) {
           break;
         }
         continue;
       }
 
-      if (num > 0) {  // continously update lastUsed
-        c.lastUsed = now;
+      if (c->requestsLeft() > 0) {  // continuously update lastUsed
+        it->leased = now;
       }
       it++;
     }
-    
+
     // do not remove connections if there are less
-    if (list.connections.size() <= _config.maxOpenConnections) {
+    if (buck.list.size() <= _config.maxOpenConnections) {
       continue; // done
     }
-    
-    it = list.connections.begin();
-    while (it != list.connections.end()) {
-      auto& c = *it;
-      if (c->numLeased.load() == 0) {
-        it = list.connections.erase(it);
-        if (list.connections.size() <= _config.maxOpenConnections) {
-          break;
-        }
-        continue;
+
+    LOG_TOPIC("2d59a", DEBUG, Logger::COMMUNICATION)
+        << "pruning extra connections to '" << pair.first
+        << "' (" << buck.list.size() << ")";
+
+    // remove any remaining connections, they will be closed eventually
+    it = buck.list.begin();
+    while (it != buck.list.end()) {
+      it = buck.list.erase(it);
+      if (buck.list.size() <= _config.maxOpenConnections) {
+        break;
       }
-      it++;
     }
   }
 }
-  
+
 /// @brief cancel connections to this endpoint
-void ConnectionPool::cancelConnections(std::string const& endpoint) {
-  fuerte::ConnectionBuilder builder;
-  builder.endpoint(endpoint);
-  builder.protocolType(_config.protocol); // always overwrite protocol
-  
-  std::string normalized = builder.normalizedEndpoint();
-  
+size_t ConnectionPool::cancelConnections(std::string const& endpoint) {
   WRITE_LOCKER(guard, _lock);
-  auto const& it = _connections.find(normalized);
+  auto const& it = _connections.find(endpoint);
   if (it != _connections.end()) {
-//    {
-//      ConnectionList& list = *(it->second);
-//      std::lock_guard<std::mutex> guard(list.mutex);
-//      for (auto& c : list.connections) {
-//        c->shutdown();
-//      }
-//    }
+    size_t n = it->second->list.size();
+    for (auto& c : it->second->list) {
+      c.fuerte->cancel();
+    }
     _connections.erase(it);
+    return n;
   }
+  return 0;
 }
 
 /// @brief return the number of open connections
@@ -195,15 +171,16 @@ size_t ConnectionPool::numOpenConnections() const {
 
   READ_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
-    ConnectionList& list = *(pair.second);
-    std::lock_guard<std::mutex> lock(list.mutex);
-    conns += list.connections.size();
+    Bucket& buck = *(pair.second);
+    std::lock_guard<std::mutex> lock(buck.mutex);
+    conns += buck.list.size();
   }
   return conns;
 }
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
-  builder.idleTimeout(std::chrono::milliseconds(_config.requestTimeoutMilli));
+  auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
+  builder.idleTimeout(idle);
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();
@@ -218,77 +195,45 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
   return builder.connect(_loop);
 }
 
-ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
-                                                     fuerte::ConnectionBuilder& builder) {
-  std::lock_guard<std::mutex> guard(list.mutex);
+ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
+                                               ConnectionPool::Bucket& bucket) {
+  std::lock_guard<std::mutex> guard(bucket.mutex);
 
-  for (auto& c : list.connections) {
-    const auto state = c->fuerte->state();
+  for (Context& c : bucket.list) {
+    const fuerte::Connection::State state = c.fuerte->state();
     if (state == fuerte::Connection::State::Failed) {
       continue;
     }
 
-    size_t num = c->numLeased.load(std::memory_order_acquire);
-    // TODO: make configurable ?
-    if ((builder.protocolType() == fuerte::ProtocolType::Http && num == 0) ||
-        (builder.protocolType() == fuerte::ProtocolType::Vst && num < 4)) {
-      return Ref(c.get());
+    size_t num = c.fuerte->requestsLeft();
+    if (_config.protocol == fuerte::ProtocolType::Http && num == 0) {
+      auto now = std::chrono::steady_clock::now();
+      TRI_ASSERT(now >= c.leased);
+      // hack hack hack. Avoids reusing used connections
+      if ((now - c.leased) > std::chrono::milliseconds(25)) {
+        c.leased = now;
+        return c.fuerte;
+      }
+    } else if (_config.protocol == fuerte::ProtocolType::Vst && num <= 3) {
+      c.leased = std::chrono::steady_clock::now();
+      return c.fuerte; // TODO: make (num <= 3) configurable ?
     }
   }
 
-  list.connections.push_back(
-      std::make_unique<ConnectionPool::Connection>(createConnection(builder)));
-  return Ref(list.connections.back().get());
+  // no free connection found, so we add one
+
+  fuerte::ConnectionBuilder builder;
+  builder.endpoint(endpoint); // picks the socket type
+  builder.verifyHost(_config.verifyHosts);
+  builder.protocolType(_config.protocol); // always overwrite protocol
+  TRI_ASSERT(builder.socketType() != SocketType::Undefined);
+
+  std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
+  bucket.list.push_back(Context{fuerte, std::chrono::steady_clock::now()});
+  return fuerte;
 }
 
 ConnectionPool::Config const& ConnectionPool::config() const { return _config; }
-
-// =============== stupid reference counter ===============
-
-ConnectionPool::Ref::Ref(ConnectionPool::Connection* c) : _conn(c) {
-  if (_conn) {
-    _conn->numLeased.fetch_add(1);
-  }
-}
-
-ConnectionPool::Ref::Ref(Ref&& r) : _conn(std::move(r._conn)) {
-  r._conn = nullptr;
-}
-
-ConnectionPool::Ref& ConnectionPool::Ref::operator=(Ref&& other) {
-  if (_conn) {
-    _conn->numLeased.fetch_sub(1);
-  }
-  _conn = std::move(other._conn);
-  return *this;
-}
-
-ConnectionPool::Ref::Ref(Ref const& other) : _conn(other._conn) {
-  if (_conn) {
-    _conn->numLeased.fetch_add(1);
-  }
-};
-
-ConnectionPool::Ref& ConnectionPool::Ref::operator=(Ref& other) {
-  if (_conn) {
-    _conn->numLeased.fetch_sub(1);
-  }
-  _conn = other._conn;
-  if (_conn) {
-    _conn->numLeased.fetch_add(1);
-  }
-  return *this;
-}
-
-ConnectionPool::Ref::~Ref() {
-  if (_conn) {
-    _conn->numLeased.fetch_sub(1);
-  }
-}
-
-std::shared_ptr<fuerte::Connection> ConnectionPool::Ref::connection() const {
-  return _conn->fuerte;
-}
 
 }  // namespace network
 }  // namespace arangodb

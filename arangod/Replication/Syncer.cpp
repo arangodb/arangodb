@@ -539,8 +539,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr) {
-      _state.vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                              std::forward_as_tuple(*vocbase));
+      _state.vocbases.try_emplace(name, *vocbase); //we can not be lazy because of the guard requires a valid ref
     } else {
       LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }

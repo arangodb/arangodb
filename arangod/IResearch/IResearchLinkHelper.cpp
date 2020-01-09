@@ -65,8 +65,8 @@ arangodb::Result canUseAnalyzers( // validate
                         ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
                         : nullptr;
 
-  for (auto& entry: meta._analyzers) {
-    if (!entry._pool) {
+  for (auto& pool: meta._analyzerDefinitions) {
+    if (!pool) {
       continue; // skip invalid entries
     }
 
@@ -75,35 +75,35 @@ arangodb::Result canUseAnalyzers( // validate
     if (sysVocbase) {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
         arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          entry._pool->name(), defaultVocbase, *sysVocbase // args
+          pool->name(), defaultVocbase, *sysVocbase // args
         ), // analyzer
         arangodb::auth::Level::RO // auth level
       );
     } else {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        entry._pool->name(), arangodb::auth::Level::RO // args
+        pool->name(), arangodb::auth::Level::RO // args
       );
     }
 
     if (!result) {
-      return arangodb::Result( // result
-        TRI_ERROR_FORBIDDEN, // code
-        std::string("read access is forbidden to arangosearch analyzer '") + entry._pool->name() + "'"
-      );
+      return {
+        TRI_ERROR_FORBIDDEN,
+        std::string("read access is forbidden to arangosearch analyzer '") + pool->name() + "'"
+      };
     }
   }
 
-  for (auto& field: meta._fields) {
-    TRI_ASSERT(field.value().get()); // ensured by UniqueHeapInstance constructor
-    auto& entry = field.value();
-    auto res = canUseAnalyzers(*entry, defaultVocbase);
+//  for (auto& field: meta._fields) {
+//    TRI_ASSERT(field.value().get()); // ensured by UniqueHeapInstance constructor
+//    auto& entry = field.value();
+//    auto res = canUseAnalyzers(*entry, defaultVocbase);
+//
+//    if (!res.ok()) {
+//      return res;
+//    }
+//  }
 
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  return arangodb::Result();
+  return {};
 }
 
 arangodb::Result createLink( // create link
@@ -281,7 +281,7 @@ arangodb::Result modifyLinks( // modify links
     //        arangodb::Index::Compare(...)
     //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, true, view.vocbase(), &view.primarySort() // args
+      normalized, link, true, view.vocbase(), &view.primarySort(), &view.storedValues(), link.get(arangodb::StaticStrings::IndexId)
     );
 
     if (!res.ok()) {
@@ -662,7 +662,9 @@ namespace iresearch {
     arangodb::velocypack::Slice definition, // source definition
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
-    IResearchViewSort const* primarySort /* = nullptr */
+    IResearchViewSort const* primarySort, /* = nullptr */
+    IResearchViewStoredValues const* storedValues, /* = nullptr */
+    arangodb::velocypack::Slice idSlice /* = arangodb::velocypack::Slice()*/ // id for normalized
 ) {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
@@ -696,11 +698,18 @@ namespace iresearch {
   );
 
   // copy over IResearch Link identifier
-  if (definition.hasKey(arangodb::StaticStrings::IndexId)) {
-    normalized.add( // preserve field
-      arangodb::StaticStrings::IndexId, // key
-      definition.get(arangodb::StaticStrings::IndexId) // value
-    );
+  if (!idSlice.isNone()) {
+    if (idSlice.isNumber()) {
+      normalized.add(
+        arangodb::StaticStrings::IndexId,
+        arangodb::velocypack::Value(std::to_string(idSlice.getNumericValue<uint64_t>()))
+      );
+    } else {
+      normalized.add(
+        arangodb::StaticStrings::IndexId,
+        idSlice
+      );
+    }
   }
 
   // copy over IResearch View identifier
@@ -720,6 +729,11 @@ namespace iresearch {
   if (primarySort) {
     // normalize sort if specified
     meta._sort = *primarySort;
+  }
+
+  if (storedValues) {
+    // normalize stored values if specified
+    meta._storedValues = *storedValues;
   }
 
   if (!meta.json(normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
@@ -785,7 +799,7 @@ namespace iresearch {
     std::string errorField;
 
     if (!linkDefinition.isNull()) { // have link definition
-      if (!meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
+      if (!meta.init(linkDefinition, true, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
         return arangodb::Result( // result
           TRI_ERROR_BAD_PARAMETER, // code
           errorField.empty()
@@ -797,17 +811,22 @@ namespace iresearch {
       // analyzer should be either from same database as view (and collection) or from system database
       {
         const auto& currentVocbase = vocbase.name();
-        for (const auto& analyzer : meta._analyzers) {
-          TRI_ASSERT(analyzer._pool); // should be checked in meta init
-          if (ADB_UNLIKELY(!analyzer._pool)) { 
+        for (const auto& analyzer : meta._analyzerDefinitions) {
+          TRI_ASSERT(analyzer); // should be checked in meta init
+          if (ADB_UNLIKELY(!analyzer)) {
             continue; 
           }
-          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
+          auto* pool = analyzer.get();
+          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(pool->name());
+
           if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {
-            return arangodb::Result(
-                TRI_ERROR_BAD_PARAMETER,
-                std::string("Analyzer '").append(analyzer._pool->name())
-                .append("' is not accessible from database '").append(currentVocbase).append("'"));
+            return {
+              TRI_ERROR_BAD_PARAMETER,
+              std::string("Analyzer '")
+                  .append(pool->name())
+                  .append("' is not accessible from database '")
+                  .append(currentVocbase).append("'")
+            };
           }
         }
       }

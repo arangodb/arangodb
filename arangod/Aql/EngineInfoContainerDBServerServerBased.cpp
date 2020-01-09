@@ -23,6 +23,7 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
@@ -78,8 +79,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
-  std::unordered_set<std::string> const& restrictToShards =
-      query.queryOptions().shardIds;
+  std::unordered_set<std::string> const& restrictToShards = query.queryOptions().shardIds;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
     _edgeCollections.emplace_back(
@@ -101,7 +101,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
       }
     }
 #endif
-    _vertexCollections.emplace(col->name(), std::move(shards));
+    _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
 
@@ -197,7 +197,7 @@ void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* g
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
     std::map<std::string, Collection*> const* allCollections =
-      _query.collections()->collections();
+        _query.collections()->collections();
     auto& resolver = _query.resolver();
     for (auto const& it : *allCollections) {
       // If resolver cannot resolve this collection
@@ -285,12 +285,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  double ttl = _query.queryOptions().ttl;
-
-  std::string const url(
-      "/_db/" + arangodb::basics::StringUtils::urlEncode(_query.vocbase().name()) +
-      "/_api/aql/setup?ttl=" + std::to_string(ttl));
-
   auto cleanupGuard = scopeGuard([this, pool, &queryIds]() {
     cleanupEngines(pool, TRI_ERROR_INTERNAL, _query.vocbase().name(), queryIds);
   });
@@ -298,8 +292,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   transaction::Methods* trx = _query.trx();
+
   network::RequestOptions options;
+  options.database = _query.vocbase().name();
   options.timeout = network::Timeout(SETUP_TIMEOUT);
+  options.skipScheduler = true;  // hack to speed up future.get()
+  options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
   for (auto const& server : dbServers) {
     std::string const serverDest = "server:" + server;
@@ -325,6 +323,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
     TRI_ASSERT(infoBuilder.isOpenObject());
 
+    infoBuilder.add(StaticStrings::SerializationFormat,
+                    VPackValue(static_cast<int>(aql::SerializationFormat::SHADOWROWS)));
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
 
@@ -354,7 +354,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     network::Headers headers;
     ClusterTrxMethods::addAQLTransactionHeader(*trx, server, headers);
     auto res = network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
-                                    url, std::move(buffer), headers, options)
+                                    "/_api/aql/setup", std::move(buffer),
+                                    options, std::move(headers))
                    .get();
     _query.incHttpRequests(1);
     if (res.fail()) {
@@ -365,11 +366,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson();
       return {code, message};
     }
-    auto slices = res.response->slices();
-    if (slices.empty()) {
+
+    VPackSlice response = res.response->slice();
+    if (response.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
-    VPackSlice response = slices[0];
     auto result = parseResponse(response, queryIds, server, serverDest, didCreateEngine);
     if (!result.ok()) {
       return result;
@@ -467,12 +468,12 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
     network::ConnectionPool* pool, int errorCode, std::string const& dbname,
     MapRemoteToSnippet& queryIds) const {
   network::RequestOptions options;
+  options.database = dbname;
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily
-  network::Headers headers;
+  options.skipScheduler = true;              // hack to speed up future.get()
 
   // Shutdown query snippets
-  std::string url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
-                  "/_api/aql/shutdown/");
+  std::string url("/_api/aql/shutdown/");
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
   builder.openObject();
@@ -486,24 +487,22 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
       for (auto const& shardId : serToSnippets.second) {
         // fire and forget
         network::sendRequest(pool, server, fuerte::RestVerb::Put, url + shardId,
-                             body, headers, options);
+                             /*copy*/ body, options);
       }
       _query.incHttpRequests(serToSnippets.second.size());
     }
   }
 
   // Shutdown traverser engines
-  url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
-        "/_internal/traverser/";
+  url = "/_internal/traverser/";
   VPackBuffer<uint8_t> noBody;
 
   for (auto const& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
       // fire and forget
-      network::sendRequestRetry(pool, engine.first, fuerte::RestVerb::Delete,
-                                url + basics::StringUtils::itoa(engine.second),
-                                noBody, headers, options);
+      network::sendRequest(pool, engine.first, fuerte::RestVerb::Delete,
+                           url + basics::StringUtils::itoa(engine.second), noBody, options);
     }
     _query.incHttpRequests(allEngines->size());
   }

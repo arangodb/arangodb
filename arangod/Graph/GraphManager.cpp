@@ -29,7 +29,6 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <boost/range/join.hpp>
-#include <boost/variant.hpp>
 #include <utility>
 
 #include "Aql/AstNode.h"
@@ -98,40 +97,44 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
   auto& vocbase = ctx()->vocbase();
-  
+
   VPackBuilder helper;
   helper.openObject();
 
   if (ServerState::instance()->isCoordinator()) {
-    Result res = ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server());
+    Result res =
+        ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server(), true);
     if (res.fail()) {
       return OperationResult(res);
     }
 
-    bool forceOneShard = 
-      vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-      (vocbase.sharding() == "single" && 
-       options.get(StaticStrings::DistributeShardsLike).isNone() &&
-       arangodb::basics::VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 0) <= 1);
-    
+    bool forceOneShard =
+        vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+        (vocbase.sharding() == "single" &&
+         options.get(StaticStrings::DistributeShardsLike).isNone() &&
+         arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards,
+                                                                       0) <= 1);
+
     if (forceOneShard) {
       // force a single shard with shards distributed like "_graph"
       helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-      helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
+      helper.add(StaticStrings::DistributeShardsLike,
+                 VPackValue(vocbase.shardingPrototypeName()));
     }
   }
 
   helper.close();
-    
+
   VPackBuilder mergedBuilder =
       VPackCollection::merge(options, helper.slice(), false, true);
 
+  std::shared_ptr<LogicalCollection> coll;
   auto res = arangodb::methods::Collections::create(  // create collection
       vocbase,                                        // collection vocbase
       name,                                           // collection name
       colType,                                        // collection type
       mergedBuilder.slice(),                          // collection properties
-      waitForSync, true, false, [](std::shared_ptr<LogicalCollection> const&) -> void {});
+      waitForSync, true, false, coll);
 
   return OperationResult(res);
 }
@@ -507,26 +510,22 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   // or exist in a valid way.
   for (auto const& edgeColl : graph->edgeCollections()) {
     bool found = false;
-    Result res = methods::Collections::lookup(
-        vocbase, edgeColl,
-        [&found, &innerRes, &graph](std::shared_ptr<LogicalCollection> const& col) -> void {
-          TRI_ASSERT(col);
-          if (col->type() != TRI_COL_TYPE_EDGE) {
-            innerRes.reset(TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-                           "Collection: '" + col->name() +
-                               "' is not an EdgeCollection");
-          } else {
-            innerRes = graph->validateCollection(*col);
-            found = true;
-          }
-        });
-
-    if (innerRes.fail()) {
-      return innerRes;
-    }
-
-    // Check if we got an error other then CollectionNotFound
-    if (res.fail() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    std::shared_ptr<LogicalCollection> col;
+    Result res = methods::Collections::lookup(vocbase, edgeColl, col);
+    if (res.ok()) {
+      TRI_ASSERT(col);
+      if (col->type() != TRI_COL_TYPE_EDGE) {
+        return Result(TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
+                       "Collection: '" + col->name() +
+                           "' is not an EdgeCollection");
+      } else {
+        res = graph->validateCollection(*col);
+        if (res.fail()) {
+          return res;
+        }
+        found = true;
+      }
+    } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
 
@@ -541,20 +540,16 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   // it will not be created twice
   for (auto const& vertexColl : graph->vertexCollections()) {
     bool found = false;
-    Result res = methods::Collections::lookup(
-        vocbase, vertexColl,
-        [&found, &innerRes, &graph](std::shared_ptr<LogicalCollection> const& col) -> void {
-          TRI_ASSERT(col);
-          innerRes = graph->validateCollection(*col);
-          found = true;
-        });
-
-    if (innerRes.fail()) {
-      return innerRes;
-    }
-
-    // Check if we got an error other then CollectionNotFound
-    if (res.fail() && !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    std::shared_ptr<LogicalCollection> col;
+    Result res = methods::Collections::lookup(vocbase, vertexColl, col);
+    if (res.ok()) {
+      TRI_ASSERT(col);
+      res = graph->validateCollection(*col);
+      if (res.fail()) {
+        return res;
+      }
+      found = true;
+    } else if (!res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       return res;
     }
 
@@ -598,14 +593,15 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
     return TRI_ERROR_NO_ERROR;
   }
 
+  std::vector<std::shared_ptr<LogicalCollection>> created;
   return methods::Collections::create(
-      vocbase, collectionsToCreate, waitForSync, true, false, nullptr,
-      [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
+      vocbase, collectionsToCreate, waitForSync, true, false, nullptr, created);
 };
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                                          aql::QueryPart const queryPart) const {
-  std::string const queryStr{"FOR g IN _graphs RETURN g"};
+  std::string const queryStr{
+      "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
   return readGraphByQuery(builder, queryPart, queryStr);
 }
 
@@ -833,21 +829,19 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
                (leadersToBeRemoved.empty() && followersToBeRemoved.empty()));
     // drop followers (with distributeShardsLike) first and leaders (which occur
     // in some distributeShardsLike) second.
-    for (auto const& collection : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
+    for (auto const& cname : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
-      Result found = methods::Collections::lookup(
-          ctx()->vocbase(),  // vocbase to search
-          collection,        // collection to find
-          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-            TRI_ASSERT(coll);
-            dropResult =  // result
-                arangodb::methods::Collections::drop(*coll, false, -1.0);
-          });
+      std::shared_ptr<LogicalCollection> coll;
+      Result found = methods::Collections::lookup(ctx()->vocbase(), cname, coll);
+      if (found.ok()) {
+        TRI_ASSERT(coll);
+        dropResult =  arangodb::methods::Collections::drop(*coll, false, -1.0);
+      }
 
       if (dropResult.fail()) {
         LOG_TOPIC("04c88", WARN, Logger::GRAPHS)
             << "While removing graph `" << graph.name() << "`: "
-            << "Dropping collection `" << collection << "` failed with error "
+            << "Dropping collection `" << cname << "` failed with error "
             << dropResult.errorNumber() << ": " << dropResult.errorMessage();
 
         // save the first error:
@@ -998,7 +992,9 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
     TRI_ASSERT(input.isObject());
     if (ServerState::instance()->isCoordinator()) {
       // validate numberOfShards and replicationFactor
-      Result res = ShardingInfo::validateShardsAndReplicationFactor(input.get("options"), _vocbase.server());
+      Result res =
+          ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),
+                                                           _vocbase.server(), true);
       if (res.fail()) {
         return res;
       }

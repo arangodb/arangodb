@@ -229,7 +229,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                      syncer._state.master.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const responseBody = builder.slice();
@@ -426,7 +426,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
                         syncer._state.master.endpoint +
-                        ": response is no array");
+                        ": " + r.errorMessage());
     }
 
     VPackSlice const slice = docsBuilder->slice();
@@ -614,7 +614,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                      syncer._state.master.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const chunkSlice = builder.slice();
@@ -826,6 +826,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             col->readDocumentWithCallback(&trx, documentId,
                                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
                                             docRev = TRI_ExtractRevisionId(doc);
+                                            return true;
                                           });
           }
           compareChunk(docKey, docRev);
