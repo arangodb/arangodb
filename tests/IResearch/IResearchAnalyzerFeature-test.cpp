@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Agency/AsyncAgencyComm.h>
 #include "gtest/gtest.h"
 
 #include "analysis/analyzers.hpp"
@@ -1890,12 +1891,20 @@ TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   arangodb::consensus::Store agencyStore(server.server(), nullptr, "arango");
-  auto* agencyCommManager = new AgencyCommManagerMock("arango");
-  // need 2 connections or Agency callbacks will fail
-  std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(agencyStore);
-  std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(agencyStore);
-  arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
-  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+
+  arangodb::network::ConnectionPool::Config poolConfig;
+  poolConfig.clusterInfo = &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  poolConfig.numIOThreads = 1;
+  poolConfig.minOpenConnections = 1;
+  poolConfig.maxOpenConnections = 3;
+  poolConfig.verifyHosts = false;
+
+  AsyncAgencyStorePoolMock pool(&agencyStore, poolConfig);
+  arangodb::AgencyCommHelper::initialize("arango");
+  arangodb::AsyncAgencyCommManager::initialize();
+  arangodb::AsyncAgencyCommManager::INSTANCE->pool(&pool);
+  arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");
+  arangodb::AgencyComm().ensureStructureInitialized();
 
   ASSERT_TRUE(server.server().hasFeature<arangodb::DatabaseFeature>());
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();

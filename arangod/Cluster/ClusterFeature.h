@@ -89,7 +89,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
                             std::string const& endpoints);
-  
+
   void shutdownHeartbeatThread();
 
  private:
@@ -117,7 +117,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
-  std::unique_ptr<network::ConnectionPool> _pool;
+  std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
 };
 
 }  // namespace arangodb

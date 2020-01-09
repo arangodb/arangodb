@@ -77,7 +77,7 @@ RestStatus RestShutdownHandler::execute() {
   bool shutdownClusterFound;
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
-  if (shutdownClusterFound && shutdownCluster == "1" && AgencyCommManager::isEnabled()) {
+  if (shutdownClusterFound && shutdownCluster == "1" && AgencyCommHelper::isEnabled()) {
     AgencyComm agency;
     VPackBuilder builder;
     builder.add(VPackValue(true));

@@ -234,17 +234,17 @@ class ClusterRepairsTestBrokenDistribution
       public tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> {
  protected:
   // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> oldManager;
+  //std::unique_ptr<AgencyCommManager> oldManager;
 
   ClusterRepairsTestBrokenDistribution()
-      : oldManager(std::move(AgencyCommManager::MANAGER)) {
+      /*: oldManager(std::move(AgencyCommManager::MANAGER))*/ {
     // get a new manager
-    AgencyCommManager::initialize("testArangoAgencyPrefix");
+    //AgencyCommManager::initialize("testArangoAgencyPrefix");
   }
 
   ~ClusterRepairsTestBrokenDistribution() {
     // restore old manager
-    AgencyCommManager::MANAGER = std::move(oldManager);
+    //AgencyCommManager::MANAGER = std::move(oldManager);
   }
 };
 
@@ -442,7 +442,7 @@ class ClusterRepairsTestOperations
     : public ClusterRepairsTest,
       public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> {
  protected:
-  std::unique_ptr<AgencyCommManager> oldManager;
+  //std::unique_ptr<AgencyCommManager> oldManager;
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
 
@@ -457,16 +457,16 @@ class ClusterRepairsTestOperations
   }
 
   ClusterRepairsTestOperations()
-      : oldManager(std::move(AgencyCommManager::MANAGER)),
+      : /*oldManager(std::move(AgencyCommManager::MANAGER)), */
         oldServerId(ServerState::instance()->getId()),
         conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {
     // get a new manager
-    AgencyCommManager::initialize("testArangoAgencyPrefix");
+    //AgencyCommManager::initialize("testArangoAgencyPrefix");
   }
 
   ~ClusterRepairsTestOperations() {
     // restore old manager
-    AgencyCommManager::MANAGER = std::move(oldManager);
+    //AgencyCommManager::MANAGER = std::move(oldManager);
   }
 };
 

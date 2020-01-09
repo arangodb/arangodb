@@ -433,9 +433,6 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
       << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
       << "Starting to collect necessary repairs";
 
-  // Needed to build agency transactions
-  TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
-
   auto collectionMapResult = readCollections(planCollections);
   if (collectionMapResult.fail()) {
     return std::move(collectionMapResult).result();

@@ -36,6 +36,7 @@
 #include <unistd.h>
 #endif
 
+#include <Agency/AsyncAgencyComm.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -141,7 +142,7 @@ RestStatus RestStatusHandler::execute() {
       result.close();
     }
 
-    auto manager = AgencyCommManager::MANAGER.get();
+    auto manager = AsyncAgencyCommManager::INSTANCE.get();
 
     if (manager != nullptr) {
       result.add("agency", VPackValue(VPackValueType::Object));
@@ -150,7 +151,7 @@ RestStatus RestStatusHandler::execute() {
         result.add("agencyComm", VPackValue(VPackValueType::Object));
         result.add("endpoints", VPackValue(VPackValueType::Array));
 
-        for (auto ep : manager->endpoints()) {
+        for (const auto& ep : manager->endpoints()) {
           result.add(VPackValue(ep));
         }
 

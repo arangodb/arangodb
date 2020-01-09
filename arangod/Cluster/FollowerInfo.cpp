@@ -53,7 +53,7 @@ static std::string CurrentShardPath(arangodb::LogicalCollection const& col) {
 
 static VPackSlice CurrentShardEntry(arangodb::LogicalCollection const& col, VPackSlice current) {
   return current.get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Current", "Collections",
+      {AgencyCommHelper::path(), "Current", "Collections",
        col.vocbase().name(), std::to_string(col.planId()), col.name()}));
 }
 
@@ -64,7 +64,7 @@ static std::string PlanShardPath(arangodb::LogicalCollection const& col) {
 
 static VPackSlice PlanShardEntry(arangodb::LogicalCollection const& col, VPackSlice plan) {
   return plan.get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", col.vocbase().name(),
+      {AgencyCommHelper::path(), "Plan", "Collections", col.vocbase().name(),
        std::to_string(col.planId()), "shards", col.name()}));
 }
 
@@ -106,7 +106,7 @@ Result FollowerInfo::add(ServerID const& sid) {
       }
     }
 #ifdef DEBUG_SYNC_REPLICATION
-    if (!AgencyCommManager::MANAGER) {
+    if (!AgencyCommHelper::MANAGER) {
       return {TRI_ERROR_NO_ERROR};
     }
 #endif
@@ -189,7 +189,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
     _failoverCandidates = v;  // will cast to std::vector<ServerID> const
   }
 #ifdef DEBUG_SYNC_REPLICATION
-  if (!AgencyCommManager::MANAGER) {
+  if (!AgencyCommHelper::MANAGER) {
     return {TRI_ERROR_NO_ERROR};
   }
 #endif
@@ -345,11 +345,11 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   AgencyComm ac;
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
-      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
+      LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection";
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
     AgencyReadTransaction trx(std::vector<std::string>(
-        {AgencyCommManager::path(planPath), AgencyCommManager::path(curPath)}));
+        {AgencyCommHelper::path(planPath), AgencyCommHelper::path(curPath)}));
     AgencyCommResult res = ac.sendTransactionWithFailover(trx);
     if (res.successful()) {
       TRI_ASSERT(res.slice().isArray() && res.slice().length() == 1);

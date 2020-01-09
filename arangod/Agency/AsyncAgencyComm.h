@@ -28,7 +28,12 @@
 #include <memory>
 #include <mutex>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Agency/AgencyComm.h"
+
 #include "Cluster/PathComponent.h"
 #include "Cluster/ResultT.h"
 #include "Futures/Future.h"
@@ -46,9 +51,11 @@ struct AsyncAgencyCommResult {
 
   [[nodiscard]] bool fail() const { return !ok(); }
 
-  VPackSlice slice() { return response->slice(); }
+  VPackSlice slice() const { return response->slice(); }
 
-  arangodb::fuerte::StatusCode statusCode() { return response->statusCode(); }
+  arangodb::fuerte::StatusCode statusCode() const {
+    return response->statusCode();
+  }
 
   Result asResult() {
     if (!ok()) {
@@ -97,6 +104,10 @@ class AsyncAgencyCommManager final {
     return _endpoints;
   }
 
+  std::string endpointsString() const;
+  auto getSkipScheduler() const -> bool { return _skipScheduler; };
+  void setSkipScheduler(bool v) { _skipScheduler = v; };
+
   std::string getCurrentEndpoint();
   void reportError(std::string const& endpoint);
   void reportRedirect(std::string const& endpoint, std::string const& redirectTo);
@@ -105,6 +116,7 @@ class AsyncAgencyCommManager final {
   void pool(network::ConnectionPool* pool) { _pool = pool; }
 
  private:
+  bool _skipScheduler = true;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
   network::ConnectionPool* _pool = nullptr;
@@ -171,7 +183,7 @@ class AsyncAgencyComm final {
   enum class RequestType {
     READ,   // send the transaction again in the case of no response
     WRITE,  // does not send the transaction again but instead tries to do inquiry with the given ids
-    CUSTOM,  // talk to the leader and return always the result, even on timeout or redirect
+    CUSTOM,  // talk to the leader and always return the result, even on timeout or redirect
   };
 
   using ClientId = std::string;
@@ -200,7 +212,13 @@ class AsyncAgencyComm final {
   explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
       : _manager(manager) {}
 
+  auto withSkipScheduler(bool v) -> AsyncAgencyComm& {
+    _skipScheduler = v;
+    return *this;
+  }
+
  private:
+  bool _skipScheduler = false;
   AsyncAgencyCommManager& _manager;
 };
 

@@ -23,6 +23,7 @@
 
 #include "v8-cluster.h"
 
+#include <Agency/AsyncAgencyComm.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -210,7 +211,7 @@ static void JS_IsEnabledAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("isEnabled()");
   }
 
-  if (AgencyCommManager::isEnabled()) {
+  if (AgencyCommHelper::isEnabled()) {
     TRI_V8_RETURN_TRUE();
   }
 
@@ -310,7 +311,7 @@ static void JS_APIAgency(std::string const& envelope,
   AgencyComm comm;
   AgencyCommResult result =
       comm.sendWithFailover(arangodb::rest::RequestType::POST,
-                            AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+                            AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
                             std::string("/_api/agency/") + envelope, builder.slice());
 
   if (!result.successful()) {
@@ -441,7 +442,7 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   AgencyComm comm;
   AgencyCommResult result =
       comm.sendWithFailover(arangodb::rest::RequestType::GET,
-                            AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
+                            AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
                             std::string("/_api/agency/config"), builder.slice());
 
   if (!result.successful()) {
@@ -479,7 +480,7 @@ static void JS_EndpointsAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("endpoints()");
   }
 
-  std::vector<std::string> endpoints = AgencyCommManager::MANAGER->endpoints();
+  std::deque<std::string> endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
   // make the list of endpoints unique
   std::sort(endpoints.begin(), endpoints.end());
   endpoints.assign(endpoints.begin(), std::unique(endpoints.begin(), endpoints.end()));
@@ -504,7 +505,7 @@ static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  std::string const prefix = AgencyCommManager::path();
+  std::string const prefix = AgencyCommHelper::path();
 
   TRI_V8_RETURN_STD_STRING(prefix);
   TRI_V8_TRY_CATCH_END
@@ -1157,7 +1158,7 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
   bool queueUpdate = TRI_ObjectToBoolean(isolate, args[0]);
   ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
 
-  if (AgencyCommManager::isEnabled()) {
+  if (AgencyCommHelper::isEnabled()) {
     AgencyComm comm;
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();

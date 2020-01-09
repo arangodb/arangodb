@@ -103,7 +103,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     }
 
     VPackSlice value = commRes.slice()[0].get<std::string>(
-        {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
+        {AgencyCommHelper::path(), "Plan", "Databases", vocbase->name()});
     if (value.isObject() && value.hasKey("name")) {
       VPackValueLength l = 0;
       const char* name = value.get("name").getString(l);

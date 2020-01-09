@@ -123,7 +123,7 @@ class PlanCollectionReader {
     }
 
     _collection = _read.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+        {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID}));
 
     if (!_collection.isObject()) {
       _state = Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -815,7 +815,7 @@ class ClusterInfo final {
    * @return         List of DB servers serving the shard
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
-  
+
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(ShardID const& shardId);
 

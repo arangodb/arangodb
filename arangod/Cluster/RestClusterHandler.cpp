@@ -106,20 +106,20 @@ void RestClusterHandler::handleCommandEndpoints() {
     endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isActiveFailoverEnabled() || !AgencyCommManager::isEnabled()) {
+    if (!replication->isActiveFailoverEnabled() || !AgencyCommHelper::isEnabled()) {
       generateError(
           Result(TRI_ERROR_NOT_IMPLEMENTED, "automatic failover is not enabled"));
       return;
     }
 
-    TRI_ASSERT(AgencyCommManager::isEnabled());
+    TRI_ASSERT(AgencyCommHelper::isEnabled());
 
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
     AgencyComm agency;
 
     AgencyReadTransaction trx(std::vector<std::string>(
-        {AgencyCommManager::path(healthPath), AgencyCommManager::path(leaderPath)}));
+        {AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)}));
     AgencyCommResult result = agency.sendTransactionWithFailover(trx, 5.0);
 
     if (!result.successful()) {
@@ -127,10 +127,10 @@ void RestClusterHandler::handleCommandEndpoints() {
       return;
     }
 
-    std::vector<std::string> path = AgencyCommManager::slicePath(leaderPath);
+    std::vector<std::string> path = AgencyCommHelper::slicePath(leaderPath);
     VPackSlice slice = result.slice()[0].get(path);
     ServerID leaderId = slice.isString() ? slice.copyString() : "";
-    path = AgencyCommManager::slicePath(healthPath);
+    path = AgencyCommHelper::slicePath(healthPath);
     VPackSlice healthMap = result.slice()[0].get(path);
 
     if (leaderId.empty()) {

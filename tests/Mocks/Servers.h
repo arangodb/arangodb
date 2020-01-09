@@ -23,6 +23,7 @@
 #ifndef ARANGODB_TESTS_MOCKS_SERVERS_H
 #define ARANGODB_TESTS_MOCKS_SERVERS_H 1
 
+#include <IResearch/AgencyMock.h>
 #include "StorageEngineMock.h"
 
 #include "Mocks/LogLevels.h"
@@ -170,6 +171,7 @@ class MockClusterServer : public MockServer,
  private:
   arangodb::consensus::Store _agencyStore;
   arangodb::ServerState::RoleEnum _oldRole;
+  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
   int _dummy;
 };
 

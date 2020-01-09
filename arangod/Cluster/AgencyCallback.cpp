@@ -42,9 +42,9 @@ using namespace arangodb::application_features;
 AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
-    : key(key), 
-      _agency(agency), 
-      _cb(cb), 
+    : key(key),
+      _agency(agency),
+      _cb(cb),
       _needsValue(needsValue),
       _wasSignaled(false) {
   if (_needsValue && needsInitialValue) {
@@ -79,7 +79,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   }
 
   std::vector<std::string> kv =
-      basics::StringUtils::split(AgencyCommManager::path(key), '/');
+      basics::StringUtils::split(AgencyCommHelper::path(key), '/');
   kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
 
   auto newData = std::make_shared<VPackBuilder>();

@@ -457,7 +457,7 @@ void ClusterInfo::loadClusterId() {
   // Parse
   if (result.successful()) {
     VPackSlice slice = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), "Cluster"}));
+        std::vector<std::string>({AgencyCommHelper::path(), "Cluster"}));
     if (slice.isString()) {
       _clusterId = slice.copyString();
     }
@@ -547,7 +547,7 @@ void ClusterInfo::loadPlan() {
   }
 
   auto slice = resultSlice[0].get(  // get slice
-      std::vector<std::string>({AgencyCommManager::path(), "Plan"})  // args
+      std::vector<std::string>({AgencyCommHelper::path(), "Plan"})  // args
   );
 
   auto planBuilder = std::make_shared<velocypack::Builder>(slice);
@@ -1122,7 +1122,7 @@ void ClusterInfo::loadCurrent() {
   }
 
   auto slice = resultSlice[0].get(  // get slice
-      std::vector<std::string>({AgencyCommManager::path(), "Current"})  // args
+      std::vector<std::string>({AgencyCommHelper::path(), "Current"})  // args
   );
   auto currentBuilder = std::make_shared<velocypack::Builder>();
 
@@ -2417,7 +2417,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   if (res.successful()) {
     velocypack::Slice databaseSlice = res.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Plan", "Collections", dbName}));
+        {AgencyCommHelper::path(), "Plan", "Collections", dbName}));
 
     if (!databaseSlice.isObject()) {
       // database dropped in the meantime
@@ -2536,7 +2536,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   }
 
   velocypack::Slice collection = res.slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+      {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID}));
 
   if (!collection.isObject()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -2753,7 +2753,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(std::string const& databaseName
   }
 
   auto const view = res.slice()[0].get<std::string>(
-      {AgencyCommManager::path(), "Plan", "Views", databaseName, viewID});
+      {AgencyCommHelper::path(), "Plan", "Views", databaseName, viewID});
 
   if (!view.isObject()) {
     logAgencyDump();
@@ -2801,7 +2801,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(std::string const& databaseNa
   }
 
   VPackSlice col = res.slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+      {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID}));
 
   if (!col.isObject()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -3137,11 +3137,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         // ensure it is still in plan (not dropped between iterations)
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(
-            AgencyReadTransaction(AgencyCommManager::path(planIndexesKey)));
+            AgencyReadTransaction(AgencyCommHelper::path(planIndexesKey)));
 
         if (result.successful()) {
           auto indexes = result.slice()[0].get(
-              std::vector<std::string>{AgencyCommManager::path(), "Plan",
+              std::vector<std::string>{AgencyCommHelper::path(), "Plan",
                                        "Collections", databaseName,
                                        collectionID, "indexes"});
 
@@ -3325,7 +3325,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   }
 
   velocypack::Slice collection = previous.slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
+      {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID}));
   if (!collection.isObject()) {
     events::DropIndex(databaseName, collectionID, idString,
                       TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -3506,19 +3506,19 @@ void ClusterInfo::loadServers() {
   }
 
   AgencyCommResult result = _agency.sendTransactionWithFailover(AgencyReadTransaction(
-      std::vector<std::string>({AgencyCommManager::path(prefixServersRegistered),
-                                AgencyCommManager::path(mapUniqueToShortId),
-                                AgencyCommManager::path(prefixServersKnown)})));
+      std::vector<std::string>({AgencyCommHelper::path(prefixServersRegistered),
+                                AgencyCommHelper::path(mapUniqueToShortId),
+                                AgencyCommHelper::path(prefixServersKnown)})));
 
   if (result.successful()) {
     velocypack::Slice serversRegistered = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Current", "ServersRegistered"}));
+        {AgencyCommHelper::path(), "Current", "ServersRegistered"}));
 
     velocypack::Slice serversAliases = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
+        {AgencyCommHelper::path(), "Target", "MapUniqueToShortID"}));
 
     velocypack::Slice serversKnownSlice = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Current", "ServersKnown"}));
+        {AgencyCommHelper::path(), "Current", "ServersKnown"}));
 
     if (serversRegistered.isObject()) {
       decltype(_servers) newServers;
@@ -3754,7 +3754,7 @@ void ClusterInfo::loadCurrentCoordinators() {
 
   if (result.successful()) {
     velocypack::Slice currentCoordinators = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Current", "Coordinators"}));
+        {AgencyCommHelper::path(), "Current", "Coordinators"}));
 
     if (currentCoordinators.isObject()) {
       decltype(_coordinators) newCoordinators;
@@ -3799,7 +3799,7 @@ void ClusterInfo::loadCurrentMappings() {
 
   if (result.successful()) {
     velocypack::Slice mappings = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
+        {AgencyCommHelper::path(), "Target", "MapUniqueToShortID"}));
 
     if (mappings.isObject()) {
       decltype(_coordinatorIdMap) newCoordinatorIdMap;
@@ -3868,15 +3868,15 @@ void ClusterInfo::loadCurrentDBServers() {
 
     if (result.slice().length() > 0) {
       currentDBServers = result.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Current", "DBServers"}));
+          {AgencyCommHelper::path(), "Current", "DBServers"}));
     }
     if (target.slice().length() > 0) {
       failedDBServers = target.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "FailedServers"}));
+          {AgencyCommHelper::path(), "Target", "FailedServers"}));
       cleanedDBServers = target.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "CleanedServers"}));
+          {AgencyCommHelper::path(), "Target", "CleanedServers"}));
       toBeCleanedDBServers = target.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "ToBeCleanedServers"}));
+          {AgencyCommHelper::path(), "Target", "ToBeCleanedServers"}));
     }
     if (currentDBServers.isObject() && failedDBServers.isObject()) {
       decltype(_DBServers) newDBServers;

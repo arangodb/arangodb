@@ -123,8 +123,6 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
-
-  TRI_ASSERT(AgencyCommManager::isEnabled());
   AgencyComm comm;
 
   using namespace std::chrono;

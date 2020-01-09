@@ -334,7 +334,7 @@ bool ServerState::setReadOnly(bool ro) {
 /// @brief unregister this server with the agency
 bool ServerState::unregister() {
   TRI_ASSERT(!getId().empty());
-  TRI_ASSERT(AgencyCommManager::isEnabled());
+  TRI_ASSERT(AgencyCommHelper::isEnabled());
 
   std::string const& id = getId();
   std::vector<AgencyOperation> operations;
@@ -367,7 +367,7 @@ ResultT<uint64_t> ServerState::readRebootIdFromAgency(AgencyComm& comm) {
     return ResultT<uint64_t>::error(TRI_ERROR_INTERNAL, "could not read rebootId from agency");
   }
 
-  auto slicePath = AgencyCommManager::slicePath(rebootIdPath);
+  auto slicePath = AgencyCommHelper::slicePath(rebootIdPath);
   auto valueSlice = result.slice()[0].get(slicePath);
 
   if (!valueSlice.isInteger()) {
@@ -432,7 +432,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
 
   if (result.successful()) {
-    auto slicePath = AgencyCommManager::slicePath(currentServersRegisteredPref);
+    auto slicePath = AgencyCommHelper::slicePath(currentServersRegisteredPref);
     auto valueSlice = result.slice()[0].get(slicePath);
 
     if (valueSlice.isObject()) {
@@ -562,7 +562,7 @@ bool ServerState::checkEngineEquality(AgencyComm& comm) {
   AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
 
-    auto slicePath = AgencyCommManager::slicePath(currentServersRegisteredPref);
+    auto slicePath = AgencyCommHelper::slicePath(currentServersRegisteredPref);
     VPackSlice servers = result.slice()[0].get(slicePath);
     if (!servers.isObject()) {
       return true;  // do not do anything harsh here
@@ -593,7 +593,7 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
   }
 
   VPackSlice servers = result.slice()[0].get(
-      std::vector<std::string>({AgencyCommManager::path(), "Plan", agencyListKey}));
+      std::vector<std::string>({AgencyCommHelper::path(), "Plan", agencyListKey}));
   if (!servers.isObject()) {
     LOG_TOPIC("6507f", FATAL, Logger::STARTUP)
         << "Plan/" << agencyListKey << " in agency is no object. "
@@ -657,8 +657,8 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
   size_t attempts{0};
   while (attempts++ < 300) {
     AgencyReadTransaction readValueTrx(
-        std::vector<std::string>{AgencyCommManager::path(targetIdPath),
-                                 AgencyCommManager::path(targetUrl)});
+        std::vector<std::string>{AgencyCommHelper::path(targetIdPath),
+                                 AgencyCommHelper::path(targetUrl)});
     AgencyCommResult result = comm.sendTransactionWithFailover(readValueTrx, 0.0);
 
     if (!result.successful()) {
@@ -669,7 +669,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
     }
 
     VPackSlice mapSlice = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Target", "MapUniqueToShortID", _id}));
+        {AgencyCommHelper::path(), "Target", "MapUniqueToShortID", _id}));
 
     // already registered
     if (!mapSlice.isNone() && !forceChangeShortId) {
@@ -686,7 +686,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum
     }
 
     VPackSlice latestIdSlice = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), "Target", latestIdKey}));
+        std::vector<std::string>({AgencyCommHelper::path(), "Target", latestIdKey}));
 
     uint32_t num = 0;
     std::unique_ptr<AgencyPrecondition> latestIdPrecondition;
@@ -1024,7 +1024,7 @@ std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum r
 
 Result ServerState::propagateClusterReadOnly(bool mode) {
   // Agency enabled will work for single server replication as well as cluster
-  if (AgencyCommManager::isEnabled()) {
+  if (AgencyCommHelper::isEnabled()) {
     std::vector<AgencyOperation> operations;
     VPackBuilder builder;
     builder.add(VPackValue(mode));

@@ -83,6 +83,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Agency/AsyncAgencyComm.h>
 #include <boost/core/demangle.hpp>
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -295,7 +296,6 @@ MockServer::~MockServer() {
   stopFeatures();
   ClusterCommResetter::reset();
   _server.setStateUnsafe(_oldApplicationServerState);
-  arangodb::AgencyCommManager::MANAGER.reset();
 }
 
 application_features::ApplicationServer& MockServer::server() {
@@ -474,13 +474,8 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
 }
 
 MockClusterServer::MockClusterServer()
-    : MockServer(), _agencyStore(_server, nullptr, "arango") {
-  auto* agencyCommManager = new AgencyCommManagerMock("arango");
-  std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-      _agencyStore);  // need 2 connections or Agency callbacks will fail
-  arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+    : MockServer(), _agencyStore(_server, nullptr, "arango"), _pool(nullptr) {
+
   _oldRole = arangodb::ServerState::instance()->getRole();
 
   // Add features
@@ -503,7 +498,22 @@ MockClusterServer::~MockClusterServer() {
 
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
-  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
+
+  arangodb::network::ConnectionPool::Config poolConfig;
+  poolConfig.clusterInfo = &getFeature<arangodb::ClusterFeature>().clusterInfo();
+  poolConfig.numIOThreads = 1;
+  poolConfig.minOpenConnections = 1;
+  poolConfig.maxOpenConnections = 3;
+  poolConfig.verifyHosts = false;
+
+  _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
+
+  arangodb::AgencyCommHelper::initialize("arango");
+  AsyncAgencyCommManager::initialize();
+  AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
+  AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
+  arangodb::AgencyComm().ensureStructureInitialized();
+
   arangodb::ServerState::instance()->setRebootId(1);
 
   // register factories & normalizers
