@@ -1,4 +1,4 @@
-v3.6.1 (2019-xx-xx)
+v3.6.1 (2020-XX-XX)
 -------------------
 
 * Added option that makes ArangoDB write logfiles in the Windows installer.
