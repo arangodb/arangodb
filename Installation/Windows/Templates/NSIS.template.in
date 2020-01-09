@@ -75,11 +75,11 @@ Var ServiceUp                 ; did the service start?
 
 Var DATADIR
 Var APPDIR
-; Var LOGFILE
+Var LOGDIR
 
 Var ini_DATADIR
 Var ini_APPDIR
-; Var ini_LOGFILE
+Var ini_LOGFILE
 
 Var UpgradeInstall
 Var LaunchAfterInstall
@@ -92,7 +92,7 @@ Var Dlg1_RB_all_users
 Var Dlg1_RB_cur_user
 
 Var Dlg1_CB_custom_path
-;Var Dlg1_CB_custom_logging
+Var Dlg1_CB_custom_logging
 Var Dlg1_CB_automatic_update
 Var Dlg1_CB_keep_backup
 Var Dlg1_CB_add_path
@@ -537,8 +537,9 @@ continueUI:
   ${NSD_CreateCheckBox} 0 -100 100% 6% "Choose custom install paths for databases and installation"
   Pop $Dlg1_CB_custom_path
 
-  ;${NSD_CreateCheckBox} 0 -120 100% 6% "Enable ArangoDBs own logfiles"
-  ;Pop $Dlg1_CB_custom_logging
+  ${NSD_CreateCheckBox} 0 -120 100% 6% "Enable ArangoDB's own logfiles"
+  Pop $Dlg1_CB_custom_logging
+  ${NSD_SetState} $Dlg1_CB_custom_logging ${BST_CHECKED}
 
   ${NSD_CreateCheckBox} 0 -80 100% 6% "Automatically update existing ArangoDB database"
   Pop $Dlg1_CB_automatic_update
@@ -595,10 +596,10 @@ continueUI:
     StrCpy $ChooseInstallPath "0"
   ${EndIf}
 
-  ;${NSD_GetState} $Dlg1_CB_custom_logging $R0
-  ;${If} $R0 = ${BST_CHECKED}
-  ;  StrCpy $LOGFILE "$APPDIR\LOG.txt"
-  ;${EndIf}
+  ${NSD_GetState} $Dlg1_CB_custom_logging $R0
+  ${If} $R0 = ${BST_CHECKED}
+    StrCpy $LOGDIR "$LOCALAPPDATA\Arangodb-logs\"
+  ${EndIf}
 
 
   ${NSD_GetState} $Dlg1_CB_automatic_update $R0
@@ -948,10 +949,10 @@ Section "-Core installation"
   ${If} $APPDIR != ""
     StrCpy $ini_APPDIR "[javascript]$\r$\napp-path = $APPDIR$\r$\n"
   ${EndIf}
-  ;${If} $LOGFILE != ""
-  ;  StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGFILE$\r$\n"
-  ;${EndIf}
-  StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
+  ${If} $LOGDIR != ""
+    StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGDIR\arangod.log$\r$\n"
+  ${EndIf}
+  StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR$ini_LOGFILE[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
   ${AnsiToUtf8} $newCfgValues $newCfgValuesUtf8
   StrCpy $newCfgValuesFile "$INSTDIR\etc\arangodb3\newValues.ini"
   FileOpen $4  "$newCfgValuesFile" w
@@ -963,6 +964,9 @@ Section "-Core installation"
   call ReadINIFileKeys
   Delete "$newCfgValuesFile"
 
+  ${If} $LOGDIR != ""
+    CreateDirectory $LOGDIR
+  ${EndIf}
   CreateDirectory $APPDIR
   Call assignFileRights
   ${If} $UpgradeInstall == "1"
