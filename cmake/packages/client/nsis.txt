@@ -115,7 +115,7 @@ set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/ara
 
 set(INSTALL_MACROS_NO_TARGET_INSTALL TRUE)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
-# Make it the same directory so we don't ship DLLs twice (in bin/ on top of usr/bin):
+# Make it the same directory so we don't ship DLLs twice (in bin/ on top of usr/bin/):
 set(CMAKE_INSTALL_FULL_SBINDIR "${CMAKE_INSTALL_FULL_BINDIR}")
 
 # install the visual studio runtime:
