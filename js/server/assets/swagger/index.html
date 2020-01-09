@@ -86,7 +86,6 @@
         ],
         layout: "StandaloneLayout",
         //#region ArangoDB-specific changes
-        // Expand the API documentation by default.
         docExpansion: "none",
         requestInterceptor: function (request) {
           var jwt = sessionStorage.getItem("jwt");
