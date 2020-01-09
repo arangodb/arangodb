@@ -128,7 +128,7 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
 namespace {
-  std::map<std::string, arangodb::aql::ConditionOptimization> conditionOptimizationTypeMap = {
+  std::map<std::string, arangodb::aql::ConditionOptimization> const conditionOptimizationTypeMap = {
     {"auto", arangodb::aql::ConditionOptimization::Auto},
     {"nodnf", arangodb::aql::ConditionOptimization::NoDNF},
     {"noneg", arangodb::aql::ConditionOptimization::NoNegation},
@@ -141,7 +141,7 @@ void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const
   VPackObjectBuilder objectScope(&builder);
   builder.add("waitForSync", VPackValue(options.forceSync));
   {
-    for (auto r : conditionOptimizationTypeMap) {
+    for (auto const& r : conditionOptimizationTypeMap) {
       if (r.second == options.conditionOptimization) {
         builder.add("conditionOptimization", VPackValue(r.first));
         break;
