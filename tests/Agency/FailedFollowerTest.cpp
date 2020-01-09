@@ -474,6 +474,17 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
   Node agency = createNodeFromBuilder(*builder);
   // nothing should happen
   Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    // check that moveshard is being moved to failed
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+    EXPECT_TRUE(std::string(q->slice()[0][0].get("/arango/Target/Failed/2").typeName()) ==
+                "object");
+    return fakeWriteResult;
+  });
+
   AgentInterface& agent = mockAgent.get();
   auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
