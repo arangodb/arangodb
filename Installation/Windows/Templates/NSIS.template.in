@@ -16,6 +16,7 @@
   !include "StripSlashes.nsh"
   !include "xcopy.nsh"
   !include "Utf8Converter.nsh"
+  !include "BaseDir.nsh"
 ;   !include "GetTime.nsh"
 ;--------------------------------
 ; get commandline parameters
@@ -76,6 +77,7 @@ Var ServiceUp                 ; did the service start?
 Var DATADIR
 Var APPDIR
 Var LOGDIR
+Var PROGRAMDATA
 
 Var ini_DATADIR
 Var ini_APPDIR
@@ -210,9 +212,12 @@ Function un.ReadSettings
   ;MessageBox MB_OK "Add to path: $ADD_TO_PATH"
   ReadRegStr $ADD_DESKTOP_ICON         SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
   ReadINIStr $newCfgValuesUtf8                  "$INSTDIR\${ARANGO_INI}" "database"   "directory"
-  ${Utf8ToAnsi} $newCfgValuesUtf8 $DATADIR       
+  ${Utf8ToAnsi} $newCfgValuesUtf8 $DATADIR
   ReadINIStr $newCfgValuesUtf8                   "$INSTDIR\${ARANGO_INI}" "javascript" "app-path"
   ${Utf8ToAnsi} $newCfgValuesUtf8 $APPDIR
+  ReadINIStr $newCfgValuesUtf8                   "$INSTDIR\${ARANGO_INI}" "log" "file"
+  ${Utf8ToAnsi} $newCfgValuesUtf8 $LOGDIR
+  !insertmacro un.BaseDir "$LOGDIR"
 
 FunctionEnd
 
@@ -598,7 +603,11 @@ continueUI:
 
   ${NSD_GetState} $Dlg1_CB_custom_logging $R0
   ${If} $R0 = ${BST_CHECKED}
-    StrCpy $LOGDIR "$LOCALAPPDATA\Arangodb-logs\"
+    ${If} $TRI_INSTALL_SCOPE_ALL == '1'
+      StrCpy $LOGDIR "$PROGRAMDATA\Arangodb-logs"
+    ${Else}
+      StrCpy $LOGDIR "$LOCALAPPDATA\Arangodb-logs"
+    ${EndIf}
   ${EndIf}
 
 
@@ -862,7 +871,7 @@ continueUI:
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 60u "Your databases are stored in $\r$\n'$DATADIR'$\r$\n, and your Foxx services in$\r$\n'$APPDIR'$\r$\nShould we remove it during the uninstallation?"
+  ${NSD_CreateLabel} 0 0 100% 60u "Your databases are stored in $\r$\n'$DATADIR',$\r$\nYour logfiles are storted in '$LOGDIR'$\r$\n and your Foxx services in$\r$\n'$APPDIR'$\r$\nShould we remove it during the uninstallation?"
   Pop $0 ; Don't care...
 
   ${NSD_CreateCheckbox} 5u -20u 50% 20u "Delete databases with uninstallation?"
@@ -1156,6 +1165,7 @@ Done:
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"
   RMDir /r "$INSTDIR\var\log\arangodb3"
+  RMDIR /r "$LOGDIR"
   dontDeleteDatabases:
     DetailPrint 'Removing programm files:'
     DetailPrint "      RMDir $INSTDIR\usr\share\arangodb3\js\node\node_modules\graphql-sync"
@@ -1262,7 +1272,7 @@ Function .onInit
     StrCpy $TRI_INSTALL_SCOPE_ALL "0"
     StrCpy $TRI_INSTALL_SERVICE "0"
   ${EndIf}
-  
+
   !insertmacro determineInstallScope 1
 
   ${GetParameters} $R0
@@ -1343,6 +1353,7 @@ inst:
   ; Reads components status for registry
   !insertmacro SectionList "InitSection"
 
+  ReadEnvStr $PROGRAMDATA ProgramData
   ; check to see if /D has been used to change
   ; the install directory by comparing it to the
   ; install directory that is expected to be the
