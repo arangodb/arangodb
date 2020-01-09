@@ -202,7 +202,7 @@ class Condition {
   void deduplicateJunctionNode(AstNode* unlockedNode);
 
   /// @brief recursively deduplicates and sorts members in  IN/AND/OR nodes in subtree
-  void deduplicateComparsionsRecursive(AstNode* p);
+  void deduplicateComparisonsRecursive(AstNode* p);
 
   /// @brief registers an attribute access for a particular (collection)
   /// variable

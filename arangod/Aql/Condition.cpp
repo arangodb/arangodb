@@ -1035,7 +1035,7 @@ bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable 
 
 /// @brief recursively deduplicates and sorts members in  IN nodes in subtree
 /// also deduplicated AND/OR  nodes
-void Condition::deduplicateComparsionsRecursive(AstNode* p) {
+void Condition::deduplicateComparisonsRecursive(AstNode* p) {
   const auto numMembers = p->numMembers();
   for (size_t j = 0; j < numMembers; ++j) {
     auto op = p->getMemberUnchecked(j);
@@ -1047,7 +1047,7 @@ void Condition::deduplicateComparsionsRecursive(AstNode* p) {
       p->changeMember(j, deduplicated);
       continue;
     }
-    deduplicateComparsionsRecursive(newNode);
+    deduplicateComparisonsRecursive(newNode);
     // now all internal nodes collapsed where possible
     // could try to collapse this node
     if (op->type == NODE_TYPE_OPERATOR_NARY_AND ||
@@ -1063,7 +1063,7 @@ void Condition::optimizeNonDnf() {
   _root = _ast->shallowCopyForModify(oldRoot);
   TRI_DEFER(FINALIZE_SUBTREE(_root));
   // Sorting and deduplicating all IN/AND/OR nodes
-  deduplicateComparsionsRecursive(_root);
+  deduplicateComparisonsRecursive(_root);
 }
 
 /// @brief deduplicates conditions in AND/OR node
@@ -1128,7 +1128,7 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
               continue;
             }
             if (current.whichCompareOperation() == other.whichCompareOperation() &&
-              CompareAstNodes(current.valueNode, other.valueNode, true) == 0) {// duplicate comparsion detected - remove it
+              CompareAstNodes(current.valueNode, other.valueNode, true) == 0) {// duplicate comparison detected - remove it
               TRI_ASSERT(!positions.empty());
               TRI_ASSERT(j < positions.size());
               unlockedNode->removeMemberUncheckedUnordered(rightPos);
