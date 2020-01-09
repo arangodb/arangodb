@@ -604,9 +604,9 @@ continueUI:
   ${NSD_GetState} $Dlg1_CB_custom_logging $R0
   ${If} $R0 = ${BST_CHECKED}
     ${If} $TRI_INSTALL_SCOPE_ALL == '1'
-      StrCpy $LOGDIR "$PROGRAMDATA\Arangodb-logs"
+      StrCpy $LOGDIR "$PROGRAMDATA\ArangoDB-logs"
     ${Else}
-      StrCpy $LOGDIR "$LOCALAPPDATA\Arangodb-logs"
+      StrCpy $LOGDIR "$LOCALAPPDATA\ArangoDB-logs"
     ${EndIf}
   ${EndIf}
 
