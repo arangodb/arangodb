@@ -2833,10 +2833,14 @@ void AstNode::setStringValue(char const* v, size_t length) {
 }
 
 bool AstNode::stringEquals(char const* other, bool caseInsensitive) const {
+  auto otherLen = strlen(other);
+
   if (caseInsensitive) {
-    return (strncasecmp(getStringValue(), other, getStringLength()) == 0);
+    return (otherLen == getStringLength()) &&
+           strncasecmp(getStringValue(), other, getStringLength()) == 0;
   }
-  return (strncmp(getStringValue(), other, getStringLength()) == 0);
+  return (otherLen == getStringLength()) &&
+         strncmp(getStringValue(), other, getStringLength()) == 0;
 }
 
 bool AstNode::stringEquals(std::string const& other) const {
