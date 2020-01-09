@@ -260,7 +260,7 @@ install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
 
 if (MSVC AND NOT(SKIP_PACKAGING))
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
-  # Make it the same directory so we don't ship DLLs twice (in bin/ on top of usr/bin):
+  # Make it the same directory so we don't ship DLLs twice (in bin/ on top of usr/bin/):
   set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
 
   install_readme(README.windows README.windows.txt)
