@@ -23,5 +23,4 @@ install_config(foxx-manager)
 install_command_alias(${BIN_ARANGOSH}
   ${CMAKE_INSTALL_BINDIR}
   arangoinspect)
-
 install_config(arangoinspect)
