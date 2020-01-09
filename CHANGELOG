@@ -1,6 +1,8 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fix Windows client package JS installation paths.
+
 * Added option that makes ArangoDB write logfiles in the Windows installer.
 
 
