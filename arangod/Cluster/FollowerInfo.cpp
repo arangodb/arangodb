@@ -105,11 +105,6 @@ Result FollowerInfo::add(ServerID const& sid) {
         _failoverCandidates = nextCandidates;  // will cast to std::vector<ServerID> const
       }
     }
-#ifdef DEBUG_SYNC_REPLICATION
-    if (!AgencyCommHelper::MANAGER) {
-      return {TRI_ERROR_NO_ERROR};
-    }
-#endif
   }
 
   // Now tell the agency
@@ -188,11 +183,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
                      std::back_inserter(*v.get()), sid);
     _failoverCandidates = v;  // will cast to std::vector<ServerID> const
   }
-#ifdef DEBUG_SYNC_REPLICATION
-  if (!AgencyCommHelper::MANAGER) {
-    return {TRI_ERROR_NO_ERROR};
-  }
-#endif
+
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
     // +1 for the leader (me)
