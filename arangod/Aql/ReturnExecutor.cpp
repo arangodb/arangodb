@@ -45,3 +45,66 @@ ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher) {}
 
 ReturnExecutor::~ReturnExecutor() = default;
+
+std::pair<ExecutionState, size_t> ReturnExecutor::expectedNumberOfRows(size_t atMost) const {
+  return _fetcher.preFetchNumberOfRows(atMost);
+}
+
+auto ReturnExecutor::produceRows(OutputAqlItemRow& output)
+    -> std::pair<ExecutionState, Stats> {
+  TRI_ASSERT(false);
+  TRI_IF_FAILURE("ReturnExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  ExecutionState state;
+  ReturnExecutor::Stats stats;
+  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  std::tie(state, inputRow) = _fetcher.fetchRow();
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!inputRow);
+    return {state, stats};
+  }
+
+  if (!inputRow) {
+    TRI_ASSERT(state == ExecutionState::DONE);
+    return {state, stats};
+  }
+
+  AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
+  AqlValueGuard guard(val, true);
+  TRI_IF_FAILURE("ReturnBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  output.moveValueInto(_infos.getOutputRegisterId(), inputRow, guard);
+
+  if (_infos.doCount()) {
+    stats.incrCounted();
+  }
+  return {state, stats};
+}
+
+auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  TRI_IF_FAILURE("ReturnExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  Stats stats{};
+
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    auto [state, input] = inputRange.nextDataRow();
+    TRI_ASSERT(input.isInitialized());
+    // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls it `getInputRegister`.
+    AqlValue val = input.stealValue(_infos.getInputRegisterId());
+    AqlValueGuard guard(val, true);
+    TRI_IF_FAILURE("ReturnBlock::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+    output.advanceRow();
+    stats.incrCounted();
+  }
+
+  return {inputRange.upstreamState(), stats, output.getClientCall()};
+}
