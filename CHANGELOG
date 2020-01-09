@@ -3,6 +3,10 @@ devel
 
 * Supervision maintenance mode from "on" and TTL to expiry string.
 
+* Fix Windows client package JS installation paths.
+
+* Updated arangosync to 0.7.2.
+
 * Renamed document / index / vertex "handle" to "identifier" / "id" for
   consistency in documentation and error messages.
 
