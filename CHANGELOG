@@ -1,4 +1,4 @@
-v3.6.1 (XXXX-XX-XX)
+v3.6.1 (2020-XX-XX)
 -------------------
 
 * Fixed internal issue #656: While executing large amount of concurrent
@@ -6,9 +6,17 @@ v3.6.1 (XXXX-XX-XX)
   error 32 in cleanup (observed only on Windows as Linux doesn`t have file
   sharing locks).
 
+* Updated arangosync to 0.7.2.
 
-v3.6.0 (XXXX-XX-XX)
+* Fix Windows client package JS installation paths.
+
+* Added option that makes ArangoDB write logfiles in the Windows installer.
+
+
+v3.6.0 (2020-01-08)
 -------------------
+
+* Do not create a reboot tracker for empty serverId ubin sync repl.
 
 * Update swagger.
 
