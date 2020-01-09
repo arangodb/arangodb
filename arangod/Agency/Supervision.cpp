@@ -303,8 +303,17 @@ void Supervision::upgradeAgency() {
 void Supervision::upgradeMaintenance(VPackBuilder& builder) {
   _lock.assertLockedByCurrentThread();
   if (_snapshot.has(supervisionMaintenance)) {
+
     TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
-    auto const maintenanceState = _snapshot.get(supervisionMaintenance).getString();
+    std::string maintenanceState;
+    try {
+      maintenanceState = _snapshot.get(supervisionMaintenance).getString();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
+        << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups.";
+      return;
+    }
+
     if (maintenanceState == "on") {
       VPackArrayBuilder trx(&builder);
       {
