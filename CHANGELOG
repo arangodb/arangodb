@@ -5,6 +5,10 @@ devel
 
 * Introduced AsyncAgencyComm for asynchronous internal agency requests.
 
+* Fix Windows client package JS installation paths.
+
+* Updated arangosync to 0.7.2.
+
 * Renamed document / index / vertex "handle" to "identifier" / "id" for
   consistency in documentation and error messages.
 
