@@ -3,7 +3,8 @@ v3.6.1 (2019-xx-xx)
 
 * Added option that makes ArangoDB write logfiles in the Windows installer.
 
-v3.6.0 (2019-01-08)
+
+v3.6.0 (2020-01-08)
 -------------------
 
 * Do not create a reboot tracker for empty serverId ubin sync repl.
