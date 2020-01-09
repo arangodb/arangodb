@@ -252,6 +252,34 @@ void MerkleTree<BranchingBits, LockStripes>::insert(std::size_t key, std::size_t
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
+void MerkleTree<BranchingBits, LockStripes>::insert(std::vector<std::size_t> const& keys) {
+  if (keys.empty()) {
+    return;
+  }
+
+  std::vector<std::size_t> sortedKeys = keys;
+  std::sort(sortedKeys.begin(), sortedKeys.end());
+
+  std::size_t minKey = sortedKeys[0];
+  std::size_t maxKey = sortedKeys[sortedKeys.size() - 1];
+
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+
+  if (minKey < meta().rangeMin) {
+    throw std::out_of_range("Cannot insert, key out of current range.");
+  }
+
+  if (maxKey >= meta().rangeMax) {
+    // unlock so we can get exclusive access to grow the range
+    guard.unlock();
+    grow(maxKey);
+    guard.lock();
+  }
+
+  modify(sortedKeys, true);
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
 void MerkleTree<BranchingBits, LockStripes>::remove(std::size_t key, std::size_t value) {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   if (key < meta().rangeMin || key >= meta().rangeMax) {
@@ -259,6 +287,27 @@ void MerkleTree<BranchingBits, LockStripes>::remove(std::size_t key, std::size_t
   }
 
   modify(key, value, /* isInsert */ false);
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
+void MerkleTree<BranchingBits, LockStripes>::remove(std::vector<std::size_t> const& keys) {
+  if (keys.empty()) {
+    return;
+  }
+
+  std::vector<std::size_t> sortedKeys = keys;
+  std::sort(sortedKeys.begin(), sortedKeys.end());
+
+  std::size_t minKey = sortedKeys[0];
+  std::size_t maxKey = sortedKeys[sortedKeys.size() - 1];
+
+  std::unique_lock<std::shared_mutex> guard(_bufferLock);
+
+  if (minKey < meta().rangeMin || maxKey >= meta().rangeMax) {
+    throw std::out_of_range("Cannot remove, key out of current range.");
+  }
+
+  modify(sortedKeys, false);
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
@@ -434,21 +483,43 @@ std::size_t MerkleTree<BranchingBits, LockStripes>::index(std::size_t key,
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 void MerkleTree<BranchingBits, LockStripes>::modify(std::size_t key, std::size_t value,
                                                     bool isInsert) {
-  // not thread-safe, lock buffer from outside
+  // not thread-safe, shared-lock buffer from outside
   for (std::size_t depth = 0; depth <= meta().maxDepth; ++depth) {
-    std::size_t index = this->index(key, depth);
-    Node& node = this->node(index);
-    std::unique_lock<std::mutex> lock(this->lock(index));
-    if (isInsert) {
-      ++node.count;
-    } else {
-      if (node.count == 0) {
-        throw std::invalid_argument("Tried to remove key that is not present.");
-      }
-      --node.count;
-    }
-    node.hash ^= value;
+    modifyLocal(depth, key, value, isInsert, true);
   }
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
+void MerkleTree<BranchingBits, LockStripes>::modify(std::vector<std::size_t> const& keys,
+                                                    bool isInsert) {
+  // not thread-safe, unique-lock buffer from outside
+  for (std::size_t depth = 0; depth <= meta().maxDepth; ++depth) {
+    for (std::size_t key : keys) {
+      modifyLocal(depth, key, TRI_FnvHashPod(key), isInsert, false);
+    }
+  }
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
+void MerkleTree<BranchingBits, LockStripes>::modifyLocal(std::size_t depth,
+                                                         std::size_t key, std::size_t value,
+                                                         bool isInsert, bool doLock) {
+  // only use via modify
+  std::size_t index = this->index(key, depth);
+  Node& node = this->node(index);
+  std::unique_lock<std::mutex> lock(this->lock(index), std::defer_lock);
+  if (doLock) {
+    lock.lock();
+  }
+  if (isInsert) {
+    ++node.count;
+  } else {
+    if (node.count == 0) {
+      throw std::invalid_argument("Tried to remove key that is not present.");
+    }
+    --node.count;
+  }
+  node.hash ^= value;
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>

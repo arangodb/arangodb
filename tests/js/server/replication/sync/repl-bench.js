@@ -98,7 +98,7 @@ const runBench = (fn) => {
 
 const singleRunHugeDiff = () => {
   connectToMaster();
-  const initialCount = 500000;
+  const initialCount = 5000000;
 
   compare(
     function (state) {
@@ -170,7 +170,7 @@ const singleRunHugeDiff = () => {
 
 const singleRunCatchUp = () => {
   connectToMaster();
-  const initialCount = 1000000;
+  const initialCount = 10000000;
 
   compare(
     function (state) {

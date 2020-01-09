@@ -350,12 +350,8 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
     // now peek at updates buffered inside transaction and apply those too
     auto operations = RocksDBTransactionState::toState(&trx)->trackedOperations(
         _logicalCollection.id());
-    for (auto& rid : operations.inserts) {
-      tree->insert(rid, TRI_FnvHashPod(rid));
-    }
-    for (auto& rid : operations.removals) {
-      tree->remove(rid, TRI_FnvHashPod(rid));
-    }
+    tree->insert(operations.inserts);
+    tree->remove(operations.removals);
   }
 
   return tree;
@@ -484,17 +480,13 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
 
       // apply inserts
       if (!inserts.empty()) {
-        for (auto const& rid : inserts) {
-          _revisionTree.insert(rid, TRI_FnvHashPod(rid));
-        }
+        _revisionTree.insert(inserts);
         inserts.clear();
       }
 
       // apply removals
       if (!removals.empty()) {
-        for (auto const& rid : removals) {
-          _revisionTree.remove(rid, TRI_FnvHashPod(rid));
-        }
+        _revisionTree.remove(removals);
         removals.clear();
       }
     }  // </while(true)>
@@ -564,16 +556,12 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
 
       // apply inserts
       if (inserts) {
-        for (auto const& rid : *inserts) {
-          tree.insert(rid, TRI_FnvHashPod(rid));
-        }
+        tree.insert(*inserts);
       }
 
       // apply removals
       if (removals) {
-        for (auto const& rid : *removals) {
-          tree.remove(rid, TRI_FnvHashPod(rid));
-        }
+        tree.remove(*removals);
       }
     }  // </while(true)>
   });

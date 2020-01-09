@@ -145,6 +145,17 @@ class MerkleTree {
   void insert(std::size_t key, std::size_t value);
 
   /**
+   * @brief Insert a batch of keys (as values) into the tree. May trigger a
+   * resize.
+   *
+   * @param keys  The keys to be inserted. Each key will be hashed to generate
+   *              a value, then inserted as if by the basic single insertion
+   *              method. This batch method is considerably more efficient.
+   * @throws std::out_of_range  If key is less than rangeMin
+   */
+  void insert(std::vector<std::size_t> const& keys);
+
+  /**
    * @brief Remove a value from the tree.
    *
    * @param key   The key for the item. If it is outside the current tree range,
@@ -154,6 +165,16 @@ class MerkleTree {
    * @throws std::invalid_argument  If remove hits a node with 0 count
    */
   void remove(std::size_t key, std::size_t value);
+
+  /**
+   * @brief Remove a batch of keys (as values) from the tree.
+   *
+   * @param keys  The keys to be removed. Each key will be hashed to generate
+   *              a value, then removed as if by the basic single removal
+   *              method. This batch method is considerably more efficient.
+   * @throws std::out_of_range  If key is less than rangeMin
+   */
+  void remove(std::vector<std::size_t> const& keys);
 
   /**
    * @brief Remove all values from the tree.
@@ -198,6 +219,9 @@ class MerkleTree {
   std::mutex& lock(std::size_t index) const;
   std::size_t index(std::size_t key, std::size_t depth) const;
   void modify(std::size_t key, std::size_t value, bool isInsert);
+  void modify(std::vector<std::size_t> const& keys, bool isInsert);
+  void modifyLocal(std::size_t depth, std::size_t key, std::size_t value,
+                   bool isInsert, bool doLock);
   void grow(std::size_t key);
   bool equalAtIndex(MerkleTree<BranchingBits, LockStripes> const& other,
                     std::size_t index) const;
