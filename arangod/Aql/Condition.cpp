@@ -1726,7 +1726,7 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   return node;
 }
 
-/// @brief converts binary to n-ary, comparision normal and negation normal form
+/// @brief converts binary to n-ary, comparison normal and negation normal form
 AstNode* Condition::transformNodePreorder(
     AstNode* node,
     ConditionOptimization conditionOptimization /*= ConditionOptimization::Auto*/) {

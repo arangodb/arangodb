@@ -229,7 +229,7 @@ class Condition {
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);
 
-  /// @brief converts binary to n-ary, comparision normal and negation normal form
+  /// @brief converts binary to n-ary, comparison normal and negation normal form
   AstNode* transformNodePreorder(
       AstNode*, 
       ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
