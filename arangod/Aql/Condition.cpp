@@ -1072,9 +1072,9 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
   TRI_ASSERT(unlockedNode->type == NODE_TYPE_OPERATOR_NARY_AND ||
              unlockedNode->type == NODE_TYPE_OPERATOR_NARY_OR);
   TRI_ASSERT(!unlockedNode->hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  bool finishedProcessing = false;
-  while (!finishedProcessing) {
-    finishedProcessing = true;
+  bool duplicateFound;
+  do {
+    duplicateFound = false;
     size_t andNumMembers = unlockedNode->numMembers();
     VariableUsageType variableUsage;
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> varAccess;
@@ -1110,7 +1110,7 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
         }
         // multiple occurrences of the same attribute
         size_t i = 0;
-        while (i < positions.size() - 1 && finishedProcessing) {
+        do {
           size_t leftPos = positions[i].first;
           auto leftNode = unlockedNode->getMemberUnchecked(leftPos);
           ConditionPart current(variable, attributeName, leftNode, positions[i].second, nullptr);
@@ -1131,17 +1131,23 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
               CompareAstNodes(current.valueNode, other.valueNode, true) == 0) {// duplicate comparsion detected - remove it
               TRI_ASSERT(!positions.empty());
               TRI_ASSERT(j < positions.size());
-              unlockedNode->removeMemberUncheckedUnordered(positions.at(j).first);
-              finishedProcessing = false; // one duplicate collapsed. Need to re check resulting node
+              unlockedNode->removeMemberUncheckedUnordered(rightPos);
+              duplicateFound = true; // one duplicate collapsed. Need to re check resulting node and refill positions
               break;
             }
             ++j;
           }
           ++i;
+        } while (i < positions.size() - 1 && !duplicateFound);
+        if (duplicateFound) {
+          break;
         }
       }
+      if (duplicateFound) {
+        break;
+      }
     }
-  }
+  } while (duplicateFound);
 }
 
 /// @brief optimize the condition expression tree
