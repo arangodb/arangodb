@@ -292,6 +292,8 @@ void AqlItemBlock::destroy() noexcept {
   // arbitrary types. so we put a global try...catch here to be on
   // the safe side
   try {
+    _shadowRowIndexes.clear();
+
     if (_valueCount.empty()) {
       eraseAll();
       rescale(0, 0);
