@@ -871,7 +871,7 @@ continueUI:
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 60u "Your databases are stored in $\r$\n'$DATADIR',$\r$\nYour logfiles are storted in '$LOGDIR'$\r$\n and your Foxx services in$\r$\n'$APPDIR'$\r$\nShould we remove it during the uninstallation?"
+  ${NSD_CreateLabel} 0 0 100% 60u "Your databases are stored in $\r$\n'$DATADIR',$\r$\nYour logfiles are storted in $\r$\n'$LOGDIR'$\r$\n and your Foxx services in$\r$\n'$APPDIR'$\r$\nShould we remove it during the uninstallation?"
   Pop $0 ; Don't care...
 
   ${NSD_CreateCheckbox} 5u -20u 50% 20u "Delete databases with uninstallation?"
