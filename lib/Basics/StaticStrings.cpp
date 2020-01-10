@@ -103,10 +103,6 @@ std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
 std::string const StaticStrings::DatabaseId("id");
 std::string const StaticStrings::DatabaseName("name");
 std::string const StaticStrings::DatabaseOptions("options");
-std::string const StaticStrings::DatabaseCoordinator("coordinator");
-std::string const StaticStrings::DatabaseCoordinatorRebootId(
-    "coordinatorRebootId");
-std::string const StaticStrings::DatabaseIsBuilding("isBuilding");
 std::string const StaticStrings::Properties("properties");
 
 // LogicalDataSource definition fields
@@ -201,7 +197,6 @@ std::string const StaticStrings::PotentialDirtyRead(
     "x-arango-potential-dirty-read");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
-std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::TransferEncoding("transfer-encoding");
 std::string const StaticStrings::TransactionBody("x-arango-trx-body");
@@ -241,6 +236,7 @@ std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::Satellite("satellite");
+std::string const StaticStrings::WriteConcern("writeConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -266,11 +262,15 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
 
+// Generic attribute names
+std::string const StaticStrings::AttrCoordinator("coordinator");
+std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::AttrIsBuilding("isBuilding");
+
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");
 std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
 
-std::string const StaticStrings::IsBuilding("isBuilding");
 std::string const StaticStrings::RebootId("rebootId");
 
 std::string const StaticStrings::New("new");

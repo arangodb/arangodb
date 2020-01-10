@@ -1,12 +1,12 @@
 @startDocuBlock post_create_document_MULTI
 @brief creates multiple documents
 
-@RESTHEADER{POST /_api/document/{collection-name}, Create document, insertDocument}
+@RESTHEADER{POST /_api/document/{collection}#multiple,Create multiple documents,insertDocuments}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{collection-name,string,required}
-The *collection* in which the documents are to be created.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* in which the documents are to be created.
 
 @RESTALLBODYPARAM{data,json,required}
 An array of documents to create.
@@ -31,7 +31,7 @@ Additionally return the complete old document under the attribute *old*
 in the result. Only available if the overwrite option is used.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the created document. This option can be used to
 save some network traffic.
 
@@ -54,10 +54,10 @@ errorCode set to the error code that has happened.
 Possibly given *_id* and *_rev* attributes in the body are always ignored,
 the URL part or the query parameter collection respectively counts.
 
-If *silent* is not set to *true*, the body of the response contains an 
+If *silent* is not set to *true*, the body of the response contains an
 array of JSON objects with the following attributes:
 
-  - *_id* contains the document handle of the newly created document
+  - *_id* contains the document identifier of the newly created document
   - *_key* contains the document key
   - *_rev* contains the document revision
 
@@ -142,7 +142,6 @@ Use of returnNew:
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-
 Partially illegal documents:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJsonMulti}
@@ -162,4 +161,3 @@ Partially illegal documents:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

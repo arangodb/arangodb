@@ -28,28 +28,23 @@ specifying just the keys for `_to`.
 @RESTQUERYPARAM{overwrite,boolean,optional}
 If this parameter has a value of `true` or `yes`, then all data in the
 collection will be removed prior to the import. Note that any existing
-index definitions will be preseved.
+index definitions will be preserved.
 
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Wait until documents have been synced to disk before returning.
 
 @RESTQUERYPARAM{onDuplicate,string,optional}
 Controls what action is carried out in case of a unique key constraint
-violation. Possible values are:
-
+violation. Possible values are:<br>
 - *error*: this will not import the current document because of the unique
   key constraint violation. This is the default setting.
-
 - *update*: this will update an existing document in the database with the
   data specified in the request. Attributes of the existing document that
-  are not present in the request will be preseved.
-
+  are not present in the request will be preserved.
 - *replace*: this will replace an existing document in the database with the
   data specified in the request.
-
 - *ignore*: this will not update an existing document and simply ignore the
-  error caused by the unique key constraint violation.
-
+  error caused by the unique key constraint violation.<br>
 Note that *update*, *replace* and *ignore* will only work when the
 import document in the request contains the *_key* attribute. *update* and
 *replace* may also fail because of secondary unique key constraint
@@ -65,9 +60,6 @@ If set to `true` or `yes`, the result will include an attribute `details`
 with details about documents that could not be imported.
 
 @RESTDESCRIPTION
-**NOTE** Swagger examples won't work due to the anchor.
-
-
 Creates documents in the collection identified by `collection-name`.
 The first line of the request body must contain a JSON-encoded array of
 attribute names. All following lines in the request body must contain
@@ -126,8 +118,8 @@ line in the import data is empty
     db._drop(cn);
     db._create(cn);
 
-    var body = '[ "_key", "value1", "value2" ]\n' + 
-               '[ "abc", 25, "test" ]\n\n' + 
+    var body = '[ "_key", "value1", "value2" ]\n' +
+               '[ "abc", 25, "test" ]\n\n' +
                '[ "foo", "bar", "baz" ]';
 
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
@@ -151,7 +143,7 @@ Importing into an edge collection, with attributes `_from`, `_to` and `name`
     db._drop("products");
     db._create("products");
 
-    var body = '[ "_from", "_to", "name" ]\n' + 
+    var body = '[ "_from", "_to", "name" ]\n' +
                '[ "products/123","products/234", "some name" ]\n' +
                '[ "products/332", "products/abc", "other name" ]';
 
@@ -196,7 +188,7 @@ Violating a unique constraint, but allow partial imports
     db._drop(cn);
     db._create(cn);
 
-    var body = '[ "_key", "value1", "value2" ]\n' + 
+    var body = '[ "_key", "value1", "value2" ]\n' +
                '[ "abc", 25, "test" ]\n' +
                '["abc", "bar", "baz" ]';
 
@@ -220,7 +212,7 @@ Violating a unique constraint, not allowing partial imports
     db._create(cn);
 
     var body = '[ "_key", "value1", "value2" ]\n' +
-               '[ "abc", 25, "test" ]\n' + 
+               '[ "abc", 25, "test" ]\n' +
                '["abc", "bar", "baz" ]';
 
     var response = logCurlRequest('POST', "/_api/import?collection=" + cn + "&complete=true", body);
@@ -237,8 +229,8 @@ Using a non-existing collection
     var cn = "products";
     db._drop(cn);
 
-    var body = '[ "_key", "value1", "value2" ]\n' + 
-               '[ "abc", 25, "test" ]\n' + 
+    var body = '[ "_key", "value1", "value2" ]\n' +
+               '[ "abc", 25, "test" ]\n' +
                '["foo", "bar", "baz" ]';
 
     var response = logCurlRequest('POST', "/_api/import?collection=" + cn, body);
@@ -265,4 +257,3 @@ Using a malformed body
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -59,7 +59,7 @@ namespace tests {
       virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
         return nullptr; // do not need to collect stats
       }
-      virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+      virtual std::pair<irs::score_ctx_ptr, irs::score_f> prepare_scorer(
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
           const irs::byte_type* query_attrs,
@@ -77,6 +77,7 @@ namespace tests {
       virtual void prepare_score(iresearch::byte_type* score) const override {}
       virtual void prepare_stats(irs::byte_type*) const override { }
       virtual void add(iresearch::byte_type* dst, const iresearch::byte_type* src) const override {}
+      virtual void merge(irs::byte_type* dst_buf, const irs::byte_type** src_start, const size_t size, size_t offset) const { }
       virtual bool less(const iresearch::byte_type* lhs, const iresearch::byte_type* rhs) const override { throw std::bad_function_call(); }
       std::pair<size_t, size_t> score_size() const override {
         return std::make_pair(size_t(0), size_t(0));

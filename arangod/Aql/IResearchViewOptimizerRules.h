@@ -41,6 +41,11 @@ void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const& rule);
 
+/// @brief no document materialization for view nodes if stored values contain all fields
+void noDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
+                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                     arangodb::aql::OptimizerRule const& rule);
+
 /// @brief move filters and sort conditions into views
 void handleViewsRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,

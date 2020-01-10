@@ -23,6 +23,7 @@
 #ifndef ARANGOD_NETWORK_CONNECTION_POOL_H
 #define ARANGOD_NETWORK_CONNECTION_POOL_H 1
 
+#include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Containers/SmallVector.h"
 #include "Network/types.h"
@@ -89,7 +90,7 @@ class ConnectionPool final {
   void pruneConnections();
   
   /// @brief cancel connections to this endpoint
-  void cancelConnections(std::string const& endpoint);
+  size_t cancelConnections(std::string const& endpoint);
 
   /// @brief return the number of open connections
   size_t numOpenConnections() const;

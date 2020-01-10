@@ -65,6 +65,7 @@ add_library(arango_iresearch
   IResearch/IResearchView.cpp IResearch/IResearchView.h
   IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
   IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
+  IResearch/IResearchViewStoredValues.cpp IResearch/IResearchViewStoredValues.h
   IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
@@ -148,6 +149,7 @@ endif ()
 
 set(LIB_ARANGO_GRAPH_SOURCES
   Aql/PruneExpressionEvaluator.cpp
+  Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/TraverserEngine.cpp
@@ -234,6 +236,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/BlockCollector.cpp
   Aql/BlocksWithClients.cpp
   Aql/CalculationExecutor.cpp
+  Aql/CalculationNodeVarFinder.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
@@ -495,6 +498,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/Store.cpp
   Agency/Supervision.cpp
   Agency/v8-agency.cpp
+  Cluster/AgencyPaths.cpp
 )
 
 set(LIB_ARANGO_V8SERVER_SOURCES
@@ -543,7 +547,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
-  Cluster/AgencyPaths.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterFeature.cpp

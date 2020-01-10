@@ -382,22 +382,22 @@ TRI_col_type_e LogicalCollection::type() const { return _type; }
 TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
 
 TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(readLocker, _statusLock);
   return _status;
 }
 
 void LogicalCollection::executeWhileStatusWriteLocked(std::function<void()> const& callback) {
-  WRITE_LOCKER_EVENTUAL(locker, _lock);
+  WRITE_LOCKER_EVENTUAL(locker, _statusLock);
   callback();
 }
 
 void LogicalCollection::executeWhileStatusLocked(std::function<void()> const& callback) {
-  READ_LOCKER(locker, _lock);
+  READ_LOCKER(locker, _statusLock);
   callback();
 }
 
 bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const& callback) {
-  TRY_READ_LOCKER(readLocker, _lock);
+  TRY_READ_LOCKER(readLocker, _statusLock);
   if (!readLocker.isLocked()) {
     return false;
   }
@@ -407,19 +407,13 @@ bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const&
 }
 
 TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
-  TRY_READ_LOCKER(locker, _lock);
+  TRY_READ_LOCKER(locker, _statusLock);
   if (locker.isLocked()) {
     didFetch = true;
     return _status;
   }
   didFetch = false;
   return TRI_VOC_COL_STATUS_CORRUPTED;
-}
-
-/// @brief returns a translation of a collection status
-std::string LogicalCollection::statusString() const {
-  READ_LOCKER(readLocker, _lock);
-  return ::translateStatus(_status);
 }
 
 // SECTION: Properties
@@ -588,7 +582,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     if (!_sharding->distributeShardsLike().empty()) {
       CollectionNameResolver resolver(vocbase());
 
-      result.add("distributeShardsLike",
+      result.add(StaticStrings::DistributeShardsLike,
                  VPackValue(resolver.getCollectionNameCluster(static_cast<TRI_voc_cid_t>(
                      basics::StringUtils::uint64(distributeShardsLike())))));
     }
@@ -749,9 +743,11 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
   size_t rf = _sharding->replicationFactor();
   size_t wc = _sharding->writeConcern();
   VPackSlice rfSl = slice.get(StaticStrings::ReplicationFactor);
-  // not an error: for historical reasons the write concern is read from the
-  // variable "minReplicationFactor"
-  VPackSlice wcSl = slice.get(StaticStrings::MinReplicationFactor);
+
+  VPackSlice wcSl = slice.get(StaticStrings::WriteConcern);
+  if (wcSl.isNone()) { // deprecated in 3.6
+    wcSl = slice.get(StaticStrings::MinReplicationFactor);
+  }
 
   if (!rfSl.isNone()) {
     if (rfSl.isInteger()) {
@@ -812,34 +808,34 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
       if (wcTest < 0) {
         // negative value for writeConcern... not good
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for minReplicationFactor");
+                      "bad value for writeConcern");
       }
 
       wc = wcSl.getNumber<size_t>();
       if (wc > rf) {
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for minReplicationFactor");
+                      "bad value for writeConcern");
       }
 
       if (ServerState::instance()->isCoordinator() &&
           rf != _sharding->writeConcern()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Cannot change minReplicationFactor, please change " +
+                        "Cannot change writeConcern, please change " +
                             _sharding->distributeShardsLike());
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                        "Changing minReplicationFactor "
+                        "Changing writeConcern "
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "Satellite collection, "
-                        "cannot change minReplicationFactor");
+                        "cannot change writeConcern");
         }
       }
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER,
-                    "bad value for minReplicationFactor");
+                    "bad value for writeConcern");
     }
     TRI_ASSERT((wc <= rf && !isSatellite()) || (wc == 0 && isSatellite()));
   }

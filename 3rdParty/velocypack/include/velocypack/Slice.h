@@ -468,6 +468,10 @@ class Slice {
   // returns a Slice(ValueType::None) if not found
   Slice get(StringRef const& attribute) const;
 
+  Slice get(std::string_view attribute) const {
+    return get(StringRef(attribute.data(), attribute.length()));
+  }
+
   Slice get(std::string const& attribute) const {
     return get(StringRef(attribute.data(), attribute.size()));
   }
@@ -482,6 +486,10 @@ class Slice {
   
   Slice operator[](StringRef const& attribute) const {
     return get(attribute);
+  }
+
+  Slice operator[](std::string_view attribute) const {
+    return get(StringRef(attribute.data(), attribute.length()));
   }
 
   Slice operator[](std::string const& attribute) const {

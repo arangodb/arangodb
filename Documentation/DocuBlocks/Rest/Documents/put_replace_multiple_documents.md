@@ -2,7 +2,7 @@
 @startDocuBlock put_replace_document_MULTI
 @brief replaces multiple documents
 
-@RESTHEADER{PUT /_api/document/{collection},Replace documents, replaceDocument:multiple}
+@RESTHEADER{PUT /_api/document/{collection},Replace documents,replaceDocuments}
 
 @RESTALLBODYPARAM{documents,json,required}
 A JSON representation of an array of documents.
@@ -19,14 +19,14 @@ documents are replaced.
 Wait until the new documents have been synced to disk.
 
 @RESTQUERYPARAM{ignoreRevs,boolean,optional}
-By default, or if this is set to *true*, the *_rev* attributes in 
+By default, or if this is set to *true*, the *_rev* attributes in
 the given documents are ignored. If this is set to *false*, then
 any *_rev* attribute given in a body document is taken as a
 precondition. The document is only replaced if the current revision
 is the one specified.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
-Return additionally the complete previous revision of the changed 
+Return additionally the complete previous revision of the changed
 documents under the attribute *old* in the result.
 
 @RESTQUERYPARAM{returnNew,boolean,optional}
@@ -46,8 +46,8 @@ document in the body and its value does not match the revision of
 the corresponding document in the database, the precondition is
 violated.
 
-Cluster only: The replace documents _may_ contain  
-values for the collection's pre-defined shard keys. Values for the shard keys 
+Cluster only: The replace documents _may_ contain
+values for the collection's pre-defined shard keys. Values for the shard keys
 are treated as hints to improve performance. Should the shard keys
 values be incorrect ArangoDB may answer with a *not found* error.
 
@@ -63,9 +63,9 @@ synchronization for collections that have a default *waitForSync* value
 of *true*.
 
 The body of the response contains a JSON array of the same length
-as the input array with the information about the handle and the
+as the input array with the information about the identifier and the
 revision of the replaced documents. In each entry, the attribute
-*_id* contains the known *document-handle* of each updated document,
+*_id* contains the known *document-id* of each updated document,
 *_key* contains the key which uniquely identifies a document in a
 given collection, and the attribute *_rev* contains the new document
 revision. In case of an error or violated precondition, an error
@@ -105,4 +105,3 @@ an error document in this case.
 is returned if the collection was not found.
 
 @endDocuBlock
-

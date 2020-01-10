@@ -55,6 +55,7 @@
 #include "search/boolean_filter.hpp"
 #include "search/filter.hpp"
 #include "search/phrase_filter.hpp"
+#include "search/wildcard_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
@@ -97,392 +98,7 @@ const std::string SCORER_ARG_FMT = "scorer-arg-format";
 const std::string DIR_TYPE = "dir-type";
 const std::string FORMAT = "format";
 
-static bool v = false;
-
-typedef std::unique_ptr<std::string> ustringp;
-
 NS_END
-
-struct Line {
-    typedef std::shared_ptr<Line> ptr;
-    std::string category;
-    std::string text;
-
-    Line(const std::string& c, const std::string& t): category(c), text(t) {}
-};
-
-struct Task {
-    std::string category;
-    std::string text;
-
-    typedef std::shared_ptr<Task> ptr;
-
-    irs::filter::prepared::ptr prepared;
-
-    int taskId;
-    int totalHitCount;
-    int topN;
-
-    size_t tdiff_msec;
-    std::thread::id tid;
-
-    Task(std::string& s, std::string& t, int n, irs::filter::prepared::ptr p) :
-    category(s),
-    text(t),
-    prepared(p),
-    taskId(0),
-    totalHitCount(0),
-    topN(n) {
-    }
-
-    virtual ~Task() {
-    }
-
-    void go(std::thread::id id, irs::directory_reader& reader) {
-        tid = id;
-        auto start = std::chrono::system_clock::now();
-
-        query(reader);
-
-        tdiff_msec = std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::system_clock::now() - start
-        ).count();
-    }
-
-    virtual int query(irs::directory_reader& reader) = 0;
-
-    virtual void print(std::ostream& out) = 0;
-    virtual void print_csv(std::ostream& out) = 0;
-};
-
-struct SearchTask : public Task {
-    SearchTask(std::string& s, std::string& t, int n, irs::filter::prepared::ptr p) :
-    Task(s, t, n, p) {
-    }
-
-    struct Entry {
-        irs::doc_id_t id;
-        float score;
-
-        Entry(irs::doc_id_t i, float s) :
-        id(i),
-        score(s) {
-        }
-    };
-
-    std::vector<Entry> top_docs;
-
-    virtual int query(irs::directory_reader& reader) override {
-        SCOPED_TIMER("Query execution + Result processing time");
-
-        for (auto& segment : reader) { // iterate segments
-            irs::order order;
-            order.add<irs::bm25_sort>(true);
-            auto prepared_order = order.prepare();
-            auto docs = prepared->execute(segment, prepared_order); // query segment
-            const irs::score* score = docs->attributes().get<iresearch::score>().get();
-            auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
-              return prepared_order.less(lhs.c_str(), rhs.c_str());
-            };
-            std::multimap<irs::bstring, Entry, decltype(comparer)> sorted(comparer);
-
-            // ensure we avoid COW for pre c++11 std::basic_string
-            const irs::bytes_ref score_value = score->value();
-
-            while (docs->next()) {
-              SCOPED_TIMER("Result processing time");
-              ++totalHitCount;
-              score->evaluate();
-              sorted.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(score_value),
-                std::forward_as_tuple(docs->value(), score ? prepared_order.get<float>(score_value.c_str(), 0) : .0)
-              );
-
-              if (sorted.size() > topN) {
-                sorted.erase(--(sorted.end()));
-              }
-            }
-
-            for (auto& entry: sorted) {
-              top_docs.emplace_back(std::move(entry.second));
-            }
-        }
-        return 0;
-    }
-
-    void print(std::ostream& out) override {
-        out << "TASK: cat=" << category << " q='body:" << text << "' hits=" << totalHitCount << std::endl;
-        out << "  " << tdiff_msec / 1000. << " msec" << std::endl;
-        out << "  thread " << tid << std::endl;
-        for (auto& doc : top_docs) {
-            out << "  doc=" << doc.id << " score=" << doc.score << std::endl;
-        }
-        out << std::endl;
-    }
-
-    void print_csv(std::ostream& out) override {
-        out << category << "," << text << "," << totalHitCount << "," << tdiff_msec / 1000. << "," << tdiff_msec << std::endl;
-    }
-};
-
-class TaskSource {
-    std::atomic<int> idx;
-    std::vector<Task::ptr> tasks;
-    std::random_device rd;
-    std::mt19937 g;
-
-    int parseLines(std::string& line, Line::ptr& p) {
-        static const std::regex m1("(\\S+): (.+)");
-        std::smatch res;
-        std::string category;
-        std::string text;
-
-        if (std::regex_match(line, res, m1)) {
-            category.assign(res[1].first, res[1].second);
-            text.assign(res[2].first, res[2].second);
-            p = Line::ptr(new Line(category, text));
-
-            return 0;
-        }
-
-        return -1;
-    }
-
-    int loadLines(std::vector<Line::ptr>& lines, std::istream& stream) {
-        while (!stream.eof()) {
-            std::string line;
-            std::getline(stream, line);
-            Line::ptr p;
-
-            if (0 == parseLines(line, p)) {
-                lines.push_back(p);
-            }
-        }
-
-        return 0;
-    }
-
-    void shuffle(std::vector<Line::ptr>& line) {
-        // @todo provide custom random?
-        std::shuffle(line.begin(), line.end(), g);
-    }
-
-    static int pruneLines(std::vector<Line::ptr>& lines, std::vector<Line::ptr>& pruned_lines, int maxtasks) {
-        std::map<std::string, int> cat_counts;
-
-        for (auto& t : lines) {
-            std::map<std::string, int>::iterator cat = cat_counts.find(t->category);
-            int count = 0;
-
-            if (cat != cat_counts.end()) {
-                count = cat->second;
-            }
-
-            if (count < maxtasks) {
-                ++count;
-
-                if (cat != cat_counts.end()) {
-                    cat->second = count;
-                } else {
-                    cat_counts[t->category] = count;
-                }
-
-                pruned_lines.push_back(t);
-            }
-        }
-
-        return 0;
-    }
-
-    bool splitFreq(std::string& text, std::string& term) {
-        static const std::regex freqPattern1("(\\S+)\\s*#\\s*(.+)"); // single term, prefix
-        static const std::regex freqPattern2("\"(.+)\"\\s*#\\s*(.+)"); // phrase
-        static const std::regex freqPattern3("((?:\\S+\\s+)+)\\s*#\\s*(.+)"); // AND/OR groups
-        std::smatch res;
-
-        if (std::regex_match(text, res, freqPattern1)) {
-            term.assign(res[1].first, res[1].second);
-            return true;
-        } else if (std::regex_match(text, res, freqPattern2)) {
-            term.assign(res[1].first, res[1].second);
-            return true;
-        } else if (std::regex_match(text, res, freqPattern3)) {
-            term.assign(res[1].first, res[1].second);
-            return true;
-        }
-
-        return false;
-    }
-
-    int prepareQueries(std::vector<Line::ptr>& lines, irs::directory_reader& reader, int topN) {
-        irs::order order;
-        order.add<irs::bm25_sort>(true);
-        auto ord = order.prepare();
-
-        for (auto& line : lines) {
-            irs::filter::prepared::ptr prepared = nullptr;
-            std::string terms;
-
-            if (line->category == "HighTerm" || line->category == "MedTerm" || line->category == "LowTerm") {
-                if (splitFreq(line->text, terms)) {
-                    irs::by_term query;
-                    query.field("body").term(terms);
-                    prepared = query.prepare(reader, ord);
-                }
-            } else if (line->category == "HighPhrase" || line->category == "MedPhrase" || line->category == "LowPhrase") {
-                // @todo what's the difference between irs::by_phrase and irs::And?
-                if (splitFreq(line->text, terms)) {
-                    std::istringstream f(terms);
-                    std::string term;
-                    irs::by_phrase query;
-                    query.field("body");
-                    while (getline(f, term, ' ')) {
-                        query.push_back(term);
-                    }
-                    prepared = query.prepare(reader, ord);
-                }
-            } else if (line->category == "AndHighHigh" || line->category == "AndHighMed" || line->category == "AndHighLow") {
-                if (splitFreq(line->text, terms)) {
-                    std::istringstream f(terms);
-                    std::string term;
-                    irs::And query;
-                    while (getline(f, term, ' ')) {
-                        irs::by_term& part = query.add<irs::by_term>();
-                        part.field("body").term(term.c_str() + 1); // skip '+' at the start of the term
-                    }
-                    prepared = query.prepare(reader, ord);
-                }
-            } else if (line->category == "OrHighHigh" || line->category == "OrHighMed" || line->category == "OrHighLow") {
-                if (splitFreq(line->text, terms)) {
-                    std::istringstream f(terms);
-                    std::string term;
-                    irs::Or query;
-                    while (getline(f, term, ' ')) {
-                        irs::by_term& part = query.add<irs::by_term>();
-                        part.field("body").term(term);
-                    }
-                    prepared = query.prepare(reader, ord);
-                }
-            } else if (line->category == "Prefix3") {
-                irs::by_prefix query;
-                terms.assign(line->text.begin(), line->text.end() - 1); // cut '~' at the end of the text
-                query.field("body").term(terms);
-                prepared = query.prepare(reader, ord);
-            }
-
-            if (prepared != nullptr) {
-                tasks.emplace_back(new SearchTask(line->category, terms, topN, prepared));
-                if (v) std::cout << tasks.size() << ": cat=" << line->category << "; term=" << terms << std::endl;
-            }
-        }
-
-        if (v) std::cout << "Tasks prepared=" << tasks.size() << std::endl;
-
-        return 0;
-    }
-
-    int repeatLines(std::vector<Line::ptr>& lines, std::vector<Line::ptr>& rep_lines, int repeat, bool do_shuffle) {
-        while (repeat != 0) {
-            if (do_shuffle) {
-                shuffle(lines);
-            }
-
-            rep_lines.insert(std::end(rep_lines), std::begin(lines), std::end(lines));
-            --repeat;
-        }
-
-        return 0;
-    }
-
-public:
-    TaskSource() : idx(0), g(rd()) {
-    }
-
-    int load(std::istream& stream, int maxtasks, int repeat, irs::directory_reader& reader, int topN, bool do_shuffle) {
-        /// 
-        ///  this fn mimics lucene-util's LocalTaskSource behavior
-        ///  -- many similar tasks generated 
-        ///
-        std::vector<Line::ptr> rep_lines;
-        {
-            std::vector<Line::ptr> pruned_lines;
-            {
-                std::vector<Line::ptr> lines;
-                // parse all lines to category:text
-                loadLines(lines, stream);
-
-                // shuffle
-                if (do_shuffle) {
-                    shuffle(lines);
-                }
-
-                // prune tasks
-                pruneLines(lines, pruned_lines, maxtasks);
-            }
-
-            // multiply pruned with shuffling
-            repeatLines(pruned_lines, rep_lines, repeat, do_shuffle);
-        }
-
-        // prepare queries
-        prepareQueries(rep_lines, reader, topN);
-
-        return 0;
-    }
-
-    Task::ptr next() {
-        int next = idx++; // atomic get and increment
-
-        if (next < tasks.size()) {
-            return tasks[next];
-        }
-
-        return nullptr;
-    }
-
-    std::vector<Task::ptr>& getTasks() {
-        return tasks;
-    }
-};
-
-class TaskThread {
-public:
-    typedef std::shared_ptr<TaskThread> ptr;
-
-    struct Args {
-        TaskSource& tasks;
-        irs::directory_reader& reader;
-
-        Args(TaskSource& t,
-                irs::directory_reader& r) :
-        tasks(t),
-        reader(r) {
-        }
-    };
-
-private:
-    std::thread* thr;
-
-    void worker(Args a) {
-        auto task = a.tasks.next();
-
-        while (task != nullptr) {
-            task->go(thr->get_id(), a.reader);
-            task = a.tasks.next();
-        }
-    }
-
-public:
-    void start(Args a) {
-        thr = new std::thread(std::bind(&TaskThread::worker, this, a));
-    }
-
-    void join() {
-        thr->join();
-        delete thr;
-    }
-};
 
 enum class category_t {
   HighTerm,
@@ -498,13 +114,10 @@ enum class category_t {
   OrHighMed,
   OrHighLow,
   Prefix3,
+  Wildcard,
+  Or4High,
+  Or6High4Med2Low,
   UNKNOWN
-};
-
-struct task_t {
-  category_t category;
-  std::string text;
-  task_t(category_t v_category, std::string&& v_text): category(v_category), text(std::move(v_text)) {}
 };
 
 category_t parseCategory(const irs::string_ref& value) {
@@ -521,7 +134,9 @@ category_t parseCategory(const irs::string_ref& value) {
   if (value == "OrHighMed") return category_t::OrHighMed;
   if (value == "OrHighLow") return category_t::OrHighLow;
   if (value == "Prefix3") return category_t::Prefix3;
-
+  if (value == "Wildcard") return category_t::Wildcard;
+  if (value == "Or4High") return category_t::Or4High;
+  if (value == "Or6High4Med2Low") return category_t::Or6High4Med2Low;
   return category_t::UNKNOWN;
 }
 
@@ -540,9 +155,34 @@ irs::string_ref stringCategory(category_t category) {
    case category_t::OrHighMed: return "OrHighMed";
    case category_t::OrHighLow: return "OrHighLow";
    case category_t::Prefix3: return "Prefix3";
+   case category_t::Wildcard: return "Wildcard";
+   case category_t::Or4High: return "Or4High";
+   case category_t::Or6High4Med2Low: return "Or6High4Med2Low";
    default: return "<unknown>";
   }
 }
+
+struct task_t {
+  task_t(category_t category, std::string&& text) noexcept
+    : category(category), text(std::move(text)) {
+  }
+
+  category_t category;
+  std::string text;
+};
+
+struct timers_t {
+  std::vector<irs::timer_utils::timer_stat_t*> stat;
+  timers_t(const irs::string_ref& type) {
+    std::string prefix("Query ");
+    prefix.append(type.c_str(), type.size());
+    prefix.append(" (");
+
+    for (size_t i = 0, count = size_t(category_t::UNKNOWN); i < count; ++i) {
+      stat.emplace_back(&irs::timer_utils::get_stat(prefix + stringCategory(category_t(i)).c_str() + ") time"));
+    }
+  }
+};
 
 irs::string_ref splitFreq(const std::string& text) {
   static const std::regex freqPattern1("(\\S+)\\s*#\\s*(.+)"); // single term, prefix
@@ -568,8 +208,7 @@ irs::filter::prepared::ptr prepareFilter(
     const std::string& text,
     const irs::analysis::analyzer::ptr& analyzer,
     std::string& tmpBuf,
-    size_t scored_terms_limit
-) {
+    size_t scored_terms_limit) {
   irs::string_ref terms;
 
   switch (category) {
@@ -619,6 +258,8 @@ irs::filter::prepared::ptr prepareFilter(
 
     return query.prepare(reader, order);
    }
+   case category_t::Or4High:
+   case category_t::Or6High4Med2Low:
    case category_t::OrHighHigh: // fall through
    case category_t::OrHighMed: // fall through
    case category_t::OrHighLow: {
@@ -643,9 +284,18 @@ irs::filter::prepared::ptr prepareFilter(
 
     return query.prepare(reader, order);
    }
-  }
+   case category_t::Wildcard: {
+    irs::by_wildcard query;
+    query.scored_terms_limit(scored_terms_limit);
 
-  return nullptr;
+    terms = irs::string_ref(text, text.size());
+    query.field("body").term(terms);
+
+    return query.prepare(reader, order);
+   }
+   default:
+    return nullptr;
+  }
 }
 
 void prepareTasks(std::vector<task_t>& buf, std::istream& in, size_t tasks_per_category) {
@@ -670,35 +320,6 @@ void prepareTasks(std::vector<task_t>& buf, std::istream& in, size_t tasks_per_c
   }
 }
 
-static int testQueries(std::vector<Task::ptr>& tasks, irs::directory_reader& reader) {
-    for (auto& segment : reader) { // iterate segments
-        int cnt = 0;
-
-        for (auto& task : tasks) {
-            ++cnt;
-            std::cout << "running query=" << cnt << std::endl;
-
-            auto& query = task->prepared;
-            auto docs = query->execute(segment); // query segment
-
-            while (docs->next()) {
-                const irs::doc_id_t doc_id = docs->value(); // get doc id
-
-                std::cout << cnt << " : " << doc_id << std::endl;
-            }
-        }
-    }
-
-    return 0;
-}
-
-static int printResults(std::vector<Task::ptr>& tasks, std::ostream& out, bool csv) {
-    for (auto& task : tasks) {
-        csv ? task->print_csv(out) : task->print(out);
-    }
-    return 0;
-}
-
 int search(
     const std::string& path,
     const std::string& dir_type,
@@ -714,8 +335,7 @@ int search(
     size_t scored_terms_limit,
     const std::string& scorer,
     const std::string& scorer_arg_format,
-    const irs::string_ref& scorer_arg
-) {
+    const irs::string_ref& scorer_arg) {
   static const std::map<std::string, const irs::text_format::type_id&> text_formats = {
     { "csv", irs::text_format::csv },
     { "json", irs::text_format::json },
@@ -754,6 +374,7 @@ int search(
     return 1;
   }
 
+  limit = (std::max)(size_t(1), limit); // ensure limit is greater than 0
   repeat = (std::max)(size_t(1), repeat);
   search_threads = (std::max)(size_t(1), search_threads);
   scored_terms_limit = (std::max)(size_t(1), scored_terms_limit);
@@ -790,52 +411,49 @@ int search(
   }
 
   struct task_provider_t {
-    std::mutex mutex;
-    size_t next_task;
+    typedef irs::concurrent_stack<size_t> freelist_t;
+
     std::mt19937 randomizer;
-    size_t repeat;
-    bool shuffle;
     std::vector<task_t> tasks;
-    std::vector<size_t> task_ids;
+    std::vector<freelist_t::node_type> task_ids;
+    freelist_t task_list;
 
-    task_provider_t(): repeat(0), shuffle(false) {}
+    void reset(std::vector<task_t>&& lines, size_t repeat, bool shuffle) {
+      repeat = std::max(repeat, size_t(1)); // repeat at least once
 
-    void operator=(std::vector<task_t>&& lines) {
-      next_task = 0;
+      for (; !task_list.empty(); task_list.pop()); // empty free list
+
       tasks = std::move(lines);
-      task_ids.resize(tasks.size());
+      task_ids.resize(tasks.size()*repeat);
 
-      for (size_t i = 0, count = task_ids.size(); i < count; ++i) {
-        task_ids[i] = i;
-      }
-
-      // initial shuffle
-      if (shuffle) {
-        std::shuffle(task_ids.begin(), task_ids.end(), randomizer);
-      }
-    }
-
-    const task_t* operator++() {
-      SCOPED_LOCK(mutex);
-
-      if (next_task >= task_ids.size()) {
-        return nullptr;
-      }
-
-      auto& task = tasks[task_ids[next_task++]];
-
-      // prepare tasks for next iteration if repeat requested
-      if (next_task >= task_ids.size() && repeat) {
-        next_task = 0;
-        --repeat;
-
-        // shuffle
-        if (shuffle) {
-          std::shuffle(task_ids.begin(), task_ids.end(), randomizer);
+      for (auto begin = task_ids.begin(), end = task_ids.end(); begin != end; ) {
+        for (size_t i = 0; i < tasks.size(); ++i, ++begin) {
+          begin->value = i;
         }
       }
 
-      return &task;
+      if (shuffle) {
+        for (auto begin = task_ids.begin(), end = task_ids.end(); begin != end; ) {
+          auto batch_end = begin + tasks.size();
+          std::shuffle(begin, batch_end, randomizer);
+          begin = batch_end;
+        }
+      }
+
+      // fill free list
+      for (auto& id : task_ids) {
+        task_list.push(id);
+      }
+    }
+
+    const task_t* pop() noexcept {
+      const auto* task_id = task_list.pop();
+
+      if (!task_id) {
+        return nullptr;
+      }
+
+      return &tasks[task_id->value];
     }
 
   } task_provider;
@@ -845,71 +463,38 @@ int search(
     std::vector<task_t> tasks;
 
     prepareTasks(tasks, in, tasks_max);
-    task_provider.repeat = repeat - 1; // -1 for first run (i.e. additional repeats)
-    task_provider.shuffle = shuffle;
-    task_provider = std::move(tasks);
+    task_provider.reset(std::move(tasks), repeat, shuffle);
   }
-
-  struct Entry {
-    Entry(irs::doc_id_t i, float s)
-      : id(i), score(s) {
-    }
-
-    irs::doc_id_t id;
-    float score;
-  };
 
   // indexer threads
   for (size_t i = search_threads; i; --i) {
-    thread_pool.run([&task_provider, &dir, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
+    thread_pool.run([&task_provider, &reader, &order, limit, &out, csv, scored_terms_limit]()->void {
       static const std::string analyzer_name("text");
       static const std::string analyzer_args("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}"); // from index-put
       auto analyzer = irs::analysis::analyzers::get(analyzer_name, irs::text_format::json, analyzer_args);
       irs::filter::prepared::ptr filter;
       std::string tmpBuf;
+      const timers_t building_timers("building");
+      const timers_t execution_timers("execution");
 
-#ifdef IRESEARCH_COMPLEX_SCORING
-      #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
-        typedef irs::memory::memory_multi_size_pool<irs::memory::identity_grow> pool_t;
-        typedef irs::memory::memory_pool_multi_size_allocator<Entry, pool_t> alloc_t;
-      #else
-        typedef irs::memory::memory_pool<irs::memory::identity_grow> pool_t;
-        typedef irs::memory::memory_pool_allocator<Entry, pool_t> alloc_t;
-      #endif
-
-      pool_t pool(limit + 1); // +1 for least significant overflow element
-
-      auto comparer = [&order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
-        return order.less(lhs.c_str(), rhs.c_str());
-      };
-      std::multimap<irs::bstring, Entry, decltype(comparer), alloc_t> sorted(
-        comparer, alloc_t{pool}
-      );
-#else
       std::vector<std::pair<float_t, irs::doc_id_t>> sorted;
-      sorted.reserve(limit + 1); // +1 for least significant overflow element
-#endif
+      sorted.reserve(limit);
 
       // process a single task
-      for (const task_t* task; (task = ++task_provider) != nullptr;) {
-        SCOPED_TIMER("Full task processing time");
+      for (const task_t* task; (task = task_provider.pop()) != nullptr;) {
+        // this sleep circumvents context-switching penalties for CPU
+        // and makes thread planner life easier
+        std::this_thread::sleep_for(
+            std::chrono::milliseconds(
+                static_cast<unsigned>(100. * (static_cast<double>(rand()) / static_cast<double>(RAND_MAX)))));
         size_t doc_count = 0;
-        auto start = std::chrono::system_clock::now();
+        const auto start = std::chrono::system_clock::now();
 
         sorted.clear();
 
         // parse task
         {
-          static struct timers_t {
-            std::vector<irs::timer_utils::timer_stat_t*> stat;
-            timers_t() {
-              for (size_t i = 0, count = size_t(category_t::UNKNOWN); i <= count; ++i) {
-                stat.emplace_back(&irs::timer_utils::get_stat(std::string("Query building (") + stringCategory(category_t(i)).c_str() + ") time"));
-              }
-            }
-          } timers;
-          SCOPED_TIMER("Query building time");
-          irs::timer_utils::scoped_timer timer(*(timers.stat[size_t(task->category)]));
+          irs::timer_utils::scoped_timer timer(*(building_timers.stat[size_t(task->category)]));
           filter = prepareFilter(reader, order, task->category, task->text, analyzer, tmpBuf, scored_terms_limit);
 
           if (!filter) {
@@ -919,16 +504,7 @@ int search(
 
         // execute task
         {
-          static struct timers_t {
-            std::vector<irs::timer_utils::timer_stat_t*> stat;
-            timers_t() {
-              for (size_t i = 0, count = size_t(category_t::UNKNOWN); i <= count; ++i) {
-                stat.emplace_back(&irs::timer_utils::get_stat(std::string("Query execution (") + stringCategory(category_t(i)).c_str() + ") time"));
-              }
-            }
-          } timers;
-          SCOPED_TIMER("Query execution time");
-          irs::timer_utils::scoped_timer timer(*(timers.stat[size_t(task->category)]));
+          irs::timer_utils::scoped_timer timer(*(execution_timers.stat[size_t(task->category)]));
 
           const float EMPTY_SCORE = 0.f;
 
@@ -938,10 +514,6 @@ int search(
             const irs::score& score = irs::score::extract(attributes);
             const irs::document* doc = attributes.get<irs::document>().get();
 
-#ifdef IRESEARCH_COMPLEX_SCORING
-            // ensure we avoid COW for pre c++11 std::basic_string
-            const irs::bytes_ref raw_score_value = score->value();                        
-#endif
             const auto& score_value = &score != &irs::score::no_score()
               ? order.get<float>(score.c_str(), 0)
               : EMPTY_SCORE;
@@ -950,75 +522,68 @@ int search(
               ++doc_count;
               score.evaluate();
 
-#ifdef IRESEARCH_COMPLEX_SCORING
-              sorted.emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(raw_score_value),
-                std::forward_as_tuple(docs->value(), score_value)
-              );
+              if (sorted.size() < limit) {
+                sorted.emplace_back(score_value, doc->value);
 
-              sorted.emplace(score_value, doc->value);
-
-              if (sorted.size() > limit) {
-                sorted.erase(--(sorted.end()));
-              }
-#else
-              std::push_heap(
-                sorted.begin(), sorted.end(),
-                [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                   const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
-                  return lhs.first < rhs.first;
-              });
-
-              if (sorted.size() > limit) {
+                std::push_heap(
+                  sorted.begin(), sorted.end(),
+                  [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                    return lhs.first < rhs.first;
+                });
+              } else if (sorted.front().first < score_value) {
                 std::pop_heap(
                   sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                     const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
+                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                     return lhs.first < rhs.first;
                 });
 
-                sorted.pop_back();
-              }
+                auto& back = sorted.back();
+                back.first = score_value;
+                back.second = doc->value;
 
-              auto end = sorted.end();
-              for (auto begin = sorted.begin(); begin != end; --end) {
-                std::pop_heap(
-                  begin, end,
+                std::push_heap(
+                  sorted.begin(), sorted.end(),
                   [](const std::pair<float_t, irs::doc_id_t>& lhs,
-                     const std::pair<float_t, irs::doc_id_t>& rhs) NOEXCEPT {
+                     const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                     return lhs.first < rhs.first;
                 });
               }
-#endif
             }
+          }
+
+          auto end = sorted.end();
+          for (auto begin = sorted.begin(); begin != end; --end) {
+            std::pop_heap(
+              begin, end,
+              [](const std::pair<float_t, irs::doc_id_t>& lhs,
+                 const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
+                return lhs.first < rhs.first;
+            });
           }
         }
 
+        const auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
+
         // output task results
         {
-          static std::mutex mutex;
-          SCOPED_LOCK(mutex);
-          SCOPED_TIMER("Result processing time");
-          auto tdiff = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
-
+          std::stringstream ss;
           if (csv) {
-            out << stringCategory(task->category) << "," << task->text << "," << doc_count << "," << tdiff.count() / 1000. << "," << tdiff.count() << std::endl;
+            ss << stringCategory(task->category) << "," << task->text << "," << doc_count << "," << tdiff.count() / 1000. << "," << tdiff.count() << '\n';
           } else {
-            out << "TASK: cat=" << stringCategory(task->category) << " q='body:" << task->text << "' hits=" << doc_count << std::endl;
-            out << "  " << tdiff.count() / 1000. << " msec" << std::endl;
-            out << "  thread " << std::this_thread::get_id() << std::endl;
+            ss << "TASK: cat=" << stringCategory(task->category) << " q='body:" << task->text << "' hits=" << doc_count << '\n'
+                << "  " << tdiff.count() / 1000. << " msec\n"
+                << "  thread " << std::this_thread::get_id() << '\n';
 
             for (auto& entry : sorted) {
-#ifdef IRESEARCH_COMPLEX_SCORING
-              out << "  doc=" << entry.second.id << " score=" << entry.second.score << std::endl;
-#else
-              out << "  doc=" << entry.second << " score=" << entry.first<< std::endl;
-#endif
+              ss << "  doc=" << entry.second << " score=" << entry.first << '\n';
             }
 
-            out << std::endl;
+            ss << '\n';
           }
+
+          out << ss.str();
         }
       }
     });
@@ -1052,7 +617,7 @@ int search(const cmdline::parser& args) {
   const auto scorer = args.get<std::string>(SCORER);
   const auto scorer_arg = args.exist(SCORER_ARG) ? irs::string_ref(args.get<std::string>(SCORER_ARG)) : irs::string_ref::NIL;
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
-  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
+  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
   const auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
 
   std::cout << "Max tasks in category="                      << maxtasks           << '\n'
@@ -1093,8 +658,8 @@ int search(int argc, char* argv[]) {
   cmdline::parser cmdsearch;
   cmdsearch.add(HELP, '?', "Produce help message");
   cmdsearch.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
-  cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
-  cmdsearch.add(FORMAT, 0, "Format (1_0|1_0-optimized)", false, std::string("1_0"));
+  cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("mmap"));
+  cmdsearch.add(FORMAT, 0, "Format (1_0|1_1|1_2|1_2simd)", false, std::string("1_0"));
   cmdsearch.add<std::string>(INPUT, 0, "Task file", true);
   cmdsearch.add<std::string>(OUTPUT, 0, "Stats file", false);
   cmdsearch.add<size_t>(MAX, 0, "Maximum tasks per category", false, size_t(1));

@@ -39,20 +39,12 @@ var ArangoCollection;
 var ArangoView;
 
 function ArangoDatabase (connection) {
-  this._connection = connection;
-  this._collectionConstructor = ArangoCollection;
-  this._viewConstructor = ArangoView;
+  Object.defineProperty(this, "_dbProperties", {
+    enumerable: false,
+    writable: true
+  });
   this._dbProperties = null;
-
-  this._registerCollection = function (name, obj) {
-    // store the collection in our own list
-    this[name] = obj;
-  };
-
-  this._registerView = function (name, obj) {
-    // store the view in our own list
-    this[name] = obj;
-  };
+  this._connection = connection;
 }
 
 exports.ArangoDatabase = ArangoDatabase;
@@ -80,7 +72,7 @@ ArangoDatabase.keyRegex = /^([a-zA-Z0-9_:\-@\.\(\)\+,=;\$!\*'%])+$/;
 // / @brief append the waitForSync parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._appendSyncParameter = function (url, waitForSync) {
+let appendSyncParameter = function (url, waitForSync) {
   if (waitForSync) {
     if (url.indexOf('?') === -1) {
       url += '?';
@@ -96,7 +88,7 @@ ArangoDatabase.prototype._appendSyncParameter = function (url, waitForSync) {
 // / @brief append some boolean parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._appendBoolParameter = function (url, name, val) {
+let appendBoolParameter = function (url, name, val) {
   if (url.indexOf('?') === -1) {
     url += '?';
   } else {
@@ -276,8 +268,8 @@ ArangoDatabase.prototype._collections = function () {
 
     // add all collections to object
     for (i = 0;  i < collections.length;  ++i) {
-      var collection = new this._collectionConstructor(this, collections[i]);
-      this._registerCollection(collection._name, collection);
+      var collection = new ArangoCollection(this, collections[i]);
+      this[collection._name] = collection;
       result.push(collection);
     }
 
@@ -299,18 +291,10 @@ ArangoDatabase.prototype._collections = function () {
 
 ArangoDatabase.prototype._collection = function (id) {
   if (typeof id !== 'number' &&
-      this.hasOwnProperty(id) && this[id] && this[id] instanceof this._collectionConstructor) {
+      this.hasOwnProperty(id) && this[id] && this[id] instanceof ArangoCollection) {
     return this[id];
   }
-  var url;
-
-  if (typeof id === 'number') {
-    url = this._collectionurl(id) + '?useId=true';
-  } else {
-    url = this._collectionurl(id);
-  }
-
-  var requestResult = this._connection.GET(url);
+  var requestResult = this._connection.GET(this._collectionurl(id));
 
   // return null in case of not found
   if (requestResult !== null
@@ -325,7 +309,7 @@ ArangoDatabase.prototype._collection = function (id) {
   var name = requestResult.name;
 
   if (name !== undefined) {
-    this._registerCollection(name, new this._collectionConstructor(this, requestResult));
+    this[name] = new ArangoCollection(this, requestResult);
     return this[name];
   }
 
@@ -337,7 +321,7 @@ ArangoDatabase.prototype._collection = function (id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._create = function (name, properties, type, options) {
-  var body = {
+  let body = {
     'name': name,
     'type': ArangoCollection.TYPE_DOCUMENT
   };
@@ -346,7 +330,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
       'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'minReplicationFactor', 'shardingStrategy', 'smartGraphAttribute',
+      'replicationFactor', 'minReplicationFactor', 'writeConcern', 'shardingStrategy', 'smartGraphAttribute',
       'smartJoinAttribute', 'avoidServers', 'cacheEnabled'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
@@ -386,15 +370,15 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     body.type = type;
   }
 
-  var requestResult = this._connection.POST(this._collectionurl() + urlAddon, body);
+  let requestResult = this._connection.POST(this._collectionurl() + urlAddon, body);
 
   arangosh.checkRequestResult(requestResult);
 
-  var nname = requestResult.name;
+  name = requestResult.name;
 
-  if (nname !== undefined) {
-    this._registerCollection(nname, new this._collectionConstructor(this, requestResult));
-    return this[nname];
+  if (name !== undefined) {
+    this[name] = new ArangoCollection(this, requestResult);
+    return this[name];
   }
 
   return undefined;
@@ -431,7 +415,7 @@ ArangoDatabase.prototype._truncate = function (id) {
     if (this.hasOwnProperty(name)) {
       var collection = this[name];
 
-      if (collection instanceof this._collectionConstructor) {
+      if (collection instanceof ArangoCollection) {
         if (collection._id === id || collection._name === id) {
           return collection.truncate();
         }
@@ -453,7 +437,7 @@ ArangoDatabase.prototype._drop = function (id, options) {
     if (this.hasOwnProperty(name)) {
       var collection = this[name];
 
-      if (collection instanceof this._collectionConstructor) {
+      if (collection instanceof ArangoCollection) {
         if (collection._id === id || collection._name === id) {
           return collection.drop(options);
         }
@@ -480,8 +464,8 @@ ArangoDatabase.prototype._flushCache = function () {
     if (this.hasOwnProperty(name)) {
       var collOrView = this[name];
 
-      if (collOrView instanceof this._collectionConstructor ||
-         collOrView instanceof this._viewConstructor) {
+      if (collOrView instanceof ArangoCollection ||
+         collOrView instanceof ArangoView) {
         // reset the collection status
         collOrView._status = null;
         this[name] = undefined;
@@ -742,9 +726,9 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
   }
 
   var url = this._documenturl(id) + params;
-  url = this._appendSyncParameter(url, waitForSync);
-  url = this._appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
-  url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+  url = appendSyncParameter(url, waitForSync);
+  url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
+  url = appendBoolParameter(url, 'returnOld', options.returnOld);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.DELETE(url);
@@ -812,10 +796,10 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
     options = {};
   }
   var url = this._documenturl(id) + params;
-  url = this._appendSyncParameter(url, waitForSync);
-  url = this._appendBoolParameter(url, 'ignoreRevs', true);
-  url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
-  url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
+  url = appendSyncParameter(url, waitForSync);
+  url = appendBoolParameter(url, 'ignoreRevs', true);
+  url = appendBoolParameter(url, 'returnOld', options.returnOld);
+  url = appendBoolParameter(url, 'returnNew', options.returnNew);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.PUT(url, data);
@@ -892,10 +876,10 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
     options = {};
   }
   var url = this._documenturl(id) + params;
-  url = this._appendSyncParameter(url, waitForSync);
-  url = this._appendBoolParameter(url, 'ignoreRevs', true);
-  url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
-  url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
+  url = appendSyncParameter(url, waitForSync);
+  url = appendBoolParameter(url, 'ignoreRevs', true);
+  url = appendBoolParameter(url, 'returnOld', options.returnOld);
+  url = appendBoolParameter(url, 'returnNew', options.returnNew);
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.PATCH(url, data);
@@ -1211,7 +1195,7 @@ ArangoDatabase.prototype._transactions = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._createView = function (name, type, properties) {
-  var body = properties === undefined ? {} : properties;
+  let body = properties === undefined ? {} : properties;
 
   if (name === undefined) {
     delete body['name'];
@@ -1225,15 +1209,15 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
     body['type'] = type;
   }
 
-  var requestResult = this._connection.POST(this._viewurl(), body);
+  let requestResult = this._connection.POST(this._viewurl(), body);
 
   arangosh.checkRequestResult(requestResult);
 
-  var nname = requestResult.name;
+  name = requestResult.name;
 
-  if (nname !== undefined) {
-    this._registerView(nname, new this._viewConstructor(this, requestResult));
-    return this[nname];
+  if (name !== undefined) {
+    this[name] = new ArangoView(this, requestResult);
+    return this[name];
   }
 
   return undefined;
@@ -1250,7 +1234,7 @@ ArangoDatabase.prototype._dropView = function (id) {
     if (this.hasOwnProperty(name)) {
       var view = this[name];
 
-      if (view instanceof this._viewConstructor) {
+      if (view instanceof ArangoView) {
         if (view._id === id || view._name === id) {
           return view.drop();
         }
@@ -1283,8 +1267,8 @@ ArangoDatabase.prototype._views = function () {
 
     // add all views to object
     for (i = 0;  i < views.length;  ++i) {
-      var view = new this._viewConstructor(this, views[i]);
-      this._registerView(view._name, view);
+      var view = new ArangoView(this, views[i]);
+      this[view._name] = view;
       result.push(view);
     }
 
@@ -1308,7 +1292,7 @@ ArangoDatabase.prototype._view = function (id) {
   if (typeof id !== 'number'
       && this.hasOwnProperty(id)
       && this[id]
-      && this[id] instanceof this._viewConstructor) {
+      && this[id] instanceof ArangoView) {
     return this[id];
   }
 
@@ -1328,7 +1312,7 @@ ArangoDatabase.prototype._view = function (id) {
   var name = requestResult.name;
 
   if (name !== undefined) {
-    this._registerView(name, new this._viewConstructor(this, requestResult));
+    this[name] = new ArangoView(this, requestResult);
     return this[name];
   }
 

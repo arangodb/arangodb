@@ -1,11 +1,54 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-set (IResearch_TARGET_NAME 
-  "iresearch"
-  CACHE INTERNAL
-  ""
-)
+################################################################################
+### interprocedural optimization (link time optimization)
+################################################################################
 
+set(IPO_ENABLED False)
+
+if (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} VERSION_GREATER 3.8)
+  set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
+  set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
+
+  # Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
+  if(USE_IPO STREQUAL "AUTO")
+    # When USE_IPO=AUTO, enable IPO for optimized / release builds.
+    # But to work around a g++ segfault triggered by using both -flto and
+    # -fno-devirtualize-functions, we disable IPO when using google tests, because
+    # this will set no-devirtualize. See
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
+    # So this check may be removed later as soon as we use fixed gcc versions.
+    # - Tobias, 2019-08-08
+    if (CMAKE_BUILD_TYPE STREQUAL "Release"
+        OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+        OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
+      set(IPO_ENABLED True)
+    else()
+      set(IPO_ENABLED False)
+    endif ()
+  elseif(USE_IPO)
+    set(IPO_ENABLED True)
+  else()
+    set(IPO_ENABLED False)
+  endif()
+endif()
+
+if (IPO_ENABLED)
+  cmake_minimum_required(VERSION 3.9 FATAL_ERROR) # ensured by check above
+
+  macro(SET_IPO _target)
+    set_property(TARGET ${_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+  endmacro()
+else()
+  macro(SET_IPO _target)
+    # NOOP
+  endmacro()
+endif()
+
+message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
+
+set(IResearch_TARGET_NAME "iresearch" CACHE INTERNAL "")
 project(${IResearch_TARGET_NAME})
 
 # attach additional cmake modules
@@ -13,6 +56,7 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 # load cmake utils
 include(Utils)
+include(PVS-Studio)
 
 if (NOT MSVC)
   # put GCC version into GCC_VERSION variable
@@ -23,6 +67,8 @@ endif()
 ### compile options
 ################################################################################
 
+option(USE_PVS_STUDIO "Generate target for PVS-Studio check" OFF)
+option(USE_CLANG_TIDY "Include clang-tidy checks" OFF)
 option(USE_TESTS "Build tests" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
@@ -45,6 +91,26 @@ if (MSVC)
   else ()
     set(CMAKE_C_FLAGS "/MP ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/MP ${CMAKE_CXX_FLAGS}")
+  endif()
+endif()
+
+################################################################################
+### setup clang-tidy
+################################################################################
+
+unset(CLANG_TIDY_EXE CACHE)
+
+if (USE_CLANG_TIDY)
+  find_program(
+    CLANG_TIDY_EXE
+    NAMES "clang-tidy"
+    DOC "Path to clang-tidy executable"
+  )
+
+  if(CLANG_TIDY_EXE)
+    message(STATUS "clang-tidy found: ${CLANG_TIDY_EXE}")
+  else()
+    message(STATUS "clang-tidy not found.")
   endif()
 endif()
 
@@ -184,6 +250,30 @@ add_subdirectory(utils)
 
 if (USE_PYRESEARCH)
   add_subdirectory(python)
+endif()
+
+if (USE_PVS_STUDIO)
+  set(PVS_STUDIO_TARGET_NAME "iresearch-pvs-check")
+  set(PVS_STUDIO_ANALYZE ${IResearch_TARGET_NAME}-static
+                         ${IResearchUtil_TARGET_NAME}
+                         ${IResearchBenchmarks_TARGET_NAME}
+                         ${IResearchPython_TARGET_NAME})
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME} ALL
+    OUTPUT FORMAT errorfile
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${IResearch_TARGET_NAME}.err
+  )
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME}-html ALL
+    FORMAT fullhtml
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${IResearch_TARGET_NAME}-html.err
+  )
 endif()
 
 if (USE_TESTS)

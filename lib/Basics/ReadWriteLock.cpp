@@ -136,7 +136,7 @@ bool ReadWriteLock::tryReadLock() {
 }
 
 /// @brief releases the read-lock or write-lock
-void ReadWriteLock::unlock() {
+void ReadWriteLock::unlock() noexcept {
   if (_state.load(std::memory_order_relaxed) & WRITE_LOCK) {
     // we were holding the write-lock
     unlockWrite();
@@ -147,7 +147,9 @@ void ReadWriteLock::unlock() {
 }
 
 /// @brief releases the write-lock
-void ReadWriteLock::unlockWrite() {
+/// Note that, theoretically, locking a mutex may throw. But in this case, we'd
+/// be running into undefined behaviour, so we still want noexcept!
+void ReadWriteLock::unlockWrite() noexcept {
   TRI_ASSERT((_state.load() & WRITE_LOCK) != 0);
   // clear the WRITE_LOCK flag
   auto state = _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
@@ -163,7 +165,9 @@ void ReadWriteLock::unlockWrite() {
 }
 
 /// @brief releases the read-lock
-void ReadWriteLock::unlockRead() {
+/// Note that, theoretically, locking a mutex may throw. But in this case, we'd
+/// be running into undefined behaviour, so we still want noexcept!
+void ReadWriteLock::unlockRead() noexcept {
   TRI_ASSERT((_state.load() & READER_MASK) != 0);
   auto state = _state.fetch_sub(READER_INC, std::memory_order_release) - READER_INC;
   if (state != 0 && (state & ~QUEUED_WRITER_MASK) == 0) {
