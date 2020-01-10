@@ -368,6 +368,10 @@ void AqlItemBlock::shrink(size_t nrItems) {
     a.erase();
   }
 
+  // remove the shadow row indices pointing to now invalid rows.
+  _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),
+                          _shadowRowIndexes.end());
+
   // adjust the size of the block
   _nrItems = nrItems;
 }
