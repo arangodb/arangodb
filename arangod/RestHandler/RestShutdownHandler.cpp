@@ -23,6 +23,7 @@
 
 #include "RestShutdownHandler.h"
 
+#include <Agency/AsyncAgencyComm.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -77,7 +78,7 @@ RestStatus RestShutdownHandler::execute() {
   bool shutdownClusterFound;
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
-  if (shutdownClusterFound && shutdownCluster == "1" && AgencyCommHelper::isEnabled()) {
+  if (shutdownClusterFound && shutdownCluster == "1" && AsyncAgencyCommManager::isEnabled()) {
     AgencyComm agency;
     VPackBuilder builder;
     builder.add(VPackValue(true));

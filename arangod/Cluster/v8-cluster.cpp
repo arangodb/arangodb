@@ -211,7 +211,7 @@ static void JS_IsEnabledAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("isEnabled()");
   }
 
-  if (AgencyCommHelper::isEnabled()) {
+  if (AsyncAgencyCommManager::isEnabled()) {
     TRI_V8_RETURN_TRUE();
   }
 
@@ -1158,7 +1158,7 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
   bool queueUpdate = TRI_ObjectToBoolean(isolate, args[0]);
   ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
 
-  if (AgencyCommHelper::isEnabled()) {
+  if (AsyncAgencyCommManager::isEnabled()) {
     AgencyComm comm;
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();

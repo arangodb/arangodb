@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/BootstrapFeature.h"
+#include <Agency/AsyncAgencyComm.h>
 
 #include "Agency/AgencyComm.h"
 #include "Aql/QueryList.h"
@@ -324,7 +325,7 @@ void BootstrapFeature::start() {
 
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
-    if (ServerState::isSingleServer(role) && AgencyCommHelper::isEnabled()) {
+    if (ServerState::isSingleServer(role) && AsyncAgencyCommManager::isEnabled()) {
       ::runActiveFailoverStart(myId);
     } else {
       ServerState::instance()->setFoxxmaster(myId);  // could be empty, but set anyway
@@ -349,7 +350,7 @@ void BootstrapFeature::start() {
     waitForHealthEntry();
   }
 
-  if (ServerState::isSingleServer(role) && AgencyCommHelper::isEnabled()) {
+  if (ServerState::isSingleServer(role) && AsyncAgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
     ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
   } else {

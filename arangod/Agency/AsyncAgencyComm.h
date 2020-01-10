@@ -96,6 +96,8 @@ class AsyncAgencyCommManager final {
     INSTANCE = std::make_unique<AsyncAgencyCommManager>();
   }
 
+  static bool isEnabled() { return INSTANCE != nullptr; }
+
   void addEndpoint(std::string const& endpoint);
   void updateEndpoints(std::vector<std::string> const& endpoints);
 

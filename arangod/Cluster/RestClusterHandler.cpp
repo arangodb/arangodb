@@ -31,6 +31,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 
+#include <Agency/AsyncAgencyComm.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -106,13 +107,13 @@ void RestClusterHandler::handleCommandEndpoints() {
     endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isActiveFailoverEnabled() || !AgencyCommHelper::isEnabled()) {
+    if (!replication->isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
       generateError(
           Result(TRI_ERROR_NOT_IMPLEMENTED, "automatic failover is not enabled"));
       return;
     }
 
-    TRI_ASSERT(AgencyCommHelper::isEnabled());
+    TRI_ASSERT(AsyncAgencyCommManager::isEnabled());
 
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
