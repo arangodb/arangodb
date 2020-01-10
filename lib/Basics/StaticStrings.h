@@ -238,6 +238,10 @@ class StaticStrings {
   static std::string const GraphInitialCid;
   static std::string const GraphName;
 
+  // Graph Query Strings
+  static std::string const GraphQueryEdges;
+  static std::string const GraphQueryVertices;
+
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
