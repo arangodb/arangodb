@@ -749,7 +749,6 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_UNLOCK>(VPackSlice const& slice
     return ResultT<std::shared_ptr<Node>>::success(nullptr);
   }
 
-  LOG_DEVEL << "READ_UNLOCK failed";
   return ResultT<std::shared_ptr<Node>>::error(
     TRI_ERROR_FAILED, "Read unlock failed");
 
@@ -783,7 +782,6 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slic
     return deleteMe();
   }
 
-  LOG_DEVEL << "WRITE_UNLOCK failed";
   return ResultT<std::shared_ptr<Node>>::error(
     TRI_ERROR_FAILED, "Write unlock failed");
 }
