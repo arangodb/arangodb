@@ -26,6 +26,7 @@
 
 #include "IResearchLink.h"
 
+#include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {
@@ -112,6 +113,34 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
       THROW_ARANGO_EXCEPTION(res);
     }
   }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
+  ////////////////////////////////////////////////////////////////////////////////
+  struct IndexFactory : public arangodb::IndexTypeFactory {
+    friend class IResearchRocksDBLink;
+
+   private:
+    IndexFactory(arangodb::application_features::ApplicationServer& server);
+
+   public:
+    bool equal(arangodb::velocypack::Slice const& lhs,
+               arangodb::velocypack::Slice const& rhs) const override;
+
+    std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
+                                                 arangodb::velocypack::Slice const& definition,
+                                                 TRI_idx_iid_t id,
+                                                 bool /*isClusterConstructor*/) const override;
+
+    virtual arangodb::Result normalize(             // normalize definition
+        arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+        arangodb::velocypack::Slice definition,  // source definition
+        bool isCreation,              // definition for index creation
+        TRI_vocbase_t const& vocbase  // index vocbase
+        ) const override;
+  };
+
+  static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
 };
 
 }  // namespace iresearch

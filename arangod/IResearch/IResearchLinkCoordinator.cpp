@@ -105,6 +105,45 @@ void IResearchLinkCoordinator::toVelocyPack( // generate definition
   builder.close();
 }
 
+IResearchLinkCoordinator::IndexFactory::IndexFactory(arangodb::application_features::ApplicationServer& server)
+    : IndexTypeFactory(server) {}
+
+bool IResearchLinkCoordinator::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
+                                                   arangodb::velocypack::Slice const& rhs) const {
+  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
+}
+
+std::shared_ptr<arangodb::Index> IResearchLinkCoordinator::IndexFactory::instantiate(
+    arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id, bool isClusterConstructor) const {
+  auto link = std::shared_ptr<arangodb::iresearch::IResearchLinkCoordinator>(
+      new arangodb::iresearch::IResearchLinkCoordinator(id, collection));
+  auto res = link->init(definition);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return link;
+}
+
+arangodb::Result IResearchLinkCoordinator::IndexFactory::normalize(  // normalize definition
+    arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+    arangodb::velocypack::Slice definition,  // source definition
+    bool isCreation,                         // definition for index creation
+    TRI_vocbase_t const& vocbase             // index vocbase
+    ) const {
+  return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
+      normalized, definition, isCreation, vocbase              // args
+  );
+}
+
+std::shared_ptr<IResearchLinkCoordinator::IndexFactory> IResearchLinkCoordinator::createFactory(
+    application_features::ApplicationServer& server) {
+  return std::shared_ptr<IResearchLinkCoordinator::IndexFactory>(
+      new IResearchLinkCoordinator::IndexFactory(server));
+}
+
 }  // namespace iresearch
 }  // namespace arangodb
 

@@ -26,10 +26,7 @@
   #include "date/date.h"
 #endif
 
-#include <rocksdb/env_encryption.h>
-
 #include "search/scorers.hpp"
-#include "utils/encryption.hpp"
 #include "utils/log.hpp"
 
 #include "ApplicationServerHelper.h"
@@ -411,225 +408,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "ANALYZER", ".,.", flags, &contextFunc });  // (filter expression, analyzer)
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchLinkCoordinator-specific implementation of an
-///        IndexTypeFactory
-////////////////////////////////////////////////////////////////////////////////
-struct IResearchLinkCoordinatorFactory : public arangodb::IndexTypeFactory {
-  IResearchLinkCoordinatorFactory(arangodb::application_features::ApplicationServer& server)
-      : IndexTypeFactory(server) {}
-
-  bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
-  }
-
-  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                               arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
-                                               bool isClusterConstructor) const override {
-    auto link = std::shared_ptr<arangodb::iresearch::IResearchLinkCoordinator>(
-        new arangodb::iresearch::IResearchLinkCoordinator(id, collection));
-    auto res = link->init(definition);
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    return link;
-  }
-
-  virtual arangodb::Result normalize(             // normalize definition
-      arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
-      arangodb::velocypack::Slice definition,  // source definition
-      bool isCreation,                         // definition for index creation
-      TRI_vocbase_t const& vocbase             // index vocbase
-      ) const override {
-    return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
-        normalized, definition, isCreation, vocbase              // args
-    );
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchMMFilesLink-specific implementation of an IndexTypeFactory
-////////////////////////////////////////////////////////////////////////////////
-struct IResearchMMFilesLinkFactory : public arangodb::IndexTypeFactory {
-  IResearchMMFilesLinkFactory(arangodb::application_features::ApplicationServer& server)
-      : IndexTypeFactory(server) {}
-
-  bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
-  }
-
-  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                               arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
-                                               bool isClusterConstructor) const override {
-    // ensure loaded so that we have valid data in next check
-    if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
-      collection.load();
-    }
-
-    // try casting underlying collection to an MMFilesCollection
-    // this may not succeed because we may have to deal with a
-    // PhysicalCollectionMock here
-    auto mmfilesCollection =
-        dynamic_cast<arangodb::MMFilesCollection*>(collection.getPhysical());
-
-    if (mmfilesCollection && !mmfilesCollection->hasAllPersistentLocalIds()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL,
-          "mmfiles collection uses pre-3.4 format and cannot be linked to an "
-          "arangosearch view; try recreating collection and moving the "
-          "contents to the new collection");
-    }
-
-    auto link = std::shared_ptr<arangodb::iresearch::IResearchMMFilesLink>(
-        new arangodb::iresearch::IResearchMMFilesLink(id, collection));
-    auto res = link->init(definition);
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    return link;
-  }
-
-  virtual arangodb::Result normalize(             // normalize definition
-      arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
-      arangodb::velocypack::Slice definition,  // source definition
-      bool isCreation,                         // definition for index creation
-      TRI_vocbase_t const& vocbase             // index vocbase
-      ) const override {
-    return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
-        normalized, definition, isCreation, vocbase              // args
-    );
-  }
-};
-
-class RocksDBCipherStream final : public irs::encryption::stream {
- public:
-  typedef std::unique_ptr<rocksdb::BlockAccessCipherStream> StreamPtr;
-
-  explicit RocksDBCipherStream(StreamPtr&& stream) noexcept
-      : _stream(std::move(stream)) {
-    TRI_ASSERT(_stream);
-  }
-
-  virtual size_t block_size() const override { return _stream->BlockSize(); }
-
-  virtual bool decrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
-    return _stream->Decrypt(offset, reinterpret_cast<char*>(data), size).ok();
-  }
-
-  virtual bool encrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
-    return _stream->Encrypt(offset, reinterpret_cast<char*>(data), size).ok();
-  }
-
- private:
-  StreamPtr _stream;
-};  // RocksDBCipherStream
-
-class RocksDBEncryptionProvider final : public irs::encryption {
- public:
-  static std::shared_ptr<RocksDBEncryptionProvider> make(rocksdb::EncryptionProvider& encryption,
-                                                         rocksdb::Options const& options) {
-    return std::make_shared<RocksDBEncryptionProvider>(encryption, options);
-  }
-
-  explicit RocksDBEncryptionProvider(rocksdb::EncryptionProvider& encryption,
-                                     rocksdb::Options const& options)
-      : _encryption(&encryption), _options(options) {}
-
-  virtual size_t header_length() override {
-    return _encryption->GetPrefixLength();
-  }
-
-  virtual bool create_header(std::string const& filename, irs::byte_type* header) override {
-    return _encryption
-        ->CreateNewPrefix(filename, reinterpret_cast<char*>(header), header_length())
-        .ok();
-  }
-
-  virtual encryption::stream::ptr create_stream(std::string const& filename,
-                                                irs::byte_type* header) override {
-    rocksdb::Slice headerSlice(reinterpret_cast<char const*>(header), header_length());
-
-    std::unique_ptr<rocksdb::BlockAccessCipherStream> stream;
-    if (!_encryption
-             ->CreateCipherStream(filename, _options, headerSlice, &stream)
-             .ok()) {
-      return nullptr;
-    }
-
-    return std::make_unique<RocksDBCipherStream>(std::move(stream));
-  }
-
- private:
-  rocksdb::EncryptionProvider* _encryption;
-  rocksdb::EnvOptions _options;
-};  // RocksDBEncryptionProvider
-
-std::function<void(irs::directory&)> const RocksDBLinkInitCallback = [](irs::directory& dir) {
-  TRI_ASSERT(arangodb::EngineSelectorFeature::isRocksDB());
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* engine =
-      dynamic_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-#else
-  auto* engine =
-      static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-#endif
-
-  auto* encryption = engine ? engine->encryptionProvider() : nullptr;
-
-  if (encryption) {
-    dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
-                                                        engine->rocksDBOptions());
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
-////////////////////////////////////////////////////////////////////////////////
-struct IResearchRocksDBLinkFactory : public arangodb::IndexTypeFactory {
-  IResearchRocksDBLinkFactory(arangodb::application_features::ApplicationServer& server)
-      : IndexTypeFactory(server) {}
-
-  bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
-  }
-
-  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                               arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
-                                               bool /*isClusterConstructor*/) const override {
-    auto link = std::shared_ptr<arangodb::iresearch::IResearchRocksDBLink>(
-        new arangodb::iresearch::IResearchRocksDBLink(id, collection));
-    auto res = link->init(definition, RocksDBLinkInitCallback);
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    return link;
-  }
-
-  virtual arangodb::Result normalize(             // normalize definition
-      arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
-      arangodb::velocypack::Slice definition,  // source definition
-      bool isCreation,                         // definition for index creation
-      TRI_vocbase_t const& vocbase             // index vocbase
-      ) const override {
-    return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
-        normalized, definition, isCreation, vocbase              // args
-    );
-  }
-};
-
 namespace {
 template <typename T>
 void registerSingleFactory(
@@ -655,13 +433,13 @@ void registerSingleFactory(
 void registerIndexFactory(std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>>& m,
                           arangodb::application_features::ApplicationServer& server) {
   m.emplace(std::type_index(typeid(arangodb::ClusterEngine)),
-            std::make_shared<IResearchLinkCoordinatorFactory>(server));
+            arangodb::iresearch::IResearchLinkCoordinator::createFactory(server));
   registerSingleFactory<arangodb::ClusterEngine>(m, server);
   m.emplace(std::type_index(typeid(arangodb::MMFilesEngine)),
-            std::make_shared<IResearchMMFilesLinkFactory>(server));
+            arangodb::iresearch::IResearchMMFilesLink::createFactory(server));
   registerSingleFactory<arangodb::MMFilesEngine>(m, server);
   m.emplace(std::type_index(typeid(arangodb::RocksDBEngine)),
-            std::make_shared<IResearchRocksDBLinkFactory>(server));
+            arangodb::iresearch::IResearchRocksDBLink::createFactory(server));
   registerSingleFactory<arangodb::RocksDBEngine>(m, server);
 }
 
