@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix bug affecting spliced subqueries when memory blocks are reused.
+
 * Hide swagger api calls in list by default
 
 * Fix Windows client package JS installation paths.
