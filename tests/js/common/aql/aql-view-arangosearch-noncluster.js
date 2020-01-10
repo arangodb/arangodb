@@ -1665,6 +1665,55 @@ function iResearchAqlTestSuite () {
         assertEqual(28, result.length);
       }
     },
+    testQueryOptimizationOptions : function() {
+      let queryOptColl = "QueryOptOptionsCol";
+      let queryOptView = "QueryOptView";
+      try {
+        db._drop(queryOptColl);
+        db._dropView(queryOptView);
+        
+        let coll = db._create(queryOptColl);
+        let view = db._createView(queryOptView, 'arangosearch',
+                                 { links: { "QueryOptOptionsCol": { includeAllFields: true } } });
+        coll.save({ value1: "1", value2: "A",
+          valueArray: ["A", "B", "C"]
+        }); 
+        coll.save({ value1: "2", value2: "B",
+          valueArray: ["D", "B", "C"]
+        });
+        coll.save({ value1: "3", value2: "C",
+          valueArray: ["E", "D", "C"]
+        });          
+        coll.save({ value1: "4", value2: "D",
+          valueArray: ["A", "E", "D"]
+        });   
+        coll.save({ value1: "5", value2: "E",
+          valueArray: ["F", "G", "B"]
+        });   
+        
+        // 1 2 3 4 expected
+        let resAuto = db._query("FOR d IN " + queryOptView  + 
+          " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+          " OPTIONS { waitForSync : true, conditionOptimization: 'auto' } SORT d.value1 ASC RETURN d").toArray();
+        assertEqual(4, resAuto.length);  
+        let resNoDnf = db._query("FOR d IN " + queryOptView  + 
+          " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+          " OPTIONS { waitForSync : true, conditionOptimization: 'nodnf' } SORT d.value1 ASC RETURN d").toArray();
+        assertEqual(resNoDnf, resAuto); 
+        let resNoNeg = db._query("FOR d IN " + queryOptView  + 
+          " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+          " OPTIONS { waitForSync : true, conditionOptimization: 'noneg' } SORT d.value1 ASC RETURN d").toArray();
+        assertEqual(resNoNeg, resAuto);
+        let resNone = db._query("FOR d IN " + queryOptView  + 
+          " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+          " OPTIONS { waitForSync : true, conditionOptimization: 'none' } SORT d.value1 ASC RETURN d").toArray();
+        assertEqual(resNone, resAuto);         
+      } 
+      finally {
+        db._drop(queryOptColl);
+        db._dropView(queryOptView);
+      }
+    },
   };
 }
 
