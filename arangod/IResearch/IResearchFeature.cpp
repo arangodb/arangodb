@@ -413,6 +413,7 @@ template <typename T>
 void registerSingleFactory(
     std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>> const& m,
     arangodb::application_features::ApplicationServer& server) {
+  TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
   arangodb::IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
   if (server.hasFeature<T>()) {
@@ -1010,6 +1011,7 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
 
 template <typename Engine, typename std::enable_if<std::is_base_of<StorageEngine, Engine>::value, int>::type>
 IndexTypeFactory& IResearchFeature::factory() {
+  TRI_ASSERT(_factories.find(std::type_index(typeid(Engine))) != _factories.end());
   return *_factories.find(std::type_index(typeid(Engine)))->second;
 }
 template IndexTypeFactory& IResearchFeature::factory<arangodb::ClusterEngine>();
