@@ -191,18 +191,19 @@ using EdgeSequence = std::vector<std::pair<std::string, std::string>>;
 struct ShortestPathTestParameters {
   ShortestPathTestParameters(Vertex source, Vertex target, RegisterId vertexOut,
                              MatrixBuilder<2> matrix, PathSequence paths,
-                             EdgeSequence resultPaths)
+                             EdgeSequence resultPaths, AqlCall call = AqlCall{})
       : _source(source),
         _target(target),
         _outputRegisters(std::initializer_list<RegisterId>{vertexOut}),
         _registerMapping({{ShortestPathExecutorInfos::OutputName::VERTEX, vertexOut}}),
         _inputMatrix{matrix},
         _paths(paths),
-        _resultPaths{resultPaths} {};
+        _resultPaths{resultPaths},
+        _call(call){};
 
   ShortestPathTestParameters(Vertex source, Vertex target, RegisterId vertexOut,
-                             RegisterId edgeOut, MatrixBuilder<2> matrix,
-                             PathSequence paths, EdgeSequence resultPaths)
+                             RegisterId edgeOut, MatrixBuilder<2> matrix, PathSequence paths,
+                             EdgeSequence resultPaths, AqlCall call = AqlCall{})
       : _source(source),
         _target(target),
         _outputRegisters(std::initializer_list<RegisterId>{vertexOut, edgeOut}),
@@ -210,7 +211,8 @@ struct ShortestPathTestParameters {
                           {ShortestPathExecutorInfos::OutputName::EDGE, edgeOut}}),
         _inputMatrix{matrix},
         _paths(paths),
-        _resultPaths(resultPaths){};
+        _resultPaths(resultPaths),
+        _call(call){};
 
   Vertex _source;
   Vertex _target;
@@ -220,6 +222,7 @@ struct ShortestPathTestParameters {
   MatrixBuilder<2> _inputMatrix;
   PathSequence _paths;
   EdgeSequence _resultPaths;
+  AqlCall _call;
 };
 
 class ShortestPathExecutorTest
@@ -273,15 +276,17 @@ class ShortestPathExecutorTest
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, infos),
-        output(std::move(block), infos.getOutputRegisters(),
-               infos.registersToKeep(), infos.registersToClear()) {
+        output(std::move(block), infos.getOutputRegisters(), infos.registersToKeep(),
+               infos.registersToClear(), std::move(parameters._call)) {
     for (auto&& p : parameters._paths) {
       finder.addPath(std::move(p));
     }
   }
 
   void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& result,
-                      std::vector<std::pair<std::string, std::string>> const& resultPaths) {
+                      std::vector<std::pair<std::string, std::string>> const& resultPaths,
+                      ExecutorState const state) {
+    LOG_DEVEL << "num rows written: " << result.numRowsWritten();
     if (resultPaths.empty()) {
       //  TODO: this is really crude, but we can't currently, easily determine whether we got
       //        *exactly* the paths we were hoping  for.
@@ -330,10 +335,11 @@ class ShortestPathExecutorTest
     // This fetcher will not be called!
     // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
     // This will fetch everything now, unless we give a small enough atMost
-    auto const [state, stats, call] = testee.produceRows(input, output);
 
-    EXPECT_EQ(state, ExecutorState::DONE);
-    ValidateResult(infos, output, resultPaths);
+    auto const [state, stats, call] = testee.produceRows(input, output);
+    // TODO: validate stats
+
+    ValidateResult(infos, output, resultPaths, state);
   }
 };  // namespace aql
 
@@ -390,6 +396,10 @@ INSTANTIATE_TEST_CASE_P(
         ShortestPathTestParameters(regSource, regTarget, 2, threeRows, threePaths,
                                    {{"vertex/source", "vertex/target"},
                                     {"vertex/a", "vertex/target"}}),
+
+        ShortestPathTestParameters(constSource, constTarget, 2, noneRow,
+                                   onePath, {{"vertex/source", "vertex/target"}},
+                                   AqlCall{0, 1, 0, false}),
 
         // With edge output
         ShortestPathTestParameters(constSource, constTarget, 2, 3, noneRow, {}, {}),
