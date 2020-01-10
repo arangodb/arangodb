@@ -2838,18 +2838,20 @@ void AstNode::setStringValue(char const* v, size_t length) {
   value.length = static_cast<uint32_t>(length);
 }
 
-bool AstNode::stringEquals(char const* other, bool caseInsensitive) const {
-  auto otherLen = strlen(other);
-
-  if (caseInsensitive) {
-    return (otherLen == getStringLength()) &&
-           strncasecmp(getStringValue(), other, getStringLength()) == 0;
-  }
-  return (otherLen == getStringLength()) &&
-         strncmp(getStringValue(), other, getStringLength()) == 0;
+bool AstNode::stringEqualsCaseInsensitive(std::string const& other) const {
+  // Since we're not sure in how much trouble we are with unicode
+  // strings, we assert here that strings we use are 7-bit ASCII
+  TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                          [](const char c) { return c & 0x80; }));
+  return (other.size() == getStringLength() &&
+          strncasecmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }
 
 bool AstNode::stringEquals(std::string const& other) const {
+  // Since we're not sure in how much trouble we are with unicode
+  // strings, we assert here that strings we use are 7-bit ASCII
+  TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                          [](const char c) { return c & 0x80; }));
   return (other.size() == getStringLength() &&
           memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }
