@@ -89,6 +89,7 @@ router.get('/config.js', function (req, res) {
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
+      statisticsHistoryEnabled: internal.enabledStatisticsHistory(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
       foxxApiEnabled: !internal.isFoxxApiDisabled(),
       minReplicationFactor: internal.minReplicationFactor,

@@ -282,6 +282,15 @@
     exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
     delete global.SYS_ENABLED_STATISTICS;
   }
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not Statistics history is enabled
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ENABLED_STATISTICS_HISTORY) {
+    exports.enabledStatisticsHistory = global.SYS_ENABLED_STATISTICS_HISTORY;
+    delete global.SYS_ENABLED_STATISTICS_HISTORY;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief clientStatistics

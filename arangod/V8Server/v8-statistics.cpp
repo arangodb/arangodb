@@ -197,6 +197,20 @@ static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not statistics history is enabled
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_EnabledStatisticsHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, 
+      application_features::ApplicationServer::server().getFeature<StatisticsFeature>().historyEnabled());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current request and connection statistics
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -312,6 +326,10 @@ void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context> context)
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_ENABLED_STATISTICS"),
                                JS_EnabledStatistics);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_ENABLED_STATISTICS_HISTORY"),
+                               JS_EnabledStatisticsHistory);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_CLIENT_STATISTICS"),

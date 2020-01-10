@@ -2070,14 +2070,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           v8::Number::New(isolate, (double)threadNumber), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 
-  // whether or not statistics are enabled
-  context->Global()
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
-                          v8::Boolean::New(isolate,
-                                           StatisticsFeature::enabled()))
-      .FromMaybe(false);  // ignore result  //, v8::ReadOnly);
-
   // replication factors
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,

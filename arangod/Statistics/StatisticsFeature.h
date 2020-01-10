@@ -72,8 +72,12 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   static bool enabled() {
     return STATISTICS != nullptr && STATISTICS->_statistics;
   }
-
+  
   static double time() { return TRI_microtime(); }
+  
+  bool historyEnabled() const {
+    return _statisticsHistory;
+  }
 
  private:
   static StatisticsFeature* STATISTICS;
