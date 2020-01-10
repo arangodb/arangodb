@@ -644,8 +644,7 @@ void ExecutionBlockImpl<Executor>::traceExecuteBegin(AqlCallStack const& stack) 
       auto const& call = stack.peek();
       LOG_TOPIC("1e717", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
-          << "execute type=" << node->getTypeString()
-          << " offset=" << call.getOffset() << " limit= " << call.getLimit()
+          << "execute type=" << node->getTypeString() << " call= " << call
           << " this=" << (uintptr_t)this << " id=" << node->id();
     }
   }
@@ -1149,7 +1148,6 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       }
       AqlCall skipCall{};
       skipCall.softLimit = toSkip;
-      skipCall.hardLimit = toSkip;
       skipCall.offset = 0;
       skipCall.fullCount = call.fullCount;
 
