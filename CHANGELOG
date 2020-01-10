@@ -1,6 +1,8 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fix bug affecting spliced subqueries when memory blocks are reused.
+
 * Fixed internal issue #656: While executing large amount of concurrent
   insert/removes iresearch seems to leak open file handles. This results in
   error 32 in cleanup (observed only on Windows as Linux doesn`t have file
