@@ -41,10 +41,9 @@ same *_key* already exists the new document is not rejected with unique
 constraint violated but will replace the old document.
 
 @RESTQUERYPARAM{overwriteMode,string,optional}
-If set to *update*, the replace-insert becomes a update-insert. If a document with the
-same *_key* already exists the new document is not rejected with unique
-constraint violated but will update the old document. This option
-requires the overwirte option to be set to have any effect.
+This parameter can be set to *replace* or *update*. If given it sets implicitly 
+the overwrite flag. In case it is set to *update*, the replace-insert becomes a
+update-insert. Otherwise this option follows the rules of the overwrite parameter.
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
 If the intention is to delete existing attributes with the update-insert
