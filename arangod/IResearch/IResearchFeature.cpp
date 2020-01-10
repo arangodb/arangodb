@@ -1233,6 +1233,7 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
 
 template <typename Engine, typename std::enable_if<std::is_base_of<StorageEngine, Engine>::value, int>::type>
 IndexTypeFactory& IResearchFeature::factory() {
+  TRI_ASSERT(_factories.find(std::type_index(typeid(Engine))) != _factories.end());
   return *_factories.find(std::type_index(typeid(Engine)))->second;
 }
 template IndexTypeFactory& IResearchFeature::factory<arangodb::ClusterEngine>();
