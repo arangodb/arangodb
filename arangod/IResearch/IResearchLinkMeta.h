@@ -135,6 +135,7 @@ struct FieldMeta {
   ///                       nullptr == do not normalize
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
+  /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
   bool init(arangodb::application_features::ApplicationServer& server,
             velocypack::Slice const& slice,
