@@ -158,7 +158,6 @@ struct FieldMeta {
   /// @param ignoreEqual values to ignore if equal
   /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
-  /// @param analyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::application_features::ApplicationServer& server,
             arangodb::velocypack::Builder& builder,
