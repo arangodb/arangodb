@@ -1,4 +1,24 @@
-v3.6.0 (XXXX-XX-XX)
+v3.6.1 (2020-XX-XX)
+-------------------
+
+* Disable cluster AQL parallelization for queries that contain traversal,
+  shortest path or k_shortest_path nodes.
+  This avoids potential undefined behavior in case a parallel GatherNode is used
+  in graph queries.
+
+* Fixed internal issue #656: While executing large amount of concurrent
+  insert/removes iresearch seems to leak open file handles. This results in
+  error 32 in cleanup (observed only on Windows as Linux doesn`t have file
+  sharing locks).
+
+* Updated arangosync to 0.7.2.
+
+* Fix Windows client package JS installation paths.
+
+* Added option that makes ArangoDB write logfiles in the Windows installer.
+
+
+v3.6.0 (2020-01-08)
 -------------------
 
 * Do not create a reboot tracker for empty serverId ubin sync repl.
