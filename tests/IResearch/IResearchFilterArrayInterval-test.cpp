@@ -324,7 +324,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
           expected.insert<irs::Bound::MIN>(stream);
           expected.include<irs::Bound::MIN>(true);
         } else {
-          ASSERT_TRUE(false); // new array comparsion operator added? Need to update checks here!
+          ASSERT_TRUE(false); // new array comparison operator added? Need to update checks here!
         }
         EXPECT_EQ(expected, by_range_actual);
       }

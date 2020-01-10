@@ -7304,7 +7304,12 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<Execut
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) && !plan->contains(EN::SCATTER)) {
+  if (nodes.size() == 1 && 
+      !plan->contains(EN::TRAVERSAL) && 
+      !plan->contains(EN::SHORTEST_PATH) && 
+      !plan->contains(EN::K_SHORTEST_PATHS) && 
+      !plan->contains(EN::DISTRIBUTE) && 
+      !plan->contains(EN::SCATTER)) {
     GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
 
     if (!gn->isInSubquery() && gn->isParallelizable()) {
