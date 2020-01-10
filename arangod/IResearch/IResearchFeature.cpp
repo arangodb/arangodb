@@ -635,6 +635,7 @@ template <typename T>
 void registerSingleFactory(
     std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>> const& m,
     arangodb::application_features::ApplicationServer& server) {
+  TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
   arangodb::IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
   if (server.hasFeature<T>()) {
