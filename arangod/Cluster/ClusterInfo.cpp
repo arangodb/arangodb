@@ -80,20 +80,18 @@ static inline std::string collectionPath(std::string const& dbName,
 
 static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
                                                               std::string const& collection,
-                                                              VPackSlice const& info,
-                                                              double timeout) {
+                                                              VPackSlice const& info) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!info.get("shards").isEmptyObject() &&
       !arangodb::basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IsSmart,
                                                            false)) {
-    TRI_ASSERT(info.hasKey(arangodb::StaticStrings::IsBuilding));
-    TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).isBool());
-    TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
+    TRI_ASSERT(info.hasKey(arangodb::StaticStrings::AttrIsBuilding));
+    TRI_ASSERT(info.get(arangodb::StaticStrings::AttrIsBuilding).isBool());
+    TRI_ASSERT(info.get(arangodb::StaticStrings::AttrIsBuilding).getBool() == true);
   }
 #endif
   arangodb::AgencyOperation op{collectionPath(dbName, collection),
                                arangodb::AgencyValueOperationType::SET, info};
-  op._ttl = static_cast<uint64_t>(timeout);
   return op;
 }
 
@@ -106,7 +104,7 @@ static inline arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
 
 static inline arangodb::AgencyOperation CreateCollectionSuccess(
     std::string const& dbName, std::string const& collection, VPackSlice const& info) {
-  TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::IsBuilding));
+  TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::AttrIsBuilding));
   return arangodb::AgencyOperation{collectionPath(dbName, collection),
                                    arangodb::AgencyValueOperationType::SET, info};
 }
@@ -627,7 +625,7 @@ void ClusterInfo::loadPlan() {
       // it is used to create LogicalCollection instances further
       // down in this function.
       if (ServerState::instance()->isCoordinator() &&
-          !database.value.hasKey(StaticStrings::DatabaseIsBuilding)) {
+          !database.value.hasKey(StaticStrings::AttrIsBuilding)) {
         TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
         if (vocbase == nullptr) {
           // database does not yet exist, create it now
@@ -653,7 +651,7 @@ void ClusterInfo::loadPlan() {
 
       // On a coordinator we can only see databases that have been fully created
       if (!(ServerState::instance()->isCoordinator() &&
-            database.value.hasKey(StaticStrings::DatabaseIsBuilding))) {
+            database.value.hasKey(StaticStrings::AttrIsBuilding))) {
         newDatabases.try_emplace(std::move(name), database.value);
       } else {
         buildingDatabases.emplace(std::move(name));
@@ -916,7 +914,7 @@ void ClusterInfo::loadPlan() {
 
           bool isBuilding = isCoordinator &&
                             arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                collectionSlice, StaticStrings::IsBuilding, false);
+                                collectionSlice, StaticStrings::AttrIsBuilding, false);
           if (isCoordinator) {
             // copying over index estimates from the old version of the
             // collection into the new one
@@ -1504,11 +1502,11 @@ void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
   VPackObjectBuilder guard(&builder);
   database.toVelocyPack(builder);
 
-  builder.add(StaticStrings::DatabaseCoordinator,
+  builder.add(StaticStrings::AttrCoordinator,
               VPackValue(ServerState::instance()->getId()));
-  builder.add(StaticStrings::DatabaseCoordinatorRebootId,
-              VPackValue(ServerState::instance()->getRebootId()));
-  builder.add(StaticStrings::DatabaseIsBuilding, VPackValue(true));
+  builder.add(StaticStrings::AttrCoordinatorRebootId,
+              VPackValue(ServerState::instance()->getRebootId().value()));
+  builder.add(StaticStrings::AttrIsBuilding, VPackValue(true));
 }
 
 // Build the VPackSlice that does not contain  the `isBuilding` entry
@@ -1864,9 +1862,10 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     double timeout,                 // request timeout,
     bool isNewDatabase, std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  std::vector<ClusterCollectionCreationInfo> infos{
-      ClusterCollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
-                                    writeConcern, waitForReplication, json}};
+  auto serverState = ServerState::instance();
+  std::vector<ClusterCollectionCreationInfo> infos{ClusterCollectionCreationInfo{
+      collectionID, numberOfShards, replicationFactor, writeConcern, waitForReplication,
+      json, serverState->getId(), serverState->getRebootId()}};
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime,
@@ -1957,7 +1956,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     // While we are in this cleanup, and before a callback is removed from the
     // agency. The callback is triggered by another threat. We have the
     // following guarantees: a) cacheMutex|Owner are valid and locked by cleanup
-    // b) isCleand is valid and now set to true
+    // b) isCleaned is valid and now set to true
     // c) the closure is owned by the callback
     // d) info might be deleted, so we cannot use it.
     // e) If the callback is ongoing during cleanup, the callback will
@@ -1977,7 +1976,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   for (auto& info : infos) {
     TRI_ASSERT(!info.name.empty());
 
-    if (info.state == ClusterCollectionCreationInfo::State::DONE) {
+    if (info.state == ClusterCollectionCreationState::DONE) {
       // This is possible in Enterprise / Smart Collection situation
       (*nrDone)++;
     }
@@ -2004,7 +2003,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         return true;
       }
       TRI_ASSERT(!info.name.empty());
-      if (info.state != ClusterCollectionCreationInfo::State::INIT) {
+      if (info.state != ClusterCollectionCreationState::INIT) {
         // All leaders have reported either good or bad
         // We might be called by followers if they get in sync fast enough
         // In this IF we are in the followers case, we can savely ignore
@@ -2049,8 +2048,8 @@ Result ClusterInfo::createCollectionsCoordinator(
                           std::to_string(__LINE__);
                 dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                       std::memory_order_release);
-                TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::DONE);
-                info.state = ClusterCollectionCreationInfo::FAILED;
+                TRI_ASSERT(info.state != ClusterCollectionCreationState::DONE);
+                info.state = ClusterCollectionCreationState::FAILED;
                 return true;
               }
             }
@@ -2093,13 +2092,13 @@ Result ClusterInfo::createCollectionsCoordinator(
           dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                 std::memory_order_release);
           // We cannot get into bad state after a collection was created
-          TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::DONE);
-          info.state = ClusterCollectionCreationInfo::FAILED;
+          TRI_ASSERT(info.state != ClusterCollectionCreationState::DONE);
+          info.state = ClusterCollectionCreationState::FAILED;
         } else {
           // We can have multiple calls to this callback, one per leader and one per follower
           // As soon as all leaders are done we are either FAILED or DONE, this cannot be altered later.
-          TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::FAILED);
-          info.state = ClusterCollectionCreationInfo::DONE;
+          TRI_ASSERT(info.state != ClusterCollectionCreationState::FAILED);
+          info.state = ClusterCollectionCreationState::DONE;
           (*nrDone)++;
         }
       }
@@ -2119,7 +2118,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     _agencyCallbackRegistry->registerCallback(agencyCallback);
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
-                                             info.isBuildingSlice(), 240.0));
+                                             info.isBuildingSlice()));
 
     // Ensure preconditions on the agency
     std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
@@ -2214,6 +2213,10 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
   }
 
+  TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
+    TRI_TerminateDebugging("During cluster collection creation");
+  }
+
   LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
@@ -2239,7 +2242,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // We do not need to lock all condition variables
       // we are save by cacheMutex
       cbGuard.fire();
-      // Now we need to remove TTL + the IsBuilding flag in Agency
+      // Now we need to remove the AttrIsBuilding flag and the creator in the Agency
       opers.clear();
       precs.clear();
       opers.push_back(IncreaseVersion());
@@ -2258,12 +2261,12 @@ Result ClusterInfo::createCollectionsCoordinator(
       AgencyWriteTransaction transaction(opers, precs);
 
       // This is a best effort, in the worst case the collection stays, but will
-      // be cleaned out by ttl
+      // be cleaned out by the supervision
       auto res = ac.sendTransactionWithFailover(transaction);
 
       // Report if this operation worked, if it failed collections will be cleaned up eventually
       for (auto const& info : infos) {
-        TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
+        TRI_ASSERT(info.state == ClusterCollectionCreationState::DONE);
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
       loadCurrent();
@@ -2278,9 +2281,9 @@ Result ClusterInfo::createCollectionsCoordinator(
       for (auto const& info : infos) {
         // Report first error.
         // On timeout report it on all not finished ones.
-        if (info.state == ClusterCollectionCreationInfo::State::FAILED ||
+        if (info.state == ClusterCollectionCreationState::FAILED ||
             (tmpRes == TRI_ERROR_CLUSTER_TIMEOUT &&
-             info.state == ClusterCollectionCreationInfo::State::INIT)) {
+             info.state == ClusterCollectionCreationState::INIT)) {
           events::CreateCollection(databaseName, info.name, tmpRes);
         }
       }
@@ -2302,7 +2305,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     // Wait for Callbacks to be triggered, it is sufficent to wait for the first non, done
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
-      if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
+      if (infos[i].state == ClusterCollectionCreationState::INIT) {
         bool gotTimeout;
         {
           // This one has not responded, wait for it.
@@ -2314,7 +2317,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           // We got woken up by waittime, not by  callback.
           // Let us check if we skipped other callbacks as well
           for (; i < infos.size(); ++i) {
-            if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
+            if (infos[i].state == ClusterCollectionCreationState::INIT) {
               agencyCallbacks[i]->refetchAndUpdate(true, false);
             }
           }
