@@ -168,38 +168,6 @@
   #define MSVC2015_ONLY(...)
 #endif
 
-// hook for MSVC2015 optimized-only code
-#if defined(_MSC_VER) && !defined(_DEBUG) && _MSC_VER == 1900
-  #define MSVC2015_OPTIMIZED_ONLY(...) __VA_ARGS__
-#else
-  #define MSVC2015_OPTIMIZED_ONLY(...)
-#endif
-
-// hook for MSVC2017-only code (2017.2 || 2017.3/2017.4 || 2017.5 || 2017.6 || 2017.7 || 2017.8 || 2017.9)
-#if defined(_MSC_VER) \
-    && (_MSC_VER == 1910 \
-        || _MSC_VER == 1911 \
-        || _MSC_VER == 1912 \
-        || _MSC_VER == 1913 \
-        || _MSC_VER == 1914 \
-        || _MSC_VER == 1915 \
-        || _MSC_VER == 1916)
-  #define MSVC2017_ONLY(...) __VA_ARGS__
-#else
-  #define MSVC2017_ONLY(...)
-#endif
-
-// hook for MSVC2019-only code (2019.0 || 2019.1 || 2019.2 || 2019.3)
-#if defined(_MSC_VER) \
-    && (_MSC_VER == 1920 \
-        || _MSC_VER == 1921 \
-        || _MSC_VER == 1922 \
-        || _MSC_VER == 1923)
-#define MSVC2019_ONLY(...) __VA_ARGS__
-#else
-#define MSVC2019_ONLY(...)
-#endif
-
 // hook for GCC-only code
 #if defined(__GNUC__)
   #define GCC_ONLY(...) __VA_ARGS__

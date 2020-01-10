@@ -63,8 +63,7 @@ class Scheduler {
 
   // Enqueues a task - this is implemented on the specific scheduler
   // May throw.
-  virtual bool queue(RequestLane lane, std::function<void()>,
-                     bool allowDirectHandling = false) ADB_WARN_UNUSED_RESULT = 0;
+  virtual bool queue(RequestLane lane, std::function<void()>) ADB_WARN_UNUSED_RESULT = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
