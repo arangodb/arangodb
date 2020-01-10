@@ -272,9 +272,9 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t te
           notSupported = true;
           return node;
         }
-        if (node->stringEquals("edges", false)) {
+        if (node->stringEquals(StaticStrings::GraphQueryEdges)) {
           isEdge = true;
-        } else if (node->stringEquals("vertices", false)) {
+        } else if (node->stringEquals(StaticStrings::GraphQueryVertices)) {
           isEdge = false;
         } else {
           notSupported = true;

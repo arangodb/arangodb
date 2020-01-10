@@ -252,6 +252,10 @@ std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
 
+// Graph Query Strings
+std::string const StaticStrings::GraphQueryEdges("edges");
+std::string const StaticStrings::GraphQueryVertices("vertices");
+
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
