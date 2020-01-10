@@ -1,6 +1,8 @@
 devel
 -----
 
+* Hide swagger api calls in list by default
+
 * Fix Windows client package JS installation paths.
 
 * Updated arangosync to 0.7.2.
