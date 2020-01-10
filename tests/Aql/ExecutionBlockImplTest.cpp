@@ -1303,22 +1303,73 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_i
 }
 
 // The numbers here are random, but all of them are below 1000 which is the default batch size
-static const AqlCall defaultCall{};
-static const AqlCall skipCall{.offset = 15};
-static const AqlCall softLimit{.softLimit = 35};
-static const AqlCall hardLimit{.hardLimit = 76};
-static const AqlCall fullCount{.hardLimit = 17, .fullCount = true};
-static const AqlCall skipAndSoftLimit{.offset = 16, .softLimit = 64};
-static const AqlCall skipAndHardLimit{.offset = 32, .hardLimit = 71};
-static const AqlCall skipAndHardLimitAndFullCount{.offset = 8, .hardLimit = 57, .fullCount = true};
-static const AqlCall onlyFullCount{.hardLimit = 0, .fullCount = true};
-static const AqlCall onlySkipAndCount{.offset = 16, .hardLimit = 0, .fullCount = true};
+static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
+
+static constexpr auto skipCall = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 15;
+  return res;
+};
+
+static constexpr auto softLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.softLimit = 35;
+  return res;
+};
+
+static constexpr auto hardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 76;
+  return res;
+};
+
+static constexpr auto fullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 17;
+  res.fullCount = true;
+  return res;
+};
+
+static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.softLimit = 64;
+  return res;
+};
+
+static constexpr auto skipAndHardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 32;
+  res.hardLimit = 71;
+  return res;
+};
+static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 8;
+  res.hardLimit = 57;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlyFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 0;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlySkipAndCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.hardLimit = 0;
+  res.fullCount = true;
+  return res;
+};
 
 INSTANTIATE_TEST_CASE_P(ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,
-                        ::testing::Values(defaultCall, skipCall, softLimit,
-                                          hardLimit, fullCount, skipAndSoftLimit,
-                                          skipAndHardLimit, skipAndHardLimitAndFullCount,
-                                          onlyFullCount, onlySkipAndCount));
+                        ::testing::Values(defaultCall(), skipCall(),
+                                          softLimit(), hardLimit(), fullCount(),
+                                          skipAndSoftLimit(), skipAndHardLimit(),
+                                          skipAndHardLimitAndFullCount(),
+                                          onlyFullCount(), onlySkipAndCount()));
 
 }  // namespace aql
 }  // namespace tests

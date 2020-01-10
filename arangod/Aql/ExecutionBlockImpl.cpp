@@ -1264,7 +1264,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             execState = ExecState::SHADOWROWS;
           } else {
             // We need to request more, simply send hardLimit 0 upstream
-            executorRequest = AqlCall{.hardLimit = 0};
+            executorRequest = AqlCall{};
+            executorRequest.hardLimit = 0;
             execState = ExecState::UPSTREAM;
           }
           break;
