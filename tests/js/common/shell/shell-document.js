@@ -2376,7 +2376,7 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(arr.length, 1);
       assertEqual(arr[0].a, 5);
 
-      rv = collection.insert({x : 3},{overwrite:true, returnNew:true});
+      rv = collection.insert({x : 3},{overwriteMode:"replace", returnNew:true});
       assertEqual(rv.new.x, 3);
       assertTypeOf("string", rv._id);
       assertTypeOf("string", rv._key);
@@ -2419,14 +2419,14 @@ function DatabaseDocumentSuiteReturnStuff () {
 
       update.hobbies = { "2" : "eating" };
       merged.hobbies = {...update.hobbies, ...merged.hobbies };
-      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true, keepNull:false});
+      rv = collection.insert(update,{overwriteMode: "update", returnOld:true, returnNew:true, keepNull:false});
       Object.keys(merged).forEach((key) => {
         assertEqual(merged[key], rv.new[key]);
       });
 
       update.hobbies = { "2" : "eating" };
       merged.hobbies = update.hobbies;
-      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true, mergeObjects:false});
+      rv = collection.insert(update,{overwriteMode: "update", returnOld:true, returnNew:true, mergeObjects:false});
       Object.keys(merged).forEach((key) => {
         assertEqual(merged[key], rv.new[key]);
       });

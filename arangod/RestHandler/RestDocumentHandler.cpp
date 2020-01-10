@@ -182,8 +182,19 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
-  opOptions.overwriteModeUpdate = ( _request->value(StaticStrings::OverWriteMode) == std::string("update") );
+
+  std::string const& mode = _request->value(StaticStrings::OverWriteMode);
+  using namespace std::literals::string_literals;
+  if(mode == "update"s ) {
+    opOptions.overwrite=true;
+    opOptions.overwriteModeUpdate = true;
+  } else if(mode == "replace"s ) {
+    opOptions.overwrite=true;
+  }
+  if(!opOptions.overwrite) {
+    opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
+  }
+
   opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
   opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&

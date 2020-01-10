@@ -1088,7 +1088,7 @@ function ahuacatlInsertSuite () {
       assertEqual(doc1._key, '123');
       assertEqual(doc1.name, 'ulf');
 
-      var rv2 = db._query(" INSERT { _key: '123', name: 'ulfine' } IN @@cn OPTIONS { overwrite: true } RETURN {old: OLD, new: NEW}", { "@cn": cn1 });
+      var rv2 = db._query(" INSERT { _key: '123', name: 'ulfine' } IN @@cn OPTIONS { overwriteMode: 'replace' } RETURN {old: OLD, new: NEW}", { "@cn": cn1 });
       assertEqual(1, c1.count());
       var doc2 = rv2.toArray()[0];
       assertEqual(doc2.new._key, '123');
@@ -1142,8 +1142,7 @@ function ahuacatlInsertSuite () {
         INSERT { _key: '123'
                , partner: 'ulfine'
                , drinks : { soft : 'korn' }
-               } IN @@cn OPTIONS { overwrite: true
-                                 , overwriteMode : 'update'
+               } IN @@cn OPTIONS { overwriteMode : 'update'
                                  , mergeObjects: false
                                  }
           RETURN {old: OLD, new: NEW}`
