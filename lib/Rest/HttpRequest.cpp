@@ -146,6 +146,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
 
               // HTTP protocol version is expected next
               // trim value
+#if 0
               while (e < end && *e == ' ') {
                 ++e;
               }
@@ -166,6 +167,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
                   e += versionLength;
                 }
               }
+#endif
 
               // go on until eol
               while (e < end && *e != '\n') {
