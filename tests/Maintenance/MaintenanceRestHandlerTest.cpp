@@ -43,7 +43,7 @@
 class TestResponse : public arangodb::HttpResponse {
  public:
   TestResponse()
-      : arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, nullptr){};
+      : arangodb::HttpResponse(arangodb::rest::ResponseCode::OK, 1, nullptr){};
 
 };  // class TestResponse
 

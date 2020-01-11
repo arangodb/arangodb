@@ -52,7 +52,7 @@ struct AsioSocket<SocketType::Tcp> {
   }
   
   void setNonBlocking(bool v) { socket.non_blocking(v); }
-  bool supportsMixedIO() const { return true; }
+  static constexpr bool supportsMixedIO() { return true; }
   std::size_t available(asio_ns::error_code& ec) const {
     return socket.lowest_layer().available(ec);
   }
@@ -97,7 +97,7 @@ struct AsioSocket<SocketType::Ssl> {
   }
   
   void setNonBlocking(bool v) { socket.lowest_layer().non_blocking(v); }
-  bool supportsMixedIO() const { return false; }
+  static constexpr bool supportsMixedIO() { return false; }
   std::size_t available(asio_ns::error_code& ec) const {
     return 0; // always disable
   }
@@ -105,7 +105,7 @@ struct AsioSocket<SocketType::Ssl> {
   template<typename F>
   void handshake(F&& cb) {
     // Perform SSL handshake and verify the remote host's certificate.
-    socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+    socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
     socket.async_handshake(asio_ns::ssl::stream_base::server, std::forward<F>(cb));
   }
   
@@ -151,7 +151,7 @@ struct AsioSocket<SocketType::Unix> {
   }
   
   void setNonBlocking(bool v) { socket.non_blocking(v); }
-  bool supportsMixedIO() const { return true; }
+  static constexpr bool supportsMixedIO() { return true; }
   std::size_t available(asio_ns::error_code& ec) const {
     return socket.lowest_layer().available(ec);
   }

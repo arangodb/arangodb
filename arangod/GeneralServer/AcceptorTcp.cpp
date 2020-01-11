@@ -213,11 +213,9 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
 
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
-
-    auto commTask =
-        std::make_unique<HttpCommTask<SocketType::Ssl>>(_server, std::move(info),
-                                                        std::move(as));
-    _server.registerTask(std::move(commTask));
+    
+    auto task = std::make_shared<HttpCommTask<SocketType::Ssl>>(_server, std::move(info), std::move(as));
+    _server.registerTask(std::move(task));
   };
   ptr->handshake(std::move(cb));
 }

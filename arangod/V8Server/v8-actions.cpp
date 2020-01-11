@@ -393,7 +393,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   }
 
   // set the connection info
-  const ConnectionInfo& info = request->connectionInfo();
+  ConnectionInfo const& info = request->connectionInfo();
 
   v8::Handle<v8::Object> serverArray = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(AddressKey);

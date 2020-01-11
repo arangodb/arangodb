@@ -108,7 +108,7 @@ void GeneralClientConnectionAgencyMock::handleRead(
     ? arangodb::rest::ResponseCode::OK
     : arangodb::rest::ResponseCode::BAD;
 
-  arangodb::HttpResponse resp(code, nullptr);
+  arangodb::HttpResponse resp(code, 1, nullptr);
 
   std::string body;
   if (arangodb::rest::ResponseCode::OK == code && !result->isEmpty()) {
@@ -141,7 +141,7 @@ void GeneralClientConnectionAgencyMock::handleWrite(
   bodyObj.close();
   auto body = bodyObj.slice().toString();
 
-  arangodb::HttpResponse resp(code, nullptr);
+  arangodb::HttpResponse resp(code, 1, nullptr);
   resp.setContentType(arangodb::ContentType::VPACK);
   resp.headResponse(body.size());
 
