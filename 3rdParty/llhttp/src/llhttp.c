@@ -1677,7 +1677,6 @@ static llparse_state_t llhttp__internal__run(
       if (endp - p >= 16) {
         __m128i ranges;
         __m128i input;
-        int avail;
         int match_len;
       
         /* Load input */
@@ -1961,7 +1960,6 @@ static llparse_state_t llhttp__internal__run(
       if (endp - p >= 16) {
         __m128i ranges;
         __m128i input;
-        int avail;
         int match_len;
       
         /* Load input */
@@ -2711,7 +2709,6 @@ static llparse_state_t llhttp__internal__run(
       if (endp - p >= 16) {
         __m128i ranges;
         __m128i input;
-        int avail;
         int match_len;
       
         /* Load input */

@@ -65,7 +65,6 @@ HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t cont
 
 void HttpRequest::parseHeader(char* start, size_t length) {
   char* end = start + length;
-  size_t const versionLength = strlen("http/1.x");
 
   // current line number
   int lineNum = 0;
