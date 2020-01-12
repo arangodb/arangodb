@@ -43,7 +43,7 @@ class VstCommTask final : public GeneralCommTask<T> {
               ConnectionInfo,
               std::unique_ptr<AsioSocket<T>> socket,
               fuerte::vst::VSTVersion v);
-  ~VstCommTask() noexcept;
+  ~VstCommTask();
 
  protected:
   

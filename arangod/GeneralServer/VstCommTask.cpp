@@ -64,12 +64,14 @@ VstCommTask<T>::VstCommTask(GeneralServer& server,
   _vstVersion(v) {}
 
 template<SocketType T>
-VstCommTask<T>::~VstCommTask() noexcept try {
-  ResponseItem* tmp = nullptr;
-  while (_writeQueue.pop(tmp)) {
-    delete tmp;
-  }
-} catch(...) {}
+VstCommTask<T>::~VstCommTask() {
+  try {
+    ResponseItem* tmp = nullptr;
+    while (_writeQueue.pop(tmp)) {
+      delete tmp;
+    }
+  } catch(...) {}
+}
 
 template <SocketType T>
 bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
