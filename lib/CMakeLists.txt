@@ -96,6 +96,7 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
+  ApplicationFeatures/CrashHandlerFeature.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
@@ -154,6 +155,7 @@ add_library(arango STATIC
   Basics/memory.cpp
   Basics/prime-numbers.cpp
   Basics/process-utils.cpp
+  Basics/signals.cpp
   Basics/socket-utils.cpp
   Basics/system-functions.cpp
   Basics/terminal-utils.cpp

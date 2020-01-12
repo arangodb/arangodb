@@ -36,6 +36,7 @@
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/signals.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -76,72 +77,6 @@ static char const* noRestartMessage =
 static char const* fixErrorMessage =
     "please check what causes the child process to fail and fix the error "
     "first";
-
-static char const* translateSignal(int signal) {
-  if (signal >= 128) {
-    signal -= 128;
-  }
-  switch (signal) {
-#ifdef SIGHUP
-    case SIGHUP:
-      return "SIGHUP";
-#endif
-#ifdef SIGINT
-    case SIGINT:
-      return "SIGINT";
-#endif
-#ifdef SIGQUIT
-    case SIGQUIT:
-      return "SIGQUIT";
-#endif
-#ifdef SIGKILL
-    case SIGILL:
-      return "SIGILL";
-#endif
-#ifdef SIGTRAP
-    case SIGTRAP:
-      return "SIGTRAP";
-#endif
-#ifdef SIGABRT
-    case SIGABRT:
-      return "SIGABRT";
-#endif
-#ifdef SIGBUS
-    case SIGBUS:
-      return "SIGBUS";
-#endif
-#ifdef SIGFPE
-    case SIGFPE:
-      return "SIGFPE";
-#endif
-#ifdef SIGKILL
-    case SIGKILL:
-      return "SIGKILL";
-#endif
-#ifdef SIGSEGV
-    case SIGSEGV:
-      return "SIGSEGV";
-#endif
-#ifdef SIGPIPE
-    case SIGPIPE:
-      return "SIGPIPE";
-#endif
-#ifdef SIGTERM
-    case SIGTERM:
-      return "SIGTERM";
-#endif
-#ifdef SIGCONT
-    case SIGCONT:
-      return "SIGCONT";
-#endif
-#ifdef SIGSTOP
-    case SIGSTOP:
-      return "SIGSTOP";
-#endif
-    default:
-      return "unknown";
-  }
-}
 
 static void StopHandler(int) {
   LOG_TOPIC("3ca0f", INFO, Logger::STARTUP)
@@ -216,7 +151,7 @@ void SupervisorFeature::daemonize() {
   int result = EXIT_SUCCESS;
 
   // will be reseted in SchedulerFeature
-  ArangoGlobalContext::CONTEXT->unmaskStandardSignals();
+  arangodb::signals::unmaskAllSignals();
 
   auto& server = ApplicationServer::server();
   if (!server.hasFeature<LoggerFeature>()) {
@@ -318,7 +253,7 @@ void SupervisorFeature::daemonize() {
             case 15:  // SIGTERM
               LOG_TOPIC("50f4e", INFO, Logger::STARTUP)
                   << "child process " << _clientPid << " terminated normally, exit status "
-                  << s << " (" << translateSignal(s) << "). " << noRestartMessage;
+                  << s << " (" << arangodb::signals::name(s) << "). " << noRestartMessage;
 
               done = true;
               horrible = false;
@@ -331,7 +266,7 @@ void SupervisorFeature::daemonize() {
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_TOPIC("4a3a6", ERR, Logger::STARTUP)
                     << "child process " << _clientPid << " terminated unexpectedly, signal "
-                    << s << " (" << translateSignal(s)
+                    << s << " (" << arangodb::signals::name(s)
                     << "). the child process only survived for " << t
                     << " seconds. this is lower than the minimum threshold "
                        "value of "
@@ -349,7 +284,7 @@ void SupervisorFeature::daemonize() {
               } else {
                 LOG_TOPIC("97c53", ERR, Logger::STARTUP)
                     << "child process " << _clientPid << " terminated unexpectedly, signal "
-                    << s << " (" << translateSignal(s) << "). " << restartMessage;
+                    << s << " (" << arangodb::signals::name(s) << "). " << restartMessage;
 
                 done = false;
               }

@@ -79,6 +79,7 @@
 #include "Basics/memory.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/signals.h"
 #include "Basics/socket-utils.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
@@ -4564,7 +4565,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() >= 3) {
     isTerminating = TRI_ObjectToBoolean(isolate, args[2]);
   } else {
-    isTerminating = TRI_IsDeadlySignal(signal);
+    isTerminating = arangodb::signals::isDeadly(signal);
   }
 
   ExternalId pid;

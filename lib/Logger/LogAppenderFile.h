@@ -54,7 +54,7 @@ class LogAppenderStream : public LogAppender {
   // write the log message into the already allocated output buffer
   size_t writeIntoOutputBuffer(std::string const& message);
 
-  virtual void writeLogMessage(LogLevel, char const*, size_t) = 0;
+  virtual void writeLogMessage(LogLevel level, char const* buffer, size_t len) = 0;
 
   /// @brief maximum size for reusable log buffer
   /// if the buffer exceeds this size, it will be freed after the log
@@ -83,7 +83,7 @@ class LogAppenderFile : public LogAppenderStream {
  public:
   LogAppenderFile(std::string const& filename, std::string const& filter);
 
-  void writeLogMessage(LogLevel, char const*, size_t) override final;
+  void writeLogMessage(LogLevel level, char const* buffer, size_t len) override final;
 
   std::string details() override final;
 
@@ -120,7 +120,7 @@ class LogAppenderStdStream : public LogAppenderStream {
                               size_t length, bool appendNewline);
 
  private:
-  void writeLogMessage(LogLevel, char const*, size_t) override final;
+  void writeLogMessage(LogLevel level, char const* buffer, size_t len) override final;
 };
 
 class LogAppenderStderr final : public LogAppenderStdStream {

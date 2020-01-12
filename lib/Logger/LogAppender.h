@@ -64,7 +64,6 @@ class LogAppender {
 
   virtual std::string details() = 0;
 
- public:
   void logMessage(LogLevel level, std::string const& message) {
     logMessage(level, message, 0);
   }

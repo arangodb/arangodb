@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -28,8 +29,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
+#include "Basics/signals.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
@@ -241,7 +242,7 @@ void SchedulerFeature::deinitV8Stuff() {
 // ---------------------------------------------------------------------------
 
 void SchedulerFeature::signalStuffInit() {
-  ArangoGlobalContext::CONTEXT->maskAllSignals();
+  arangodb::signals::maskAllSignals();
 
 #ifdef _WIN32
 // Windows does not support POSIX signal handling
@@ -257,7 +258,7 @@ void SchedulerFeature::signalStuffInit() {
 
   if (res < 0) {
     LOG_TOPIC("91d20", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for pipe";
+        << "cannot initialize signal handler for SIGPIPE";
   }
 #endif
 
@@ -265,7 +266,6 @@ void SchedulerFeature::signalStuffInit() {
 }
 
 void SchedulerFeature::signalStuffDeinit() {
-  // MORE COMPLETELY UNRELATED SCHEDULER CODE!?!?!?
   {
     // cancel signals
     if (_exitSignals != nullptr) {
@@ -356,15 +356,13 @@ bool CtrlHandler(DWORD eventType) {
 
 extern "C" void c_exit_handler(int signal) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
-    static bool seen = false;
+    std::atomic<bool> seen{false};
 
-    if (!seen) {
+    if (!seen.exchange(true)) {
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
           << "control-c received, beginning shut down sequence";
 
       application_features::ApplicationServer::CTRL_C.store(true);
-
-      seen = true;
     } else {
       LOG_TOPIC("11ca3", FATAL, arangodb::Logger::CLUSTER)
           << "control-c received (again!), terminating";
@@ -411,39 +409,29 @@ void SchedulerFeature::buildControlCHandler() {
     }
   }
 #else
-
   // Signal masking on POSIX platforms
   //
   // POSIX allows signals to be blocked using functions such as sigprocmask()
   // and pthread_sigmask(). For signals to be delivered, programs must ensure
   // that any signals registered using signal_set objects are unblocked in at
   // least one thread.
-  sigset_t all;
-  sigemptyset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, nullptr);
+  arangodb::signals::unmaskAllSignals();
 
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
   action.sa_handler = c_exit_handler;
 
-  int res;
-  res = sigaction(SIGINT, &action, nullptr);
-  if (res < 0) {
-    LOG_TOPIC("cc8d8", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for hang up";
+  int res = sigaction(SIGINT, &action, nullptr);
+  if (res == 0) {
+    res = sigaction(SIGQUIT, &action, nullptr);
+    if (res == 0) {
+      res = sigaction(SIGTERM, &action, nullptr);
+    }
   }
-
-  res = sigaction(SIGQUIT, &action, nullptr);
-  if (res < 0) {
-    LOG_TOPIC("78075", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for hang up";
-  }
-
-  res = sigaction(SIGTERM, &action, nullptr);
   if (res < 0) {
     LOG_TOPIC("e666b", ERR, arangodb::Logger::FIXME)
-        << "cannot initialize signal handlers for hang up";
+        << "cannot initialize signal handlers for SIGINT/SIGQUIT/SIGTERM";
   }
 #endif
 }

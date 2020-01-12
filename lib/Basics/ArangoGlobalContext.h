@@ -47,8 +47,6 @@ class ArangoGlobalContext {
   int exit(int ret);
   void installHup();
   void installSegv();
-  void maskAllSignals();
-  void unmaskStandardSignals();
   void runStartupChecks();
   bool useEventLog() { return _useEventLog; }
 

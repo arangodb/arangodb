@@ -60,8 +60,6 @@ inline void ADB_WindowsEntryFunction() {}
 inline void ADB_WindowsExitFunction(int, void*) {}
 #endif
 
-#include <regex>
-
 #if (_MSC_VER >= 1)
 // Disable a warning caused by the call to ADB_WindowsExitFunction() in
 // ~ArangoGlobalContext().
@@ -73,23 +71,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-
-/// @brief quick test of regex functionality of the underlying stdlib
-static bool supportsStdRegex() {
-  try {
-    // compile a relatively simple regex...
-    std::regex re("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
-    // ...and test whether it matches a static string
-    std::string test(" # ArangoDB");
-    if (std::regex_match(test, re)) {
-      // compiler properly supports std::regex
-      return true;
-    }
-  } catch (...) {
-  }
-  // compiler does not support std::regex properly, though pretending to
-  return false;
-}
 
 static void abortHandler(int signum) {
   TRI_PrintBacktrace();
@@ -226,33 +207,7 @@ void ArangoGlobalContext::installHup() {
 
 void ArangoGlobalContext::installSegv() { signal(SIGSEGV, abortHandler); }
 
-void ArangoGlobalContext::maskAllSignals() {
-#ifdef TRI_HAVE_POSIX_THREADS
-  sigset_t all;
-  sigfillset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, nullptr);
-#endif
-}
-
-void ArangoGlobalContext::unmaskStandardSignals() {
-#ifdef TRI_HAVE_POSIX_THREADS
-  sigset_t all;
-  sigfillset(&all);
-  pthread_sigmask(SIG_UNBLOCK, &all, nullptr);
-#endif
-}
-
 void ArangoGlobalContext::runStartupChecks() {
-  // test if this binary uses and stdlib that supports std::regex properly
-  if (!supportsStdRegex()) {
-    LOG_TOPIC("7245e", FATAL, arangodb::Logger::FIXME)
-        << "the required std::regex functionality required to run "
-        << "ArangoDB is not provided by this build. please try "
-        << "rebuilding ArangoDB in a build environment that properly "
-        << "supports std::regex";
-    FATAL_ERROR_EXIT();
-  }
-
 #ifdef __arm__
   // detect alignment settings for ARM
   {
