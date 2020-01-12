@@ -744,6 +744,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
       events::CredentialsMissing(req);
       return auth::TokenCache::Entry::Unauthenticated();
     }
+    events::Authenticated(req, AuthenticationMethod::NONE);
     return auth::TokenCache::Entry::Superuser();
   }
 
@@ -782,6 +783,11 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
     auto authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
     req.setAuthenticated(authToken.authenticated());
     req.setUser(authToken.username());  // do copy here, so that we do not invalidate the member
+    if (authToken.authenticated()) {
+      events::Authenticated(req, authMethod);
+    } else {
+      events::CredentialsBad(req, authMethod);
+    }
     return authToken;
 
   } catch (arangodb::basics::Exception const& ex) {
