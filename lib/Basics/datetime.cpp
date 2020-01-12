@@ -607,8 +607,13 @@ int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
     }
     ++s;
   }
+  if (s - dateTime.data() > 10) {
+    // more than 10 digits?? this is nothing our date/time formats support, 
+    // so we can treat this as an error
+    return 0;
+  }
   result = arangodb::NumberUtils::atoi_unchecked<int>(dateTime.data(), s);
-  return s - dateTime.data();
+  return static_cast<int>(s - dateTime.data());
 }
 
 bool parseDateTime(arangodb::velocypack::StringRef dateTime, 
