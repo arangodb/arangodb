@@ -120,19 +120,31 @@ void GeneralServer::startListening() {
   }
 }
 
+/// stop accepting new connections
 void GeneralServer::stopListening() {
   for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
     acceptor->close();
   }
+  // keep comm tasks open to allow server to send out shutdown
+  // notice to all clients
+}
 
+/// stop connections
+void GeneralServer::stopConnections() {
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
   std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-  _commTasks.clear();
+  for (auto const& pair : _commTasks) {
+    pair.second->stop();
+  }
 }
 
 void GeneralServer::stopWorking() {
   _acceptors.clear();
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    _commTasks.clear();
+  }
   _contexts.clear();  // stops threads
 }
 

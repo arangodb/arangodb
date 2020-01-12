@@ -255,6 +255,9 @@ void GeneralServerFeature::beginShutdown() {
 
 void GeneralServerFeature::stop() {
   _jobManager->deleteJobs();
+  for (auto& server : _servers) {
+    server->stopConnections();
+  }
 }
 
 void GeneralServerFeature::unprepare() {
