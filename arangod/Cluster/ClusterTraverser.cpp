@@ -47,8 +47,6 @@ ClusterTraverser::ClusterTraverser(
 }
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
-  _verticesToFetch.clear();
-  _startIdBuilder->clear();
   _startIdBuilder->add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder->slice();
 
@@ -64,12 +62,12 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  if (!vertexMatchesConditions(StringRef(vid), 0)) {
+  StringRef persId = traverserCache()->persistString(StringRef(vid));
+  if (!vertexMatchesConditions(persId, 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
-  StringRef persId = traverserCache()->persistString(StringRef(vid));
 
   _vertexGetter->reset(persId);
   if (_opts->useBreadthFirst) {
@@ -78,6 +76,14 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     _enumerator.reset(new arangodb::traverser::DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
+}
+
+void ClusterTraverser::clear() {
+  _startIdBuilder->clear();
+  traverserCache()->clear();
+
+  _vertices.clear();
+  _verticesToFetch.clear();
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge, std::vector<StringRef>& result) {
