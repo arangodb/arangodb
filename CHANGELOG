@@ -5,6 +5,8 @@ devel
 
 * Introduced AsyncAgencyComm for asynchronous internal agency requests.
 
+* Fix bug affecting spliced subqueries when memory blocks are reused.
+
 * Hide swagger api calls in list by default
 
 * Fix Windows client package JS installation paths.
@@ -142,13 +144,8 @@ devel
 
 * Allow to restore 3.5 HotBackups in 3.6.
 
-<<<<<<< HEAD
-* Fixed ArangoSearch index removes being discarded on commiting consolidation results with
-  pending removes after some segments under consolidation were already committed
-=======
 * Fixed ArangoSearch index removes being discarded on committing consolidation results with
   pending removes after some segments under consolidation were already committed
->>>>>>> origin/devel
 
 * Fixed an issue where removeServer left behind current coordinators
 
