@@ -356,7 +356,7 @@ bool CtrlHandler(DWORD eventType) {
 
 extern "C" void c_exit_handler(int signal) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
-    std::atomic<bool> seen{false};
+    static std::atomic<bool> seen{false};
 
     if (!seen.exchange(true)) {
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
