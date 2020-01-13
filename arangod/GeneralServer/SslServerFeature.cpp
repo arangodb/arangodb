@@ -55,6 +55,8 @@
 #include "Random/UniformCharacter.h"
 #include "Ssl/ssl-helper.h"
 
+#include <nghttp2/nghttp2.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -194,6 +196,23 @@ class BIOGuard {
 };
 }  // namespace
 
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg) {
+  int rv;
+
+  rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+
+  if (rv != 1) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
 asio_ns::ssl::context SslServerFeature::createSslContext() const {
   try {
     // create context
@@ -314,6 +333,10 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
     }
 
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
+    
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+      SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     return sslContext;
   } catch (std::exception const& ex) {

@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/H2CommTask.h"
 #include "GeneralServer/VstCommTask.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
@@ -229,12 +230,11 @@ HttpCommTask<T>::~HttpCommTask() noexcept = default;
 
 template <SocketType T>
 void HttpCommTask<T>::start() {
+  LOG_TOPIC("358d4", DEBUG, Logger::REQUESTS)
+    << "start H1 connection \"" << (void*)this << "\"";
+  
   asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
-    auto* me = static_cast<HttpCommTask<T>*>(self.get());
-    if (AsioSocket<T>::supportsMixedIO()) {
-      me->_protocol->setNonBlocking(true);
-    }
-    me->checkVSTPrefix();
+    static_cast<HttpCommTask<T>&>(*self.get()).checkVSTPrefix();
   });
 }
 
@@ -335,15 +335,22 @@ void HttpCommTask<T>::checkVSTPrefix() {
 }
 
 template <SocketType T>
-bool HttpCommTask<T>::checkHttpUpgrade() {
-  // TODO
-  return true;
-}
-
-template <SocketType T>
 void HttpCommTask<T>::processRequest() {
   TRI_ASSERT(_request);
   this->_protocol->timer.cancel();
+
+  // we may have gotten an Upgrade request
+  if (_parser.upgrade) {
+    bool found;
+    std::string const& h2 = _request->header("upgrade");
+    std::string const& settings = _request->header("http2-settings", found);
+    if (h2 == "h2c" && found && !settings.empty()) {
+      auto task = std::make_shared<H2CommTask<T>>(this->_server, this->_connectionInfo,
+                                                  std::move(this->_protocol));
+      task->upgrade(std::move(_request));
+      return;
+    }
+  }
 
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input

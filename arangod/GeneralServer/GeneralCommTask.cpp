@@ -38,17 +38,10 @@ template <SocketType T>
 GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
                                     ConnectionInfo info,
                                     std::unique_ptr<AsioSocket<T>> socket)
-    : CommTask(server, std::move(info)), _protocol(std::move(socket)) {}
-
-template <SocketType T>
-void GeneralCommTask<T>::start() {
-  asio_ns::post(_protocol->context.io_context, [self = shared_from_this()] {
-    auto* me = static_cast<GeneralCommTask<T>*>(self.get());
-    if (AsioSocket<T>::supportsMixedIO()) {
-      me->_protocol->setNonBlocking(true);
-    }
-    me->asyncReadSome();
-  });
+: CommTask(server, std::move(info)), _protocol(std::move(socket)) {
+  if (AsioSocket<T>::supportsMixedIO()) {
+    _protocol->setNonBlocking(true);
+  }
 }
 
 template <SocketType T>

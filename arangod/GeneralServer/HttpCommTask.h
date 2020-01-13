@@ -72,8 +72,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
  private:
   void checkVSTPrefix();
 
-  bool checkHttpUpgrade();
-
   void processRequest();
 
   // called on IO context thread

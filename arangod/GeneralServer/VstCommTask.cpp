@@ -74,6 +74,15 @@ VstCommTask<T>::~VstCommTask() {
 }
 
 template <SocketType T>
+void VstCommTask<T>::start() {
+  LOG_TOPIC("7215f", DEBUG, Logger::REQUESTS)
+    << "start VST connection \"" << (void*)this << "\"";
+  asio_ns::dispatch(this->_protocol->context.io_context, [self = this->shared_from_this()] {
+    static_cast<VstCommTask<T>&>(*self).asyncReadSome();
+  });
+}
+
+template <SocketType T>
 bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   using namespace fuerte;
   if (ec) {
