@@ -41,7 +41,7 @@ namespace network {
 
 int resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
                        network::EndpointSpec& spec) {
-  
+
   // Now look up the actual endpoint:
   if (!feature.server().hasFeature<ClusterFeature>()) {
     return TRI_ERROR_SHUTTING_DOWN;
@@ -54,9 +54,14 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
                        network::EndpointSpec& spec) {
   using namespace arangodb;
 
-  if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
+  if (dest.compare(0, 6, "tcp://", 6) == 0 || dest.compare(0, 6, "ssl://", 6) == 0) {
     spec.endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
+  }
+
+  if (dest.compare(0, 11, "http+tcp://", 11) == 0) {
+    spec.endpoint = dest.substr(5);
+    return TRI_ERROR_NO_ERROR;
   }
 
   // This sets result.shardId, result.serverId and result.endpoint,

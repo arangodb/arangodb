@@ -108,7 +108,7 @@ LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, 
 /// @brief destroy the queue.
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::~LocalTaskQueue() {}
+LocalTaskQueue::~LocalTaskQueue() = default;
 
 void LocalTaskQueue::startTask() {
   CONDITION_LOCKER(guard, _condition);

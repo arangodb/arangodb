@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,20 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_CONTEXT_H
-#define ARANGODB_REST_REQUEST_CONTEXT_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_REDIRECT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_REDIRECT_HANDLER_H 1
+
+#include "GeneralServer/RestHandler.h"
+
+#include "Rest/GeneralResponse.h"
 
 namespace arangodb {
-class RequestContext {
-  RequestContext(const RequestContext&) = delete;
-  RequestContext& operator=(const RequestContext&) = delete;
 
+class RestRedirectHandler : public rest::RestHandler {
  public:
-  RequestContext() {}
-  virtual ~RequestContext() = default;
+  template<typename T>
+  explicit RestRedirectHandler(application_features::ApplicationServer& server,
+                           GeneralRequest* request, GeneralResponse* response, T newPrefix)
+    : RestHandler(server, request, response), _newPrefix(std::forward<T>(newPrefix)) {};
+
+  RestStatus execute() override;
+  char const* name() const override { return "RestRedirectHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  void handleError(basics::Exception const&) override;
+ private:
+  std::string _newPrefix;
 };
 }  // namespace arangodb
 
