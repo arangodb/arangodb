@@ -564,7 +564,10 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   bool before(ExecutionNode* node) override final {
     if (node->getType() == ExecutionNode::SCATTER ||
         node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE) {
+        node->getType() == ExecutionNode::DISTRIBUTE ||
+        node->getType() == ExecutionNode::TRAVERSAL ||
+        node->getType() == ExecutionNode::SHORTEST_PATH ||
+        node->getType() == ExecutionNode::K_SHORTEST_PATHS) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
