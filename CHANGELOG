@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix #10852. Nested spliced subqueries could return wrong results in some cases
+  when some of the concerned subqueries did not return any values.
+
 * Fix bug affecting spliced subqueries when memory blocks are reused.
 
 * Hide swagger api calls in list by default
