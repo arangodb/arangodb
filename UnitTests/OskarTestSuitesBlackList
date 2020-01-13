@@ -6,6 +6,7 @@ upgrade_data_3.4.*
 dump_multiple
 permissions
 server_permissions
+server_parameters
 audit_client
 audit_server
 resilience_transactions
