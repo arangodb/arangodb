@@ -844,7 +844,7 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
   // do a bit of normalization here, so that attribute accesses are normally
   // on the left side of a comparison. this may allow future simplifications
   // of code that check filter conditions
-  // note that there will still be cases in which both sides of the comparsion
+  // note that there will still be cases in which both sides of the comparison
   // contain an attribute access, e.g.  doc.value1 == doc.value2
   bool swap = false;
   if (type == NODE_TYPE_OPERATOR_BINARY_EQ && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
