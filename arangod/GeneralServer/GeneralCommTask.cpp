@@ -53,7 +53,7 @@ void GeneralCommTask<T>::start() {
 
 template <SocketType T>
 void GeneralCommTask<T>::stop() {
-  asio_ns::post(_protocol->context.io_context, [self = shared_from_this()] {
+  asio_ns::dispatch(_protocol->context.io_context, [self = shared_from_this()] {
     static_cast<GeneralCommTask<T>&>(*self).close(asio_ns::error_code());
   });
 }
@@ -67,14 +67,18 @@ void GeneralCommTask<T>::close(asio_ns::error_code const& err) {
   
   if (_protocol) {
     _protocol->timer.cancel();
-    asio_ns::error_code ec;
-    _protocol->shutdown(ec);
-    if (ec) {
-      LOG_TOPIC("2c6b4", ERR, arangodb::Logger::REQUESTS)
-          << "error shutting down asio socket: '" << ec.message() << "'";
-    }
+    LOG_DEVEL << "pre shutdown";
+    _protocol->shutdown([this, self(shared_from_this())](asio_ns::error_code ec) {
+      LOG_DEVEL << "post shutdown";
+      if (ec) {
+        LOG_TOPIC("2c6b4", ERR, arangodb::Logger::REQUESTS)
+            << "error shutting down asio socket: '" << ec.message() << "'";
+      }
+      _server.unregisterTask(this);
+    });
+  } else {
+    _server.unregisterTask(this);  // will delete us
   }
-  _server.unregisterTask(this);  // will delete us
 }
 
 /// set / reset connection timeout

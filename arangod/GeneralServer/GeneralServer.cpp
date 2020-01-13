@@ -125,8 +125,6 @@ void GeneralServer::stopListening() {
   for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
     acceptor->close();
   }
-  // keep comm tasks open to allow server to send out shutdown
-  // notice to all clients
 }
 
 /// stop connections
@@ -141,10 +139,18 @@ void GeneralServer::stopConnections() {
 
 void GeneralServer::stopWorking() {
   _acceptors.clear();
-  {
-    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-    _commTasks.clear();
+  std::unique_lock<std::recursive_mutex> guard(_tasksLock);
+  auto now = std::chrono::system_clock::now();
+  while (!_commTasks.empty()) {  // CommTasks should deregister themselves
+    guard.unlock();
+    std::this_thread::yield();
+    if ((std::chrono::system_clock::now() - now) < std::chrono::seconds(3)) {
+      guard.lock();
+      break;
+    }
+    guard.lock();
   }
+  _commTasks.clear();
   _contexts.clear();  // stops threads
 }
 
