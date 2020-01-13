@@ -28,6 +28,7 @@
 #include <memory>
 #include <mutex>
 
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>

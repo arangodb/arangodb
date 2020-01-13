@@ -3,9 +3,13 @@ devel
 
 * Removed old AgencyComm.
 
+* Now clearing an internal map inside the traverser engine correctly.
+
 * Ported `/_admin/cluster*` API to C++.
 
 * Introduced AsyncAgencyComm for asynchronous internal agency requests.
+
+* Fix bug affecting spliced subqueries when memory blocks are reused.
 
 * Hide swagger api calls in list by default
 

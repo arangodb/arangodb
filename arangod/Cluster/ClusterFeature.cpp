@@ -25,6 +25,7 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
@@ -123,47 +124,34 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "address or load balancer, optional)",
                      new StringParameter(&_myAdvertisedEndpoint));
 
-  options
-      ->addOption("--cluster.write-concern",
-                  "write concern used for writes to new collections",
-                  new UInt32Parameter(&_writeConcern))
-      .setIntroducedIn(30600);
+  options->addOption("--cluster.write-concern",
+                     "write concern used for writes to new collections",
+                     new UInt32Parameter(&_writeConcern)).setIntroducedIn(30600);
+
 
   options->addOption("--cluster.system-replication-factor",
                      "default replication factor for system collections",
                      new UInt32Parameter(&_systemReplicationFactor));
 
-  options
-      ->addOption("--cluster.default-replication-factor",
-                  "default replication factor for non-system collections",
-                  new UInt32Parameter(&_defaultReplicationFactor))
-      .setIntroducedIn(30600);
+  options->addOption("--cluster.default-replication-factor",
+                     "default replication factor for non-system collections",
+                     new UInt32Parameter(&_defaultReplicationFactor)).setIntroducedIn(30600);
 
-  options
-      ->addOption("--cluster.min-replication-factor",
-                  "minimum replication factor for new collections",
-                  new UInt32Parameter(&_minReplicationFactor))
-      .setIntroducedIn(30600);
+  options->addOption("--cluster.min-replication-factor",
+                     "minimum replication factor for new collections",
+                     new UInt32Parameter(&_minReplicationFactor)).setIntroducedIn(30600);
 
-  options
-      ->addOption(
-          "--cluster.max-replication-factor",
-          "maximum replication factor for new collections (0 = unrestricted)",
-          new UInt32Parameter(&_maxReplicationFactor))
-      .setIntroducedIn(30600);
+  options->addOption("--cluster.max-replication-factor",
+                     "maximum replication factor for new collections (0 = unrestricted)",
+                     new UInt32Parameter(&_maxReplicationFactor)).setIntroducedIn(30600);
 
-  options
-      ->addOption("--cluster.max-number-of-shards",
-                  "maximum number of shards when creating new collections (0 = "
-                  "unrestricted)",
-                  new UInt32Parameter(&_maxNumberOfShards))
-      .setIntroducedIn(30501);
+  options->addOption("--cluster.max-number-of-shards",
+                     "maximum number of shards when creating new collections (0 = unrestricted)",
+                     new UInt32Parameter(&_maxNumberOfShards)).setIntroducedIn(30501);
 
-  options
-      ->addOption("--cluster.force-one-shard",
-                  "force one-shard mode for all new collections",
-                  new BooleanParameter(&_forceOneShard))
-      .setIntroducedIn(30600);
+  options->addOption("--cluster.force-one-shard",
+                     "force one-shard mode for all new collections",
+                     new BooleanParameter(&_forceOneShard)).setIntroducedIn(30600);
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
@@ -218,15 +206,13 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   TRI_ASSERT(_minReplicationFactor > 0);
-  if (!options->processingResult().touched(
-          "cluster.default-replication-factor")) {
+  if (!options->processingResult().touched("cluster.default-replication-factor")) {
     // no default replication factor set. now use the minimum value, which is
     // guaranteed to be at least 1
     _defaultReplicationFactor = _minReplicationFactor;
   }
 
-  if (!options->processingResult().touched(
-          "cluster.system-replication-factor")) {
+  if (!options->processingResult().touched("cluster.system-replication-factor")) {
     // no system replication factor set. now make sure it is between min and max
     if (_systemReplicationFactor > _maxReplicationFactor) {
       _systemReplicationFactor = _maxReplicationFactor;
@@ -251,7 +237,8 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if (_defaultReplicationFactor > 0 && _maxReplicationFactor > 0 &&
+  if (_defaultReplicationFactor > 0 &&
+      _maxReplicationFactor > 0 &&
       _defaultReplicationFactor > _maxReplicationFactor) {
     LOG_TOPIC("5af7e", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.default-replication-factor`. Must not "
@@ -259,14 +246,16 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if (_defaultReplicationFactor > 0 && _defaultReplicationFactor < _minReplicationFactor) {
+  if (_defaultReplicationFactor > 0 &&
+      _defaultReplicationFactor < _minReplicationFactor) {
     LOG_TOPIC("b9aea", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.default-replication-factor`. Must not "
            "be lower than `--cluster.min-replication-factor`";
     FATAL_ERROR_EXIT();
   }
 
-  if (_systemReplicationFactor > 0 && _maxReplicationFactor > 0 &&
+  if (_systemReplicationFactor > 0 &&
+      _maxReplicationFactor > 0 &&
       _systemReplicationFactor > _maxReplicationFactor) {
     LOG_TOPIC("6cf0c", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.system-replication-factor`. Must not "
@@ -274,7 +263,9 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if (_systemReplicationFactor > 0 && _systemReplicationFactor < _minReplicationFactor) {
+
+  if (_systemReplicationFactor > 0 &&
+      _systemReplicationFactor < _minReplicationFactor) {
     LOG_TOPIC("dfc38", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.system-replication-factor`. Must not "
            "be lower than `--cluster.min-replication-factor`";
@@ -436,7 +427,6 @@ void ClusterFeature::prepare() {
       FATAL_ERROR_EXIT();
     }
 
-    //    AgencyCommHelper::MANAGER->addEndpoint(unified);
     AsyncAgencyCommManager::INSTANCE->addEndpoint(unified);
   }
 
@@ -534,9 +524,12 @@ void ClusterFeature::start() {
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
       << "Cluster feature is turned on"
       << (_forceOneShard ? " with one-shard mode" : "")
-      << ". Agency version: " << version << ", Agency endpoints: " << endpoints
-      << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
-      << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
+      << ". Agency version: " << version
+      << ", Agency endpoints: " << endpoints
+      << ", server id: '" << myId
+      << "', internal endpoint / address: " << _myEndpoint
+      << "', advertised endpoint: " << _myAdvertisedEndpoint
+      << ", role: " << role;
 
   AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
 
@@ -628,6 +621,7 @@ void ClusterFeature::unprepare() {
                                              AgencySimpleOperationType::DELETE_OP);
   unreg.operations.emplace_back("Current/Version", AgencySimpleOperationType::INCREMENT_OP);
 
+
   constexpr int maxTries = 10;
   int tries = 0;
   while (true) {
@@ -636,23 +630,25 @@ void ClusterFeature::unprepare() {
       break;
     }
 
-    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE || !res.connected()) {
-      LOG_TOPIC("1776b", INFO, Logger::CLUSTER)
-          << "unable to unregister server from agency, because agency is in "
-             "shutdown";
+    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE ||
+        !res.connected()) {
+      LOG_TOPIC("1776b", INFO, Logger::CLUSTER) <<
+        "unable to unregister server from agency, because agency is in shutdown";
       break;
     }
 
     if (++tries < maxTries) {
       // try again
       LOG_TOPIC("c7af5", ERR, Logger::CLUSTER)
-          << "unable to unregister server from agency "
-          << "(attempt " << tries << " of " << maxTries << "): " << res.errorMessage();
+        << "unable to unregister server from agency "
+        << "(attempt " << tries << " of " << maxTries << "): "
+        << res.errorMessage();
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     } else {
       // give up
-      LOG_TOPIC("c8fc4", ERR, Logger::CLUSTER)
-          << "giving up unregistering server from agency: " << res.errorMessage();
+      LOG_TOPIC("c8fc4", ERR, Logger::CLUSTER) <<
+        "giving up unregistering server from agency: "
+        << res.errorMessage();
       break;
     }
   }
@@ -664,7 +660,6 @@ void ClusterFeature::unprepare() {
   }
 
   _asyncAgencyCommPool.reset();
-
   _clusterInfo->cleanup();
 }
 
