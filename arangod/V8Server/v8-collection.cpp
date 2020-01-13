@@ -1890,23 +1890,30 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       options.waitForSync =
           TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
     }
+
     TRI_GET_GLOBAL_STRING(OverwriteKey);
-    if (TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
+    if (!options.overwrite && TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
       options.overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(OverwriteKey));
     }
+
     TRI_GET_GLOBAL_STRING(OverwriteModeKey);
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
-      if (TRI_ObjectToString(isolate, optionsObject->Get(OverwriteModeKey)) == "update" ) {
+      auto mode = TRI_ObjectToString(isolate, optionsObject->Get(OverwriteModeKey));
+      if (mode == "update" ) {
         options.overwriteModeUpdate = true;
-      }
-      TRI_GET_GLOBAL_STRING(KeepNullKey);
-      if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
-        options.keepNull = TRI_ObjectToBoolean(isolate, optionsObject->Get(KeepNullKey));
-      }
-      TRI_GET_GLOBAL_STRING(MergeObjectsKey);
-      if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
-        options.mergeObjects =
-            TRI_ObjectToBoolean(isolate, optionsObject->Get(MergeObjectsKey));
+        options.overwrite = true;
+
+        TRI_GET_GLOBAL_STRING(KeepNullKey);
+        if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
+          options.keepNull = TRI_ObjectToBoolean(isolate, optionsObject->Get(KeepNullKey));
+        }
+        TRI_GET_GLOBAL_STRING(MergeObjectsKey);
+        if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
+          options.mergeObjects =
+              TRI_ObjectToBoolean(isolate, optionsObject->Get(MergeObjectsKey));
+        }
+      } else if (mode == "replace") {
+        options.overwrite = true;
       }
     }
 

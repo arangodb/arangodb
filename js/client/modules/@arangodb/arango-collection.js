@@ -983,14 +983,14 @@ ArangoCollection.prototype.save =
 
     if (options.overwriteMode) {
       url = appendOverwriteModeParameter(url, options.overwriteMode);
-    }
 
-    if (options.keepNull) {
-      url = appendBoolParameter(url, 'keepNull', options.keepNull);
-    }
+      if (options.keepNull) {
+        url = appendBoolParameter(url, 'keepNull', options.keepNull);
+      }
 
-    if (options.mergeObjects !== undefined) {
-      url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects, true);
+      if (options.mergeObjects !== undefined) {
+        url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects, true);
+      }
     }
 
     let headers = {};
