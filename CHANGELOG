@@ -1,6 +1,10 @@
 devel
 -----
 
+* Ported `/_admin/cluster*` API to C++.
+
+* Introduced AsyncAgencyComm for asynchronous internal agency requests.
+
 * Fix bug affecting spliced subqueries when memory blocks are reused.
 
 * Hide swagger api calls in list by default
@@ -24,7 +28,7 @@ devel
   of HTTP 403.
 
 * Changed HTTP return code for an error case in /_api/cluster/agency-dump REST API.
-  Now, if the API is called on a server type other than coordinator, it will return 
+  Now, if the API is called on a server type other than coordinator, it will return
   HTTP 501 instead of HTTP 403.
 
 * Fixed undefined behavior on node delete.
@@ -121,8 +125,8 @@ devel
 
 * Added startup option `--query.optimizer-rules` to selectively enable or disable
   optimizer rules by default. The option can be specified multiple times, and takes
-  the same input as the query option of the same name. 
-  
+  the same input as the query option of the same name.
+
   For example, to turn off the rule _use-indexes-for-sort_, use
 
       --query.optimizer-rules "-use-indexes-for-sort"
@@ -133,15 +137,15 @@ devel
 * Allow the AQL query optimizer to remove the DistributeNodes for several data-modification
   queries. So far, only REMOVE queries benefitted. Now the optimization can also be
   applied for REPLACE and UPDATE queries in case the query does not use LIMIT and
-  there is no further cluster-internal communication after the REMOVE, REPLACE or UPDATE 
-  node. 
+  there is no further cluster-internal communication after the REMOVE, REPLACE or UPDATE
+  node.
 
 * Include ArangoSearch data in HotBackups.
 
 * Allow to restore 3.5 HotBackups in 3.6.
 
 * Fixed ArangoSearch index removes being discarded on committing consolidation results with
-  pending removes after some segments under consolidation were already committed 
+  pending removes after some segments under consolidation were already committed
 
 * Fixed an issue where removeServer left behind current coordinators
 
@@ -365,9 +369,9 @@ devel
 * Fixed internal issue #4407: remove storage engine warning.
 
 * Added support for TLS 1.3 for the arangod server and the client tools.
-  
+
   The arangod server can be started with option `--ssl.protocol 6` to make it require
-  TLS 1.3 for incoming client connections. The server can be started with option 
+  TLS 1.3 for incoming client connections. The server can be started with option
   `--ssl.protocol 5` to make it require TLS 1.2, as in previous versions of arangod.
 
   The default TLS protocol for the arangod server is now generic TLS, which will allow
