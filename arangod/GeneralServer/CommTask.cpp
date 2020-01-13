@@ -597,10 +597,6 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   if (vc->databaseAuthLevel() == auth::Level::NONE/* && !StringUtils::isPrefix(path, ApiUser)*/) {
     result = Flow::Abort;
     LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
-
-//    if (userAuthenticated) {  // hack to not confuse RestHandlers
-//      req.setAuthenticated(false);
-//    }
   }
 
   // we need to check for some special cases, where users may be allowed

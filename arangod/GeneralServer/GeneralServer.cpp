@@ -144,7 +144,7 @@ void GeneralServer::stopWorking() {
   while (!_commTasks.empty()) {  // CommTasks should deregister themselves
     guard.unlock();
     std::this_thread::yield();
-    if ((std::chrono::system_clock::now() - now) < std::chrono::seconds(3)) {
+    if ((std::chrono::system_clock::now() - now) > std::chrono::seconds(3)) {
       guard.lock();
       break;
     }

@@ -144,29 +144,6 @@ void HttpRequest::parseHeader(char* start, size_t length) {
               valueEnd = e;
 
               // HTTP protocol version is expected next
-              // trim value
-#if 0
-              while (e < end && *e == ' ') {
-                ++e;
-              }
-
-              int version = 0;
-              if ((size_t)(end - e) > versionLength) {
-                if ((e[0] == 'h' || e[0] == 'H') && (e[1] == 't' || e[1] == 'T') &&
-                    (e[2] == 't' || e[2] == 'T') && (e[3] == 'p' || e[3] == 'P') &&
-                    e[4] == '/' && e[5] == '1' && e[6] == '.') {
-                  if (e[7] == '1') {
-                    version = 11;
-                  } else if (e[7] == '0') {
-                    version = 10;
-                  } else {
-                    version = 0;
-                  }
-
-                  e += versionLength;
-                }
-              }
-#endif
 
               // go on until eol
               while (e < end && *e != '\n') {
@@ -705,12 +682,11 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(value != nullptr);
 
-//  if (keyLength == StaticStrings::ContentLength.size() &&
-//      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) == 0) {  // 14 = strlen("content-length")
-//    _contentLength = NumberUtils::atoi_zero<int64_t>(value, value + valueLength);
-//    // do not store this header
-//    return;
-//  }
+  if (keyLength == StaticStrings::ContentLength.size() &&
+      memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) == 0) {  // 14 = strlen("content-length")
+    // do not store this header
+    return;
+  }
 
   if (keyLength == StaticStrings::Accept.size() &&
       valueLength == StaticStrings::MimeTypeVPack.size() &&

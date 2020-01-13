@@ -67,11 +67,9 @@ void GeneralCommTask<T>::close(asio_ns::error_code const& err) {
   
   if (_protocol) {
     _protocol->timer.cancel();
-    LOG_DEVEL << "pre shutdown";
     _protocol->shutdown([this, self(shared_from_this())](asio_ns::error_code ec) {
-      LOG_DEVEL << "post shutdown";
       if (ec) {
-        LOG_TOPIC("2c6b4", ERR, arangodb::Logger::REQUESTS)
+        LOG_TOPIC("2c6b4", WARN, arangodb::Logger::REQUESTS)
             << "error shutting down asio socket: '" << ec.message() << "'";
       }
       _server.unregisterTask(this);

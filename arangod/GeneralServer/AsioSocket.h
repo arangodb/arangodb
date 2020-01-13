@@ -119,11 +119,6 @@ struct AsioSocket<SocketType::Ssl> {
   template<typename F>
   void shutdown(F&& cb) {
     if (socket.lowest_layer().is_open()) {
-//#ifndef _WIN32
-//      socket.lowest_layer().cancel(ec);
-//#endif
-//      if (!ec) {
-//      }
       socket.async_shutdown([this, cb(std::forward<F>(cb))]
                             (asio_ns::error_code const& ec) {
 #ifndef _WIN32
