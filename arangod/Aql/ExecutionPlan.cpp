@@ -741,7 +741,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
           if(value->isTrue()) {
             options.overwrite = true;
           }
-        } else if (name == "overwriteMode") {
+        } else if (name == "overwriteMode" && value->isStringValue()) {
           auto ref = value->getStringRef();
           if(ref == "update") {
             options.overwrite = true;

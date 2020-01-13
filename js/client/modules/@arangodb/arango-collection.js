@@ -145,17 +145,13 @@ let appendOverwriteModeParameter = function (url, mode) {
 // / @brief append some boolean parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-let appendBoolParameter = function (url, name, val, when_undefined) {
+let appendBoolParameter = function (url, name, val) {
   if (url.indexOf('?') === -1) {
     url += '?';
   }else {
     url += '&';
   }
-  if( val === undefined && when_undefined === true ) {
-    url += name + '=true';
-  } else {
-    url += name + (val ? '=true' : '=false');
-  }
+  url += name + (val ? '=true' : '=false');
   return url;
 };
 
@@ -989,7 +985,7 @@ ArangoCollection.prototype.save =
       }
 
       if (options.mergeObjects !== undefined) {
-        url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects, true);
+        url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects);
       }
     }
 

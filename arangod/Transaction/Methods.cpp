@@ -1621,10 +1621,10 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       TRI_ASSERT(updateFollowers == nullptr);
       if (options.overwriteModeUpdate) {
         res = collection->update(this, value, docResult, options,
-                                  /*lock*/ false, prevDocResult);
+                                 /*lock*/ false, prevDocResult);
       } else {
-      res = collection->replace(this, value, docResult, options,
-                                /*lock*/ false, prevDocResult);
+        res = collection->replace(this, value, docResult, options,
+                                  /*lock*/ false, prevDocResult);
       }
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
       didReplace = true;
@@ -3173,7 +3173,13 @@ Future<Result> Methods::replicateOperations(
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
       reqOpts.param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
-      reqOpts.param(StaticStrings::OverWriteMode, (options.overwriteModeUpdate ? "update" : "replace"));
+      if(options.overwrite) {
+        reqOpts.param(StaticStrings::OverWriteMode, (options.overwriteModeUpdate ? "update" : "replace"));
+        if(options.overwriteModeUpdate) {
+          reqOpts.param(StaticStrings::KeepNullString, options.keepNull ? "true" : "false");
+          reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
+        }
+      }
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;

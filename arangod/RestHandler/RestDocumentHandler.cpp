@@ -186,10 +186,10 @@ RestStatus RestDocumentHandler::insertDocument() {
   std::string const& mode = _request->value(StaticStrings::OverWriteMode);
   using namespace std::literals::string_literals;
   if(mode == "update"s ) {
-    opOptions.overwrite=true;
+    opOptions.overwrite = true;
     opOptions.overwriteModeUpdate = true;
   } else if(mode == "replace"s ) {
-    opOptions.overwrite=true;
+    opOptions.overwrite = true;
   }
   if(!opOptions.overwrite) {
     opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
