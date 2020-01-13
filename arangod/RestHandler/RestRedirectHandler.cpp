@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,21 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_REQUEST_CONTEXT_H
-#define ARANGODB_REST_REQUEST_CONTEXT_H 1
+#include "RestRedirectHandler.h"
+#include "Logger/LogMacros.h"
 
-namespace arangodb {
-class RequestContext {
-  RequestContext(const RequestContext&) = delete;
-  RequestContext& operator=(const RequestContext&) = delete;
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::rest;
 
- public:
-  RequestContext() {}
-  virtual ~RequestContext() = default;
-};
-}  // namespace arangodb
+RestStatus RestRedirectHandler::execute() {
 
-#endif
+  std::string const& url = request()->fullUrl();
+  std::string prefix = request()->prefix();
+  if (prefix.empty()) {
+    prefix = request()->requestPath();
+  }
+
+  std::string newUrl = _newPrefix + url.substr(prefix.size());
+  response()->setHeader(StaticStrings::Location, newUrl);
+  response()->setResponseCode(ResponseCode::PERMANENT_REDIRECT);
+  return RestStatus::DONE;
+}
+
+void RestRedirectHandler::handleError(basics::Exception const&) {}
