@@ -24,7 +24,7 @@
 #define ARANGOD_CLUSTER_PATHCOMPONENT_H
 
 #include <functional>
-#include <iostream>
+#include <iosfwd>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -164,9 +164,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
   V const _value;
 };
 
-inline std::ostream& operator<<(std::ostream& stream, Path const& path) {
-  return path.toStream(stream);
-}
+std::ostream& operator<<(std::ostream& stream, Path const& path);
 
 }  // namespace paths
 }  // namespace cluster

@@ -127,10 +127,27 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan, velocypack::Slice c
 // -----------------------------------------------------------------------------
 // --SECTION--                            helpers for IResearchViewNode::Options
 // -----------------------------------------------------------------------------
+namespace {
+  std::map<std::string, arangodb::aql::ConditionOptimization> const conditionOptimizationTypeMap = {
+    {"auto", arangodb::aql::ConditionOptimization::Auto},
+    {"nodnf", arangodb::aql::ConditionOptimization::NoDNF},
+    {"noneg", arangodb::aql::ConditionOptimization::NoNegation},
+    {"none", arangodb::aql::ConditionOptimization::None}
+  };
+}
+
 
 void toVelocyPack(velocypack::Builder& builder, IResearchViewNode::Options const& options) {
   VPackObjectBuilder objectScope(&builder);
   builder.add("waitForSync", VPackValue(options.forceSync));
+  {
+    for (auto const& r : conditionOptimizationTypeMap) {
+      if (r.second == options.conditionOptimization) {
+        builder.add("conditionOptimization", VPackValue(r.first));
+        break;
+      }
+    }
+  }
 
   if (!options.restrictSources) {
     builder.add("collections", VPackValue(VPackValueType::Null));
@@ -167,6 +184,24 @@ bool fromVelocyPack(velocypack::Slice optionsSlice, IResearchViewNode::Options& 
       }
 
       options.forceSync = optionSlice.getBool();
+    }
+  }
+
+  // conditionOptimization
+  {
+    auto const conditionOptimizationSlice = optionsSlice.get("conditionOptimization");
+    if (!conditionOptimizationSlice.isNone() && !conditionOptimizationSlice.isNull()) {
+      if (!conditionOptimizationSlice.isString()) {
+        return false;
+      }
+      VPackValueLength l;
+      auto type = conditionOptimizationSlice.getString(l);
+      irs::string_ref typeStr(type, l);
+      auto conditionTypeIt = conditionOptimizationTypeMap.find(typeStr);
+      if (conditionTypeIt == conditionOptimizationTypeMap.end()) {
+        return false;
+      }
+      options.conditionOptimization = conditionTypeIt->second;
     }
   }
 
@@ -328,6 +363,23 @@ bool parseOptions(aql::Query& query, LogicalView const& view, aql::AstNode const
 
            options.noMaterialization = value.getBoolValue();
            return true;
+       }},
+       // cppcheck-suppress constStatement
+       {"conditionOptimization", [](aql::Query& /*query*/, LogicalView const& /*view*/,
+                         aql::AstNode const& value,
+                         IResearchViewNode::Options& options, std::string& error) {
+         if (!value.isValueType(aql::VALUE_TYPE_STRING)) {
+           error = "string value expected for option 'conditionOptimization'";
+           return false;
+         }
+         auto type = value.getString();
+         auto conditionTypeIt = conditionOptimizationTypeMap.find(type);
+         if (conditionTypeIt == conditionOptimizationTypeMap.end()) {
+           error = "unknown value '" + type + "' for option 'conditionOptimization'";
+           return false;
+         }
+         options.conditionOptimization = conditionTypeIt->second;
+         return true;
        }}};
 
   if (!optionsNode) {

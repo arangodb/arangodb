@@ -24,17 +24,22 @@
 #define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H 1
 
 #include "Basics/Common.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Serializable.h>
 #include <velocypack/Slice.h>
+#include <optional>
 
 namespace arangodb {
 
+enum class ClusterCollectionCreationState { INIT, FAILED, DONE };
+
 struct ClusterCollectionCreationInfo {
-  enum State { INIT, FAILED, DONE };
-  ClusterCollectionCreationInfo(std::string const cID, uint64_t shards,
+  ClusterCollectionCreationInfo(std::string cID, uint64_t shards,
                                 uint64_t replicationFactor, uint64_t writeConcern,
-                                bool waitForRep, velocypack::Slice const& slice);
+                                bool waitForRep, velocypack::Slice const& slice,
+                                std::string coordinatorId, RebootId rebootId);
 
   std::string const collectionID;
   uint64_t numberOfShards;
@@ -43,7 +48,25 @@ struct ClusterCollectionCreationInfo {
   bool waitForReplication;
   velocypack::Slice const json;
   std::string name;
-  State state;
+  ClusterCollectionCreationState state;
+
+ class CreatorInfo : public velocypack::Serializable {
+   public:
+    CreatorInfo(std::string coordinatorId, RebootId rebootId);
+
+    void toVelocyPack(velocypack::Builder& builder) const override;
+
+    virtual ~CreatorInfo() = default;
+
+    RebootId rebootId() const noexcept;
+    std::string const& coordinatorId() const noexcept;
+
+  private:
+   std::string _coordinatorId;
+   RebootId _rebootId;
+
+ };
+  std::optional<CreatorInfo> creator;
 
  public:
   velocypack::Slice isBuildingSlice() const;
