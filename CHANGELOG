@@ -3,6 +3,10 @@ devel
 
 * Added read-write-locks for parallel move shard operations.
 
+* Fix bug affecting spliced subqueries when memory blocks are reused.
+
+* Hide swagger api calls in list by default
+
 * Fix Windows client package JS installation paths.
 
 * Updated arangosync to 0.7.2.
