@@ -46,7 +46,7 @@ constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
 constexpr char const* TARGET_HOTBACKUP = "Target/HotBackup";
 
-constexpr char const* PREC_IS_READ_LOCKED = "is-read-lock";
+constexpr char const* PREC_IS_READ_LOCKED = "is-read-locked";
 constexpr char const* PREC_IS_WRITE_LOCKED = "is-write-locked";
 constexpr char const* PREC_CAN_READ_LOCK = "can-read-lock";
 constexpr char const* PREC_CAN_WRITE_LOCK = "can-write-lock";
