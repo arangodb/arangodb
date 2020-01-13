@@ -47,7 +47,7 @@ class SameThreadAsserter {
 #else
 
   SameThreadAsserter() {}
-  ~SameThreadAsserter() {}
+  ~SameThreadAsserter() = default;
 
 #endif
 };

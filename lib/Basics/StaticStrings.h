@@ -101,9 +101,6 @@ class StaticStrings {
   static std::string const DatabaseId;
   static std::string const DatabaseName;
   static std::string const DatabaseOptions;
-  static std::string const DatabaseCoordinator;
-  static std::string const DatabaseCoordinatorRebootId;
-  static std::string const DatabaseIsBuilding;
   static std::string const Properties;
 
   // LogicalDataSource definition fields
@@ -245,10 +242,14 @@ class StaticStrings {
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
 
+  // generic attribute names
+  static std::string const AttrCoordinator;
+  static std::string const AttrCoordinatorRebootId;
+  static std::string const AttrIsBuilding;
+
   // misc strings
   static std::string const LastValue;
   static std::string const checksumFileJs;
-  static std::string const IsBuilding;
   static std::string const RebootId;
   static std::string const New;
   static std::string const Old;
