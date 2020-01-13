@@ -576,6 +576,8 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
     message(FATAL_ERROR "ArangoDB Requires at least MSVC 2017 update 15.8!")
   endif()
 
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /std:c++17")
+
   # MSVC2018.8 requires the following define
   add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
 endif()
@@ -833,7 +835,7 @@ endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-  
+
 if (IPO_ENABLED)
   add_definitions("-DARANGODB_USE_IPO=1")
 endif()
