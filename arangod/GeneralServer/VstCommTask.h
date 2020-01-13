@@ -45,8 +45,6 @@ class VstCommTask final : public GeneralCommTask<T> {
               fuerte::vst::VSTVersion v);
   ~VstCommTask();
 
-  bool allowDirectHandling() const override { return false; }
-
  protected:
 
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,

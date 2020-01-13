@@ -149,6 +149,38 @@ function lateDocumentMaterializationArangoSearch3RuleTestSuite () {
       });
       assertEqual(0, expectedKeys.size);
     },
+    testQueryResultsWithTwoDifferentAccessesToCommonFieldOfColumn() {
+      let query = "FOR d IN " + vn + " LET c = d.obj.b SORT d.obj.b.b1, c LIMIT 2 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertEqual(1, plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].viewValuesVars.length);
+      let result = AQL_EXECUTE(query);
+      assertEqual(2, result.json.length);
+      let expectedKeys = new Set(['c0', 'c_0']);
+      result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc._key));
+        expectedKeys.delete(doc._key);
+      });
+      assertEqual(0, expectedKeys.size);
+    },
+    testQueryResultsWithTwoDifferentAccessesToSingleColumn() {
+      let query = "FOR d IN " + vn + " FILTER d.obj.d.d1 != d.obj.e.e1 SORT d.obj.d.d1 LIMIT 2 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertEqual(1, plan.nodes.filter(obj => {
+        return obj.type === "EnumerateViewNode";
+      })[0].viewValuesVars.length);
+      let result = AQL_EXECUTE(query);
+      assertEqual(2, result.json.length);
+      let expectedKeys = new Set(['c0', 'c_0']);
+      result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc._key));
+        expectedKeys.delete(doc._key);
+      });
+      assertEqual(0, expectedKeys.size);
+    }
   };
 }
 

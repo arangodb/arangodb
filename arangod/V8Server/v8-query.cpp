@@ -90,7 +90,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a list of document idenfifier
+  // first and only argument should be a list of document identifier
   if (args.Length() != 1) {
     switch (direction) {
       case TRI_EDGE_IN:

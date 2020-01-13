@@ -101,10 +101,6 @@ protected:
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
                             RequestStatistics*) = 0;
 
-  /// @brief whether or not requests of this CommTask can be executed directly,
-  /// inside the IO thread
-  virtual bool allowDirectHandling() const = 0;
-
  protected:
   
   enum class Flow : bool { Continue = true, Abort = false };
@@ -127,9 +123,7 @@ protected:
 
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum, std::string const&);
-  void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum);
+                        uint64_t messageId, int errorNum, char const* errorMessage = nullptr);
   
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic

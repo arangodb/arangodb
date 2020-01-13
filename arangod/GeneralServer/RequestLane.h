@@ -96,12 +96,15 @@ enum class RequestLane {
   // DBservers to report about changes in the agency. They are fast
   // and should have high prio. Will never block.
   // AGENCY_CALLBACK`
+
+  // Used by futures that have been delayed using Scheduler::delay.
+  DELAYED_FUTURE,
 };
 
-enum class RequestPriority { 
-  HIGH = 0, 
-  MED = 1, 
-  LOW = 2 
+enum class RequestPriority {
+  HIGH = 0,
+  MED = 1,
+  LOW = 2
 };
 
 inline RequestPriority PriorityRequestLane(RequestLane lane) {
@@ -135,6 +138,8 @@ inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::INTERNAL_LOW:
       return RequestPriority::LOW;
     case RequestLane::CLIENT_UI:
+      return RequestPriority::HIGH;
+    case RequestLane::DELAYED_FUTURE:
       return RequestPriority::HIGH;
   }
   return RequestPriority::LOW;

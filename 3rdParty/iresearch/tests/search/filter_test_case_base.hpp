@@ -228,6 +228,15 @@ struct custom_sort: public irs::sort {
       }
     }
 
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start, const size_t size, size_t offset) const {
+      score_cast(dst + offset) = irs::type_limits<irs::type_t::doc_id_t>::invalid();;
+      for (size_t i = 0; i < size; ++i) {
+        if (sort_.scorer_add) {
+          sort_.scorer_add(score_cast(dst + offset), score_cast(src_start[i]  + offset));
+        }
+      }
+    }
+
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override {
       return sort_.scorer_less ? sort_.scorer_less(score_cast(lhs), score_cast(rhs)) : false;
     }
@@ -361,6 +370,25 @@ struct frequency_sort: public irs::sort {
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
       return irs::memory::make_unique<term_collector>();
+    }
+
+    virtual void  merge(irs::byte_type* dst_buf, const irs::byte_type** src_start, const size_t size, size_t offset) const {
+      auto& score = score_cast(dst_buf + offset);
+      score.id = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      score.value = std::numeric_limits<double>::infinity();
+      score.prepared = true;
+      for (size_t i = 0; i < size; ++i) {
+        auto& dst = score_cast(dst_buf + offset);
+        auto& src = score_cast(src_start[i]  + offset);
+        ASSERT_TRUE(src.prepared);
+        ASSERT_TRUE(dst.prepared);
+
+        if (std::numeric_limits<double>::infinity()) {
+          dst.id = src.id;
+          dst.value = 0;
+        }
+        dst.value += src.value;
+      }
     }
 
     virtual void add(irs::byte_type* dst_buf, const irs::byte_type* src_buf) const override {

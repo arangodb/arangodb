@@ -55,6 +55,10 @@
 #include "search/scorers.hpp"
 
 #include "search/boolean_filter.hpp"
+#include "search/term_filter.hpp"
+#include "search/range_filter.hpp"
+#include "utils/string.hpp"
+
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -68,6 +72,80 @@
 
 extern const char* ARGV0;  // defined in main.cpp
 
+// GTEST printers for IResearch filters
+namespace iresearch {
+  std::ostream& operator<<(std::ostream& os, filter const& filter);
+
+  std::ostream& operator<<(std::ostream& os, by_range const& range) {
+    os << "Range(" << range.field();
+    std::string termValueMin(ref_cast<char>(range.term<Bound::MIN>()));
+    std::string termValueMax(ref_cast<char>(range.term<Bound::MAX>()));
+    if (!termValueMin.empty()) {
+      os << " " << (range.include<Bound::MIN>() ? ">=" : ">") << termValueMin;
+    }
+    if (!termValueMax.empty()) {
+      if (!termValueMin.empty()) {
+        os << ", ";
+      } else {
+        os << " ";
+      }
+      os << (range.include<Bound::MAX>() ? "<=" : "<") << termValueMax;
+    }
+    return os << ")";
+  }
+
+  std::ostream& operator<<(std::ostream& os, by_term const& term) {
+    std::string termValue(ref_cast<char>(term.term()));
+    return os << "Term(" << term.field() << "=" << termValue << ")";
+  }
+
+  std::ostream& operator<<(std::ostream& os, And const& filter) {
+    os << "AND[";
+    for (auto it = filter.begin(); it != filter.end(); ++it) {
+      if (it != filter.begin()) {
+        os << " && ";
+      }
+      os << *it;
+    }
+    os << "]";
+    return os;
+  }
+
+  std::ostream& operator<<(std::ostream& os, Or const& filter ) {
+    os << "OR[";
+    for (auto it = filter.begin(); it != filter.end(); ++it) {
+      if (it != filter.begin()) {
+        os << " || ";
+      }
+      os << *it;
+    }
+    os << "]";
+    return os;
+  }
+
+  std::ostream& operator<<(std::ostream& os, Not const& filter) {
+    os << "NOT[" << *filter.filter() << "]";
+    return os;
+  }
+
+  std::ostream& operator<<(std::ostream& os, filter const& filter) {
+    const auto& type = filter.type();
+    if (type == And::type()) {
+      return os << static_cast<And const&>(filter);
+    } else if (type == Or::type()) {
+      return os << static_cast<Or const&>(filter);
+    } else if (type == Not::type()) {
+      return os << static_cast<Not const&>(filter);
+    } else if (type == by_term::type()) {
+      return os << static_cast<by_term const&>(filter);
+    } else if (type == by_range::type()) {
+      return os << static_cast<by_range const&>(filter);
+    } else {
+      return os << "[Unknown filter]";
+    }
+  }
+}
+
 namespace {
 
 struct BoostScorer : public irs::sort {
@@ -79,6 +157,15 @@ struct BoostScorer : public irs::sort {
 
     virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
       score_cast(dst) += score_cast(src);
+    }
+
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
+      const size_t size, size_t offset) const  override {
+      auto& casted_dst = score_cast(dst + offset);
+      casted_dst = 0.f;
+      for (size_t i = 0; i < size; ++i) {
+        casted_dst += score_cast(src_start[i] + offset);
+      }
     }
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
@@ -154,6 +241,15 @@ struct CustomScorer : public irs::sort {
 
     virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
       score_cast(dst) += score_cast(src);
+    }
+
+    virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
+      const size_t size, size_t offset) const  override {
+      auto& casted_dst = score_cast(dst + offset);
+      casted_dst = 0.f;
+      for (size_t i = 0; i < size; ++i) {
+        casted_dst += score_cast(src_start[i] + offset);
+      }
     }
 
     virtual void collect(irs::byte_type* stats, const irs::index_reader& index,
@@ -378,6 +474,7 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
   return result;
 }
 
+
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
     TRI_vocbase_t& vocbase, std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
@@ -484,7 +581,7 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
 ) {
   auto options = arangodb::velocypack::Parser::fromJson(
       //    "{ \"tracing\" : 1 }"
-      "{ }");
+      " { } ");
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);

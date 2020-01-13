@@ -86,6 +86,29 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test create with too long names function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLongName : function () {
+      const prefix = "UnitTestsDatabase";
+      let name = prefix + Array(64 + 1 - prefix.length).join("x");
+      assertEqual(64, name.length);
+          
+      assertTrue(internal.db._createDatabase(name));
+      assertTrue(internal.db._dropDatabase(name));
+
+      name += 'x';
+      assertEqual(65, name.length);
+
+      try {
+        internal.db._createDatabase(name);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _name function
 ////////////////////////////////////////////////////////////////////////////////
 
