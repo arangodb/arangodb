@@ -5,6 +5,12 @@ v3.6.1 (2020-XX-XX)
   Edges are able to point to other edges, but those we're not applied to the
 	cache.
 
+* Add ability to choose logging to file in Windows installer of ArangoDB server
+  (enabled by default).
+
+  ArangoDB-logs folder with arangod.log should be stored in %PROGRAMDATA% and
+  %LOCALAPPDATA% for all users and single user installation respectively.
+
 * Fix installation of arangoinspect and libraries in Windows client installer.
 
 * Disable cluster AQL parallelization for queries that contain traversal,
