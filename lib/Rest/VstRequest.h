@@ -51,7 +51,7 @@ class VstRequest final : public GeneralRequest {
              size_t payloadOffset,
              uint64_t messageId);
 
-  ~VstRequest() {}
+  ~VstRequest() = default;
 
  public:
   

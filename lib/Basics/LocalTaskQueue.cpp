@@ -106,7 +106,7 @@ LocalTaskQueue::LocalTaskQueue(PostFn poster)
 /// @brief destroy the queue.
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::~LocalTaskQueue() {}
+LocalTaskQueue::~LocalTaskQueue() = default;
 
 void LocalTaskQueue::startTask() {
   CONDITION_LOCKER(guard, _condition);
