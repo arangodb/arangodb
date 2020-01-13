@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix installation of arangoinspect and libraries in Windows client installer.
+
 * Now clearing an internal map inside the traverser engine correctly.
 
 * Ported `/_admin/cluster*` API to C++.
