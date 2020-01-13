@@ -514,7 +514,7 @@ void MockClusterServer::startFeatures() {
   AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
   arangodb::AgencyComm().ensureStructureInitialized();
 
-  arangodb::ServerState::instance()->setRebootId(1);
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers
   auto& indexFactory = const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
