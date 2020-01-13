@@ -5,6 +5,8 @@ devel
   Like for the existing variant the `overwrite` flag has to be set to true.
   Then the update version can be selected by setting the `overwriteMode` to `"update"`.
 
+* Hide swagger api calls in list by default
+
 * Fix Windows client package JS installation paths.
 
 * Updated arangosync to 0.7.2.
