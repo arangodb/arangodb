@@ -232,10 +232,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                         ": response is not an array");
     }
 
-    t = TRI_microtime();
-    for (std::size_t i = 0; i < docs.length(); ++i) {
-      VPackSlice masterDoc = docs.at(i);
-
+    for (VPackSlice masterDoc : VPackArrayIterator(docs)) {
       if (!masterDoc.isObject()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       std::string("got invalid response from master at ") +
@@ -258,23 +255,31 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                           ": document revision is invalid");
       }
 
+      t = TRI_microtime();
       arangodb::LocalDocumentId const documentId = physical->lookupKey(&trx, keySlice);
+      stats.waitedForKeyLookups += TRI_microtime() - t;
       std::function<Result(VPackSlice)>& putDoc = documentId.isSet() ? replaceDoc : insertDoc;
 
       TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
 
+      t = TRI_microtime();
       Result res = putDoc(masterDoc);
+      stats.waitedForInsertions += TRI_microtime() - t;
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
           // remove conflict and retry
           // errorMessage() is this case contains the conflicting key
+          t = TRI_microtime();
           auto inner = removeConflict(res.errorMessage());
+          stats.waitedForRemovals += TRI_microtime() - t;
           if (inner.fail()) {
             return res;
           }
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
+          t = TRI_microtime();
           res = putDoc(masterDoc);
+          stats.waitedForInsertions += TRI_microtime() - t;
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {
             return res;
@@ -292,7 +297,6 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         ++stats.numDocsInserted;
       }
     }
-    stats.waitedForInsertions += TRI_microtime() - t;
     current += docs.length();
   }
 
@@ -1616,6 +1620,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
       " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
       " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
+      " s, " + "waited for removals: " + std::to_string(stats.waitedForRemovals) +
+      " s, " + "waited for key lookups: " + std::to_string(stats.waitedForKeyLookups) +
       " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
       " s");
 
