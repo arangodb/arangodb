@@ -1,6 +1,8 @@
 devel
 -----
 
+* `--cluster.agency-prefix` marked as obsolete. Did never work and is not supported.
+
 * Removed old AgencyComm.
 
 * Now clearing an internal map inside the traverser engine correctly.

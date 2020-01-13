@@ -233,19 +233,7 @@ class ClusterRepairsTestBrokenDistribution
       public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL>,
       public tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> {
  protected:
-  // save old manager (may be null)
-  //std::unique_ptr<AgencyCommManager> oldManager;
 
-  ClusterRepairsTestBrokenDistribution()
-      /*: oldManager(std::move(AgencyCommManager::MANAGER))*/ {
-    // get a new manager
-    //AgencyCommManager::initialize("testArangoAgencyPrefix");
-  }
-
-  ~ClusterRepairsTestBrokenDistribution() {
-    // restore old manager
-    //AgencyCommManager::MANAGER = std::move(oldManager);
-  }
 };
 
 TEST_F(ClusterRepairsTestBrokenDistribution,
@@ -442,7 +430,6 @@ class ClusterRepairsTestOperations
     : public ClusterRepairsTest,
       public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> {
  protected:
-  //std::unique_ptr<AgencyCommManager> oldManager;
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
 
@@ -456,18 +443,11 @@ class ClusterRepairsTestOperations
     return std::chrono::system_clock::now();
   }
 
-  ClusterRepairsTestOperations()
-      : /*oldManager(std::move(AgencyCommManager::MANAGER)), */
+  ClusterRepairsTestOperations() :
         oldServerId(ServerState::instance()->getId()),
-        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {
-    // get a new manager
-    //AgencyCommManager::initialize("testArangoAgencyPrefix");
-  }
+        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {}
 
-  ~ClusterRepairsTestOperations() {
-    // restore old manager
-    //AgencyCommManager::MANAGER = std::move(oldManager);
-  }
+  ~ClusterRepairsTestOperations() = default;
 };
 
 TEST_F(ClusterRepairsTestOperations,
