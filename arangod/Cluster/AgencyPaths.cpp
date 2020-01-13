@@ -26,22 +26,26 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::cluster::paths;
 
-std::shared_ptr<Root::Arango const> arangodb::cluster::paths::aliases::arango() {
+auto paths::root() -> std::shared_ptr<Root const> {
+  return Root::make_shared();
+}
+
+auto aliases::arango() -> std::shared_ptr<Root::Arango const> {
   return root()->arango();
 }
 
-std::shared_ptr<Root::Arango::Plan const> arangodb::cluster::paths::aliases::plan() {
+auto aliases::plan() -> std::shared_ptr<Root::Arango::Plan const> {
   return root()->arango()->plan();
 }
 
-std::shared_ptr<Root::Arango::Current const> arangodb::cluster::paths::aliases::current() {
+auto aliases::current() -> std::shared_ptr<Root::Arango::Current const> {
   return root()->arango()->current();
 }
 
-std::shared_ptr<Root::Arango::Target const> arangodb::cluster::paths::aliases::target() {
+auto aliases::target() -> std::shared_ptr<Root::Arango::Target const> {
   return root()->arango()->target();
 }
 
-std::shared_ptr<Root::Arango::Supervision const> arangodb::cluster::paths::aliases::supervision() {
+auto aliases::supervision() -> std::shared_ptr<Root::Arango::Supervision const> {
   return root()->arango()->supervision();
 }
