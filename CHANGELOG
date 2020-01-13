@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue #10867:
+  Windows: arangod based binaries lack product version info and icon
+
 * Add ability to choose logging to file in Windows installer of ArangoDB server
   (enabled by default).
 
