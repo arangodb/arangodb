@@ -143,7 +143,7 @@ class ReNormalizingAnalyzer : public irs::analysis::analyzer {
 
   // test implementation
   // string will be normalized as is. But object will be converted!
-  // need this to test comparsion "old-normalized"  against "new-normalized"
+  // need this to test comparison "old-normalized"  against "new-normalized"
   static bool normalize(irs::string_ref const& args, std::string& definition) {
     auto slice = arangodb::iresearch::slice(args);
     arangodb::velocypack::Builder builder;
