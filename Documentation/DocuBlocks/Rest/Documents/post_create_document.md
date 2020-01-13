@@ -51,7 +51,7 @@ command, the URL query parameter *keepNull* can be used with a value of
 *false*. This will modify the behavior of the patch command to remove any
 attributes from the existing document that are contained in the patch document
 with an attribute value of *null*.
-This option controls the update-insert behavior.
+This option controls the update-insert behavior only.
 
 @RESTQUERYPARAM{mergeObjects,boolean,optional}
 Controls whether objects (not arrays) will be merged if present in both the
