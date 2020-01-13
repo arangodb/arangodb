@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_MISC_H
@@ -34,7 +33,7 @@ NS_ROOT
 #if __cplusplus >= 201103L || _MSC_VER >= 1900 || IRESEARCH_COMPILER_HAS_FEATURE(cxx_constexpr) // C++ 11 implementation
   NS_BEGIN(detail)
   template <typename T, std::size_t N>
-  CONSTEXPR std::size_t countof(T const (&)[N]) NOEXCEPT { return N; }
+  constexpr std::size_t countof(T const (&)[N]) noexcept { return N; }
   NS_END // detail
   #define IRESEARCH_COUNTOF(x) ::iresearch::detail::countof(x)
 #elif _MSC_VER // Visual C++ fallback
@@ -57,7 +56,7 @@ template<typename Func>
 class finally {
  public:
   finally(const Func& func) : func_(func) { }
-  finally(Func&& func) NOEXCEPT : func_(std::move(func)) { }
+  finally(Func&& func) noexcept : func_(std::move(func)) { }
   ~finally() { func_(); }
 
  private:
@@ -76,11 +75,11 @@ finally<Func> make_finally(Func&& func) {
 template<typename T>
 class move_on_copy {
  public:
-  move_on_copy(T&& value) NOEXCEPT : value_(std::move(value)) {}
-  move_on_copy(const move_on_copy& rhs) NOEXCEPT : value_(std::move(rhs.value_)) {}
+  move_on_copy(T&& value) noexcept : value_(std::move(value)) {}
+  move_on_copy(const move_on_copy& rhs) noexcept : value_(std::move(rhs.value_)) {}
 
-  T& value() NOEXCEPT { return value_; }
-  const T& value() const NOEXCEPT { return value_; }
+  T& value() noexcept { return value_; }
+  const T& value() const noexcept { return value_; }
 
  private:
   move_on_copy& operator=(move_on_copy&&) = delete;
@@ -90,7 +89,7 @@ class move_on_copy {
 }; // move_on_copy
 
 template<typename T>
-move_on_copy<T> make_move_on_copy(T&& value) NOEXCEPT {
+move_on_copy<T> make_move_on_copy(T&& value) noexcept {
   static_assert(std::is_rvalue_reference<decltype(value)>::value, "parameter should be an rvalue");
   return move_on_copy<T>(std::move(value));
 }

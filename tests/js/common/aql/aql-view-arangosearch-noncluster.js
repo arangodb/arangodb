@@ -140,7 +140,6 @@ function iResearchAqlTestSuite () {
       v2.drop();
       db._drop("UnitTestsCollection");
       db._drop("UnitTestsCollection2");
-     
     },
 
     testViewInFunctionCall : function () {
@@ -448,6 +447,66 @@ function iResearchAqlTestSuite () {
       assertEqual(result[1].name, 'quarter');
       assertEqual(result[2].name, 'other half');
       assertEqual(result[3].name, 'full');
+    },
+
+    testWildcardFilter : function() {
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_a_' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual(2, result.length);
+        assertEqual("bar", result[0].a);
+        assertEqual("baz", result[1].a);
+      }
+
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_ar' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual(1, result.length);
+        assertEqual("bar", result[0].a);
+      }
+
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '_a__' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual(0, result.length);
+      }
+
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'ba_' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual("bar", result[0].a);
+        assertEqual("baz", result[1].a);
+      }
+
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b__' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual(2, result.length);
+        assertEqual("bar", result[0].a);
+        assertEqual("baz", result[1].a);
+      }
+
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual(2, result.length);
+        assertEqual("bar", result[0].a);
+        assertEqual("baz", result[1].a);
+      }
+
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '%r' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual(1, result.length);
+        assertEqual("bar", result[0].a);
+      }
+
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE 'b%%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual(2, result.length);
+        assertEqual("bar", result[0].a);
+        assertEqual("baz", result[1].a);
+      }
+
+      {
+        let result = db._query("FOR doc IN UnitTestsView SEARCH doc.a LIKE '%a%' OPTIONS { waitForSync:true } FILTER doc.c == 0 SORT doc.a RETURN doc").toArray();
+        assertEqual(2, result.length);
+        assertEqual("bar", result[0].a);
+        assertEqual("baz", result[1].a);
+      }
     },
 
     testPhraseFilter : function () {
@@ -1604,6 +1663,55 @@ function iResearchAqlTestSuite () {
       {
         let result = db._query("FOR a IN [[]] FOR d IN UnitTestsView SEARCH a NONE <= d.c OPTIONS { waitForSync : true } RETURN d").toArray();
         assertEqual(28, result.length);
+      }
+    },
+    testQueryOptimizationOptions : function() {
+      let queryOptColl = "QueryOptOptionsCol";
+      let queryOptView = "QueryOptView";
+      try {
+        db._drop(queryOptColl);
+        db._dropView(queryOptView);
+        
+        let coll = db._create(queryOptColl);
+        let view = db._createView(queryOptView, 'arangosearch',
+                                 { links: { "QueryOptOptionsCol": { includeAllFields: true } } });
+        coll.save({ value1: "1", value2: "A",
+          valueArray: ["A", "B", "C"]
+        }); 
+        coll.save({ value1: "2", value2: "B",
+          valueArray: ["D", "B", "C"]
+        });
+        coll.save({ value1: "3", value2: "C",
+          valueArray: ["E", "D", "C"]
+        });          
+        coll.save({ value1: "4", value2: "D",
+          valueArray: ["A", "E", "D"]
+        });   
+        coll.save({ value1: "5", value2: "E",
+          valueArray: ["F", "G", "B"]
+        });   
+        
+        // 1 2 3 4 expected
+        let resAuto = db._query("FOR d IN " + queryOptView  + 
+          " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+          " OPTIONS { waitForSync : true, conditionOptimization: 'auto' } SORT d.value1 ASC RETURN d").toArray();
+        assertEqual(4, resAuto.length);  
+        let resNoDnf = db._query("FOR d IN " + queryOptView  + 
+          " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+          " OPTIONS { waitForSync : true, conditionOptimization: 'nodnf' } SORT d.value1 ASC RETURN d").toArray();
+        assertEqual(resNoDnf, resAuto); 
+        let resNoNeg = db._query("FOR d IN " + queryOptView  + 
+          " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+          " OPTIONS { waitForSync : true, conditionOptimization: 'noneg' } SORT d.value1 ASC RETURN d").toArray();
+        assertEqual(resNoNeg, resAuto);
+        let resNone = db._query("FOR d IN " + queryOptView  + 
+          " SEARCH ( NOT(d.value1 IN ['R']) AND d.value2 IN ['A', 'B', 'C', 'D'] OR d.valueArray IN ['D', 'A', 'B']) AND (d.valueArray == 'A' OR (d.valueArray == 'C' AND d.valueArray == 'D')) " + 
+          " OPTIONS { waitForSync : true, conditionOptimization: 'none' } SORT d.value1 ASC RETURN d").toArray();
+        assertEqual(resNone, resAuto);         
+      } 
+      finally {
+        db._drop(queryOptColl);
+        db._dropView(queryOptView);
       }
     },
   };

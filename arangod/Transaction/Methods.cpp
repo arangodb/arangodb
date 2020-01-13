@@ -498,9 +498,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
   TRI_ASSERT(parts.size() == conditionData.size());
 
   // clean up
-  while (root->numMembers()) {
-    root->removeMemberUnchecked(0);
-  }
+  root->clearMembers();
 
   usedIndexes.clear();
   std::unordered_set<std::string> seenIndexConditions;
@@ -1553,7 +1551,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
-            << "Less than minReplicationFactor ("
+            << "Less than writeConcern ("
             << basics::StringUtils::itoa(collection->writeConcern())
             << ") followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
@@ -1866,7 +1864,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
-            << "Less than minReplicationFactor ("
+            << "Less than writeConcern ("
             << basics::StringUtils::itoa(collection->writeConcern())
             << ") followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
@@ -2152,7 +2150,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("f1f8e", ERR, Logger::REPLICATION)
-            << "Less than minReplicationFactor ("
+            << "Less than writeConcern ("
             << basics::StringUtils::itoa(collection->writeConcern())
             << ") followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
@@ -2397,7 +2395,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("7c1d4", ERR, Logger::REPLICATION)
-            << "Less than minReplicationFactor ("
+            << "Less than writeConcern ("
             << basics::StringUtils::itoa(collection->writeConcern())
             << ") followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
@@ -2457,6 +2455,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           "/_api/collection/" + arangodb::basics::StringUtils::urlEncode(collectionName) +
           "/truncate";
       VPackBuffer<uint8_t> body;
+      VPackSlice s = VPackSlice::emptyObjectSlice();
+      body.append(s.start(), s.byteSize());
 
       // Now prepare the requests:
       std::vector<network::FutureRes> futures;

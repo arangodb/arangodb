@@ -84,7 +84,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
   static ptr make(irs::string_ref const&) {
@@ -169,9 +169,10 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
 
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, ignored);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -429,9 +430,10 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
 
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, ignored);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
@@ -848,15 +850,16 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
   }
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, ignored);
   }
   {
     auto vocbase = dbFeature.useDatabase("testVocbase");
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
@@ -1228,16 +1231,17 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
 
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, ignored);
   }
   {
     TRI_vocbase_t* vocbase;
     arangodb::Result res = dbFeature.createDatabase(testDBInfo(server.server()), vocbase);
     ASSERT_TRUE(res.ok());
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -1534,17 +1538,17 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
 
   {
     auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
   {
     TRI_vocbase_t* vocbase;
     arangodb::Result res = dbFeature.createDatabase(testDBInfo(server.server()), vocbase);
     ASSERT_TRUE(res.ok());
-    arangodb::methods::Collections::createSystem(
-        *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
+                                                 false, ignored);
   }
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

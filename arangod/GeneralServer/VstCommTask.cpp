@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -220,7 +221,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
   RequestStatistics* stat = this->statistics(messageId);
   RequestStatistics::SET_READ_END(stat);
   RequestStatistics::ADD_RECEIVED_BYTES(stat, buffer.size());
-  
+
   // handle request types
   if (mt == MessageType::Authentication) {  // auth
     handleAuthHeader(VPackSlice(buffer.data()), messageId);
@@ -246,7 +247,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       // if we don't call checkAuthentication we need to refresh
       this->_auth->userManager()->refreshUser(this->_authToken._username);
     }
-    
+
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
@@ -297,7 +298,7 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   resItem->response = std::move(baseRes);
   RequestStatistics::SET_WRITE_START(stat);
   resItem->stat = stat;
-  
+
   asio_ns::const_buffer payload;
   if (response.generateBody()) {
     payload = asio_ns::buffer(response.payload().data(),
@@ -334,7 +335,14 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   bool expected = _writing.load();
   if (false == expected) {
     if (_writing.compare_exchange_strong(expected, true)) {
-      doWrite(); // we managed to start writing
+      // we managed to start writing
+      if constexpr (SocketType::Ssl == T) {
+        this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
+          static_cast<VstCommTask<T>*>(self.get())->doWrite();
+        });
+      } else {
+        doWrite();
+      }
     }
   }
 }

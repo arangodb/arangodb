@@ -34,6 +34,7 @@
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+#include "search/wildcard_filter.hpp"
 
 #include "IResearch/ExpressionContextMock.h"
 #include "IResearch/common.h"
@@ -127,8 +128,9 @@ class IResearchFilterFunctionTest
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, unused);
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer
@@ -4771,6 +4773,169 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
       vocbase(),
       "FOR d IN myView FILTER starts_with(d.name, 'abc', RAND() ? 128 : 10) "
       "RETURN d");
+}
+
+TEST_F(IResearchFilterFunctionTest, wildcard) {
+  // d.name LIKE 'foo'
+  {
+    irs::Or expected;
+    auto& wildcard = expected.add<irs::by_wildcard>();
+    wildcard.field(mangleStringIdentity("name")).scored_terms_limit(128).term("foo");
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER d.name LIKE 'foo' RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LIKE(d['name'], 'foo') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LIKE(d.name, 'foo') RETURN d",
+        expected);
+  }
+
+  // ANALYZER(d.name.foo LIKE 'foo%', 'test_analyzer')
+  {
+    irs::Or expected;
+    auto& wildcard = expected.add<irs::by_wildcard>();
+    wildcard.field(mangleString("name.foo", "test_analyzer")).scored_terms_limit(128).term("foo%");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(d.name.foo LIKE 'foo%', 'test_analyzer') RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(LIKE(d.name[_FORWARD_('foo')], 'foo%'), 'test_analyzer') RETURN d",
+        expected, &ctx);
+
+    assertFilterSuccess(
+        vocbase(),
+        "LET x = 'foo' FOR d IN myView FILTER ANALYZER(LIKE(d.name[x], 'foo%'), 'test_analyzer') RETURN d",
+        expected,
+        &ctx);
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(LIKE(d['name'].foo, 'foo%'), 'test_analyzer') RETURN d",
+        expected, &ctx);
+  }
+
+  // BOOST(ANALYZER(d.name[4] LIKE '_foo%', 'test_analyzer'), 0.5)
+  {
+    irs::Or expected;
+    auto& wildcard = expected.add<irs::by_wildcard>();
+    wildcard.field(mangleString("name[4]", "test_analyzer")).scored_terms_limit(128).term("_foo%").boost(0.5);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(d.name[4] LIKE '_foo%', 'test_analyzer'), 0.5) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d['name'][_FORWARD_(4)], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET x = 4 FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d['name'][x], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(LIKE(d.name[4], '_foo%'), 'test_analyzer'), 0.5) RETURN d",
+        expected);
+  }
+
+  // invalid attribute access
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER [d] LIKE '_foo%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER d[*] LIKE '_foo%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER d.name[*] LIKE '_foo%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo[*].name, '_foo%') RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER 'foo' LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER [] LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER {} LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER null LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER true LIKE 'f%' RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // non-deterministic attribute access
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(RAND() > 0.5 ? d.foo.name : d.foo.bar, '_foo%') RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // invalid pattern
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, true) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, null) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, 1) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, []) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, {}) RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, _FORWARD_({})) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.foo, d) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // wrong number of arguments
+  assertFilterParseFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.name, 'abc', true, 'z') RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.name, 'abc', true) RETURN d");
+  assertFilterParseFail(
+      vocbase(),
+      "FOR d IN myView FILTER LIKE(d.name) RETURN d");
 }
 
 TEST_F(IResearchFilterFunctionTest, IN_RANGE) {

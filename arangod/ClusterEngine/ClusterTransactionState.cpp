@@ -29,7 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Statistics/ServerStatistics.h"
+#include "RestServer/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Manager.h"
@@ -61,7 +61,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   auto cleanup = scopeGuard([&] {
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
-      ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
+      _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
     }
     // free what we have got so far
     unuseCollections(nestingLevel());
@@ -75,7 +75,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   // all valid
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::RUNNING);
-    ServerStatistics::statistics()._transactionsStatistics._transactionsStarted++;
+    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     setRegistered();
@@ -122,7 +122,7 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
   arangodb::Result res;
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::COMMITTED);
-    ServerStatistics::statistics()._transactionsStatistics._transactionsCommitted++;
+    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
   }
 
   unuseCollections(nestingLevel());
@@ -136,7 +136,7 @@ Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx
   Result res;
   if (nestingLevel() == 0) {
     updateStatus(transaction::Status::ABORTED);
-    ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
+    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   }
 
   unuseCollections(nestingLevel());

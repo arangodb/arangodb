@@ -30,6 +30,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -186,7 +187,8 @@ void StatisticsFeature::prepare() {
 
   STATISTICS = this;
 
-  ServerStatistics::initialize(StatisticsFeature::time());
+  server().getFeature<MetricsFeature>().serverStatistics().initialize(
+    StatisticsFeature::time());
   ConnectionStatistics::initialize();
   RequestStatistics::initialize();
 }

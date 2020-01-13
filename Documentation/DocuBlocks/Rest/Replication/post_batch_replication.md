@@ -7,8 +7,7 @@
 **Note**: These calls are uninteresting to users.
 
 @RESTBODYPARAM{ttl,integer,required,int64}
-the time-to-live for the new batch (in seconds)
-
+the time-to-live for the new batch (in seconds)<br>
 A JSON object with the batch configuration.
 
 @RESTDESCRIPTION
@@ -35,4 +34,3 @@ is not specified or illegal on a coordinator.
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
 @endDocuBlock
-

@@ -22,6 +22,8 @@
 
 #include "ClusterRepairOperations.h"
 #include <utility>
+#include <ctime>
+
 #include "ServerState.h"
 
 using namespace arangodb;
@@ -57,7 +59,7 @@ std::vector<VersionSort::CharOrInt> VersionSort::splitVersion(std::string const&
   };
 
   for (size_t pos = 0; pos < str.length(); pos++) {
-    if (isdigit(str[pos])) {
+    if (str[pos] >= '0' && str[pos] <= '9') {
       if (from == std::string::npos) {
         from = pos;
       }

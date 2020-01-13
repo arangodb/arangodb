@@ -89,6 +89,7 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
@@ -208,6 +209,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();
+    server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
     server.addFeature<PageSizeFeature>();

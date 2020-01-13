@@ -1281,6 +1281,7 @@ class KeySpace {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
+    // cppcheck-suppress nullPointer ; cannot get here if found is nullptr
     TRI_json_t* current = found->json;
 
     if (!TRI_IsArrayJson(current)) {

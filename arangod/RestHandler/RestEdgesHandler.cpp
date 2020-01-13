@@ -144,7 +144,7 @@ bool RestEdgesHandler::readEdges() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected GET " + EDGES_PATH +
-                      "/<collection-identifier>?vertex=<vertex-handle>&"
+                      "/<collection-identifier>?vertex=<vertex-id>&"
                       "direction=<direction>");
     return false;
   }

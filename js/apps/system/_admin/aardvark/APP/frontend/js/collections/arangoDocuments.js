@@ -360,9 +360,21 @@
     },
 
     uploadDocuments: function (file, callback) {
+      var analyzeResponse = function (data) {
+        if (data.hasOwnProperty('error')) {
+          delete data.error;
+        }
+
+        if (data.errors > 0) {
+          callback(true, 'Info: ' + JSON.stringify(data));
+        } else {
+          callback(false, 'Info: ' + JSON.stringify(data));
+        }
+      };
+
       $.ajax({
         type: 'POST',
-        url: arangoHelper.databaseUrl('/_api/import?type=auto&collection=' +
+        url: arangoHelper.databaseUrl('/_api/import?type=auto&details=true&collection=' +
           encodeURIComponent(this.collectionID) +
           '&createCollection=false'),
         data: file,
@@ -370,18 +382,8 @@
         contentType: 'json',
         dataType: 'json',
         complete: function (xhr) {
-          if (xhr.readyState === 4 && xhr.status === 201) {
-            callback(false);
-          } else {
-            try {
-              var data = JSON.parse(xhr.responseText);
-              if (data.errors > 0) {
-                var result = 'At least one error occurred during upload';
-                callback(false, result);
-              }
-            } catch (err) {
-              console.log(err);
-            }
+          if (xhr.responseJSON) {
+            analyzeResponse(xhr.responseJSON);
           }
         },
         error: function (msg) {

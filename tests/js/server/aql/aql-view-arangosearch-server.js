@@ -349,7 +349,33 @@ function iResearchFeatureAqlServerSideTestSuite () {
       try { db._dropView(docsViewName); } catch(e) {}
       let docsCollection = db._create(docsCollectionName);
       docsCollection.save({"some_field": "some_value"});
+
+      let getLinksCount = function() {
+        let linksCount = 0;
+        if (!isCluster) {
+          let dbPath = internal.db._path();
+          if (db._engine().name === "rocksdb") {
+            dbPath = fs.safeJoin(internal.db._path(), 'databases');
+            let databases = fs.list(dbPath);
+            assertTrue(databases.length >= 1);
+            dbPath = fs.safeJoin(dbPath, 'database-' + db._id());
+            assertTrue(fs.isDirectory(dbPath));
+          } else if (db._engine().name !== "mmfiles") {
+            fail("Unknown storage engine"); // if new engine is introduced, test should be updated
+          }          
+          let directories = fs.list(dbPath);
+          // check only arangosearch-XXXX
+          directories.forEach(function(candidate) {
+            if (candidate.startsWith("arangosearch")) {
+              linksCount++;
+            }
+          });
+        }
+        return linksCount;
+      };
+
       try {
+        let beforeLinkCount = getLinksCount();
         internal.debugSetFailAt('ArangoSearch::MisreportCreationInsertAsFailed'); 
         let docsView = db._createView(docsViewName, "arangosearch", {
           "links": {
@@ -369,26 +395,21 @@ function iResearchFeatureAqlServerSideTestSuite () {
         assertEqual(0, Object.keys(properties.links).length);
         // on Single server we could also check fs (on cluster we are on 
         // coordinator, so nothing to do)
-        // no arangosearch folders should be present
-        if (!isCluster) {
-          let dbPath = internal.db._path();
-          if (db._engine().name === "rocksdb") {
-            dbPath = fs.safeJoin(internal.db._path(), 'databases');
-            let databases = fs.list(dbPath);
-            assertEqual(1, databases.length);
-            dbPath = fs.safeJoin(dbPath, databases[0]);
-          } else if (db._engine().name !== "mmfiles") {
-            fail("Unknown storage engine"); // if new engine is introduced, test should be updated
-          }          
-          let linksCount = 0;
-          let directories = fs.list(dbPath);
-          // check only arangosearch-XXXX
-          directories.forEach(function(candidate) {
-            if (candidate.startsWith("arangosearch")) {
-              linksCount++;
-            }
-          });
-          assertEqual(0, linksCount);
+        // no new arangosearch folders should be present
+        // due to race conditions in FS (on MACs specifically)
+        // we will do several attempts
+        let tryCount = 3;
+        while (tryCount > 0) {
+          let afterLinkCount = getLinksCount();
+          if (afterLinkCount === beforeLinkCount) {
+          	break; // all is ok.
+          }
+          if (tryCount > 0) {
+            tryCount--;
+            require('internal').sleep(5);
+          } else {
+            assertEqual(beforeLinkCount, afterLinkCount);
+          }
         }
       } finally {
         db._drop(docsCollectionName);

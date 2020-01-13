@@ -205,6 +205,7 @@ if(NOT PERL_FOUND)
   endif()
 endif()
 
+set(USE_IPO ${IPO_ENABLED})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")

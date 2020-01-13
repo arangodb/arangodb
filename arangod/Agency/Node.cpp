@@ -69,7 +69,7 @@ std::string Node::normalize(std::string const& path) {
 }
 
 /// @brief Split strings by separator
-inline static std::vector<std::string> split(const std::string& str, char separator) {
+std::vector<std::string> Node::split(const std::string& str, char separator) {
   std::vector<std::string> result;
   if (str.empty()) {
     return result;
@@ -284,25 +284,16 @@ bool Node::operator==(VPackSlice const& rhs) const {
 /// @brief Comparison with slice
 bool Node::operator!=(VPackSlice const& rhs) const { return !(*this == rhs); }
 
-/// @brief Remove this node from store
-/// i.e. Remove this node as child of parent node if applicable
-bool Node::remove() {
-  if (_parent == nullptr) {
-    return false;
-  }
-  Node& parent = *_parent;
-  return parent.removeChild(_nodeName);
-}
-
 /// @brief Remove child by name
-bool Node::removeChild(std::string const& key) {
-  auto found = _children.find(key);
-  if (found == _children.end()) {
-    return false;
+arangodb::ResultT<std::shared_ptr<Node>> Node::removeChild(std::string const& key) {
+  auto it = _children.find(key);
+  if (it == _children.end()) {
+    return arangodb::ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
   }
-  found->second->removeTimeToLive();
-  _children.erase(found);
-  return true;
+  auto ret = it->second;
+  ret->removeTimeToLive();
+  _children.erase(it);
+  return arangodb::ResultT<std::shared_ptr<Node>>::success(std::move(ret));
 }
 
 /// @brief Node type
@@ -311,11 +302,23 @@ NodeType Node::type() const {
   return (_isArray || _value.size()) ? LEAF : NODE;
 }
 
+
+bool Node::lifetimeExpired() const {
+  using clock = std::chrono::system_clock; 
+  return _ttl != clock::time_point() && _ttl < clock::now();
+}
+
 /// @brief lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
   Node* current = this;
 
   for (std::string const& key : pv) {
+
+    // Remove TTL for any nodes on the way down, if and only if the noted TTL
+    // is expired.
+    if (current->lifetimeExpired()) {
+      current->clear();
+    }
 
     auto& children = current->_children;
     auto  child = children.find(key);
@@ -339,6 +342,11 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
   return *current;
 }
 
+std::shared_ptr<Node> Node::child(std::string const& name) {
+  return _children.at(name);
+}
+
+
 /// @brief rh-value at path vector. Check if TTL has expired.
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
 
@@ -349,9 +357,7 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
     auto const& children = current->_children;
     auto const  child = children.find(key);
 
-    if (child == children.end() ||
-        (child->second->_ttl != std::chrono::system_clock::time_point() &&
-         child->second->_ttl < std::chrono::system_clock::now())) {
+    if (child == children.end() || child->second->lifetimeExpired()) {
       throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
     }  else {
       current = child->second.get();
@@ -454,12 +460,12 @@ namespace consensus {
 
 /// Set value
 template <>
-bool Node::handle<SET>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 
   if (!slice.hasKey("new")) {
-    LOG_TOPIC("ad662", WARN, Logger::AGENCY)
-        << "Operator set without new value: " << slice.toJson();
-    return false;
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Operator set without new value: ") + slice.toJson());
   }
   Slice val = slice.get("new");
 
@@ -490,92 +496,84 @@ bool Node::handle<SET>(VPackSlice const& slice) {
     }
   }
 
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
 /// Increment integer value or set 1
 template <>
-bool Node::handle<INCREMENT>(VPackSlice const& slice) {
-  size_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
-                   ? slice.get("step").getUInt()
-                   : 1;
+ResultT<std::shared_ptr<Node>> Node::handle<INCREMENT>(VPackSlice const& slice) {
+  auto inc = getIntWithDefault(slice, "step", 1);
+  auto pre = getNumberUnlessExpiredWithDefault<int64_t>();
 
   Builder tmp;
   {
     VPackObjectBuilder t(&tmp);
-    try {
-      tmp.add("tmp", Value(this->slice().getInt() + inc));
-    } catch (std::exception const&) {
-      tmp.add("tmp", Value(1));
-    }
+    tmp.add("tmp", Value(pre + inc));
   }
   *this = tmp.slice().get("tmp");
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
 /// Decrement integer value or set -1
 template <>
-bool Node::handle<DECREMENT>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<DECREMENT>(VPackSlice const& slice) {
+  auto dec = getIntWithDefault(slice, "step", 1);
+  auto pre = getNumberUnlessExpiredWithDefault<std::int64_t>();
+
   Builder tmp;
   {
     VPackObjectBuilder t(&tmp);
-    try {
-      tmp.add("tmp", Value(this->slice().getInt() - 1));
-    } catch (std::exception const&) {
-      tmp.add("tmp", Value(-1));
-    }
+    tmp.add("tmp", Value(pre - dec));
   }
   *this = tmp.slice().get("tmp");
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
 /// Append element to array
 template <>
-bool Node::handle<PUSH>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<PUSH>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC("a9481", WARN, Logger::AGENCY)
-        << "Operator push without new value: " << slice.toJson();
-    return false;
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Operator push without new value: ") + slice.toJson());
   }
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
     tmp.add(slice.get("new"));
   }
   *this = tmp.slice();
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
 /// Remove element from any place in array by value or position
 template <>
-bool Node::handle<ERASE>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<ERASE>(VPackSlice const& slice) {
   bool haveVal = slice.hasKey("val");
   bool havePos = slice.hasKey("pos");
 
   if (!haveVal && !havePos) {
-    LOG_TOPIC("b5eaa", WARN, Logger::AGENCY)
-        << "Operator erase without value or position to be erased is illegal: "
-        << slice.toJson();
-    return false;
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Erase without value or position to be erased is illegal: ") + slice.toJson());
   } else if (haveVal && havePos) {
-    LOG_TOPIC("c2756", WARN, Logger::AGENCY)
-        << "Operator erase with value and position to be erased is illegal: "
-        << slice.toJson();
-    return false;
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Erase without value or position to be erased is illegal: ") + slice.toJson());
   } else if (havePos && (!slice.get("pos").isUInt() && !slice.get("pos").isSmallInt())) {
-    LOG_TOPIC("d6648", WARN, Logger::AGENCY)
-        << "Operator erase with non-positive integer position is illegal: "
-        << slice.toJson();
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string(
+        "Erase with non-positive integer position is illegal: ") + slice.toJson());
   }
 
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
 
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       if (haveVal) {
         VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
@@ -586,7 +584,9 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
       } else {
         size_t pos = slice.get("pos").getNumber<size_t>();
         if (pos >= this->slice().length()) {
-          return false;
+          return ResultT<std::shared_ptr<Node>>::error(
+            TRI_ERROR_FAILED, std::string(
+              "Erase with position out of range: ") + slice.toJson());
         }
         size_t n = 0;
         for (const auto& old : VPackArrayIterator(this->slice())) {
@@ -600,26 +600,26 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
   }
 
   *this = tmp.slice();
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
 /// Replace element from any place in array by new value
 template <>
-bool Node::handle<REPLACE>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<REPLACE>(VPackSlice const& slice) {
   if (!slice.hasKey("val")) {
-    LOG_TOPIC("27763", WARN, Logger::AGENCY)
-        << "Operator erase without value to be erased: " << slice.toJson();
-    return false;
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Operator erase without value to be erased: ")
+      + slice.toJson());
   }
   if (!slice.hasKey("new")) {
-    LOG_TOPIC("28331", WARN, Logger::AGENCY)
-        << "Operator replace without new value: " << slice.toJson();
-    return false;
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Operator replace without new value: ")
+      + slice.toJson());
   }
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
         if (VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true)) {
@@ -631,16 +631,16 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
     }
   }
   *this = tmp.slice();
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
 /// Remove element from end of array.
 template <>
-bool Node::handle<POP>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<POP>(VPackSlice const& slice) {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       VPackArrayIterator it(this->slice());
       if (it.size() > 1) {
         size_t j = it.size() - 1;
@@ -652,36 +652,35 @@ bool Node::handle<POP>(VPackSlice const& slice) {
     }
   }
   *this = tmp.slice();
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
 /// Prepend element to array
 template <>
-bool Node::handle<PREPEND>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<PREPEND>(VPackSlice const& slice) {
   if (!slice.hasKey("new")) {
-    LOG_TOPIC("5ecb0", WARN, Logger::AGENCY)
-        << "Operator prepend without new value: " << slice.toJson();
-    return false;
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Operator prepend without new value: ")
+      + slice.toJson());
   }
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
     tmp.add(slice.get("new"));
-    if (this->slice().isArray()) {
+    if (this->slice().isArray() && !lifetimeExpired()) {
       for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
     }
   }
   *this = tmp.slice();
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
 /// Remove element from front of array
 template <>
-bool Node::handle<SHIFT>(VPackSlice const& slice) {
+ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
   Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {  // If a
+  {    VPackArrayBuilder t(&tmp);
+    if (this->slice().isArray() && !lifetimeExpired()) {  // If a
       VPackArrayIterator it(this->slice());
       bool first = true;
       for (auto const& old : it) {
@@ -694,24 +693,18 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
     }
   }
   *this = tmp.slice();
-  return true;
+  return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
+
 
 }  // namespace consensus
 }  // namespace arangodb
 
-bool Node::applieOp(VPackSlice const& slice) {
+arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
-
+  
   if (oper == "delete") {
-    if (_parent == nullptr) {  // root node
-      _children.clear();
-      _value.clear();
-      _vecBufDirty = true;    // just in case there was an array
-      return true;
-    } else {
-      return _parent->removeChild(_nodeName);
-    }
+    return deleteMe();
   } else if (oper == "set") {  // "op":"set"
     return handle<SET>(slice);
   } else if (oper == "increment") {  // "op":"increment"
@@ -730,13 +723,12 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"
     return handle<REPLACE>(slice);
-  } else {  // "op" might not be a key word after all
-    LOG_TOPIC("fb064", WARN, Logger::AGENCY)
-        << "Keyword 'op' without known operation. Handling as regular key: \""
-        << oper << "\"";
-  }
+  } 
 
-  return false;
+  return ResultT<std::shared_ptr<Node>>::error(
+    TRI_ERROR_FAILED,
+    std::string("Unknown operation '") + oper + "'");
+
 }
 
 // Apply slice to this node
@@ -1134,4 +1126,26 @@ void Node::clear() {
   _vecBuf.clear();
   _vecBufDirty = true;
   _isArray = false;
+}
+
+[[nodiscard]] arangodb::ResultT<std::shared_ptr<Node>> Node::deleteMe() {
+  if (_parent == nullptr) {  // root node
+    _children.clear();
+    _value.clear();
+    _vecBufDirty = true;  // just in case there was an array
+    return arangodb::ResultT<std::shared_ptr<Node>>::success(nullptr);
+  } else {
+    return _parent->removeChild(_nodeName);
+  }
+}
+
+auto Node::getIntWithDefault(Slice slice, std::string_view key, std::int64_t def)
+    -> std::int64_t {
+  if (slice.isObject()) {
+    Slice value = slice.get(key);
+    if (value.isInt()) {
+      return value.getInt();
+    }
+  }
+  return def;
 }

@@ -276,10 +276,9 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 bool Query::killed() const {
-  if(_queryOptions.timeout > std::numeric_limits<double>::epsilon()) {
-    if(TRI_microtime() > (_startTime + _queryOptions.timeout)) {
-      return true;
-    }
+  if (_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon() &&
+      TRI_microtime() > (_startTime + _queryOptions.maxRuntime)) {
+    return true;
   }
   return _killed;
 }
@@ -451,7 +450,7 @@ void Query::prepare(QueryRegistry* registry, SerializationFormat format) {
   // this is confusing and should be fixed!
   std::unique_ptr<ExecutionEngine> engine(
       ExecutionEngine::instantiateFromPlan(*registry, *this, *plan,
-                                           !_queryString.empty()));
+                                           !_queryString.empty(), format));
 
   if (_engine == nullptr) {
     _engine = std::move(engine);
@@ -499,7 +498,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   }
 #endif
 
-  auto trx = AqlTransaction::create(std::move(ctx), _collections.collections(),
+  auto trx = AqlTransaction::create(ctx, _collections.collections(),
                                     _queryOptions.transactionOptions, _part == PART_MAIN,
                                     std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
@@ -655,7 +654,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _resultBuilder->openArray();
         _executionPhase = ExecutionPhase::EXECUTE;
       }
-      [[fallthrough]];
+        [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
         TRI_ASSERT(_resultBuilder != nullptr);
         TRI_ASSERT(_resultBuilder->isOpenArray());
@@ -688,17 +687,19 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             break;
           }
 
-          // cache low-level pointer to avoid repeated shared-ptr-derefs
-          TRI_ASSERT(_resultBuilder != nullptr);
-          auto& resultBuilder = *_resultBuilder;
+          if (!_queryOptions.silent) {
+            // cache low-level pointer to avoid repeated shared-ptr-derefs
+            TRI_ASSERT(_resultBuilder != nullptr);
+            auto& resultBuilder = *_resultBuilder;
 
-          size_t const n = res.second->size();
+            size_t const n = res.second->size();
 
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = res.second->getValueReference(i, resultRegister);
+            for (size_t i = 0; i < n; ++i) {
+              AqlValue const& val = res.second->getValueReference(i, resultRegister);
 
-            if (!val.isEmpty()) {
-              val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
+              if (!val.isEmpty()) {
+                val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
+              }
             }
           }
 
@@ -734,7 +735,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _executionPhase = ExecutionPhase::FINALIZE;
       }
 
-      [[fallthrough]];
+        [[fallthrough]];
       case ExecutionPhase::FINALIZE: {
         // will set warnings, stats, profile and cleanup plan and engine
         return finalize(queryResult);
@@ -784,7 +785,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 QueryResult Query::executeSync(QueryRegistry* registry) {
   std::shared_ptr<SharedQueryState> ss = sharedState();
   ss->resetWakeupHandler();
-  
+
   QueryResult queryResult;
   while (true) {
     auto state = execute(registry, queryResult);
@@ -872,7 +873,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
     auto builder = std::make_shared<VPackBuilder>(&options);
-    
+
     try {
       ss->resetWakeupHandler();
 
@@ -911,10 +912,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
               }
-            }
-
-            if (V8PlatformFeature::isOutOfMemory(isolate)) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            
+              if (V8PlatformFeature::isOutOfMemory(isolate)) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+              }
             }
           }
         }
@@ -1013,6 +1014,28 @@ ExecutionState Query::finalize(QueryResult& result) {
     result.extra = std::make_shared<VPackBuilder>();
     result.extra->openObject(true);
     if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+      if (ServerState::instance()->isCoordinator()) {
+        std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
+          arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+          arangodb::aql::ExecutionNode::INDEX,
+          arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
+          arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
+          arangodb::aql::ExecutionNode::UPSERT};
+
+        ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+        ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+        _plan->findNodesOfType(nodes, collectionNodeTypes, true);
+
+        for (auto& n : nodes) {
+          // clear shards so we get back the full collection name when serializing
+          // the plan
+          auto cn = dynamic_cast<CollectionAccessingNode*>(n);
+          if (cn) {
+            cn->setUsedShard("");
+          }
+        }
+      }
+
       result.extra->add(VPackValue("plan"));
       _plan->toVelocyPack(*result.extra, _ast.get(), false);
       // needed to happen before plan cleanup
@@ -1381,6 +1404,9 @@ bool Query::canUseQueryCache() const {
     return false;
   }
   if (_isModificationQuery) {
+    return false;
+  }
+  if (_queryOptions.silent) {
     return false;
   }
 

@@ -24,13 +24,12 @@
 #ifndef IRESEARCH_SORT_H
 #define IRESEARCH_SORT_H
 
-#include "shared.hpp"
+#include <vector>
+
 #include "utils/attributes.hpp"
 #include "utils/attributes_provider.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
-
-#include <vector>
 
 NS_ROOT
 
@@ -41,15 +40,24 @@ struct data_output; // forward declaration
 //////////////////////////////////////////////////////////////////////////////
 typedef float_t boost_t;
 
-CONSTEXPR boost_t no_boost() NOEXCEPT { return 1.f; }
+constexpr boost_t no_boost() noexcept { return 1.f; }
 
 struct collector;
 struct index_reader;
 struct sub_reader;
 struct term_reader;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stateful object used for computing the document score based on the
+///        stored state
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API score_ctx {
+  virtual ~score_ctx() = default;
+}; // score_ctx
+
+typedef std::unique_ptr<score_ctx> score_ctx_ptr;
 typedef bool(*score_less_f)(const byte_type* lhs, const byte_type* rhs);
-typedef void(*score_f)(const void* ctx, byte_type*);
+typedef void(*score_f)(const score_ctx* ctx, byte_type*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sort
@@ -95,25 +103,14 @@ class IRESEARCH_API sort {
      virtual void write(data_output& out) const = 0;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief stateful object used for computing the document score based on the
-  ///        stored state
-  ////////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API score_ctx {
-   public:
-    DECLARE_UNIQUE_PTR(score_ctx);
-
-    virtual ~score_ctx() = default;
-  }; // scorer
-
   template<typename T>
-  FORCE_INLINE static T& score_cast(byte_type* score_buf) NOEXCEPT {
+  FORCE_INLINE static T& score_cast(byte_type* score_buf) noexcept {
     assert(score_buf);
     return *reinterpret_cast<T*>(score_buf);
   }
 
   template<typename T>
-  FORCE_INLINE static const T& score_cast(const byte_type* score_buf) NOEXCEPT {
+  FORCE_INLINE static const T& score_cast(const byte_type* score_buf) noexcept {
     return score_cast<T>(const_cast<byte_type*>(score_buf));
   }
 
@@ -206,7 +203,7 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief create a stateful scorer used for computation of document scores
     ////////////////////////////////////////////////////////////////////////////////
-    virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
+    virtual std::pair<score_ctx_ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
       const byte_type* stats,
@@ -235,6 +232,8 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     virtual void add(byte_type* dst, const byte_type* src) const = 0;
 
+    virtual void  merge(byte_type* dst, const byte_type** src_start, const size_t size, size_t offset) const = 0;
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
     ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +244,7 @@ class IRESEARCH_API sort {
     ///        the score type (i.e. sizeof(score), alignof(score))
     /// @note alignment must satisfy the following requirements:
     ///       - be a power of 2
-    ///       - be less or equal than ALIGNOF(MAX_ALIGN_T))
+    ///       - be less or equal than alignof(MAX_ALIGN_T))
     ////////////////////////////////////////////////////////////////////////////////
     virtual std::pair<size_t, size_t> score_size() const = 0;
 
@@ -253,7 +252,7 @@ class IRESEARCH_API sort {
     /// @brief number of bytes (first) and alignment (first) required to store stats
     /// @note alignment must satisfy the following requirements:
     ///       - be a power of 2
-    ///       - be less or equal than ALIGNOF(MAX_ALIGN_T))
+    ///       - be less or equal than alignof(MAX_ALIGN_T))
     ////////////////////////////////////////////////////////////////////////////////
     virtual std::pair<size_t, size_t> stats_size() const = 0;
 
@@ -270,56 +269,56 @@ class IRESEARCH_API sort {
     typedef ScoreType score_t;
     typedef StatsType stats_t;
 
-    FORCE_INLINE static const score_t& score_cast(const byte_type* buf) NOEXCEPT {
+    FORCE_INLINE static const score_t& score_cast(const byte_type* buf) noexcept {
       assert(buf);
       return *reinterpret_cast<const score_t*>(buf);
     }
 
-    FORCE_INLINE static score_t& score_cast(byte_type* buf) NOEXCEPT {
+    FORCE_INLINE static score_t& score_cast(byte_type* buf) noexcept {
       return const_cast<score_t&>(score_cast(const_cast<const byte_type*>(buf)));
     }
 
-    FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) NOEXCEPT {
+    FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) noexcept {
       assert(buf);
       return *reinterpret_cast<const stats_t*>(buf);
     }
 
-    FORCE_INLINE static stats_t& stats_cast(byte_type* buf) NOEXCEPT {
+    FORCE_INLINE static stats_t& stats_cast(byte_type* buf) noexcept {
       return const_cast<stats_t&>(stats_cast(const_cast<const byte_type*>(buf)));
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> score_size() const NOEXCEPT final {
+    virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
       static_assert(
-        ALIGNOF(score_t) <= ALIGNOF(MAX_ALIGN_T),
+        alignof(score_t) <= alignof(MAX_ALIGN_T),
         "alignof(score_t) must be <= alignof(std::max_align_t)"
       );
 
       static_assert (
-        math::is_power2(ALIGNOF(score_t)),
+        math::is_power2(alignof(score_t)),
         "alignof(score_t) must be a power of 2"
       );
 
-      return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
+      return std::make_pair(sizeof(score_t), alignof(score_t));
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store stats
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> stats_size() const NOEXCEPT final {
+    virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
       static_assert(
-        ALIGNOF(stats_t) <= ALIGNOF(MAX_ALIGN_T),
+        alignof(stats_t) <= alignof(MAX_ALIGN_T),
         "alignof(stats_t) must be <= alignof(std::max_align_t)"
       );
 
       static_assert (
-        math::is_power2(ALIGNOF(stats_t)),
+        math::is_power2(alignof(stats_t)),
         "alignof(stats_t) must be a power of 2"
       );
 
-      return std::make_pair(sizeof(stats_t), ALIGNOF(stats_t));
+      return std::make_pair(sizeof(stats_t), alignof(stats_t));
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -339,12 +338,12 @@ class IRESEARCH_API sort {
     typedef ScoreType score_t;
     typedef void stats_t;
 
-    FORCE_INLINE static const score_t& score_cast(const byte_type* score_buf) NOEXCEPT {
+    FORCE_INLINE static const score_t& score_cast(const byte_type* score_buf) noexcept {
       assert(score_buf);
       return *reinterpret_cast<const score_t*>(score_buf);
     }
 
-    FORCE_INLINE static score_t& score_cast(byte_type* score_buf) NOEXCEPT {
+    FORCE_INLINE static score_t& score_cast(byte_type* score_buf) noexcept {
       assert(score_buf);
       return *reinterpret_cast<score_t*>(score_buf);
     }
@@ -404,14 +403,14 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score type (i.e. sizeof(score))
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> score_size() const NOEXCEPT final {
-      return std::make_pair(sizeof(score_t), ALIGNOF(score_t));
+    virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
+      return std::make_pair(sizeof(score_t), alignof(score_t));
     }
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store stats
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline std::pair<size_t, size_t> stats_size() const NOEXCEPT final {
+    virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
       return std::make_pair(size_t(0), size_t(0));
     }
   }; // prepared_base
@@ -441,6 +440,15 @@ class IRESEARCH_API sort {
       base_t::score_cast(dst) += base_t::score_cast(src);
     }
 
+    virtual void  merge(byte_type* dst, const byte_type** src_start,
+                        const size_t size, size_t offset) const {
+      auto& casted_dst = base_t::score_cast(dst + offset);
+      casted_dst = ScoreType();
+      for (size_t i = 0; i < size; ++i) {
+        casted_dst += base_t::score_cast(src_start[i] + offset);
+      }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
     ////////////////////////////////////////////////////////////////////////////////
@@ -464,7 +472,7 @@ class IRESEARCH_API sort {
     string_ref name_;
   }; // type_id
 
-  explicit sort(const type_id& id) NOEXCEPT;
+  explicit sort(const type_id& id) noexcept;
   virtual ~sort() = default;
 
   const type_id& type() const { return *type_; }
@@ -483,21 +491,21 @@ class IRESEARCH_API order final {
  public:
   class entry : private util::noncopyable {
    public:
-    entry(const irs::sort::ptr& sort, bool reverse) NOEXCEPT
+    entry(const irs::sort::ptr& sort, bool reverse) noexcept
       : sort_(sort), reverse_(reverse) {
       assert(sort_);
     }
 
-    entry(irs::sort::ptr&& sort, bool reverse) NOEXCEPT
+    entry(irs::sort::ptr&& sort, bool reverse) noexcept
       : sort_(std::move(sort)), reverse_(reverse) {
       assert(sort_);
     }
 
-    entry(entry&& rhs) NOEXCEPT
+    entry(entry&& rhs) noexcept
       : sort_(std::move(rhs.sort_)), reverse_(rhs.reverse_) {
     }
 
-    entry& operator=(entry&& rhs) NOEXCEPT {
+    entry& operator=(entry&& rhs) noexcept {
       if (this != &rhs) {
         sort_ = std::move(rhs.sort_);
         reverse_ = rhs.reverse_;
@@ -505,13 +513,13 @@ class IRESEARCH_API order final {
       return *this;
     }
 
-    const irs::sort& sort() const NOEXCEPT {
+    const irs::sort& sort() const noexcept {
       assert(sort_);
       return *sort_;
     }
 
     template<typename T>
-    const T& sort_cast() const NOEXCEPT {
+    const T& sort_cast() const noexcept {
       typedef typename std::enable_if<
         std::is_base_of<irs::sort, T>::value, T
       >::type type;
@@ -524,7 +532,7 @@ class IRESEARCH_API order final {
     }
 
     template<typename T>
-    const T* sort_safe_cast() const NOEXCEPT {
+    const T* sort_safe_cast() const noexcept {
       typedef typename std::enable_if<
         std::is_base_of<irs::sort, T>::value, T
       >::type type;
@@ -534,14 +542,14 @@ class IRESEARCH_API order final {
         : nullptr;
     }
 
-    bool reverse() const NOEXCEPT {
+    bool reverse() const noexcept {
       return reverse_;
     }
 
    private:
     friend class order;
 
-    irs::sort& sort() NOEXCEPT {
+    irs::sort& sort() noexcept {
       assert(sort_);
       return *sort_;
     }
@@ -572,7 +580,7 @@ class IRESEARCH_API order final {
           reverse(reverse) {
       }
 
-      prepared_sort(prepared_sort&& rhs) NOEXCEPT
+      prepared_sort(prepared_sort&& rhs) noexcept
         : bucket(std::move(rhs.bucket)),
           score_offset(rhs.score_offset),
           stats_offset(rhs.stats_offset),
@@ -581,7 +589,7 @@ class IRESEARCH_API order final {
         rhs.stats_offset = 0;
       }
 
-      prepared_sort& operator=(prepared_sort&& rhs) NOEXCEPT {
+      prepared_sort& operator=(prepared_sort&& rhs) noexcept {
         if (this != &rhs) {
           bucket = std::move(rhs.bucket);
           score_offset = rhs.score_offset;
@@ -608,7 +616,7 @@ class IRESEARCH_API order final {
     class IRESEARCH_API collectors: private util::noncopyable { // noncopyable required by MSVC
      public:
       collectors(const prepared& buckets, size_t terms_count);
-      collectors(collectors&& other) NOEXCEPT; // function definition explicitly required by MSVC
+      collectors(collectors&& other) noexcept; // function definition explicitly required by MSVC
 
       //////////////////////////////////////////////////////////////////////////
       /// @brief collect field related statistics, i.e. field used in the filter
@@ -670,13 +678,13 @@ class IRESEARCH_API order final {
     class IRESEARCH_API scorers: private util::noncopyable { // noncopyable required by MSVC
      public:
       struct entry {
-        entry(sort::score_ctx::ptr&& ctx, score_f func, size_t offset)
+        entry(score_ctx_ptr&& ctx, score_f func, size_t offset)
           : ctx(std::move(ctx)),
             func(func),
             offset(offset) {
         }
 
-        sort::score_ctx::ptr ctx;
+        score_ctx_ptr ctx;
         score_f func;
         size_t offset;
       };
@@ -690,18 +698,23 @@ class IRESEARCH_API order final {
         const attribute_view& doc,
         boost_t boost
       );
-      scorers(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
+      scorers(scorers&& other) noexcept; // function definition explicitly required by MSVC
 
-      scorers& operator=(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
+      scorers& operator=(scorers&& other) noexcept; // function definition explicitly required by MSVC
 
       void score(byte_type* score) const;
 
-      const entry& operator[](size_t i) const NOEXCEPT {
+      const entry& operator[](size_t i) const noexcept {
         assert(i < scorers_.size());
         return scorers_[i];
       }
 
-      size_t size() const NOEXCEPT {
+      entry& operator[](size_t i) noexcept {
+        assert(i < scorers_.size());
+        return scorers_[i];
+      }
+
+      size_t size() const noexcept {
         return scorers_.size();
       }
 
@@ -714,37 +727,37 @@ class IRESEARCH_API order final {
     static const prepared& unordered();
 
     prepared() = default;
-    prepared(prepared&& rhs) NOEXCEPT;
+    prepared(prepared&& rhs) noexcept;
 
-    prepared& operator=(prepared&& rhs) NOEXCEPT;
+    prepared& operator=(prepared&& rhs) noexcept;
 
-    const flags& features() const NOEXCEPT { return features_; }
+    const flags& features() const noexcept { return features_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store the score types of all buckets
     ////////////////////////////////////////////////////////////////////////////
-    size_t score_size() const NOEXCEPT { return score_size_; }
+    size_t score_size() const noexcept { return score_size_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief number of bytes required to store stats of all buckets
     ////////////////////////////////////////////////////////////////////////////
-    size_t stats_size() const NOEXCEPT { return stats_size_; }
+    size_t stats_size() const noexcept { return stats_size_; }
 
     ////////////////////////////////////////////////////////////////////////////
     /// @returns number of bucket in order
     ////////////////////////////////////////////////////////////////////////////
-    size_t size() const NOEXCEPT { return order_.size(); }
-    bool empty() const NOEXCEPT { return order_.empty(); }
+    size_t size() const noexcept { return order_.size(); }
+    bool empty() const noexcept { return order_.empty(); }
 
-    prepared_order_t::const_iterator begin() const NOEXCEPT {
+    prepared_order_t::const_iterator begin() const noexcept {
       return prepared_order_t::const_iterator(order_.begin());
     }
 
-    prepared_order_t::const_iterator end() const NOEXCEPT {
+    prepared_order_t::const_iterator end() const noexcept {
       return prepared_order_t::const_iterator(order_.end());
     }
 
-    const prepared_sort& operator[](size_t i) const NOEXCEPT {
+    const prepared_sort& operator[](size_t i) const noexcept {
       return order_[i];
     }
 
@@ -779,11 +792,28 @@ class IRESEARCH_API order final {
     void prepare_score(byte_type* score) const;
     void prepare_stats(byte_type* stats) const;
 
+    void merge(byte_type* score, const byte_type** rhs_start, size_t count) const {
+      switch (order_.size()) {
+        case 1:
+          order_[0].bucket->merge(score, &(*rhs_start), count, order_[0].score_offset);
+          break;
+        case 2:
+          order_[0].bucket->merge(score, &(*rhs_start), count, order_[0].score_offset);
+          order_[1].bucket->merge(score, &(*rhs_start), count, order_[1].score_offset);
+          break;
+        default:
+          for_each([score, &rhs_start, count](const prepared_sort& sort) {
+            assert(sort.bucket);
+            sort.bucket->merge(score, &(*rhs_start), count, sort.score_offset);
+          });
+      }
+    }
+
     template<typename T>
-    CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {
-      #if !defined(__APPLE__) && defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug CONSTEXPR functions
+    constexpr const T& get(const byte_type* score, size_t i) const noexcept {
+      #if !defined(__APPLE__) && defined(IRESEARCH_DEBUG) // MacOS can't handle asserts in non-debug constexpr functions
         assert(sizeof(T) == order_[i].bucket->score_size().first);
-        assert(ALIGNOF(T) == order_[i].bucket->score_size().second);
+        assert(alignof(T) == order_[i].bucket->score_size().second);
       #endif
       return reinterpret_cast<const T&>(*(score + order_[i].score_offset));
     }
@@ -791,7 +821,7 @@ class IRESEARCH_API order final {
     template<
       typename StringType,
       typename TraitsType = typename StringType::traits_type
-    > CONSTEXPR StringType to_string(
+    > constexpr StringType to_string(
         const byte_type* score, size_t i
     ) const {
       typedef typename TraitsType::char_type char_type;
@@ -821,11 +851,11 @@ class IRESEARCH_API order final {
   static const order& unordered();
 
   order() = default;
-  order(order&& rhs) NOEXCEPT
+  order(order&& rhs) noexcept
     : order_(std::move(rhs.order_)) {
   }
 
-  order& operator=(order&& rhs) NOEXCEPT {
+  order& operator=(order&& rhs) noexcept {
     if (this != &rhs) {
       order_ = std::move(rhs.order_);
     }
@@ -863,16 +893,16 @@ class IRESEARCH_API order final {
   }
 
   void remove(const type_id& id);
-  void clear() NOEXCEPT { order_.clear(); }
+  void clear() noexcept { order_.clear(); }
 
-  size_t size() const NOEXCEPT { return order_.size(); }
-  bool empty() const NOEXCEPT { return order_.empty(); }
+  size_t size() const noexcept { return order_.size(); }
+  bool empty() const noexcept { return order_.empty(); }
 
-  const_iterator begin() const NOEXCEPT { return order_.begin(); }
-  const_iterator end() const NOEXCEPT { return order_.end(); }
+  const_iterator begin() const noexcept { return order_.begin(); }
+  const_iterator end() const noexcept { return order_.end(); }
 
-  iterator begin() NOEXCEPT { return order_.begin(); }
-  iterator end() NOEXCEPT { return order_.end(); }
+  iterator begin() noexcept { return order_.begin(); }
+  iterator end() noexcept { return order_.end(); }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

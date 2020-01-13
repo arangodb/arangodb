@@ -281,7 +281,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
   // correct json
   auto createJson = arangodb::velocypack::Parser::fromJson(
     "{"
-    "  \"IndexValuesVars\" : ["
+    "  \"indexValuesVars\" : ["
     "    {"
     "      \"fieldNumber\" : 2,"
     "      \"id\" : 6,"
@@ -553,7 +553,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexValuesVars\" : ["
+      "  \"indexValuesVars\" : ["
       "    {"
       "      \"fieldNumber\" : 2,"
       "      \"id\" : 6,"
@@ -596,11 +596,11 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     ASSERT_TRUE(indNode.isLateMaterialized());
   }
 
-  // incorrect IndexValuesVars
+  // incorrect indexValuesVars
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexValuesVars\" : {"
+      "  \"indexValuesVars\" : {"
       "    \"fieldNumber\" : 2,"
       "    \"id\" : 6,"
       "    \"name\" : \"5\""
@@ -651,7 +651,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexValuesVars\" : ["
+      "  \"indexValuesVars\" : ["
       "    {"
       "      \"fieldNumber\" : \"two\","
       "      \"id\" : 6,"
@@ -704,7 +704,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexValuesVars\" : ["
+      "  \"indexValuesVars\" : ["
       "    {"
       "      \"fieldNumber\" : 2,"
       "      \"id\" : \"six\","
@@ -757,7 +757,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexValuesVars\" : ["
+      "  \"indexValuesVars\" : ["
       "    {"
       "      \"fieldNumber\" : 2,"
       "      \"id\" : 6,"
@@ -803,7 +803,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexValuesVars\" : ["
+      "  \"indexValuesVars\" : ["
       "    {"
       "      \"fieldNumber\" : 2,"
       "      \"id\" : 6,"
@@ -856,7 +856,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexValuesVars\" : ["
+      "  \"indexValuesVars\" : ["
       "    {"
       "      \"fieldNumber\" : 2,"
       "      \"id\" : 6,"

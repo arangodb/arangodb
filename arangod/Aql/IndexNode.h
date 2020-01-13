@@ -127,16 +127,20 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     return !_outNonMaterializedIndVars.second.empty();
   }
 
+  bool canApplyLateDocumentMaterializationRule() const {
+    return isProduceResult() && coveringIndexAttributePositions().empty();
+  }
+
   struct IndexVariable {
     size_t indexFieldNum;
     Variable const* var;
   };
 
-  using IndexValuesVars = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, Variable const*>>;
+  using IndexValuesVars = std::pair<TRI_idx_iid_t, std::vector<std::pair<size_t, Variable const*>>>;
 
   using IndexValuesRegisters = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, RegisterId>>;
 
-  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexNode::IndexVariable>;
+  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
 
   void setLateMaterialized(aql::Variable const* docIdVariable, TRI_idx_iid_t commonIndexId, IndexVarsInfo const& indexVariables);
 
@@ -145,6 +149,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                       std::vector<RegisterId>& inRegs,
                       std::vector<std::unique_ptr<NonConstExpression>>& nonConstExpressions,
                       transaction::Methods* trxPtr) const;
+
+  bool isProduceResult() const {
+    return isVarUsedLater(_outVariable) || _filter != nullptr;
+  }
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*, transaction::Methods* trx) const;

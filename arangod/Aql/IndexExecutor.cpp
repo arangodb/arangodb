@@ -55,10 +55,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool IndexExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough IndexExecutor::Properties::allowsBlockPassthrough;
-constexpr bool IndexExecutor::Properties::inputSizeRestrictsOutputSize;
-
 namespace {
 /// resolve constant attribute accesses
 static void resolveFCallConstAttributes(AstNode* fcall) {
@@ -137,7 +133,6 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
 
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
 
     return true;
   };
@@ -350,8 +345,8 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
       _type(infos.isLateMaterialized()
                 ? Type::LateMaterialized
                 : !infos.getProduceResult()
-                ? Type::NoResult
-                : _cursor->hasCovering() &&
+                    ? Type::NoResult
+                    : _cursor->hasCovering() && // if change see IndexNode::canApplyLateDocumentMaterializationRule()
                           !infos.getCoveringIndexAttributePositions().empty()
                       ? Type::Covering
                       : Type::Document) {
@@ -362,7 +357,7 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
   }
   case Type::LateMaterialized:
     _documentProducer = checkUniqueness ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndRegs()) :
-                                 ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
+                                          ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
     break;
   default:
     _documentProducer = checkUniqueness ? buildDocumentCallback<true, false>(context) : buildDocumentCallback<false, false>(context);

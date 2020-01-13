@@ -43,6 +43,7 @@ namespace aql {
 /// @brief Helper class to materialize AqlValues (see AqlValue::materialize).
 struct AqlValueMaterializer {
   explicit AqlValueMaterializer(velocypack::Options const* options);
+  [[deprecated("Pass VPackOptions instead of the transaction")]]
   explicit AqlValueMaterializer(arangodb::transaction::Methods* trx);
 
   AqlValueMaterializer(AqlValueMaterializer const& other);

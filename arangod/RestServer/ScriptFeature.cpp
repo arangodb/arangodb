@@ -50,7 +50,7 @@ ScriptFeature::ScriptFeature(application_features::ApplicationServer& server, in
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.script-parameter", "script parameter",
                      new VectorParameter<StringParameter>(&_scriptParameters));
