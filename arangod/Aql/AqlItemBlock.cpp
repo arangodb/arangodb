@@ -292,6 +292,8 @@ void AqlItemBlock::destroy() noexcept {
   // arbitrary types. so we put a global try...catch here to be on
   // the safe side
   try {
+    _shadowRowIndexes.clear();
+
     if (_valueCount.empty()) {
       eraseAll();
       rescale(0, 0);
@@ -365,6 +367,10 @@ void AqlItemBlock::shrink(size_t nrItems) {
     }
     a.erase();
   }
+
+  // remove the shadow row indices pointing to now invalid rows.
+  _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),
+                          _shadowRowIndexes.end());
 
   // adjust the size of the block
   _nrItems = nrItems;
