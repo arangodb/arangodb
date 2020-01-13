@@ -3,6 +3,8 @@ v3.6.1 (2020-XX-XX)
 
 * Now clearing an internal map inside the traverser engine correctly.
 
+* Fix installation of arangoinspect and libraries in Windows client installer.
+
 * Disable cluster AQL parallelization for queries that contain traversal,
   shortest path or k_shortest_path nodes.
   This avoids potential undefined behavior in case a parallel GatherNode is used
