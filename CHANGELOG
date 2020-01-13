@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed internal traversal edge collection cache being filled up correctly.
+  Edges are able to point to other edges, but those we're not applied to the
+  cache.
+
 * Fix installation of arangoinspect and libraries in Windows client installer.
 
 * Now clearing an internal map inside the traverser engine correctly.
