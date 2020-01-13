@@ -4,6 +4,8 @@ v3.4.9 (XXXX-XX-XX)
 * Fix Foxxmaster failover retry loop to not spin forever and give up
   after a while.
 
+* Fix Windows client package JS installation paths.
+
 * Updated arangosync to 0.7.2.
 
 * Fixed internal issue #656: While executing large amount of concurrent
