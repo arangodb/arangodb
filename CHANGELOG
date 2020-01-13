@@ -3,6 +3,8 @@ v3.5.4 (XXXX-XX-XX)
 
 * Fix installation of arangoinspect and libraries in Windows client installer.
 
+* Fix Windows client package JS installation paths.
+
 * Updated arangosync to 0.7.2.
 
 * TTL value missing for hot backup maintenance mode.
