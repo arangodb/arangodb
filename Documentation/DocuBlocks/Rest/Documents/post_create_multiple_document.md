@@ -58,7 +58,7 @@ Controls whether objects (not arrays) will be merged if present in both the
 existing and the update-insert document. If set to *false*, the value in the
 patch document will overwrite the existing document's value. If set to *true*,
 objects will be merged. The default is *true*.
-This option controls the update-insert behavior.
+This option controls the update-insert behavior only.
 
 
 @RESTDESCRIPTION
