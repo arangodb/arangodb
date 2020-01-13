@@ -597,23 +597,18 @@ struct ParsedDateTime {
 
 /// @brief parses a number value, and returns its length
 int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
-  char const* s = dateTime.data();
-  char const* e = s + dateTime.size();
+  char const* p = dateTime.data();
+  char const* e = p + dateTime.size();
 
-  while (s != e) {
-    char c = *s;
+  while (p != e) {
+    char c = *p;
     if (c < '0' || c > '9') {
       break;
     }
-    ++s;
+    ++p;
   }
-  if (s - dateTime.data() > 10) {
-    // more than 10 digits?? this is nothing our date/time formats support, 
-    // so we can treat this as an error
-    return 0;
-  }
-  result = arangodb::NumberUtils::atoi_unchecked<int>(dateTime.data(), s);
-  return static_cast<int>(s - dateTime.data());
+  result = arangodb::NumberUtils::atoi_positive_unchecked<int>(dateTime.data(), p);
+  return static_cast<int>(p - dateTime.data());
 }
 
 bool parseDateTime(arangodb::velocypack::StringRef dateTime, 
@@ -649,6 +644,17 @@ bool parseDateTime(arangodb::velocypack::StringRef dateTime,
   int length = parseNumber(dateTime, result.year);
   if (length == 0 || result.year > 9999) {
     return false;
+  }
+  if (ADB_UNLIKELY(length > 4)) {
+    // we must have at least 4 digits for the year, however, we
+    // allow any amount of leading zeroes
+    size_t i = 0;
+    while (dateTime[i] == '0') {
+      ++i;
+    }
+    if (length - i > 4) {
+      return false;
+    }
   }
   dateTime = dateTime.substr(length);
 
