@@ -1,6 +1,8 @@
 devel
 -----
 
+* Now clearing an internal map inside the traverser engine correctly.
+
 * Hide swagger api calls in list by default
 
 * Fix Windows client package JS installation paths.
