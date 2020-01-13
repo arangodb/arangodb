@@ -687,17 +687,19 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             break;
           }
 
-          // cache low-level pointer to avoid repeated shared-ptr-derefs
-          TRI_ASSERT(_resultBuilder != nullptr);
-          auto& resultBuilder = *_resultBuilder;
+          if (!_queryOptions.silent) {
+            // cache low-level pointer to avoid repeated shared-ptr-derefs
+            TRI_ASSERT(_resultBuilder != nullptr);
+            auto& resultBuilder = *_resultBuilder;
 
-          size_t const n = res.second->size();
+            size_t const n = res.second->size();
 
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = res.second->getValueReference(i, resultRegister);
+            for (size_t i = 0; i < n; ++i) {
+              AqlValue const& val = res.second->getValueReference(i, resultRegister);
 
-            if (!val.isEmpty()) {
-              val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
+              if (!val.isEmpty()) {
+                val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
+              }
             }
           }
 
@@ -910,10 +912,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
               }
-            }
-
-            if (V8PlatformFeature::isOutOfMemory(isolate)) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            
+              if (V8PlatformFeature::isOutOfMemory(isolate)) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+              }
             }
           }
         }
@@ -1402,6 +1404,9 @@ bool Query::canUseQueryCache() const {
     return false;
   }
   if (_isModificationQuery) {
+    return false;
+  }
+  if (_queryOptions.silent) {
     return false;
   }
 
