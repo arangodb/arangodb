@@ -412,7 +412,7 @@ void ClusterFeature::prepare() {
   // register the prefix with the communicator
   AgencyCommManager::initialize(server(), _agencyPrefix);
   TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
-  AsyncAgencyCommManager::initialize();
+  AsyncAgencyCommManager::initialize(server());
   AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
 
 
