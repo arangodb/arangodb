@@ -232,6 +232,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                         ": response is not an array");
     }
 
+    t = TRI_microtime();
     for (std::size_t i = 0; i < docs.length(); ++i) {
       VPackSlice masterDoc = docs.at(i);
 
@@ -291,6 +292,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         ++stats.numDocsInserted;
       }
     }
+    stats.waitedForInsertions += TRI_microtime() - t;
     current += docs.length();
   }
 
@@ -1613,6 +1615,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       ", " + "waited for initial: " + std::to_string(stats.waitedForInitial) +
       " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
       " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
+      " s, " + "waited for insertions: " + std::to_string(stats.waitedForInsertions) +
       " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
       " s");
 
