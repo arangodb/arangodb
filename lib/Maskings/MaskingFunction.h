@@ -45,7 +45,7 @@ class MaskingFunction {
 
  public:
   explicit MaskingFunction(Maskings* maskings) : _maskings(maskings) {}
-  virtual ~MaskingFunction() {}
+  virtual ~MaskingFunction() = default;
 
  public:
   virtual VPackValue mask(bool, std::string& buffer) const = 0;

@@ -674,7 +674,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+          auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
           if (res.first == ExecutionState::WAITING) {
             return res.first;
           }
@@ -687,17 +687,19 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             break;
           }
 
-          // cache low-level pointer to avoid repeated shared-ptr-derefs
-          TRI_ASSERT(_resultBuilder != nullptr);
-          auto& resultBuilder = *_resultBuilder;
+          if (!_queryOptions.silent) {
+            // cache low-level pointer to avoid repeated shared-ptr-derefs
+            TRI_ASSERT(_resultBuilder != nullptr);
+            auto& resultBuilder = *_resultBuilder;
 
-          size_t const n = res.second->size();
+            size_t const n = res.second->size();
 
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = res.second->getValueReference(i, resultRegister);
+            for (size_t i = 0; i < n; ++i) {
+              AqlValue const& val = res.second->getValueReference(i, resultRegister);
 
-            if (!val.isEmpty()) {
-              val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
+              if (!val.isEmpty()) {
+                val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
+              }
             }
           }
 
@@ -882,11 +884,11 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       uint32_t j = 0;
       ExecutionState state = ExecutionState::HASMORE;
       while (state != ExecutionState::DONE) {
-        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
         state = res.first;
         while (state == ExecutionState::WAITING) {
           ss->waitForAsyncWakeup();
-          res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+          res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
           state = res.first;
         }
         SharedAqlItemBlockPtr value = std::move(res.second);
@@ -910,10 +912,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
               }
-            }
-
-            if (V8PlatformFeature::isOutOfMemory(isolate)) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            
+              if (V8PlatformFeature::isOutOfMemory(isolate)) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+              }
             }
           }
         }
@@ -1012,6 +1014,28 @@ ExecutionState Query::finalize(QueryResult& result) {
     result.extra = std::make_shared<VPackBuilder>();
     result.extra->openObject(true);
     if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+      if (ServerState::instance()->isCoordinator()) {
+        std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
+          arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+          arangodb::aql::ExecutionNode::INDEX,
+          arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
+          arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
+          arangodb::aql::ExecutionNode::UPSERT};
+
+        ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+        ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+        _plan->findNodesOfType(nodes, collectionNodeTypes, true);
+
+        for (auto& n : nodes) {
+          // clear shards so we get back the full collection name when serializing
+          // the plan
+          auto cn = dynamic_cast<CollectionAccessingNode*>(n);
+          if (cn) {
+            cn->setUsedShard("");
+          }
+        }
+      }
+
       result.extra->add(VPackValue("plan"));
       _plan->toVelocyPack(*result.extra, _ast.get(), false);
       // needed to happen before plan cleanup
@@ -1380,6 +1404,9 @@ bool Query::canUseQueryCache() const {
     return false;
   }
   if (_isModificationQuery) {
+    return false;
+  }
+  if (_queryOptions.silent) {
     return false;
   }
 

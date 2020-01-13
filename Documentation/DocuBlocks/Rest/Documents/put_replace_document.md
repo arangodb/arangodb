@@ -47,9 +47,8 @@ You can conditionally replace a document based on a target revision id by
 using the *if-match* HTTP header.
 
 @RESTDESCRIPTION
-Replaces the document with handle <document-handle> with the one in
-the body, provided there is such a document and no precondition is
-violated.
+Replaces the specified document with the one in the body, provided there is
+such a document and no precondition is violated.
 
 The value of the `_key` attribute as well as attributes
 used as sharding keys may not be changed.
@@ -88,8 +87,8 @@ synchronization for collections that have a default *waitForSync* value
 of *true*.
 
 If *silent* is not set to *true*, the body of the response contains a JSON
-object with the information about the handle and the revision. The attribute
-*_id* contains the known *document-handle* of the updated document, *_key*
+object with the information about the identifier and the revision. The attribute
+*_id* contains the known *document-id* of the updated document, *_key*
 contains the key which uniquely identifies a document in a given collection,
 and the attribute *_rev* contains the new document revision.
 
@@ -130,7 +129,7 @@ returned.
 
 @EXAMPLES
 
-Using a document handle
+Using a document identifier
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocument}
     var cn = "products";
@@ -148,7 +147,7 @@ Using a document handle
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Unknown document handle
+Unknown document identifier
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentUnknownHandle}
     var cn = "products";

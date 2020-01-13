@@ -564,12 +564,12 @@ var jsUnity = exports.jsUnity = (function () {
                 }
                 break;
               } catch (e) {
+                let arangodb = require("@arangodb");
                 if ( typeof e === "string" ) {
                   e = new Error(e);
-                }
-                else if (e instanceof require("@arangodb").ArangoError && (
-                  (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
-                    (e.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
+                } else if (e instanceof arangodb.ArangoError && (
+                           (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
+                           (e.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
                 )) {
                   skipTest = true;
                 }

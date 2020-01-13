@@ -49,6 +49,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -113,6 +114,7 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx,
+                                       arangodb::transaction::Methods const& trx,
                                        arangodb::iresearch::FieldIterator& body,
                                        arangodb::velocypack::Slice const& document,
                                        arangodb::LocalDocumentId const& documentId,
@@ -158,24 +160,47 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   // Stored value field
   {
     struct StoredValue {
+      StoredValue(arangodb::transaction::Methods const& trx, arangodb::velocypack::Slice const& document) : trx(trx), document(document) {}
+
       bool write(irs::data_output& out) const {
-        out.write_bytes(slice.start(), slice.byteSize());
+        auto size = fields->size();
+        for (auto const& storedValue : *fields) {
+          auto slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
+          // null value optimization
+          if (1 == size && slice.isNull()) {
+            return true;
+          }
+
+          // _id field
+          if (slice.isCustom()) {
+            TRI_ASSERT(1 == storedValue.second.size() &&
+                       storedValue.second[0].name == arangodb::StaticStrings::IdString);
+            buffer.reset();
+            VPackBuilder builder(buffer);
+            builder.add(VPackValue(arangodb::transaction::helpers::extractIdString(
+              trx.resolver(), slice, document)));
+            slice = builder.slice();
+            // a builder is destroyed but a buffer is alive
+          }
+          out.write_bytes(slice.start(), slice.byteSize());
+        }
         return true;
       }
 
-      irs::string_ref const& name() {
+      irs::string_ref const& name() const noexcept {
         return fieldName;
       }
 
-      VPackSlice slice;
+      mutable VPackBuffer<uint8_t> buffer;
+      arangodb::transaction::Methods const& trx;
+      arangodb::velocypack::Slice const& document;
       irs::string_ref fieldName;
-    } field; // StoredValue
+      std::vector<std::pair<std::string, std::vector<arangodb::basics::AttributeName>>> const* fields;
+    } field(trx, document); // StoredValue
 
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
-      for (auto const& storedValue : column.fields) {
-        field.slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
-      }
+      field.fields = &column.fields;
       doc.insert<irs::Action::STORE>(field);
     }
   }
@@ -402,7 +427,7 @@ void IResearchLink::batchInsert(
     auto const end = batch.end();
     try {
       for (FieldIterator body(trx); begin != end; ++begin) {
-        auto const res = insertDocument(ctx, body, begin->second, begin->first, _meta, id());
+        auto const res = insertDocument(ctx, trx, body, begin->second, begin->first, _meta, id());
 
         if (!res.ok()) {
           LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
@@ -1406,7 +1431,7 @@ Result IResearchLink::insert(
     try {
       FieldIterator body(trx);
 
-      return insertDocument(ctx, body, doc, documentId, _meta, id());
+      return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
     } catch (basics::Exception const& e) {
       return {
         e.code(),

@@ -40,7 +40,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTypes.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
@@ -725,7 +725,7 @@ class IResearchFeatureTestCoordinator
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-    arangodb::ServerState::instance()->setRebootId(1);  // Hack.
+    arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
 
     server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
     server.addFeature<arangodb::FlushFeature>(false);
@@ -888,7 +888,7 @@ class IResearchFeatureTestDBServer
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
-    arangodb::ServerState::instance()->setRebootId(1);  // Hack.
+    arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});  // Hack.
 
     server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
     server.addFeature<arangodb::FlushFeature>(false);
