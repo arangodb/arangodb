@@ -1,6 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fix Windows client package JS installation paths.
+
 * Updated arangosync to 0.7.2.
 
 * TTL value missing for hot backup maintenance mode.

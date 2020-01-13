@@ -66,6 +66,7 @@ set(SSL_EAY_RELEASE_DLL "@SSL_EAY_RELEASE_DLL@")
 set(ICU_DT "@ICU_DT@")
 set(ICU_DT_DEST "@ICU_DT_DEST@")
 set(INSTALL_ICU_DT_DEST "@INSTALL_ICU_DT_DEST@")
+set(ARANGODB_JS_VERSION "@ARANGODB_JS_VERSION@")
 
 ################################################################################
 # Get the final values for cpack:
