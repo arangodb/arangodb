@@ -1,6 +1,12 @@
 devel
 -----
 
+* Add ability to choose logging to file in Windows installer of ArangoDB server
+  (enabled by default).
+
+  ArangoDB-logs folder with arangod.log should be stored in %PROGRAMDATA% and
+  %LOCALAPPDATA% for all users and single user installation respectively.
+
 * Fix bug affecting spliced subqueries when memory blocks are reused.
 
 * Hide swagger api calls in list by default
