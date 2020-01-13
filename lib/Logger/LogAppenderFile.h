@@ -37,7 +37,7 @@ namespace arangodb {
 class LogAppenderStream : public LogAppender {
  public:
   LogAppenderStream(std::string const& filename, std::string const& filter, int fd);
-  ~LogAppenderStream() {}
+  ~LogAppenderStream() = default;
 
   void logMessage(LogLevel, std::string const& message, size_t offset) override final;
 

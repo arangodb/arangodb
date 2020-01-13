@@ -185,15 +185,8 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
 }
 
 void LogAppender::log(LogMessage* message) {
-  LogLevel level = message->_level;
-  size_t topicId = message->_topicId;
-  std::string const& m = message->_message;
-  size_t offset = message->_offset;
-
-  MUTEX_LOCKER(guard, _appendersLock);
-
   // output to appender
-  auto output = [&level, &m, &offset](size_t n) -> bool {
+  auto output = [message](size_t n) -> bool {
     auto const& it = _topics2appenders.find(n);
     bool shown = false;
 
@@ -201,8 +194,8 @@ void LogAppender::log(LogMessage* message) {
       auto const& appenders = it->second;
 
       for (auto const& appender : appenders) {
-        if (appender->checkContent(m)) {
-          appender->logMessage(level, m, offset);
+        if (appender->checkContent(message->_message)) {
+          appender->logMessage(message->_level, message->_message, message->_offset);
         }
 
         shown = true;
@@ -214,7 +207,10 @@ void LogAppender::log(LogMessage* message) {
 
   bool shown = false;
 
+  MUTEX_LOCKER(guard, _appendersLock);
+
   // try to find a specific topic
+  size_t topicId = message->_topicId;
   if (topicId < LogTopic::MAX_LOG_TOPICS) {
     shown = output(topicId);
   }

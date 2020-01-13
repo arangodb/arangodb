@@ -441,7 +441,7 @@ function makeAuthorizationHeaders (options) {
                              {'server_id': 'none',
                               'iss': 'arangodb'}, 'HS256');
     if (options.extremeVerbosity) {
-      print(Date() + ' Using jwt token:     ' + jwt);
+      print(Date() + ' Using jw token:     ' + jwt);
     }
     return {
       'headers': {
