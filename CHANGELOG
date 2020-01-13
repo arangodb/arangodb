@@ -5,6 +5,15 @@ devel
   Edges are able to point to other edges, but those we're not applied to the
   cache.
 
+* Add ability to choose logging to file in Windows installer of ArangoDB server
+  (enabled by default).
+
+  ArangoDB-logs folder with arangod.log should be stored in %PROGRAMDATA% and
+  %LOCALAPPDATA% for all users and single user installation respectively.
+
+* Fixed issue #10725: Wrong document count shown inside an empty collection in
+  the web UI.
+
 * Fix installation of arangoinspect and libraries in Windows client installer.
 
 * Now clearing an internal map inside the traverser engine correctly.
