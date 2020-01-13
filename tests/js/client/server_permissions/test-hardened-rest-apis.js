@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -29,7 +29,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
-  let users = require("@arangodb/users");
+  return {
+    'server.harden': 'true',
+    'server.authentication': 'true',
+    'server.jwt-secret': 'abc123',
+    'runSetup': true
+  };
+}
+
+if (runSetup === true) {
+    let users = require("@arangodb/users");
   
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
@@ -37,12 +46,9 @@ if (getOptions === true) {
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
   
-  return {
-    'server.harden': 'true',
-    'server.authentication': 'true',
-    'server.jwt-secret': 'abc123'
-  };
+  return true;
 }
+
 var jsunity = require('jsunity');
 
 function testSuite() {
