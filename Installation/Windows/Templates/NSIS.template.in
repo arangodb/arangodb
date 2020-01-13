@@ -875,10 +875,10 @@ continueUI:
      StrCpy $ini_LOGFILE ",$\r$\nYour logfiles are stored in $\r$\n   '$LOGDIR'"
   ${EndIf}
   
-  ${NSD_CreateLabel} 0 0 100% 70u "Your databases are stored in $\r$\n   '$DATADIR'$ini_LOGFILE$\r$\nand your Foxx services in$\r$\n   '$APPDIR'$\r$\n$\r$\nShould we remove it during the uninstallation?"
+  ${NSD_CreateLabel} 0 0 100% 70u "Your databases are stored in $\r$\n   '$DATADIR'$ini_LOGFILE$\r$\nand your Foxx services in$\r$\n   '$APPDIR'$\r$\n$\r$\nShould we remove them during the uninstallation?"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateCheckbox} 5u -20u 50% 20u "Delete databases with uninstallation?"
+  ${NSD_CreateCheckbox} 5u -20u 50% 20u "Delete ArangoDB user elements with uninstallation?"
   Pop $mycheckbox
 
   nsDialogs::Show
