@@ -69,7 +69,7 @@ class RollingVector {
     return *this;
   }
 
-  ~RollingVector() {}
+  ~RollingVector() = default;
 
   typename std::vector<T>::iterator begin() { return _data.begin() + _start; }
 
