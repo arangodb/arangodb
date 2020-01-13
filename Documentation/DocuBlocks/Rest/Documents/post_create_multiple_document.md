@@ -42,7 +42,7 @@ constraint violated but will replace the old document.
 
 @RESTQUERYPARAM{overwriteMode,string,optional}
 This parameter can be set to *replace* or *update*. If given it sets implicitly 
-the overwrite flag. In case it is set to *update*, the replace-insert becomes a
+the overwrite flag. In case it is set to *update*, the replace-insert becomes an
 update-insert. Otherwise this option follows the rules of the overwrite parameter.
 
 @RESTQUERYPARAM{keepNull,boolean,optional}
