@@ -791,7 +791,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     auto result = readRebootIdFromAgency(comm);
 
     if (result) {
-      setRebootId(result.get());
+      setRebootId(RebootId{result.get()});
       return true;
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -851,13 +851,13 @@ void ServerState::setShortId(uint32_t id) {
   _shortId.store(id, std::memory_order_relaxed);
 }
 
-uint64_t ServerState::getRebootId() const {
-  TRI_ASSERT(_rebootId > 0);
+RebootId ServerState::getRebootId() const {
+  TRI_ASSERT(_rebootId.initialized());
   return _rebootId;
 }
 
-void ServerState::setRebootId(uint64_t rebootId) {
-  TRI_ASSERT(rebootId > 0);
+void ServerState::setRebootId(RebootId const rebootId) {
+  TRI_ASSERT(rebootId.initialized());
   _rebootId = rebootId;
 }
 

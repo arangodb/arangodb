@@ -442,7 +442,7 @@ arangodb::Result SynchronizeShard::getReadLock(
     body.add(COLLECTION, VPackValue(collection));
     body.add(TTL, VPackValue(timeout));
     body.add("serverId", VPackValue(arangodb::ServerState::instance()->getId()));
-    body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId()));
+    body.add(StaticStrings::RebootId, VPackValue(ServerState::instance()->getRebootId().value()));
     body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(soft)); }
   auto buf = body.steal();
 
