@@ -522,15 +522,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       << "\",\"" << static_cast<int>(response.responseCode()) << "\","
       << Logger::FIXED(totalTime, 6);
 
-  if constexpr (SocketType::Ssl == T) {
-    this->_protocol->context.io_context.dispatch(
-        [self = this->shared_from_this(), stat]() mutable {
-          auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
-          thisPtr->writeResponse(stat);
-        });
-  } else {
-    writeResponse(stat);
-  }
+  // sendResponse is always called from a scheduler thread
+  this->_protocol->context.io_context.post(
+      [self = this->shared_from_this(), stat]() mutable {
+        static_cast<HttpCommTask<T>&>(*self).writeResponse(stat);
+      });
 }
 
 // called on IO context thread
