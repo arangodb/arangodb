@@ -1,6 +1,8 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fix installation of arangoinspect and libraries in Windows client installer.
+
 * Fix Windows client package JS installation paths.
 
 * Updated arangosync to 0.7.2.
