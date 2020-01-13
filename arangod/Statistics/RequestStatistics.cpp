@@ -126,26 +126,50 @@ void RequestStatistics::process(RequestStatistics* statistics) {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
 
-      TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
+      if (statistics->_superuser) {
+        TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
 
-      double requestTime = statistics->_requestEnd - statistics->_requestStart;
-      TRI_RequestTimeDistributionStatistics.addFigure(requestTime);
+        double requestTime = statistics->_requestEnd - statistics->_requestStart;
+        TRI_RequestTimeDistributionStatistics.addFigure(requestTime);
 
-      double queueTime = 0.0;
+        double queueTime = 0.0;
 
-      if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-        queueTime = statistics->_queueEnd - statistics->_queueStart;
-        TRI_QueueTimeDistributionStatistics.addFigure(queueTime);
+        if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
+          queueTime = statistics->_queueEnd - statistics->_queueStart;
+          TRI_QueueTimeDistributionStatistics.addFigure(queueTime);
+        }
+
+        double ioTime = totalTime - requestTime - queueTime;
+
+        if (ioTime >= 0.0) {
+          TRI_IoTimeDistributionStatistics.addFigure(ioTime);
+        }
+
+        TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
+        TRI_BytesReceivedDistributionStatistics.addFigure(statistics->_receivedBytes);
+      } else {
+        TRI_TotalTimeDistributionStatisticsUser.addFigure(totalTime);
+
+        double requestTime = statistics->_requestEnd - statistics->_requestStart;
+        TRI_RequestTimeDistributionStatisticsUser.addFigure(requestTime);
+
+        double queueTime = 0.0;
+
+        if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
+          queueTime = statistics->_queueEnd - statistics->_queueStart;
+          TRI_QueueTimeDistributionStatisticsUser.addFigure(queueTime);
+        }
+
+        double ioTime = totalTime - requestTime - queueTime;
+
+        if (ioTime >= 0.0) {
+          TRI_IoTimeDistributionStatisticsUser.addFigure(ioTime);
+        }
+
+        TRI_BytesSentDistributionStatisticsUser.addFigure(statistics->_sentBytes);
+        TRI_BytesReceivedDistributionStatisticsUser.addFigure(statistics->_receivedBytes);
+
       }
-
-      double ioTime = totalTime - requestTime - queueTime;
-
-      if (ioTime >= 0.0) {
-        TRI_IoTimeDistributionStatistics.addFigure(ioTime);
-      }
-
-      TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
-      TRI_BytesReceivedDistributionStatistics.addFigure(statistics->_receivedBytes);
     }
   }
 
@@ -190,18 +214,36 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
                              StatisticsDistribution& requestTime,
                              StatisticsDistribution& queueTime,
                              StatisticsDistribution& ioTime, StatisticsDistribution& bytesSent,
-                             StatisticsDistribution& bytesReceived) {
+                             StatisticsDistribution& bytesReceived,
+                             stats::RequestStatisticsSource source) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
 
-  totalTime = TRI_TotalTimeDistributionStatistics;
-  requestTime = TRI_RequestTimeDistributionStatistics;
-  queueTime = TRI_QueueTimeDistributionStatistics;
-  ioTime = TRI_IoTimeDistributionStatistics;
-  bytesSent = TRI_BytesSentDistributionStatistics;
-  bytesReceived = TRI_BytesReceivedDistributionStatistics;
+  if (source == stats::RequestStatisticsSource::USER) {
+    totalTime = TRI_TotalTimeDistributionStatisticsUser;
+    requestTime = TRI_RequestTimeDistributionStatisticsUser;
+    queueTime = TRI_QueueTimeDistributionStatisticsUser;
+    ioTime = TRI_IoTimeDistributionStatisticsUser;
+    bytesSent = TRI_BytesSentDistributionStatisticsUser;
+    bytesReceived = TRI_BytesReceivedDistributionStatisticsUser;
+  } else {
+    totalTime = TRI_TotalTimeDistributionStatistics;
+    requestTime = TRI_RequestTimeDistributionStatistics;
+    queueTime = TRI_QueueTimeDistributionStatistics;
+    ioTime = TRI_IoTimeDistributionStatistics;
+    bytesSent = TRI_BytesSentDistributionStatistics;
+    bytesReceived = TRI_BytesReceivedDistributionStatistics;
+  }
+  if (source == stats::RequestStatisticsSource::ALL) {
+    totalTime.add(TRI_TotalTimeDistributionStatisticsUser);
+    requestTime.add(TRI_RequestTimeDistributionStatisticsUser);
+    queueTime.add(TRI_QueueTimeDistributionStatisticsUser);
+    ioTime.add(TRI_IoTimeDistributionStatisticsUser);
+    bytesSent.add(TRI_BytesSentDistributionStatisticsUser);
+    bytesReceived.add(TRI_BytesReceivedDistributionStatisticsUser);
+  }
 }
 
 std::string RequestStatistics::timingsCsv() {
@@ -233,7 +275,8 @@ std::string RequestStatistics::to_string() {
      << "_async          " << _async << std::endl
      << "_tooLarge       " << _tooLarge << std::endl
      << "_executeError   " << _executeError << std::endl
-     << "_ignore         " << _ignore << std::endl;
+     << "_ignore         " << _ignore << std::endl
+     << "_superuser      " << _superuser << std::endl;
 
   return ss.str();
 }
@@ -280,4 +323,7 @@ void RequestStatistics::trace_log() {
 
   LOG_TOPIC("31657", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_ignore         " << _ignore;
+
+  LOG_TOPIC("31658", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+                                     << "_superuser      " << _superuser;
 }

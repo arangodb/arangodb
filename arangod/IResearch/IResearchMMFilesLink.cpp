@@ -107,10 +107,9 @@ IResearchMMFilesLink::IResearchMMFilesLink(TRI_idx_iid_t iid,
   return factory;
 }
 
-void IResearchMMFilesLink::toVelocyPack( // generate definition
-    arangodb::velocypack::Builder& builder, // destination buffer
-    std::underlying_type<arangodb::Index::Serialize>::type flags // definition flags
-) const {
+void IResearchMMFilesLink::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
@@ -131,12 +130,9 @@ void IResearchMMFilesLink::toVelocyPack( // generate definition
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
-    VPackBuilder figuresBuilder;
-
-    figuresBuilder.openObject();
-    toVelocyPackFigures(figuresBuilder);
-    figuresBuilder.close();
-    builder.add("figures", figuresBuilder.slice());
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
   }
 
   builder.close();

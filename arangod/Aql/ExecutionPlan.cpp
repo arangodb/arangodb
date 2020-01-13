@@ -54,6 +54,7 @@
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/AccessMode.h"
 
 using namespace arangodb;
@@ -817,8 +818,8 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-
-  _ids.emplace(node->id(), node.get());  // take ownership
+  auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
+  TRI_ASSERT(emplaced);
   return node.release();
 }
 
@@ -830,7 +831,11 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
-    _ids.emplace(node->id(), node);
+    auto [it, emplaced] = _ids.try_emplace(node->id(), node);
+    if (!emplaced) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to register node in plan");
+    }
+    TRI_ASSERT(it != _ids.end());
   } catch (...) {
     delete node;
     throw;
@@ -1275,7 +1280,10 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
       // the LET. and don't create the LET
 
       subquery->replaceOutVariable(v);
-      return subquery;
+      // We do not create a new node here, just return the last dependency.
+      // Note that we *do not* want to return `subquery`, as we might leave a
+      // dangling branch of ExecutionNodes from it.
+      return previous;
     }
     // otherwise fall-through to normal behavior
 
@@ -2412,25 +2420,40 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 
   ~Shower() = default;
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
     indent++;
     return true;
   }
 
-  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) final {
     indent--;
   }
 
-  void after(ExecutionNode* en) override final {
-    for (int i = 0; i < indent; i++) {
-      std::cout << ' ';
+  bool before(ExecutionNode* en) final {
+    return false;
+  }
+
+  void after(ExecutionNode* en) final {
+    if (en->getType() == ExecutionNode::SUBQUERY_END) {
+      --indent;
     }
-    std::cout << en->getTypeString() << std::endl;
+
+    auto logLn{LoggerStream()};
+    logLn << LogLevel::INFO << Logger::AQL;
+
+    for (int i = 0; i < 2 * indent; i++) {
+      logLn << ' ';
+    }
+    logLn << "[" << en->id() << "]" << en->getTypeString();
+
+    if (en->getType() == ExecutionNode::SUBQUERY_START) {
+      ++indent;
+    }
   }
 };
 
 /// @brief show an overview over the plan
-void ExecutionPlan::show() {
+void ExecutionPlan::show() const {
   Shower shower;
   _root->walk(shower);
 }

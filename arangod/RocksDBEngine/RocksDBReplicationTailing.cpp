@@ -592,7 +592,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
 
       auto collection = _vocbase->lookupCollection(cid);
       if (collection) {
-        _collectionCache.emplace(cid, CollectionGuard(_vocbase, collection));
+        _collectionCache.try_emplace(cid, _vocbase, collection);
         return collection.get();
       }
     }
@@ -673,7 +673,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase, uint64_t ti
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
-  while (iterator->Valid() && lastTick <= tickEnd && builder.buffer()->size() < chunkSize) {
+  while (iterator->Valid() && lastTick <= tickEnd && builder.bufferRef().size() < chunkSize) {
     s = iterator->status();
     if (!s.ok()) {
       LOG_TOPIC("ed096", ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();

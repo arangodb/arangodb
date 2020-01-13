@@ -61,26 +61,13 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
                             std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
   
-  auto queryRegistry = QueryRegistryFeature::registry();
+  arangodb::aql::QueryRegistry* queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 
   arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
-  ss->setContinueCallback();
-
-  aql::QueryResultV8 queryResult;
-  while (true) {
-    auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
-                        queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
-    }
-    ss->waitForAsyncResponse();
-  }
-
+  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate, queryRegistry);
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         queryResult.result.is(TRI_ERROR_QUERY_KILLED)) {
@@ -103,7 +90,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a list of document idenfifier
+  // first and only argument should be a list of document identifier
   if (args.Length() != 1) {
     switch (direction) {
       case TRI_EDGE_IN:
@@ -192,8 +179,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       "FOR doc IN @@collection " + filter + " RETURN doc";
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
-  if (!queryResult.data.IsEmpty()) {
-    TRI_V8_RETURN(queryResult.data);
+  if (!queryResult.v8Data.IsEmpty()) {
+    TRI_V8_RETURN(queryResult.v8Data);
   }
 
   TRI_V8_RETURN_NULL();
@@ -234,8 +221,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   resultBuilder.openArray();
 
   opCursor.allDocuments(
-      [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
+      [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
         resultBuilder.add(slice);
+        return true;
       },
       1000);
 
@@ -438,8 +426,8 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  if (!queryResult.data.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.data);
+  if (!queryResult.v8Data.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.v8Data);
   }
 
   TRI_V8_RETURN(result);

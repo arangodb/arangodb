@@ -20,6 +20,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "BenchFeature.h"
 
 #include <ctime>
@@ -32,6 +37,8 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Benchmark/BenchmarkCounter.h"
@@ -76,16 +83,35 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _quiet(false),
       _runs(1),
       _junitReportFile(""),
+      _jsonReportFile(""),
       _replicationFactor(1),
       _numberOfShards(1),
       _waitForSync(false),
-      _result(result) {
+      _result(result),
+      _histogramNumIntervals(1000),
+      _histogramIntervalSize(0.0),
+      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0})
+{
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("histogram", "Benchmark statistics configuration");
+  options->addOption("--histogram.interval-size",
+                     "bucket width, dynamically calculated by default: "
+                     "(first measured time * 20) / num-intervals",
+                     new DoubleParameter(&_histogramIntervalSize),
+                     arangodb::options::makeFlags(options::Flags::Dynamic));
+  options->addOption("--histogram.num-intervals",
+                     "number of buckets (resolution)",
+                     new UInt64Parameter(&_histogramNumIntervals));
+  options->addOption("--histogram.percentiles",
+                     "which percentiles to calculate",
+                     new VectorParameter<DoubleParameter>(&_percentiles),
+                     arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+  
   options->addOption("--async", "send asynchronous requests", new BooleanParameter(&_async));
 
   options->addOption("--concurrency",
@@ -147,6 +173,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "filename to write junit style report to",
                      new StringParameter(&_junitReportFile));
 
+  options->addOption("--json-report-file",
+                     "filename to write a report in JSON format to",
+                     new StringParameter(&_jsonReportFile));
+
   options->addOption(
       "--runs", "run test n times (and calculate statistics based on median)",
       new UInt64Parameter(&_runs));
@@ -174,6 +204,19 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
+  double minTime = -1.0;
+  double maxTime = 0.0;
+  double avgTime = 0.0;
+  size_t counter = 0;
+
+  sort(_percentiles.begin(), _percentiles.end());
+  
+  if (!_jsonReportFile.empty() && FileUtils::exists(_jsonReportFile)) {
+    LOG_TOPIC("ee2a4", FATAL, arangodb::Logger::FIXME)
+        << "file already exists: '" << _jsonReportFile << "' - won't overwrite it.";
+    FATAL_ERROR_EXIT();
+  }
+    
   ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
   client.setRetries(3);
   client.setWarn(true);
@@ -207,10 +250,19 @@ void BenchFeature::start() {
   // speed
   realStep += 10000;
 
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openObject();
+  builder->add("histogram", VPackValue(VPackValueType::Object));
   std::vector<BenchmarkThread*> threads;
-
+  std::stringstream pp;
   bool ok = true;
   std::vector<BenchRunResult> results;
+  pp << "Interval/Percentile:";
+  for (auto percentile : _percentiles) {
+    pp << std::fixed << std::right << std::setw(14) << std::setprecision(2) << percentile << "%";
+  }
+  pp << std::endl;
+
   for (uint64_t j = 0; j < _runs; j++) {
     status("starting threads...");
     BenchmarkCounter<unsigned long> operationsCounter(0, (unsigned long)_operations);
@@ -222,7 +274,7 @@ void BenchFeature::start() {
           new BenchmarkThread(server(), benchmark.get(), &startCondition,
                               &BenchFeature::updateStartCounter, static_cast<int>(i),
                               (unsigned long)_batchSize, &operationsCounter,
-                              client, _keepAlive, _async, _verbose);
+                              client, _keepAlive, _async, _verbose, _histogramIntervalSize, _histogramNumIntervals);
       thread->setOffset((size_t)(i * realStep));
       thread->start();
       threads.push_back(thread);
@@ -265,7 +317,7 @@ void BenchFeature::start() {
         LOG_TOPIC("c3604", INFO, arangodb::Logger::FIXME) << "number of operations: " << nextReportValue;
         nextReportValue += stepValue;
       }
-
+      
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
@@ -287,13 +339,28 @@ void BenchFeature::start() {
         requestTime,
     });
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
+      threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
+      double scope;
+      auto res = threads[i]->getPercentiles(_percentiles, scope);
+      builder->add(std::to_string(i), VPackValue(VPackValueType::Object));
+      size_t j = 0;
+      pp << " " << std::left << std::setfill('0') << std::fixed << std::setw(10) << std::setprecision(6) << (threads[i]->_histogramIntervalSize * 1000) << std::setw(0) <<"ms       ";
+      builder->add("IntervalSize", VPackValue(threads[i]->_histogramIntervalSize));
+      for (auto time : res) {
+        builder->add(std::to_string(_percentiles[j]), VPackValue(time));
+        pp << "   " << std::left << std::setfill('0') << std::fixed << std::setw(10) << std::setprecision(4) << (time * 1000) << std::setw(0) << "ms";
+        j++;
+      }
+      builder->close();
+      pp << std::endl;
       delete threads[i];
     }
     threads.clear();
   }
   std::cout << std::endl;
+  builder->close();
 
-  report(client, results);
+  report(client, results, minTime, maxTime, avgTime, pp.str(), *builder);
   if (!ok) {
     std::cout << "At least one of the runs produced failures!" << std::endl;
   }
@@ -306,7 +373,7 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results) {
+bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, double minTime, double maxTime, double avgTime, std::string const& histogram, VPackBuilder& builder) {
   std::cout << std::endl;
 
   std::cout << "Total number of operations: " << _operations << ", runs: " << _runs
@@ -321,6 +388,21 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
             << ", database: '" << client.databaseName() << "', collection: '"
             << _collection << "'" << std::endl;
 
+  builder.add("totalNumberOfOperations", VPackValue(_operations));
+  builder.add("runs", VPackValue(_runs));
+  builder.add("keepAlive", VPackValue(_keepAlive));
+  builder.add("async", VPackValue(_async));
+  builder.add("batchSize", VPackValue(_batchSize));
+  builder.add("replicationFactor", VPackValue(_replicationFactor));
+  builder.add("numberOfShards", VPackValue(_numberOfShards));
+  builder.add("waitForSync", VPackValue(_waitForSync));
+  builder.add("concurrencyLevel", VPackValue(_concurrency));
+  builder.add("testCase", VPackValue(_testCase));
+  builder.add("complexity", VPackValue(_complexity));
+  builder.add("database", VPackValue(client.databaseName()));
+  builder.add("collection", VPackValue(_collection));
+
+  
   std::sort(results.begin(), results.end(),
             [](BenchRunResult a, BenchRunResult b) { return a.time < b.time; });
 
@@ -330,11 +412,16 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
     std::cout << std::endl;
     std::cout << "Printing fastest result" << std::endl;
     std::cout << "=======================" << std::endl;
-    printResult(results[0]);
-
+    
+    builder.add("fastestResults", VPackValue(VPackValueType::Object));
+    printResult(results[0], builder);
+    builder.close();
+    
     std::cout << "Printing slowest result" << std::endl;
     std::cout << "=======================" << std::endl;
-    printResult(results[size - 1]);
+    builder.add("slowestResults", VPackValue(VPackValueType::Object));
+    printResult(results[size - 1], builder);
+    builder.close();
 
     std::cout << "Printing median result" << std::endl;
     std::cout << "=======================" << std::endl;
@@ -350,7 +437,25 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
   } else if (_runs > 0) {
     output = results[0];
   }
-  printResult(output);
+  builder.add("results", VPackValue(VPackValueType::Object));
+  printResult(output, builder);
+  builder.close();
+
+  std::cout <<
+    "Min Request time: " << (minTime * 1000) << "ms" << std::endl <<
+    "Avg Request time: " << (avgTime * 1000) << "ms" << std::endl <<
+    "Max Request time: " << (maxTime * 1000) << "ms" << std::endl << std::endl;
+  std::cout << histogram;
+  builder.add("min", VPackValue(minTime));
+  builder.add("avg", VPackValue(avgTime));
+  builder.add("max", VPackValue(maxTime)); 
+  builder.close();
+
+  if (!_jsonReportFile.empty()) {
+    auto json = builder.toJson();
+    TRI_WriteFile(_jsonReportFile.c_str(), json.c_str(), json.length());
+  }
+
   if (_junitReportFile.empty()) {
     return true;
   }
@@ -400,31 +505,40 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
   return ok;
 }
 
-void BenchFeature::printResult(BenchRunResult const& result) {
+void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& builder) {
   std::cout << "Total request/response duration (sum of all threads): " << std::fixed
             << result.requestTime << " s" << std::endl;
-
+  builder.add("requestTime", VPackValue(result.requestTime));
   std::cout << "Request/response duration (per thread): " << std::fixed
             << (result.requestTime / (double)_concurrency) << " s" << std::endl;
+  builder.add("requestResponseDurationPerThread", VPackValue(result.requestTime / (double)_concurrency));
 
   std::cout << "Time needed per operation: " << std::fixed
             << (result.time / _operations) << " s" << std::endl;
-
+  builder.add("timeNeededPerOperation", VPackValue(result.time / _operations));
+  
   std::cout << "Time needed per operation per thread: " << std::fixed
             << (result.time / (double)_operations * (double)_concurrency)
             << " s" << std::endl;
-
+  builder.add("timeNeededPerOperationPerThread", VPackValue(
+                result.time / (double)_operations * (double)_concurrency));
+  
   std::cout << "Operations per second rate: " << std::fixed
             << ((double)_operations / result.time) << std::endl;
-
+  builder.add("operationsPerSecondRate", 
+              VPackValue((double)_operations / result.time));
+  
   std::cout << "Elapsed time since start: " << std::fixed << result.time << " s"
             << std::endl
             << std::endl;
+  builder.add("timeSinceStart", VPackValue(result.time));
 
+  builder.add("failures", VPackValue(result.failures));
   if (result.failures > 0) {
     LOG_TOPIC("a826b", WARN, arangodb::Logger::FIXME)
         << result.failures << " arangobench request(s) failed!";
   }
+  builder.add("incompleteResults", VPackValue(result.incomplete));
   if (result.incomplete > 0) {
     LOG_TOPIC("41006", WARN, arangodb::Logger::FIXME)
         << result.incomplete << " arangobench requests with incomplete results!";

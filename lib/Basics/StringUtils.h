@@ -30,6 +30,7 @@
 #include <cstring>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -159,17 +160,33 @@ std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
 std::string replace(std::string const& sourceStr, std::string const& fromString,
                     std::string const& toString);
 
-/// @brief converts string to lower case in place
-void tolowerInPlace(std::string* str);
+static inline char tolower(char c) {
+  return c + ((static_cast<unsigned char>(c - 65) < 26U) << 5);
+}
 
-/// @brief converts string to lower case
+static inline unsigned char tolower(unsigned char c) {
+  return c + ((c - 65U < 26U) << 5);
+}
+
+static inline char toupper(char c) {
+  return c - ((static_cast<unsigned char>(c - 97) < 26U) << 5);
+}
+
+static inline unsigned char toupper(unsigned char c) {
+  return c - ((c - 97U < 26U) << 5);
+}
+
+/// @brief converts string to lower case in place - locale-independent, ASCII only!
+void tolowerInPlace(std::string& str);
+
+/// @brief converts string to lower case - locale-independent, ASCII only!
 std::string tolower(std::string&& str);
 std::string tolower(std::string const& str);
 
-/// @brief converts string to upper case in place
-void toupperInPlace(std::string* str);
+/// @brief converts string to upper case in place - locale-independent, ASCII only!
+void toupperInPlace(std::string& str);
 
-/// @brief converts string to upper case
+/// @brief converts string to upper case - locale-independent, ASCII only!
 std::string toupper(std::string const& str);
 
 /// @brief checks for a prefix
@@ -181,9 +198,6 @@ bool isSuffix(std::string const& str, std::string const& postfix);
 /// @brief url decodes the string
 std::string urlDecodePath(std::string const& str);
 std::string urlDecode(std::string const& str);
-
-/// @brief url encodes the string
-std::string urlEncode(char const* src);
 
 /// @brief url encodes the string
 std::string urlEncode(char const* src, size_t len);
@@ -304,10 +318,16 @@ inline uint64_t uint64(char const* value, size_t size) noexcept {
 inline uint64_t uint64(std::string const& value) noexcept {
   return StringUtils::uint64(value.data(), value.size());
 }
+inline uint64_t uint64(std::string_view const& value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
+}
 #else
 uint64_t uint64(std::string const& value);
 inline uint64_t uint64(char const* value, size_t size) {
   return StringUtils::uint64(std::string(value, size));
+}
+inline uint64_t uint64(std::string_view const& value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
 }
 #endif
 

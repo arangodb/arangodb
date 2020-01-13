@@ -523,6 +523,10 @@ class Ast {
 
   void extractCollectionsFromGraph(AstNode const* graphNode);
 
+  /// @brief copies node payload from node into copy. this is *not* copying
+  /// the subnodes
+  void copyPayload(AstNode const* node, AstNode* copy) const;
+
  public:
   /// @brief negated comparison operators
   static std::unordered_map<int, AstNodeType> const NegatedOperators;

@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Network/NetworkFeature.h"
 
 namespace arangodb {
 
@@ -44,6 +45,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void stop() override final;
   void beginShutdown() override final;
   void unprepare() override final;
 
@@ -56,66 +58,66 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   void syncDBServerStatusQuo();
 
- protected:
-  void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
-                            uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
-                            const std::string& endpoints);
-
- private:
-  std::vector<std::string> _agencyEndpoints;
-  std::string _agencyPrefix;
-  std::string _myRole;
-  std::string _myEndpoint;
-  std::string _myAdvertisedEndpoint;
-  std::uint32_t _writeConcern = 1;             // write concern
-  std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor 
-  std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
-  std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
-  std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
-  bool _createWaitsForSyncReplication = true;
-  double _indexCreationTimeout = 3600.0;
-
-  void reportRole(ServerState::RoleEnum);
-
- public:
   AgencyCallbackRegistry* agencyCallbackRegistry() const {
     return _agencyCallbackRegistry.get();
   }
 
   std::string const agencyCallbacksPath() const {
     return "/_api/agency/agency-callbacks";
-  };
+  }
 
-  std::string const clusterRestPath() const { return "/_api/cluster"; };
+  std::string const clusterRestPath() const { return "/_api/cluster"; }
 
   void setUnregisterOnShutdown(bool);
   bool createWaitsForSyncReplication() const {
     return _createWaitsForSyncReplication;
-  };
-  double indexCreationTimeout() const { return _indexCreationTimeout; }
+  }
   std::uint32_t writeConcern() const { return _writeConcern; }
   std::uint32_t systemReplicationFactor() { return _systemReplicationFactor; }
   std::uint32_t defaultReplicationFactor() { return _defaultReplicationFactor; }
   std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
   std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
   std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }
-
-  void stop() override final;
+  double indexCreationTimeout() const { return _indexCreationTimeout; }
+  bool forceOneShard() const { return _forceOneShard; }
 
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
   ClusterInfo& clusterInfo();
 
+ protected:
+  void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
+                            uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
+                            std::string const& endpoints);
+  
+  void shutdownHeartbeatThread();
+
  private:
+  void reportRole(ServerState::RoleEnum);
+
+  std::vector<std::string> _agencyEndpoints;
+  std::string _agencyPrefix;
+  std::string _myRole;
+  std::string _myEndpoint;
+  std::string _myAdvertisedEndpoint;
+  std::uint32_t _writeConcern = 1;             // write concern
+  std::uint32_t _defaultReplicationFactor = 0; // a value of 0 means it will use the min replication factor
+  std::uint32_t _systemReplicationFactor = 2;
+  std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
+  std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
+  std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
+  bool _createWaitsForSyncReplication = true;
+  bool _forceOneShard = false;
+  bool _unregisterOnShutdown = false;
+  bool _enableCluster = false;
+  bool _requirePersistedId = false;
+  double _indexCreationTimeout = 3600.0;
   std::unique_ptr<ClusterInfo> _clusterInfo;
-  bool _unregisterOnShutdown;
-  bool _enableCluster;
-  bool _requirePersistedId;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
-  uint64_t _heartbeatInterval;
+  uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
-  ServerState::RoleEnum _requestedRole;
+  ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
+  std::unique_ptr<network::ConnectionPool> _pool;
 };
 
 }  // namespace arangodb

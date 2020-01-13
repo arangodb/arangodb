@@ -163,6 +163,8 @@ function dumpTestSuite () {
       assertEqual(users.permission(uName, "_system"), 'rw');
       assertEqual(users.permission(uName, "UnitTestsDumpSrc"), 'rw');
       assertEqual(users.permission(uName, "UnitTestsDumpEmpty"), 'rw');
+
+      assertTrue(users.isValid("foobaruser", "foobarpasswd"));
     }
 
   };

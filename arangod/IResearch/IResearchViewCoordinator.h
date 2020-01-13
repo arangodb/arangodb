@@ -88,9 +88,16 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     return _meta._primarySort;
   }
 
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return stored values from links collections
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewStoredValues const& storedValues() const noexcept {
+    return _meta._storedValues;
+  }
+
  protected:
   virtual Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                      std::underlying_type<Serialize>::type flags) const override;
+                                      Serialization context) const override;
 
   virtual arangodb::Result dropImpl() override;
 

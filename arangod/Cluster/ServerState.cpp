@@ -451,12 +451,12 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         if (!endpointSlice.isString()) {
           continue;
         }
-        auto it2 = endpoints.emplace(endpointSlice.copyString(), serverId);
-        if (!it2.second && it2.first->first != serverId) {
+        auto const [idIter, emplaced] = endpoints.try_emplace(endpointSlice.copyString(), serverId);
+        if (!emplaced && idIter->first != serverId) {
           // duplicate entry!
           LOG_TOPIC("9a134", WARN, Logger::CLUSTER)
             << "found duplicate server entry for endpoint '"
-            << endpointSlice.copyString() << "', already used by other server " << it2.first->second
+            << endpointSlice.copyString() << "', already used by other server " << idIter->second
             << ". it looks like this is a (mis)configuration issue";
           // anyway, continue with startup
         }
@@ -610,7 +610,7 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
 bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
 
   // if the agency is not initialized, there is no point in continuing.
-  if(!checkIfAgencyInitialized(comm, role)) {
+  if (!checkIfAgencyInitialized(comm, role)) {
     return false;
   }
 
@@ -791,7 +791,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     auto result = readRebootIdFromAgency(comm);
 
     if (result) {
-      setRebootId(result.get());
+      setRebootId(RebootId{result.get()});
       return true;
     }
     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -851,13 +851,13 @@ void ServerState::setShortId(uint32_t id) {
   _shortId.store(id, std::memory_order_relaxed);
 }
 
-uint64_t ServerState::getRebootId() const {
-  TRI_ASSERT(_rebootId > 0);
+RebootId ServerState::getRebootId() const {
+  TRI_ASSERT(_rebootId.initialized());
   return _rebootId;
 }
 
-void ServerState::setRebootId(uint64_t rebootId) {
-  TRI_ASSERT(rebootId > 0);
+void ServerState::setRebootId(RebootId const rebootId) {
+  TRI_ASSERT(rebootId.initialized());
   _rebootId = rebootId;
 }
 

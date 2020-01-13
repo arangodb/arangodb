@@ -134,6 +134,7 @@ void ensureImmutableProperties(
   dst._writebufferIdle = src._writebufferIdle;
   dst._writebufferSizeMax = src._writebufferSizeMax;
   dst._primarySort = src._primarySort;
+  dst._storedValues = src._storedValues;
 }
 
 }
@@ -281,7 +282,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                              : nullptr;  // add placeholders to links, when the
                                          // collection comes up it'll bring up the link
 
-      impl->_links.emplace(cid, link ? link->self()
+      impl->_links.try_emplace(cid, link ? link->self()
                                      : nullptr);  // add placeholders to links, when the link
                                                   // comes up it'll call link(...)
     }
@@ -347,20 +348,31 @@ IResearchView::~IResearchView() {
 
 arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     arangodb::velocypack::Builder& builder,            // destrination
-    std::underlying_type<Serialize>::type flags) const {
-  if (hasFlag(flags, Serialize::ForPersistence) &&
-      arangodb::ServerState::instance()->isSingleServer()) {
-    auto res = arangodb::LogicalViewHelperStorageEngine::properties( // storage engine properties
-      builder, *this // args
-    );
-
-    if (!res.ok()) {
-      return res;
-    }
+    Serialization context) const {
+  if (Serialization::List == context) {
+    // nothing more to output
+    return {};
   }
 
-  if (!hasFlag(flags, Serialize::Detailed)) {
-    return arangodb::Result();  // nothing more to output
+  static const std::function<bool(irs::string_ref const& key)> propertiesAcceptor =
+      [](irs::string_ref const& key) -> bool {
+    return key != StaticStrings::VersionField; // ignored fields
+  };
+  static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
+    [](irs::string_ref const&) -> bool { return true; };
+
+  auto* acceptor = &propertiesAcceptor;
+
+  if (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress) {
+    acceptor = &persistenceAcceptor;
+
+    if (arangodb::ServerState::instance()->isSingleServer()) {
+      auto res = arangodb::LogicalViewHelperStorageEngine::properties(builder, *this);
+
+      if (!res.ok()) {
+        return res;
+      }
+    }
   }
 
   if (!builder.isOpenObject()) {
@@ -370,13 +382,6 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
   std::vector<std::string> collections;
 
   {
-    static const std::function<bool(irs::string_ref const& key)> acceptor =
-        [](irs::string_ref const& key) -> bool {
-      return key != StaticStrings::VersionField;  // ignored fields
-    };
-    static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
-        [](irs::string_ref const&) -> bool { return true; };
-
     ReadMutex mutex(_mutex);  // '_meta'/'_links' can be asynchronously modified
     SCOPED_LOCK(mutex);
     arangodb::velocypack::Builder sanitizedBuilder;
@@ -384,9 +389,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     sanitizedBuilder.openObject();
 
     if (!_meta.json(sanitizedBuilder) ||
-        !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
-                            hasFlag(flags, Serialize::ForPersistence) ? persistenceAcceptor
-                                                                      : acceptor)) {
+        !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
       return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failure to generate definition while generating "
@@ -394,7 +397,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
               vocbase().name() + "'");
     }
 
-    if (hasFlag(flags, Serialize::ForPersistence)) {
+    if (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress) {
       IResearchViewMetaState metaState;
 
       for (auto& entry : _links) {
@@ -403,8 +406,8 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
       metaState.json(builder);
 
-      return arangodb::Result();  // nothing more to output (persistent
-                                  // configuration does not need links)
+      // nothing more to output (persistent configuration does not need links)
+      return {};
     }
 
     // add CIDs of known collections to list
@@ -451,7 +454,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
       );
     }
 
-    auto visitor = [this, &linksBuilder, &res]( // visit collections
+    auto visitor = [this, &linksBuilder, &res, context]( // visit collections
       arangodb::TransactionCollection& trxCollection // transaction collection
     )->bool {
       auto collection = trxCollection.collection();
@@ -470,7 +473,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
       linkBuilder.openObject();
 
-      if (!link->properties(linkBuilder, false).ok()) { // link definitions are not output if forPersistence
+      if (!link->properties(linkBuilder, Serialization::Inventory == context).ok()) { // link definitions are not output if forPersistence
         LOG_TOPIC("713ad", WARN, arangodb::iresearch::TOPIC)
           << "failed to generate json for arangosearch link '" << link->id() << "' while generating json for arangosearch view '" << name() << "'";
 
@@ -669,7 +672,7 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
   auto itr = _links.find(cid);
 
   if (itr == _links.end()) {
-    _links.emplace(cid, link);
+    _links.try_emplace(cid, link);
   } else if (arangodb::ServerState::instance()->isSingleServer() // single server
              && !itr->second) {
     _links[cid] = link;
@@ -736,34 +739,6 @@ arangodb::Result IResearchView::commit() {
   }
 
   return arangodb::Result();
-}
-
-size_t IResearchView::memory() const {
-  size_t size = sizeof(IResearchView);
-  ReadMutex mutex(_mutex);  // '_meta'/'_links' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-
-  size += _meta.memory() - sizeof(IResearchViewMeta);  // sizeof(IResearchViewMeta) already part
-                                                       // of sizeof(IResearchView)
-  size += sizeof(decltype(_links)::value_type) * _links.size();
-
-  for (auto& entry : _links) {
-    if (!entry.second) {
-      continue;  // skip link placeholders
-    }
-
-    SCOPED_LOCK(entry.second->mutex());  // ensure link is not deallocated for
-                                         // the duration of the operation
-    auto* link = entry.second->get();
-
-    if (!link) {
-      continue;  // skip missing links
-    }
-
-    size += link->memory();
-  }
-
-  return size;
 }
 
 void IResearchView::open() {

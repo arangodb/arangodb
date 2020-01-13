@@ -52,6 +52,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <optional>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -78,8 +80,10 @@ struct GraphTestSetup
     features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(), false);
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // must be first
-    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server));
-    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
+    system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                             systemDBInfo(server));
+    features.emplace_back(server.addFeature<arangodb::SystemDatabaseFeature>(
+                              system.get()),
                           false);  // required for IResearchAnalyzerFeature
     features.emplace_back(server.addFeature<arangodb::TraverserEngineRegistryFeature>(),
                           false);  // must be before AqlFeature
@@ -174,9 +178,18 @@ struct MockGraphDatabase {
     EXPECT_TRUE(vertices->type());
   }
 
+  struct EdgeDef {
+    EdgeDef(size_t from, size_t to) : _from(from), _to(to){};
+    EdgeDef(size_t from, size_t to, double weight)
+        : _from(from), _to(to), _weight(weight){};
+    size_t _from;
+    size_t _to;
+    std::optional<double> _weight;
+  };
+
   // Create a collection with name <name> of edges given by <edges>
   void addEdgeCollection(std::string name, std::string vertexCollection,
-                         std::vector<std::pair<size_t, size_t>> edgedef) {
+                         std::vector<EdgeDef> edgedef) {
     std::shared_ptr<arangodb::LogicalCollection> edges;
     auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
                                                    "\", \"type\": 3 }");
@@ -195,10 +208,18 @@ struct MockGraphDatabase {
     for (auto& p : edgedef) {
       //      std::cout << "edge: " << vertexCollection << " " << p.first << " -> "
       //          << p.second << std::endl;
-      auto docJson = velocypack::Parser::fromJson(
-          "{ \"_from\": \"" + vertexCollection + "/" + std::to_string(p.first) +
-          "\"" + ", \"_to\": \"" + vertexCollection + "/" +
-          std::to_string(p.second) + "\" }");
+      // This is moderately horrible
+      auto docJson =
+          p._weight.has_value()
+              ? velocypack::Parser::fromJson(
+                    "{ \"_from\": \"" + vertexCollection + "/" +
+                    std::to_string(p._from) + "\"" + ", \"_to\": \"" +
+                    vertexCollection + "/" + std::to_string(p._to) +
+                    "\", \"cost\": " + std::to_string(p._weight.value()) + "}")
+              : velocypack::Parser::fromJson(
+                    "{ \"_from\": \"" + vertexCollection + "/" +
+                    std::to_string(p._from) + "\"" + ", \"_to\": \"" +
+                    vertexCollection + "/" + std::to_string(p._to) + "\" }");
       docs.emplace_back(docJson);
     }
 
@@ -226,7 +247,6 @@ struct MockGraphDatabase {
         new arangodb::aql::Query(false, vocbase, queryString, nullptr,
                                  arangodb::velocypack::Parser::fromJson("{}"),
                                  arangodb::aql::PART_MAIN);
-    query->parse();
     query->prepare(arangodb::QueryRegistryFeature::registry(), SerializationFormat::SHADOWROWS);
 
     queries.emplace_back(query);
@@ -273,7 +293,7 @@ struct MockGraphDatabase {
     spos.emplace_back(spo);
     return spo;
   }
-};
+};  // namespace graph
 
 bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
                std::vector<std::string> vertices,

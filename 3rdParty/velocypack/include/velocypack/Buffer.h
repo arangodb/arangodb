@@ -55,11 +55,12 @@ class Buffer {
 
   Buffer(Buffer const& that) : Buffer() {
     if (that._size > 0) {
-      if (that._size > sizeof(_local)) {
-        _buffer = static_cast<T*>(malloc(checkOverflow(sizeof(T) * that._size)));
+      if (that._size > sizeof(that._local)) {
+        _buffer = static_cast<T*>(malloc(checkOverflow(that._size)));
         ensureValidPointer(_buffer);
         _capacity = that._size;
       } else {
+        VELOCYPACK_ASSERT(_buffer == &_local[0]);
         _capacity = sizeof(_local);
       }
       memcpy(_buffer, that._buffer, checkOverflow(that._size));
@@ -73,10 +74,9 @@ class Buffer {
         // our own buffer is big enough to hold the data
         initWithNone();
         memcpy(_buffer, that._buffer, checkOverflow(that._size));
-      }
-      else {
+      } else {
         // our own buffer is not big enough to hold the data
-        T* buffer = static_cast<T*>(malloc(checkOverflow(sizeof(T) * that._size)));
+        T* buffer = static_cast<T*>(malloc(checkOverflow(that._size)));
         ensureValidPointer(buffer);
         buffer[0] = '\x00';
         memcpy(buffer, that._buffer, checkOverflow(that._size));
@@ -94,8 +94,11 @@ class Buffer {
   }
 
   Buffer(Buffer&& that) noexcept : _buffer(_local), _capacity(sizeof(_local)) {
+    poison(_buffer, _capacity);
+    initWithNone();
     if (that._buffer == that._local) {
-      memcpy(_buffer, that._buffer, static_cast<std::size_t>(that._size));
+      VELOCYPACK_ASSERT(that._capacity == sizeof(that._local));
+      memcpy(_buffer, that._buffer, checkOverflow(that._size));
     } else {
       _buffer = that._buffer;
       _capacity = that._capacity;
@@ -104,16 +107,20 @@ class Buffer {
     }
     _size = that._size;
     that._size = 0;
+    that.initWithNone();
   }
 
   Buffer& operator=(Buffer&& that) noexcept {
     if (this != &that) {
+      if (_buffer != _local) {
+        free(_buffer);
+      }
       if (that._buffer == that._local) {
-        memcpy(_buffer, that._buffer, static_cast<std::size_t>(that._size));
+        _buffer = _local;
+        _capacity = sizeof(_local);
+        initWithNone();
+        memcpy(_buffer, that._buffer, checkOverflow(that._size));
       } else {
-        if (_buffer != _local) {
-          free(_buffer);
-        }
         _buffer = that._buffer;
         _capacity = that._capacity;
         that._buffer = that._local;
@@ -121,6 +128,7 @@ class Buffer {
       }
       _size = that._size;
       that._size = 0;
+      that.initWithNone();
     }
     return *this;
   }
@@ -281,11 +289,11 @@ class Buffer {
     VELOCYPACK_ASSERT(newLen > 0);
     T* p;
     if (_buffer != _local) {
-      p = static_cast<T*>(realloc(_buffer, checkOverflow(sizeof(T) * newLen)));
+      p = static_cast<T*>(realloc(_buffer, checkOverflow(newLen)));
       ensureValidPointer(p);
       // realloc will have copied the old data
     } else {
-      p = static_cast<T*>(malloc(checkOverflow(sizeof(T) * newLen)));
+      p = static_cast<T*>(malloc(checkOverflow(newLen)));
       ensureValidPointer(p);
       // copy existing data into buffer
       memcpy(p, _buffer, checkOverflow(_size));

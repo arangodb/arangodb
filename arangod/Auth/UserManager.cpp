@@ -119,7 +119,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
     // otherwise all following update/replace/remove operations on the
     // user will fail
     auth::User user = auth::User::fromDocument(s);
-    result.emplace(user.username(), std::move(user));
+    result.try_emplace(user.username(), std::move(user));
   }
   return result;
 }
@@ -309,10 +309,10 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       TRI_ASSERT(created.passwordHash() == entry.passwordHash());
       TRI_ASSERT(!replace || created.key() == entry.key());
 
-      if (!_userCache.emplace(entry.username(), std::move(created)).second) {
+      if (!_userCache.try_emplace(entry.username(), std::move(created)).second) {
         // insertion should always succeed, but...
         _userCache.erase(entry.username());
-        _userCache.emplace(entry.username(), auth::User::fromDocument(userDoc));
+        _userCache.try_emplace(entry.username(), auth::User::fromDocument(userDoc));
       }
 #ifdef USE_ENTERPRISE
       if (IsRole(entry.username())) {
@@ -374,6 +374,8 @@ void auth::UserManager::createRootUser() {
     // No action
     LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
   }
+
+  triggerGlobalReload();
 }
 
 VPackBuilder auth::UserManager::allUsers() {
@@ -391,6 +393,12 @@ VPackBuilder auth::UserManager::allUsers() {
     }
   }
   return result;
+}
+
+void auth::UserManager::triggerCacheRevalidation() {
+  triggerLocalReload();
+  triggerGlobalReload();
+  loadFromDB();
 }
 
 /// Trigger eventual reload, user facing API call
@@ -777,8 +785,9 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
     return auth::Level::NONE;  // no user found
   }
 
+  TRI_ASSERT(!coll.empty());
   auth::Level level;
-  if (isdigit(coll[0])) {
+  if (coll[0] >= '0' && coll[0] <= '9') {
     std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {

@@ -1,7 +1,7 @@
 @startDocuBlock general_graph_edge_definition_modify_http_examples
 @brief Replace an existing edge definition
 
-@RESTHEADER{PUT /_api/gharial/{graph}/edge/{definition}, Replace an edge definition}
+@RESTHEADER{PUT /_api/gharial/{graph}/edge/{definition}#definition, Replace an edge definition}
 
 @RESTDESCRIPTION
 Change one specific edge definition.
@@ -73,7 +73,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -91,7 +91,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.
@@ -107,7 +107,7 @@ It is true in this response.
 The response code.
 
 @RESTREPLYBODY{errorNum,integer,required,}
-ArangoDB error number for the error that occured.
+ArangoDB error number for the error that occurred.
 
 @RESTREPLYBODY{errorMessage,string,required,}
 A message created for this error.

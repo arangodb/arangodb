@@ -31,6 +31,7 @@
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -133,7 +134,6 @@ class LogicalCollection : public LogicalDataSource {
   /// if the boolean is false, the return value is always
   /// TRI_VOC_COL_STATUS_CORRUPTED
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
-  std::string statusString() const;
 
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
@@ -207,9 +207,8 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, uint8_t,
-                       std::function<bool(arangodb::Index const*)> const& filter =
-                           [](arangodb::Index const*) -> bool { return true; }) const;
+  void getIndexesVPack(velocypack::Builder&,
+                       std::function<bool(arangodb::Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the enterprise edition for smart graphs
@@ -228,10 +227,10 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
                           std::unordered_set<std::string> const& ignoreKeys,
-                          std::underlying_type<Serialize>::type flags) const;
+                          Serialization context) const;
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                         std::underlying_type<Serialize>::type flags) const;
+                                         Serialization context) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;
@@ -241,7 +240,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures() const;
+  virtual futures::Future<OperationResult> figures() const;
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);
@@ -317,7 +316,8 @@ class LogicalCollection : public LogicalDataSource {
   ///        created and only on Sinlge/DBServer
   void persistPhysicalCollection();
 
-  basics::ReadWriteLock& lock() { return _lock; }
+  /// lock protecting the status and name
+  basics::ReadWriteLock& statusLock() { return _statusLock; }
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -338,7 +338,7 @@ class LogicalCollection : public LogicalDataSource {
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
-                                            std::underlying_type<Serialize>::type flags) const override;
+                                           Serialization context) const override;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
@@ -352,7 +352,8 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Meta Information
 
-  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
+  /// lock protecting the status and name
+  mutable basics::ReadWriteLock _statusLock;
 
   /// @brief collection format version
   Version _version;

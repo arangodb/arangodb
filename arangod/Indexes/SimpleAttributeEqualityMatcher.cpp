@@ -208,7 +208,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
-        node->removeMembers();
+        node->clearMembers();
         node->addMember(op);
 
         return node;
@@ -220,7 +220,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
-        node->removeMembers();
+        node->clearMembers();
         node->addMember(op);
 
         return node;
@@ -292,7 +292,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 
   if (_found.size() == _attributes.size()) {
     // remove node's existing members
-    node->removeMembers();
+    node->clearMembers();
 
     // found contains all nodes required for this condition sorted by
     // _attributes
@@ -483,7 +483,7 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
 
     if (match) {
       // mark ith attribute as being covered
-      _found.emplace(i, op);
+      _found.try_emplace(i, op);
       TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }

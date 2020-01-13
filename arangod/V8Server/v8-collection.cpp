@@ -286,10 +286,10 @@ static void ExistsVocbaseVPack(bool useCollection,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a document idenfifier
+  // first and only argument should be a document identifier
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "exists(<document-handle> or <document-key> )");
+        "exists(<document-id> or <document-key> )");
   }
 
   TRI_vocbase_t* vocbase;
@@ -376,7 +376,7 @@ static void DocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // first and only argument should be a document handle or key or an object
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "document(<document-handle> or <document-key> or <object> or <array>)");
+        "document(<document-id> or <document-key> or <object> or <array>)");
   }
 
   OperationOptions options;
@@ -456,9 +456,9 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a document idenfifier
+  // first and only argument should be a document identifier
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-id>)");
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -773,7 +773,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   // first and only argument should be a document handle or key
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "binaryDocument(<document-handle> or <document-key>, <filename>)");
+        "binaryDocument(<document-id> or <document-key>, <filename>)");
   }
 
   OperationOptions options;
@@ -964,13 +964,16 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto builder = collection->figures().get();
+  auto opRes = collection->figures().get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
+  
+  if (opRes.ok()) {
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
+  } else {
+    TRI_V8_RETURN_NULL();
+  }
 
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
-
-  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1151,34 +1154,7 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
 
       TRI_ASSERT(builder.isClosed());
 
-      auto& server = application_features::ApplicationServer::server();
-      auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-
-      // replication checks
-      if (builder.slice().get(StaticStrings::ReplicationFactor).isNumber() &&
-          builder.slice().get(StaticStrings::ReplicationFactor).getInt() > 0) {
-        uint64_t replicationFactor =
-            builder.slice().get(StaticStrings::ReplicationFactor).getUInt();
-        if (ServerState::instance()->isRunningInCluster() &&
-            replicationFactor > ci.getCurrentDBServers().size()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
-        }
-      }
-
-      // min replication checks
-      if (builder.slice().get(StaticStrings::MinReplicationFactor).isNumber() &&
-          builder.slice().get(StaticStrings::MinReplicationFactor).getInt() > 0) {
-        uint64_t writeConcern =
-            builder.slice().get(StaticStrings::MinReplicationFactor).getUInt();
-        if (ServerState::instance()->isRunningInCluster() &&
-            writeConcern > ci.getCurrentDBServers().size()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
-        }
-      }
-
-      auto res = methods::Collections::updateProperties(*consoleColl, builder.slice(), false  // always a full-update
-      );
-
+      auto res = methods::Collections::updateProperties(*consoleColl, builder.slice());
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
@@ -1192,20 +1168,19 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
 
-  methods::Collections::lookup(consoleColl->vocbase(),  // vocbase to search
-                               consoleColl->name(),     // collection to find
-                               [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-                                 TRI_ASSERT(coll);
+  std::shared_ptr<LogicalCollection> coll;
+  methods::Collections::lookup(consoleColl->vocbase(), consoleColl->name(), coll);
+  if (coll) {
 
-                                 VPackObjectBuilder object(&builder, true);
-                                 methods::Collections::Context ctxt(coll->vocbase(), *coll);
-                                 Result res = methods::Collections::properties(ctxt, builder);
+    VPackObjectBuilder object(&builder, true);
+    methods::Collections::Context ctxt(coll->vocbase(), *coll);
+    Result res = methods::Collections::properties(ctxt, builder);
 
-                                 if (res.fail()) {
-                                   TRI_V8_THROW_EXCEPTION(res);
-                                 }
-                               });
-
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+  }
+  
   // return the current parameter set
   TRI_V8_RETURN(
       TRI_VPackToV8(isolate, builder.slice())->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));

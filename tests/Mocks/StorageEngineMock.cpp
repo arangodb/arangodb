@@ -36,6 +36,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
@@ -50,6 +51,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <boost/asio/io_context.hpp>
@@ -252,7 +254,7 @@ class EdgeIndexMock final : public arangodb::Index {
   Index::FilterCosts supportsFilterCondition(
       std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
       arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-                                             size_t itemsInIndex) const override {
+      size_t itemsInIndex) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
     return matcher.matchOne(this, node, reference, itemsInIndex);
   }
@@ -311,7 +313,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   std::unique_ptr<arangodb::IndexIterator> createEqIterator(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-                                                            arangodb::aql::AstNode const* valNode) const {
+      arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -334,7 +336,7 @@ class EdgeIndexMock final : public arangodb::Index {
   /// @brief create the iterator
   std::unique_ptr<arangodb::IndexIterator> createInIterator(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-                                                            arangodb::aql::AstNode const* valNode) const {
+      arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -395,26 +397,26 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
 
 class AllIteratorMock final : public arangodb::IndexIterator {
  public:
-  AllIteratorMock(uint64_t size, arangodb::LogicalCollection& coll,
-                  arangodb::transaction::Methods* trx)
-      : arangodb::IndexIterator(&coll, trx), _end(size) {}
+  AllIteratorMock(std::unordered_map<arangodb::velocypack::StringRef, PhysicalCollectionMock::DocElement> const& data,
+                  arangodb::LogicalCollection& coll, arangodb::transaction::Methods* trx)
+      : arangodb::IndexIterator(&coll, trx), _data(data), _it{_data.begin()} {}
 
   virtual char const* typeName() const override { return "AllIteratorMock"; }
 
-  virtual void reset() override { _begin = 0; }
+  virtual void reset() override { _it = _data.begin(); }
 
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
-    while (_begin < _end && limit) {
-      callback(arangodb::LocalDocumentId(++_begin));  // always > 0
+    while (_it != _data.end() && limit != 0) {
+      callback(_it->second.docId());
+      ++_it;
       --limit;
     }
-
     return 0 == limit;
   }
 
  private:
-  uint64_t _begin{};
-  uint64_t _end;
+  std::unordered_map<arangodb::velocypack::StringRef, PhysicalCollectionMock::DocElement> const& _data;
+  std::unordered_map<arangodb::velocypack::StringRef, PhysicalCollectionMock::DocElement>::const_iterator _it;
 };  // AllIteratorMock
 
 struct IndexFactoryMock : arangodb::IndexFactory {
@@ -431,13 +433,488 @@ struct IndexFactoryMock : arangodb::IndexFactory {
   }
 };
 
+class HashIndexMap {
+  struct VPackBuilderHasher {
+    std::size_t operator()(VPackBuilder const& builder) const {
+      return std::hash<VPackSlice>()(builder.slice());
+    }
+  };
+
+  struct VPackBuilderComparator {
+    bool operator()(VPackBuilder const& builder1, VPackBuilder const& builder2) const {
+      return ::arangodb::basics::VelocyPackHelper::compare(builder1.slice(), builder2.slice(), true) == 0;
+    }
+  };
+
+  using ValueMap = std::unordered_multimap<VPackBuilder, arangodb::LocalDocumentId, VPackBuilderHasher, VPackBuilderComparator>;
+  using DocumentsIndexMap = std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>;
+
+  arangodb::velocypack::Slice getSliceByField(arangodb::velocypack::Slice const& doc, size_t i) {
+    TRI_ASSERT(i < _fields.size());
+    TRI_ASSERT(!doc.isNone());
+    auto slice = doc;
+    for (auto const& f : _fields[i]) {
+      slice = slice.get(f.name);
+      if (slice.isNone() || slice.isNull()) {
+        break;
+      }
+    }
+    return slice;
+  }
+
+  void insertSlice(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& slice, size_t i) {
+    VPackBuilder builder;
+    if (slice.isNone() || slice.isNull()) {
+      builder.add(VPackSlice::nullSlice());
+    } else {
+      builder.add(slice);
+    }
+    _valueMaps[i].emplace(std::move(builder), documentId);
+  }
+
+ public:
+  HashIndexMap(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) : _fields(fields), _valueMaps(fields.size()) {
+    TRI_ASSERT(!_fields.empty());
+  }
+
+  void insert(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
+    VPackBuilder builder;
+    builder.openArray();
+    auto toClose = true;
+    // find fields for the index
+    for (size_t i = 0; i < _fields.size(); ++i) {
+      auto slice = doc;
+      auto isExpansion = false;
+      for (auto fieldIt = _fields[i].begin(); fieldIt != _fields[i].end(); ++fieldIt) {
+        TRI_ASSERT(slice.isObject() || slice.isArray());
+        if (slice.isObject()) {
+          slice = slice.get(fieldIt->name);
+          if ((fieldIt->shouldExpand && slice.isObject()) ||
+              (!fieldIt->shouldExpand && slice.isArray())) {
+            slice = VPackSlice::nullSlice();
+            break;
+          }
+          if (slice.isNone() || slice.isNull()) {
+            break;
+          }
+        } else { // expansion
+          isExpansion = slice.isArray();
+          TRI_ASSERT(isExpansion);
+          auto found = false;
+          for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice); sliceIt != sliceIt.end(); ++sliceIt) {
+            auto subSlice = sliceIt.value();
+            if (!(subSlice.isNone() || subSlice.isNull())) {
+              for (auto fieldItForArray = fieldIt; fieldItForArray != _fields[i].end(); ++fieldItForArray) {
+                TRI_ASSERT(subSlice.isObject());
+                subSlice = subSlice.get(fieldItForArray->name);
+                if (subSlice.isNone() || subSlice.isNull()) {
+                  break;
+                }
+              }
+              if (!(subSlice.isNone() || subSlice.isNull())) {
+                insertSlice(documentId, subSlice, i);
+                builder.add(subSlice);
+                found = true;
+                break;
+              }
+            }
+          }
+          if (!found) {
+            insertSlice(documentId, VPackSlice::nullSlice(), i);
+            builder.add(VPackSlice::nullSlice());
+          }
+          break;
+        }
+      }
+      if (!isExpansion) {
+        // if the last expansion (at the end) leave the array open
+        if (slice.isArray() && i == _fields.size() - 1) {
+          auto found = false;
+          auto wasNull = false;
+          for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice); sliceIt != sliceIt.end(); ++sliceIt) {
+            auto subSlice = sliceIt.value();
+            if (!(subSlice.isNone() || subSlice.isNull())) {
+              insertSlice(documentId, subSlice, i);
+              found = true;
+            } else {
+              wasNull = true;
+            }
+          }
+          if (!found || wasNull) {
+            insertSlice(documentId, VPackSlice::nullSlice(), i);
+          }
+          toClose = false;
+        } else { // object
+          insertSlice(documentId, slice, i);
+          builder.add(slice);
+        }
+      }
+    }
+    if (toClose) {
+      builder.close();
+    }
+    _docIndexMap.try_emplace(documentId, std::move(builder));
+  }
+
+  bool remove(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
+    size_t i = 0;
+    auto documentRemoved = false;
+    for (auto& map : _valueMaps) {
+      auto slice = getSliceByField(doc, i++);
+      auto [begin, end] = map.equal_range(VPackBuilder(slice));
+      for (; begin != end; ++begin) {
+        if (begin->second == documentId) {
+          map.erase(begin);
+          documentRemoved = true;
+          // not break because of expansions
+        }
+      }
+    }
+    _docIndexMap.erase(documentId);
+    return documentRemoved;
+  }
+
+  void clear() {
+    _valueMaps.clear();
+    _docIndexMap.clear();
+  }
+
+  std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> find(std::unique_ptr<VPackBuilder>&& keys) const {
+    std::unordered_map<arangodb::LocalDocumentId, VPackBuilder const*> found;
+    TRI_ASSERT(keys->slice().isArray());
+    auto sliceIt = arangodb::velocypack::ArrayIterator(keys->slice());
+    if (!sliceIt.valid()) {
+      return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
+    }
+    for (auto const& map : _valueMaps) {
+      auto [begin, end] = map.equal_range(VPackBuilder(sliceIt.value()));
+      if (begin == end) {
+        return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
+      }
+      if (found.empty()) {
+        std::transform(begin, end, std::inserter(found, found.end()), [] (auto const& item) {
+          return std::make_pair(item.second, &item.first);
+        });
+      } else {
+        std::unordered_map<arangodb::LocalDocumentId, VPackBuilder const*> tmpFound;
+        for (; begin != end; ++begin) {
+          if (found.find(begin->second) != found.cend()) {
+            tmpFound.try_emplace(begin->second, &begin->first);
+          }
+        }
+        if (tmpFound.empty()) {
+          return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
+        }
+        found.swap(tmpFound);
+      }
+      if (!(++sliceIt).valid()) {
+        break;
+      }
+    }
+    std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> foundWithCovering;
+    for (auto const& d : found) {
+      auto doc = _docIndexMap.find(d.first);
+      TRI_ASSERT(doc != _docIndexMap.cend());
+      auto builder = doc->second;
+      // the array was left open for the last expansion (at the end)
+      if (doc->second.isOpenArray()) {
+        builder.add(d.second->slice());
+        builder.close();
+      }
+      foundWithCovering.try_emplace(doc->first, std::move(builder));
+    }
+    return foundWithCovering;
+  }
+
+ private:
+  std::vector<std::vector<arangodb::basics::AttributeName>> const& _fields;
+  std::vector<ValueMap> _valueMaps;
+  DocumentsIndexMap _docIndexMap;
+};
+
+class HashIndexIteratorMock final : public arangodb::IndexIterator {
+ public:
+  HashIndexIteratorMock(arangodb::LogicalCollection* collection,
+                        arangodb::transaction::Methods* trx, arangodb::Index const* index,
+                        HashIndexMap const& map, std::unique_ptr<VPackBuilder>&& keys)
+    : IndexIterator(collection, trx), _map(map) {
+    _documents = _map.find(std::move(keys));
+    _begin = _documents.begin();
+    _end = _documents.end();
+  }
+
+  char const* typeName() const override { return "hash-index-iterator-mock"; }
+
+  bool nextCovering(DocumentCallback const& cb, size_t limit) override {
+    while (limit && _begin != _end) {
+      cb(_begin->first, _begin->second.slice());
+      ++_begin;
+      --limit;
+    }
+
+    return _begin != _end;
+  }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
+    while (limit && _begin != _end) {
+      cb(_begin->first);
+      ++_begin;
+      --limit;
+    }
+
+    return _begin != _end;
+  }
+
+  void reset() override {
+    _documents.clear();
+    _begin = _documents.begin();
+    _end = _documents.end();
+  }
+
+  bool hasCovering() const override {
+    return true;
+  }
+
+ private:
+  HashIndexMap const& _map;
+  std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> _documents;
+  std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>::const_iterator _begin;
+  std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>::const_iterator _end;
+};  // HashIndexIteratorMock
+
+class HashIndexMock final : public arangodb::Index {
+ public:
+  static std::shared_ptr<arangodb::Index> make(TRI_idx_iid_t iid,
+                                               arangodb::LogicalCollection& collection,
+                                               arangodb::velocypack::Slice const& definition) {
+    auto const typeSlice = definition.get("type");
+
+    if (typeSlice.isNone()) {
+      return nullptr;
+    }
+
+    auto const type = arangodb::basics::VelocyPackHelper::getStringRef(typeSlice,
+                                                                       arangodb::velocypack::StringRef());
+
+    if (type.compare("hash") != 0) {
+      return nullptr;
+    }
+
+    return std::make_shared<HashIndexMock>(iid, collection, definition);
+  }
+
+  IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
+
+  char const* typeName() const override { return "hash"; }
+
+  bool isPersistent() const override { return false; }
+
+  bool canBeDropped() const override { return false; }
+
+  bool hasCoveringIterator() const override { return true; }
+
+  bool isHidden() const override { return false; }
+
+  bool isSorted() const override { return false; }
+
+  bool hasSelectivityEstimate() const override { return false; }
+
+  size_t memory() const override { return sizeof(HashIndexMock); }
+
+  void load() override {}
+
+  void unload() override {}
+
+  void afterTruncate(TRI_voc_tick_t) override {
+    _hashData.clear();
+  }
+
+  void toVelocyPack(VPackBuilder& builder,
+                    std::underlying_type<arangodb::Index::Serialize>::type flags) const override {
+    builder.openObject();
+    Index::toVelocyPack(builder, flags);
+    builder.add("sparse", VPackValue(sparse()));
+    builder.add("unique", VPackValue(unique()));
+    builder.close();
+  }
+
+  void toVelocyPackFigures(VPackBuilder& builder) const override {
+    Index::toVelocyPackFigures(builder);
+  }
+
+  arangodb::Result insert(arangodb::transaction::Methods&,
+                          arangodb::LocalDocumentId const& documentId,
+                          arangodb::velocypack::Slice const& doc, OperationMode) {
+    if (!doc.isObject()) {
+      return {TRI_ERROR_INTERNAL};
+    }
+
+    _hashData.insert(documentId, doc);
+
+    return {};  // ok
+  }
+
+  arangodb::Result remove(arangodb::transaction::Methods&,
+                          arangodb::LocalDocumentId const& documentId,
+                          arangodb::velocypack::Slice const& doc, OperationMode) {
+    if (!doc.isObject()) {
+      return {TRI_ERROR_INTERNAL};
+    }
+
+    _hashData.remove(documentId, doc);
+
+    return {};  // ok
+  }
+
+  Index::FilterCosts supportsFilterCondition(
+      std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+      arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
+      size_t itemsInIndex) const override {
+    return arangodb::SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+  }
+
+  Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                            arangodb::aql::Variable const* reference,
+                                                            size_t itemsInIndex) const override {
+    return arangodb::SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
+  }
+
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const override {
+    return arangodb::SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
+  }
+
+  std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
+      arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const*, arangodb::IndexIteratorOptions const&) override {
+    arangodb::transaction::BuilderLeaser builder(trx);
+    std::unique_ptr<VPackBuilder> keys(builder.steal());
+    keys->openArray();
+    if (nullptr == node) {
+      keys->close();
+      return std::make_unique<HashIndexIteratorMock>(&_collection, trx, this,
+                                                     _hashData,
+                                                     std::move(keys));
+    }
+    TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+    std::vector<std::pair<std::vector<arangodb::basics::AttributeName>, arangodb::aql::AstNode*>> allAttributes;
+    for (size_t i = 0; i < node->numMembers(); ++i) {
+      auto comp = node->getMember(i);
+      // a.b == value
+      if (!(comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+            comp->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN)) {
+        // operator type unsupported
+        return std::make_unique<arangodb::EmptyIndexIterator>(&_collection, trx);
+      }
+
+      // assume a.b == value
+      auto attrNode = comp->getMember(0);
+      auto valNode = comp->getMember(1);
+
+      if (!(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
+          attrNode->type == arangodb::aql::NODE_TYPE_EXPANSION)) {
+        // got value == a.b -> flip sides
+        std::swap(attrNode, valNode);
+      }
+      TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
+                 attrNode->type == arangodb::aql::NODE_TYPE_EXPANSION);
+
+      std::vector<arangodb::basics::AttributeName> attributes;
+      if (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+        do {
+          attributes.emplace_back(std::string(attrNode->getStringValue(), attrNode->getStringLength()), false);
+          attrNode = attrNode->getMember(0);
+        } while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+        std::reverse(attributes.begin(), attributes.end());
+      } else { // expansion
+        TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_EXPANSION);
+        auto expNode = attrNode;
+        TRI_ASSERT(expNode->numMembers() >= 2);
+        auto left = expNode->getMember(0);
+        TRI_ASSERT(left->type == arangodb::aql::NODE_TYPE_ITERATOR);
+        attrNode = left->getMember(1);
+        TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+        do {
+          attributes.emplace_back(std::string(attrNode->getStringValue(), attrNode->getStringLength()), false);
+          attrNode = attrNode->getMember(0);
+        } while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+        attributes.front().shouldExpand = true;
+        std::reverse(attributes.begin(), attributes.end());
+
+        std::vector<arangodb::basics::AttributeName> attributesRight;
+        attrNode = expNode->getMember(1);
+        TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
+                   attrNode->type == arangodb::aql::NODE_TYPE_REFERENCE);
+        while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+          attributesRight.emplace_back(std::string(attrNode->getStringValue(), attrNode->getStringLength()), false);
+          attrNode = attrNode->getMember(0);
+        }
+        attributes.insert(attributes.end(), attributesRight.crbegin(), attributesRight.crend());
+      }
+      allAttributes.emplace_back(std::move(attributes), valNode);
+    }
+    size_t nullsCount = 0;
+    for (auto const& f : _fields) {
+      auto it = std::find_if(allAttributes.cbegin(), allAttributes.cend(), [&f] (auto const& attrs) {
+        return arangodb::basics::AttributeName::isIdentical(attrs.first, f, true);
+      });
+      if (it != allAttributes.cend()) {
+        while (nullsCount > 0) {
+          keys->add(VPackSlice::nullSlice());
+          --nullsCount;
+        }
+        it->second->toVelocyPackValue(*keys);
+      } else {
+        ++nullsCount;
+      }
+    }
+    keys->close();
+
+    return std::make_unique<HashIndexIteratorMock>(&_collection, trx, this,
+                                                   _hashData,
+                                                   std::move(keys));
+  }
+
+  HashIndexMock(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSlice const& slice)
+      : arangodb::Index(iid, collection, slice), _hashData(_fields) {}
+
+  /// @brief the hash table for data
+  HashIndexMap _hashData;
+};  // HashIndexMock
+
 }  // namespace
+
+PhysicalCollectionMock::DocElement::DocElement(
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> data, uint64_t docId)
+    : _data(data), _docId(docId) {}
+
+arangodb::velocypack::Slice PhysicalCollectionMock::DocElement::data() const {
+  return arangodb::velocypack::Slice(_data->data());
+}
+
+std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> PhysicalCollectionMock::DocElement::rawData() const {
+  return _data;
+}
+
+void PhysicalCollectionMock::DocElement::swapBuffer(
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>& newData) {
+  _data.swap(newData);
+}
+
+arangodb::LocalDocumentId PhysicalCollectionMock::DocElement::docId() const {
+  return arangodb::LocalDocumentId::create(_docId);
+}
+
+uint8_t const* PhysicalCollectionMock::DocElement::vptr() const {
+  return _data->data();
+}
 
 std::function<void()> PhysicalCollectionMock::before = []() -> void {};
 
 PhysicalCollectionMock::PhysicalCollectionMock(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& info)
-    : PhysicalCollection(collection, info) {}
+    : PhysicalCollection(collection, info), _lastDocumentId{0} {}
 
 arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCollection& collection) const {
   before();
@@ -458,15 +935,10 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   before();
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> docs;
-
-  for (size_t i = 0, count = documents.size(); i < count; ++i) {
-    auto& entry = documents[i];
-
-    if (entry.second) {
-      auto revId = arangodb::LocalDocumentId::create(i + 1);  // always > 0
-
-      docs.emplace_back(revId, entry.first.slice());
-    }
+  docs.reserve(_documents.size());
+  for (auto const& entry : _documents) {
+    auto& doc = entry.second;
+    docs.emplace_back(doc.docId(), doc.data());
   }
 
   struct IndexFactory : public arangodb::IndexFactory {
@@ -482,6 +954,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
 
   if (0 == type.compare("edge")) {
     index = EdgeIndexMock::make(id, _logicalCollection, info);
+  } else if (0 == type.compare("hash")) {
+    index = HashIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
     try {
       if (arangodb::ServerState::instance()->isCoordinator()) {
@@ -519,6 +993,12 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
 
   if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
     auto* l = dynamic_cast<EdgeIndexMock*>(index.get());
+    TRI_ASSERT(l != nullptr);
+    for (auto const& pair : docs) {
+      l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
+    }
+  } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+    auto* l = dynamic_cast<HashIndexMock*>(index.get());
     TRI_ASSERT(l != nullptr);
     for (auto const& pair : docs) {
       l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
@@ -567,7 +1047,7 @@ bool PhysicalCollectionMock::dropIndex(TRI_idx_iid_t iid) {
   return false;
 }
 
-void PhysicalCollectionMock::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) {
+void PhysicalCollectionMock::figuresSpecific(arangodb::velocypack::Builder&) {
   before();
   TRI_ASSERT(false);
 }
@@ -576,13 +1056,13 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(
     arangodb::transaction::Methods* trx) const {
   before();
 
-  return std::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
+  return std::make_unique<AllIteratorMock>(_documents, this->_logicalCollection, trx);
 }
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(
     arangodb::transaction::Methods* trx) const {
   before();
-  return std::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
+  return std::make_unique<AllIteratorMock>(_documents, this->_logicalCollection, trx);
 }
 
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
@@ -597,27 +1077,48 @@ arangodb::Result PhysicalCollectionMock::insert(
   TRI_ASSERT(callbackDuringLock == nullptr);  // not implemented
   before();
 
+  TRI_ASSERT(newSlice.isObject());
+  VPackSlice newKey = newSlice.get(arangodb::StaticStrings::KeyString);
+  if (newKey.isString()) {
+    if (_documents.find(arangodb::velocypack::StringRef{newKey}) != _documents.end()) {
+      return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+    }
+  }
+
   arangodb::velocypack::Builder builder;
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
-  TRI_voc_rid_t unused;
+  TRI_voc_rid_t revisionId;
   auto res = newObjectForInsert(trx, newSlice, isEdgeCollection, builder,
-                                options.isRestore, unused);
+                                options.isRestore, revisionId);
 
   if (res.fail()) {
     return res;
   }
+  TRI_ASSERT(builder.slice().get(arangodb::StaticStrings::KeyString).isString());
 
-  documents.emplace_back(std::move(builder), true);
-  arangodb::LocalDocumentId docId(documents.size());  // always > 0
+  arangodb::velocypack::StringRef key{builder.slice().get(arangodb::StaticStrings::KeyString)};
+  auto const& [ref, didInsert] =
+      _documents.emplace(key, DocElement{builder.steal(), ++_lastDocumentId});
+  TRI_ASSERT(didInsert);
 
-  result.setUnmanaged(documents.back().first.data());
-  TRI_ASSERT(result.revisionId() == unused);
+  result.setUnmanaged(ref->second.vptr());
+  TRI_ASSERT(result.revisionId() == revisionId);
 
   for (auto& index : _indexes) {
     if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
       auto* l = static_cast<EdgeIndexMock*>(index.get());
-      if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+      if (!l->insert(*trx, ref->second.docId(),
+                     arangodb::velocypack::Slice(result.vpack()),
+                     arangodb::Index::OperationMode::normal)
+               .ok()) {
+        return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+      }
+      continue;
+    } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+      auto* l = static_cast<HashIndexMock*>(index.get());
+      if (!l->insert(*trx, ref->second.docId(),
+                     arangodb::velocypack::Slice(result.vpack()),
                      arangodb::Index::OperationMode::normal)
                .ok()) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
@@ -627,14 +1128,16 @@ arangodb::Result PhysicalCollectionMock::insert(
       if (arangodb::ServerState::instance()->isCoordinator()) {
         auto* l =
             static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
-        if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+        if (!l->insert(*trx, ref->second.docId(),
+                       arangodb::velocypack::Slice(result.vpack()),
                        arangodb::Index::OperationMode::normal)
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
         }
       } else {
         auto* l = static_cast<arangodb::iresearch::IResearchMMFilesLink*>(index.get());
-        if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+        if (!l->insert(*trx, ref->second.docId(),
+                       arangodb::velocypack::Slice(result.vpack()),
                        arangodb::Index::OperationMode::normal)
                  .ok()) {
           return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
@@ -663,7 +1166,7 @@ size_t PhysicalCollectionMock::memory() const {
 
 uint64_t PhysicalCollectionMock::numberDocuments(arangodb::transaction::Methods*) const {
   before();
-  return documents.size();
+  return _documents.size();
 }
 
 void PhysicalCollectionMock::open(bool ignoreErrors) {
@@ -731,78 +1234,47 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
                                               arangodb::velocypack::StringRef const& key,
                                               arangodb::ManagedDocumentResult& result, bool) {
   before();
-
-  for (size_t i = documents.size(); i; --i) {
-    auto& entry = documents[i - 1];
-
-    if (!entry.second) {
-      continue;  // removed document
-    }
-
-    auto& doc = entry.first;
-    auto const keySlice = doc.slice().get(arangodb::StaticStrings::KeyString);
-
-    if (!keySlice.isString()) {
-      continue;
-    }
-
-    arangodb::velocypack::StringRef const docKey(keySlice);
-
-    if (key == docKey) {
-      result.setUnmanaged(doc.data());
-      return arangodb::Result(TRI_ERROR_NO_ERROR);
-    }
+  auto it = _documents.find(key);
+  if (it != _documents.end()) {
+    result.setUnmanaged(it->second.vptr());
+    return arangodb::Result(TRI_ERROR_NO_ERROR);
   }
-
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*,
+arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods* trx,
                                               arangodb::velocypack::Slice const& key,
-                                              arangodb::ManagedDocumentResult& result, bool) {
-  before();
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
+                                              arangodb::ManagedDocumentResult& result,
+                                              bool unusedFlag) {
+  return read(trx, arangodb::velocypack::StringRef(key), result, unusedFlag);
 }
 
 bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx,
                                           arangodb::LocalDocumentId const& token,
                                           arangodb::ManagedDocumentResult& result) const {
   before();
-
-  if (token.id() > documents.size()) {
-    return false;
+  for (auto const& entry : _documents) {
+    auto& doc = entry.second;
+    if (doc.docId() == token) {
+      result.setUnmanaged(doc.vptr());
+      return true;
+    }
   }
-
-  auto& entry = documents[token.id() - 1];  // '_data' always > 0
-
-  if (!entry.second) {
-    return false;  // removed document
-  }
-
-  result.setUnmanaged(entry.first.data());
-
-  return true;
+  return false;
 }
 
 bool PhysicalCollectionMock::readDocumentWithCallback(
     arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
     arangodb::IndexIterator::DocumentCallback const& cb) const {
   before();
-
-  if (token.id() > documents.size()) {
-    return false;
+  for (auto const& entry : _documents) {
+    auto& doc = entry.second;
+    if (doc.docId() == token) {
+      cb(token, doc.data());
+      return true;
+    }
   }
-
-  auto& entry = documents[token.id() - 1];  // '_data' always > 0
-
-  if (!entry.second) {
-    return false;  // removed document
-  }
-
-  cb(token, VPackSlice(entry.first.data()));
-
-  return true;
+  return false;
 }
 
 arangodb::Result PhysicalCollectionMock::remove(
@@ -814,36 +1286,31 @@ arangodb::Result PhysicalCollectionMock::remove(
   before();
 
   auto key = slice.get(arangodb::StaticStrings::KeyString);
-
-  for (size_t i = documents.size(); i; --i) {
-    auto& entry = documents[i - 1];
-
-    if (!entry.second) {
-      continue;  // removed document
-    }
-
-    arangodb::velocypack::Builder& doc = entry.first;
-
-    if (arangodb::basics::VelocyPackHelper::equal(
-            key, doc.slice().get(arangodb::StaticStrings::KeyString), false)) {
-      entry.second = false;
-      previous.setUnmanaged(doc.data());
-      TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
-
-      return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume document was removed
-    }
+  TRI_ASSERT(key.isString());
+  arangodb::velocypack::StringRef keyRef{key};
+  auto old = _documents.find(keyRef);
+  if (old != _documents.end()) {
+    previous.setUnmanaged(old->second.vptr());
+    _graveyard.emplace_back(old->second.rawData());
+    TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(old->second.data()));
+    _documents.erase(keyRef);
+    return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume document was removed
   }
-
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+}
+
+arangodb::Result PhysicalCollectionMock::update(
+    arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
+    arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
+    bool lock, arangodb::ManagedDocumentResult& previous) {
+  return updateInternal(trx, newSlice, result, options, lock, previous, true);
 }
 
 arangodb::Result PhysicalCollectionMock::replace(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
     bool lock, arangodb::ManagedDocumentResult& previous) {
-  before();
-
-  return update(trx, newSlice, result, options, lock, previous);
+  return updateInternal(trx, newSlice, result, options, lock, previous, false);
 }
 
 TRI_voc_rid_t PhysicalCollectionMock::revision(arangodb::transaction::Methods*) const {
@@ -860,7 +1327,7 @@ void PhysicalCollectionMock::setPath(std::string const& value) {
 arangodb::Result PhysicalCollectionMock::truncate(arangodb::transaction::Methods& trx,
                                                   arangodb::OperationOptions& options) {
   before();
-  documents.clear();
+  _documents.clear();
   return arangodb::Result();
 }
 
@@ -868,61 +1335,65 @@ arangodb::Result PhysicalCollectionMock::compact() {
   return arangodb::Result();
 }
 
-arangodb::Result PhysicalCollectionMock::update(
+arangodb::Result PhysicalCollectionMock::updateInternal(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
-    bool lock, arangodb::ManagedDocumentResult& previous) {
+    bool lock, arangodb::ManagedDocumentResult& previous, bool isUpdate) {
   auto key = newSlice.get(arangodb::StaticStrings::KeyString);
-  if (key.isNone()) {
+  if (!key.isString()) {
     return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   before();
-
-  for (size_t i = documents.size(); i; --i) {
-    auto& entry = documents[i - 1];
-
-    if (!entry.second) {
-      continue;  // removed document
+  arangodb::velocypack::StringRef keyRef{key};
+  auto it = _documents.find(keyRef);
+  if (it != _documents.end()) {
+    auto doc = it->second.data();
+    if (!options.ignoreRevs) {
+      TRI_voc_rid_t expectedRev = 0;
+      if (newSlice.isObject()) {
+        expectedRev = TRI_ExtractRevisionId(newSlice);
+      }
+      TRI_ASSERT(doc.isObject());
+      TRI_voc_rid_t oldRev = TRI_ExtractRevisionId(doc);
+      int res = checkRevision(trx, expectedRev, oldRev);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return arangodb::Result(res);
+      }
     }
-
-    auto& doc = entry.first;
-
-    if (arangodb::basics::VelocyPackHelper::equal(
-            key, doc.slice().get(arangodb::StaticStrings::KeyString), false)) {
-      if (!options.mergeObjects) {
-        entry.second = false;
-        previous.setUnmanaged(doc.data());
-        TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
-
-        return insert(trx, newSlice, result, options, lock, nullptr, nullptr);
+    arangodb::velocypack::Builder builder;
+    TRI_voc_rid_t revisionId = 0;  // unused
+    auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
+    if (isUpdate) {
+      arangodb::Result res =
+          mergeObjectsForUpdate(trx, doc, newSlice, isEdgeCollection,
+                                options.mergeObjects, options.keepNull, builder,
+                                options.isRestore, revisionId);
+      if (res.fail()) {
+        return res;
       }
-
-      arangodb::velocypack::Builder builder;
-
-      builder.openObject();
-
-      if (!arangodb::iresearch::mergeSlice(builder, newSlice)) {
-        return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+    } else {
+      arangodb::Result res = newObjectForReplace(trx, doc, newSlice, isEdgeCollection,
+                                                 builder, options.isRestore, revisionId);
+      if (res.fail()) {
+        return res;
       }
-
-      for (arangodb::velocypack::ObjectIterator itr(doc.slice()); itr.valid(); ++itr) {
-        auto key = itr.key().copyString();
-
-        if (!newSlice.hasKey(key)) {
-          builder.add(key, itr.value());
-        }
-      }
-
-      builder.close();
-      entry.second = false;
-      previous.setUnmanaged(doc.data());
-      TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
-
-      return insert(trx, builder.slice(), result, options, lock, nullptr, nullptr);
     }
+    auto nextBuffer = builder.steal();
+    // Set previous
+    previous.setUnmanaged(it->second.vptr());
+    TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc));
+
+    // swap with new data
+    // Replace the existing Buffer and nextBuffer
+    it->second.swapBuffer(nextBuffer);
+    // Put the now old buffer into the graveyour for previous to stay valid
+    _graveyard.emplace_back(nextBuffer);
+
+    result.setUnmanaged(it->second.vptr());
+    TRI_ASSERT(result.revisionId() != previous.revisionId());
+    return TRI_ERROR_NO_ERROR;
   }
-
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
@@ -977,9 +1448,10 @@ arangodb::Result StorageEngineMock::changeView(TRI_vocbase_t& vocbase,
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.properties(builder, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed,
-                               arangodb::LogicalDataSource::Serialize::ForPersistence));
+  auto res = view.properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+  if (!res.ok()) {
+    return res;
+  }
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
   return {};
@@ -996,13 +1468,14 @@ std::string StorageEngineMock::createCollection(TRI_vocbase_t& vocbase,
   return "<invalid>";  // physical path of the new collection
 }
 
-std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
-    arangodb::CreateDatabaseInfo&& info, int& status) {
-
+std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                                 int& status) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
+    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
+                                           std::move(info));
   }
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(info));
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                         std::move(info));
 }
 
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {
@@ -1051,9 +1524,10 @@ arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_c
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.properties(builder, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed,
-                               arangodb::LogicalDataSource::Serialize::ForPersistence));
+  auto res = view.properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+  if (!res.ok()) {
+    return res;
+  }
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 
@@ -1207,17 +1681,15 @@ arangodb::Result StorageEngineMock::lastLogger(
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
-    arangodb::CreateDatabaseInfo&& info, bool isUpgrade) {
+std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                               bool isUpgrade) {
   before();
 
   auto new_info = info;
   new_info.setId(++vocbaseCount);
 
-  return std::make_unique<TRI_vocbase_t>(
-    TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-    std::move(new_info)
-  );
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                         std::move(new_info));
 }
 
 arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t& vocbase,

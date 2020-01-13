@@ -24,7 +24,6 @@
 #include "StringUtils.h"
 
 #include <algorithm>
-#include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -164,11 +163,17 @@ unsigned char const BASE64U_REVS[256] = {
 };
 
 inline bool isBase64(unsigned char c) {
-  return (isalnum(c) || (c == '+') || (c == '/'));
+  return (c >= '0' && c <= '9') ||
+         (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         c == '+' || c == '/';
 }
 
 inline bool isBase64U(unsigned char c) {
-  return (isalnum(c) || (c == '-') || (c == '_'));
+  return (c >= '0' && c <= '9') ||
+         (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         c == '-' || c == '_';
 }
 
 unsigned char consume(char const*& s) {
@@ -488,13 +493,12 @@ std::vector<std::string> split(std::string const& source, std::string const& del
 
 std::string trim(std::string const& sourceStr, std::string const& trimStr) {
   size_t s = sourceStr.find_first_not_of(trimStr);
-  size_t e = sourceStr.find_last_not_of(trimStr);
 
   if (s == std::string::npos) {
     return std::string();
-  } else {
-    return std::string(sourceStr, s, e - s + 1);
   }
+  size_t e = sourceStr.find_last_not_of(trimStr);
+  return std::string(sourceStr, s, e - s + 1);
 }
 
 void trimInPlace(std::string& str, std::string const& trimStr) {
@@ -517,9 +521,8 @@ std::string lTrim(std::string const& str, std::string const& trimStr) {
 
   if (s == std::string::npos) {
     return std::string();
-  } else {
-    return std::string(str, s);
-  }
+  } 
+  return std::string(str, s);
 }
 
 std::string rTrim(std::string const& sourceStr, std::string const& trimStr) {
@@ -645,71 +648,97 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   return std::string(ptr, k);
 }
 
-void tolowerInPlace(std::string* str) {
+void tolowerInPlace(std::string& str) {
+  // unrolled version of
+  // for (auto& c : str) {
+  //   c = StringUtils::tolower(c);
+  // }
+  auto pos = str.data();
+  auto end = pos + str.size();
 
-  if (str->empty()) {
-    return;
-  }
+  while (pos != end) {
+    size_t len = end - pos;
+    if (len > 4) {
+      len = 4;
+    }
 
-  for (std::string::iterator i = str->begin(); i != str->end(); ++i) {
-    *i = ::tolower(*i);
+    switch (len) {
+      case 4:
+        pos[3] = StringUtils::tolower(pos[3]);
+        [[fallthrough]];
+      case 3:
+        pos[2] = StringUtils::tolower(pos[2]);
+        [[fallthrough]];
+      case 2:
+        pos[1] = StringUtils::tolower(pos[1]);
+        [[fallthrough]];
+      case 1:
+        pos[0] = StringUtils::tolower(pos[0]);
+    }
+    pos += len;
   }
 }
 
 std::string tolower(std::string&& str) {
-
-  std::transform(
-    str.begin(), str.end(), str.begin(), [](unsigned char c){ return ::tolower(c); });
-
+  tolowerInPlace(str);
   return std::move(str);
 }
 
 std::string tolower(std::string const& str) {
-
-  size_t len = str.length();
-
-  if (len == 0) {
-    return "";
-  }
-
   std::string result;
-  result.reserve(len);
+  result.resize(str.size());
 
-  char const* ptr = str.c_str();
-
-  for (; 0 < len; len--, ptr++) {
-    result.push_back(static_cast<char>(::tolower(*ptr)));
+  size_t i = 0;
+  for (auto& c : result) {
+    c = StringUtils::tolower(str[i++]);
   }
 
   return result;
 }
 
-void toupperInPlace(std::string* str) {
-  size_t len = str->length();
+void toupperInPlace(std::string& str) {
+  // unrolled version of
+  // for (auto& c : str) {
+  //   c = StringUtils::toupper(c);
+  // }
+  auto pos = str.data();
+  auto end = pos + str.size();
 
-  if (len == 0) {
-    return;
-  }
+  while (pos != end) {
+    size_t len = end - pos;
+    if (len > 4) {
+      len = 4;
+    }
 
-  for (std::string::iterator i = str->begin(); i != str->end(); ++i) {
-    *i = ::toupper(*i);
+    switch (len) {
+      case 4:
+        pos[3] = StringUtils::toupper(pos[3]);
+        [[fallthrough]];
+      case 3:
+        pos[2] = StringUtils::toupper(pos[2]);
+        [[fallthrough]];
+      case 2:
+        pos[1] = StringUtils::toupper(pos[1]);
+        [[fallthrough]];
+      case 1:
+        pos[0] = StringUtils::toupper(pos[0]);
+    }
+    pos += len;
   }
 }
 
+std::string toupper(std::string&& str) {
+  toupperInPlace(str);
+  return std::move(str);
+}
+
 std::string toupper(std::string const& str) {
-  size_t len = str.length();
-
-  if (len == 0) {
-    return "";
-  }
-
   std::string result;
-  result.reserve(len);
+  result.resize(str.size());
 
-  char const* ptr = str.c_str();
-
-  for (; 0 < len; len--, ptr++) {
-    result.push_back(static_cast<char>(::toupper(*ptr)));
+  size_t i = 0;
+  for (auto& c : result) {
+    c = StringUtils::toupper(str[i++]);
   }
 
   return result;
@@ -840,14 +869,6 @@ std::string urlDecode(std::string const& str) {
 
 std::string urlEncode(std::string const& str) {
   return urlEncode(str.c_str(), str.size());
-}
-
-std::string urlEncode(char const* src) {
-  if (src != nullptr) {
-    size_t len = strlen(src);
-    return urlEncode(src, len);
-  }
-  return "";
 }
 
 std::string urlEncode(char const* src, size_t const len) {
@@ -1401,7 +1422,7 @@ bool boolean(std::string const& str) {
     return false;
   }
   std::string lower = trim(str);
-  tolowerInPlace(&lower);
+  tolowerInPlace(lower);
 
   if (lower == "true" || lower == "yes" || lower == "on" || lower == "y" ||
       lower == "1" || lower == "✓") {

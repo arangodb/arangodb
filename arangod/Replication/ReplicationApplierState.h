@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Replication/common-defines.h"
 #include "VocBase/voc-types.h"
@@ -108,12 +109,12 @@ struct ReplicationApplierState {
 
     void toVelocyPack(arangodb::velocypack::Builder& result) const {
       result.add(VPackValue(VPackValueType::Object));
-      result.add("errorNum", VPackValue(code));
+      result.add(StaticStrings::ErrorNum, VPackValue(code));
 
       if (code > 0) {
         result.add("time", VPackValue(time));
         if (!message.empty()) {
-          result.add("errorMessage", VPackValue(message));
+          result.add(StaticStrings::ErrorMessage, VPackValue(message));
         }
       }
       result.close();

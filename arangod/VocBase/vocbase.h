@@ -73,7 +73,7 @@ constexpr auto TRI_COL_NAME_USERS = "_users";
 constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 
 /// @brief maximal name length
-constexpr size_t TRI_COL_NAME_LENGTH = 64;
+constexpr size_t TRI_COL_NAME_LENGTH = 256;
 
 /// @brief default maximal collection journal size
 constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MiB
@@ -273,6 +273,15 @@ struct TRI_vocbase_t {
   /// @brief closes a database and all collections
   void shutdown();
 
+  /// @brief sets prototype collection for sharding (_users or _graphs)
+  void setShardingPrototype(ShardingPrototype type);
+
+  /// @brief gets prototype collection for sharding (_users or _graphs)
+  ShardingPrototype shardingPrototype() const;
+ 
+  /// @brief gets name of prototype collection for sharding (_users or _graphs)
+  std::string const& shardingPrototypeName() const;
+
   /// @brief returns all known views
   std::vector<std::shared_ptr<arangodb::LogicalView>> views();
 
@@ -369,7 +378,7 @@ struct TRI_vocbase_t {
 
   /// @brief visit all DataSources registered with this vocbase
   /// @param visitor returns if visitation should continue
-  /// @param lockWrite aquire write lock (if 'visitor' will modify vocbase)
+  /// @param lockWrite acquire write lock (if 'visitor' will modify vocbase)
   /// @return visitation compleated successfully
   typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
   bool visitDataSources(dataSourceVisitor const& visitor, bool lockWrite = false);

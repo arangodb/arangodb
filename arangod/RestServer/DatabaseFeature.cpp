@@ -594,10 +594,18 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 
   return Result();
 }
+  
+void DatabaseFeature::enumerate(std::function<void(TRI_vocbase_t*)> const& callback) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    callback(p.second);
+  }
+}
 
 /// @brief create a new database
-Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*& result){
-
+Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*& result) {
   std::string name = info.getName();
   auto dbId = info.getId();
   VPackBuilder markerBuilder;
@@ -784,7 +792,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
         return true;  // try next DataSource
       };
 
-      vocbase->visitDataSources(visitor, true);  // aquire a write lock to avoid potential deadlocks
+      vocbase->visitDataSources(visitor, true);  // acquire a write lock to avoid potential deadlocks
 
       if (TRI_ERROR_NO_ERROR != res) {
         events::DropDatabase(name, res);
@@ -1270,7 +1278,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       arangodb::CreateDatabaseInfo info(server());
       info.allowSystemDB(true);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
-      if(res.fail()){
+      if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
       auto database = engine->openDatabase(std::move(info), _upgrade);

@@ -67,7 +67,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   virtual RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
-  bool cancel() override final;
+  void cancel() override final;
   void handleError(basics::Exception const&) override;
 
  protected:
@@ -88,7 +88,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RestStatus processQuery();
 
   /// @brief returns the short id of the server which should handle this request
-  virtual std::string forwardingTarget() override;
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the currently running query
@@ -121,7 +121,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief cancel the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  bool cancelQuery();
+  void cancelQuery();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build options for the query as JSON
@@ -136,7 +136,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// registry if required
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
+  RestStatus generateCursorResult(rest::ResponseCode code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results
@@ -179,7 +179,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief leased query cursor, may be set by query continuation
   //////////////////////////////////////////////////////////////////////////////
-  Cursor* _leasedCursor;
+  Cursor* _cursor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for currently running query

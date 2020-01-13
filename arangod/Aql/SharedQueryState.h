@@ -23,27 +23,26 @@
 #ifndef ARANGOD_AQL_SHARED_QUERY_STATE_H
 #define ARANGOD_AQL_SHARED_QUERY_STATE_H 1
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
-
-#include "Basics/Common.h"
-#include "Basics/system-compiler.h"
 
 namespace arangodb {
 namespace aql {
 
-class SharedQueryState {
+class SharedQueryState final : public std::enable_shared_from_this<SharedQueryState> {
  public:
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState() : _wasNotified(false), _hasHandler(false), _valid(true) {}
+  SharedQueryState()
+    : _wakeupCb(nullptr), _numWakeups(0), _cbVersion(0), _valid(true) {}
 
   ~SharedQueryState() = default;
 
   void invalidate();
 
-  /// @brief continueAfterPause is to be called on the query object to
+  /// @brief executeAndWakeup is to be called on the query object to
   /// continue execution in this query part, if the query got paused
   /// because it is waiting for network responses. The idea is that a
   /// RemoteBlock that does an asynchronous cluster-internal request can
@@ -57,57 +56,44 @@ class SharedQueryState {
   /// the network communication will be rescheduled on the ioservice and
   /// continues its execution where it left off.
   template <typename F>
-  bool execute(F&& cb) {
-    // guards _valid to make sure the callback cannot be called after the query
-    // is destroyed
+  void executeAndWakeup(F&& cb) {
     std::lock_guard<std::mutex> guard(_mutex);
     if (!_valid) {
-      return false;
+      _cv.notify_all();
+      return;
     }
 
-    std::forward<F>(cb)();
-    if (_hasHandler) {
-      if (ADB_UNLIKELY(!executeContinueCallback())) {
-        return false;  // likely shutting down
-      }
-    } else {
-      _wasNotified = true;
-      // simon: bad experience on macOS guard.unlock();
-      _condition.notify_one();
+    if (std::forward<F>(cb)()) {
+      execute();
     }
-    return true;
   }
 
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
-  void waitForAsyncResponse();
-
-  /// @brief setter for the continue callback:
-  ///        We can either have a handler or a callback
-  void setContinueCallback() noexcept;
+  void waitForAsyncWakeup();
 
   /// @brief setter for the continue handler:
   ///        We can either have a handler or a callback
-  void setContinueHandler(std::function<void()> const& handler);
+  void setWakeupHandler(std::function<bool()> const& cb);
+
+  void resetWakeupHandler();
 
  private:
   /// execute the _continueCallback. must hold _mutex
-  bool executeContinueCallback() const;
+  void execute();
+  void queueHandler();
 
  private:
-  std::mutex _mutex;
-  std::condition_variable _condition;
+  mutable std::mutex _mutex;
+  std::condition_variable _cv;
 
   /// @brief a callback function which is used to implement continueAfterPause.
   /// Typically, the RestHandler using the Query object will put a closure
   /// in here, which continueAfterPause simply calls.
-  std::function<void()> _continueCallback;
+  std::function<bool()> _wakeupCb;
 
-  bool _wasNotified;
-
-  /// @brief decide if the _continueCallback needs to be pushed onto the
-  /// ioservice
-  ///        or if it has to be executed in this thread.
-  bool _hasHandler;
+  uint32_t _numWakeups;
+  
+  uint32_t _cbVersion;
 
   bool _valid;
 };

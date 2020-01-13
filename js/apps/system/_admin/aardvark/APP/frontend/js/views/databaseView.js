@@ -195,7 +195,7 @@
         "options" : {
           "sharding" : sharding,
           "replicationFactor" : Number(replicationFactor),
-          "minReplicationFactor" : Number(writeConcern),
+          "writeConcern" : Number(writeConcern),
         },
         users: [{
           username: userName
@@ -405,10 +405,10 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-write-concern',
-            'Minimum replication factor',
-            dbDefaultProperties.minReplicationFactor,
-            'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
-            'Default minimum replication factor',
+            'Write concern',
+            dbDefaultProperties.writeConcern,
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
+            'Default write concern',
             false,
             [
               {
@@ -436,7 +436,7 @@
             'newSharding',
             'Sharding',
             'flexible',
-            'some nice description TODO',
+            'Selects the default sharding setup for new collections in this database. *flexible* means that shards of different collections by default will be randomly distributed to database servers. *single* means that collections by default will use the same sharding setup (number of shards and shard distribution) as one of the system collections.',
             sharding
           )
         );

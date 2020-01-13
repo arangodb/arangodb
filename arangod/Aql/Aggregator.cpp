@@ -24,6 +24,7 @@
 #include "Aggregator.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -609,8 +610,11 @@ struct AggregatorUnique : public Aggregator {
              basics::VelocyPackHelper::VPackEqual(
                  trx->transactionContext()->getVPackOptions())) {}
 
-  ~AggregatorUnique() { reset(); }
+  ~AggregatorUnique() {
+    reset();
+  }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     builder.clear();
@@ -694,6 +698,7 @@ struct AggregatorSortedUnique : public Aggregator {
 
   ~AggregatorSortedUnique() { reset(); }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     allocator.clear();
@@ -768,6 +773,7 @@ struct AggregatorCountDistinct : public Aggregator {
 
   ~AggregatorCountDistinct() { reset(); }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     allocator.clear();

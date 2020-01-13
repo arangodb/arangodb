@@ -277,9 +277,12 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("timeout", VPackValue(options.maxWaitForLock));
-    bodyBuilder.add("allowInconsistent", VPackValue(options.force));
+    bodyBuilder.add("allowInconsistent", VPackValue(options.allowInconsistent));
     if (!options.label.empty()) {
       bodyBuilder.add("label", VPackValue(options.label));
+    }
+    if (options.abortTransactionsIfNeeded) {
+      bodyBuilder.add("force", VPackValue(true));
     }
   }
   std::string const body = bodyBuilder.slice().toJson();
@@ -361,8 +364,7 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("id", VPackValue(options.identifier));
-    bodyBuilder.add("saveCurrent", VPackValue(options.saveCurrent));
-    if (options.force) {
+    if (options.ignoreVersion) {
       bodyBuilder.add("ignoreVersion", VPackValue(true));
     }
   }
@@ -381,33 +383,6 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   } catch (...) {
     result.reset(::ErrorMalformedJsonResponse);
     return result;
-  }
-
-  if (options.saveCurrent) {
-    VPackSlice const resBody = parsedBody->slice();
-    if (!resBody.isObject()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected response to be an object");
-      return result;
-    }
-    TRI_ASSERT(resBody.isObject());
-
-    VPackSlice const resultObject = resBody.get("result");
-    if (!resultObject.isObject()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected 'result' to be an object");
-      return result;
-    }
-    TRI_ASSERT(resultObject.isObject());
-
-    VPackSlice const previous = resultObject.get("previous");
-    if (!previous.isString()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected previous to be a string");
-      return result;
-    }
-    TRI_ASSERT(previous.isString());
-
-    LOG_TOPIC("08c95", INFO, arangodb::Logger::BACKUP)
-        << "current state was saved as backup with identifier '"
-        << previous.copyString() << "'";
   }
 
   LOG_TOPIC("b6d4c", INFO, arangodb::Logger::BACKUP)
@@ -600,7 +575,7 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
   // Load configuration file
   std::shared_ptr<VPackBuilder> configFile;
 
-  result = arangodb::basics::catchVoidToResult([&options, &configFile](){
+  result = arangodb::basics::catchVoidToResult([&options, &configFile]() {
     std::string configFileSource = arangodb::basics::FileUtils::slurp(options.rcloneConfigFile);
     auto configFileParsed = arangodb::velocypack::Parser::fromJson(configFileSource);
     configFile.swap(configFileParsed);
@@ -706,15 +681,17 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--allow-inconsistent",
                      "whether to attempt to continue in face of errors; "
                      "may result in inconsistent backup state (create operation)",
-                     new BooleanParameter(&_options.force));
+                     new BooleanParameter(&_options.allowInconsistent));
+
+  options->addOption("--ignore-version",
+                     "ignore stored version of a backup. "
+                     "Restore may not work if versions mismatch (restore operation)",
+                     new BooleanParameter(&_options.ignoreVersion));
 
   options->addOption("--identifier",
                      "a unique identifier for a backup "
                      "(restore/upload/download operation)",
                      new StringParameter(&_options.identifier));
-
-  //  options->addOption("--include-search", "whether to include ArangoSearch data",
-  //                     new BooleanParameter(&_options.includeSearch));
 
   options->addOption(
       "--label",
@@ -722,7 +699,7 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       new StringParameter(&_options.label));
 
   options->addOption("--max-wait-for-lock",
-                     "maximum time to wait in seconds to aquire a lock on "
+                     "maximum time to wait in seconds to acquire a lock on "
                      "all necessary resources (create operation)",
                      new DoubleParameter(&_options.maxWaitForLock));
 
@@ -734,10 +711,6 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "result of the restore request (restore operation)",
       new DoubleParameter(&_options.maxWaitForRestart));
 
-  options->addOption("--save-current",
-                     "whether to save the current state as a backup before "
-                     "restoring to another state (restore operation)",
-                     new BooleanParameter(&_options.saveCurrent));
 #ifdef USE_ENTERPRISE
   options->addOption("--status-id",
                      "returns the status of a transfer process "
@@ -745,12 +718,12 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new StringParameter(&_options.statusId));
 
   options->addOption("--rclone-config-file",
-                     "filename of the rclone configuration file used for"
+                     "filename of the Rclone configuration file used for"
                      "file transfer (upload/download operation)",
                      new StringParameter(&_options.rcloneConfigFile));
 
   options->addOption("--remote-path",
-                     "remote rclone path of directory used to store or "
+                     "remote Rclone path of directory used to store or "
                      "receive backups (upload/download operation)",
                      new StringParameter(&_options.remoteDirectory));
 
@@ -758,6 +731,13 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "abort transfer with given status-id "
                      "(upload/download operation)",
                      new BooleanParameter(&_options.abort));
+
+  options->addOption("--force",
+                     "abort transactions if needed to ensure a consistent snapshot. "
+                     "This option can destroy the atomicity of your transactions in the "
+                     "presence of intermediate commits! Use it with great care and only "
+                     "if you really need a consistent backup at all costs (create operation)",
+                     new BooleanParameter(&_options.abortTransactionsIfNeeded));
 #endif
   /*
     options->addSection(

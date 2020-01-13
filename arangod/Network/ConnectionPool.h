@@ -23,7 +23,9 @@
 #ifndef ARANGOD_NETWORK_CONNECTION_POOL_H
 #define ARANGOD_NETWORK_CONNECTION_POOL_H 1
 
+#include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Containers/SmallVector.h"
 #include "Network/types.h"
 #include "VocBase/voc-types.h"
 
@@ -43,6 +45,8 @@ class ClusterInfo;
 
 namespace network {
 
+using ConnectionPtr = std::shared_ptr<fuerte::Connection>;
+
 /// @brief simple connection pool managing fuerte connections
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 class ConnectionPool {
@@ -56,27 +60,11 @@ class ConnectionPool final {
   struct Config {
     ClusterInfo* clusterInfo;
     uint64_t minOpenConnections = 1;       /// minimum number of open connections
-    uint64_t maxOpenConnections = 25;      /// max number of connections
-    uint64_t connectionTtlMilli = 60000;   /// unused connection lifetime
-    uint64_t requestTimeoutMilli = 120000; /// request timeout
+    uint64_t maxOpenConnections = 1024;    /// max number of connections
+    uint64_t idleConnectionMilli = 60000;  /// unused connection lifetime
     unsigned int numIOThreads = 1;         /// number of IO threads
     bool verifyHosts = false;
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
-  };
-
-  /// @brief simple connection reference counter
-  struct Ref {
-    explicit Ref(ConnectionPool::Connection* c);
-    Ref(Ref&& r);
-    Ref& operator=(Ref&&);
-    Ref(Ref const& other);
-    Ref& operator=(Ref&);
-    ~Ref();
-
-    std::shared_ptr<fuerte::Connection> connection() const;
-
-   private:
-    ConnectionPool::Connection* _conn;  // back reference to list
   };
 
  public:
@@ -86,7 +74,7 @@ class ConnectionPool final {
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
   /// is always the same, we do not do any post-processing
-  Ref leaseConnection(std::string const& endpoint);
+  ConnectionPtr leaseConnection(std::string const& endpoint);
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
@@ -102,7 +90,7 @@ class ConnectionPool final {
   void pruneConnections();
   
   /// @brief cancel connections to this endpoint
-  void cancelConnections(std::string const& endpoint);
+  size_t cancelConnections(std::string const& endpoint);
 
   /// @brief return the number of open connections
   size_t numOpenConnections() const;
@@ -110,51 +98,36 @@ class ConnectionPool final {
   Config const& config() const;
 
  protected:
-  /// @brief connection container
-  struct Connection {
-    explicit Connection(std::shared_ptr<fuerte::Connection> f)
-        : fuerte(std::move(f)),
-          numLeased(0),
-          lastUsed(std::chrono::steady_clock::now()) {}
-    Connection(Connection const& c)
-        : fuerte(c.fuerte), numLeased(c.numLeased.load()), lastUsed(c.lastUsed) {}
-    Connection& operator=(Connection const& other) {
-      this->fuerte = other.fuerte;
-      this->numLeased.store(other.numLeased.load());
-      this->lastUsed = other.lastUsed;
-      return *this;
-    }
 
+  struct Context {
     std::shared_ptr<fuerte::Connection> fuerte;
-    std::atomic<size_t> numLeased;
-    std::chrono::steady_clock::time_point lastUsed;
+    std::chrono::steady_clock::time_point leased; /// last time leased
   };
 
-  /// @brief
-  struct ConnectionList {
+  /// @brief endpoint bucket
+  struct Bucket {
     std::mutex mutex;
     // TODO statistics ?
     //    uint64_t bytesSend;
     //    uint64_t bytesReceived;
     //    uint64_t numRequests;
-    std::vector<std::unique_ptr<Connection>> connections;
+    containers::SmallVector<Context>::allocator_type::arena_type arena;
+    containers::SmallVector<Context> list{arena};
   };
 
-  TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
-  Ref selectConnection(ConnectionList&, fuerte::ConnectionBuilder& builder);
+  TEST_VIRTUAL ConnectionPtr createConnection(fuerte::ConnectionBuilder&);
+  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket);
   
-  void removeBrokenConnections(ConnectionList&);
+  void removeBrokenConnections(Bucket&);
 
  private:
   const Config _config;
 
   mutable basics::ReadWriteSpinLock _lock;
-  std::unordered_map<std::string, std::unique_ptr<ConnectionList>> _connections;
+  std::unordered_map<std::string, std::unique_ptr<Bucket>> _connections;
 
   /// @brief contains fuerte asio::io_context
   fuerte::EventLoopService _loop;
-  /// @brief
-  //  asio_ns::steady_timer _pruneTimer;
 };
 
 }  // namespace network

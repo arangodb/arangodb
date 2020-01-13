@@ -151,7 +151,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         // do not re-add the same collection!
         continue;
       }
-      seenCollections.emplace(eColName, dir);
+      seenCollections.try_emplace(eColName, dir);
 
       auto collection = resolver->getCollection(eColName);
 
@@ -282,7 +282,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     _directions.emplace_back(d);
   }
 
-  if(!ServerState::instance()->isDBServer()) {
+  if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
     if (base.hasKey("graph") && (base.get("graph").isString())) {
@@ -418,9 +418,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 GraphNode::~GraphNode() = default;
 
 std::string const& GraphNode::collectionToShardName(std::string const& collName) const {
-  if(_collectionToShard.empty()){
+  if (_collectionToShard.empty()) {
     return collName;
-  };
+  }
 
   auto found = _collectionToShard.find(collName);
   TRI_ASSERT(found != _collectionToShard.cend());
@@ -522,7 +522,7 @@ CostEstimate GraphNode::estimateCost() const {
 
 void GraphNode::addEngine(TraverserEngineID const& engine, ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-  _engines.emplace(server, engine);
+  _engines.try_emplace(server, engine);
 }
 
 /// @brief Returns a reference to the engines. (CLUSTER ONLY)

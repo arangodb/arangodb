@@ -51,17 +51,18 @@ class VstRequest final : public GeneralRequest {
              size_t payloadOffset,
              uint64_t messageId);
 
-  ~VstRequest() {}
+  ~VstRequest() = default;
 
  public:
   
   uint64_t messageId() const override { return _messageId; }
   size_t contentLength() const override { return _buffer.size(); }
-  arangodb::velocypack::StringRef rawPayload() const override {
-    return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data()),
-                                           _buffer.size());
-  }
+  arangodb::velocypack::StringRef rawPayload() const override;
   velocypack::Slice payload(arangodb::velocypack::Options const*) override;
+
+  virtual void setDefaultContentType() override {
+    _contentType = rest::ContentType::VPACK;
+  }
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;

@@ -113,13 +113,11 @@
  *
  */
 
-namespace arangodb {
-namespace cluster {
-namespace paths {
+namespace arangodb::cluster::paths {
 
 class Root;
 
-inline std::shared_ptr<Root const> root();
+auto root() -> std::shared_ptr<Root const>;
 
 // The root is no StaticComponent, mainly because it has no parent and is the
 // base case for recursions.
@@ -543,18 +541,18 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               return Deleted::make_shared(shared_from_this());
             }
 
-            class MinReplicationFactor
-                : public StaticComponent<MinReplicationFactor, Collection> {
+            class WriteConcern
+                : public StaticComponent<WriteConcern, Collection> {
              public:
               constexpr char const* component() const noexcept {
-                return "minReplicationFactor";
+                return "writeConcern";
               }
 
               using BaseType::StaticComponent;
             };
 
-            std::shared_ptr<MinReplicationFactor const> minReplicationFactor() const {
-              return MinReplicationFactor::make_shared(shared_from_this());
+            std::shared_ptr<WriteConcern const> writeConcern() const {
+              return WriteConcern::make_shared(shared_from_this());
             }
 
             class CacheEnabled : public StaticComponent<CacheEnabled, Collection> {
@@ -1240,11 +1238,35 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         return Shards::make_shared(shared_from_this());
       }
 
+      class Maintenance : public StaticComponent<Maintenance, Supervision> {
+       public:
+        constexpr char const* component() const noexcept { return "Maintenance"; }
+
+        using BaseType::StaticComponent;
+      };
+
+      std::shared_ptr<Maintenance const> maintenance() const {
+        return Maintenance::make_shared(shared_from_this());
+      }
+
       class DbServers : public StaticComponent<DbServers, Supervision> {
        public:
         constexpr char const* component() const noexcept { return "DBServers"; }
 
         using BaseType::StaticComponent;
+
+        class Server : public DynamicComponent<Server, DbServers, ServerID> {
+         public:
+          char const* component() const noexcept {
+            return value().c_str();
+          }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Server const> server(ServerID name) const {
+          return Server::make_shared(shared_from_this(), std::move(name));
+        }
       };
 
       std::shared_ptr<DbServers const> dbServers() const {
@@ -1412,11 +1434,44 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
       using BaseType::StaticComponent;
 
+      class RemovedServers : public StaticComponent<RemovedServers, Target> {
+       public:
+        constexpr char const* component() const noexcept { return "RemovedServers"; }
+
+        using BaseType::StaticComponent;
+
+        class Server : public DynamicComponent<Server, RemovedServers, ServerID> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Server const> server(ServerID server) const {
+          return Server::make_shared(shared_from_this(), std::move(server));
+        }
+      };
+
+      std::shared_ptr<RemovedServers const> removedServers() const {
+        return RemovedServers::make_shared(shared_from_this());
+      }
+
       class ToDo : public StaticComponent<ToDo, Target> {
        public:
         constexpr char const* component() const noexcept { return "ToDo"; }
 
         using BaseType::StaticComponent;
+
+        class Job : public DynamicComponent<Job, ToDo, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Job const> job(std::string jobId) const {
+          return Job::make_shared(shared_from_this(), std::move(jobId));
+        }
       };
 
       std::shared_ptr<ToDo const> toDo() const {
@@ -1441,6 +1496,17 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         constexpr char const* component() const noexcept { return "Pending"; }
 
         using BaseType::StaticComponent;
+
+        class Job : public DynamicComponent<Job, Pending, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Job const> job(std::string jobId) const {
+          return Job::make_shared(shared_from_this(), std::move(jobId));
+        }
       };
 
       std::shared_ptr<Pending const> pending() const {
@@ -1478,6 +1544,17 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         constexpr char const* component() const noexcept { return "Failed"; }
 
         using BaseType::StaticComponent;
+
+        class Job : public DynamicComponent<Job, Failed, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Job const> job(std::string jobId) const {
+          return Job::make_shared(shared_from_this(), std::move(jobId));
+        }
       };
 
       std::shared_ptr<Failed const> failed() const {
@@ -1606,6 +1683,17 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         constexpr char const* component() const noexcept { return "Finished"; }
 
         using BaseType::StaticComponent;
+
+        class Job : public DynamicComponent<Job, Finished, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Job const> job(std::string jobId) const {
+          return Job::make_shared(shared_from_this(), std::move(jobId));
+        }
       };
 
       std::shared_ptr<Finished const> finished() const {
@@ -1789,9 +1877,9 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
  private:
   // May only be constructed by root()
-  friend std::shared_ptr<Root const> root();
+  friend auto root() -> std::shared_ptr<Root const>;
   Root() = default;
-  static std::shared_ptr<Root const> make_shared() {
+  static auto make_shared() -> std::shared_ptr<Root const> {
     struct ConstructibleRoot : public Root {
      public:
       explicit ConstructibleRoot() noexcept = default;
@@ -1800,32 +1888,16 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
   }
 };
 
-std::shared_ptr<Root const> root() { return Root::make_shared(); }
-
 namespace aliases {
 
-std::shared_ptr<Root::Arango const> arango() { return root()->arango(); }
-
-std::shared_ptr<Root::Arango::Plan const> plan() {
-  return root()->arango()->plan();
-}
-
-std::shared_ptr<Root::Arango::Current const> current() {
-  return root()->arango()->current();
-}
-
-std::shared_ptr<Root::Arango::Target const> target() {
-  return root()->arango()->target();
-}
-
-std::shared_ptr<Root::Arango::Supervision const> supervision() {
-  return root()->arango()->supervision();
-}
+auto arango() -> std::shared_ptr<Root::Arango const>;
+auto plan() -> std::shared_ptr<Root::Arango::Plan const>;
+auto current() -> std::shared_ptr<Root::Arango::Current const>;
+auto target() -> std::shared_ptr<Root::Arango::Target const>;
+auto supervision() -> std::shared_ptr<Root::Arango::Supervision const>;
 
 }  // namespace aliases
 
-}  // namespace paths
-}  // namespace cluster
-}  // namespace arangodb
+}  // namespace arangodb::cluster::paths
 
 #endif  // ARANGOD_CLUSTER_AGENCYPATHS_H

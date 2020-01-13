@@ -64,7 +64,7 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
       _selectivityEstimates(collection) {
   // duplicate all the error handling
   if (_engineType == ClusterEngineType::MMFilesEngine) {
-    bool isVolatile = Helper::readBooleanValue(_info.slice(), "isVolatile", false);
+    bool isVolatile = Helper::getBooleanValue(_info.slice(), "isVolatile", false);
 
     if (isVolatile && _logicalCollection.waitForSync()) {
       // Illegal collection configuration
@@ -147,7 +147,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
               "indexBuckets must be a two-power between 1 and 1024"};
     }
 
-    bool isVolatile = Helper::readBooleanValue(_info.slice(), "isVolatile", false);
+    bool isVolatile = Helper::getBooleanValue(_info.slice(), "isVolatile", false);
     if (isVolatile && arangodb::basics::VelocyPackHelper::getBooleanValue(
                           slice, "waitForSync", _logicalCollection.waitForSync())) {
       // the combination of waitForSync and isVolatile makes no sense
@@ -176,16 +176,16 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     }
 
     merge.add("doCompact",
-              VPackValue(Helper::readBooleanValue(slice, "doCompact", true)));
+              VPackValue(Helper::getBooleanValue(slice, "doCompact", true)));
     merge.add("indexBuckets",
-              VPackValue(Helper::readNumericValue(slice, "indexBuckets",
+              VPackValue(Helper::getNumericValue(slice, "indexBuckets",
                                                   MMFilesCollection::defaultIndexBuckets)));
     merge.add("journalSize", VPackValue(journalSize));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    bool def = Helper::readBooleanValue(_info.slice(), "cacheEnabled", false);
+    bool def = Helper::getBooleanValue(_info.slice(), "cacheEnabled", false);
     merge.add("cacheEnabled",
-              VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", def)));
+              VPackValue(Helper::getBooleanValue(slice, "cacheEnabled", def)));
 
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
@@ -230,19 +230,19 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
   if (_engineType == ClusterEngineType::MMFilesEngine) {
     result.add("doCompact",
-               VPackValue(Helper::readBooleanValue(_info.slice(), "doCompact", true)));
+               VPackValue(Helper::getBooleanValue(_info.slice(), "doCompact", true)));
     result.add("indexBuckets",
-               VPackValue(Helper::readNumericValue(_info.slice(), "indexBuckets",
+               VPackValue(Helper::getNumericValue(_info.slice(), "indexBuckets",
                                                    MMFilesCollection::defaultIndexBuckets)));
     result.add("isVolatile",
-               VPackValue(Helper::readBooleanValue(_info.slice(), "isVolatile", false)));
+               VPackValue(Helper::getBooleanValue(_info.slice(), "isVolatile", false)));
     result.add("journalSize",
-               VPackValue(Helper::readNumericValue(_info.slice(), "journalSize",
+               VPackValue(Helper::getNumericValue(_info.slice(), "journalSize",
                                                    TRI_JOURNAL_DEFAULT_SIZE)));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add("cacheEnabled",
-               VPackValue(Helper::readBooleanValue(_info.slice(), "cacheEnabled", false)));
+               VPackValue(Helper::getBooleanValue(_info.slice(), "cacheEnabled", false)));
 
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
@@ -251,19 +251,13 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-futures::Future<std::shared_ptr<VPackBuilder>> ClusterCollection::figures() {
+futures::Future<OperationResult> ClusterCollection::figures() {
   auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
   return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
-                              std::to_string(_logicalCollection.id()))
-      .thenValue([](OperationResult&& opRes) -> std::shared_ptr<VPackBuilder> {
-        if (opRes.fail()) {
-          THROW_ARANGO_EXCEPTION(opRes.result);
-        }
-        return std::make_shared<VPackBuilder>(opRes.buffer);
-      });
+                              std::to_string(_logicalCollection.id()));
 }
 
-void ClusterCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void ClusterCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 
