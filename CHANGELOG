@@ -1,6 +1,9 @@
 v3.6.0 (XXXX-XX-XX)
 -------------------
 
+* Fix Foxxmaster failover retry loop to not spin forever and give up
+  after a while. 
+
 * Do not create a reboot tracker for empty serverId ubin sync repl.
 
 * Update swagger.
