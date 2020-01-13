@@ -1,11 +1,7 @@
-v3.4.10 (XXXX-XX-XX)
+v3.4.9 (XXXX-XX-XX)
 -------------------
 
 * Fix Windows client package JS installation paths.
-
-
-v3.4.9 (XXXX-XX-XX)
--------------------
 
 * Updated arangosync to 0.7.2.
 
