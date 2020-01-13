@@ -210,12 +210,12 @@ uint32_t Slice::normalizedHash32(uint32_t seed) const {
     // normalize objects by hashing object length and iterating
     // over all object members
     ObjectIterator it(*this, true);
-    uint64_t const n = it.size() ^ 0xf00ba44ba5;
-    uint64_t seed2 = VELOCYPACK_HASH32(&n, sizeof(n), seed);
+    uint32_t const n = static_cast<uint32_t>(it.size() ^ 0xf00ba44ba5);
+    uint32_t seed2 = VELOCYPACK_HASH32(&n, sizeof(n), seed);
     value = seed2;
     while (it.valid()) {
       auto current = (*it);
-      uint64_t seed3 = current.key.normalizedHash32(seed2);
+      uint32_t seed3 = current.key.normalizedHash32(seed2);
       value ^= seed3;
       value ^= current.value.normalizedHash32(seed3);
       it.next();
