@@ -194,7 +194,7 @@ class Node {
 
   /// @brief Split path to path vector
   static std::vector<std::string> split(const std::string& str, char separator);
- 
+
 private:
 
   /// @brief Get store if it exists:
@@ -355,10 +355,10 @@ public:
   static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
 
  public:
-  bool isReadLockable(std::string_view const& by) const;
-  bool isReadUnlockable(std::string_view const& by) const;
-  bool isWriteLockable(std::string_view const& by) const;
-  bool isWriteUnlockable(std::string_view const& by) const;
+  bool isReadLockable(const VPackStringRef& by) const;
+  bool isReadUnlockable(const VPackStringRef& by) const;
+  bool isWriteLockable(const VPackStringRef& by) const;
+  bool isWriteUnlockable(const VPackStringRef& by) const;
 
   /// @brief Clear key value store
   void clear();

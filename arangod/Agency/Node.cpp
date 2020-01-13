@@ -705,7 +705,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_LOCK>(VPackSlice const& slice) 
       TRI_ERROR_FAILED, std::string("Invalid read lock: ") + slice.toJson());
   }
 
-  if (isReadLockable(user.stringView())) {
+  if (isReadLockable(user.stringRef())) {
     Builder newValue;
     {
       VPackArrayBuilder arr(&newValue);
@@ -729,7 +729,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<READ_UNLOCK>(VPackSlice const& slice
       TRI_ERROR_FAILED, std::string("Invalid read unlock: ") + slice.toJson());
   }
 
-  if (isReadUnlockable(user.stringView())) {
+  if (isReadUnlockable(user.stringRef())) {
     Builder newValue;
     {
       // isReadUnlockable ensured that `this->slice()` is always an array of strings
@@ -762,7 +762,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_LOCK>(VPackSlice const& slice)
       TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
   }
 
-  if (isWriteLockable(user.stringView())) {
+  if (isWriteLockable(user.stringRef())) {
     this->operator=(user);
     return ResultT<std::shared_ptr<Node>>::success(nullptr);
   }
@@ -778,7 +778,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slic
       TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
   }
 
-  if (isWriteUnlockable(user.stringView())) {
+  if (isWriteUnlockable(user.stringRef())) {
     return deleteMe();
   }
 
@@ -786,7 +786,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slic
     TRI_ERROR_FAILED, "Write unlock failed");
 }
 
-bool Node::isReadLockable(std::string_view const& by) const {
+bool Node::isReadLockable(const VPackStringRef& by) const {
   if (!_children.empty()) {
     return false;
   }
@@ -807,7 +807,7 @@ bool Node::isReadLockable(std::string_view const& by) const {
   return slice.isEmptyObject();
 }
 
-bool Node::isReadUnlockable(std::string_view const& by) const {
+bool Node::isReadUnlockable(const VPackStringRef& by) const {
   if (!_children.empty()) {
     return false;
   }
@@ -830,7 +830,7 @@ bool Node::isReadUnlockable(std::string_view const& by) const {
   return false;
 }
 
-bool Node::isWriteLockable(std::string_view const& by) const {
+bool Node::isWriteLockable(const VPackStringRef& by) const {
   if (!_children.empty()) {
     return false;
   }
@@ -840,7 +840,7 @@ bool Node::isWriteLockable(std::string_view const& by) const {
   return slice.isEmptyObject();
 }
 
-bool Node::isWriteUnlockable(std::string_view const& by) const {
+bool Node::isWriteUnlockable(const VPackStringRef& by) const {
   if (!_children.empty()) {
     return false;
   }
