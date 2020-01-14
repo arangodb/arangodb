@@ -249,8 +249,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   // waitForSync can be 3. or 4. parameter
-  auto& server = application_features::ApplicationServer::server();
-  auto& cluster = server.getFeature<ClusterFeature>();
+  TRI_GET_GLOBALS();
+  auto& cluster = v8g->_server.getFeature<ClusterFeature>();
   bool createWaitsForSyncReplication = cluster.createWaitsForSyncReplication();
   bool enforceReplicationFactor = true;
 
