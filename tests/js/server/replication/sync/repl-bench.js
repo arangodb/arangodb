@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, ARGUMENTS */
+/* global db, arango, assertEqual, assertNotEqual, assertTrue, assertFalse, ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the sync method of the replication
@@ -300,7 +300,7 @@ const singleRunCatchUpSmallBigDocs = (initialCount) => {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < initialCount; ++i) {
-        values = generateBody();
+        const values = generateBody();
         docs.push({ _key: 'test' + i, values});
         if (docs.length === 5000) {
           c.insert(docs);
@@ -360,7 +360,7 @@ const singleRunCatchUpLargeBigDocs = (initialCount) => {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < initialCount; ++i) {
-        values = generateBody();
+        const values = generateBody();
         docs.push({ _key: 'test' + i, values});
         if (docs.length === 5000) {
           c.insert(docs);
