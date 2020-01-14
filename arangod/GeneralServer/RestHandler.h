@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include "GeneralServer/RequestLane.h"
-#include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
 
 #include <Cluster/ResultT.h>

@@ -339,8 +339,8 @@ void HttpCommTask<T>::processRequest() {
   TRI_ASSERT(_request);
   this->_protocol->timer.cancel();
 
-  // we may have gotten an Upgrade request
-  if (_parser.upgrade) {
+  // we may have gotten an H2 Upgrade request
+  if (ADB_UNLIKELY(_parser.upgrade)) {
     bool found;
     std::string const& h2 = _request->header("upgrade");
     std::string const& settings = _request->header("http2-settings", found);

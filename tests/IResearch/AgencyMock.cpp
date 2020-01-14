@@ -24,6 +24,7 @@
 #include "AgencyMock.h"
 
 #include "Agency/Store.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
