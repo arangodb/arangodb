@@ -456,6 +456,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     _agent->write(removeTransactionBuilder(todelete));
   }
 
+  auto startTimeLoop = std::chrono::system_clock::now();
+
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
@@ -526,7 +528,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Last change registered in sync (transient != sync)
       // Either now or value in transient
       auto lastAckedTime = (syncTime != transist.syncTime)
-                               ? std::chrono::system_clock::now()
+                               ? startTimeLoop
                                : stringToTimepoint(transist.lastAcked);
       transist.lastAcked = timepointToString(lastAckedTime);
       transist.syncTime = syncTime;
@@ -541,7 +543,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Calculate elapsed since lastAcked
       auto elapsed =
-          std::chrono::duration<double>(std::chrono::system_clock::now() - lastAckedTime);
+          std::chrono::duration<double>(startTimeLoop - lastAckedTime);
 
       if (elapsed.count() <= _okThreshold) {
         transist.status = Supervision::HEALTH_STATUS_GOOD;
@@ -702,13 +704,17 @@ bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER) ==
              "DBServers");
+  LOG_TOPIC("aadea", DEBUG, Logger::SUPERVISION) << "Checking dbservers...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) ==
              "Coordinators");
+  LOG_TOPIC("aadeb", DEBUG, Logger::SUPERVISION) << "Checking coordinators...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) ==
              "Singles");
+  LOG_TOPIC("aadec", DEBUG, Logger::SUPERVISION) << "Checking single servers (active failover)...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
+  LOG_TOPIC("aaded", DEBUG, Logger::SUPERVISION) << "Server checks done.";
 
   return true;
 }
