@@ -57,7 +57,7 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static bool IsSkipSomeCall(AqlCall const& call) {
-    return !call.hasHardLimit() && call.getLimit() == 0 && call.getOffset() > 0;
+    return !call.hasHardLimit() && call.getOffset() > 0;
   }
 
   // TODO Remove me, this will not be necessary later
@@ -88,8 +88,12 @@ struct AqlCall {
   }
 
   void didSkip(std::size_t n) {
-    TRI_ASSERT(n <= offset);
-    offset -= n;
+    if (n <= offset) {
+      // TRI_ASSERT(n <= offset);
+      offset -= n;
+    } else {
+      TRI_ASSERT(fullCount);
+    }
   }
 
   void didProduce(std::size_t n) {
@@ -134,6 +138,31 @@ constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
 
 constexpr AqlCall::Limit operator+(size_t n, AqlCall::Limit const& a) {
   return a + n;
+}
+
+constexpr bool operator==(AqlCall::Limit const& a, size_t n) {
+  return std::visit(overload{[n](size_t const& i) -> bool { return i == n; },
+                             [](auto inf) -> bool { return false; }},
+                    a);
+}
+
+constexpr bool operator==(size_t n, AqlCall::Limit const& a) { return a == n; }
+
+inline std::ostream& operator<<(std::ostream& out,
+                                const arangodb::aql::AqlCall::Limit& limit) {
+  return std::visit(arangodb::overload{[&out](size_t const& i) -> std::ostream& {
+                                         return out << i;
+                                       },
+                                       [&out](arangodb::aql::AqlCall::Infinity const&) -> std::ostream& {
+                                         return out << "unlimited";
+                                       }},
+                    limit);
+}
+
+inline std::ostream& operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) {
+  return out << "skip: " << call.getOffset() << " softLimit: " << call.softLimit
+             << " hardLimit: " << call.hardLimit
+             << " fullCount: " << std::boolalpha << call.fullCount;
 }
 
 }  // namespace aql

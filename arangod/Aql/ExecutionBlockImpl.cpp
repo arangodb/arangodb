@@ -135,9 +135,29 @@ CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
  * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// Forward declaration of Test Executors.
+// only used as long as isNewStyleExecutor is required.
+namespace arangodb {
+namespace aql {
+template <BlockPassthrough allowPass>
+class TestLambdaExecutor;
+
+class TestLambdaSkipExecutor;
+}  // namespace aql
+}  // namespace arangodb
+#endif
+
 template <class Executor>
 static bool constexpr isNewStyleExecutor() {
-  return std::is_same<Executor, FilterExecutor>::value;
+  return
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Enable>> ||
+      std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Disable>> ||
+      std::is_same_v<Executor, TestLambdaSkipExecutor> ||
+#endif
+      std::is_same_v<Executor, FilterExecutor>;
 }
 
 template <class Executor>
@@ -624,8 +644,7 @@ void ExecutionBlockImpl<Executor>::traceExecuteBegin(AqlCallStack const& stack) 
       auto const& call = stack.peek();
       LOG_TOPIC("1e717", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
-          << "execute type=" << node->getTypeString()
-          << " offset=" << call.getOffset() << " limit= " << call.getLimit()
+          << "execute type=" << node->getTypeString() << " call= " << call
           << " this=" << (uintptr_t)this << " id=" << node->id();
     }
   }
@@ -937,16 +956,18 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
     size_t nrItems, RegisterCount nrRegs) {
-  static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable ||
-                    !Executor::Properties::inputSizeRestrictsOutputSize,
-                "At most one of Properties::allowsBlockPassthrough or "
-                "Properties::inputSizeRestrictsOutputSize should be true for "
-                "each Executor");
-  static_assert(
-      (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) ==
-          hasFetchBlockForPassthrough<Executor>::value,
-      "Executors should implement the method fetchBlockForPassthrough() iff "
-      "Properties::allowsBlockPassthrough is true");
+  if constexpr (!isNewStyleExecutor<Executor>()) {
+    static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable ||
+                      !Executor::Properties::inputSizeRestrictsOutputSize,
+                  "At most one of Properties::allowsBlockPassthrough or "
+                  "Properties::inputSizeRestrictsOutputSize should be true for "
+                  "each Executor");
+    static_assert(
+        (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) ==
+            hasFetchBlockForPassthrough<Executor>::value,
+        "Executors should implement the method fetchBlockForPassthrough() iff "
+        "Properties::allowsBlockPassthrough is true");
+  }
   static_assert(
       Executor::Properties::inputSizeRestrictsOutputSize ==
           hasExpectedNumberOfRows<Executor>::value,
@@ -1003,7 +1024,15 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
 }
 
 // TODO move me up
-enum ExecState { SKIP, PRODUCE, FULLCOUNT, UPSTREAM, SHADOWROWS, DONE };
+enum ExecState {
+  SKIP,
+  PRODUCE,
+  FASTFORWARD,
+  FULLCOUNT,
+  UPSTREAM,
+  SHADOWROWS,
+  DONE
+};
 
 // TODO clean me up
 namespace {
@@ -1020,6 +1049,10 @@ ExecState NextState(AqlCall const& call) {
   if (call.needsFullCount()) {
     // then fullcount
     return ExecState::FULLCOUNT;
+  }
+  if (call.hardLimit == 0) {
+    // We reached hardLimit, fast forward
+    return ExecState::FASTFORWARD;
   }
   // now we are done.
   return ExecState::DONE;
@@ -1061,8 +1094,12 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor == (std::is_same<Executor, FilterExecutor>::value),
-                "Unexpected executor for SkipVariants::EXECUTOR");
+  static_assert(
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      useExecutor == (std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
+#endif
+          useExecutor == (std::is_same_v<Executor, FilterExecutor>),
+      "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
@@ -1095,16 +1132,24 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       // If we know that every input row produces exactly one output row (this
       // is a property of the executor), then we can just let the fetcher skip
       // the number of rows that we would like to skip.
-      return _rowFetcher.execute(call);
+      // Returning this will trigger to end in upstream state now, with the
+      // call that was handed it
+      return {inputRange.upstreamState(), 0, call};
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::GET_SOME) {
       // In all other cases, we skip by letting the executor produce rows, and
       // then throw them away.
 
+      // TODO: This is temporary, we plan to simply create an output block and
+      // let it internally handle offset and fullCount.
       size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
+      if (toSkip == 0) {
+        TRI_ASSERT(call.needsFullCount());
+        toSkip = DefaultBatchSize();
+      }
       AqlCall skipCall{};
       skipCall.softLimit = toSkip;
-      skipCall.hardLimit = toSkip;
       skipCall.offset = 0;
+      skipCall.fullCount = call.fullCount;
 
       // we can't mess with _outputItemRow,
       auto skipOutput = allocateOutputBlock(std::move(skipCall));
@@ -1205,9 +1250,39 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           }
           break;
         }
+        case ExecState::FASTFORWARD: {
+          // We can either do FASTFORWARD or FULLCOUNT, difference is that
+          // fullcount counts what is produced now, FASTFORWARD simply drops
+          TRI_ASSERT(!_outputItemRow->getClientCall().needsFullCount());
+          // We can drop all dataRows from upstream
+
+          while (_lastRange.hasDataRow()) {
+            auto [state, row] = _lastRange.nextDataRow();
+            TRI_ASSERT(row.isInitialized());
+          }
+          if (_lastRange.upstreamState() == ExecutorState::DONE) {
+            execState = ExecState::SHADOWROWS;
+          } else {
+            // We need to request more, simply send hardLimit 0 upstream
+            executorRequest = AqlCall{};
+            executorRequest.hardLimit = 0;
+            execState = ExecState::UPSTREAM;
+          }
+          break;
+        }
         case ExecState::FULLCOUNT: {
-          TRI_ASSERT(false);
-          // TODO: wat.
+          auto [state, skippedLocal, call] =
+              executeSkipRowsRange(_lastRange, _outputItemRow->getModifiableClientCall());
+          skipped += skippedLocal;
+
+          if (state == ExecutorState::DONE) {
+            execState = ExecState::SHADOWROWS;
+          } else {
+            // We need to request more
+            executorRequest = call;
+            execState = ExecState::UPSTREAM;
+          }
+          break;
         }
         case ExecState::UPSTREAM: {
           // If this triggers the executors produceRows function has returned
@@ -1270,7 +1345,6 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(false);
       }
     }
-
     auto outputBlock = _outputItemRow->stealBlock();
     // This is not strictly necessary here, as we shouldn't be called again
     // after DONE.
