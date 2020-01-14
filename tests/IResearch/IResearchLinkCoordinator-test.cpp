@@ -44,6 +44,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
@@ -128,11 +129,12 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   ci.loadCurrent();
 
   // no view specified
+  auto& factory =
+      server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     try {
-      arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(
-          *logicalCollection.get(), json->slice(), 1, true);
+      factory.instantiate(*logicalCollection.get(), json->slice(), 1, true);
       EXPECT_TRUE(false);
     } catch (arangodb::basics::Exception const& ex) {
       EXPECT_EQ(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, ex.code());
@@ -142,8 +144,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   // no view can be found (e.g. db-server coming up with view not available from Agency yet)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
-    EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(
-                           *logicalCollection.get(), json->slice(), 1, true));
+    EXPECT_NE(nullptr, factory.instantiate(*logicalCollection.get(), json->slice(), 1, true));
   }
 
   auto const currentCollectionPath = "/Current/Collections/" + vocbase->name() +
@@ -167,7 +168,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm()
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
     }
@@ -208,7 +209,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
 
     std::string error;
-    EXPECT_TRUE(actualMeta.init(builder->slice(), false, error));
+    EXPECT_TRUE(actualMeta.init(server.server(), builder->slice(), false, error));
     EXPECT_TRUE(error.empty());
     EXPECT_TRUE(expectedMeta == actualMeta);
     auto const slice = builder->slice();
@@ -241,7 +242,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id\": { \"indexes\" : [ ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm()
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
     }
@@ -271,7 +272,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      EXPECT_TRUE((actualMeta.init(builder->slice(), false, error) && expectedMeta == actualMeta));
+      EXPECT_TRUE((actualMeta.init(server.server(), builder->slice(), false, error) &&
+                   expectedMeta == actualMeta));
       auto slice = builder->slice();
       EXPECT_TRUE(error.empty());
       EXPECT_TRUE(slice.hasKey("view") && slice.get("view").isString() &&
@@ -318,7 +320,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
           "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm()
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
     }
@@ -359,7 +361,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       std::string error;
 
-      EXPECT_TRUE((actualMeta.init(builder->slice(), false, error) && expectedMeta == actualMeta));
+      EXPECT_TRUE((actualMeta.init(server.server(), builder->slice(), false, error) &&
+                   expectedMeta == actualMeta));
       auto slice = builder->slice();
       EXPECT_TRUE(slice.hasKey("view") && slice.get("view").isString() &&
                    logicalView->id() == 42 &&

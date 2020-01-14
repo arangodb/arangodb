@@ -37,10 +37,11 @@
 #include "search/term_filter.hpp"
 #include "search/wildcard_filter.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
-#include "Aql/Range.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Range.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/ExpressionFilter.h"
@@ -152,7 +153,8 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
     return invalid;
   }
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
+  TRI_ASSERT(ctx.trx);
+  auto& server = ctx.trx->vocbase().server();
   if (!server.hasFeature<IResearchAnalyzerFeature>()) {
     LOG_TOPIC("03314", WARN, arangodb::iresearch::TOPIC)
         << "'" << IResearchAnalyzerFeature::name()
@@ -196,20 +198,15 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
   auto& analyzer = result._pool;
   auto& shortName = result._shortName;
 
-  if (ctx.trx) {
-    auto& server = arangodb::application_features::ApplicationServer::server();
-    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                          : nullptr;
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
-    if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+  if (sysVocbase) {
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
 
-      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-        analyzerId, ctx.trx->vocbase(), *sysVocbase, false); // args
-    }
-  } else {
-    analyzer = analyzerFeature.get(analyzerId);  // verbatim
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+        analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
   }
 
   if (!analyzer) {
@@ -1555,7 +1552,8 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
       return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
     }
 
-    auto& server = arangodb::application_features::ApplicationServer::server();
+    TRI_ASSERT(ctx.trx);
+    auto& server = ctx.trx->vocbase().server();
     if (!server.hasFeature<IResearchAnalyzerFeature>()) {
       auto message =
           "'"s + IResearchAnalyzerFeature::name() +
@@ -1567,21 +1565,15 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
 
     shortName = analyzerIdValue;
 
-    if (ctx.trx) {
-      auto& server = arangodb::application_features::ApplicationServer::server();
-      auto sysVocbase =
-          server.hasFeature<arangodb::SystemDatabaseFeature>()
-              ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-              : nullptr;
+    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                          : nullptr;
 
-      if (sysVocbase) {
-        analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
+    if (sysVocbase) {
+      analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
 
-        shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false); // args
-      }
-    } else {
-      analyzer = analyzerFeature.get(analyzerIdValue);  // verbatim
+      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+          analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false);  // args
     }
 
     if (!analyzer) {

@@ -23,6 +23,7 @@
 
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"

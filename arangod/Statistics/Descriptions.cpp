@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Descriptions.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/process-utils.h"
 #include "RestServer/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -106,8 +108,9 @@ void stats::Figure::toVPack(velocypack::Builder& b) const {
   b.add("units", VPackValue(stats::fromUnit(units)));
 }
 
-stats::Descriptions::Descriptions()
-    : _requestTimeCuts(arangodb::basics::TRI_RequestTimeDistributionVectorStatistics),
+stats::Descriptions::Descriptions(application_features::ApplicationServer& server)
+    : _server(server),
+      _requestTimeCuts(arangodb::basics::TRI_RequestTimeDistributionVectorStatistics),
       _connectionTimeCuts(arangodb::basics::TRI_ConnectionTimeDistributionVectorStatistics),
       _bytesSendCuts(arangodb::basics::TRI_BytesSentDistributionVectorStatistics),
       _bytesReceivedCuts(arangodb::basics::TRI_BytesReceivedDistributionVectorStatistics) {
@@ -411,10 +414,9 @@ stats::Descriptions::Descriptions()
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  auto& server = application_features::ApplicationServer::server();
+  auto& dealer = _server.getFeature<V8DealerFeature>();
 
-  ServerStatistics const& info =
-    server.getFeature<MetricsFeature>().serverStatistics();
+  ServerStatistics const& info = _server.getFeature<MetricsFeature>().serverStatistics();
   b.add("uptime", VPackValue(info._uptime));
   b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
@@ -425,7 +427,6 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits.load()));
   b.close();
 
-  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
   if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
     auto v8Counters = dealer.getCurrentContextNumbers();
