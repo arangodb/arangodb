@@ -47,6 +47,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminExecuteHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
@@ -79,11 +80,13 @@
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRedirectHandler.h"
 #include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
+#include "RestHandler/RestSupervisionStateHandler.h"
 #include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTimeHandler.h"
@@ -255,6 +258,9 @@ void GeneralServerFeature::beginShutdown() {
 
 void GeneralServerFeature::stop() {
   _jobManager->deleteJobs();
+  for (auto& server : _servers) {
+    server->stopConnections();
+  }
 }
 
 void GeneralServerFeature::unprepare() {
@@ -492,6 +498,9 @@ void GeneralServerFeature::defineHandlers() {
   // /_admin
   // ...........................................................................
 
+  _handlerFactory->addPrefixHandler("/_admin/cluster",
+                                    RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
+
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
 
@@ -513,6 +522,9 @@ void GeneralServerFeature::defineHandlers() {
     _handlerFactory->addPrefixHandler("/_admin/routing",
                                       RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
   }
+
+  _handlerFactory->addHandler("/_admin/supervisionState",
+                              RestHandlerCreator<arangodb::RestSupervisionStateHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
@@ -566,6 +578,22 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
 
   _handlerFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
+
+  // ...........................................................................
+  // redirects
+  // ...........................................................................
+
+  // UGLY HACK INCOMING!
+
+#define ADD_REDIRECT(from, to) do{_handlerFactory->addPrefixHandler(from, \
+                                    RestHandlerCreator<RestRedirectHandler>::createData<const char*>, \
+                                    (void*) to);}while(0)
+
+  ADD_REDIRECT("/_admin/clusterNodeVersion", "/_admin/cluster/nodeVersion");
+  ADD_REDIRECT("/_admin/clusterNodeEngine", "/_admin/cluster/nodeEngine");
+  ADD_REDIRECT("/_admin/clusterNodeStats", "/_admin/cluster/nodeStatistics");
+  ADD_REDIRECT("/_admin/clusterStatistics", "/_admin/cluster/statistics");
+
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

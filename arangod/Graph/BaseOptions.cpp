@@ -56,7 +56,7 @@ BaseOptions::LookupInfo::LookupInfo()
   idxHandles.resize(1);
 }
 
-BaseOptions::LookupInfo::~LookupInfo() {}
+BaseOptions::LookupInfo::~LookupInfo() = default;
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
                                     VPackSlice const& info, VPackSlice const& shards) {

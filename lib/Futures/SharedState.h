@@ -28,6 +28,7 @@
 
 #include "Basics/debugging.h"
 #include "Futures/Try.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 namespace futures {

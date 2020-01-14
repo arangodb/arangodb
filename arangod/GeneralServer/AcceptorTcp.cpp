@@ -129,10 +129,7 @@ void AcceptorTcp<T>::close() {
   }
   if (_open) {
     _acceptor.close();
-    if (_asioSocket) {
-      asio_ns::error_code ec;
-      _asioSocket->shutdown(ec);
-    }
+    _asioSocket.reset();
   }
   _open = false;
 }
@@ -189,8 +186,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     if (ec) {  // canceled
       return;
     }
-    asio_ns::error_code err;
-    ptr->shutdown(err);  // ignore error
+    ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
   });
 
   auto cb = [this, as = std::move(proto)](asio_ns::error_code const& ec) mutable {
@@ -198,8 +194,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     if (ec) {
       LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
           << "error during TLS handshake: '" << ec.message() << "'";
-      asio_ns::error_code err;
-      as->shutdown(err);  // ignore error
+      as.reset(); // ungraceful shutdown
       return;
     }
 
@@ -213,11 +208,9 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
 
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
-
-    auto commTask =
-        std::make_unique<HttpCommTask<SocketType::Ssl>>(_server, std::move(info),
-                                                        std::move(as));
-    _server.registerTask(std::move(commTask));
+    
+    auto task = std::make_shared<HttpCommTask<SocketType::Ssl>>(_server, std::move(info), std::move(as));
+    _server.registerTask(std::move(task));
   };
   ptr->handshake(std::move(cb));
 }

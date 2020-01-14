@@ -55,6 +55,7 @@ class SingleServerTraverser final : public Traverser {
   /// @brief No engines on single server
   //////////////////////////////////////////////////////////////////////////////
   void destroyEngines() override {}
+  void clear() override;
 
  protected:
   /// @brief Function to load the other sides vertex of an edge

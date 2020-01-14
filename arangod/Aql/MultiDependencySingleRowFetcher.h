@@ -123,12 +123,12 @@ class MultiDependencySingleRowFetcher {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   std::pair<ExecutionState, size_t> skipRowsForDependency(size_t dependency, size_t atMost);
 
   std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
