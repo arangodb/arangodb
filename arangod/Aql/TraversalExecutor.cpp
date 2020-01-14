@@ -251,7 +251,7 @@ ExecutionState TraversalExecutor::computeState() const {
 }
 
 bool TraversalExecutor::resetTraverser() {
-  _traverser.traverserCache()->clear();
+  _traverser.clear();
 
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is
