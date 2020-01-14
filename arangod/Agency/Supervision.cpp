@@ -443,15 +443,13 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     if ((type == "DBServers" && machine.first.compare(0, 4, "PRMR") == 0) ||
         (type == "Coordinators" && machine.first.compare(0, 4, "CRDN") == 0) ||
         (type == "Singles" && machine.first.compare(0, 4, "SNGL") == 0)) {
-      todelete.push_back(machine.first);
+      // Put only those on list which are no longer planned:
+      if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {
+        todelete.push_back(machine.first);
+      }
     }
   }
 
-  // Remove all machines, which are no longer planned
-  for (auto const& machine : machinesPlanned) {
-    todelete.erase(std::remove(todelete.begin(), todelete.end(), machine.first),
-                   todelete.end());
-  }
   if (!todelete.empty()) {
     _agent->write(removeTransactionBuilder(todelete));
   }
