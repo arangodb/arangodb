@@ -102,9 +102,6 @@ class H2CommTask final : public GeneralCommTask<T> {
   /// should close connection
   bool shouldStop() const;
 
-  // may be used to signal a write from sendResponse
-  void signalWrite();
-
   // queue the response onto the session, call only on IO thread
   void queueHttp2Responses();
 
@@ -113,6 +110,9 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   Stream* createStream(int32_t sid, std::unique_ptr<HttpRequest>);
   Stream* findStream(int32_t sid) const;
+  
+  // may be used to signal a write from sendResponse
+  void signalWrite();
 
  private:
   static constexpr size_t kOutBufferLen = 32 * 1024 * 1024;

@@ -287,13 +287,13 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   for (auto const& buffer : this->_protocol->buffer.data()) {
     const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
-    int rv = nghttp2_session_mem_recv(_session, data, buffer.size());
+    ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
     if (rv < 0) {
       this->close(ec);
       return false;  // stop read loop
     }
 
-    parsedBytes += buffer.size();
+    parsedBytes += static_cast<size_t>(rv);
   }
 
   TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
@@ -396,8 +396,8 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   HttpResponse& response = static_cast<HttpResponse&>(*baseRes);
 #endif
 
-  const uint32_t streamId = response.messageId();
-  Stream* strm = findStream(streamId);
+  const int32_t sid = static_cast<int32_t>(response.messageId());
+  Stream* strm = findStream(sid);
   if (strm == nullptr) {
     LOG_TOPIC("9912b", ERR, Logger::REQUESTS)
         << "response with message id " << response.messageId() << "has not H2 stream";
@@ -528,7 +528,7 @@ void H2CommTask<T>::queueHttp2Responses() {
           *data_flags |= NGHTTP2_DATA_FLAG_EOF;
         }
 
-        return len;
+        return static_cast<ssize_t>(len);
       };
       prd_ptr = &prd;
     }
@@ -637,7 +637,8 @@ bool H2CommTask<T>::shouldStop() const {
 template <SocketType T>
 void H2CommTask<T>::signalWrite() {
   // avoid using asio_ns::post if possible
-  if (!_signaledWrite.exchange(true)) {
+  bool tmp = _signaledWrite.load();
+  if (!tmp && !_signaledWrite.exchange(true)) {
     asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
       auto& me = static_cast<H2CommTask<T>&>(*self);
       me._signaledWrite.store(false);
