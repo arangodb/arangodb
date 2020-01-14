@@ -91,7 +91,7 @@ class GeneralResponse {
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
  protected:
-  explicit GeneralResponse(ResponseCode);
+  explicit GeneralResponse(ResponseCode, uint64_t mid);
 
  public:
   virtual ~GeneralResponse() = default;
@@ -130,9 +130,8 @@ class GeneralResponse {
   virtual bool isResponseEmpty() const = 0;
 
  public:
-  virtual uint64_t messageId() const { return 1; }
-
-  virtual void setMessageId(uint64_t msgId) { }
+  uint64_t messageId() const { return _messageId; }
+  void setMessageId(uint64_t msgId) { _messageId = msgId; }
 
   virtual void reset(ResponseCode) = 0;
 
@@ -164,6 +163,7 @@ class GeneralResponse {
 
  protected:
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
+  uint64_t _messageId;                                    // message ID
   ResponseCode _responseCode;                             // http response code
   ContentType _contentType;
   ContentType _contentTypeRequested;
