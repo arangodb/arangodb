@@ -30,13 +30,13 @@
 
 #include "Logger.h"
 
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
 #include "Basics/voc-errors.h"
@@ -141,15 +141,13 @@ void Logger::setLogLevel(std::string const& levelName) {
   } else if (!isGeneral && (l.empty() || l == "default")) {
     level = LogLevel::DEFAULT;
   } else {
-    if (isGeneral) {
-      Logger::setLogLevel(LogLevel::INFO);
-      LOG_TOPIC("d880b", ERR, arangodb::Logger::FIXME)
-          << "strange log level '" << levelName << "', using log level 'info'";
-    } else {
-      LOG_TOPIC("05367", ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
+    if (!isGeneral) {
+      LOG_TOPIC("05367", WARN, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
+      return;
     }
-
-    return;
+    level = LogLevel::INFO;
+    LOG_TOPIC("d880b", WARN, arangodb::Logger::FIXME)
+        << "strange log level '" << levelName << "', using log level 'info'";
   }
 
   if (isGeneral) {
@@ -163,7 +161,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 }
 
 void Logger::setLogLevel(std::vector<std::string> const& levels) {
-  for (auto level : levels) {
+  for (auto const& level : levels) {
     setLogLevel(level);
   }
 }
@@ -282,10 +280,6 @@ void Logger::setLogRequestParameters(bool log) {
 
 std::string const& Logger::translateLogLevel(LogLevel level) {
   switch (level) {
-    case LogLevel::DEFAULT:
-      return DEFAULT;
-    case LogLevel::FATAL:
-      return FATAL;
     case LogLevel::ERR:
       return ERR;
     case LogLevel::WARN:
@@ -296,6 +290,10 @@ std::string const& Logger::translateLogLevel(LogLevel level) {
       return DEBUG;
     case LogLevel::TRACE:
       return TRACE;
+    case LogLevel::FATAL:
+      return FATAL;
+    case LogLevel::DEFAULT:
+      return DEFAULT;
   }
 
   return UNKNOWN;
@@ -303,20 +301,6 @@ std::string const& Logger::translateLogLevel(LogLevel level) {
 
 void Logger::log(char const* function, char const* file, int line,
                  LogLevel level, size_t topicId, std::string const& message) {
-#ifdef _WIN32
-  if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-    if (ArangoGlobalContext::CONTEXT != nullptr &&
-        ArangoGlobalContext::CONTEXT->useEventLog()) {
-      TRI_LogWindowsEventlog(function, file, line, message);
-    }
-
-    // additionally log these errors to the debug output window in MSVC so
-    // we can see them during development
-    OutputDebugString(message.data());
-    OutputDebugString("\r\n");
-  }
-#endif
-
   std::string out;
   out.reserve(64 + message.size());
 
@@ -393,34 +377,39 @@ void Logger::log(char const* function, char const* file, int line,
   // generate the complete message
   out.append(message);
  
-  if (!_active.load(std::memory_order_relaxed)) {
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, out.data(), out.size(), true);
-    return;
-  }
-
   size_t offset = out.size() - message.size();
-  auto msg = std::make_unique<LogMessage>(level, topicId, std::move(out), offset);
+  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
 
-  // now either queue or output the message
-  bool handled = false;
-  if (_threaded) {
-    try {
-      handled = _loggingThread->log(msg);
-      if (handled) {
-        bool const isDirectLogLevel =
-            (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
-        if (isDirectLogLevel) {
-          _loggingThread->flush();
+  // first log to all "global" appenders, which are the in-memory ring buffer logger plus
+  // some Windows-specifc appenders for the debug output windows and the Windows event log.
+  // note that these loggers do not require any configuration so we can always and safely invoke them.
+  try {
+    LogAppender::logGlobal(msg.get());
+
+    if (!_active.load(std::memory_order_relaxed)) {
+      // logging is still turned off. now use hard-coded to-stderr logging
+      LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                            level, topicId, msg->_message.data(), msg->_message.size(), true);
+    } else {
+      // now either queue or output the message
+      bool handled = false;
+      if (_threaded) {
+        handled = _loggingThread->log(msg);
+        if (handled) {
+          bool const isDirectLogLevel =
+              (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+          if (isDirectLogLevel) {
+            _loggingThread->flush();
+          }
         }
       }
-    } catch (...) {
-      // fall-through to non-threaded logging
-    }
-  }
 
-  if (!handled) {
-    LogAppender::log(msg.get());
+      if (!handled) {
+        LogAppender::log(msg.get());
+      }
+    }
+  } catch (...) {
+    // logging itself must never cause an escape to escape
   }
 }
 
@@ -431,21 +420,25 @@ void Logger::log(char const* function, char const* file, int line,
 void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
   MUTEX_LOCKER(locker, _initializeMutex);
 
-  if (_active) {
+  if (_active.exchange(true)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Logger already initialized");
   }
 
   // logging is now active
-  _active.store(true);
-
-  // generate threaded logging?
-  _threaded = threaded;
-
+  TRI_ASSERT(_active);
+  
   if (threaded) {
     _loggingThread = std::make_unique<LogThread>(server, "Logging");
-    _loggingThread->start();
+    if (!_loggingThread->start()) {
+      LOG_TOPIC("28bd9", FATAL, arangodb::Logger::STATISTICS)
+          << "could not start logging thread";
+      FATAL_ERROR_EXIT();
+    }
   }
+  
+  // generate threaded logging?
+  _threaded = threaded;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -455,12 +448,12 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
 void Logger::shutdown() {
   MUTEX_LOCKER(locker, _initializeMutex);
 
-  if (!_active) {
+  if (!_active.exchange(false)) {
     // if logging not activated or already shutdown, then we can abort here
     return;
   }
 
-  _active = false;
+  TRI_ASSERT(!_active);
 
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
@@ -485,7 +478,7 @@ void Logger::shutdown() {
 /// @brief tries to flush the logging
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::flush() {
+void Logger::flush() noexcept {
   MUTEX_LOCKER(locker, _initializeMutex);
 
   if (!_active) {
@@ -493,7 +486,7 @@ void Logger::flush() {
     return;
   }
 
-  if (_threaded) {
-    LogThread::flush();
+  if (_threaded && _loggingThread != nullptr) {
+    _loggingThread->flush();
   }
 }

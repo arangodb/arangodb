@@ -28,14 +28,8 @@
 
 using namespace arangodb;
 
-arangodb::basics::ConditionVariable* LogThread::CONDITION = nullptr;
-boost::lockfree::queue<LogMessage*>* LogThread::MESSAGES = nullptr;
-
 LogThread::LogThread(application_features::ApplicationServer& server, std::string const& name)
-    : Thread(server, name), _messages(0) {
-  MESSAGES = &_messages;
-  CONDITION = &_condition;
-}
+    : Thread(server, name), _messages(0) {}
 
 LogThread::~LogThread() {
   Logger::_threaded = false;
@@ -45,7 +39,7 @@ LogThread::~LogThread() {
 }
 
 bool LogThread::log(std::unique_ptr<LogMessage>& message) {
-  if (MESSAGES->push(message.get())) {
+  if (_messages.push(message.get())) {
     // only release message if adding to the queue succeeded
     // otherwise we would leak here
     message.release();
@@ -54,51 +48,43 @@ bool LogThread::log(std::unique_ptr<LogMessage>& message) {
   return false;
 }
 
-void LogThread::flush() {
+void LogThread::flush() noexcept {
   int tries = 0;
 
-  while (++tries < 500) {
-    if (MESSAGES->empty()) {
-      break;
-    }
-
-    // cppcheck-suppress redundantPointerOp
-    CONDITION_LOCKER(guard, *CONDITION);
-    guard.signal();
+  while (++tries < 5 && hasMessages()) {
+    wakeup();
   }
 }
 
 void LogThread::wakeup() {
   // cppcheck-suppress redundantPointerOp
-  CONDITION_LOCKER(guard, *CONDITION);
+  CONDITION_LOCKER(guard, _condition);
   guard.signal();
 }
 
-bool LogThread::hasMessages() { return (!MESSAGES->empty()); }
+bool LogThread::hasMessages() const noexcept { return !_messages.empty(); }
 
 void LogThread::run() {
-  LogMessage* msg;
-
   while (!isStopping() && Logger::_active.load()) {
-    while (_messages.pop(msg)) {
-      try {
-        LogAppender::log(msg);
-      } catch (...) {
-      }
-
-      delete msg;
-    }
+    processPendingMessages();
 
     // cppcheck-suppress redundantPointerOp
-    CONDITION_LOCKER(guard, *CONDITION);
+    CONDITION_LOCKER(guard, _condition);
     guard.wait(25 * 1000);
   }
+
+  processPendingMessages();
+}
+
+void LogThread::processPendingMessages() {
+  LogMessage* msg = nullptr;
 
   while (_messages.pop(msg)) {
     try {
       LogAppender::log(msg);
     } catch (...) {
     }
+
     delete msg;
   }
 }

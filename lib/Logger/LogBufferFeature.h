@@ -20,33 +20,50 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_BUFFER_H
-#define ARANGODB_LOGGER_LOG_BUFFER_H 1
+#ifndef ARANGODB_LOGGER_LOG_BUFFER_FEATURE_H
+#define ARANGODB_LOGGER_LOG_BUFFER_FEATURE_H 1
 
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Logger/LogAppender.h"
+#include "Logger/LogLevel.h"
+
+#include <cstdint>
+#include <memory>
 #include <vector>
 
-#include "Basics/Common.h"
-
-#include "Basics/Mutex.h"
-#include "Logger/LogLevel.h"
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 namespace arangodb {
 
 struct LogBuffer {
-  static size_t const RING_BUFFER_SIZE = 10240;
-  static Mutex _ringBufferLock;
-  static uint64_t _ringBufferId;
-  static LogBuffer _ringBuffer[];
-
-  static std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel);
-  static void initialize();
-
   uint64_t _id;
   LogLevel _level;
+  uint32_t _topicId;
   time_t _timestamp;
   char _message[256];
-  size_t _topicId;
+
+  LogBuffer(); 
 };
+
+class LogBufferFeature final : public application_features::ApplicationFeature {
+ public:
+  static constexpr uint32_t BufferSize = 4096;
+  
+  explicit LogBufferFeature(application_features::ApplicationServer& server);
+  ~LogBufferFeature() = default;
+
+  /// @brief return all buffered log entries
+  std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel);
+
+ private:
+  std::shared_ptr<LogAppender> _inMemoryAppender;
+};
+
 }  // namespace arangodb
 
 #endif

@@ -723,7 +723,7 @@ class ClusterCommThread : public Thread {
   ~ClusterCommThread();
  public:
   void beginShutdown() override;
-  bool isSystem() override final { return true; }
+  bool isSystem() const override final { return true; }
 
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;

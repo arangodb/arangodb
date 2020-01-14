@@ -87,13 +87,23 @@ struct LogMessage {
   LogMessage(LogMessage const&) = delete;
   LogMessage& operator=(LogMessage const&) = delete;
 
-  LogMessage(LogLevel level, size_t topicId, std::string&& message, size_t offset)
-      : _level(level), _topicId(topicId), _message(std::move(message)), _offset(offset) {}
+  LogMessage(char const* function, char const* file, int line, 
+             LogLevel level, size_t topicId, std::string&& message, size_t offset)
+      : _function(function),
+        _file(file),
+        _line(line),
+        _level(level), 
+        _topicId(topicId), 
+        _message(std::move(message)), 
+        _offset(offset) {}
 
-  LogLevel _level;
-  size_t _topicId;
+  char const* _function;
+  char const* _file;
+  int const _line;
+  LogLevel const _level;
+  size_t const _topicId;
   std::string const _message;
-  size_t _offset;
+  size_t const _offset;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,7 +279,7 @@ class Logger {
  public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
-  static void flush();
+  static void flush() noexcept;
 
  private:
   static Mutex _initializeMutex;

@@ -71,7 +71,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/SslServerFeature.h"
-#include "Logger/LoggerBufferFeature.h"
+#include "Logger/LogBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
@@ -144,7 +144,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     std::string name = context.binaryName();
 
-    auto options = std::make_shared<options::ProgramOptions>(
+    auto options = std::make_shared<arangodb::options::ProgramOptions>(
         argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
 
     ApplicationServer server(options, SBIN_DIRECTORY);
@@ -159,7 +159,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(GeneralServerFeature)),
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
-        std::type_index(typeid(LoggerBufferFeature)),
+        std::type_index(typeid(LogBufferFeature)),
         std::type_index(typeid(pregel::PregelFeature)),
         std::type_index(typeid(ServerFeature)),
         std::type_index(typeid(SslServerFeature)),
@@ -210,7 +210,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<LanguageCheckFeature>();
     server.addFeature<LanguageFeature>();
     server.addFeature<LockfileFeature>();
-    server.addFeature<LoggerBufferFeature>();
+    server.addFeature<LogBufferFeature>();
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();

@@ -645,7 +645,7 @@ class IResearchFeature::Async {
           _terminate(nullptr),
           _wasNotified(false) {}
     ~Thread() { shutdown(); }
-    virtual bool isSystem() override {
+    virtual bool isSystem() const override {
       return true;
     }  // or start(...) will fail
     virtual void run() override;

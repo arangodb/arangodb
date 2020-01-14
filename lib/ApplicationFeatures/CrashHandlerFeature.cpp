@@ -94,26 +94,30 @@ size_t buildLogMessage(char* s, int signal) {
 }
 
 void crashHandler(int signal, siginfo_t* info, void*) {
-  char buffer[256];
-  memset(&buffer[0], 0, sizeof(buffer));
+  try {
+    char buffer[256];
+    memset(&buffer[0], 0, sizeof(buffer));
 
-  size_t length = buildLogMessage(&buffer[0], signal);
-  LOG_TOPIC("a7902", ERR, arangodb::Logger::FIXME) << arangodb::Logger::CHARS(&buffer[0], length);
-  arangodb::Logger::flush();
+    size_t length = buildLogMessage(&buffer[0], signal);
+    LOG_TOPIC("a7902", ERR, arangodb::Logger::FIXME) << arangodb::Logger::CHARS(&buffer[0], length);
+    arangodb::Logger::flush();
 
-  void* traces[64];
-  int size = backtrace(traces, sizeof(traces) / sizeof(traces[0]));
-  char** stack = backtrace_symbols(traces, size); 
-  if (stack != nullptr) {
-    int skip = 2;
-    for (int i = skip /* ignore first frames */; i < size; ++i) {
-      LOG_TOPIC("308c2", WARN, arangodb::Logger::FIXME) << "- #" << (i - skip) << ' ' << stack[i];
+    void* traces[64];
+    int size = backtrace(traces, sizeof(traces) / sizeof(traces[0]));
+    char** stack = backtrace_symbols(traces, size); 
+    if (stack != nullptr) {
+      int skip = 2;
+      for (int i = skip /* ignore first frames */; i < size; ++i) {
+        LOG_TOPIC("308c2", WARN, arangodb::Logger::FIXME) << "- #" << (i - skip) << ' ' << stack[i];
+      }
+      free(stack);
     }
-    free(stack);
+    
+    arangodb::Logger::flush();
+    arangodb::Logger::shutdown();
+  } catch (...) {
+    // we better not throw an exception from inside a signal handler
   }
-  
-  arangodb::Logger::flush();
-  arangodb::Logger::shutdown();
 
   // restore default signal action, so that we can write a core dump and crash "properly"
   struct sigaction act;

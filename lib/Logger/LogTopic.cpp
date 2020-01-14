@@ -167,8 +167,8 @@ LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
 std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
   std::vector<std::pair<std::string, LogLevel>> levels;
 
-  auto visitor = [&levels](const std::string& name, const LogTopic* topic) {
-    levels.emplace_back(std::make_pair(name, topic->level()));
+  auto visitor = [&levels](std::string const& name, LogTopic const* topic) {
+    levels.emplace_back(name, topic->level());
     return true;
   };
 
@@ -179,7 +179,7 @@ std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
 
 void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
   if (!Topics::instance().setLogLevel(name, level)) {
-    LOG_TOPIC("5363d", ERR, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
+    LOG_TOPIC("5363d", WARN, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
   }
 }
 

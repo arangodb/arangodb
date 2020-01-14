@@ -174,12 +174,11 @@ add_library(arango STATIC
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
-  Logger/LogBuffer.cpp
+  Logger/LogBufferFeature.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
   Logger/LogTopic.cpp
   Logger/Logger.cpp
-  Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
   Logger/LogTimeFormat.cpp
