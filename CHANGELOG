@@ -1,6 +1,8 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fix bug affecting spliced subqueries when memory blocks are reused.
+
 * Now clearing an internal map inside the traverser engine correctly.
 
 * Add ability to choose logging to file in Windows installer of ArangoDB server
