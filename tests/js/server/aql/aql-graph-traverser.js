@@ -3013,17 +3013,23 @@ function edgeConnectedFromVertexToEdge() {
       // also create a named graph for testing as well
       try {
         gm._drop(gn, true);
-        gm._drop(gn2, true);
+        if (isCluster) {
+          gm._drop(gn2, true);
+        }
       } catch (e) {
         // It is expected that those graphs are not existing.
       }
       gm._create(gn, [gm._relation(en, vn, [vn, en])]); // complete definition
-      gm._create(gn2, [gm._relation(en2, vn, vn)]); // en collection is missing
+      if (isCluster) {
+        gm._create(gn2, [gm._relation(en2, vn, vn)]); // en collection is missing
+      }
     },
 
     tearDownAll: function () {
       gm._drop(gn, true);
-      gm._drop(gn2, true);
+      if (isCluster) {
+        gm._drop(gn2, true);
+      }
       cleanup();
     },
 
@@ -3056,15 +3062,17 @@ function edgeConnectedFromVertexToEdge() {
       checkFoundVertices(db._query(queries[0], bindVarsAnonymous).toArray()); // anonymous
       checkFoundVertices(db._query(queries[1], bindVarsNamed).toArray()); // named, all collections well defined
 
-      try {
-        // must fail
-        db._query(queries[2], bindVarsNamed).toArray(); // en collection is missing in "to"
-        fail();
-      } catch (e) {
-        // TODO: In the future create a better error message. Named graphs cannot work with the
-        // "WITH" statement. But currently it is reported to the user as a solution within th error
-        // message. This is false and needs to be fixed.
-        assertEqual(e.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+      if (isCluster) {
+        try {
+          // must fail
+          db._query(queries[2], bindVarsNamed).toArray(); // en collection is missing in "to"
+          fail();
+        } catch (e) {
+          // TODO: In the future create a better error message. Named graphs cannot work with the
+          // "WITH" statement. But currently it is reported to the user as a solution within th error
+          // message. This is false and needs to be fixed.
+          assertEqual(e.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+        }
       }
     }
   };
@@ -4542,7 +4550,6 @@ function pruneTraversalSuite() {
 
   return testObj;
 }
-
 jsunity.run(invalidStartVertexSuite);
 jsunity.run(simpleInboundOutboundSuite);
 jsunity.run(limitSuite);
@@ -4565,5 +4572,4 @@ if (!isCluster) {
   jsunity.run(optimizeNonVertexCentricIndexesSuite);
 }
 jsunity.run(pruneTraversalSuite);
-
 return jsunity.done();
