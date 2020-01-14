@@ -5,6 +5,10 @@ v3.6.1 (2020-XX-XX)
   Edges are able to point to other edges, but those we're not applied to the
 	cache.
 
+* Fix bug affecting spliced subqueries when memory blocks are reused.
+
+* Now clearing an internal map inside the traverser engine correctly.
+
 * Add ability to choose logging to file in Windows installer of ArangoDB server
   (enabled by default).
 
