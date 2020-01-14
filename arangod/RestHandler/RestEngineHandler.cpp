@@ -37,9 +37,7 @@ using namespace arangodb::rest;
 
 RestEngineHandler::RestEngineHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
