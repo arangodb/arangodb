@@ -427,7 +427,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   strm->response.reset(static_cast<HttpResponse*>(baseRes.release()));
 
-  uint32_t mid = static_cast<uint32_t>(strm->response->messageId());
+  int32_t mid = static_cast<int32_t>(strm->response->messageId());
   while (!_waitingResponses.push(mid)) {
     std::this_thread::yield();
   }
@@ -438,7 +438,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 // queue the response onto the session, call only on IO thread
 template <SocketType T>
 void H2CommTask<T>::queueHttp2Responses() {
-  uint32_t streamId;
+  int32_t streamId;
   while (_waitingResponses.pop(streamId)) {
     Stream* strm = findStream(streamId);
     if (strm == nullptr) {
@@ -477,7 +477,7 @@ void H2CommTask<T>::queueHttp2Responses() {
       nva.push_back({(uint8_t*)key.data(), (uint8_t*)val.data(), key.size(), val.size(),
                      NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
-
+    
     // add "Server" response header
     if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
       nva.push_back({(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,

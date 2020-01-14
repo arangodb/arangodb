@@ -183,7 +183,7 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
   builder.idleTimeout(idle);
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
-    std::string const& token = af->tokenCache().jwtToken();
+    std::string const& token = af->tokenCache().jwtSuperToken();
     if (!token.empty()) {
       builder.jwtToken(token);
       builder.authenticationType(fuerte::AuthenticationType::Jwt);

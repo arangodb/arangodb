@@ -118,7 +118,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   static constexpr size_t kOutBufferLen = 32 * 1024 * 1024;
   std::array<uint8_t, kOutBufferLen> _outbuffer;
 
-  boost::lockfree::queue<uint32_t, boost::lockfree::capacity<512>> _waitingResponses;
+  boost::lockfree::queue<int32_t, boost::lockfree::capacity<512>> _waitingResponses;
 
   std::map<int32_t, std::unique_ptr<Stream>> _streams;
 
