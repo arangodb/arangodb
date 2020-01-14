@@ -61,8 +61,8 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
                           arangodb::RocksDBMethods* methods,
                           arangodb::LocalDocumentId const& documentId,
                           arangodb::velocypack::Slice const& doc,
-                          arangodb::Index::OperationMode mode) override {
-    return IResearchLink::insert(trx, documentId, doc, mode);
+                          arangodb::OperationOptions& options) override {
+    return IResearchLink::insert(trx, documentId, doc, options.indexOperationMode);
   }
 
   bool isSorted() const override { return IResearchLink::isSorted(); }

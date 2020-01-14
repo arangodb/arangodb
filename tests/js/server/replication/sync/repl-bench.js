@@ -403,6 +403,38 @@ const singleRunCatchUpLargeBigDocs = (initialCount) => {
   return result;
 };
 
+const singleRunFillEmpty = (initialCount) => {
+  connectToMaster();
+  let c = db._create(cn);
+  let docs = [];
+  for (let i = 0; i < initialCount; ++i) {
+    docs.push({ _key: 'test' + i });
+    if (docs.length === 5000) {
+      c.insert(docs);
+      docs = [];
+    }
+  }
+  
+  connectToSlave();
+  c = db._create(cn);
+  c.save({value: 'junk'}); // to make sure it uses the expected method
+
+  //  and sync again, timed
+  const start = Date.now();
+  replication.syncCollection(cn, {
+    endpoint: masterEndpoint,
+    verbose: false,
+    incremental: true
+  });
+  const result = Date.now() - start;
+
+  connectToMaster();
+  db._drop(cn);
+
+  return result;
+};
+
+
 function ReplicationBench() {
   'use strict';
 
@@ -429,11 +461,11 @@ function ReplicationBench() {
       db._drop(cn);
     },
 
-    /*testNoChange50K: function () {
+    testNoChange50K: function () {
       runBench(singleRunNoChange, 50000);
     },
 
-    testNoChange500K: function () {
+    /*testNoChange500K: function () {
       runBench(singleRunNoChange, 500000);
     },
 
@@ -471,11 +503,11 @@ function ReplicationBench() {
 
     testCatchUpLarge1M: function () {
       runBench(singleRunCatchUpLarge, 1000000);
-    },*/
+    },
 
     testCatchUpLarge10M: function () {
       runBench(singleRunCatchUpLarge, 10000000);
-    },
+    },*/
 
     /*testCatchUpSmallBigDocs100K: function () {
       runBench(singleRunCatchUpSmallBigDocs, 100000);
@@ -499,6 +531,18 @@ function ReplicationBench() {
 
     testCatchUpLargeBigDocs10M: function () {
       runBench(singleRunCatchUpLargeBigDocs, 10000000);
+    },*/
+
+    /*testFillEmpty100K: function() {
+      runBench(singleRunFillEmpty, 100000);
+    },
+
+    testFillEmpty1M: function() {
+      runBench(singleRunFillEmpty, 1000000);
+    },
+
+    testFillEmpty10M: function() {
+      runBench(singleRunFillEmpty, 10000000);
     },*/
   };
 

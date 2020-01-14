@@ -149,6 +149,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   options.ignoreRevs = true;
   options.isRestore = true;
   options.indexOperationMode = arangodb::Index::OperationMode::internal;
+  options.ignoreUniqueConstraints = true;
   if (!state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = state.leaderId;
   }
@@ -179,6 +180,16 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
     }
 
     return res;
+  };
+
+  std::function<Result(VPackSlice)> insertDoc = [&](VPackSlice doc) -> Result {
+    return physical->insert(&trx, doc, mdr, options,
+                            /*lock*/ false, nullptr, nullptr);
+  };
+
+  std::function<Result(VPackSlice)> replaceDoc = [&](VPackSlice doc) -> Result {
+    return physical->replace(&trx, doc, mdr, options,
+                             /*lock*/ false, previous);
   };
 
   std::size_t current = 0;
@@ -247,28 +258,25 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                           ": document revision is invalid");
       }
 
+      // arangodb::LocalDocumentId const existingId = physical->lookupKey(&trx, keySlice);
+      bool useReplace = false; /*existingId.isSet() &&
+                         existingId.id() > TRI_ExtractRevisionId(masterDoc);*/
+      std::function<Result(VPackSlice)>& putDoc = useReplace ? replaceDoc : insertDoc;
+
       TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
 
-      t = TRI_microtime();
-      Result res = physical->insert(&trx, masterDoc, mdr, options,
-                                    /*lock*/ false, nullptr, nullptr);
-      stats.waitedForInsertions += TRI_microtime() - t;
+      Result res = putDoc(masterDoc);
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
           // remove conflict and retry
           // errorMessage() is this case contains the conflicting key
-          t = TRI_microtime();
           auto inner = removeConflict(res.errorMessage());
-          stats.waitedForRemovals += TRI_microtime() - t;
           if (inner.fail()) {
             return res;
           }
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
-          t = TRI_microtime();
-          res = physical->insert(&trx, masterDoc, mdr, options,
-                                 /*lock*/ false, nullptr, nullptr);
-          stats.waitedForInsertions += TRI_microtime() - t;
+          res = putDoc(masterDoc);
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {
             return res;
@@ -282,7 +290,9 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         }
       }
 
-      ++stats.numDocsInserted;
+      if (!useReplace) {
+        ++stats.numDocsInserted;
+      }
     }
     current += docs.length();
   }
@@ -1352,7 +1362,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     return Result(ex.code());
   }
   trx->addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
-  // trx->addHint(Hints::Hint::NO_INDEXING); // BREAKS STUFF
+  trx->addHint(Hints::Hint::NO_INDEXING);
   // turn on intermediate commits as the number of keys to delete can be huge
   // here
   trx->addHint(Hints::Hint::INTERMEDIATE_COMMITS);

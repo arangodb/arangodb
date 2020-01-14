@@ -31,6 +31,7 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
 class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   friend class RocksDBSphericalIndexIterator;
 
@@ -74,7 +75,7 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice const& doc,
-                arangodb::Index::OperationMode mode) override;
+                arangodb::OperationOptions& options) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,

@@ -81,7 +81,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, OperationMode mode) override;
+                arangodb::velocypack::Slice const&, OperationOptions& options) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
