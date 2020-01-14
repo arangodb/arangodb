@@ -557,6 +557,9 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
       if (changed) {
+        LOG_TOPIC("bbbde", DEBUG, Logger::SUPERVISION)
+            << "Status of server " << serverID << " has changed from "
+            << persist.status << " to " << transist.status;
         handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId, envelope);
       }
 
@@ -1793,6 +1796,7 @@ bool Supervision::start() {
 bool Supervision::start(Agent* agent) {
   _agent = agent;
   _frequency = _agent->config().supervisionFrequency();
+  _okThreshold = _agent->config().supervisionOkThreshold();
   _gracePeriod = _agent->config().supervisionGracePeriod();
   return start();
 }
