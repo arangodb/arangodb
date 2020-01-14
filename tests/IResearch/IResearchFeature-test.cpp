@@ -41,6 +41,8 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Cluster/ClusterTypes.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -724,10 +726,9 @@ class IResearchFeatureTestCoordinator
   IResearchFeatureTestCoordinator()
       : server(false),
         _agencyStore(server.server(), nullptr, "arango"),
+
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()),
         _pool(nullptr) {
-
-
 
     arangodb::tests::init();
 
@@ -748,10 +749,10 @@ class IResearchFeatureTestCoordinator
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
-    arangodb::AsyncAgencyCommManager::initialize();
+    arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4001");
-    arangodb::AgencyComm().ensureStructureInitialized();  // initialize agency
+    arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
   }
 
   ~IResearchFeatureTestCoordinator() {
@@ -786,10 +787,11 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
   auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
+  auto& factory =
+      server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
   const_cast<arangodb::IndexFactory&>(engine.indexFactory())
       .emplace(  // required for Indexes::ensureIndex(...)
-          arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-          arangodb::iresearch::IResearchLinkCoordinator::factory());
+          arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
@@ -804,7 +806,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
         // TODO: This one asserts with "not an object". No idea why.
         // "{ \"id\": \"1\" }" );
         "{ \"id\": { \"id\": \"1\" } }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(path, value->slice(), 0.0)
+                    .successful());
   }
 
   ASSERT_TRUE(
@@ -831,7 +835,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(path, value->slice(), 0.0)
+                    .successful());
   }
 
   arangodb::velocypack::Builder tmp;
@@ -859,7 +865,9 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
     auto const value = arangodb::velocypack::Parser::fromJson(
         "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
         "] } }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+    EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                    .setValue(path, value->slice(), 0.0)
+                    .successful());
   }
   EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok());  // run upgrade
   auto logicalCollection2 = ci.getCollection(vocbase->name(), collectionId);
@@ -903,6 +911,7 @@ class IResearchFeatureTestDBServer
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()),
         _pool(nullptr) {
 
+
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
@@ -923,11 +932,11 @@ class IResearchFeatureTestDBServer
     poolConfig.maxOpenConnections = 3;
     poolConfig.verifyHosts = false;
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
-    arangodb::AsyncAgencyCommManager::initialize();
+    arangodb::AsyncAgencyCommManager::initialize(server.server());
     arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");
     arangodb::AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
 
-    arangodb::AgencyComm().ensureStructureInitialized();  // initialize agency
+    arangodb::AgencyComm(server.server()).ensureStructureInitialized();  // initialize agency
   }
 
   ~IResearchFeatureTestDBServer() {

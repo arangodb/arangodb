@@ -572,6 +572,8 @@ class AgencyComm {
 #endif
 
  public:
+  explicit AgencyComm(application_features::ApplicationServer&);
+
   AgencyCommResult sendServerState(double ttl);
 
   std::string version();
@@ -627,6 +629,8 @@ class AgencyComm {
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
+  application_features::ApplicationServer& server();
+
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
@@ -643,6 +647,9 @@ class AgencyComm {
   bool tryInitializeStructure();
 
   bool shouldInitializeStructure();
+
+ private:
+  application_features::ApplicationServer& _server;
 };
 }  // namespace arangodb
 

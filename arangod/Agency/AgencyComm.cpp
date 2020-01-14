@@ -538,6 +538,7 @@ ostream& operator<<(ostream& out, AgencyCommResult const& a) {
 AgencyConnectionOptions AgencyCommHelper::CONNECTION_OPTIONS(15.0, 120.0, 120.0, 100);
 std::string AgencyCommHelper::_prefix;
 
+
 void AgencyCommHelper::initialize(std::string const& prefix) {
   _prefix = prefix;
 }
@@ -581,6 +582,9 @@ std::string AgencyCommHelper::generateStamp() {
 // -----------------------------------------------------------------------------
 
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
+
+AgencyComm::AgencyComm(application_features::ApplicationServer& server)
+    : _server(server) {}
 
 AgencyCommResult AgencyComm::sendServerState(double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
@@ -1000,12 +1004,15 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
   return result;
 }
 
+application_features::ApplicationServer& AgencyComm::server() {
+  return _server;
+}
+
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM)
       << "checking if agency is initialized";
 
-  auto& server = application_features::ApplicationServer::server();
-  while (!server.isStopping() && shouldInitializeStructure()) {
+  while (!_server.isStopping() && shouldInitializeStructure()) {
     LOG_TOPIC("17e16", TRACE, Logger::AGENCYCOMM)
         << "Agency is fresh. Needs initial structure.";
 
@@ -1361,8 +1368,7 @@ bool AgencyComm::tryInitializeStructure() {
 bool AgencyComm::shouldInitializeStructure() {
   size_t nFail = 0;
 
-  auto& server = application_features::ApplicationServer::server();
-  while (!server.isStopping()) {
+  while (!_server.isStopping()) {
     auto result = getValues("Plan");
 
     if (!result.successful()) {  // Not 200 - 299

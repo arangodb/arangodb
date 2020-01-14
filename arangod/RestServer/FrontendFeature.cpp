@@ -22,6 +22,7 @@
 
 #include "FrontendFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

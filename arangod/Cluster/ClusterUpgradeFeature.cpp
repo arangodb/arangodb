@@ -100,14 +100,14 @@ void ClusterUpgradeFeature::setBootstrapVersion() {
   VPackBuilder builder;
   builder.add(VPackValue(arangodb::methods::Version::current()));
 
-  AgencyComm agency;
+  AgencyComm agency(server());
   agency.setValue(::upgradeVersionKey, builder.slice(), 0);
 }
 
 void ClusterUpgradeFeature::tryClusterUpgrade() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  AgencyComm agency;
+  AgencyComm agency(server());
   AgencyCommResult result = agency.getValues(::upgradeVersionKey);
 
   if (!result.successful()) {

@@ -23,6 +23,7 @@
 #include "ActionFeature.h"
 
 #include "Actions/actions.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

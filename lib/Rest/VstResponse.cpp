@@ -43,7 +43,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
-    : GeneralResponse(code), _messageId(id) {
+    : GeneralResponse(code, id) {
   _contentType = ContentType::VPACK;
 }
 

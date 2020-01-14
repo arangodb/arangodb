@@ -1074,6 +1074,9 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
   // add index factory
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
+      IndexTypeFactory(arangodb::application_features::ApplicationServer& server)
+          : arangodb::IndexTypeFactory(server) {}
+
       virtual bool equal(arangodb::velocypack::Slice const& lhs,
                          arangodb::velocypack::Slice const& rhs) const override {
         return false;
@@ -1097,7 +1100,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
         return arangodb::Result();
       }
     };
-    static const IndexTypeFactory indexTypeFactory;
+    static const IndexTypeFactory indexTypeFactory(server.server());
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(
         server.getFeature<arangodb::EngineSelectorFeature>().engine().indexFactory());
     indexFactory.emplace("testType", indexTypeFactory);
@@ -1129,20 +1132,22 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
           VPackParser::fromJson(
               "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"1\" "
               "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } }");  // '1' must match 'idString' in ClusterInfo::ensureIndexCoordinatorInner(...)
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                      .setValue(colPath, colValue->slice(), 0.0)
+                      .successful());
       auto const dummyPath = "/Plan/Collections";
       auto const dummyValue = VPackParser::fromJson(
           "{ \"_system\": { \"" + std::to_string(logicalCollection->id()) +
           "\": { \"name\": \"testCollection\", "
           "\"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                      .setValue(dummyPath, dummyValue->slice(), 0.0)
+                      .successful());
       auto const versionPath = "/Plan/Version";
       auto const versionValue =
           VPackParser::fromJson(std::to_string(ci.getPlanVersion() + 1));
-      EXPECT_TRUE((arangodb::AgencyComm()
+      EXPECT_TRUE((arangodb::AgencyComm(server.server())
                        .setValue(versionPath, versionValue->slice(), 0.0)
                        .successful()));  // force loadPlan() update
       ci.invalidateCurrent();            // force reload of 'Current'
@@ -1901,10 +1906,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
   AsyncAgencyStorePoolMock pool(&agencyStore, poolConfig);
   arangodb::AgencyCommHelper::initialize("arango");
-  arangodb::AsyncAgencyCommManager::initialize();
+  arangodb::AsyncAgencyCommManager::initialize(server.server());
   arangodb::AsyncAgencyCommManager::INSTANCE->pool(&pool);
   arangodb::AsyncAgencyCommManager::INSTANCE->addEndpoint("tcp://localhost:4000/");
-  arangodb::AgencyComm().ensureStructureInitialized();
+  arangodb::AgencyComm(server.server()).ensureStructureInitialized();
+
 
   ASSERT_TRUE(server.server().hasFeature<arangodb::DatabaseFeature>());
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
@@ -2462,6 +2468,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
                    .ok()));
   ASSERT_FALSE(!result.first);
 
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(*vocbase),
+      arangodb::tests::AnalyzerCollectionName, arangodb::AccessMode::Type::WRITE);
+
   // test tokenization
   {
     std::string analyzer(arangodb::StaticStrings::SystemDatabase +
@@ -2470,7 +2480,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
+    AqlValueWrapper result(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(26, result->length());
 
@@ -2488,7 +2498,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
+    AqlValueWrapper result(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
@@ -2503,7 +2513,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     arangodb::containers::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
     arangodb::aql::VPackFunctionParameters args{arena};
-    EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, args)), arangodb::basics::Exception);
+    EXPECT_THROW(AqlValueWrapper(impl(nullptr, &trx, args)), arangodb::basics::Exception);
   }
   // test invalid arg count
   // 3 parameters. More than expected
@@ -2515,7 +2525,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
     args->emplace_back(unexpectedParameter.c_str(), unexpectedParameter.size());
-    EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
+    EXPECT_THROW(AqlValueWrapper(impl(nullptr, &trx, *args)), arangodb::basics::Exception);
   }
 
   // test values
@@ -2536,7 +2546,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), result->length());
 
@@ -2553,7 +2563,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     auto expected = 123;
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintInt(expected));
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(IRESEARCH_COUNTOF(expected123), result->length());
 
@@ -2568,7 +2578,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintBool(true));
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
@@ -2580,7 +2590,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintBool(false));
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
@@ -2592,7 +2602,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintNull());
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
@@ -2608,7 +2618,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(IRESEARCH_COUNTOF(expected123P4), result->length());
 
@@ -2625,7 +2635,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
+    EXPECT_THROW(AqlValueWrapper(impl(nullptr, &trx, *args)), arangodb::basics::Exception);
   }
   // test invalid analyzer (when analyzer needed for text)
   {
@@ -2634,14 +2644,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
+    EXPECT_THROW(AqlValueWrapper(impl(nullptr, &trx, *args)), arangodb::basics::Exception);
   }
 
   // empty array
   {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintEmptyArray());
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
@@ -2663,7 +2673,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       buffer.release();
     }
     args->push_back(std::move(aqlValue));
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
@@ -2692,7 +2702,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       buffer.release();
     }
     args->push_back(std::move(aqlValue));
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(1, result->length());
     bool mustDestroy;
@@ -2728,7 +2738,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->push_back(std::move(aqlValue));
     irs::string_ref analyzer("text_en");
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(3, result->length());
     {
@@ -2805,7 +2815,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     args->push_back(std::move(aqlValue));
     irs::string_ref analyzer("text_en");
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    auto result = AqlValueWrapper(impl(nullptr, nullptr, *args));
+    auto result = AqlValueWrapper(impl(nullptr, &trx, *args));
     EXPECT_TRUE(result->isArray());
     EXPECT_EQ(9, result->length());
     {

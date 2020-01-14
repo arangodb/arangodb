@@ -75,10 +75,11 @@ static constexpr char const* currentServersRegisteredPref =
 /// running
 ////////////////////////////////////////////////////////////////////////////////
 
-static ServerState Instance;
+static ServerState* Instance = nullptr;
 
-ServerState::ServerState()
-    : _role(RoleEnum::ROLE_UNDEFINED),
+ServerState::ServerState(application_features::ApplicationServer& server)
+    : _server(server),
+      _role(RoleEnum::ROLE_UNDEFINED),
       _lock(),
       _id(),
       _shortId(0),
@@ -90,6 +91,8 @@ ServerState::ServerState()
       _state(STATE_UNDEFINED),
       _initialized(false),
       _foxxmasterQueueupdate(false) {
+  TRI_ASSERT(!Instance);
+  Instance = this;
   setRole(ROLE_UNDEFINED);
 }
 
@@ -154,7 +157,7 @@ ServerState::~ServerState() = default;
 /// @brief create the (sole) instance
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState* ServerState::instance() { return &Instance; }
+ServerState* ServerState::instance() { return Instance; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role
@@ -350,7 +353,7 @@ bool ServerState::unregister() {
   operations.emplace_back("Current/Version", AgencySimpleOperationType::INCREMENT_OP);
 
   AgencyWriteTransaction unregisterTransaction(operations);
-  AgencyComm comm;
+  AgencyComm comm(_server);
   AgencyCommResult r = comm.sendTransactionWithFailover(unregisterTransaction);
   return r.successful();
 }
@@ -389,7 +392,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                        std::string const& advEndpoint) {
   WRITE_LOCKER(writeLocker, _lock);
 
-  AgencyComm comm;
+  AgencyComm comm(_server);
   if (!checkEngineEquality(comm)) {
     LOG_TOPIC("1e2da", FATAL, arangodb::Logger::ENGINES)
         << "the usage of different storage engines in the "
@@ -503,8 +506,7 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 }
 
 std::string ServerState::getUuidFilename() const {
-  auto& server = application_features::ApplicationServer::server();
-  auto& dbpath = server.getFeature<DatabasePathFeature>();
+  auto& dbpath = _server.getFeature<DatabasePathFeature>();
   return FileUtils::buildFilename(dbpath.directory(), "UUID");
 }
 
@@ -755,8 +757,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     pre.emplace_back(AgencyPrecondition(rebootIdPath, AgencyPrecondition::Type::EMPTY, true));
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  while (!server.isStopping()) {
+  while (!_server.isStopping()) {
     VPackBuilder builder;
     {
       VPackObjectBuilder b(&builder);
@@ -792,7 +793,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
 
   // if we left the above retry loop because the server is stopping
   // we'll skip this and return false right away.
-  while (!server.isStopping()) {
+  while (!_server.isStopping()) {
     auto result = readRebootIdFromAgency(comm);
 
     if (result) {
@@ -1037,7 +1038,7 @@ Result ServerState::propagateClusterReadOnly(bool mode) {
                                          builder.slice()));
 
     AgencyWriteTransaction readonlyMode(operations);
-    AgencyComm comm;
+    AgencyComm comm(_server);
     AgencyCommResult r = comm.sendTransactionWithFailover(readonlyMode);
     if (!r.successful()) {
       return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());

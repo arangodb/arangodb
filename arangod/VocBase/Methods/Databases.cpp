@@ -70,8 +70,8 @@ TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   return nullptr;
 }
 
-std::vector<std::string> Databases::list(std::string const& user) {
-  auto& server = application_features::ApplicationServer::server();
+std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
+                                         std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -93,7 +93,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
 
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
-    AgencyComm agency;
+    AgencyComm agency(vocbase->server());
     AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
@@ -330,7 +330,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   // because the cache entry has a TTL
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      auto& server = application_features::ApplicationServer::server();
       auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
       auto database = sysDbFeature.use();
 

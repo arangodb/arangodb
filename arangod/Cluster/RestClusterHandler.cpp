@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestClusterHandler.h"
+
 #include "Agency/AgencyComm.h"
 #include "Agency/Supervision.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -117,7 +119,7 @@ void RestClusterHandler::handleCommandEndpoints() {
 
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
-    AgencyComm agency;
+    AgencyComm agency(server());
 
     AgencyReadTransaction trx(std::vector<std::string>(
         {AgencyCommHelper::path(healthPath), AgencyCommHelper::path(leaderPath)}));

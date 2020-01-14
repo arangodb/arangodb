@@ -6,6 +6,10 @@
 
 @RESTQUERYPARAMETERS
 
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, tails the WAL for all databases. If set to *false*, tails the 
+WAL for the selected database.
+
 @RESTQUERYPARAM{from,number,optional}
 Exclusive lower bound tick value for results. On successive calls
 to this API you should set this to the value returned

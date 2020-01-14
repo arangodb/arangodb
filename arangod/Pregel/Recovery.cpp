@@ -40,7 +40,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 RecoveryManager::RecoveryManager(ClusterInfo& ci)
-    : _ci(ci) {}
+    : _ci(ci), _agency(ci.server()) {}
 
 RecoveryManager::~RecoveryManager() {
   _listeners.clear();

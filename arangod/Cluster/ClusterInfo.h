@@ -64,7 +64,7 @@ public:
   CollectionWatcher(CollectionWatcher const&) = delete;
   CollectionWatcher(AgencyCallbackRegistry *agencyCallbackRegistry, LogicalCollection const& collection)
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-    AgencyComm ac;
+    AgencyComm ac(collection.vocbase().server());
 
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id());
@@ -110,7 +110,7 @@ class PlanCollectionReader {
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id());
 
-    AgencyComm ac;
+    AgencyComm ac(collection.vocbase().server());
 
     std::string path =
         "Plan/Collections/" + databaseName + "/" + collectionID;

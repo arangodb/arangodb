@@ -190,7 +190,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
     : CriticalThread(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
-      _agency(),
+      _agency(server),
       _condition(),
       _myId(ServerState::instance()->getId()),
       _interval(interval),

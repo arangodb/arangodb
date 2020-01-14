@@ -34,6 +34,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
 #include "Agency/TransactionBuilder.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"

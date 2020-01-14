@@ -49,7 +49,6 @@ RestShutdownHandler::RestShutdownHandler(application_features::ApplicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestShutdownHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
   if (_request->requestType() != rest::RequestType::DELETE_REQ) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
@@ -79,7 +78,7 @@ RestStatus RestShutdownHandler::execute() {
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
   if (shutdownClusterFound && shutdownCluster == "1" && AsyncAgencyCommManager::isEnabled()) {
-    AgencyComm agency;
+    AgencyComm agency(server());
     VPackBuilder builder;
     builder.add(VPackValue(true));
     AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
@@ -90,7 +89,7 @@ RestStatus RestShutdownHandler::execute() {
     removeFromCluster = true;
   }
   if (removeFromCluster) {
-    ClusterFeature& clusterFeature = server.getFeature<ClusterFeature>();
+    ClusterFeature& clusterFeature = server().getFeature<ClusterFeature>();
     clusterFeature.setUnregisterOnShutdown(true);
   }
 
@@ -98,11 +97,11 @@ RestStatus RestShutdownHandler::execute() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [&server, self] {
+  bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
     // Give the server 2 seconds to send the reply:
     std::this_thread::sleep_for(std::chrono::seconds(2));
     // Go down:
-    server.beginShutdown();
+    self->server().beginShutdown();
   });
   if (queued) {
     VPackBuilder result;

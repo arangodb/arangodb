@@ -23,6 +23,7 @@
 
 #include "DBServerAgencySync.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -123,7 +124,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
-  AgencyComm comm;
+  AgencyComm comm(_server);
 
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;

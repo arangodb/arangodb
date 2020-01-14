@@ -160,7 +160,7 @@ void V8ShellFeature::start() {
 
   auto* isolate = _isolate;
   TRI_GET_GLOBALS();
-  v8g = TRI_CreateV8Globals(isolate, 0);
+  v8g = TRI_CreateV8Globals(server(), isolate, 0);
   v8g->_securityContext = arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
   // create the global template
@@ -981,9 +981,8 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  application_features::ApplicationServer& server =
-      application_features::ApplicationServer::server();
-  ShellFeature& shell = server.getFeature<ShellFeature>();
+  TRI_GET_GLOBALS();
+  ShellFeature& shell = v8g->_server.getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));
 

@@ -1,7 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Library to build up VPack documents.
+///
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,36 +19,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Lauri Keel
+/// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <functional>
+#ifndef VELOCYPACK_MEMORY_H
+#define VELOCYPACK_MEMORY_H 1
 
-#include "BasicFeaturePhaseClient.h"
+#include <cstdint>
+#include <memory>
 
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Shell/ClientFeature.h"
-#include "Ssl/SslFeature.h"
+// memory management definitions
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
+extern "C" {
+
+extern void* velocypack_malloc(std::size_t size);
+extern void* velocypack_realloc(void* ptr, std::size_t size);
+extern void velocypack_free(void* ptr);
+
+#ifndef velocypack_malloc
+
+#define velocypack_malloc(size) malloc(size)
+#define velocypack_realloc(ptr, size) realloc(ptr, size)
+#define velocypack_free(ptr) free(ptr)
+
 #endif
 
-namespace arangodb {
-namespace application_features {
-
-BasicFeaturePhaseClient::BasicFeaturePhaseClient(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "BasicsPhase") {
-  setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
-
-#ifdef USE_ENTERPRISE
-  startsAfter<EncryptionFeature>();
-#endif
-  startsAfter<SslFeature>();
-
-  startsAfter<ClientFeature>();
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+#endif

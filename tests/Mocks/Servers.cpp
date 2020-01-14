@@ -22,7 +22,6 @@
 
 #include <algorithm>
 
-#include "Servers.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -36,6 +35,7 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -70,8 +70,10 @@
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
-#include "../IResearch/AgencyMock.h"
-#include "../IResearch/common.h"
+#include "Servers.h"
+
+#include "IResearch/AgencyMock.h"
+#include "IResearch/common.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -509,17 +511,18 @@ void MockClusterServer::startFeatures() {
   _pool = std::make_unique<AsyncAgencyStorePoolMock>(&_agencyStore, poolConfig);
 
   arangodb::AgencyCommHelper::initialize("arango");
-  AsyncAgencyCommManager::initialize();
+  AsyncAgencyCommManager::initialize(server());
   AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
   AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
-  arangodb::AgencyComm().ensureStructureInitialized();
+  arangodb::AgencyComm(server()).ensureStructureInitialized();
 
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers
   auto& indexFactory = const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
-  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-                       arangodb::iresearch::IResearchLinkCoordinator::factory());
+  auto& factory =
+      getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
+  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
 }
 
 void MockClusterServer::agencyTrx(std::string const& key, std::string const& value) {

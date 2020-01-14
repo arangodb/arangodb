@@ -34,6 +34,8 @@
 #include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/MoveShard.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
 #include "Cluster/ResultT.h"
@@ -232,8 +234,6 @@ class ClusterRepairsTestBrokenDistribution
     : public ClusterRepairsTest,
       public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL>,
       public tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> {
- protected:
-
 };
 
 TEST_F(ClusterRepairsTestBrokenDistribution,
@@ -432,6 +432,7 @@ class ClusterRepairsTestOperations
  protected:
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
+  arangodb::application_features::ApplicationServer server;
 
   static uint64_t mockJobIdGenerator() {
     EXPECT_TRUE(false);
@@ -445,7 +446,8 @@ class ClusterRepairsTestOperations
 
   ClusterRepairsTestOperations() :
         oldServerId(ServerState::instance()->getId()),
-        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {}
+        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator),
+        server{nullptr, nullptr} {}
 
   ~ClusterRepairsTestOperations() = default;
 };
