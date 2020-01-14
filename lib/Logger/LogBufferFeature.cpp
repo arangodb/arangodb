@@ -63,7 +63,7 @@ class LogAppenderRingBuffer final : public LogAppender {
   }
 
  public:
-  void logMessage(LogMessage const* message) {
+  void logMessage(LogMessage const& message) {
     auto timestamp = time(nullptr);
 
     MUTEX_LOCKER(guard, _lock);
@@ -72,10 +72,10 @@ class LogAppenderRingBuffer final : public LogAppender {
     LogBuffer& ptr = _buffer[n % LogBufferFeature::BufferSize];
 
     ptr._id = n;
-    ptr._level = message->_level;
-    ptr._topicId = static_cast<uint32_t>(message->_topicId);
+    ptr._level = message._level;
+    ptr._topicId = static_cast<uint32_t>(message._topicId);
     ptr._timestamp = timestamp;
-    TRI_CopyString(ptr._message, message->_message.c_str() + message->_offset,
+    TRI_CopyString(ptr._message, message._message.c_str() + message._offset,
                    sizeof(ptr._message) - 1);
   }
 
@@ -137,15 +137,15 @@ class LogAppenderDebugOutput final : public LogAppender {
   LogAppenderDebugOutput() : LogAppender() {}
 
  public:
-  void logMessage(LogMessage const* message) {
+  void logMessage(LogMessage const& message) {
     // only handle FATAl and ERR log messages
-    if (message->_level != LogLevel::FATAL && message->_level != LogLevel::ERR) {
+    if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
     }
     
     // log these errors to the debug output window in MSVC so
     // we can see them during development
-    OutputDebugString(message->_message.data() + message->_offset);
+    OutputDebugString(message._message.data() + message._offset);
     OutputDebugString("\r\n");
   }
 
@@ -160,15 +160,15 @@ class LogAppenderEventLog final : public LogAppender {
   LogAppenderEventLog() : LogAppender() {}
 
  public:
-  void logMessage(LogMessage const* message) {
+  void logMessage(LogMessage const& message) {
     // only handle FATAl and ERR log messages
-    if (message->_level != LogLevel::FATAL && message->_level != LogLevel::ERR) {
+    if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
       return;
     }
     
     if (ArangoGlobalContext::CONTEXT != nullptr &&
         ArangoGlobalContext::CONTEXT->useEventLog()) {
-      TRI_LogWindowsEventlog(message->_function, message->_file, message->_line, message->_message);
+      TRI_LogWindowsEventlog(message._function, message._file, message._line, message._message);
     }
   }
 

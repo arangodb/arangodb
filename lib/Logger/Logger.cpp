@@ -384,7 +384,7 @@ void Logger::log(char const* function, char const* file, int line,
   // some Windows-specifc appenders for the debug output windows and the Windows event log.
   // note that these loggers do not require any configuration so we can always and safely invoke them.
   try {
-    LogAppender::logGlobal(msg.get());
+    LogAppender::logGlobal(*msg);
 
     if (!_active.load(std::memory_order_relaxed)) {
       // logging is still turned off. now use hard-coded to-stderr logging
@@ -394,6 +394,8 @@ void Logger::log(char const* function, char const* file, int line,
       // now either queue or output the message
       bool handled = false;
       if (_threaded) {
+        MUTEX_LOCKER(locker, _initializeMutex);
+
         handled = _loggingThread->log(msg);
         if (handled) {
           bool const isDirectLogLevel =
@@ -405,7 +407,8 @@ void Logger::log(char const* function, char const* file, int line,
       }
 
       if (!handled) {
-        LogAppender::log(msg.get());
+        TRI_ASSERT(msg != nullptr);
+        LogAppender::log(*msg);
       }
     }
   } catch (...) {

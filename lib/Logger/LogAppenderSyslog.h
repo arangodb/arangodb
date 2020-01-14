@@ -37,7 +37,7 @@ class LogAppenderSyslog final : public LogAppender {
   LogAppenderSyslog(std::string const& facility, std::string const& name,
                     std::string const& filter);
 
-  void logMessage(LogMessage const* message) override final;
+  void logMessage(LogMessage const& message) override final;
 
   std::string details() const override final;
 

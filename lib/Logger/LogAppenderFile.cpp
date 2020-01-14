@@ -87,9 +87,9 @@ size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
   return q - s;
 }
 
-void LogAppenderStream::logMessage(LogMessage const* message) {
+void LogAppenderStream::logMessage(LogMessage const& message) {
   // check max. required output length
-  size_t const neededBufferSize = determineOutputBufferSize(message->_message);
+  size_t const neededBufferSize = determineOutputBufferSize(message._message);
 
   // check if we can re-use our already existing buffer
   if (neededBufferSize > _bufferSize) {
@@ -111,10 +111,10 @@ void LogAppenderStream::logMessage(LogMessage const* message) {
 
   TRI_ASSERT(_buffer != nullptr);
 
-  size_t length = writeIntoOutputBuffer(message->_message);
+  size_t length = writeIntoOutputBuffer(message._message);
   TRI_ASSERT(length <= neededBufferSize);
 
-  this->writeLogMessage(message->_level, message->_topicId, _buffer.get(), length);
+  this->writeLogMessage(message._level, message._topicId, _buffer.get(), length);
 
   if (_bufferSize > maxBufferSize) {
     // free the buffer so the Logger is not hogging so much memory

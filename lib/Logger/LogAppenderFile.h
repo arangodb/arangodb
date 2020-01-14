@@ -41,7 +41,7 @@ class LogAppenderStream : public LogAppender {
   LogAppenderStream(std::string const& filename, std::string const& filter, int fd);
   ~LogAppenderStream() = default;
 
-  void logMessage(LogMessage const* message) override final;
+  void logMessage(LogMessage const& message) override final;
 
   virtual std::string details() const override = 0;
 

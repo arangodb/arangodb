@@ -80,10 +80,10 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   _opened = true;
 }
 
-void LogAppenderSyslog::logMessage(LogMessage const* message) {
+void LogAppenderSyslog::logMessage(LogMessage const& message) {
   int priority = LOG_ERR;
 
-  switch (message->_level) {
+  switch (message._level) {
     case LogLevel::FATAL:
       priority = LOG_CRIT;
       break;
@@ -106,7 +106,7 @@ void LogAppenderSyslog::logMessage(LogMessage const* message) {
   }
 
   if (_opened) {
-    ::syslog(priority, "%s", message->_message.c_str() + message->_offset);
+    ::syslog(priority, "%s", message._message.c_str() + message._offset);
   }
 }
 

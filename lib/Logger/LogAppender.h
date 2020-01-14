@@ -50,8 +50,8 @@ class LogAppender {
   static std::pair<std::shared_ptr<LogAppender>, LogTopic*> buildAppender(
       std::string const& definition, std::string const& contentFilter);
 
-  static void logGlobal(LogMessage const*);
-  static void log(LogMessage const*);
+  static void logGlobal(LogMessage const&);
+  static void log(LogMessage const&);
 
   static void reopen();
   static void shutdown();
@@ -65,7 +65,7 @@ class LogAppender {
   LogAppender& operator=(LogAppender const&) = delete;
 
  public:
-  virtual void logMessage(LogMessage const*) = 0;
+  virtual void logMessage(LogMessage const&) = 0;
 
   virtual std::string details() const = 0;
 

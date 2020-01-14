@@ -80,8 +80,9 @@ void LogThread::processPendingMessages() {
   LogMessage* msg = nullptr;
 
   while (_messages.pop(msg)) {
+    TRI_ASSERT(msg != nullptr);
     try {
-      LogAppender::log(msg);
+      LogAppender::log(*msg);
     } catch (...) {
     }
 

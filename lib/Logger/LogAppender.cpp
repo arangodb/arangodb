@@ -184,7 +184,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
   }
 }
 
-void LogAppender::logGlobal(LogMessage const* message) {
+void LogAppender::logGlobal(LogMessage const& message) {
   MUTEX_LOCKER(guard, _appendersLock);
   
   // append to global appenders first
@@ -193,9 +193,9 @@ void LogAppender::logGlobal(LogMessage const* message) {
   }
 }
 
-void LogAppender::log(LogMessage const* message) {
+void LogAppender::log(LogMessage const& message) {
   // output to appenders
-  auto output = [message](size_t n) -> bool {
+  auto output = [&message](size_t n) -> bool {
     bool shown = false;
 
     auto const& it = _topics2appenders.find(n);
@@ -203,7 +203,7 @@ void LogAppender::log(LogMessage const* message) {
       auto const& appenders = it->second;
 
       for (auto const& appender : appenders) {
-        if (appender->checkContent(message->_message)) {
+        if (appender->checkContent(message._message)) {
           appender->logMessage(message);
         }
 
@@ -217,7 +217,9 @@ void LogAppender::log(LogMessage const* message) {
   bool shown = false;
 
   // try to find a topic-specific appender
-  size_t topicId = message->_topicId;
+  size_t topicId = message._topicId;
+  
+  MUTEX_LOCKER(guard, _appendersLock);
  
   if (topicId < LogTopic::MAX_LOG_TOPICS) {
     shown = output(topicId);
