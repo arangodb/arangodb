@@ -45,15 +45,15 @@ set(NGHTTP2_SOURCES
 #  set(NGHTTP2_RES ${CMAKE_CURRENT_BINARY_DIR}/lib/version.rc)
 #endif()
 
+add_library(nghttp2 STATIC
+  ${NGHTTP2_SOURCES}
+)
+
 check_type_size("ssize_t" SIZEOF_SSIZE_T)
 if(SIZEOF_SSIZE_T STREQUAL "")
   # ssize_t is a signed type in POSIX storing at least -1.
   # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
-  set(ssize_t int)
+  target_compile_definitions(nghttp2 PRIVATE ssize_t=int)
 endif()
-
-add_library(nghttp2 STATIC
-  ${NGHTTP2_SOURCES}
-)
 
 target_include_directories(nghttp2 PUBLIC ${NGHTTP2_INCLUDES})
