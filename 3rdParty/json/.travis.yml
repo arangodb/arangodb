@@ -1,0 +1,173 @@
+language: generic
+os: linux
+dist: xenial
+
+matrix:
+  include:
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-7']
+      env:
+        - CXX=g++-7
+
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-8']
+      env:
+        - CXX=g++-8
+
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-9']
+      env:
+        - CXX=g++-9
+
+    - compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-5']
+          packages: ['clang-5.0', 'g++-7']
+      env:
+        - CXX=clang++-5.0
+
+    - compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-6']
+          packages: ['clang-6.0', 'g++-7']
+      env:
+        - CXX=clang++-6.0
+
+    - compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-7']
+          packages: ['clang-7', 'g++-7']
+      env:
+        - CXX=clang++-7
+
+    - compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
+          packages: ['clang-8', 'g++-8']
+      env:
+        - CXX=clang++-8
+
+    - compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
+          packages: ['clang-8', 'g++-8']
+      env:
+        - CXX=clang++-8
+        - CPPFLAGS=-fms-extensions
+
+    - os: osx
+      osx_image: xcode10.3
+      compiler: clang
+      env:
+        - CXX=clang++
+
+    - os: osx
+      osx_image: xcode11.2
+      compiler: clang
+      env:
+        - CXX=clang++
+
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-9']
+      env:
+        - CXX=g++-9
+        - CXXFLAGS="-O0 --coverage"
+      before_script:
+        - pip install --user cpp-coveralls
+      script:
+        - make -kj3 check
+        - coveralls --gcov gcov-9 --gcov-options '\-lp' --exclude src --exclude include/tao/json/external
+
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-9']
+      env:
+        - CXX=g++-9
+        - CPPFLAGS="-fsanitize=undefined -fuse-ld=gold"
+
+    - compiler: gcc
+      sudo: required
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-9']
+      env:
+        - CXX=g++-9
+        - CPPFLAGS="-fsanitize=address -fuse-ld=gold"
+
+    - compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
+          packages: ['clang-8', 'g++-8']
+      env:
+        - CXX=clang++-8
+        - CPPFLAGS=-fsanitize=undefined
+
+    - compiler: clang
+      sudo: required
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
+          packages: ['clang-8', 'g++-8']
+      env:
+        - CXX=clang++-8
+        - CPPFLAGS=-fsanitize=address
+
+    - language: python
+      python:
+        - "3.6"
+      sudo: required
+      install:
+        - pip install conan conan-package-tools
+      env:
+        - CONAN_GCC_VERSIONS=7
+        - CONAN_DOCKER_IMAGE=lasote/conangcc7
+      script:
+        - python .conan/build.py
+
+    - compiler: gcc
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test']
+          packages: ['g++-9']
+      env:
+        - CXX=g++-9
+      script:
+        - mkdir build
+        - cd build
+        - cmake ..
+        - cmake --build .
+        - cmake --build . --target test
+
+    - compiler: clang
+      addons:
+        apt:
+          sources: ['ubuntu-toolchain-r-test', 'llvm-toolchain-xenial-8']
+          packages: ['clang-format-8', 'g++-8']
+      script:
+        - clang-format-8 -i -style=file $(find include/ src/ -name '[^.]*.[hc]pp')
+        - git diff --exit-code
+
+script:
+  - $CXX --version
+  - make -kj3

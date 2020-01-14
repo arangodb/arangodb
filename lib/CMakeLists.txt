@@ -229,6 +229,7 @@ target_link_libraries(arango
   boost_boost
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
+  taocpp::json
 )
 
 # Rebuild generated error files so they are up-to-date when all

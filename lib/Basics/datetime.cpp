@@ -46,9 +46,13 @@
 
 #include <velocypack/StringRef.h>
 
+#include <tao/json.hpp>
+
 namespace {
 using namespace date;
 using namespace std::chrono;
+
+
 
 std::string tail(std::string const& source, size_t const length) {
   if (length >= source.size()) {
@@ -542,7 +546,7 @@ struct DateRegexInitializer {
   }
 };
 
-std::string executeDateFormatRegex(std::string const& search, 
+std::string executeDateFormatRegex(std::string const& search,
                                    arangodb::tp_sys_clock_ms const& tp) {
   std::string s;
 
@@ -611,171 +615,139 @@ int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
   return static_cast<int>(p - dateTime.data());
 }
 
-bool parseDateTime(arangodb::velocypack::StringRef dateTime, 
+namespace {
+  using namespace tao::json::pegtl;
+
+  //2012-10-06T04:13:00+00:00
+
+  struct dash : internal::one< internal::result_on_found::success, internal::peek_char, '-' > {};
+  struct colon : internal::one< internal::result_on_found::success, internal::peek_char, ':' > {};
+  struct dot : internal::one< internal::result_on_found::success, internal::peek_char, '.' > {};
+  struct T : internal::one< internal::result_on_found::success, internal::peek_char, 'T' > {};
+  struct W : internal::one< internal::result_on_found::success, internal::peek_char, 'W' > {};
+  struct Z : internal::one< internal::result_on_found::success, internal::peek_char, 'Z' > {};
+  struct plus_minus : internal::one< internal::result_on_found::success, internal::peek_char, '+', '-' > {};
+
+  struct zero_or_one : internal::one< internal::result_on_found::success, internal::peek_char, '0', '1' > {};
+  struct zero_to_three : internal::one< internal::result_on_found::success, internal::peek_char, '0', '1', '2', '3' > {};
+  struct zero_to_five : internal::one< internal::result_on_found::success, internal::peek_char, '0', '1', '2', '3', '4', '5' > {};
+
+  struct YYYY : seq<digit, digit, digit, digit> {};
+  struct YY : seq<digit, digit> {};
+  struct MM : seq<zero_or_one, digit> {};
+  struct DD : seq<zero_to_three, digit> {};
+  struct cdate : seq<sor<YYYY,YY>, dash, MM, dash, DD> {};
+  struct date : cdate {};
+
+  struct hh : seq<zero_to_five, digit> {};
+  struct mm : seq<zero_to_five, digit> {};
+  struct ss : seq<zero_to_five, digit> {};
+  struct sss : seq<digit, digit, digit> {};
+  struct dot_sss : seq<dot, sss> {};
+  struct hhcmmcss : seq<hh, opt<colon, mm, opt<colon, ss, opt<dot_sss>>>>  {};
+  struct hhmmss : seq<hh, opt<mm, opt<ss, opt<dot_sss>>>>  {};
+
+
+  struct zhh : seq<zero_to_five, digit> {};
+  struct zmm : seq<zero_to_five, digit> {};
+  struct TZD : sor<Z, seq<opt<plus_minus>, zhh, colon, zmm>> {};
+  struct time : sor<hhcmmcss, hhmmss, opt<TZD>> {};
+
+  struct iso8601 : seq<date, opt<seq<opt<T>, time>>> {};
+
+  // default action
+  template<typename rule>
+  struct iso_action : nothing<rule>{};
+
+  // actions for tokens
+  template<>
+  struct iso_action<YYYY>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.year = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+
+  template<>
+  struct iso_action<MM>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.month = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+
+	template<>
+  struct iso_action<DD>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.day = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+
+  template<>
+  struct iso_action<hh>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.hour = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+
+  template<>
+  struct iso_action<mm>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.minute = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+
+  template<>
+  struct iso_action<ss>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.second = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+
+  template<>
+  struct iso_action<sss>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.millisecond = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+
+  template<>
+  struct iso_action<zhh>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.tzOffsetHour = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+
+template<>
+  struct iso_action<zmm>{
+      template <typename input>
+      static void apply(input const& in, ParsedDateTime& state){
+          state.tzOffsetMinute = arangodb::NumberUtils::atoi_positive_unchecked<int>(in.begin(), in.end());
+      }
+	};
+}
+
+bool parseDateTimePEGTL(arangodb::velocypack::StringRef dateTime,
                    ParsedDateTime& result) {
-  // trim input string
-  while (!dateTime.empty()) {
-    char c = dateTime.front();
-    if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
-      break;
-    }
-    dateTime = dateTime.substr(1);
-  }
 
-  if (!dateTime.empty()) {
-    if (dateTime.front() == '+') {
-      // skip over initial +
-      dateTime = dateTime.substr(1);
-    } else if (dateTime.front() == '-') {
-      // we can't handle negative date values at all
-      return false;
-    }
-  }
-
-  while (!dateTime.empty()) {
-    char c = dateTime.back();
-    if (c != ' ' && c != '\t' && c != '\r' && c != '\n') {
-      break;
-    }
-    dateTime.pop_back();
-  }
-
-  // year
-  int length = parseNumber(dateTime, result.year);
-  if (length == 0 || result.year > 9999) {
-    return false;
-  }
-  if (ADB_UNLIKELY(length > 4)) {
-    // we must have at least 4 digits for the year, however, we
-    // allow any amount of leading zeroes
-    size_t i = 0;
-    while (dateTime[i] == '0') {
-      ++i;
-    }
-    if (length - i > 4) {
-      return false;
-    }
-  }
-  dateTime = dateTime.substr(length);
-
-  if (!dateTime.empty() && dateTime.front() == '-') {
-    // month
-    dateTime = dateTime.substr(1);
-
-    length = parseNumber(dateTime, result.month);
-    if (length == 0 || length > 2 || result.month < 1 || result.month > 12) {
-      return false;
-    }
-    dateTime = dateTime.substr(length);
-  
-    if (!dateTime.empty() && dateTime.front() == '-') {
-      // day
-      dateTime = dateTime.substr(1);
-
-      length = parseNumber(dateTime, result.day);
-      if (length == 0 || length > 2 || result.day < 1 || result.day > 31) {
-        return false;
-      }
-      dateTime = dateTime.substr(length);
-    }
-  }
-
-  if (!dateTime.empty() && (dateTime.front() == ' ' || dateTime.front() == 'T')) {
-    // time part following
-    dateTime = dateTime.substr(1);
-      
-    // hour
-    length = parseNumber(dateTime, result.hour);
-    if (length == 0 || length > 2 || result.hour > 23) {
-      return false;
-    }
-    dateTime = dateTime.substr(length);
-  
-    if (dateTime.empty() || dateTime.front() != ':') {
-      return false;
-    }
-    
-    dateTime = dateTime.substr(1);
-
-    // minute
-    length = parseNumber(dateTime, result.minute);
-    if (length == 0 || length > 2 || result.minute > 59) {
-      return false;
-    }
-    dateTime = dateTime.substr(length);
-  
-    if (!dateTime.empty() && dateTime.front() == ':') {
-      dateTime = dateTime.substr(1);
-
-      // second
-      length = parseNumber(dateTime, result.second);
-      if (length == 0 || length > 2 || result.second > 59) {
-        return false;
-      }
-      dateTime = dateTime.substr(length);
-
-      if (!dateTime.empty() && dateTime.front() == '.') {
-        dateTime = dateTime.substr(1);
-
-        // millisecond
-        length = parseNumber(dateTime, result.millisecond);
-        if (length == 0) {
-          return false;
-        }
-        if (length >= 3) {
-          // restrict milliseconds length to 3 digits
-          parseNumber(dateTime.substr(0, 3), result.millisecond);
-        } else if (length == 2) {
-          result.millisecond *= 10;
-        } else if (length == 1) {
-          result.millisecond *= 100;
-        }
-        dateTime = dateTime.substr(length);
-      }
-    }
-  }
-    
-  if (!dateTime.empty()) {
-    if (dateTime.front() == 'z' || dateTime.front() == 'Z') {
-      // z|Z timezone
-      dateTime = dateTime.substr(1);
-    } else if (dateTime.front() == '+' || dateTime.front() == '-') {
-      // +|- timezone adjustment
-      int factor = dateTime.front() == '+' ? 1 : -1;
-      
-      dateTime = dateTime.substr(1);
-
-      // tz adjustment hours
-      length = parseNumber(dateTime, result.tzOffsetHour);
-      if (length == 0 || length > 2 || result.tzOffsetHour > 23) {
-        return false;
-      }
-      result.tzOffsetHour *= factor;
-      dateTime = dateTime.substr(length);
-    
-      if (dateTime.empty() || dateTime.front() != ':') {
-        return false;
-      }
-      dateTime = dateTime.substr(1);
-      
-      // tz adjustment minutes
-      length = parseNumber(dateTime, result.tzOffsetMinute);
-      if (length == 0 || length > 2 || result.tzOffsetMinute > 59) {
-        return false;
-      }
-      dateTime = dateTime.substr(length);
-    }
-  }
-  
-  return dateTime.empty();
+  using namespace tao::json;
+  pegtl::memory_input<tao::json::pegtl::tracking_mode::lazy, tao::json::pegtl::eol::crlf > in( dateTime.begin(), dateTime.end(), "datatime.cpp" );
+  auto parse_result = pegtl::parse<iso8601, iso_action>(in, result);
+  return parse_result;
 }
 
 }  // namespace
 
-bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime, 
+bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
                                      arangodb::tp_sys_clock_ms& date_tp) {
   ::ParsedDateTime result;
-  if (!::parseDateTime(dateTime, result)) {
+  if (!::parseDateTimePEGTL(dateTime, result)) {
     return false;
   }
 
@@ -797,24 +769,24 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
       date_tp -= offset;
 
       // revalidate date after timezone adjustment
-      auto ymd = year_month_day(floor<date::days>(date_tp));
+      auto ymd = year_month_day(floor<::date::days>(date_tp));
       int year = static_cast<int>(ymd.year());
       if (year < 0 || year > 9999) {
         return false;
       }
     }
-  } 
+  }
 
-  // LOG_DEVEL << "year: " << result.year 
-  //           << ", month: " << result.month 
-  //           << ", day: " << result.day 
-  //           << ", hour: " << result.hour 
-  //           << ", minute: " << result.minute 
-  //           << ", second: " << result.second 
-  //           << ", millisecond: " << result.millisecond 
-  //           << ", tz hour: " << result.tzOffsetHour 
+  // LOG_DEVEL << "year: " << result.year
+  //           << ", month: " << result.month
+  //           << ", day: " << result.day
+  //           << ", hour: " << result.hour
+  //           << ", minute: " << result.minute
+  //           << ", second: " << result.second
+  //           << ", millisecond: " << result.millisecond
+  //           << ", tz hour: " << result.tzOffsetHour
   //           << ", tz minute: " << result.tzOffsetMinute;
-  
+
   return true;
 }
 

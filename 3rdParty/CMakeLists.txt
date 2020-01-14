@@ -328,3 +328,4 @@ target_include_directories(fuerte SYSTEM PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
 
+add_subdirectory(json)

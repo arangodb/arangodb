@@ -1,0 +1,44 @@
+version: '{branch}-{build}'
+
+os:
+- Visual Studio 2017
+
+configuration:
+- Release
+- Debug
+
+environment:
+  matrix:
+    - GENERATOR: Visual Studio 15 2017
+
+    - GENERATOR: Visual Studio 15 2017 Win64
+
+    - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      GENERATOR: Visual Studio 16 2019
+
+    - GENERATOR: Visual Studio 15 2017
+      CONAN_VISUAL_VERSIONS: 15
+      PYTHON: "C:\\Python27"
+      PYTHON_VERSION: "2.7.8"
+      PYTHON_ARCH: "32"
+      CONAN: TRUE
+
+init: []
+
+install:
+- if defined CONAN (pip.exe install -U conan conan-package-tools)
+- if defined CONAN (conan profile new default --detect)
+
+before_build:
+- if defined BINDIR (set "PATH=%BINDIR%;%PATH:C:\Program Files\Git\usr\bin;=%")
+- md build
+- cd build
+- cmake -Wno-dev --config "%CONFIGURATION%" -G "%GENERATOR%" ..
+
+build_script:
+- cmake --build . --config "%CONFIGURATION%"
+
+test_script:
+- ctest -C "%CONFIGURATION%" --output-on-failure
+- if defined CONAN (cd ..)
+- if defined CONAN (python .conan/build.py)
