@@ -27,6 +27,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogBuffer.h"
@@ -43,8 +44,7 @@ RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer
 }
 
 RestStatus RestAdminLogHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);

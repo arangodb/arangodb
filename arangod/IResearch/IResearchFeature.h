@@ -25,9 +25,11 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+struct IndexTypeFactory;
 
 namespace aql {
 
@@ -77,6 +79,9 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
+  template <typename Engine, typename std::enable_if<std::is_base_of<StorageEngine, Engine>::value, int>::type = 0>
+  IndexTypeFactory& factory();
+
  private:
   class Async;  // forward declaration
 
@@ -84,6 +89,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   std::atomic<bool> _running;
   uint64_t _threads;
   uint64_t _threadsLimit;
+  std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>> _factories;
 };
 
 }  // namespace iresearch

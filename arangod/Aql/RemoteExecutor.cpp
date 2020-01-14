@@ -22,6 +22,7 @@
 
 #include "RemoteExecutor.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
