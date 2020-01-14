@@ -207,7 +207,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover) {
                      "/_api/agency/read", R"=([["a"]])="_vpack)
       .returnResponse(200, R"=([{"a":12}])="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -234,7 +234,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_failover) {
                      "/_api/agency/read", R"=([["a"]])="_vpack)
       .returnResponse(200, R"=([{"a":12}])="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -264,7 +264,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_timeout_redirect) {
                      "/_api/agency/read", R"=([["a"]])="_vpack)
       .returnResponse(200, R"=([{"a":12}])="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -291,7 +291,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect) {
                      "/_api/agency/read", R"=([["a"]])="_vpack)
       .returnResponse(200, R"=([{"a":12}])="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -318,7 +318,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect_new_endpoint) {
                      "/_api/agency/read", R"=([["a"]])="_vpack)
       .returnResponse(200, R"=([{"a":12}])="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -342,7 +342,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_not_found) {
                      "/_api/agency/read", R"=([["a"]])="_vpack)
       .returnResponse(fuerte::StatusNotFound, R"=({"error": 412})="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -366,7 +366,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_prec_failed) {
                      "/_api/agency/read", R"=([["a"]])="_vpack)
       .returnResponse(fuerte::StatusPreconditionFailed, R"=({"error": 412})="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -396,7 +396,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_not_found) {
                      "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
       .returnResponse(fuerte::StatusOK, R"=({"results": [15]})="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -431,7 +431,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_redirect_not_foun
                      "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
       .returnResponse(fuerte::StatusOK, R"=({"results": [15]})="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -461,7 +461,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_found) {
                      "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
       .returnResponse(fuerte::StatusOK, R"=({"error": 200, "results": [32]})="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -496,7 +496,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_timeout_not_found
                      "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
       .returnResponse(fuerte::StatusOK, R"=({"results": [15]})="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -528,7 +528,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_read_only_timeout_not_found) {
                      "/_api/agency/read", R"=([["a"]])="_vpack)
       .returnResponse(fuerte::StatusNotFound, R"=({"error": 404, "results": [0]})="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -552,7 +552,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_write_no_cids_timeout) {
                      "/_api/agency/write", R"=([[{"a":12}, {}]])="_vpack)
       .returnError(fuerte::Error::Timeout);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",
@@ -576,7 +576,7 @@ TEST_F(AsyncAgencyCommTest, get_values) {
                      "/_api/agency/read", R"=([["/arango/Plan"]])="_vpack)
       .returnResponse(fuerte::StatusOK, R"=([{"arango":{"Plan": 12}}])="_vpack);
 
-  AsyncAgencyCommManager manager;
+  AsyncAgencyCommManager manager(server.server());
   manager.pool(&pool);
   manager.updateEndpoints({
       "http+tcp://10.0.0.1:8529",

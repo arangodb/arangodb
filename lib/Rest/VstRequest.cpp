@@ -55,23 +55,29 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
                        velocypack::Buffer<uint8_t> buffer,
                        size_t payloadOffset,
                        uint64_t messageId)
-    : GeneralRequest(connectionInfo),
-      _buffer(std::move(buffer)),
-      _vpackBuilder(nullptr),
+    : GeneralRequest(connectionInfo, messageId),
       _payloadOffset(payloadOffset),
-      _messageId(messageId),
       _validatedPayload(false) {
   _contentType = ContentType::UNSET;
   _contentTypeResponse = ContentType::VPACK;
+  _payload = std::move(buffer),
   parseHeaderInformation();
 }
 
+size_t VstRequest::contentLength() const {
+  TRI_ASSERT(_payload.size() >= _payloadOffset);
+  if (_payload.size() < _payloadOffset) {
+    return 0;
+  }
+  return (_payload.size() - _payloadOffset);
+}
+
 arangodb::velocypack::StringRef VstRequest::rawPayload() const {
-  if (_buffer.size() <= _payloadOffset) {
+  if (_payload.size() <= _payloadOffset) {
     return arangodb::velocypack::StringRef();
   } else {
-    return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data() + _payloadOffset),
-                                           _buffer.size() - _payloadOffset);
+    return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_payload.data() + _payloadOffset),
+                                           _payload.size() - _payloadOffset);
   }
 }
 
@@ -79,17 +85,18 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
 
   if (_contentType == ContentType::JSON) {
-    if (!_vpackBuilder && _buffer.size() > _payloadOffset) {
-      _vpackBuilder = VPackParser::fromJson(_buffer.data() + _payloadOffset,
-                                            _buffer.size() - _payloadOffset);
+    if (!_vpackBuilder && _payload.size() > _payloadOffset) {
+      _vpackBuilder = VPackParser::fromJson(_payload.data() + _payloadOffset,
+                                            _payload.size() - _payloadOffset);
     }
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
     }
   } else if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::VPACK)) {
-    if (_buffer.size() > _payloadOffset) {
-      uint8_t const* ptr = _buffer.data() + _payloadOffset;
+    if (_payload.size() > _payloadOffset) {
+      uint8_t const* ptr = _payload.data() + _payloadOffset;
       if (!_validatedPayload) {
+        /// the header is validated in VstCommTask, the actual body is only validated on demand
         VPackOptions validationOptions = *options;  // intentional copy
         validationOptions.validateUtf8Strings = true;
         validationOptions.checkAttributeUniqueness = true;
@@ -97,12 +104,17 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
         validationOptions.disallowCustom = true;
         VPackValidator validator(&validationOptions);
         // will throw on error
-        _validatedPayload = validator.validate(ptr, _buffer.size() - _payloadOffset);
+        _validatedPayload = validator.validate(ptr, _payload.size() - _payloadOffset);
       }
       return VPackSlice(ptr);
     }
   }
   return VPackSlice::noneSlice();  // no body
+}
+
+void VstRequest::setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) {
+  _payload = std::move(buffer);
+  _payloadOffset = 0;
 }
 
 void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
@@ -141,7 +153,8 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
 void VstRequest::parseHeaderInformation() {
   using namespace std;
   
-  VPackSlice vHeader(_buffer.data());
+  /// the header was already validated here, the actual body was not
+  VPackSlice vHeader(_payload.data());
   if (!vHeader.isArray() || vHeader.length() != 7) {
     LOG_TOPIC("0007b", WARN, Logger::COMMUNICATION) << "invalid VST message header";
     throw std::runtime_error("invalid VST message header");
@@ -198,7 +211,7 @@ void VstRequest::parseHeaderInformation() {
         _fullUrl.push_back('&');
       }
     }
-    _fullUrl.pop_back();  // remove last &
+    _fullUrl.pop_back();  // remove last & or ?
 
   } catch (std::exception const& e) {
     throw std::runtime_error(

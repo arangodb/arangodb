@@ -42,6 +42,7 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"

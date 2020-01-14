@@ -71,9 +71,11 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint, double requestTimeout,
+GeneralClientConnection::GeneralClientConnection(application_features::ApplicationServer& server,
+                                                 Endpoint* endpoint, double requestTimeout,
                                                  double connectTimeout, size_t connectRetries)
-    : _endpoint(endpoint),
+    : _server(server),
+      _endpoint(endpoint),
       _freeEndpointOnDestruction(false),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
@@ -88,10 +90,12 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint, double requ
   TRI_invalidatesocket(&_socket);
 }
 
-GeneralClientConnection::GeneralClientConnection(std::unique_ptr<Endpoint>& endpoint,
+GeneralClientConnection::GeneralClientConnection(application_features::ApplicationServer& server,
+                                                 std::unique_ptr<Endpoint>& endpoint,
                                                  double requestTimeout,
                                                  double connectTimeout, size_t connectRetries)
-    : _endpoint(endpoint.release()),
+    : _server(server),
+      _endpoint(endpoint.release()),
       _freeEndpointOnDestruction(true),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
@@ -120,29 +124,28 @@ GeneralClientConnection::~GeneralClientConnection() {
 /// @brief create a new connection from an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection* GeneralClientConnection::factory(Endpoint* endpoint,
-                                                          double requestTimeout,
-                                                          double connectTimeout,
-                                                          size_t numRetries,
-                                                          uint64_t sslProtocol) {
+GeneralClientConnection* GeneralClientConnection::factory(
+    application_features::ApplicationServer& server, Endpoint* endpoint, double requestTimeout,
+    double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
+    return new ClientConnection(server, endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
-                                   numRetries, sslProtocol);
+    return new SslClientConnection(server, endpoint, requestTimeout,
+                                   connectTimeout, numRetries, sslProtocol);
   }
 
   return nullptr;
 }
 
 GeneralClientConnection* GeneralClientConnection::factory(
+    application_features::ApplicationServer& server,
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
     double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
+    return new ClientConnection(server, endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
-                                   numRetries, sslProtocol);
+    return new SslClientConnection(server, endpoint, requestTimeout,
+                                   connectTimeout, numRetries, sslProtocol);
   }
 
   return nullptr;
@@ -209,8 +212,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   double start = TRI_microtime();
   int res;
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& comm = server.getFeature<application_features::CommunicationFeaturePhase>();
+  auto& comm = server().getFeature<application_features::CommunicationFeaturePhase>();
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
@@ -458,4 +460,8 @@ bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
 
   connectionClosed = true;
   return false;
+}
+
+application_features::ApplicationServer& GeneralClientConnection::server() const {
+  return _server;
 }
