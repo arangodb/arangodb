@@ -684,12 +684,14 @@ bool Supervision::updateSnapshot() {
   }
 
   _agent->executeLockedRead([&]() {
-    if (_agent->spearhead().has(_agencyPrefix)) {
-      _snapshot = _agent->spearhead().get(_agencyPrefix);
-    }
-    if (_agent->transient().has(_agencyPrefix)) {
-      _transient = _agent->transient().get(_agencyPrefix);
-    }
+      if (_agent->spearhead().has(_agencyPrefix)) {
+        _snapshot = _agent->spearhead().get(_agencyPrefix);
+      }
+  });
+  _agent->executeTransientLocked([&]() {
+      if (_agent->transient().has(_agencyPrefix)) {
+        _transient = _agent->transient().get(_agencyPrefix);
+      }
   });
 
   return true;

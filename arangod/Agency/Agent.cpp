@@ -1040,7 +1040,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
 
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
 
-  // Apply to spearhead and get indices for log entries
+  // Apply to _transient and get indices for log entries
   {
     VPackArrayBuilder b(ret.get());
 
@@ -1050,8 +1050,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
       return trans_ret_t(false, NO_LEADER);
     }
 
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);
+    MUTEX_LOCKER(transientLocker, _transientLock);
 
     // Read and writes
     for (const auto& query : VPackArrayIterator(queries->slice())) {
@@ -1402,7 +1401,7 @@ bool Agent::prepareLead() {
 
   {
     // Clear transient for supervision start
-    MUTEX_LOCKER(ioLocker, _ioLock);
+    MUTEX_LOCKER(transientLocker, _transientLock);
     _transient.clear();
   }
 
@@ -1664,12 +1663,18 @@ void Agent::executeLockedWrite(std::function<void()> const& cb) {
   cb();
 }
 
+void Agent::executeTransientLocked(std::function<void()> const& cb) {
+  _tiLock.assertNotLockedByCurrentThread();
+  MUTEX_LOCKER(transientLocker, _transientLock);
+  cb();
+}
+
 /// Get transient
 /// intentionally no lock is acquired here, so we can return
 /// a const reference
 /// the caller has to make sure the lock is actually held
 Store const& Agent::transient() const {
-  _ioLock.assertLockedByCurrentThread();
+  _transientLock.assertLockedByCurrentThread();
   return _transient;
 }
 

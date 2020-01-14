@@ -225,7 +225,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///  and write lock for _readDB
   void executeLockedWrite(std::function<void()> const& cb);
 
-  /// @brief Get read store and compaction index
+  /// @brief execute a callback while holding _transientLock
+  void executeTransientLocked(std::function<void()> const& cb);
+
+    /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
   /// @brief Get read store and compaction index
@@ -244,9 +247,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Store const& spearhead() const;
 
   /// @brief Get transient store
-  ///  WARNING: this assumes caller holds appropriate
-  ///  locks or will use executeLockedRead() or
-  ///  executeLockedWrite() with a lambda function
+  /// WARNING: this assumes caller holds _transientLock
   Store const& transient() const;
 
   /// @brief Serve active agent interface
@@ -364,7 +365,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Committed (read) kv-store
   Store _readDB;
 
-  /// @brief Committed (read) kv-store for transient data
+  /// @brief Committed (read) kv-store for transient data. This is
+  /// protected by the _transientLock mutex.
   Store _transient;
 
   /// @brief Condition variable for appending to the log and for
@@ -420,7 +422,11 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// Writing requires this held first, then _waitForCV's mutex
   mutable arangodb::basics::ReadWriteLock _outputLock;
 
-  /// @brief RAFT consistency lock and update notifier:
+  /// @brief The following mutex protects the _transient store. It is
+  /// needed for all accesses to _transient.
+  mutable arangodb::Mutex _transientLock;
+
+    /// @brief RAFT consistency lock and update notifier:
   ///   _readDB and _commitIndex
   /// _waitForCV's mutex held alone, allows reads from _readDB or _commitIndex.
   /// Writing requires _outputLock in Write mode first, then _waitForCV's mutex

@@ -157,21 +157,23 @@ RestStatus RestAgencyHandler::handleStores() {
       VPackObjectBuilder b(&body);
       {
         _agent->executeLockedRead([&]() {
-          body.add(VPackValue("spearhead"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->spearhead().dumpToBuilder(body);
-          }
-          body.add(VPackValue("read_db"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->readDB().dumpToBuilder(body);
-          }
-          body.add(VPackValue("transient"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->transient().dumpToBuilder(body);
-          }
+            body.add(VPackValue("spearhead"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->spearhead().dumpToBuilder(body);
+            }
+            body.add(VPackValue("read_db"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->readDB().dumpToBuilder(body);
+            }
+        });
+        _agent->executeTransientLocked([&]() {
+            body.add(VPackValue("transient"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->transient().dumpToBuilder(body);
+            }
         });
       }
     }
