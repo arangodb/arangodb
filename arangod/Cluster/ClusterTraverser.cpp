@@ -117,7 +117,7 @@ void ClusterTraverser::fetchVertices() {
   auto ch = static_cast<ClusterTraverserCache*>(traverserCache());
   ch->insertedDocuments() += _verticesToFetch.size();
   transaction::BuilderLeaser lease(_trx);
-  fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
+  fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices, ch->datalake(),
                            *(lease.get()));
   _verticesToFetch.clear();
   if (_enumerator != nullptr) {
@@ -136,7 +136,8 @@ aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef 
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
-  return aql::AqlValue((*cached).second->data());
+  uint8_t const* ptr = cached->second.begin();
+  return aql::AqlValue(ptr); // no copy constructor
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -153,7 +154,7 @@ void ClusterTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
-  result.add(VPackSlice((*cached).second->data()));
+  result.add(cached->second);
 }
 
 void ClusterTraverser::destroyEngines() {
