@@ -91,7 +91,7 @@ class TokenCache {
   
   
   /// Get the jwt token, which should be used for communication
-  std::string const& jwtSuperToken() const noexcept {
+  std::string const& jwtToken() const noexcept {
     TRI_ASSERT(!_jwtSuperToken.empty());
     return _jwtSuperToken;
   }
@@ -123,7 +123,7 @@ class TokenCache {
   std::atomic<uint64_t> _basicCacheVersion;
   std::unordered_map<std::string, TokenCache::Entry> _basicCache;
 
-  std::list<std::string> _jwtSecrets;
+  std::string _jwtSecret;
   std::string _jwtSuperToken;
 
   mutable arangodb::basics::ReadWriteLock _jwtLock;
