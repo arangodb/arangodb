@@ -176,7 +176,7 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
 
   while (true) {
     switch (_myState) {
-      case State::PATH_FETCH:
+      case State::PATH_FETCH: {
         // We don't want any old path muck lying around
         _path->clear();
         _posInPath = 0;
@@ -200,8 +200,8 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
           // to produce us some inputs to process
           return {input.upstreamState(), stats, upstreamCall};
         }
-        break;
-      case State::PATH_OUTPUT:
+      } break;
+      case State::PATH_OUTPUT: {
         if (output.isFull()) {
           if (_posInPath < _path->length()) {
             // We have more locally
@@ -227,7 +227,7 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
             _myState = State::PATH_FETCH;
           }
         }
-        break;
+      } break;
       default:
         TRI_ASSERT(false);
     }

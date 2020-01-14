@@ -135,6 +135,7 @@ class FakePathFinder : public ShortestPathFinder {
     TRI_ASSERT(source.isString());
     TRI_ASSERT(target.isString());
     _calledWith.emplace_back(std::make_pair(source.copyString(), target.copyString()));
+
     std::string const s = source.copyString();
     std::string const t = target.copyString();
     for (auto const& p : _paths) {
@@ -151,14 +152,13 @@ class FakePathFinder : public ShortestPathFinder {
     return false;
   }
 
-  std::vector<std::string> const& findPath(std::pair<std::string, std::string> const& src) {
+  std::vector<std::string> const& findPath(std::pair<std::string, std::string> const& src) const {
     for (auto const& p : _paths) {
       if (p.front() == src.first && p.back() == src.second) {
         return p;
       }
     }
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    return _theEmptyPath;
   }
 
   std::pair<std::string, std::string> const& calledAt(size_t index) {
@@ -166,10 +166,15 @@ class FakePathFinder : public ShortestPathFinder {
     return _calledWith[index];
   }
 
+  [[nodiscard]] auto getCalledWith() -> std::vector<std::pair<std::string, std::string>> {
+    return _calledWith;
+  };
+
   // Needs to provide lookupFunctionality for Cache
  private:
   std::vector<std::vector<std::string>> _paths;
   std::vector<std::pair<std::string, std::string>> _calledWith;
+  std::vector<std::string> const _theEmptyPath{};
   TokenTranslator& _translator;
 };
 
@@ -187,32 +192,39 @@ using RegisterMapping =
 using PathSequence = std::vector<std::vector<std::string>>;
 using EdgeSequence = std::vector<std::pair<std::string, std::string>>;
 
+enum class ShortestPathOutput { VERTEX_ONLY, VERTEX_AND_EDGE };
+
 // TODO: this needs a << operator
 struct ShortestPathTestParameters {
-  ShortestPathTestParameters(Vertex source, Vertex target, RegisterId vertexOut,
-                             MatrixBuilder<2> matrix, PathSequence paths,
-                             EdgeSequence resultPaths, AqlCall call = AqlCall{})
-      : _source(source),
-        _target(target),
-        _outputRegisters(std::initializer_list<RegisterId>{vertexOut}),
-        _registerMapping({{ShortestPathExecutorInfos::OutputName::VERTEX, vertexOut}}),
-        _inputMatrix{matrix},
-        _paths(paths),
-        _resultPaths{resultPaths},
-        _call(call){};
+  static RegisterSet _makeOutputRegisters(ShortestPathOutput in) {
+    switch (in) {
+      case ShortestPathOutput::VERTEX_ONLY:
+        return RegisterSet{std::initializer_list<RegisterId>{2}};
+      case ShortestPathOutput::VERTEX_AND_EDGE:
+        return RegisterSet{std::initializer_list<RegisterId>{2, 3}};
+    }
+    return RegisterSet{};
+  }
+  static RegisterMapping _makeRegisterMapping(ShortestPathOutput in) {
+    switch (in) {
+      case ShortestPathOutput::VERTEX_ONLY:
+        return RegisterMapping{{ShortestPathExecutorInfos::OutputName::VERTEX, 2}};
+        break;
+      case ShortestPathOutput::VERTEX_AND_EDGE:
+        return RegisterMapping{{ShortestPathExecutorInfos::OutputName::VERTEX, 2},
+                               {ShortestPathExecutorInfos::OutputName::EDGE, 3}};
+    }
+    return RegisterMapping{};
+  }
 
-  ShortestPathTestParameters(Vertex source, Vertex target, RegisterId vertexOut,
-                             RegisterId edgeOut, MatrixBuilder<2> matrix, PathSequence paths,
-                             EdgeSequence resultPaths, AqlCall call = AqlCall{})
-      : _source(source),
-        _target(target),
-        _outputRegisters(std::initializer_list<RegisterId>{vertexOut, edgeOut}),
-        _registerMapping({{ShortestPathExecutorInfos::OutputName::VERTEX, vertexOut},
-                          {ShortestPathExecutorInfos::OutputName::EDGE, edgeOut}}),
-        _inputMatrix{matrix},
-        _paths(paths),
-        _resultPaths(resultPaths),
-        _call(call){};
+  ShortestPathTestParameters(std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, ShortestPathOutput> params)
+      : _source(std::get<0>(params)),
+        _target(std::get<1>(params)),
+        _outputRegisters(_makeOutputRegisters(std::get<5>(params))),
+        _registerMapping(_makeRegisterMapping(std::get<5>(params))),
+        _inputMatrix{std::get<2>(params)},
+        _paths(std::get<3>(params)),
+        _call(std::get<4>(params)) {}
 
   Vertex _source;
   Vertex _target;
@@ -221,13 +233,12 @@ struct ShortestPathTestParameters {
   RegisterMapping _registerMapping;
   MatrixBuilder<2> _inputMatrix;
   PathSequence _paths;
-  EdgeSequence _resultPaths;
   AqlCall _call;
 };
 
 class ShortestPathExecutorTest
     : public ::testing::Test,
-      public ::testing::WithParamInterface<ShortestPathTestParameters> {
+      public ::testing::WithParamInterface<std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, ShortestPathOutput>> {
  protected:
   MockAqlServer server;
   ExecutionState state;
@@ -276,62 +287,74 @@ class ShortestPathExecutorTest
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, infos),
-        output(std::move(block), infos.getOutputRegisters(), infos.registersToKeep(),
-               infos.registersToClear(), std::move(parameters._call)) {
+        output(std::move(block), infos.getOutputRegisters(),
+               infos.registersToKeep(), infos.registersToClear()) {
     for (auto&& p : parameters._paths) {
       finder.addPath(std::move(p));
     }
+
+    // We need the limits to verify the outputs later
+    AqlCall passCall{parameters._call};
+    output.setCall(std::move(passCall));
   }
 
-  void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& result,
-                      std::vector<std::pair<std::string, std::string>> const& resultPaths,
-                      ExecutorState const state) {
-    LOG_DEVEL << "num rows written: " << result.numRowsWritten();
-    if (resultPaths.empty()) {
-      //  TODO: this is really crude, but we can't currently, easily determine whether we got
-      //        *exactly* the paths we were hoping  for.
-      ASSERT_EQ(result.numRowsWritten(), 0);
-    } else {
-      FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
-      TokenTranslator& translator = *(static_cast<TokenTranslator*>(infos.cache()));
-      auto block = result.stealBlock();
-      ASSERT_NE(block, nullptr);
-      size_t index = 0;
-      for (size_t i = 0; i < resultPaths.size(); ++i) {
-        auto path = finder.findPath(resultPaths[i]);
-        for (size_t j = 0; j < path.size(); ++j) {
-          if (infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
-            AqlValue value =
-                block->getValue(index, infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
-            EXPECT_TRUE(value.isObject());
-            EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
-                            value.slice(),
-                            translator.translateVertex(arangodb::velocypack::StringRef(path[j])),
-                            false) == 0);
-          }
-          if (infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
-            AqlValue value =
-                block->getValue(index, infos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
-            if (j == 0) {
-              EXPECT_TRUE(value.isNull(false));
-            } else {
-              EXPECT_TRUE(value.isObject());
-              VPackSlice edge = value.slice();
-              // FROM and TO checks are enough here.
-              EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::FromString))
-                              .compare(path[j - 1]) == 0);
-              EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::ToString))
-                              .compare(path[j]) == 0);
-            }
-          }
-          ++index;
+  void ValidateResult(ShortestPathExecutorInfos& infos,
+                      OutputAqlItemRow& result, ExecutorState const state) {
+    auto pathsQueriedBetween = finder.getCalledWith();
+
+    FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
+    TokenTranslator& translator = *(static_cast<TokenTranslator*>(infos.cache()));
+    auto block = result.stealBlock();
+
+    auto noPathsToBeFound =
+        std::all_of(pathsQueriedBetween.begin(), pathsQueriedBetween.end(),
+                    [finder](std::pair<std::string, std::string> const p) {
+                      return finder.findPath(p).size() == 0;
+                    });
+
+    // No outputs, this means either we were limited to 0, or we got only
+    // inputs that did not yield any paths, otherwise we need to fail.
+    if (block == nullptr) {
+      EXPECT_TRUE(parameters._call.getLimit() == 0 || noPathsToBeFound);
+      return;
+    }
+
+    ASSERT_NE(block, nullptr);
+
+    size_t index = 0;
+    for (size_t i = 0; i < pathsQueriedBetween.size() && index < block->size(); ++i) {
+      auto path = finder.findPath(pathsQueriedBetween[i]);
+      for (size_t j = 0; j < path.size() && index < block->size(); ++j) {
+        if (infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
+          AqlValue value =
+              block->getValue(index, infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
+          EXPECT_TRUE(value.isObject());
+          EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
+                          value.slice(),
+                          translator.translateVertex(arangodb::velocypack::StringRef(path[j])),
+                          false) == 0);
         }
+        if (infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
+          AqlValue value =
+              block->getValue(index, infos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
+          if (j == 0) {
+            EXPECT_TRUE(value.isNull(false));
+          } else {
+            EXPECT_TRUE(value.isObject());
+            VPackSlice edge = value.slice();
+            // FROM and TO checks are enough here.
+            EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::FromString))
+                            .compare(path[j - 1]) == 0);
+            EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::ToString))
+                            .compare(path[j]) == 0);
+          }
+        }
+        ++index;
       }
     }
   }
 
-  void TestExecutor(ShortestPathExecutorInfos& infos, AqlItemBlockInputRange& input,
-                    std::vector<std::pair<std::string, std::string>> const& resultPaths) {
+  void TestExecutor(ShortestPathExecutorInfos& infos, AqlItemBlockInputRange& input) {
     // This fetcher will not be called!
     // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
     // This will fetch everything now, unless we give a small enough atMost
@@ -339,18 +362,15 @@ class ShortestPathExecutorTest
     auto const [state, stats, call] = testee.produceRows(input, output);
     // TODO: validate stats
 
-    ValidateResult(infos, output, resultPaths, state);
+    ValidateResult(infos, output, state);
   }
 };  // namespace aql
 
-TEST_P(ShortestPathExecutorTest, the_test) {
-  TestExecutor(infos, input, parameters._resultPaths);
-}
+TEST_P(ShortestPathExecutorTest, the_test) { TestExecutor(infos, input); }
 
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
     regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
-
 MatrixBuilder<2> const noneRow{{{{}}}};
 MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
 MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
@@ -359,6 +379,7 @@ MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"
                                  {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
                                  {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
 
+std::vector<std::vector<std::string>> const noPath = {};
 std::vector<std::vector<std::string>> const onePath = {
     {"vertex/source", "vertex/intermed", "vertex/target"}};
 
@@ -368,48 +389,18 @@ std::vector<std::vector<std::string>> const threePaths = {
     {"vertex/source", "vertex/b", "vertex/c", "vertex/d"},
     {"vertex/a", "vertex/b", "vertex/target"}};
 
-INSTANTIATE_TEST_CASE_P(
-    ShortestPathExecutorTestInstance, ShortestPathExecutorTest,
-    testing::Values(
-        // No edge output
-        ShortestPathTestParameters(constSource, constTarget, 2, noneRow, {}, {}),
-        ShortestPathTestParameters(constSource, brokenTarget, 2, noneRow, {}, {}),
-        ShortestPathTestParameters(brokenSource, constTarget, 2, noneRow, {}, {}),
-        ShortestPathTestParameters(brokenSource, brokenTarget, 2, noneRow, {}, {}),
-        ShortestPathTestParameters(regSource, constTarget, 2, noneRow, {}, {}),
-        ShortestPathTestParameters(regSource, brokenTarget, 2, noneRow, {}, {}),
-        ShortestPathTestParameters(constSource, regTarget, 2, noneRow, {}, {}),
-        ShortestPathTestParameters(brokenSource, regTarget, 2, noneRow, {}, {}),
+auto sources = testing::Values(constSource, regSource, brokenSource);
+auto targets = testing::Values(constTarget, regTarget, brokenTarget);
+auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows);
+auto paths = testing::Values(noPath, onePath, threePaths);
+auto calls = testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
+                             AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false});
+auto variants = testing::Values(ShortestPathOutput::VERTEX_ONLY,
+                                ShortestPathOutput::VERTEX_AND_EDGE);
 
-        ShortestPathTestParameters(constSource, constTarget, 2, noneRow, onePath,
-                                   {{"vertex/source", "vertex/target"}}),
+INSTANTIATE_TEST_CASE_P(ShortestPathExecutorTestInstance, ShortestPathExecutorTest,
+                        testing::Combine(sources, targets, inputs, paths, calls, variants));
 
-        ShortestPathTestParameters(Vertex{"vertex/a"}, Vertex{"vertex/target"}, 2, noneRow,
-                                   threePaths, {{"vertex/a", "vertex/target"}}),
-
-        ShortestPathTestParameters(regSource, regTarget, 2, oneRow, onePath,
-                                   {{"vertex/source", "vertex/target"}}),
-
-        ShortestPathTestParameters(regSource, regTarget, 2, twoRows, threePaths,
-                                   {{"vertex/source", "vertex/target"}}),
-
-        ShortestPathTestParameters(regSource, regTarget, 2, threeRows, threePaths,
-                                   {{"vertex/source", "vertex/target"},
-                                    {"vertex/a", "vertex/target"}}),
-
-        ShortestPathTestParameters(constSource, constTarget, 2, noneRow,
-                                   onePath, {{"vertex/source", "vertex/target"}},
-                                   AqlCall{0, 1, 0, false}),
-
-        // With edge output
-        ShortestPathTestParameters(constSource, constTarget, 2, 3, noneRow, {}, {}),
-        ShortestPathTestParameters(constSource, brokenTarget, 2, 3, noneRow, {}, {}),
-        ShortestPathTestParameters(brokenSource, constTarget, 2, 3, noneRow, {}, {}),
-        ShortestPathTestParameters(brokenSource, brokenTarget, 2, 3, noneRow, {}, {}),
-        ShortestPathTestParameters(regSource, constTarget, 2, 3, noneRow, {}, {}),
-        ShortestPathTestParameters(regSource, brokenTarget, 2, 3, noneRow, {}, {}),
-        ShortestPathTestParameters(constSource, regTarget, 2, 3, noneRow, {}, {}),
-        ShortestPathTestParameters(brokenSource, regTarget, 2, 3, noneRow, {}, {})));
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
