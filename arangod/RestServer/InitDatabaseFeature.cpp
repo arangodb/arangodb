@@ -36,6 +36,7 @@
 #include <iostream>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"

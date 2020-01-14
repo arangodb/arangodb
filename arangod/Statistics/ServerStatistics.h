@@ -33,8 +33,7 @@ class MetricsFeature;
 }
 
 struct TransactionStatistics {
-
-  TransactionStatistics();
+  explicit TransactionStatistics(arangodb::MetricsFeature&);
   TransactionStatistics(TransactionStatistics const&) = delete;
   TransactionStatistics(TransactionStatistics &&) = delete;
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
@@ -62,8 +61,8 @@ struct ServerStatistics {
   double _startTime;
   std::atomic<double> _uptime;
 
-  explicit ServerStatistics(double start) :
-    _transactionsStatistics(), _startTime(start), _uptime(0.0) {}
+  explicit ServerStatistics(arangodb::MetricsFeature& metrics, double start)
+      : _transactionsStatistics(metrics), _startTime(start), _uptime(0.0) {}
 };
 
 #endif

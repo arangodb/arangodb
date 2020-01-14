@@ -85,9 +85,11 @@ class AsyncAgencyCommManager final {
  public:
   static std::unique_ptr<AsyncAgencyCommManager> INSTANCE;
 
-  static void initialize() {
-    INSTANCE = std::make_unique<AsyncAgencyCommManager>();
+  static void initialize(application_features::ApplicationServer& server) {
+    INSTANCE.reset(new AsyncAgencyCommManager(server));
   }
+
+  explicit AsyncAgencyCommManager(application_features::ApplicationServer&);
 
   void addEndpoint(std::string const& endpoint);
   void updateEndpoints(std::vector<std::string> const& endpoints);
@@ -104,7 +106,10 @@ class AsyncAgencyCommManager final {
   network::ConnectionPool* pool() const { return _pool; }
   void pool(network::ConnectionPool* pool) { _pool = pool; }
 
+  application_features::ApplicationServer& server();
+
  private:
+  application_features::ApplicationServer& _server;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
   network::ConnectionPool* _pool = nullptr;

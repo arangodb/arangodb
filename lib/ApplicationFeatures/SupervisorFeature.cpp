@@ -122,8 +122,7 @@ void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 void SupervisorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_supervisor) {
     try {
-      auto& server = ApplicationServer::server();
-      DaemonFeature& daemon = server.getFeature<DaemonFeature>();
+      DaemonFeature& daemon = server().getFeature<DaemonFeature>();
 
       // force daemon mode
       daemon.setDaemon(true);
@@ -153,13 +152,12 @@ void SupervisorFeature::daemonize() {
   // will be reseted in SchedulerFeature
   arangodb::signals::unmaskAllSignals();
 
-  auto& server = ApplicationServer::server();
-  if (!server.hasFeature<LoggerFeature>()) {
+  if (!server().hasFeature<LoggerFeature>()) {
     LOG_TOPIC("4e6ee", FATAL, Logger::STARTUP) << "unknown feature 'Logger', giving up";
     FATAL_ERROR_EXIT();
   }
 
-  LoggerFeature& logger = server.getFeature<LoggerFeature>();
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
   logger.setSupervisor(true);
   logger.prepare();
 
@@ -323,7 +321,7 @@ void SupervisorFeature::daemonize() {
 #endif
 
       try {
-        DaemonFeature& daemon = server.getFeature<DaemonFeature>();
+        DaemonFeature& daemon = server().getFeature<DaemonFeature>();
 
         // disable daemon mode
         daemon.setDaemon(false);
