@@ -7,7 +7,7 @@ set(NGHTTP2_INCLUDES
   "${CMAKE_CURRENT_BINARY_DIR}/lib/includes"
 )
 
-#add_definitions(-DBUILDING_NGHTTP2)
+add_definitions(-DBUILDING_NGHTTP2)
 
 set(NGHTTP2_SOURCES
   lib/nghttp2_pq.c 
@@ -34,17 +34,6 @@ set(NGHTTP2_SOURCES
   lib/nghttp2_debug.c
 )
 
-#set(NGHTTP2_RES "")
-
-#if(WIN32)
-#  configure_file(
-#    lib/version.rc.in
-#    ${CMAKE_CURRENT_BINARY_DIR}/lib/version.rc
-#    @ONLY)
-#
-#  set(NGHTTP2_RES ${CMAKE_CURRENT_BINARY_DIR}/lib/version.rc)
-#endif()
-
 add_library(nghttp2 STATIC
   ${NGHTTP2_SOURCES}
 )
@@ -55,5 +44,8 @@ if(SIZEOF_SSIZE_T STREQUAL "")
   # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
   target_compile_definitions(nghttp2 PRIVATE ssize_t=int)
 endif()
+
+# we always build it statically
+target_compile_definitions(nghttp2 PUBLIC "-DNGHTTP2_STATICLIB")
 
 target_include_directories(nghttp2 PUBLIC ${NGHTTP2_INCLUDES})
