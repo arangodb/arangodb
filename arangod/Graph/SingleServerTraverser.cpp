@@ -50,7 +50,6 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {
-  _startIdBuilder->clear();
   _startIdBuilder->add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder->slice();
 
@@ -73,6 +72,11 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
     _enumerator.reset(new DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
+}
+
+void SingleServerTraverser::clear() {
+  _startIdBuilder->clear();
+  traverserCache()->clear();
 }
 
 bool SingleServerTraverser::getVertex(VPackSlice edge, std::vector<StringRef>& result) {

@@ -286,12 +286,12 @@ static void mergeResults(std::vector<std::pair<ShardID, VPackValueLength>> const
 namespace {
 // velocypack representation of object
 // {"error":true,"errorMessage":"document not found","errorNum":1202}
-static const char* notFoundSlice = 
-  "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
-  "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
-  "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
-  "\x75\x6d\x29\xb2\x04\x03";
-} // namespace
+static const char* notFoundSlice =
+    "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
+    "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
+    "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
+    "\x75\x6d\x29\xb2\x04\x03";
+}  // namespace
 
 static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> const& results,
                                   std::shared_ptr<VPackBuilder>& resultBody,
@@ -301,7 +301,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
   size_t realNotFound = 0;
-  
+
   resultBody->clear();
   resultBody->openArray();
   for (VPackValueLength currentIndex = 0; currentIndex < expectedResults; ++currentIndex) {
@@ -310,7 +310,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
-      
+
       int errorNum = TRI_ERROR_NO_ERROR;
       VPackSlice errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
       if (errorNumSlice.isNumber()) {
@@ -1916,113 +1916,9 @@ void fetchVerticesFromEngines(
     std::string const& dbname,
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
     std::unordered_set<StringRef>& vertexIds,
-    std::unordered_map<StringRef, std::shared_ptr<VPackBuffer<uint8_t>>>& result,
-    VPackBuilder& builder) {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
-    return;
-  }
-  // TODO map id => ServerID if possible
-  // And go fast-path
-
-  // slow path, sharding not deducable from _id
-  builder.clear();
-  builder.openObject();
-  builder.add(VPackValue("keys"));
-  builder.openArray();
-  for (auto const& v : vertexIds) {
-    // TRI_ASSERT(v.isString());
-    builder.add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
-  }
-  builder.close();  // 'keys' Array
-  builder.close();  // base object
-
-  std::string const url =
-      "/_db/" + StringUtils::urlEncode(dbname) + "/_internal/traverser/vertex/";
-
-  std::vector<ClusterCommRequest> requests;
-  auto body = std::make_shared<std::string>(builder.toJson());
-  for (auto const& engine : *engines) {
-    requests.emplace_back("server:" + engine.first, RequestType::PUT,
-                          url + StringUtils::itoa(engine.second), body);
-  }
-
-  // Perform the requests
-  size_t nrDone = 0;
-  cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, false);
-
-  // Now listen to the results:
-  for (auto const& req : requests) {
-    auto res = req.result;
-    int commError = handleGeneralCommErrors(&res);
-    if (commError != TRI_ERROR_NO_ERROR) {
-      // oh-oh cluster is in a bad state
-      THROW_ARANGO_EXCEPTION(commError);
-    }
-    TRI_ASSERT(res.answer != nullptr);
-    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
-    VPackSlice resSlice = resBody->slice();
-    if (!resSlice.isObject()) {
-      // Response has invalid format
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
-    }
-    if (res.answer_code != ResponseCode::OK) {
-      int code =
-          arangodb::basics::VelocyPackHelper::getNumericValue<int>(resSlice,
-                                                                   "errorNum", TRI_ERROR_INTERNAL);
-      // We have an error case here. Throw it.
-      THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
-                                               resSlice, StaticStrings::ErrorMessage,
-                                               TRI_errno_string(code)));
-    }
-    for (auto const& pair : VPackObjectIterator(resSlice)) {
-      StringRef key(pair.key);
-      if (vertexIds.erase(key) == 0) {
-        // We either found the same vertex twice,
-        // or found a vertex we did not request.
-        // Anyways something somewhere went seriously wrong
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
-      }
-      TRI_ASSERT(result.find(key) == result.end());
-      auto val = VPackBuilder::clone(pair.value);
-
-      VPackSlice id = val.slice().get(StaticStrings::IdString);
-      if (!id.isString()) {
-        // invalid id type
-        LOG_TOPIC(ERR, Logger::GRAPHS) << "got invalid edge id type: " << id.typeName();
-        continue;
-      }
-      TRI_ASSERT(id.isString());
-      result.emplace(StringRef(id), val.steal());
-    }
-  }
-
-  // Fill everything we did not find with NULL
-  for (auto const& v : vertexIds) {
-    result.emplace(v,
-                   VPackBuilder::clone(arangodb::velocypack::Slice::nullSlice()).steal());
-  }
-  vertexIds.clear();
-}
-
-/// @brief fetch vertices from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        If any server responds with a document
-///        it will be inserted into the result.
-///        If no server responds with a document
-///        a 'null' will be inserted into the result.
-///        ShortestPathVariant
-
-void fetchVerticesFromEngines(
-    std::string const& dbname,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-    std::unordered_set<StringRef>& vertexIds,
-    std::unordered_map<StringRef, arangodb::velocypack::Slice>& result,
+    std::unordered_map<StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
-    VPackBuilder& builder) {
+    VPackBuilder& builder, bool forShortestPath) {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -2099,6 +1995,14 @@ void fetchVerticesFromEngines(
       // Protected by datalake
       result.emplace(key, pair.value);
     }
+  }
+
+  // Fill everything we did not find with NULL
+  if (!forShortestPath) {
+    for (auto const& v : vertexIds) {
+      result.emplace(v, VPackSlice::nullSlice());
+    }
+    vertexIds.clear();
   }
 }
 
@@ -2580,21 +2484,20 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     std::vector<std::shared_ptr<LogicalCollection>>& collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor) {
-  
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         "Trying to create an empty list of collections on coordinator.");
   }
-  
+
   double const realTimeout = ClusterInfo::getTimeout(240.0);
   double const endTime = TRI_microtime() + realTimeout;
 
   // We have at least one, take this collections DB name
   auto const dbName = collections[0]->vocbase().name();
   ClusterInfo* ci = ClusterInfo::instance();
-    
+
   std::vector<ClusterCollectionCreationInfo> infos;
 
   while (true) {
@@ -2603,7 +2506,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     ci->loadCurrentDBServers();
     std::vector<std::string> dbServers = ci->getCurrentDBServers();
     infos.reserve(collections.size());
-    
+
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());
     for (auto& col : collections) {
@@ -2622,8 +2525,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           shards = CloneShardDistribution(ci, col.get(), otherCid);
         } else {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-              "Could not find collection " + distributeShardsLike +
-              " to distribute shards like it.");
+                                         "Could not find collection " + distributeShardsLike +
+                                             " to distribute shards like it.");
         }
       } else {
         // system collections should never enforce replicationfactor
@@ -2639,9 +2542,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         // that the requested replicationFactor is not possible right now
         if (dbServers.size() < replicationFactor) {
           LOG_TOPIC(DEBUG, Logger::CLUSTER)
-            << "Do not have enough DBServers for requested replicationFactor,"
-            << " nrDBServers: " << dbServers.size()
-            << " replicationFactor: " << replicationFactor;
+              << "Do not have enough DBServers for requested replicationFactor,"
+              << " nrDBServers: " << dbServers.size()
+              << " replicationFactor: " << replicationFactor;
           if (enforceReplicationFactor) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
@@ -2651,42 +2554,44 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           // We need to remove all servers that are in the avoid list
           if (dbServers.size() - avoid.size() < replicationFactor) {
             LOG_TOPIC(DEBUG, Logger::CLUSTER)
-              << "Do not have enough DBServers for requested replicationFactor,"
-              << " (after considering avoid list),"
-              << " nrDBServers: " << dbServers.size() << " replicationFactor: " << replicationFactor
-              << " avoid list size: " << avoid.size();
+                << "Do not have enough DBServers for requested "
+                   "replicationFactor,"
+                << " (after considering avoid list),"
+                << " nrDBServers: " << dbServers.size()
+                << " replicationFactor: " << replicationFactor
+                << " avoid list size: " << avoid.size();
             // Not enough DBServers left
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
           dbServers.erase(std::remove_if(dbServers.begin(), dbServers.end(),
-                [&](const std::string& x) {
-                return std::find(avoid.begin(), avoid.end(),
-                    x) != avoid.end();
-                }),
-              dbServers.end());
+                                         [&](const std::string& x) {
+                                           return std::find(avoid.begin(), avoid.end(),
+                                                            x) != avoid.end();
+                                         }),
+                          dbServers.end());
         }
         std::random_shuffle(dbServers.begin(), dbServers.end());
         shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
-            dbServers, !col->system());
+                                        dbServers, !col->system());
       }
 
       if (shards->empty() && !col->isSmart()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-            "no database servers found in cluster");
+                                       "no database servers found in cluster");
       }
 
       col->setShardMap(shards);
 
       std::unordered_set<std::string> const ignoreKeys{
-        "allowUserKeys", "cid",     "globallyUniqueId", "count",
+          "allowUserKeys", "cid",     "globallyUniqueId", "count",
           "planId",        "version", "objectId"};
       col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
       infos.emplace_back(
           ClusterCollectionCreationInfo{std::to_string(col->id()),
-          col->numberOfShards(), col->replicationFactor(),
-          waitForSyncReplication, velocy.slice()});
+                                        col->numberOfShards(), col->replicationFactor(),
+                                        waitForSyncReplication, velocy.slice()});
       vpackData.emplace_back(velocy.steal());
     }
 
@@ -2699,23 +2604,23 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
 
     if (res.is(TRI_ERROR_REQUEST_CANCELED)) {
-      // special error code indicating that storing the updated plan in the agency
-      // didn't succeed, and that we should try again
-      
+      // special error code indicating that storing the updated plan in the
+      // agency didn't succeed, and that we should try again
+
       // sleep for a while
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      
+
       if (TRI_microtime() > endTime) {
         // timeout expired
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_TIMEOUT);
       }
-  
+
       if (arangodb::application_features::ApplicationServer::isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
-      
+
       // try in next iteration with an adjusted plan change attempt
-      continue; 
+      continue;
 
     } else {
       // any other error

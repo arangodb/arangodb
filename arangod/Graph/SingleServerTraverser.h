@@ -52,6 +52,7 @@ class SingleServerTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   void setStartVertex(std::string const& v) override;
+  void clear() override;
 
  protected:
   /// @brief Function to load the other sides vertex of an edge
