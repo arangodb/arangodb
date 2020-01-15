@@ -370,8 +370,12 @@ std::string AsyncAgencyCommManager::getCurrentEndpoint() {
 void AsyncAgencyCommManager::reportError(std::string const& endpoint) {
   std::unique_lock<std::mutex> guard(_lock);
   TRI_ASSERT(!_endpoints.empty());
+  LOG_TOPIC("aac42", TRACE, Logger::AGENCYCOMM)
+    << "reportError(" << endpoint << "), endpoints = " << _endpoints;
   if (endpoint == _endpoints.front()) {
     _endpoints.pop_front();
+    LOG_TOPIC("aac43", DEBUG, Logger::AGENCYCOMM)
+      << "Error using endpoint " << endpoint << ", switching to " << _endpoints.front();
     _endpoints.push_back(endpoint);
   }
 }
