@@ -584,6 +584,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
        AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
   auto start = std::chrono::steady_clock::now();
   AgencyCommResult result = agency.sendTransactionWithFailover(trx, timeout);
+  LOG_TOPIC("53262", DEBUG, Logger::HEARTBEAT)
+      << "got news from agency: " << result.successful();
   auto timeDiff = std::chrono::steady_clock::now() - start;
   if (timeDiff > std::chrono::seconds(10)) {
     LOG_TOPIC("77622", WARN, Logger::HEARTBEAT)
