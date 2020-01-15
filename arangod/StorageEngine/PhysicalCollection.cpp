@@ -588,7 +588,7 @@ futures::Future<OperationResult> PhysicalCollection::figures() {
 
 bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& left,
                                                 const std::shared_ptr<Index>& right) const {
-  // Primary index always first (but two primary indexes render comparsion
+  // Primary index always first (but two primary indexes render comparison
   // invalid but that`s a bug itself)
   TRI_ASSERT(!((left->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) &&
                (right->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX)));

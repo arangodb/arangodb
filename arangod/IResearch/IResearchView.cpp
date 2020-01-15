@@ -27,6 +27,7 @@
 #include "IResearchLinkHelper.h"
 #include "VelocyPackHelper.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"

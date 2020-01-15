@@ -514,7 +514,7 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_unlimited_call) {
     }
     nrCalls++;
     if (input.hasDataRow()) {
-      // We expact only the empty initial row, so just consume it
+      // We expect only the empty initial row, so just consume it
       auto const [state, row] = input.nextDataRow();
       EXPECT_EQ(state, ExecutorState::DONE);
       EXPECT_TRUE(row.isInitialized());

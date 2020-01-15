@@ -39,6 +39,8 @@ class Serializable {
 
   // convenience method
   std::shared_ptr<Builder> toVelocyPack() const;
+
+  virtual ~Serializable() = default;
 };
 
 struct Serialize {

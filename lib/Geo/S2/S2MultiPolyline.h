@@ -43,7 +43,7 @@ class S2MultiPolyline : public S2Region {
   // vertices should be unit length.
   void Init(std::vector<S2Polyline>&& lines);
 
-  ~S2MultiPolyline() {}
+  ~S2MultiPolyline() = default;
 
   size_t num_lines() const { return lines_.size(); }
   S2Polyline const& line(size_t k) const {
