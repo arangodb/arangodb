@@ -113,6 +113,22 @@ class LimitExecutor {
 
   std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
+
  private:
   Infos const& infos() const noexcept { return _infos; };
 
@@ -126,6 +142,24 @@ class LimitExecutor {
     // should not be called after skipping the offset!
     TRI_ASSERT(infos().getOffset() >= _counter);
     return infos().getOffset() - _counter;
+  }
+
+  auto remainingOffset() const noexcept -> size_t {
+    auto const offset = infos().getOffset();
+
+    // Restricted value of _counter in [0, offset]
+    auto const boundedCounter = std::max(offset, _counter);
+
+    return offset - boundedCounter;
+  }
+
+  auto remainingLimit() const noexcept -> size_t {
+    auto const offset = infos().getOffset();
+    auto const limitPlusOffset = infos().getLimitPlusOffset();
+
+    // Restricted value of _counter in [offset, limitPlusOffset]
+    auto const boundedCounter = std::min(limitPlusOffset, std::max(offset, _counter));
+    return limitPlusOffset - boundedCounter;
   }
 
   enum class LimitState {
@@ -170,6 +204,8 @@ class LimitExecutor {
 
   std::pair<ExecutionState, Stats> skipOffset();
   std::pair<ExecutionState, Stats> skipRestForFullCount();
+
+  auto calculateUpstreamCall(const AqlCall& clientCall) const -> AqlCall;
 
  private:
   Infos const& _infos;

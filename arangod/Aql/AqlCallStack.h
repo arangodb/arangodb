@@ -33,7 +33,7 @@ namespace aql {
 class AqlCallStack {
  public:
   // Initial
-  AqlCallStack(AqlCall call);
+  explicit AqlCallStack(AqlCall call);
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCall call);
   // Used to pass between blocks

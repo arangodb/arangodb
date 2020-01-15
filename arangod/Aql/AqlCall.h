@@ -67,6 +67,11 @@ struct AqlCall {
 
   std::size_t offset{0};
   // TODO: The defaultBatchSize function could move into this file instead
+  // TODO We must guarantee that at most one of those is not Infinity.
+  //      To do that, we should replace softLimit and hardLimit with
+  //        Limit limit;
+  //        bool isHardLimit;
+  //      .
   Limit softLimit{Infinity{}};
   Limit hardLimit{Infinity{}};
   bool fullCount{false};
@@ -112,6 +117,10 @@ struct AqlCall {
     return !std::holds_alternative<AqlCall::Infinity>(hardLimit);
   }
 
+  bool hasSoftLimit() const {
+    return !std::holds_alternative<AqlCall::Infinity>(softLimit);
+  }
+
   bool needsFullCount() const { return fullCount; }
 };
 
@@ -122,10 +131,7 @@ constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
   if (std::holds_alternative<AqlCall::Infinity>(b)) {
     return true;
   }
-  if (std::get<size_t>(a) < std::get<size_t>(b)) {
-    return true;
-  }
-  return false;
+  return std::get<size_t>(a) < std::get<size_t>(b);
 }
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {

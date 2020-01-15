@@ -59,6 +59,7 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
 LimitExecutor::~LimitExecutor() = default;
 
 std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
+  TRI_ASSERT(false);
   ExecutionState state;
   size_t skipped;
   std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
@@ -77,6 +78,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
 }
 
 std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
+  TRI_ASSERT(false);
   ExecutionState state;
   size_t skipped;
   LimitStats stats{};
@@ -88,8 +90,8 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
     return {state, stats};
   }
 
-  // We must not update _counter here. It is only used to count until offset+limit
-  // is reached.
+  // We must not update _counter here. It is only used to count until
+  // offset+limit is reached.
 
   if (infos().isFullCountEnabled()) {
     stats.incrFullCountBy(skipped);
@@ -99,6 +101,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
 }
 
 std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_ASSERT(false);
   TRI_IF_FAILURE("LimitExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -153,7 +156,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       state = _stateOfLastRowToOutput;
       TRI_ASSERT(state != ExecutionState::WAITING);
       input = std::move(_lastRowToOutput);
-      TRI_ASSERT(!_lastRowToOutput.isInitialized()); // rely on the move
+      TRI_ASSERT(!_lastRowToOutput.isInitialized());  // rely on the move
     } else {
       std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
@@ -203,6 +206,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
 }
 
 std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPassthrough(size_t atMost) {
+  TRI_ASSERT(false);
   switch (currentState()) {
     case LimitState::LIMIT_REACHED:
       // We are done with our rows!
@@ -244,7 +248,7 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
       auto rv = _fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
-      return { rv.first, LimitStats{}, std::move(rv.second) };
+      return {rv.first, LimitStats{}, std::move(rv.second)};
   }
   // The control flow cannot reach this. It is only here to make MSVC happy,
   // which is unable to figure out that the switch above is complete.
@@ -253,6 +257,7 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
 }
 
 std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows(size_t const toSkipRequested) {
+  TRI_ASSERT(false);
   // fullCount can only be enabled on the last top-level LIMIT block. Thus
   // skip cannot be called on it! If this requirement is changed for some
   // reason, the current implementation will not work.
@@ -288,3 +293,69 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows
   return std::make_tuple(state, LimitStats{}, reportSkipped);
 }
 
+auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> AqlCall {
+  auto upstreamCall = AqlCall{};
+
+  // Offsets can simply be added.
+  upstreamCall.offset = clientCall.offset + remainingOffset();
+
+  // To get the limit for upstream, we must subtract the downstream offset from
+  // our limit, and take the minimum of this and the downstream limit.
+  auto const localLimitMinusDownstreamOffset =
+      remainingLimit() - std::min(remainingLimit(), upstreamCall.offset);
+  auto const limit =
+      std::min<AqlCall::Limit>(clientCall.getLimit(), localLimitMinusDownstreamOffset);
+
+  // Generally, we create a hard limit. However, if we get a soft limit from
+  // downstream that is lower than our hard limit, we use that instead.
+  bool const useSoftLimit = clientCall.getLimit() < localLimitMinusDownstreamOffset &&
+                            !clientCall.hasSoftLimit();
+
+  if (useSoftLimit) {
+    upstreamCall.softLimit = limit;
+  } else {
+    upstreamCall.hardLimit = limit;
+  }
+  upstreamCall.fullCount = infos().isFullCountEnabled();
+
+  return upstreamCall;
+}
+
+auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  auto const& clientCall = output.getClientCall();
+  TRI_ASSERT(clientCall.getOffset() == 0);
+
+  auto upstreamCall = calculateUpstreamCall(clientCall);
+
+  auto numRowsWritten = size_t{0};
+  while (upstreamCall.getLimit() > 0 && input.hasDataRow()) {
+    output.copyRow(input.nextDataRow().second);
+    ++numRowsWritten;
+  }
+
+  // TODO Stats! Count fullCount!
+  return {input.upstreamState(), LimitStats{}, upstreamCall};
+}
+
+auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, size_t, AqlCall> {
+  // TODO Stats! Count fullCount!
+  auto upstreamCall = calculateUpstreamCall(call);
+
+  auto skippedLocal = size_t{0};
+  {
+    // Skip available rows from input range. I think this case can not occur in
+    // Limit, but makes correctness more obvious.
+    while (upstreamCall.getOffset() > 0 && inputRange.hasDataRow()) {
+      TRI_ASSERT(false);
+      inputRange.nextDataRow();
+      ++_counter;
+      --upstreamCall.offset;
+      ++skippedLocal;
+    }
+    call.didSkip(skippedLocal);
+  }
+
+  return {inputRange.upstreamState(), skippedLocal, upstreamCall};
+}

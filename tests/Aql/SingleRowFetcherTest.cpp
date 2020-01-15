@@ -1223,7 +1223,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone
   {
     SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
     AqlCall call;
-    AqlCallStack stack = {call};
+    auto stack = AqlCallStack{call};
 
     // First no data row
     auto [state, skipped, input] = testee.execute(stack);
@@ -1258,7 +1258,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_twoAndHasM
   {
     SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
     AqlCall call;
-    AqlCallStack stack = {call};
+    auto stack = AqlCallStack{call};
 
     auto [state, skipped, input] = testee.execute(stack);
     // We only have one block, no more calls to execute necessary
