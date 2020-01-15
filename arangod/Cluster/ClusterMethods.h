@@ -184,23 +184,7 @@ int fetchEdgesFromEngines(std::string const& dbname,
 void fetchVerticesFromEngines(
     std::string const&, std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
     std::unordered_set<StringRef>&,
-    std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>&,
-    arangodb::velocypack::Builder&);
-
-/// @brief fetch vertices from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        If any server responds with a document
-///        it will be inserted into the result.
-///        If no server responds with a document
-///        a 'null' will be inserted into the result.
-///        ShortestPath Variant
-
-void fetchVerticesFromEngines(
-    std::string const&, std::unordered_map<ServerID, traverser::TraverserEngineID> const*,
-    std::unordered_set<StringRef>&,
-    std::unordered_map<StringRef, arangodb::velocypack::Slice>& result,
+    std::unordered_map<StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
     arangodb::velocypack::Builder&);
 
