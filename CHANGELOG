@@ -1,6 +1,9 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* MoveShard to check, if target is in sync follower before promotion
+  to leader.
+
 * Fix Windows client package JS installation paths.
 
 * Updated arangosync to 0.7.2.

@@ -176,6 +176,10 @@ struct Job {
   static void addReleaseServer(Builder& trx, std::string const& server);
   static void addReleaseShard(Builder& trx, std::string const& shard);
   static void addPreconditionServerNotBlocked(Builder& pre, std::string const& server);
+  static void addPreconditionCurrentReplicaShardGroup(VPackBuilder& pre,
+                                                      std::string const& database,
+                                                      std::vector<shard_t> const&,
+                                                      std::string const& server);
   static void addPreconditionServerHealth(Builder& pre, std::string const& server,
                                           std::string const& health);
   static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
