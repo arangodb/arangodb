@@ -1,8 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue #10867:
-  arangod based binaries lack product version info and icon on Windows
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows.
 
 * Fix Windows client package JS installation paths.
 
