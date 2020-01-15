@@ -484,6 +484,27 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, dont_splice_subquery_with_limit_and_
   verifyQueryResult(query, expected->slice());
 }
 
+// Regression test for https://github.com/arangodb/arangodb/issues/10852
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_empty_subqueries) {
+  auto const queryString = R"aql(
+    LET results = (
+        FOR doc IN []
+            LET docs = (
+                FOR doc2 in []
+                    RETURN doc2
+            )
+            RETURN [docs]
+    )
+
+    RETURN [results]
+  )aql";
+  auto const expectedString = R"res([[[]]])res";
+
+  verifySubquerySplicing(queryString, 2, 0);
+  auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
+  verifyQueryResult(queryString, expected->slice());
+}
+
 // Disabled as long as the subquery implementation with shadow rows cannot yet handle skipping.
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_with_limit_and_offset) {
   auto query = R"aql(
