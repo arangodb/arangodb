@@ -906,7 +906,7 @@ void HeartbeatThread::runSingleServer() {
         builder.close();
         double ttl =
             std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
-        _agency.setTransient(transientPath, builder.slice(), ttl);
+        _agency.setTransient(transientPath, builder.slice(), static_cast<uint64_t>(ttl));
       };
       TRI_DEFER(sendTransient());
 
