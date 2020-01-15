@@ -55,6 +55,7 @@ void appendNullTerminatedString(char const* src, char*& dst) {
   size_t len = strlen(src);
   memcpy(static_cast<void*>(dst), src, len);
   dst += len;
+  *dst = '\0';
 }
 
 /// @brief logs the occurrence of a signal to the logfile.
@@ -62,16 +63,14 @@ void appendNullTerminatedString(char const* src, char*& dst) {
 /// in SIGSEGV context with a broken heap etc.
 /// assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
-/// (256 bytes should be more than enough)
-size_t buildLogMessage(char* s, int signal) {
+/// (512 bytes should be more than enough)
+size_t buildLogMessage(char* s, int signal, int stackSize) {
   char* p = s;
   appendNullTerminatedString("thread ", p);
-  size_t len = arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
-  p += len;
+  p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
   
   appendNullTerminatedString(", tid ", p);
-  len = arangodb::basics::StringUtils::itoa(uint64_t(gettid()), p);
-  p += len;
+  p += arangodb::basics::StringUtils::itoa(uint64_t(gettid()), p);
 
   char const* name = arangodb::Thread::currentThreadName();
   if (gettid() == getpid()) {
@@ -83,32 +82,46 @@ size_t buildLogMessage(char* s, int signal) {
     appendNullTerminatedString("]", p);
   }
   appendNullTerminatedString(" caught unexpected signal ", p);
-  len = arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
-  p += len;
+  p += arangodb::basics::StringUtils::itoa(uint64_t(signal), p);
   appendNullTerminatedString(" (", p);
   appendNullTerminatedString(arangodb::signals::name(signal), p);
   appendNullTerminatedString(")", p);
-  appendNullTerminatedString(". attempting stack trace dump...", p);
+  appendNullTerminatedString(". displaying ", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(stackSize), p);
+  
+  appendNullTerminatedString(" stack frame(s). use addr2line to resolve symbols!", p);
   
   return p - s;
 }
 
 void crashHandler(int signal, siginfo_t* info, void*) {
   try {
-    char buffer[256];
+    // backtrace
+    static constexpr int maxFrames = 100;
+    void* traces[maxFrames];
+    int skipFrames = 2;
+    int numFrames = backtrace(traces, maxFrames);
+
+    // buffer for constructing log messages (to avoid malloc as much as possible)
+    char buffer[512];
     memset(&buffer[0], 0, sizeof(buffer));
 
-    size_t length = buildLogMessage(&buffer[0], signal);
-    LOG_TOPIC("a7902", ERR, arangodb::Logger::FIXME) << arangodb::Logger::CHARS(&buffer[0], length);
+    size_t length = buildLogMessage(&buffer[0], signal, numFrames - skipFrames);
+    LOG_TOPIC("a7902", ERR, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
     arangodb::Logger::flush();
 
-    void* traces[64];
-    int size = backtrace(traces, sizeof(traces) / sizeof(traces[0]));
-    char** stack = backtrace_symbols(traces, size); 
+    char** stack = backtrace_symbols(traces, numFrames); 
     if (stack != nullptr) {
-      int skip = 2;
-      for (int i = skip /* ignore first frames */; i < size; ++i) {
-        LOG_TOPIC("308c2", WARN, arangodb::Logger::FIXME) << "- #" << (i - skip) << ' ' << stack[i];
+      for (int i = skipFrames /* ignore first frames */; i < numFrames; ++i) {
+        char* p = &buffer[0];
+        appendNullTerminatedString("- frame #", p);
+        p += arangodb::basics::StringUtils::itoa(uint64_t(i), p);
+        appendNullTerminatedString(": ", p);
+        if (strlen(stack[i]) <= 256) {
+          appendNullTerminatedString(stack[i], p);
+
+          LOG_TOPIC("308c2", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+        }
       }
       free(stack);
     }

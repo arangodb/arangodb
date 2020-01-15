@@ -150,11 +150,12 @@ class Logger {
   static LogTopic BACKUP;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
+  static LogTopic CLUSTERCOMM;
   static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;
-  static LogTopic CLUSTERCOMM;
   static LogTopic COMPACTOR;
   static LogTopic CONFIG;
+  static LogTopic CRASH;
   static LogTopic DATAFILES;
   static LogTopic DEVEL;
   static LogTopic DUMP;
