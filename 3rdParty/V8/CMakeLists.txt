@@ -156,7 +156,7 @@ if (WIN32)
   endif()
 
   list(APPEND V8_GYP_ARGS "-Dmsvs_cygwin_shell=0")
-  list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=false")
+  list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
 
   if ("${BITS}" STREQUAL "64")
     set(MS_TARGET_PLATFORM x64)
@@ -167,7 +167,8 @@ if (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ../gypfiles/all.gyp)
 
-  list(APPEND V8_TARGET_ARCHS "Debug" "Release")
+  list(APPEND V8_TARGET_ARCHS # "Debug"
+    "Release")
   set(GYP_GENERATORS "msvs")
   set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
@@ -182,7 +183,7 @@ if (WIN32)
     -Dwerror=
     -Dembed_script=
     -Dwarmup_script=
-    -Dv8_enable_embedded_builtins=0
+    -Dv8_enable_embedded_builtins=1
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=0
@@ -194,14 +195,18 @@ if (WIN32)
     torque
     run_torque
     generate_bytecode_builtins_list
-    v8
     v8_libsampler
     v8_initializers
-    v8_libplatform)
+    v8_libplatform
+    v8_nosnapshot
+    mksnapshot
+    v8_snapshot
+    v8
+    )
 
   add_custom_target(v8_build)
   set(V8_LIBS
-    "v8_compiler;v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
+    "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
@@ -210,15 +215,15 @@ if (WIN32)
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
     ExternalProject_Add(v8_build_${MS_TARGET_CONF_LOWER}
       BUILD_IN_SOURCE
-        TRUE
+      TRUE
       WORKING_DIRECTORY
-        ${V8_DIR}/gypfiles
+      ${V8_DIR}/gypfiles
       SOURCE_DIR
-        "${V8_DIR}"
+      "${V8_DIR}"
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} "${PYTHON_EXECUTABLE}" ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
       BUILD_COMMAND
-        ""
+      ""
       INSTALL_COMMAND
         ""
       )
@@ -232,12 +237,13 @@ if (WIN32)
           ${V8_TARGET_DIR}/../gypfiles
         COMMAND
           msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+#          msbuild All.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
         DEPENDEES
           configure
         DEPENDERS
           build
         )
-    endforeach()
+    endforeach ()
   endforeach ()
 
   set(ICU_LIBRARY_DEBUG   "${CMAKE_CURRENT_BINARY_DIR}/${V8_SUB_DIR}/third_party/icu/Debug")
@@ -261,34 +267,41 @@ if (WIN32)
 
 
   message("V8_LIBRARY_DEBUG ${V8_LIBRARY_DEBUG} CMAKE_CURRENT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}")
+#v8_libplatform.lib
+#v8_base_without_compiler.lib
+#v8_libbase.lib
+#v8_libsampler.lib
+#v8_compiler.lib
+#v8_snapshot.lib
+#v8_initializers.lib
 
   set(V8_LIBS
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
-
-    debug "${V8_LIBRARY_DEBUG}/lib/torque_base.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/torque_base.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_base_without_compiler.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_without_compiler.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_compiler.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_compiler.lib"
-
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_nosnapshot.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_nosnapshot.lib"
-
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
-
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libsampler.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libsampler.lib"
 
+    debug "${V8_LIBRARY_DEBUG}/lib/torque_base.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/torque_base.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_compiler.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_compiler.lib"
+
     debug "${V8_LIBRARY_DEBUG}/lib/v8_initializers.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_initializers.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_snapshot.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_snapshot.lib"
+
+#    debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
+#    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
 
     debug "DbgHelp.lib"
     optimized "DbgHelp.lib"
@@ -324,6 +337,8 @@ else ()
   set(V8_CFLAGS   "$ENV{V8_CFLAGS}")
   set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
   set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
+
+  list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=true")
 
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(V8_CFLAGS   "${V8_CFLAGS} -fno-delete-null-pointer-checks")
@@ -373,7 +388,7 @@ else ()
     -Dv8_enable_embedded_builtins=0
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
-    -Dv8_use_snapshot=0 )
+    -Dv8_use_snapshot=1 )
 
   if (APPLE AND CMAKE_COMPILER_IS_CLANG)
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -stdlib=libc++")
@@ -399,7 +414,16 @@ else ()
   )
 
   list(APPEND V8_COMPILE_TARGETS icui18n icuuc)
-  list(APPEND V8_COMPILE_TARGETS v8_libbase v8_libplatform v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot)
+  list(APPEND V8_COMPILE_TARGETS v8_libbase
+    v8_libplatform
+    v8_base
+    v8_libsampler
+    v8_init
+    v8_initializers
+    v8_nosnapshot
+    mksnapshot
+    v8_snapshot
+    )
 message(${V8_GYP_ARGS})
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE
@@ -411,14 +435,14 @@ message(${V8_GYP_ARGS})
     BUILD_COMMAND
       $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
     STEP_TARGETS
-      v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot
+      v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot mksnapshot v8_snapshot
     INSTALL_COMMAND
       "")
 
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS
-    "v8_compiler;v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
+    "v8_compiler;v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_snapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )

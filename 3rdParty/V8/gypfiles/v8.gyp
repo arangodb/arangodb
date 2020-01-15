@@ -443,18 +443,20 @@
               'outputs': ['<(INTERMEDIATE_DIR)/embedded.S'],
               'variables': {
                 'mksnapshot_flags': [
-                  '--embedded_variant', 'Default',
+                    # gyp prepends a directory: 
+                    # '--embedded_variant', 'Default',
                   '--embedded_src', '<(INTERMEDIATE_DIR)/embedded.S',
                 ],
               },
             }, {
                'outputs': ['<(V8_ROOT)/src/snapshot/embedded/embedded-empty.cc']
              }],
-            ['v8_random_seed', {
-              'variables': {
-                'mksnapshot_flags': ['--random-seed', '<(v8_random_seed)'],
-              },
-            }],
+                    # gyp prepends a directory: 
+#            ['v8_random_seed', {
+#              'variables': {
+#                'mksnapshot_flags': ['--random-seed', '314159265'],
+#              },
+#            }],
             ['v8_os_page_size', {
               'variables': {
                 'mksnapshot_flags': ['--v8_os_page_size', '<(v8_os_page_size)'],
