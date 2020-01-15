@@ -45,19 +45,23 @@ struct AsioSocket<SocketType::Tcp> {
   ~AsioSocket() {
     timer.cancel();
     try {
-      asio_ns::error_code ec;
-      shutdown(ec);
+      if (socket.is_open()) { // non-graceful shutdown
+        asio_ns::error_code ec;
+        socket.close(ec);
+      }
     } catch(...) {}
     context.decClients();
   }
   
   void setNonBlocking(bool v) { socket.non_blocking(v); }
-  bool supportsMixedIO() const { return true; }
+  static constexpr bool supportsMixedIO() { return true; }
   std::size_t available(asio_ns::error_code& ec) const {
     return socket.lowest_layer().available(ec);
   }
   
-  void shutdown(asio_ns::error_code& ec) {
+  template<typename F>
+  void shutdown(F&& cb) {
+    asio_ns::error_code ec;
     if (socket.is_open()) {
 #ifndef _WIN32
       socket.cancel(ec);
@@ -70,6 +74,7 @@ struct AsioSocket<SocketType::Tcp> {
         socket.close(ec);
       }
     }
+    std::forward<F>(cb)(ec);
   }
   
   arangodb::rest::IoContext& context;
@@ -90,14 +95,16 @@ struct AsioSocket<SocketType::Ssl> {
   ~AsioSocket() {
     try {
       timer.cancel();
-      asio_ns::error_code ec;
-      shutdown(ec);
+      if (socket.lowest_layer().is_open()) { // non-graceful shutdown
+        asio_ns::error_code ec;
+        socket.lowest_layer().close(ec);
+      }
     } catch(...) {}
     context.decClients();
   }
   
   void setNonBlocking(bool v) { socket.lowest_layer().non_blocking(v); }
-  bool supportsMixedIO() const { return false; }
+  static constexpr bool supportsMixedIO() { return false; }
   std::size_t available(asio_ns::error_code& ec) const {
     return 0; // always disable
   }
@@ -105,24 +112,25 @@ struct AsioSocket<SocketType::Ssl> {
   template<typename F>
   void handshake(F&& cb) {
     // Perform SSL handshake and verify the remote host's certificate.
-    socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+    socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
     socket.async_handshake(asio_ns::ssl::stream_base::server, std::forward<F>(cb));
   }
   
-  void shutdown(asio_ns::error_code& ec) {
+  template<typename F>
+  void shutdown(F&& cb) {
     if (socket.lowest_layer().is_open()) {
+      socket.async_shutdown([this, cb(std::forward<F>(cb))]
+                            (asio_ns::error_code const& ec) {
 #ifndef _WIN32
-      socket.lowest_layer().cancel(ec);
+        if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
+          asio_ns::error_code ec2;
+          socket.lowest_layer().close(ec2);
+        }
 #endif
-      if (!ec) {
-        socket.shutdown(ec);
-      }
-#ifndef _WIN32
-      if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
-        ec.clear();
-        socket.lowest_layer().close(ec);
-      }
-#endif
+        cb(ec);
+      });
+    } else {
+      std::forward<F>(cb)(asio_ns::error_code{});
     }
   }
   
@@ -144,19 +152,23 @@ struct AsioSocket<SocketType::Unix> {
   ~AsioSocket() {
     try {
       timer.cancel();
-      asio_ns::error_code ec;
-      shutdown(ec);
+      if (socket.is_open()) { // non-graceful shutdown
+        asio_ns::error_code ec;
+        socket.close(ec);
+      }
     } catch(...) {}
     context.decClients();
   }
   
   void setNonBlocking(bool v) { socket.non_blocking(v); }
-  bool supportsMixedIO() const { return true; }
+  static constexpr bool supportsMixedIO() { return true; }
   std::size_t available(asio_ns::error_code& ec) const {
     return socket.lowest_layer().available(ec);
   }
   
-  void shutdown(asio_ns::error_code& ec) {
+  template<typename F>
+  void shutdown(F&& cb) {
+    asio_ns::error_code ec;
     if (socket.is_open()) {
       socket.cancel(ec);
       if (!ec) {
@@ -166,6 +178,7 @@ struct AsioSocket<SocketType::Unix> {
         socket.close(ec);
       }
     }
+    std::forward<F>(cb)(ec);
   }
   
   arangodb::rest::IoContext& context;
