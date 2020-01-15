@@ -58,6 +58,16 @@ StringRef StringHeap::registerString(char const* ptr, size_t length) {
   return StringRef(position, length);
 }
 
+void StringHeap::clear() {
+  _current = nullptr;
+  _end = nullptr;
+
+  for (auto& it : _blocks) {
+    delete[] it;
+  }
+  _blocks.clear();
+}
+
 void StringHeap::merge(StringHeap&& heap) {
   _blocks.reserve(_blocks.size() + heap._blocks.size());
   _blocks.insert(_blocks.end(), heap._blocks.begin(), heap._blocks.end());
