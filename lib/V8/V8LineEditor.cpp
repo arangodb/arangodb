@@ -124,7 +124,7 @@ class V8Completer : public Completer {
  public:
   V8Completer() {}
 
-  ~V8Completer() {}
+  ~V8Completer() = default;
 
  public:
   bool isComplete(std::string const& source, size_t /*lineno*/) override final {

@@ -423,8 +423,8 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    auto& server = application_features::ApplicationServer::server();
-    auto& feature = server.getFeature<ClusterFeature>();
+    TRI_GET_GLOBALS();
+    auto& feature = v8g->_server.getFeature<ClusterFeature>();
     res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
 
     if (res != TRI_ERROR_NO_ERROR) {

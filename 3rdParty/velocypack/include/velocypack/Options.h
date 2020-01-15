@@ -95,6 +95,9 @@ struct Options {
   // pretty-print JSON output when dumping with Dumper
   bool prettyPrint = false;
 
+  // pretty-print JSON output when dumping with Dumper, but don't add any newlines
+  bool singleLinePrettyPrint = false;
+
   // keep top-level object/array open when building objects with the Parser
   bool keepTopLevelOpen = false;
 
@@ -121,6 +124,15 @@ struct Options {
   // order (false). undefined order may be faster but not deterministic
   bool dumpAttributesInIndexOrder = true;
 
+  // dump NaN as "NaN", Infinity as "Infinity"
+  bool unsupportedDoublesAsString = false;
+
+  // dump binary values as hex-encoded strings
+  bool binaryAsHex = false;
+
+  // render dates as integers
+  bool datesAsIntegers = false;
+
   // disallow using type External (to prevent injection of arbitrary pointer
   // values as a security precaution), validated when object-building via
   // Builder and VelocyPack validation using Validator objects
@@ -129,6 +141,15 @@ struct Options {
   // disallow using type Custom (to prevent injection of arbitrary opaque
   // values as a security precaution)
   bool disallowCustom = false;
+  
+  // disallow tagged values
+  bool disallowTags = false;
+  
+  // disallow BCD values
+  bool disallowBCD = false;
+
+  // write tags to JSON output
+  bool debugTags = false;
 
   // default options with the above settings
   static Options Defaults;

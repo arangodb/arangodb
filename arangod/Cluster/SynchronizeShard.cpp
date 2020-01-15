@@ -409,11 +409,6 @@ static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
   return arangodb::Result();
 }
 
-static inline bool isStopping() {
-  auto& server = application_features::ApplicationServer::server();
-  return server.isStopping();
-}
-
 arangodb::Result SynchronizeShard::getReadLock(
   network::ConnectionPool* pool,
   std::string const& endpoint, std::string const& database,
@@ -607,9 +602,9 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
   return ResultT<SyncerId>::success(syncerId);
 }
 
-static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, double timeout,
-                                                      TRI_voc_tick_t& tickReached,
-                                                      bool& didTimeout) {
+static arangodb::Result replicationSynchronizeCatchup(
+    application_features::ApplicationServer& server, VPackSlice const& conf,
+    double timeout, TRI_voc_tick_t& tickReached, bool& didTimeout) {
   didTimeout = false;
 
   auto const database = conf.get(DATABASE).copyString();
@@ -617,7 +612,6 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
-  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
@@ -649,13 +643,13 @@ static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, do
   return r;
 }
 
-static arangodb::Result replicationSynchronizeFinalize(VPackSlice const& conf) {
+static arangodb::Result replicationSynchronizeFinalize(application_features::ApplicationServer& server,
+                                                       VPackSlice const& conf) {
   auto const database = conf.get(DATABASE).copyString();
   auto const collection = conf.get(COLLECTION).copyString();
   auto const leaderId = conf.get(LEADER_ID).copyString();
   auto const fromTick = conf.get("from").getNumber<uint64_t>();
 
-  auto& server = application_features::ApplicationServer::server();
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(server, conf, database);
   // will throw if invalid
@@ -707,7 +701,7 @@ bool SynchronizeShard::first() {
   // Current in the Agency) or we or the shard have vanished from
   // the plan:
   while (true) {
-    if (isStopping()) {
+    if (feature().server().isStopping()) {
       _result.reset(TRI_ERROR_SHUTTING_DOWN);
       return false;
     }
@@ -841,7 +835,7 @@ bool SynchronizeShard::first() {
 
       // First once without a read transaction:
 
-      if (isStopping()) {
+      if (feature().server().isStopping()) {
         std::string errorMessage(
           "SynchronizeShard: synchronization failed for shard ");
         errorMessage += shard + ": shutdown in progress, giving up";
@@ -986,7 +980,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
   TRI_voc_tick_t tickReached = 0;
   while (didTimeout && tries++ < 18) {  // This will try to sync for at most 1 hour. (200 * 18 == 3600)
 
-    if (isStopping()) {
+    if (feature().server().isStopping()) {
       std::string errorMessage =
         "SynchronizeShard: startReadLockOnLeader (soft): shutting down";
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_SHUTTING_DOWN, errorMessage);
@@ -1042,7 +1036,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     // We only allow to hold this lock for 60% of the timeout time, so to avoid
     // any issues with Locks timeouting on the Leader and the Client not
     // recognizing it.
-    res = replicationSynchronizeCatchup(builder.slice(), timeout * 0.6, tickReached, didTimeout);
+    res = replicationSynchronizeCatchup(feature().server(), builder.slice(),
+                                        timeout * 0.6, tickReached, didTimeout);
 
     if (!res.ok()) {
       std::string errorMessage(
@@ -1119,7 +1114,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     builder.add("connectTimeout", VPackValue(60.0));
   }
 
-  res = replicationSynchronizeFinalize(builder.slice());
+  res = replicationSynchronizeFinalize(feature().server(), builder.slice());
 
   if (!res.ok()) {
     std::string errorMessage(

@@ -23,6 +23,8 @@
 #ifndef ARANGODB_BENCHMARK_BENCH_FEATURE_H
 #define ARANGODB_BENCHMARK_BENCH_FEATURE_H 1
 
+#include <atomic>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
