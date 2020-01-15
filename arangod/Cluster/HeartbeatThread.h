@@ -164,10 +164,19 @@ class HeartbeatThread : public CriticalThread,
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get some regular news from the agency, a closure which calls this
-  /// method is regularly posted to the scheduler
+  /// method is regularly posted to the scheduler. This is for the
+  /// DBServer.
   //////////////////////////////////////////////////////////////////////////////
 
-  void getNewsFromAgency();
+  void getNewsFromAgencyForDBServer();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get some regular news from the agency, a closure which calls this
+  /// method is regularly posted to the scheduler. This is for the
+  /// Coordinator.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void getNewsFromAgencyForCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
@@ -293,6 +302,21 @@ class HeartbeatThread : public CriticalThread,
   /// @brief number of subsequent failed version updates
   //////////////////////////////////////////////////////////////////////////////
   uint64_t _failedVersionUpdates;
+
+  // The following are only used in the coordinator case. This
+  // is the coordinator's way to learn of new Plan and Current
+  // Versions.
+
+  // invalidate coordinators every 2nd call
+  std::atomic<bool> _invalidateCoordinators;
+
+  // last value of plan which we have noticed:
+  std::atomic<uint64_t> _lastPlanVersionNoticed;
+  // last value of current which we have noticed:
+  std::atomic<uint64_t> _lastCurrentVersionNoticed;
+  // For periodic update of the current DBServer list:
+  std::atomic<int> _DBServerUpdateCounter;
+
 };
 }  // namespace arangodb
 
