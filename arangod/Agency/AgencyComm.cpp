@@ -530,8 +530,9 @@ std::unique_ptr<AgencyCommManager> AgencyCommManager::MANAGER;
 
 AgencyConnectionOptions AgencyCommManager::CONNECTION_OPTIONS(15.0, 120.0, 120.0, 100);
 
-void AgencyCommManager::initialize(std::string const& prefix) {
-  MANAGER.reset(new AgencyCommManager(prefix));
+void AgencyCommManager::initialize(application_features::ApplicationServer& server,
+                                   std::string const& prefix) {
+  MANAGER.reset(new AgencyCommManager(server, prefix));
 }
 
 void AgencyCommManager::shutdown() { MANAGER.reset(); }
@@ -583,7 +584,7 @@ std::string AgencyCommManager::generateStamp() {
 }
 
 bool AgencyCommManager::start() {
-  AgencyComm comm;
+  AgencyComm comm(_server);
   bool ok = comm.ensureStructureInitialized();
 
   LOG_TOPIC("d8ce6", DEBUG, Logger::AGENCYCOMM)
@@ -817,7 +818,7 @@ std::unique_ptr<GeneralClientConnection> AgencyCommManager::createNewConnection(
   }
 
   return std::unique_ptr<GeneralClientConnection>(
-      GeneralClientConnection::factory(endpoint, CONNECTION_OPTIONS._requestTimeout,
+      GeneralClientConnection::factory(_server, endpoint, CONNECTION_OPTIONS._requestTimeout,
                                        CONNECTION_OPTIONS._connectTimeout,
                                        CONNECTION_OPTIONS._connectRetries, 0));
 }
@@ -842,6 +843,9 @@ void AgencyCommManager::switchCurrentEndpoint() {
 // -----------------------------------------------------------------------------
 
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
+
+AgencyComm::AgencyComm(application_features::ApplicationServer& server)
+    : _server(server) {}
 
 AgencyCommResult AgencyComm::sendServerState(double ttl) {
   // construct JSON value { "status": "...", "time": "..." }
@@ -1261,11 +1265,14 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
   return result;
 }
 
+application_features::ApplicationServer& AgencyComm::server() {
+  return _server;
+}
+
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  auto& server = application_features::ApplicationServer::server();
-  while (!server.isStopping() && shouldInitializeStructure()) {
+  while (!_server.isStopping() && shouldInitializeStructure()) {
     LOG_TOPIC("17e16", TRACE, Logger::AGENCYCOMM)
       << "Agency is fresh. Needs initial structure.";
 
@@ -1414,9 +1421,8 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   int tries = 0;
 
-  auto waitSomeTime = [&waitInterval, &result]() -> bool {
+  auto waitSomeTime = [&waitInterval, &result, &server = _server]() -> bool {
     // Returning true means timeout because of shutdown:
-    auto& server = application_features::ApplicationServer::server();
     if (server.isStopping()) {
       LOG_TOPIC("53e58", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
@@ -1482,8 +1488,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // Some reporting:
     if (tries > 20) {
-      auto& server = application_features::ApplicationServer::server();
-      std::string serverState = server.stringifyState();
+      std::string serverState = _server.stringifyState();
       LOG_TOPIC("2f181", INFO, Logger::AGENCYCOMM)
           << "Flaky agency communication to " << endpoint
           << ". Unsuccessful consecutive tries: " << tries << " (" << elapsed
@@ -1525,8 +1530,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
 
       // got a result or shutdown, we are done
-      auto& server = application_features::ApplicationServer::server();
-      if (result.successful() || server.isStopping()) {
+      if (result.successful() || _server.isStopping()) {
         AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
         break;
       }
@@ -1887,8 +1891,7 @@ bool AgencyComm::shouldInitializeStructure() {
 
   size_t nFail = 0;
 
-  auto& server = application_features::ApplicationServer::server();
-  while (!server.isStopping()) {
+  while (!_server.isStopping()) {
     auto result = getValues("Plan");
 
     if (!result.successful()) { // Not 200 - 299

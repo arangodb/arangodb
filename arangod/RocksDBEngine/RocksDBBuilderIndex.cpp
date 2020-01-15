@@ -22,6 +22,7 @@
 
 #include "RocksDBBuilderIndex.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Containers/HashSet.h"

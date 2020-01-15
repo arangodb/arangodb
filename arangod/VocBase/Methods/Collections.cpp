@@ -473,9 +473,10 @@ void Collections::createSystemCollectionProperties(std::string const& collection
   uint32_t defaultReplicationFactor = vocbase.replicationFactor();
   uint32_t defaultWriteConcern = vocbase.writeConcern();
 
-  auto& server = application_features::ApplicationServer::server();
-  if (server.hasFeature<ClusterFeature>()) {
-    defaultReplicationFactor = std::max(defaultReplicationFactor, server.getFeature<ClusterFeature>().systemReplicationFactor());
+  if (vocbase.server().hasFeature<ClusterFeature>()) {
+    defaultReplicationFactor =
+        std::max(defaultReplicationFactor,
+                 vocbase.server().getFeature<ClusterFeature>().systemReplicationFactor());
   }
 
   {
@@ -865,7 +866,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
 
-  auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
+  auto queue = std::make_shared<basics::LocalTaskQueue>(vocbase.server(), poster);
 
   auto idxs = coll.getIndexes();
   for (auto& idx : idxs) {

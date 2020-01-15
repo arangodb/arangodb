@@ -23,6 +23,7 @@
 
 #include "RocksDBTransactionState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
@@ -40,10 +41,10 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Statistics/ServerStatistics.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"

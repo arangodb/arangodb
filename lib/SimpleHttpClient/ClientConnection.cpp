@@ -49,13 +49,17 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
+ClientConnection::ClientConnection(application_features::ApplicationServer& server,
+                                   Endpoint* endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {}
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+                              connectRetries) {}
 
-ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+ClientConnection::ClientConnection(application_features::ApplicationServer& server,
+                                   std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {}
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+                              connectRetries) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection

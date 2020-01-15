@@ -58,8 +58,8 @@ void GeneralConnection<ST>::startConnection() {
   if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
     auto cb = [self = Connection::shared_from_this()] {
-      auto* thisPtr = static_cast<GeneralConnection<ST>*>(self.get());
-      thisPtr->tryConnect(thisPtr->_config._maxConnectRetries);
+      auto* me = static_cast<GeneralConnection<ST>*>(self.get());
+      me->tryConnect(me->_config._maxConnectRetries);
     };
     asio_ns::post(*this->_io_context, std::move(cb));
   }

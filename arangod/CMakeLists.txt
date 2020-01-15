@@ -473,17 +473,18 @@ set (LIB_ARANGO_METRICS_SOURCES
   )
 
 set(LIB_ARANGO_AGENCY_SOURCES
-  Agency/AgentConfiguration.cpp
-  Agency/ResignLeadership.cpp
   Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
+  Agency/AgentConfiguration.cpp
+  Agency/AsyncAgencyComm.cpp
   Agency/CleanOutServer.cpp
   Agency/Compactor.cpp
   Agency/Constituent.cpp
+  Agency/ResignLeadership.cpp
   Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
@@ -499,6 +500,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/Store.cpp
   Agency/Supervision.cpp
   Agency/v8-agency.cpp
+  Cluster/AgencyPaths.cpp
 )
 
 set(LIB_ARANGO_V8SERVER_SOURCES
@@ -547,7 +549,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
-  Cluster/AgencyPaths.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterFeature.cpp
@@ -609,6 +610,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/SslServerFeature.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
+  RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -636,11 +638,13 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestPleaseUpgradeHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestRedirectHandler.cpp
   RestHandler/RestRepairHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
+  RestHandler/RestSupervisionStateHandler.cpp
   RestHandler/RestTasksHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
@@ -781,7 +785,7 @@ add_library(arango_agency STATIC
   ${LIB_ARANGO_AGENCY_SOURCES}
 )
 
-add_library(arangoserver STATIC 
+add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
   ${ProductVersionFiles}
@@ -792,11 +796,11 @@ add_library(arango_network STATIC
 )
 
 add_library(arango_mmfiles STATIC
-  ${MMFILES_SOURCES} 
+  ${MMFILES_SOURCES}
 )
 
 add_library(arango_rocksdb STATIC
-  ${ROCKSDB_SOURCES} 
+  ${ROCKSDB_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
 

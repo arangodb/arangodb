@@ -48,7 +48,7 @@ ApplicationFeature::ApplicationFeature(ApplicationServer& server, std::string co
       _requiresElevatedPrivileges(false),
       _ancestorsDetermined(false) {}
 
-ApplicationFeature::~ApplicationFeature() {}
+ApplicationFeature::~ApplicationFeature() = default;
 
 // add the feature's options to the global list of options. this method will be
 // called regardless of whether to feature is enabled or disabled

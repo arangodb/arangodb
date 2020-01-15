@@ -101,9 +101,6 @@ class StaticStrings {
   static std::string const DatabaseId;
   static std::string const DatabaseName;
   static std::string const DatabaseOptions;
-  static std::string const DatabaseCoordinator;
-  static std::string const DatabaseCoordinatorRebootId;
-  static std::string const DatabaseIsBuilding;
   static std::string const Properties;
 
   // LogicalDataSource definition fields
@@ -244,14 +241,29 @@ class StaticStrings {
   static std::string const GraphInitialCid;
   static std::string const GraphName;
 
+  // Query Strings
+  static std::string const QuerySortASC;
+  static std::string const QuerySortDESC;
+
+  // Graph Query Strings
+  static std::string const GraphQueryEdges;
+  static std::string const GraphQueryVertices;
+  static std::string const GraphQueryPath;
+  static std::string const GraphQueryGlobal;
+  static std::string const GraphQueryNone;
+
   // Replication
   static std::string const ReplicationSoftLockOnly;
   static std::string const FailoverCandidates;
 
+  // generic attribute names
+  static std::string const AttrCoordinator;
+  static std::string const AttrCoordinatorRebootId;
+  static std::string const AttrIsBuilding;
+
   // misc strings
   static std::string const LastValue;
   static std::string const checksumFileJs;
-  static std::string const IsBuilding;
   static std::string const RebootId;
   static std::string const New;
   static std::string const Old;
