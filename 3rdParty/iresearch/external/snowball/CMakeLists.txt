@@ -193,25 +193,12 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/libstemmer_c.in ${CMAKE_CU
 MACRO(gen_stem IN ENCODING)
 	FOREACH(_it ${IN})
 		SET(_base "${CMAKE_CURRENT_BINARY_DIR}/libstemmer/stem_${ENCODING}_${_it}")
-		SET(_header "${_base}.h")
 		SET(_source "${_base}.c")
-		STRING(REPLACE "UTF_8" "Unicode" _in_enc "${ENCODING}")
 		SET(_input "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}.sbl")
-		IF(${_in_enc} STREQUAL "Unicode" AND NOT EXISTS ${_input})
-			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				# TODO: in Snowball 2 the stemmers are organized like algorithms/german.sbl, what is this fallback for?!
-				COMMAND $<TARGET_FILE:snowball>  "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}.sbl" -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
-				DEPENDS snowball)
-			LIST(APPEND STEMMER_SOURCES ${_source})
-
-		ELSE()
-		IF(EXISTS "${_input}")
-			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND $<TARGET_FILE:snowball> ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
-				DEPENDS snowball)
-			LIST(APPEND STEMMER_SOURCES ${_source})
-		ENDIF()
-		ENDIF()
+		ADD_CUSTOM_COMMAND(OUTPUT ${_source}
+			COMMAND $<TARGET_FILE:snowball> ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+			DEPENDS snowball)
+		LIST(APPEND STEMMER_SOURCES ${_source})
 	ENDFOREACH()
 ENDMACRO()
 
