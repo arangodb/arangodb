@@ -25,6 +25,7 @@
 
 #include <rocksdb/utilities/transaction_db.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"

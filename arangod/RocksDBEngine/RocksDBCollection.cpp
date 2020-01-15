@@ -22,6 +22,7 @@
 
 #include "RocksDBCollection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"

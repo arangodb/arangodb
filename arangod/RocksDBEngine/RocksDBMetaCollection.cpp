@@ -23,6 +23,7 @@
 
 #include "RocksDBMetaCollection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
