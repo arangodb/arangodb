@@ -148,8 +148,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
   }
 
-  return agencyAsyncWait(meta, waitTime)
-      .thenValue([meta = std::move(meta), &man, body = std::move(body)](auto) mutable {
+  auto future = agencyAsyncWait(meta, waitTime);
+  return std::move(future).thenValue(
+      [meta = std::move(meta), &man, body = std::move(body)](auto) mutable {
         // build inquire request
         VPackBuffer<uint8_t> query;
         {
@@ -167,11 +168,12 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
         opts.timeout = meta.timeout;
         opts.skipScheduler = meta.skipScheduler;
 
-        return network::sendRequest(man.pool(), endpoint, meta.method,
-                                    "/_api/agency/inquire", std::move(query),
-                                    opts, meta.headers)
-            .thenValue([meta = std::move(meta), endpoint = std::move(endpoint), &man,
-                        body = std::move(body)](network::Response&& result) mutable {
+        auto future = network::sendRequest(man.pool(), endpoint, meta.method,
+                                           "/_api/agency/inquire",
+                                           std::move(query), opts, meta.headers);
+        return std::move(future).thenValue(
+            [meta = std::move(meta), endpoint = std::move(endpoint), &man,
+             body = std::move(body)](network::Response&& result) mutable {
               auto& resp = result.response;
 
               switch (result.error) {
@@ -223,11 +225,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
   LOG_TOPIC("aac80", TRACE, Logger::AGENCYCOMM)
       << "agencyAsyncSend " << to_string(meta.method) << " " << meta.url
       << " with body " << VPackSlice(body.data()).toJson() << " and wait time "
-      << std::chrono::duration_cast<std::chrono::milliseconds>(waitTime).count() << "ms";
+      << std::chrono::duration_cast<std::chrono::milliseconds>(waitTime).count() << "ms"
+      << " with timeout " << meta.timeout.count() << "s";
 
   // after a possible small delay (if required)
-  return agencyAsyncWait(meta, waitTime)
-      .thenValue([meta = std::move(meta), &man, body = std::move(body)](auto) mutable {
+  auto future = agencyAsyncWait(meta, waitTime);
+  return std::move(future).thenValue(
+      [meta = std::move(meta), &man, body = std::move(body)](auto) mutable {
         // acquire the current endpoint
         std::string endpoint = man.getCurrentEndpoint();
         network::RequestOptions opts;
@@ -238,10 +242,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
             << "agencyAsyncSend sending request";
 
         // and fire off the request
-        return network::sendRequest(man.pool(), endpoint, meta.method, meta.url,
-                                    std::move(body), opts, meta.headers)
-            .thenValue([meta = std::move(meta), endpoint = std::move(endpoint),
-                        &man](network::Response&& result) mutable {
+        auto future = network::sendRequest(man.pool(), endpoint, meta.method, meta.url,
+                                           std::move(body), opts, meta.headers);
+        return std::move(future).thenValue(
+            [meta = std::move(meta), endpoint = std::move(endpoint),
+             &man](network::Response&& result) mutable {
               LOG_TOPIC("aac83", TRACE, Logger::AGENCYCOMM)
                   << "agencyAsyncSend request done: " << to_string(result.error);
 
