@@ -20,7 +20,7 @@ routines (
 
 externals ( stem )
 
-integers ( p1 p2 p3 sbst )
+integers ( p1 p2 p3 )
 
 groupings ( v ca sa rg )
 
@@ -140,16 +140,13 @@ define mark_regions as (
     
     $p1 = limit
     $p2 = 0
-    $sbst = 0
     
     do (
-        gopast 'r' setmark p2
+        gopast v setmark p1
     )
     do (
-        gopast v setmark p1 setmark sbst
-    )
-    try (
-        ($p2 != 0) ($p2 < p1) ($sbst -= p2) ($sbst > 1) ($p1 = p2)
+        gopast 'r' setmark p2
+        $(p1 - p2 > 1) ($p1 = p2)
     )
     ($p1 < 2) (
         ($p1 == p2 gopast 'r' gopast non-rg) or ($p1 != p2 gopast v gopast non-v)
