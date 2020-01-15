@@ -88,11 +88,11 @@ class SingleRowFetcher {
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
 

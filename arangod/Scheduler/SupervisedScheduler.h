@@ -44,7 +44,8 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
-  bool queue(RequestLane lane, std::function<void()>) override ADB_WARN_UNUSED_RESULT;
+  bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
+
 
  private:
   std::atomic<size_t> _numWorkers;
@@ -66,11 +67,9 @@ class SupervisedScheduler final : public Scheduler {
   friend class SupervisedSchedulerWorkerThread;
 
   struct WorkItem final {
-    std::function<void()> _handler;
+    fu2::unique_function<void()> _handler;
 
-    explicit WorkItem(std::function<void()> const& handler)
-        : _handler(handler) {}
-    explicit WorkItem(std::function<void()>&& handler)
+    explicit WorkItem(fu2::unique_function<void()>&& handler)
         : _handler(std::move(handler)) {}
     ~WorkItem() = default;
 

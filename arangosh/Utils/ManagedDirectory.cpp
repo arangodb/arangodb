@@ -29,6 +29,7 @@
 
 #include "ManagedDirectory.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"

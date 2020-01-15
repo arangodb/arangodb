@@ -30,6 +30,9 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class LogicalCollection;  // forward declaration
 class LogicalView;        // forward declaration
@@ -60,9 +63,10 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal( // equal definition
-    arangodb::velocypack::Slice const& lhs, // left hand side
-    arangodb::velocypack::Slice const& rhs // right hand side
+  static bool equal(  // equal definition
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& lhs,  // left hand side
+      arangodb::velocypack::Slice const& rhs   // right hand side
   );
 
   //////////////////////////////////////////////////////////////////////////////

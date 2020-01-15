@@ -108,7 +108,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
 
   if (!viewNode.filterConditionIsEmpty()) {
     searchCondition.andCombine(&viewNode.filterCondition());
-    searchCondition.normalize(&plan, true);  // normalize the condition
+    searchCondition.normalize(
+        &plan, true, viewNode.options().conditionOptimization);  
 
     if (searchCondition.isEmpty()) {
       // condition is always false

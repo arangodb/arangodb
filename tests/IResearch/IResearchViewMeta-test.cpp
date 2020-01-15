@@ -27,6 +27,7 @@
 
 #include "utils/locale_utils.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"

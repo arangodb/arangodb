@@ -25,6 +25,7 @@
 
 #include <velocypack/Exception.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"

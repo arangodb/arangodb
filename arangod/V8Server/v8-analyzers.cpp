@@ -268,11 +268,13 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto& system = arangodb::application_features::ApplicationServer::server();
-  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
+  TRI_GET_GLOBALS();
+  auto& analyzers =
+      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase =
+      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName = 
@@ -421,12 +423,13 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto& system = arangodb::application_features::ApplicationServer::server();
-  ;
-  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
+  TRI_GET_GLOBALS();
+  auto& analyzers =
+      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase =
+      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
 
   auto name = TRI_ObjectToString(isolate, args[0]);
   std::string nameBuf;
@@ -501,12 +504,13 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto& system = arangodb::application_features::ApplicationServer::server();
-  ;
-  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
+  TRI_GET_GLOBALS();
+  auto& analyzers =
+      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase =
+      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
 
   // ...........................................................................
   // end of parameter parsing
@@ -580,12 +584,13 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto& system = arangodb::application_features::ApplicationServer::server();
-  ;
-  auto& analyzers = system.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto sysVocbase = system.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? system.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
+  TRI_GET_GLOBALS();
+  auto& analyzers =
+      v8g->_server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto sysVocbase =
+      v8g->_server.hasFeature<arangodb::SystemDatabaseFeature>()
+          ? v8g->_server.getFeature<arangodb::SystemDatabaseFeature>().use()
+          : nullptr;
 
   auto nameFromArgs = TRI_ObjectToString(isolate, args[0]);
   auto splittedAnalyzerName = 
