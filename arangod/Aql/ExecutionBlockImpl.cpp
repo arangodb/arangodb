@@ -141,7 +141,6 @@ CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 // only used as long as isNewStyleExecutor is required.
 namespace arangodb {
 namespace aql {
-template <BlockPassthrough allowPass>
 class TestLambdaExecutor;
 
 class TestLambdaSkipExecutor;
@@ -153,8 +152,7 @@ template <class Executor>
 static bool constexpr isNewStyleExecutor() {
   return
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Enable>> ||
-      std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Disable>> ||
+      std::is_same_v<Executor, TestLambdaExecutor> ||
       std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
       std::is_same_v<Executor, FilterExecutor>;

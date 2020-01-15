@@ -87,12 +87,11 @@ class LambdaSkipExecutorInfos : public ExecutorInfos {
   SkipCall _skipLambda;
 };
 
-template <BlockPassthrough allowPass>
 class TestLambdaExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough = allowPass;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

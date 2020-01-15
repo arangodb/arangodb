@@ -53,8 +53,8 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-using LambdaExePassThrough = TestLambdaExecutor<BlockPassthrough::Enable>;
-using LambdaExe = TestLambdaExecutor<BlockPassthrough::Disable>;
+using LambdaExePassThrough = TestLambdaExecutor;
+using LambdaExe = TestLambdaSkipExecutor;
 
 // This test is supposed to only test getSome return values,
 // it is not supposed to test the fetch logic!
@@ -421,7 +421,7 @@ class SharedExecutionBlockImplTest {
     return res;
   }
 
-  LambdaExecutorInfos makeInfos(ProduceCall&& call, RegisterId read = RegisterPlan::MaxRegisterId,
+  LambdaExecutorInfos makeInfos(ProduceCall call, RegisterId read = RegisterPlan::MaxRegisterId,
                                 RegisterId write = RegisterPlan::MaxRegisterId) {
     if (read != RegisterPlan::MaxRegisterId) {
       EXPECT_LE(read, write);
@@ -451,7 +451,7 @@ class SharedExecutionBlockImplTest {
                                registersToKeep, std::move(call));
   }
 
-  LambdaSkipExecutorInfos makeSkipInfos(ProduceCall&& call, SkipCall&& skipCall,
+  LambdaSkipExecutorInfos makeSkipInfos(ProduceCall call, SkipCall skipCall,
                                         RegisterId read = RegisterPlan::MaxRegisterId,
                                         RegisterId write = RegisterPlan::MaxRegisterId) {
     if (read != RegisterPlan::MaxRegisterId) {
@@ -529,17 +529,34 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_unlimited_call) {
     return {input.upstreamState(), stats, call};
   };
 
-  ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), node,
-                                       makeInfos(std::move(execImpl))};
-  auto singleton = createSingleton();
-  testee.addDependency(singleton.get());
-  auto [state, skipped, block] = testee.execute(stack);
+  auto run = [&](ExecutionBlock& testee) -> void {
+    auto singleton = createSingleton();
+    testee.addDependency(singleton.get());
+    auto [state, skipped, block] = testee.execute(stack);
 
-  EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(skipped, 0);
-  EXPECT_EQ(block, nullptr);
-  // Once with empty, once with the line by Singleton
-  EXPECT_EQ(nrCalls, 2);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+    // Once with empty, once with the line by Singleton
+    EXPECT_EQ(nrCalls, 2);
+  };
+  {
+    ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(), node,
+                                                    makeInfos(execImpl)};
+    run(testee);
+  }
+  nrCalls = 0;
+  {
+    SkipCall skipCall = [](AqlItemBlockInputRange& input,
+                           AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
+      // Should not be called here. No Skip!
+      EXPECT_TRUE(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    };
+    ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), node,
+                                         makeSkipInfos(execImpl, skipCall)};
+    run(testee);
+  }
 }
 
 TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_softlimit_call) {
@@ -575,17 +592,34 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_softlimit_call) {
     return {input.upstreamState(), stats, call};
   };
 
-  ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), node,
-                                       makeInfos(std::move(execImpl))};
-  auto singleton = createSingleton();
-  testee.addDependency(singleton.get());
-  auto [state, skipped, block] = testee.execute(stack);
+  auto run = [&](ExecutionBlock& testee) -> void {
+    auto singleton = createSingleton();
+    testee.addDependency(singleton.get());
+    auto [state, skipped, block] = testee.execute(stack);
 
-  EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(skipped, 0);
-  EXPECT_EQ(block, nullptr);
-  // Once with empty, once with the line by Singleton
-  EXPECT_EQ(nrCalls, 2);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+    // Once with empty, once with the line by Singleton
+    EXPECT_EQ(nrCalls, 2);
+  };
+  {
+    ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(), node,
+                                                    makeInfos(execImpl)};
+    run(testee);
+  }
+  nrCalls = 0;
+  {
+    SkipCall skipCall = [](AqlItemBlockInputRange& input,
+                           AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
+      // Should not be called here. No Skip!
+      EXPECT_TRUE(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    };
+    ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), node,
+                                         makeSkipInfos(execImpl, skipCall)};
+    run(testee);
+  }
 }
 
 TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_hardlimit_call) {
@@ -620,17 +654,34 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_hardlimit_call) {
     return {input.upstreamState(), stats, call};
   };
 
-  ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), node,
-                                       makeInfos(std::move(execImpl))};
-  auto singleton = createSingleton();
-  testee.addDependency(singleton.get());
-  auto [state, skipped, block] = testee.execute(stack);
+  auto run = [&](ExecutionBlock& testee) -> void {
+    auto singleton = createSingleton();
+    testee.addDependency(singleton.get());
+    auto [state, skipped, block] = testee.execute(stack);
 
-  EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(skipped, 0);
-  EXPECT_EQ(block, nullptr);
-  // Once with empty, once with the line by Singleton
-  EXPECT_EQ(nrCalls, 2);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+    // Once with empty, once with the line by Singleton
+    EXPECT_EQ(nrCalls, 2);
+  };
+  {
+    ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(), node,
+                                                    makeInfos(execImpl)};
+    run(testee);
+  }
+  nrCalls = 0;
+  {
+    SkipCall skipCall = [](AqlItemBlockInputRange& input,
+                           AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
+      // Should not be called here. No Skip!
+      EXPECT_TRUE(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    };
+    ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), node,
+                                         makeSkipInfos(execImpl, skipCall)};
+    run(testee);
+  }
 }
 
 TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_call_passthrough) {
@@ -706,7 +757,7 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_only_call_passthrough
   EXPECT_EQ(nrCalls, 0);
 }
 
-TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_call_execute) {
+TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_call_skip) {
   AqlCall fullCall{};
   fullCall.offset = 20;
   AqlCallStack stack{std::move(fullCall)};
@@ -715,33 +766,37 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_call_execute) {
 
   ProduceCall execImpl = [&nrCalls](AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, LambdaExePassThrough::Stats, AqlCall> {
-    auto const& clientCall = output.getClientCall();
-    if (nrCalls > 10) {
+    nrCalls++;
+    EXPECT_TRUE(false);
+    // This is emergency bailout, we ask way to often here
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  };
+  size_t nrSkipCalls = 0;
+  SkipCall skipCall =
+      [&nrSkipCalls](AqlItemBlockInputRange& inputRange,
+                     AqlCall& clientCall) -> std::tuple<ExecutorState, size_t, AqlCall> {
+    if (nrSkipCalls > 10) {
       EXPECT_TRUE(false);
       // This is emergency bailout, we ask way to often here
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-    nrCalls++;
+    nrSkipCalls++;
     EXPECT_EQ(clientCall.getOffset(), 0);
-    EXPECT_FALSE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
-    EXPECT_EQ(std::get<std::size_t>(clientCall.softLimit), 20);
+    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.hardLimit));
-    EXPECT_EQ(output.numRowsLeft(), 20);
-    while (inputRange.hasDataRow() && !output.isFull()) {
+    size_t localSkip = 0;
+    while (inputRange.hasDataRow() && clientCall.getOffset() > localSkip) {
       auto const& [state, input] = inputRange.nextDataRow();
       EXPECT_TRUE(input.isInitialized());
-      // We do not write anything, so just advance!
-      output.copyRow(input);
-      output.advanceRow();
+      localSkip++;
     }
+    clientCall.didSkip(localSkip);
 
-    NoStats stats{};
-    // Forward the client call.
-    return {inputRange.upstreamState(), stats, output.getClientCall()};
+    return {inputRange.upstreamState(), localSkip, clientCall};
   };
 
-  ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(), node,
-                                                  makeInfos(std::move(execImpl))};
+  ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), node,
+                                       makeSkipInfos(execImpl, skipCall)};
   auto singleton = createSingleton();
   testee.addDependency(singleton.get());
   auto [state, skipped, block] = testee.execute(stack);
@@ -750,10 +805,12 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_call_execute) {
   EXPECT_EQ(skipped, 1);
   EXPECT_EQ(block, nullptr);
   // Once with empty, once with the line by Singleton
+  EXPECT_EQ(nrSkipCalls, 2);
+  // We never produce
   EXPECT_EQ(nrCalls, 0);
 }
 
-TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_only_call_execute) {
+TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_only_call_skip) {
   AqlCall fullCall{};
   fullCall.offset = 20;
   fullCall.softLimit = 0;
@@ -763,33 +820,37 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_only_call_execute) {
 
   ProduceCall execImpl = [&nrCalls](AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, LambdaExePassThrough::Stats, AqlCall> {
-    auto const& clientCall = output.getClientCall();
-    if (nrCalls > 10) {
+    nrCalls++;
+    EXPECT_TRUE(false);
+    // This is emergency bailout, we ask way to often here
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  };
+  size_t nrSkipCalls = 0;
+  SkipCall skipCall =
+      [&nrSkipCalls](AqlItemBlockInputRange& inputRange,
+                     AqlCall& clientCall) -> std::tuple<ExecutorState, size_t, AqlCall> {
+    if (nrSkipCalls > 10) {
       EXPECT_TRUE(false);
       // This is emergency bailout, we ask way to often here
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-    nrCalls++;
+    nrSkipCalls++;
     EXPECT_EQ(clientCall.getOffset(), 0);
-    EXPECT_FALSE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
-    EXPECT_EQ(std::get<std::size_t>(clientCall.softLimit), 20);
+    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.hardLimit));
-    EXPECT_EQ(output.numRowsLeft(), 20);
-
-    while (inputRange.hasDataRow() && !output.isFull()) {
+    size_t localSkip = 0;
+    while (inputRange.hasDataRow() && clientCall.getOffset() > localSkip) {
       auto const& [state, input] = inputRange.nextDataRow();
       EXPECT_TRUE(input.isInitialized());
-      // We do not write anything, so just advance!
-      output.copyRow(input);
-      output.advanceRow();
+      localSkip++;
     }
+    clientCall.didSkip(localSkip);
 
-    NoStats stats{};
-    return {inputRange.upstreamState(), stats, output.getClientCall()};
+    return {inputRange.upstreamState(), localSkip, clientCall};
   };
 
-  ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(), node,
-                                                  makeInfos(std::move(execImpl))};
+  ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), node,
+                                       makeSkipInfos(execImpl, skipCall)};
   auto singleton = createSingleton();
   testee.addDependency(singleton.get());
   auto [state, skipped, block] = testee.execute(stack);
@@ -798,6 +859,8 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_only_call_execute) {
   EXPECT_EQ(skipped, 1);
   EXPECT_EQ(block, nullptr);
   // Once with empty, once with the line by Singleton
+  EXPECT_EQ(nrSkipCalls, 2);
+  // We never produce
   EXPECT_EQ(nrCalls, 0);
 }
 
@@ -976,9 +1039,37 @@ class ExecutionBlockImplExecuteIntegrationTest
       AqlCall call{};
       return {inputRange.upstreamState(), NoStats{}, call};
     };
+
+    auto skipData = [data, iterator](AqlItemBlockInputRange& inputRange,
+                                     AqlCall clientCall) -> std::tuple<ExecutorState, size_t, AqlCall> {
+      size_t skipped = 0;
+      while (inputRange.hasDataRow() &&
+             (clientCall.getOffset() > 0 ||
+              (clientCall.getLimit() == 0 && clientCall.needsFullCount()))) {
+        auto const& [state, input] = inputRange.peekDataRow();
+        EXPECT_TRUE(input.isInitialized());
+        while ((clientCall.getOffset() > 0 ||
+                (clientCall.getLimit() == 0 && clientCall.needsFullCount())) &&
+               iterator->valid()) {
+          clientCall.didSkip(1);
+          skipped++;
+          iterator->next();
+        }
+        if (!iterator->valid()) {
+          // Consume input
+          auto const& [state, input] = inputRange.nextDataRow();
+          EXPECT_TRUE(input.isInitialized());
+          iterator->reset();
+        }
+      }
+      // We always use a default unlimited call here, we only have Singleton above.
+      AqlCall call{};
+      return {inputRange.upstreamState(), skipped, call};
+    };
     auto infos = outReg == 0
-                     ? makeInfos(std::move(writeData), RegisterPlan::MaxRegisterId, outReg)
-                     : makeInfos(std::move(writeData), outReg - 1, outReg);
+                     ? makeSkipInfos(std::move(writeData), skipData,
+                                     RegisterPlan::MaxRegisterId, outReg)
+                     : makeSkipInfos(std::move(writeData), skipData, outReg - 1, outReg);
     auto producer =
         std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->engine(),
                                                         generateNodeDummy(),
@@ -999,7 +1090,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       }
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
-    auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+    auto producer = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
         fakedQuery->engine(), generateNodeDummy(),
         makeInfos(std::move(forwardData), maxReg, maxReg));
     producer->addDependency(dependency);
@@ -1165,11 +1256,11 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding) 
     }
     return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
   };
-  auto upper = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+  auto upper = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
       fakedQuery->engine(), generateNodeDummy(),
       makeInfos(std::move(testForwarding), outReg, outReg));
   upper->addDependency(producer.get());
-  auto lower = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+  auto lower = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
       fakedQuery->engine(), generateNodeDummy(),
       makeInfos(std::move(forwardCall), outReg, outReg));
   lower->addDependency(upper.get());
@@ -1221,7 +1312,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_p
     }
     return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
   };
-  auto upper = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+  auto upper = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
       fakedQuery->engine(), generateNodeDummy(),
       makeInfos(std::move(testForwarding), outReg, outReg));
   upper->addDependency(producer.get());
@@ -1280,10 +1371,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_i
   };
   auto forwardSkipCall = [&](AqlItemBlockInputRange& inputRange,
                              AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
-
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   };
 
-  auto upper = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
+  auto upper = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
       fakedQuery->engine(), generateNodeDummy(), makeInfos(std::move(testForwarding)));
   upper->addDependency(producer.get());
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
