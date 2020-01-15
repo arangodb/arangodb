@@ -2,7 +2,11 @@ v3.6.1 (2020-XX-XX)
 -------------------
 
 * Fixed issue #10867:
-  Windows: arangod based binaries lack product version info and icon
+  arangod based binaries lack product version info and icon on Windows
+
+* Fix bug affecting spliced subqueries when memory blocks are reused.
+
+* Now clearing an internal map inside the traverser engine correctly.
 
 * Add ability to choose logging to file in Windows installer of ArangoDB server
   (enabled by default).
