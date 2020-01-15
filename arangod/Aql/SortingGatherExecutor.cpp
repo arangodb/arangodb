@@ -229,7 +229,7 @@ SortingGatherExecutor::~SortingGatherExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SortingGatherExecutor::produceRows(OutputAqlItemRow& output) {
   size_t const atMost = constrainedSort() ? output.numRowsLeft()
-                                          : ExecutionBlock::DefaultBatchSize();
+                                          : ExecutionBlock::DefaultBatchSize;
   ExecutionState state;
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   std::tie(state, row) = produceNextRow(atMost);

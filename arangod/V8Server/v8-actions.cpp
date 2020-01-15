@@ -393,7 +393,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   }
 
   // set the connection info
-  const ConnectionInfo& info = request->connectionInfo();
+  ConnectionInfo const& info = request->connectionInfo();
 
   v8::Handle<v8::Object> serverArray = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(AddressKey);
@@ -1043,8 +1043,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "defineAction(<name>, <callback>, <parameter>)");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToDefineHttpAction(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "operation only allowed for internal scripts");
@@ -1438,12 +1437,12 @@ void TRI_InitV8Actions(v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static int clusterSendToAllServers(std::string const& dbname,
+static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbname,
                                    std::string const& path,  // Note: Has to be properly encoded!
                                    arangodb::rest::RequestType const& method,
                                    std::string const& body) {
-  auto& server = application_features::ApplicationServer::server();
-  network::ConnectionPool* pool = server.getFeature<NetworkFeature>().pool();
+  TRI_GET_GLOBALS();
+  network::ConnectionPool* pool = v8g->_server.getFeature<NetworkFeature>().pool();
   if (!pool || !pool->config().clusterInfo) {
     LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION) << "Network pool unavailable.";
     return TRI_ERROR_SHUTTING_DOWN;
@@ -1540,7 +1539,7 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_AddFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res = clusterSendToAllServers(dbname,
+    int res = clusterSendToAllServers(isolate, dbname,
                                       "_admin/debug/failat/" + StringUtils::urlEncode(point),
                                       arangodb::rest::RequestType::PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
@@ -1616,7 +1615,8 @@ static void JS_DebugRemoveFailAt(v8::FunctionCallbackInfo<v8::Value> const& args
 
   if (ServerState::instance()->isCoordinator()) {
     int res =
-        clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+        clusterSendToAllServers(isolate, dbname,
+                                "_admin/debug/failat/" + StringUtils::urlEncode(point),
                                 arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1658,7 +1658,7 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
     std::string dbname(v8g->_vocbase->name());
 
     int res =
-        clusterSendToAllServers(dbname, "_admin/debug/failat",
+        clusterSendToAllServers(isolate, dbname, "_admin/debug/failat",
                                 arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1675,8 +1675,8 @@ static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_GET_GLOBALS();
+  ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
   TRI_V8_RETURN_BOOL(security.isFoxxApiDisabled());
 
   TRI_V8_TRY_CATCH_END
@@ -1686,8 +1686,8 @@ static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_GET_GLOBALS();
+  ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
   TRI_V8_RETURN_BOOL(security.isFoxxStoreDisabled());
 
   TRI_V8_TRY_CATCH_END
@@ -1762,8 +1762,8 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 #endif
 
   // poll interval for Foxx queues
-  auto& server = application_features::ApplicationServer::server();
-  FoxxQueuesFeature& foxxQueuesFeature = server.getFeature<FoxxQueuesFeature>();
+  TRI_GET_GLOBALS();
+  FoxxQueuesFeature& foxxQueuesFeature = v8g->_server.getFeature<FoxxQueuesFeature>();
 
   isolate->GetCurrentContext()
       ->Global()

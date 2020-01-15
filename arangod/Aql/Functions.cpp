@@ -4183,8 +4183,7 @@ AqlValue Functions::Average(ExpressionContext* expressionContext, transaction::M
 }
 
 /// @brief function SLEEP
-AqlValue Functions::Sleep(ExpressionContext* expressionContext,
-                          transaction::Methods*,
+AqlValue Functions::Sleep(ExpressionContext* expressionContext, transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
@@ -4193,7 +4192,8 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto& server = application_features::ApplicationServer::server();
+  TRI_ASSERT(trx != nullptr);
+  auto& server = trx->vocbase().server();
 
   double const sleepValue = value.toDouble();
   auto now = std::chrono::steady_clock::now();

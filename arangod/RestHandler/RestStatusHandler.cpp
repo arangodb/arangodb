@@ -49,13 +49,10 @@ using namespace arangodb::rest;
 
 RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -76,7 +73,7 @@ RestStatus RestStatusHandler::execute() {
   result.add("license", VPackValue("community"));
 #endif
 
-  auto& serverFeature = server.getFeature<ServerFeature>();
+  auto& serverFeature = server().getFeature<ServerFeature>();
   result.add("mode", VPackValue(serverFeature.operationModeString()));  // to be deprecated - 3.3 compat
   result.add("operationMode", VPackValue(serverFeature.operationModeString()));
   result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));

@@ -29,6 +29,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"

@@ -24,7 +24,9 @@
 #ifndef ARANGOD_AQL_QUERY_OPTIONS_H
 #define ARANGOD_AQL_QUERY_OPTIONS_H 1
 
+#include <string>
 #include <unordered_set>
+#include <vector>
 
 #include "Basics/Common.h"
 #include "Transaction/Options.h"
@@ -34,6 +36,7 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+class QueryRegistryFeature;
 
 namespace aql {
 
@@ -51,7 +54,7 @@ enum ProfileLevel : uint32_t {
 };
 
 struct QueryOptions {
-  QueryOptions();
+  explicit QueryOptions(QueryRegistryFeature&);
   TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);

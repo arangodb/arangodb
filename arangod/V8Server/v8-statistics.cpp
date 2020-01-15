@@ -99,9 +99,9 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
+  TRI_GET_GLOBALS();
   ServerStatistics const& info =
-    application_features::ApplicationServer::server().
-    getFeature<MetricsFeature>().serverStatistics();
+      v8g->_server.getFeature<MetricsFeature>().serverStatistics();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -124,8 +124,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   result->Set(TRI_V8_ASCII_STRING(isolate, "transactions"), v8TransactionInfoObj);
 
   // v8 counters
-  auto& server = application_features::ApplicationServer::server();
-  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
   auto v8Counters = dealer.getCurrentContextNumbers();
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),
