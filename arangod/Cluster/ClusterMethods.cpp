@@ -2048,7 +2048,7 @@ void fetchVerticesFromEngines(
     std::unordered_set<arangodb::velocypack::StringRef>& vertexIds,
     std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& result,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
-    VPackBuilder& builder) {
+    VPackBuilder& builder, bool forShortestPath) {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -2128,10 +2128,12 @@ void fetchVerticesFromEngines(
   }
 
   // Fill everything we did not find with NULL
-  for (auto const& v : vertexIds) {
-    result.emplace(v, VPackSlice::nullSlice());
+  if (!forShortestPath) {
+    for (auto const& v : vertexIds) {
+      result.emplace(v, VPackSlice::nullSlice());
+    }
+    vertexIds.clear();
   }
-  vertexIds.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

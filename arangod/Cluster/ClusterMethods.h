@@ -192,7 +192,7 @@ void fetchVerticesFromEngines(
     std::unordered_set<arangodb::velocypack::StringRef>&,
     std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& result,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
-    arangodb::velocypack::Builder&);
+    arangodb::velocypack::Builder&, bool forShortestPath);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a filtered set of edges on Coordinator.

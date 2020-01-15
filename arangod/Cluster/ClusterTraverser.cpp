@@ -118,7 +118,7 @@ void ClusterTraverser::fetchVertices() {
   ch->insertedDocuments() += _verticesToFetch.size();
   transaction::BuilderLeaser lease(_trx);
   fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices, ch->datalake(),
-                           *(lease.get()));
+                           *(lease.get()), false);
   _verticesToFetch.clear();
   if (_enumerator != nullptr) {
     _enumerator->incHttpRequests(_engines->size()); 
