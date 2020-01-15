@@ -39,9 +39,7 @@ using namespace arangodb::rest;
 
 RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminLogHandler::execute() {
   ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
