@@ -42,7 +42,7 @@ classifiers = [
 for lang in langs:
     lang_titlecase = lang.title()
     # Only classifiers listed in https://pypi.org/classifiers/ are allowed
-    if lang_titlecase not in ('Basque', 'Irish', 'Lithuanian', 'Nepali'):
+    if lang_titlecase not in ('Basque', 'Irish', 'Nepali'):
         classifiers.append('Natural Language :: ' + lang_titlecase)
 
 
