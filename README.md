@@ -76,6 +76,8 @@ Other features of ArangoDB include:
 - Free **index choice**: use the correct index for your problem, be it a skiplist 
   or a fulltext search
 - ArangoDB is **multi-threaded** - exploit the power of all your cores
+- Easy to use **web interface** and **command-line client tools** for interaction
+  with the server
 - It is **open source** (Apache License 2.0)
 
 For more in-depth information read the
