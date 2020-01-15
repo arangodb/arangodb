@@ -49,8 +49,6 @@ ClusterTraverser::ClusterTraverser(arangodb::traverser::TraverserOptions* opts,
 }
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
-  _verticesToFetch.clear();
-  _startIdBuilder.clear();
   _startIdBuilder.add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder.slice();
 
@@ -66,12 +64,12 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  if (!vertexMatchesConditions(arangodb::velocypack::StringRef(vid), 0)) {
+  arangodb::velocypack::StringRef persId = traverserCache()->persistString(arangodb::velocypack::StringRef(vid));
+  if (!vertexMatchesConditions(persId, 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
-  arangodb::velocypack::StringRef persId = traverserCache()->persistString(arangodb::velocypack::StringRef(vid));
 
   _vertexGetter->reset(persId);
   if (_opts->useBreadthFirst) {
@@ -80,6 +78,14 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     _enumerator.reset(new arangodb::traverser::DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
+}
+
+void ClusterTraverser::clear() {
+  _startIdBuilder.clear();
+  traverserCache()->clear();
+
+  _vertices.clear();
+  _verticesToFetch.clear();
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {
@@ -111,8 +117,8 @@ void ClusterTraverser::fetchVertices() {
   auto ch = static_cast<ClusterTraverserCache*>(traverserCache());
   ch->insertedDocuments() += _verticesToFetch.size();
   transaction::BuilderLeaser lease(_trx);
-  fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices,
-                           *(lease.get()));
+  fetchVerticesFromEngines(_dbname, _engines, _verticesToFetch, _vertices, ch->datalake(),
+                           *(lease.get()), false);
   _verticesToFetch.clear();
   if (_enumerator != nullptr) {
     _enumerator->incHttpRequests(_engines->size()); 
@@ -130,7 +136,8 @@ aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef 
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
-  return aql::AqlValue((*cached).second->data());
+  uint8_t const* ptr = cached->second.begin();
+  return aql::AqlValue(ptr); // no copy constructor
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -147,7 +154,7 @@ void ClusterTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
-  result.add(VPackSlice((*cached).second->data()));
+  result.add(cached->second);
 }
 
 void ClusterTraverser::destroyEngines() {
