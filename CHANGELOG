@@ -1,6 +1,10 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fixed internal traversal edge collection cache being filled up correctly.
+  Edges are able to point to other edges, but those we're not applied to the
+	cache.
+
 * Fixed issue #10852: Nested spliced subqueries could return wrong results in
   some cases when some of the concerned subqueries did not return any values.
 
