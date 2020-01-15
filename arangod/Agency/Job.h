@@ -191,7 +191,7 @@ struct Job {
   static void addReleaseShard(velocypack::Builder& trx, std::string const& shard);
   static void addPreconditionServerNotBlocked(velocypack::Builder& pre,
                                               std::string const& server);
-  static void addPreconditionCurrentReplicaShardGroup(Builder& pre,
+  static void addPreconditionCurrentReplicaShardGroup(VPackBuilder& pre,
                                                       std::string const& database,
                                                       std::vector<shard_t> const&,
                                                       std::string const& server);
