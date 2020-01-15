@@ -5,6 +5,8 @@ v3.5.4 (XXXX-XX-XX)
   prefixes of "edges" and "vertices" to be used as object accessors
   for the path object
 
+* Now clearing an internal map inside the traverser engine correctly.
+
 * Fix Windows client package JS installation paths.
 
 * Updated arangosync to 0.7.2.
