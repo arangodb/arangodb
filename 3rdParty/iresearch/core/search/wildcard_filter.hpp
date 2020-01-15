@@ -65,15 +65,15 @@ class IRESEARCH_API by_wildcard final : public by_prefix {
     const attribute_view& ctx
   ) const override;
 
-  using by_prefix::scored_terms_limit;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the maximum number of most frequent terms to consider for scoring
   //////////////////////////////////////////////////////////////////////////////
-  by_wildcard& scored_terms_limit(size_t limit) {
+  by_wildcard& scored_terms_limit(size_t limit) noexcept {
     by_prefix::scored_terms_limit(limit);
     return *this;
   }
+
+  using by_prefix::scored_terms_limit;
 }; // by_wildcard
 
 #endif // IRESEARCH_WILDCARD_FILTER_H
