@@ -60,12 +60,12 @@ struct RequestMeta {
   }
 };
 
-bool agencyAsyncShouldCancel(RequestMeta& meta) {
+bool agencyAsyncShouldCancel(AsyncAgencyCommManager& manager, RequestMeta& meta) {
   if (meta.tries++ > 20) {
     return true;
   }
 
-  return application_features::ApplicationServer::server().isStopping();
+  return manager.server().isStopping();
 }
 
 bool agencyAsyncShouldTimeout(RequestMeta const& meta) {
@@ -126,7 +126,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
 
   // check for conditions to abort
   auto waitTime = agencyAsyncWaitTime(meta);
-  if (agencyAsyncShouldCancel(meta)) {
+  if (agencyAsyncShouldCancel(man, meta)) {
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
@@ -196,7 +196,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
 
   // check for conditions to abort
   auto waitTime = agencyAsyncWaitTime(meta);
-  if (agencyAsyncShouldCancel(meta)) {
+  if (agencyAsyncShouldCancel(man, meta)) {
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
@@ -352,6 +352,13 @@ void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint,
     _endpoints.push_front(redirectTo);
   }
 }
+
+application_features::ApplicationServer& AsyncAgencyCommManager::server() {
+  return _server;
+}
+
+AsyncAgencyCommManager::AsyncAgencyCommManager(application_features::ApplicationServer& server)
+    : _server(server) {}
 
 const char* AGENCY_URL_READ = "/_api/agency/read";
 const char* AGENCY_URL_WRITE = "/_api/agency/write";

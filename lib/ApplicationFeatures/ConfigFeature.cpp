@@ -101,9 +101,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   bool fatal = true;
 
-  auto& server = application_features::ApplicationServer::server();
-  if (server.hasFeature<VersionFeature>()) {
-    fatal = !server.getFeature<VersionFeature>().printVersion();
+  if (server().hasFeature<VersionFeature>()) {
+    fatal = !server().getFeature<VersionFeature>().printVersion();
   }
 
   // always prefer an explicitly given config file

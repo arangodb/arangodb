@@ -522,7 +522,8 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:
     case VPackValueType::MaxKey:
-    case VPackValueType::BCD: {
+    case VPackValueType::BCD: 
+    case VPackValueType::Tagged: {
       handleUnsupportedType(slice);
       break;
     }
