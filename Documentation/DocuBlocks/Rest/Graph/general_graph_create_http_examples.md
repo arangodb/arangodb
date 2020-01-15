@@ -25,7 +25,7 @@ Each has the following type:
 An array of additional vertex collections.
 Documents within these collections do not have edges within this graph.
 
-@RESTBODYPARAM{isSmart,boolean,optional,boolean}
+@RESTBODYPARAM{isSmart,boolean,optional,}
 Define if the created graph should be smart.
 This only has effect in Enterprise Edition.
 
