@@ -328,4 +328,6 @@ target_include_directories(fuerte SYSTEM PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
 
-add_subdirectory(json)
+set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build test programs" FORCE)
+set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build example programs" FORCE)
+add_subdirectory(json EXCLUDE_FROM_ALL)
