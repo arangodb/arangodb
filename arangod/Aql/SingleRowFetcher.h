@@ -95,7 +95,7 @@ class SingleRowFetcher {
   // and the global state (like fetchShadowRow()).
   // Currently necessary only in the SubqueryStartExecutor.
   [[nodiscard]] RowWithStates fetchRowWithGlobalState(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
