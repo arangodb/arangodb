@@ -137,7 +137,6 @@ else ()
 endif ()
 
 SET(ARANGOD_SOURCES
-  ${ProductVersionFiles}
   ${ENTERPRISE_FILES}
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
@@ -609,6 +608,7 @@ endif()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
+  ${ProductVersionFiles}
 )
 
 target_link_libraries(${BIN_ARANGOD}
