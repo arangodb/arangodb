@@ -72,13 +72,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void prepareTransaction(uint64_t trxId, uint64_t beginSeq);
 
   /**
-   * @brief Prepare collection for commit by updating collection blockers
-   * @param trxId    Active transaction ID
-   * @param beginSeq Current seq/tick on transaction begin
-   */
-  void updateTransaction(uint64_t trxId, uint64_t beginSeq);
-
-  /**
    * @brief Signal upstream abort/rollback to clean up index blockers
    * @param trxId Active transaction ID
    */
@@ -88,9 +81,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
    * @brief Commit collection counts and buffer tracked index updates
    * @param trxId     Active transaction ID
    * @param commitSeq Seq/tick immediately after upstream commit
-   * @param intermediate  Whether this is an intermediate commit
    */
-  void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq, bool intermediate);
+  void commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit

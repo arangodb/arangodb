@@ -1036,7 +1036,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* coll,
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
-  if (coll->version() >= LogicalCollection::Version::v37 &&
+  if (!coll->system() && coll->version() >= LogicalCollection::Version::v37 &&
       (_config.master.majorVersion > 3 ||
        (_config.master.majorVersion = 3 && _config.master.minorVersion >= 6))) {
     // local collection should support revisions, and master is at least aware
@@ -1340,11 +1340,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
   PhysicalCollection* physical = coll->getPhysical();
   TRI_ASSERT(physical);
+  auto context = arangodb::transaction::StandaloneContext::Create(coll->vocbase());
+  TRI_voc_tid_t blockerId = context->generateId();
+  physical->placeRevisionTreeBlocker(blockerId);
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   try {
     trx = std::make_unique<arangodb::SingleCollectionTransaction>(
-      arangodb::transaction::StandaloneContext::Create(coll->vocbase()), *coll,
-      arangodb::AccessMode::Type::EXCLUSIVE);
+        context, *coll, arangodb::AccessMode::Type::EXCLUSIVE);
   } catch (arangodb::basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       bool locked = false;
@@ -1388,6 +1390,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     // no differences, done!
     return Result{};
   }
+  physical->removeRevisionTreeBlocker(blockerId);
 
   // now lets get the actual ranges and handle the differences
 

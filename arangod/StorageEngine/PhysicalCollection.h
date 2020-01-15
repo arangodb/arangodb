@@ -231,6 +231,9 @@ class PhysicalCollection {
       transaction::Methods& trx);
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId);
 
+  virtual void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
+  virtual void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId);
+
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 

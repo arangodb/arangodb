@@ -81,6 +81,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
 
+  void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) override;
+  void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId) override;
+
   /**
    * @brief Buffer updates to this collection to be applied when appropriate
    *

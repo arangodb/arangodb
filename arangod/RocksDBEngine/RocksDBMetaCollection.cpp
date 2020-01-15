@@ -393,6 +393,16 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   return tree;
 }
 
+void RocksDBMetaCollection::placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
+  _meta.placeBlocker(transactionId, preSeq);
+}
+
+void RocksDBMetaCollection::removeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {
+  _meta.removeBlocker(transactionId);
+}
+
 void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
                                           std::vector<TRI_voc_rid_t>&& inserts,
                                           std::vector<TRI_voc_rid_t>&& removals) {

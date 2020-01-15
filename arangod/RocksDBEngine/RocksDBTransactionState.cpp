@@ -122,11 +122,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
     _rocksReadOptions.prefix_same_as_start = true;  // should always be true
 
-    // place blockers with an initial seq
-    if (!_blockers) {
-      prepareCollections();
-    }
-
     TRI_ASSERT(_readSnapshot == nullptr);
     if (isReadOnlyTransaction()) {
       // no need to acquire a snapshot for a single op
@@ -185,11 +180,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         }
       }
     }
-
-    // update blockers with correct start seq
-    if (_blockers) {
-      updateCollections();
-    }
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
@@ -240,18 +230,9 @@ void RocksDBTransactionState::prepareCollections() {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     coll->prepareTransaction(id(), preSeq);
   }
-  _blockers = true;
 }
 
-void RocksDBTransactionState::updateCollections() {
-  for (auto& trxColl : _collections) {
-    auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
-    coll->updateTransaction(id(), beginSeq());
-  }
-}
-
-void RocksDBTransactionState::commitCollections(rocksdb::SequenceNumber lastWritten,
-                                                bool intermediate) {
+void RocksDBTransactionState::commitCollections(rocksdb::SequenceNumber lastWritten) {
   TRI_ASSERT(lastWritten > 0);
   for (auto& trxColl : _collections) {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
@@ -261,9 +242,8 @@ void RocksDBTransactionState::commitCollections(rocksdb::SequenceNumber lastWrit
     /*TRI_IF_FAILURE("RocksDBCommitCounts") {
       continue;
     }*/
-    coll->commitCounts(id(), lastWritten, intermediate);
+    coll->commitCounts(id(), lastWritten);
   }
-  _blockers = intermediate;
 }
 
 void RocksDBTransactionState::cleanupCollections() {
@@ -271,7 +251,6 @@ void RocksDBTransactionState::cleanupCollections() {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     coll->abortCommit(id());
   }
-  _blockers = false;
 }
 
 void RocksDBTransactionState::cleanupTransaction() noexcept {
@@ -290,12 +269,9 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
     db->ReleaseSnapshot(_readSnapshot);  // calls delete
     _readSnapshot = nullptr;
   }
-  if (_blockers) {
-    cleanupCollections();
-  }
 }
 
-arangodb::Result RocksDBTransactionState::internalCommit(bool intermediate) {
+arangodb::Result RocksDBTransactionState::internalCommit() {
   if (!hasOperations()) { // bail out early
     TRI_ASSERT(_rocksTransaction == nullptr ||
                (_rocksTransaction->GetNumKeys() == 0 &&
@@ -324,9 +300,7 @@ arangodb::Result RocksDBTransactionState::internalCommit(bool intermediate) {
     }
   }
 
-  auto commitCounts = [this, intermediate]() {
-    commitCollections(_lastWrittenOperationTick, intermediate);
-  };
+  auto commitCounts = [this]() { commitCollections(_lastWrittenOperationTick); };
 
   // we are actually going to attempt a commit
   if (!isSingleOperation()) {
@@ -357,6 +331,8 @@ arangodb::Result RocksDBTransactionState::internalCommit(bool intermediate) {
   ++_numCommits;
   TRI_ASSERT(x > 0);
 #endif
+
+  prepareCollections();
 
   // if we fail during commit, make sure we remove blockers, etc.
   auto cleanupCollTrx = scopeGuard([this]() { cleanupCollections(); });
@@ -426,7 +402,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
 
   arangodb::Result res;
   if (nestingLevel() == 0) {
-    res = internalCommit(false);
+    res = internalCommit();
     if (res.ok()) {
       updateStatus(transaction::Status::COMMITTED);
       cleanupTransaction();  // deletes trx
@@ -627,7 +603,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
 #endif
 
-  Result res = internalCommit(true);
+  Result res = internalCommit();
   if (res.fail()) {
     // FIXME: do we abort the transaction ?
     return res;
@@ -650,7 +626,6 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   _numLogdata = 0;
 #endif
   createTransaction();
-  updateCollections();
   _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
   TRI_ASSERT(_readSnapshot != nullptr);  // snapshots for iterators
   TRI_ASSERT(_rocksReadOptions.snapshot != nullptr);

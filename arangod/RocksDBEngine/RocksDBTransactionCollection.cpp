@@ -195,26 +195,22 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
 
 void RocksDBTransactionCollection::prepareTransaction(uint64_t trxId, uint64_t beginSeq) {
   TRI_ASSERT(_collection != nullptr);
-  auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-  TRI_ASSERT(beginSeq > 0);
-  coll->meta().placeBlocker(trxId, beginSeq);
-}
-
-void RocksDBTransactionCollection::updateTransaction(uint64_t trxId, uint64_t beginSeq) {
-  TRI_ASSERT(_collection != nullptr);
-  auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-  TRI_ASSERT(beginSeq > 0);
-  coll->meta().updateBlocker(trxId, beginSeq);
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
+    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+    TRI_ASSERT(beginSeq > 0);
+    coll->meta().placeBlocker(trxId, beginSeq);
+  }
 }
 
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   TRI_ASSERT(_collection != nullptr);
-  auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-  coll->meta().removeBlocker(trxId);
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
+    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+    coll->meta().removeBlocker(trxId);
+  }
 }
 
-void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq,
-                                                bool intermediate) {
+void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
   TRI_ASSERT(_collection != nullptr);
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
 
@@ -226,8 +222,10 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   }
 
   // update the revision tree
-  rcoll->bufferUpdates(commitSeq, std::move(_trackedOperations.inserts),
-                       std::move(_trackedOperations.removals));
+  if (!_trackedOperations.empty()) {
+    rcoll->bufferUpdates(commitSeq, std::move(_trackedOperations.inserts),
+                         std::move(_trackedOperations.removals));
+  }
 
   // Update the index estimates.
   for (auto& pair : _trackedIndexOperations) {
@@ -246,7 +244,7 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
     }
   }
 
-  if (!intermediate) {
+  if (hasOperations() || !_trackedOperations.empty() || !_trackedIndexOperations.empty()) {
     rcoll->meta().removeBlocker(trxId);
   }
 

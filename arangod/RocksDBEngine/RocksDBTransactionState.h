@@ -167,14 +167,13 @@ class RocksDBTransactionState final : public TransactionState {
   void createTransaction();
 
   void prepareCollections();
-  void updateCollections();
-  void commitCollections(rocksdb::SequenceNumber lastWritten, bool intermediate);
+  void commitCollections(rocksdb::SequenceNumber lastWritten);
   void cleanupCollections();
 
   /// @brief delete transaction, snapshot and cache trx
   void cleanupTransaction() noexcept;
   /// @brief internally commit a transaction
-  arangodb::Result internalCommit(bool intermediate);
+  arangodb::Result internalCommit();
 
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only

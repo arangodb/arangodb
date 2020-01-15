@@ -537,6 +537,14 @@ std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(uint6
   return nullptr;
 }
 
+void PhysicalCollection::placeRevisionTreeBlocker(TRI_voc_tid_t) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void PhysicalCollection::removeRevisionTreeBlocker(TRI_voc_tid_t) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 /// @brief checks the revision of a document
 int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {

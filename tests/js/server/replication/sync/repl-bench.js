@@ -465,7 +465,7 @@ function ReplicationBench() {
       runBench(singleRunNoChange, 50000);
     },
 
-    /*testNoChange500K: function () {
+    testNoChange500K: function () {
       runBench(singleRunNoChange, 500000);
     },
 
@@ -473,7 +473,7 @@ function ReplicationBench() {
       runBench(singleRunNoChange, 5000000);
     },
 
-    testRemoveHalf50K: function () {
+    /*testRemoveHalf50K: function () {
       runBench(singleRunRemoveHalf, 50000);
     },
 
