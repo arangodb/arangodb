@@ -781,7 +781,7 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_call_skip) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     nrSkipCalls++;
-    EXPECT_EQ(clientCall.getOffset(), 0);
+    EXPECT_EQ(clientCall.getOffset(), 20);
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.hardLimit));
     size_t localSkip = 0;
@@ -835,8 +835,9 @@ TEST_F(ExecutionBlockImplExecuteTest, test_toplevel_offset_only_call_skip) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
     nrSkipCalls++;
-    EXPECT_EQ(clientCall.getOffset(), 0);
-    EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
+    EXPECT_EQ(clientCall.getOffset(), 20);
+    EXPECT_FALSE(std::holds_alternative<AqlCall::Infinity>(clientCall.softLimit));
+    EXPECT_EQ(clientCall.getLimit(), 0);
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(clientCall.hardLimit));
     size_t localSkip = 0;
     while (inputRange.hasDataRow() && clientCall.getOffset() > localSkip) {
@@ -1040,8 +1041,9 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, call};
     };
 
-    auto skipData = [data, iterator](AqlItemBlockInputRange& inputRange,
-                                     AqlCall clientCall) -> std::tuple<ExecutorState, size_t, AqlCall> {
+    auto skipData =
+        [data, iterator](AqlItemBlockInputRange& inputRange,
+                         AqlCall& clientCall) -> std::tuple<ExecutorState, size_t, AqlCall> {
       size_t skipped = 0;
       while (inputRange.hasDataRow() &&
              (clientCall.getOffset() > 0 ||
@@ -1062,8 +1064,12 @@ class ExecutionBlockImplExecuteIntegrationTest
           iterator->reset();
         }
       }
-      // We always use a default unlimited call here, we only have Singleton above.
       AqlCall call{};
+      call.offset = 0;
+      if (clientCall.getOffset() > 0) {
+        call.softLimit = clientCall.getOffset();
+      }  // else softLimit == unlimited
+      call.fullCount = false;
       return {inputRange.upstreamState(), skipped, call};
     };
     auto infos = outReg == 0
