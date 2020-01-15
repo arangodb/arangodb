@@ -42,8 +42,8 @@ var cleanup = function() {
 };
 
 var createBaseGraph = function () {
-  const vc = db._create(vertexCollectionName, { numberOfShards: 4 });
-  const ec = db._createEdgeCollection(edgeCollectionName, { numberOfShards: 4 });
+  const vc = db._create(vertexCollectionName);
+  const ec = db._createEdgeCollection(edgeCollectionName);
 
   vc.save([{"_key":"287057244","name":"Gerald","age":18},
            {"_key":"287056982","name":"Chris","age":34},
