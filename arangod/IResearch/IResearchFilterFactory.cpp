@@ -32,6 +32,7 @@
 #include "search/column_existence_filter.hpp"
 #include "search/granular_range_filter.hpp"
 #include "search/phrase_filter.hpp"
+#include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
@@ -2364,6 +2365,157 @@ arangodb::Result fromFuncLike(
   return {};
 }
 
+// LEVENSHTEIN_MATCH(<attribute>, <target>, <max-distance>, <include-transpositions>)
+arangodb::Result fromFuncLevenshteinMatch(
+    irs::boolean_filter* filter, QueryContext const& ctx,
+    FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
+  if (!args.isDeterministic()) {
+    auto message = "Unable to handle non-deterministic arguments for 'LEVENSHTEIN_MATCH' function";
+    LOG_TOPIC("dfa15", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message}; // nondeterministic
+  }
+
+  auto const argc = args.numMembers();
+
+  if (argc < 3 || argc > 4) {
+    auto message = "'LEVENSHTEIN_MATCH' AQL function: Invalid number of arguments passed (should be >= 3 and <= 4)";
+    LOG_TOPIC("2f1a8", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  // 1st argument defines a field
+  auto const* field =
+      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+  if (!field) {
+    auto message = "'LEVENSHTEIN_MATCH' AQL function: Unable to parse 1st argument as an attribute identifier";
+    LOG_TOPIC("7c15a", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  // 2nd argument defines a target
+  auto const* targetArg = args.getMemberUnchecked(1);
+
+  if (!targetArg) {
+    auto message = "'LEVENSHTEIN_MATCH' AQL function: 2nd argument is invalid";
+    LOG_TOPIC("6501f", WARN, arangodb::iresearch::TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  irs::string_ref target;
+  ScopedAqlValue targetValue(*targetArg);
+
+  if (filter || targetValue.isConstant()) {
+    if (!targetValue.execute(ctx)) {
+      auto message = "'LEVENSHTEIN_MATCH' AQL function: Failed to evaluate 2nd argument";
+      LOG_TOPIC("196be", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != targetValue.type()) {
+      auto message = "'LEVENSHTEIN_MATCH' AQL function: 2nd argument has invalid type '"s + ScopedAqlValue::typeString(targetValue.type()).c_str() + "' (string expected)";
+      LOG_TOPIC("d9c1b", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    if (!targetValue.getString(target)) {
+      auto message = "'LEVENSHTEIN_MATCH' AQL function: Unable to parse 2nd argument as string";
+      LOG_TOPIC("e1ebc", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+  }
+
+  // 3rd argument defines a max distance
+  auto const* maxDistanceArg = args.getMemberUnchecked(2);
+
+  if (!maxDistanceArg ) {
+    auto message = "'LEVENSHTEIN_MATCH' AQL function: 3rd argument is invalid";
+    LOG_TOPIC("6015f", WARN, arangodb::iresearch::TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  int64_t maxDistance = 0;
+  ScopedAqlValue maxDistanceValue(*maxDistanceArg);
+
+  if (filter || maxDistanceValue.isConstant()) {
+    if (!maxDistanceValue.execute(ctx)) {
+      auto message = "'LEVENSHTEIN_MATCH' AQL function: Failed to evaluate 3rd argument";
+      LOG_TOPIC("16b9e", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != maxDistanceValue.type()) {
+      auto message = "'LEVENSHTEIN_MATCH' AQL function: 2nd argument has invalid type '"s + ScopedAqlValue::typeString(maxDistanceValue.type()).c_str() + "' (number expected)";
+      LOG_TOPIC("d9c1b", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    maxDistance = maxDistanceValue.getInt64();
+  }
+
+  bool withTranspositions = false;
+
+  // optional 4th argument defines transpositions
+  if (4 == argc) {
+    auto const* withTranspositionsArg = args.getMemberUnchecked(3);
+
+    if (withTranspositionsArg) {
+      auto message = "'LEVENSHTEIN_MATCH' AQL function: 4th argument is invalid";
+      LOG_TOPIC("615a0", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    ScopedAqlValue withTranspositionsValue(*withTranspositionsArg);
+
+    if (filter || withTranspositionsValue.isConstant()) {
+      if (!withTranspositionsValue.execute(ctx)) {
+        auto message = "'LEVENSHTEIN_MATCH' AQL function: Failed to evaluate 4th argument";
+        LOG_TOPIC("1b6e6", WARN, arangodb::iresearch::TOPIC) << message;
+        return {TRI_ERROR_BAD_PARAMETER, message};
+      }
+
+      if (arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL != withTranspositionsValue.type()) {
+        auto message = "'LEVENSHTEIN_MATCH' AQL function: 4th argument has invalid type '"s + ScopedAqlValue::typeString(withTranspositionsValue.type()).c_str() + "' (bool expected)";
+        LOG_TOPIC("d9c1b", WARN, arangodb::iresearch::TOPIC) << message;
+        return {TRI_ERROR_BAD_PARAMETER, message};
+      }
+
+      withTranspositions = withTranspositionsValue.getBoolean();
+    }
+  }
+
+  if (maxDistance < 0 || maxDistance > 4) {
+    auto message = "'LEVENSHTEIN_MATCH' AQL function: maxDistance argument must be in range [0, 4]";
+    LOG_TOPIC("d13bc", WARN, arangodb::iresearch::TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  const size_t scoringLimit = 128;  // FIXME make configurable
+
+  if (filter) {
+    std::string name;
+
+    if (!nameFromAttributeAccess(name, *field, ctx)) {
+      auto message = "'LEVENSHTEIN_MATCH' AQL function: Failed to generate field name from the 1st argument";
+      LOG_TOPIC("91618", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    TRI_ASSERT(filterCtx.analyzer);
+    kludge::mangleStringField(name, filterCtx.analyzer);
+
+    auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
+    levenshtein_filter.scored_terms_limit(scoringLimit);
+    levenshtein_filter.field(std::move(name));
+    levenshtein_filter.term(target);
+    levenshtein_filter.boost(filterCtx.boost);
+    levenshtein_filter.max_distance(irs::byte_type(maxDistance));
+    levenshtein_filter.with_transpositions(withTranspositions);
+  }
+
+  return {};
+}
+
 std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
 
 arangodb::Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -2409,7 +2561,8 @@ std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
     {"PHRASE", fromFuncPhrase},     {"STARTS_WITH", fromFuncStartsWith},
     {"EXISTS", fromFuncExists},     {"BOOST", fromFuncBoost},
     {"ANALYZER", fromFuncAnalyzer}, {"MIN_MATCH", fromFuncMinMatch},
-    {"IN_RANGE", fromFuncInRange},  {"LIKE", fromFuncLike }
+    {"IN_RANGE", fromFuncInRange},  {"LIKE", fromFuncLike },
+    {"LEVENSHTEIN_MATCH", fromFuncLevenshteinMatch}
 };
 
 arangodb::Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,
