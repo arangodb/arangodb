@@ -287,11 +287,11 @@ namespace {
 // velocypack representation of object
 // {"error":true,"errorMessage":"document not found","errorNum":1202}
 static const char* notFoundSlice =
-  "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
-  "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
-  "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
-  "\x75\x6d\x29\xb2\x04\x03";
-} // namespace
+    "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
+    "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
+    "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
+    "\x75\x6d\x29\xb2\x04\x03";
+}  // namespace
 
 static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> const& results,
                                   std::shared_ptr<VPackBuilder>& resultBody,
@@ -1918,7 +1918,7 @@ void fetchVerticesFromEngines(
     std::unordered_set<StringRef>& vertexIds,
     std::unordered_map<StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake,
-    VPackBuilder& builder) {
+    VPackBuilder& builder, bool forShortestPath) {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
@@ -1998,10 +1998,12 @@ void fetchVerticesFromEngines(
   }
 
   // Fill everything we did not find with NULL
-  for (auto const& v : vertexIds) {
-    result.emplace(v, VPackSlice::nullSlice());
+  if (!forShortestPath) {
+    for (auto const& v : vertexIds) {
+      result.emplace(v, VPackSlice::nullSlice());
+    }
+    vertexIds.clear();
   }
-  vertexIds.clear();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2482,7 +2484,6 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     std::vector<std::shared_ptr<LogicalCollection>>& collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor) {
-
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2524,8 +2525,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           shards = CloneShardDistribution(ci, col.get(), otherCid);
         } else {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-              "Could not find collection " + distributeShardsLike +
-              " to distribute shards like it.");
+                                         "Could not find collection " + distributeShardsLike +
+                                             " to distribute shards like it.");
         }
       } else {
         // system collections should never enforce replicationfactor
@@ -2541,9 +2542,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         // that the requested replicationFactor is not possible right now
         if (dbServers.size() < replicationFactor) {
           LOG_TOPIC(DEBUG, Logger::CLUSTER)
-            << "Do not have enough DBServers for requested replicationFactor,"
-            << " nrDBServers: " << dbServers.size()
-            << " replicationFactor: " << replicationFactor;
+              << "Do not have enough DBServers for requested replicationFactor,"
+              << " nrDBServers: " << dbServers.size()
+              << " replicationFactor: " << replicationFactor;
           if (enforceReplicationFactor) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
@@ -2553,42 +2554,44 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           // We need to remove all servers that are in the avoid list
           if (dbServers.size() - avoid.size() < replicationFactor) {
             LOG_TOPIC(DEBUG, Logger::CLUSTER)
-              << "Do not have enough DBServers for requested replicationFactor,"
-              << " (after considering avoid list),"
-              << " nrDBServers: " << dbServers.size() << " replicationFactor: " << replicationFactor
-              << " avoid list size: " << avoid.size();
+                << "Do not have enough DBServers for requested "
+                   "replicationFactor,"
+                << " (after considering avoid list),"
+                << " nrDBServers: " << dbServers.size()
+                << " replicationFactor: " << replicationFactor
+                << " avoid list size: " << avoid.size();
             // Not enough DBServers left
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
           dbServers.erase(std::remove_if(dbServers.begin(), dbServers.end(),
-                [&](const std::string& x) {
-                return std::find(avoid.begin(), avoid.end(),
-                    x) != avoid.end();
-                }),
-              dbServers.end());
+                                         [&](const std::string& x) {
+                                           return std::find(avoid.begin(), avoid.end(),
+                                                            x) != avoid.end();
+                                         }),
+                          dbServers.end());
         }
         std::random_shuffle(dbServers.begin(), dbServers.end());
         shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
-            dbServers, !col->system());
+                                        dbServers, !col->system());
       }
 
       if (shards->empty() && !col->isSmart()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-            "no database servers found in cluster");
+                                       "no database servers found in cluster");
       }
 
       col->setShardMap(shards);
 
       std::unordered_set<std::string> const ignoreKeys{
-        "allowUserKeys", "cid",     "globallyUniqueId", "count",
+          "allowUserKeys", "cid",     "globallyUniqueId", "count",
           "planId",        "version", "objectId"};
       col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
       infos.emplace_back(
           ClusterCollectionCreationInfo{std::to_string(col->id()),
-          col->numberOfShards(), col->replicationFactor(),
-          waitForSyncReplication, velocy.slice()});
+                                        col->numberOfShards(), col->replicationFactor(),
+                                        waitForSyncReplication, velocy.slice()});
       vpackData.emplace_back(velocy.steal());
     }
 
@@ -2601,8 +2604,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     }
 
     if (res.is(TRI_ERROR_REQUEST_CANCELED)) {
-      // special error code indicating that storing the updated plan in the agency
-      // didn't succeed, and that we should try again
+      // special error code indicating that storing the updated plan in the
+      // agency didn't succeed, and that we should try again
 
       // sleep for a while
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
