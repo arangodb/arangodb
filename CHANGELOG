@@ -1,6 +1,13 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fix installation of arangoinspect and libraries in Windows client installer.
+
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows.
+
+* Now clearing an internal map inside the traverser engine correctly.
+
 * Fix Windows client package JS installation paths.
 
 * Updated arangosync to 0.7.2.
