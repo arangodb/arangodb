@@ -90,6 +90,19 @@ class SingleRowFetcher {
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize);
 
+  struct RowWithStates {
+    RowWithStates() = delete;
+    ExecutionState localState;
+    ExecutionState globalState;
+    InputAqlItemRow row;
+  };
+
+  // Like fetchRow(), but returns both the subquery-local state (like fetchRow())
+  // and the global state (like fetchShadowRow()).
+  // Currently necessary only in the SubqueryStartExecutor.
+  [[nodiscard]] RowWithStates fetchRowWithGlobalState(
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
+
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize);
