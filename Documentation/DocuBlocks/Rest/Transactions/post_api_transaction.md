@@ -26,7 +26,7 @@ If the code specified in *action* ends with a return statement, the
 value returned will also be returned by the REST API in the *result*
 attribute if the transaction committed successfully.
 
-@RESTBODYPARAM{waitForSync,boolean,optional,boolean}
+@RESTBODYPARAM{waitForSync,boolean,optional,}
 an optional boolean flag that, if set, will force the
 transaction to write all data to disk before returning.
 

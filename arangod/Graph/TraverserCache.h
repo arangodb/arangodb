@@ -59,6 +59,9 @@ class TraverserCache {
 
   virtual ~TraverserCache();
 
+  /// @brief clears all allocated memory in the underlying StringHeap
+  void clear();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
   ///        into the given builder.
