@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* MoveShard to check, if target is in sync follower before promotion
+  to leader.
+
 * Fix installation of arangoinspect and libraries in Windows client installer.
 
 * Fixed issue #10867: arangod based binaries lack product version info and icon
@@ -38,7 +41,7 @@ v3.4.9 (XXXX-XX-XX)
 * Allow the optimizer to use indexes when a collection attribute is compared to an
   expansion followed by an attribute name, e.g. `doc.value IN something[*].name`.
 
-* Fixed issue #10440: Incorrect sorting with sort criteria partially covered 
+* Fixed issue #10440: Incorrect sorting with sort criteria partially covered
   by index.
 
 * Fixed UPSERT matching.
