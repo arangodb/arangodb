@@ -259,11 +259,11 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
 }
 
 void RocksDBTransactionCollection::trackInsert(TRI_voc_rid_t rid) {
-  _trackedOperations.inserts.emplace_back(rid);
+  _trackedOperations.inserts.emplace_back(static_cast<std::size_t>(rid));
 }
 
 void RocksDBTransactionCollection::trackRemove(TRI_voc_rid_t rid) {
-  _trackedOperations.removals.emplace_back(rid);
+  _trackedOperations.removals.emplace_back(static_cast<std::size_t>(rid));
 }
 
 void RocksDBTransactionCollection::trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash) {

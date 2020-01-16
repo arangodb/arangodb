@@ -93,8 +93,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void trackRemove(TRI_voc_rid_t rid);
 
   struct TrackedOperations {
-    std::vector<TRI_voc_rid_t> inserts;
-    std::vector<TRI_voc_rid_t> removals;
+    std::vector<std::size_t> inserts;
+    std::vector<std::size_t> removals;
     bool empty() const { return inserts.empty() && removals.empty(); }
     void clear() {
       inserts.clear();

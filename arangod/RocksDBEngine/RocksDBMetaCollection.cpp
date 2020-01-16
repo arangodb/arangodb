@@ -405,8 +405,8 @@ void RocksDBMetaCollection::removeRevisionTreeBlocker(TRI_voc_tid_t transactionI
 }
 
 void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
-                                          std::vector<TRI_voc_rid_t>&& inserts,
-                                          std::vector<TRI_voc_rid_t>&& removals) {
+                                          std::vector<std::size_t>&& inserts,
+                                          std::vector<std::size_t>&& removals) {
   TRI_ASSERT(!inserts.empty() || !removals.empty());
   std::unique_lock guard(_revisionBufferLock);
   if (!inserts.empty()) {
