@@ -548,7 +548,12 @@ class SharedExecutionBlockImplTest {
       }
       clientCall.didSkip(localSkip);
 
-      return {inputRange.upstreamState(), localSkip, clientCall};
+      AqlCall upstreamCall = clientCall;
+      upstreamCall.softLimit = clientCall.getOffset() + clientCall.softLimit;
+      upstreamCall.hardLimit = clientCall.getOffset() + clientCall.hardLimit;
+      upstreamCall.offset = 0;
+
+      return {inputRange.upstreamState(), localSkip, upstreamCall};
     };
   }
 
@@ -699,8 +704,10 @@ INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest,
 enum CallAsserterState { INITIAL, SKIP, GET, COUNT, DONE };
 
 // Asserts if AqlCalls are forwarded onmodified correctly.
-struct CallAsserter {
-  explicit CallAsserter(AqlCall const& expectedCall) : expected{expectedCall} {}
+// TODO implement
+struct SkipCallAsserter {
+  explicit SkipCallAsserter(AqlCall const& expectedCall)
+      : expected{expectedCall} {}
 
   size_t call = 0;
   size_t maxCall = 0;
@@ -709,6 +716,7 @@ struct CallAsserter {
 
   auto gotCalled(AqlCall const& got) -> void {
     call++;
+    EXPECT_FALSE(got.getOffset() > 0);
     switch (state) {
       case CallAsserterState::INITIAL: {
         bool hasOffset = expected.getOffset() > 0;
@@ -793,9 +801,8 @@ struct CallAsserter {
 };
 
 // Asserts if AqlCalls are forwarded onmodified correctly.
-struct CallAsserterPassThrough {
-  explicit CallAsserterPassThrough(AqlCall const& expectedCall)
-      : expected{expectedCall} {}
+struct CallAsserter {
+  explicit CallAsserter(AqlCall const& expectedCall) : expected{expectedCall} {}
 
   size_t call = 0;
   size_t maxCall = 0;
@@ -1055,7 +1062,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
 
 // The following forwarding tests are disabled because we need to make modifications to the output row.
 
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1113,7 +1120,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding) 
   ValidateResult(builder, skipped, block, outReg);
 }
 
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_passthrough) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthrough) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1126,7 +1133,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_p
   auto producer = produceBlock(singleton.get(), builder, outReg);
 
   CallAsserter upperState{GetParam()};
-  CallAsserterPassThrough lowerState{GetParam()};
+  CallAsserter lowerState{GetParam()};
 
   auto testForwarding =
       [&](AqlItemBlockInputRange& inputRange,
@@ -1181,7 +1188,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_i
   RegisterId outReg = 0;
   auto producer = produceBlock(singleton.get(), builder, outReg);
   CallAsserter upperState{GetParam()};
-  CallAsserterPassThrough lowerState{GetParam()};
+  CallAsserter lowerState{GetParam()};
 
   auto testForwarding =
       [&](AqlItemBlockInputRange& inputRange,
