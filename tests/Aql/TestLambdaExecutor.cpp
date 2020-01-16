@@ -62,30 +62,24 @@ auto LambdaSkipExecutorInfos::getSkipLambda() const -> SkipCall const& {
   return _skipLambda;
 }
 
-template <BlockPassthrough allowPass>
-TestLambdaExecutor<allowPass>::TestLambdaExecutor(Fetcher&, Infos& infos)
+TestLambdaExecutor::TestLambdaExecutor(Fetcher&, Infos& infos)
     : _infos(infos) {}
 
-template <BlockPassthrough allowPass>
-TestLambdaExecutor<allowPass>::~TestLambdaExecutor() {}
+TestLambdaExecutor::~TestLambdaExecutor() {}
 
-template <BlockPassthrough allowPass>
-auto TestLambdaExecutor<allowPass>::fetchBlockForPassthrough(size_t atMost)
+auto TestLambdaExecutor::fetchBlockForPassthrough(size_t atMost)
     -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-template <BlockPassthrough allowPass>
-auto TestLambdaExecutor<allowPass>::produceRows(OutputAqlItemRow& output)
+auto TestLambdaExecutor::produceRows(OutputAqlItemRow& output)
     -> std::tuple<ExecutionState, Stats> {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-template <BlockPassthrough allowPass>
-auto TestLambdaExecutor<allowPass>::produceRows(AqlItemBlockInputRange& input,
-                                                OutputAqlItemRow& output)
+auto TestLambdaExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   return _infos.getLambda()(input, output);
 }
@@ -116,6 +110,3 @@ auto TestLambdaSkipExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCal
     -> std::tuple<ExecutorState, size_t, AqlCall> {
   return _infos.getSkipLambda()(input, call);
 }
-
-template class ::arangodb::aql::TestLambdaExecutor<BlockPassthrough::Enable>;
-template class ::arangodb::aql::TestLambdaExecutor<BlockPassthrough::Disable>;

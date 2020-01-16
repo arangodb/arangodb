@@ -80,7 +80,7 @@ struct AqlCall {
 
   std::size_t getLimit() const {
     // By default we use batchsize
-    std::size_t limit = ExecutionBlock::DefaultBatchSize();
+    std::size_t limit = ExecutionBlock::DefaultBatchSize;
     // We are not allowed to go above softLimit
     if (std::holds_alternative<std::size_t>(softLimit)) {
       limit = (std::min)(std::get<std::size_t>(softLimit), limit);
@@ -153,6 +153,24 @@ constexpr bool operator==(AqlCall::Limit const& a, size_t n) {
 }
 
 constexpr bool operator==(size_t n, AqlCall::Limit const& a) { return a == n; }
+
+constexpr bool operator==(AqlCall::Limit const& a,
+                          arangodb::aql::AqlCall::Infinity const& n) {
+  return std::visit(overload{[](size_t const& i) -> bool { return false; },
+                             [](auto inf) -> bool { return true; }},
+                    a);
+}
+
+constexpr bool operator==(arangodb::aql::AqlCall::Infinity const& n,
+                          AqlCall::Limit const& a) {
+  return a == n;
+}
+
+constexpr bool operator==(AqlCall::Limit const& a, AqlCall::Limit const& b) {
+  return std::visit(overload{[&b](size_t const& i) -> bool { return i == b; },
+                             [&b](auto inf) -> bool { return inf == b; }},
+                    a);
+}
 
 inline std::ostream& operator<<(std::ostream& out,
                                 const arangodb::aql::AqlCall::Limit& limit) {

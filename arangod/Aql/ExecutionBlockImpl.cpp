@@ -141,7 +141,6 @@ CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 // only used as long as isNewStyleExecutor is required.
 namespace arangodb {
 namespace aql {
-template <BlockPassthrough allowPass>
 class TestLambdaExecutor;
 
 class TestLambdaSkipExecutor;
@@ -153,8 +152,7 @@ template <class Executor>
 static bool constexpr isNewStyleExecutor() {
   return
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Enable>> ||
-      std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Disable>> ||
+      std::is_same_v<Executor, TestLambdaExecutor> ||
       std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
       std::is_same_v<Executor, FilterExecutor> ||
@@ -333,6 +331,21 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 template <class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     SharedAqlItemBlockPtr& newBlock, AqlCall&& call) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (newBlock != nullptr) {
+    // Assert that the block has enough registers. This must be guaranteed by
+    // the register planning.
+    TRI_ASSERT(newBlock->getNrRegs() == _infos.numberOfOutputRegisters());
+    // Check that all output registers are empty.
+    for (auto const& reg : *_infos.getOutputRegisters()) {
+      for (size_t row = 0; row < newBlock->size(); row++) {
+        AqlValue const& val = newBlock->getValueReference(row, reg);
+        TRI_ASSERT(val.isEmpty());
+      }
+    }
+  }
+#endif
+
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
@@ -963,11 +976,11 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
                   "At most one of Properties::allowsBlockPassthrough or "
                   "Properties::inputSizeRestrictsOutputSize should be true for "
                   "each Executor");
-    static_assert(
-        (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) ==
-            hasFetchBlockForPassthrough<Executor>::value,
-        "Executors should implement the method fetchBlockForPassthrough() iff "
-        "Properties::allowsBlockPassthrough is true");
+    static_assert((Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) ==
+                      hasFetchBlockForPassthrough<Executor>::value,
+                  "Executors should implement the method "
+                  "fetchBlockForPassthrough() iff "
+                  "Properties::allowsBlockPassthrough is true");
   }
   static_assert(
       Executor::Properties::inputSizeRestrictsOutputSize ==
@@ -1002,18 +1015,30 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
     -> std::unique_ptr<OutputAqlItemRow> {
-  size_t blockSize = ExecutionBlock::DefaultBatchSize();
-  SharedAqlItemBlockPtr newBlock =
-      _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
-  return createOutputRow(newBlock, std::move(call));
+  if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+    // Passthrough variant, re-use the block stored in InputRange
+    auto newBlock = _lastRange.getBlock();
+    return createOutputRow(newBlock, std::move(call));
+  } else {
+    // Non-Passthrough variant, we need to allocate the block ourselfs
+    size_t blockSize = ExecutionBlock::DefaultBatchSize;
+    SharedAqlItemBlockPtr newBlock =
+        _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
+    return createOutputRow(newBlock, std::move(call));
+  }
 }
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
-  if (_outputItemRow == nullptr || _outputItemRow->isFull()) {
+  if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
     _outputItemRow = allocateOutputBlock(std::move(call));
   } else {
     _outputItemRow->setCall(std::move(call));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// We only inject a new call into the output row.
+// In the passhrough variant we need to ensure that inputBlock and outputBlock stay identical
+// TODO add an external assertion for this.
+#endif
   }
 }
 
@@ -1072,10 +1097,10 @@ ExecState NextState(AqlCall const& call) {
 // GET_SOME: we just request rows from the executor and then discard
 //           them
 //
-enum class SkipRowsRangeVariant { FETCHER, EXECUTOR, GET_SOME };
+enum class SkipRowsRangeVariant { FETCHER, EXECUTOR };
 
-// This function is just copy&pasted from above to decide which variant of skip
-// is used for which executor.
+// This function is just copy&pasted from above to decide which variant of
+// skip is used for which executor.
 template <class Executor>
 static SkipRowsRangeVariant constexpr skipRowsType() {
   bool constexpr useFetcher =
@@ -1113,7 +1138,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   } else if (useFetcher) {
     return SkipRowsRangeVariant::FETCHER;
   } else {
-    return SkipRowsRangeVariant::GET_SOME;
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 }
 
@@ -1127,8 +1153,8 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
   if constexpr (isNewStyleExecutor<Executor>()) {
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
       // If the executor has a method skipRowsRange, to skip outputs more
-      // efficiently than just producing them to subsequently discard them, then
-      // we use it
+      // efficiently than just producing them to subsequently discard them,
+      // then we use it
       return _executor.skipRowsRange(inputRange, call);
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
       // If we know that every input row produces exactly one output row (this
@@ -1137,29 +1163,6 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       // Returning this will trigger to end in upstream state now, with the
       // call that was handed it
       return {inputRange.upstreamState(), 0, call};
-    } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::GET_SOME) {
-      // In all other cases, we skip by letting the executor produce rows, and
-      // then throw them away.
-
-      // TODO: This is temporary, we plan to simply create an output block and
-      // let it internally handle offset and fullCount.
-      size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
-      if (toSkip == 0) {
-        TRI_ASSERT(call.needsFullCount());
-        toSkip = DefaultBatchSize();
-      }
-      AqlCall skipCall{};
-      skipCall.softLimit = toSkip;
-      skipCall.offset = 0;
-      skipCall.fullCount = call.fullCount;
-
-      // we can't mess with _outputItemRow,
-      auto skipOutput = allocateOutputBlock(std::move(skipCall));
-      auto [state, stats, rescall] = _executor.produceRows(inputRange, *skipOutput);
-      auto skipped = skipOutput->numRowsWritten();
-
-      call.didSkip(skipped);
-      return std::make_tuple(state, skipped, rescall);
     } else {
       static_assert(dependent_false<Executor>::value,
                     "This value of SkipRowsRangeVariant is not supported");
@@ -1193,32 +1196,26 @@ template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if constexpr (isNewStyleExecutor<Executor>()) {
-    // Make sure there's a block allocated and set
-    // the call
-    ensureOutputBlock(stack.popCall());
+    AqlCall clientCall = stack.popCall();
 
     auto skipped = size_t{0};
 
-    TRI_ASSERT(_outputItemRow);
-
-    auto execState = ::NextState(_outputItemRow->getClientCall());
+    auto execState = ::NextState(clientCall);
 
     if (_lastRange.hasShadowRow()) {
-      // We have not been able to move all shadowRows into the output last time.
-      // Continue from there.
+      // We have not been able to move all shadowRows into the output last
+      // time. Continue from there.
       // TODO test if this works with COUNT COLLECT
       execState = ExecState::SHADOWROWS;
     }
 
     AqlCall executorRequest;
-    while (execState != ExecState::DONE && !_outputItemRow->allRowsUsed()) {
+    while (execState != ExecState::DONE) {
       switch (execState) {
         case ExecState::SKIP: {
-          auto const& clientCall = _outputItemRow->getClientCall();
-          auto [state, skippedLocal, call] =
-              executeSkipRowsRange(_lastRange, _outputItemRow->getModifiableClientCall());
+          auto [state, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
           skipped += skippedLocal;
-
+          // The execute might have modified the client call.
           if (state == ExecutorState::DONE) {
             execState = ExecState::SHADOWROWS;
           } else if (clientCall.getOffset() > 0) {
@@ -1233,13 +1230,23 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::PRODUCE: {
-          auto const& clientCall = _outputItemRow->getClientCall();
+          // Make sure there's a block allocated and set
+          // the call
           TRI_ASSERT(clientCall.getLimit() > 0);
+          ensureOutputBlock(std::move(clientCall));
+          TRI_ASSERT(_outputItemRow);
+
           // Execute getSome
           auto const [state, stats, call] =
               _executor.produceRows(_lastRange, *_outputItemRow);
           _engine->_stats += stats;
-          if (state == ExecutorState::DONE) {
+
+          // Produce might have modified the clientCall
+          clientCall = _outputItemRow->getClientCall();
+
+          if (_outputItemRow->isInitialized() && _outputItemRow->allRowsUsed()) {
+            execState = ExecState::DONE;
+          } else if (state == ExecutorState::DONE) {
             execState = ExecState::SHADOWROWS;
           } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
@@ -1255,7 +1262,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         case ExecState::FASTFORWARD: {
           // We can either do FASTFORWARD or FULLCOUNT, difference is that
           // fullcount counts what is produced now, FASTFORWARD simply drops
-          TRI_ASSERT(!_outputItemRow->getClientCall().needsFullCount());
+          TRI_ASSERT(!clientCall.needsFullCount());
           // We can drop all dataRows from upstream
 
           while (_lastRange.hasDataRow()) {
@@ -1273,8 +1280,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::FULLCOUNT: {
-          auto [state, skippedLocal, call] =
-              executeSkipRowsRange(_lastRange, _outputItemRow->getModifiableClientCall());
+          auto [state, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
           skipped += skippedLocal;
 
           if (state == ExecutorState::DONE) {
@@ -1301,10 +1307,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             return {_upstreamState, 0, nullptr};
           }
           skipped += skippedLocal;
-          ensureOutputBlock(_outputItemRow->stealClientCall());
-          // Do we need to call it?
-          // clientCall.didSkip(skippedLocal);
-          execState = ::NextState(_outputItemRow->getClientCall());
+          // We skipped through passthroug, so count that a skip was solved.
+          clientCall.didSkip(skippedLocal);
+          execState = ::NextState(clientCall);
           break;
         }
         case ExecState::SHADOWROWS: {
@@ -1317,7 +1322,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           if (_lastRange.hasShadowRow()) {
             auto const& [state, shadowRow] = _lastRange.nextShadowRow();
             TRI_ASSERT(shadowRow.isInitialized());
+            ensureOutputBlock(std::move(clientCall));
+            TRI_ASSERT(_outputItemRow);
+            TRI_ASSERT(_outputItemRow->isInitialized());
+
             _outputItemRow->copyRow(shadowRow);
+
             if (shadowRow.isRelevant()) {
               // We found a relevant shadow Row.
               // We need to reset the Executor
@@ -1325,7 +1335,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             }
             TRI_ASSERT(_outputItemRow->produced());
             _outputItemRow->advanceRow();
-            if (state == ExecutorState::DONE) {
+            clientCall = _outputItemRow->getClientCall();
+            if (_outputItemRow->allRowsUsed()) {
+              execState = ExecState::DONE;
+            } else if (state == ExecutorState::DONE) {
               if (_lastRange.hasDataRow()) {
                 // TODO this state is invalid, and can just show up now if we exclude SKIP
                 execState = ExecState::PRODUCE;
@@ -1347,7 +1360,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(false);
       }
     }
-    auto outputBlock = _outputItemRow->stealBlock();
+    // If we do not have an output, we simply return a nullptr here.
+    auto outputBlock = _outputItemRow != nullptr ? _outputItemRow->stealBlock()
+                                                 : SharedAqlItemBlockPtr{nullptr};
     // This is not strictly necessary here, as we shouldn't be called again
     // after DONE.
     _outputItemRow.reset();
