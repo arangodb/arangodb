@@ -338,18 +338,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
     auto& freq = doc_attrs.get<frequency>();
 
     if (!freq) {
-      if (0.f == boost) {
-        return { nullptr, nullptr };
-      }
-
-      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      return {
-        memory::make_unique<tfidf::const_score_ctx>(boost),
-        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
-          auto& state = *static_cast<const tfidf::const_score_ctx*>(ctx);
-          irs::sort::score_cast<tfidf::score_t>(score_buf) = state.boost_;
-        }
-      };
+      return { nullptr, nullptr };
     }
 
     auto& stats = stats_cast(stats_buf);

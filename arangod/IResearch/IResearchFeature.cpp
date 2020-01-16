@@ -404,7 +404,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
   addFunction(functions, { "IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc });  // (attribute, lower, upper, include lower, include upper)
   addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &minMatchFunc });  // (filter expression [, filter expression, ... ], min match count)
-  addFunction(functions, { "LEVENSHTEIN_MATCH", ".,.,.,.|.", flags, &dummyFilterFunc });  // (attribute, target, max distance, [include transpositions])
+  addFunction(functions, { "LEVENSHTEIN_MATCH", ".,.,.|.", flags, &dummyFilterFunc });  // (attribute, target, max distance, [include transpositions])
   addFunction(functions, { "BOOST", ".,.", flags, &contextFunc });  // (filter expression, boost)
   addFunction(functions, { "ANALYZER", ".,.", flags, &contextFunc });  // (filter expression, analyzer)
 }
