@@ -1305,8 +1305,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             return {_upstreamState, 0, nullptr};
           }
           skipped += skippedLocal;
-          // Do we need to call it?
-          // clientCall.didSkip(skippedLocal);
+          // We skipped through passthroug, so count that a skip was solved.
+          clientCall.didSkip(skippedLocal);
           execState = ::NextState(clientCall);
           break;
         }
