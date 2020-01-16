@@ -539,6 +539,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto ctx = transaction::StandaloneContext::Create(server.getSystemDatabase());
   auto trx = std::make_unique<arangodb::transaction::Methods>(ctx, readCollection, noCollections,
                                                               noCollections, opts);
+  ASSERT_EQ(1, collection->numberDocuments(trx.get(), transaction::CountType::Normal));
   auto mdr = ManagedDocumentResult{};
   auto result = collection->read(trx.get(), VPackStringRef{"myKey"}, mdr, false);
   ASSERT_TRUE(result.ok());
