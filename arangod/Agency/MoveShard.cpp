@@ -556,10 +556,12 @@ JOB_STATUS MoveShard::pendingLeader() {
           if (!found) {
             // _to server no longer replica of this shard
             abort(_to + " no longer holds a replica of " + shardPath);
+            return FAILED;
           }
         } else {
           // this shard is either gone or worse
           abort(shardPath + " no longer has replica");
+          return FAILED;
         }
       }
 
