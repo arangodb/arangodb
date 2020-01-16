@@ -518,8 +518,9 @@ struct AstNode {
   /// @brief set the string value of a node
   void setStringValue(char const* v, size_t length);
 
-  /// @brief whether or not a string is equal to another
-  bool stringEquals(char const* other, bool caseInsensitive) const;
+  /// @brief whether the string value of this node is equal to other
+  ///        ignoring case
+  bool stringEqualsCaseInsensitive(std::string const& other) const;
 
   /// @brief whether or not a string is equal to another
   bool stringEquals(std::string const& other) const;

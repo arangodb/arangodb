@@ -172,7 +172,8 @@ class GraphNode : public ExecutionNode {
   /// @brief the edge collection names
   std::vector<std::unique_ptr<aql::Collection>> _edgeColls;
 
-  /// @brief the vertex collection names
+  /// @brief the vertex collection names (can also be edge collections
+  /// as an edge can also point to another edge, instead of a vertex).
   std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
 
   /// @brief The default direction given in the query

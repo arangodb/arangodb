@@ -135,6 +135,8 @@ void InputAqlItemRow::toSimpleVelocyPack(velocypack::Options const* trxOpts,
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
     : _block(block), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
