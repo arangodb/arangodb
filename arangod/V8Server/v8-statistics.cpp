@@ -203,8 +203,7 @@ static void JS_EnabledStatisticsHistory(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, 
-      application_features::ApplicationServer::server().getFeature<StatisticsFeature>().historyEnabled());
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, StatisticsFeature::historyEnabled());
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }

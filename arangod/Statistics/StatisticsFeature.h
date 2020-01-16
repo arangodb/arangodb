@@ -74,9 +74,9 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   }
   
   static double time() { return TRI_microtime(); }
-  
-  bool historyEnabled() const {
-    return _statisticsHistory;
+
+  static bool historyEnabled() {
+    return STATISTICS->_statisticsHistory;
   }
 
  private:
