@@ -78,7 +78,7 @@ else()
     set(_PYTHON_FIND_OTHER_VERSIONS ${_PYTHON3_VERSIONS} ${_PYTHON2_VERSIONS} ${_PYTHON1_VERSIONS})
 endif()
 set(PATHLIST $ENV{PATH})
-LIST(FILTER PATHLIST INCLUDE REGEX ".*on3.$")
+LIST(FILTER PATHLIST INCLUDE REGEX ".*on3.*")
 find_program(PYTHON_EXECUTABLE NAMES ${_Python_NAMES} HINTS ${PATHLIST} CMAKE_FIND_ROOT_PATH_BOTH)
 
 # Set up the versions we know about, in the order we will search. Always add
