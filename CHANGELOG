@@ -4,6 +4,13 @@ v3.5.4 (XXXX-XX-XX)
 * MoveShard to check, if target is in sync follower before promotion
   to leader.
 
+* Fix installation of arangoinspect and libraries in Windows client installer.
+
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows.
+
+* Now clearing an internal map inside the traverser engine correctly.
+
 * Fix Windows client package JS installation paths.
 
 * Updated arangosync to 0.7.2.

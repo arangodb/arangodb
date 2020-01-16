@@ -21,7 +21,11 @@ Name of the graph.
 An array of definitions for the relations of the graph.
 Each has the following type:
 
-@RESTBODYPARAM{isSmart,boolean,optional,boolean}
+@RESTBODYPARAM{orphanCollections,array,optional,string}
+An array of additional vertex collections.
+Documents within these collections do not have edges within this graph.
+
+@RESTBODYPARAM{isSmart,boolean,optional,}
 Define if the created graph should be smart.
 This only has effect in Enterprise Edition.
 
@@ -174,6 +178,7 @@ A message created for this error.
       from: [ "startVertices" ],
       to: [ "endVertices" ]
     }],
+    orphanCollections: [ "orphanVertices" ],
     isSmart: true,
     options: {
       replicationFactor: 2,
