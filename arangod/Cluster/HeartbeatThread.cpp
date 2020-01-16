@@ -303,7 +303,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
     }
   } else {
     VPackSlice agentPool = result.slice()[0].get(".agency");
-    updateAgentPool(agentPool);  // FIXME
+    updateAgentPool(agentPool);
 
     VPackSlice shutdownSlice = result.slice()[0].get(
         std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
@@ -450,7 +450,7 @@ void HeartbeatThread::runDBServer() {
 
   // The following helps to synchronize between a background read
   // operation run in a scheduler thread and a the heartbeat
-  // thread. If it is zero, the heartbeat scheduler another
+  // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   std::shared_ptr<std::atomic<int>> getNewsRunning(new std::atomic<int>(0));
 
@@ -1075,7 +1075,7 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
 void HeartbeatThread::runCoordinator() {
   // The following helps to synchronize between a background read
   // operation run in a scheduler thread and a the heartbeat
-  // thread. If it is zero, the heartbeat scheduler another
+  // thread. If it is zero, the heartbeat schedules another
   // run, which at its end, sets it back to 0:
   std::shared_ptr<std::atomic<int>> getNewsRunning(new std::atomic<int>(0));
 

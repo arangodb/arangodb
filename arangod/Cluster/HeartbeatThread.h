@@ -305,7 +305,10 @@ class HeartbeatThread : public CriticalThread,
 
   // The following are only used in the coordinator case. This
   // is the coordinator's way to learn of new Plan and Current
-  // Versions.
+  // Versions. The heartbeat thread schedules a closure which calls
+  // getNewsFromAgencyForCoordinator but makes sure that it only ever
+  // has one running at a time. Therefore, it is safe to have these atomics
+  // as members.
 
   // invalidate coordinators every 2nd call
   std::atomic<bool> _invalidateCoordinators;
