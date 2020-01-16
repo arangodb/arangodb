@@ -457,8 +457,8 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
     }
 
     while (true) {
-      std::vector<TRI_voc_rid_t> inserts;
-      std::vector<TRI_voc_rid_t> removals;
+      std::vector<std::size_t> inserts;
+      std::vector<std::size_t> removals;
       // find out if we have buffers to apply
       {
         bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
@@ -535,8 +535,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
     }
 
     while (true) {
-      std::vector<TRI_voc_rid_t> const* inserts = nullptr;
-      std::vector<TRI_voc_rid_t> const* removals = nullptr;
+      std::vector<std::size_t> const* inserts = nullptr;
+      std::vector<std::size_t> const* removals = nullptr;
       // find out if we have buffers to apply
       {
         bool haveInserts = insertIt != _revisionInsertBuffers.end() &&
