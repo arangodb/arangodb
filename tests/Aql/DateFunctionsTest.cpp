@@ -121,8 +121,8 @@ struct TestDate {
   }
 
   void validateResult(AqlValue const& result) const {
-    ASSERT_TRUE(result.isBoolean());
-    ASSERT_EQ(result.toBoolean(), _isValid);
+    ASSERT_TRUE(result.isBoolean()) << "failed for testDate: " << testName();
+    ASSERT_EQ(result.toBoolean(), _isValid) << "failed for testDate: " << testName();
   }
 
  private:
@@ -179,8 +179,8 @@ struct TestDate {
   }
 
   void validateResult(AqlValue const& result) const {
-    ASSERT_TRUE(result.isBoolean());
-    ASSERT_EQ(result.toBoolean(), _isValid);
+    ASSERT_TRUE(result.isBoolean()) << "failed for testDate: " << testName();
+    ASSERT_EQ(result.toBoolean(), _isValid) << "failed for testDate: " << testName();
   }
 
  private:
@@ -436,7 +436,7 @@ struct TestDate {
     ASSERT_TRUE(result.isString());
     auto res = result.slice();
     std::string ref = res.copyString();  // Readability in test Tool
-    ASSERT_EQ(ref, _result);
+    ASSERT_EQ(ref, _result) << "failed for testee: " << testName();
   }
 
  private:

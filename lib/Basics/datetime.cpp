@@ -635,9 +635,9 @@ namespace {
   struct zhh : seq<zero_to_five, digit> {};
   struct zmm : seq<zero_to_five, digit> {};
   struct TZD : sor<Z, seq<opt<plus_minus>, zhh, colon, zmm>> {};
-  struct time : sor<hhcmmcss, hhmmss, opt<TZD>> {};
+  struct time : seq<sor<hhcmmcss, hhmmss>,opt<TZD>> {};
 
-  struct iso8601 : seq<date, opt<seq<opt<T>, time>>> {};
+  struct iso8601 : seq<date, opt<seq<opt<T>, time>>, eof> {};
 
   // default action
   template<typename rule>
