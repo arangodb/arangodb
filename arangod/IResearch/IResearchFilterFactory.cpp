@@ -1829,9 +1829,7 @@ arangodb::Result fromFuncBoost(
   auto expressionArg = args.getMemberUnchecked(0);
 
   if (!expressionArg) {
-    auto message = "'BOOST' AQL function: 1st argument is invalid";
-    LOG_TOPIC("f8c16", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgument(funcName, 1);
   }
 
   ScopedAqlValue tmpValue;
@@ -2062,43 +2060,47 @@ arangodb::Result fromFuncMinMatch(
 
 
 arangodb::Result processPhraseArgs(
-    irs::by_phrase* phrase, QueryContext const& ctx,
-    FilterContext const& filterCtx, arangodb::aql::AstNode const& valueArgs,
-    size_t valueArgsBegin, size_t valueArgsEnd, irs::analysis::analyzer::ptr& analyzer,
-    size_t offset, bool allowDefaultOffset, bool allowRecursion) {
+    char const* funcName,
+    irs::by_phrase* phrase,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& valueArgs,
+    size_t valueArgsBegin, size_t valueArgsEnd,
+    irs::analysis::analyzer::ptr& analyzer,
+    size_t offset,
+    bool allowDefaultOffset,
+    bool allowRecursion) {
   irs::string_ref value;
   bool expectingOffset = false;
   for (size_t idx = valueArgsBegin; idx < valueArgsEnd; ++idx) {
     auto currentArg = valueArgs.getMemberUnchecked(idx);
     if (!currentArg) {
-      auto message = "'PHRASE' AQL function: Unable to parse argument on position "s + std::to_string(idx);
-      LOG_TOPIC("44bed", WARN, arangodb::iresearch::TOPIC) << message;
-      return { TRI_ERROR_BAD_PARAMETER, message };
+      return error::invalidArgument(funcName, idx);
     }
     if (currentArg->isArray() && (!expectingOffset || allowDefaultOffset)) {
       // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
       // No array recursion allowed. This could be allowed, but just looks tangled.
       // Anyone interested coud use FLATTEN  to explicitly require processing all recurring arrays as one array
       if (allowRecursion) {
-        auto subRes = processPhraseArgs(phrase, ctx, filterCtx, *currentArg, 0, currentArg->numMembers(), analyzer, offset, true, false);
+        auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, *currentArg, 0, currentArg->numMembers(), analyzer, offset, true, false);
         if (subRes.fail()) {
           return subRes;
         }
         expectingOffset = true;
         offset = 0;
         continue;
-      } else {
-        auto message = "'PHRASE' AQL function: recursive arrays not allowed at position "s + std::to_string(idx);
-        LOG_TOPIC("66c24", WARN, arangodb::iresearch::TOPIC) << message;
-        return { TRI_ERROR_BAD_PARAMETER, message };
       }
+
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "'"s.append(funcName).append("' AQL function: recursive arrays not allowed at position ")
+            .append(std::to_string(idx))
+      };
     }
     ScopedAqlValue currentValue(*currentArg);
     if (phrase || currentValue.isConstant()) {
       if (!currentValue.execute(ctx)) {
-        auto message = "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx);
-        LOG_TOPIC("d819d", WARN, arangodb::iresearch::TOPIC) << message;
-        return { TRI_ERROR_BAD_PARAMETER, message };
+        return error::invalidArgument(funcName, idx);
       }
       if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE == currentValue.type() && expectingOffset) {
         offset = static_cast<uint64_t>(currentValue.getInt64());
@@ -2114,9 +2116,12 @@ arangodb::Result processPhraseArgs(
         } else {
           expectedValue = " as a value";
         }
-        auto message = "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx) + expectedValue;
-        LOG_TOPIC("ac06b", WARN, arangodb::iresearch::TOPIC) << message;
-        return { TRI_ERROR_BAD_PARAMETER, message };
+
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName).append("' AQL function: Unable to parse argument at position ")
+              .append(std::to_string(idx)).append(expectedValue)
+        };
       }
     } else {
       // in case of non const node encountered while parsing we can not decide if current and following args are correct before execution
@@ -2130,11 +2135,15 @@ arangodb::Result processPhraseArgs(
     offset = 0;
     expectingOffset = true;
   }
+
   if (!expectingOffset) { // that means last arg is numeric - this is error as no term to apply offset to
-    auto message = "'PHRASE' AQL function : Unable to parse argument on position " + std::to_string(valueArgsEnd - 1) +  "as a value"s;
-    LOG_TOPIC("5fafe", WARN, arangodb::iresearch::TOPIC) << message;
-    return { TRI_ERROR_BAD_PARAMETER, message };
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function : Unable to parse argument at position ")
+          .append(std::to_string(valueArgsEnd - 1)).append("as a value")
+    };
   }
+
   return {};
 }
 
@@ -2224,7 +2233,7 @@ arangodb::Result fromFuncPhrase(
   }
   // on top level we require explicit offsets - to be backward compatible and be able to distinguish last argument as analyzer or value
   // Also we allow recursion inside array to support older syntax (one array arg) and add ability to pass several arrays as args
-  return processPhraseArgs(phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
+  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
 }
 
 // STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])
@@ -2329,75 +2338,46 @@ arangodb::Result fromFuncInRange(
     return error::invalidAttribute(funcName, 1);
   }
 
-  ScopedAqlValue includeValue;
-  auto getInclusion = [&ctx, filter, &includeValue](
-      arangodb::aql::AstNode const* arg,
-      bool& include,
-      irs::string_ref const& argName) -> arangodb::Result {
-    if (!arg) {
-      auto message = "'IN_RANGE' AQL function: "s + argName.c_str() + " argument is invalid"s;
-      LOG_TOPIC("8ec00", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    includeValue.reset(*arg);
-
-    if (filter || includeValue.isConstant()) {
-      if (!includeValue.execute(ctx)) {
-        auto message = "'IN_RANGE' AQL function: Failed to evaluate "s + argName.c_str() + " argument"s;
-        LOG_TOPIC("32f3b", WARN, arangodb::iresearch::TOPIC) << message;
-        return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      if (arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL != includeValue.type()) {
-        std::string type = ScopedAqlValue::typeString(includeValue.type());
-        auto message = "'IN_RANGE' AQL function: "s + std::string(argName.c_str()) + " argument has invalid type '" + type + "' (boolean expected)";
-        LOG_TOPIC("57a29", WARN, arangodb::iresearch::TOPIC) << message;
-        return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      include = includeValue.getBoolean();
-    }
-
-    return {};
-  };
-
   // 2nd argument defines a lower boundary
   auto const* lhsArg = args.getMemberUnchecked(1);
 
   if (!lhsArg) {
-    auto message = "'IN_RANGE' AQL function: 2nd argument is invalid";
-    LOG_TOPIC("f1167", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgument(funcName, 2);
   }
 
   // 3rd argument defines an upper boundary
   auto const* rhsArg = args.getMemberUnchecked(2);
 
   if (!rhsArg) {
-    auto message = "'IN_RANGE' AQL function: 3rd argument is invalid";
-    LOG_TOPIC("d5fe6", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgument(funcName, 3);
   }
+
+  ScopedAqlValue includeValue;
 
   // 4th argument defines inclusion of lower boundary
   bool lhsInclude = false;
-  auto inc1 = getInclusion(args.getMemberUnchecked(3), lhsInclude, "4th");
-  if (inc1.fail()) {
-    return inc1;
+
+  auto rv = evaluate(lhsInclude, includeValue, funcName, args, 3, bool(filter), ctx);
+
+  if (rv.fail()) {
+    return rv;
   }
 
   // 5th argument defines inclusion of upper boundary
   bool rhsInclude = false;
-  auto inc2 = getInclusion(args.getMemberUnchecked(4), rhsInclude, "5th");
-  if (inc2.fail()) {
-    return inc2;
+
+  rv = evaluate(rhsInclude, includeValue, funcName, args, 4, bool(filter), ctx);
+
+  if (rv.fail()) {
+    return rv;
   }
 
-  auto rv = ::byRange(filter, *field, *lhsArg, lhsInclude, *rhsArg, rhsInclude, ctx, filterCtx);
+  rv = ::byRange(filter, *field, *lhsArg, lhsInclude, *rhsArg, rhsInclude, ctx, filterCtx);
+
   if (rv.fail()) {
     return {rv.errorNumber(), "error in byRange: " + rv.errorMessage()};
   }
+
   return {};
 }
 
