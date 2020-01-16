@@ -29,6 +29,7 @@ const db = require('@arangodb').db;
 const foxxManager = require('@arangodb/foxx/manager');
 const wait = require('internal').wait;
 const warn = require('console').warn;
+const errors = require('internal').errors;
 
 const coordinatorId = (
   isCluster && cluster.isCoordinator()
