@@ -543,7 +543,7 @@ RestStatus RestAgencyHandler::handleConfig() {
       return RestStatus::DONE;
     }
   }
-  if (_request->requestType() == rest::RequestType::PUT) {
+  else if (_request->requestType() == rest::RequestType::PUT) {
     try {
       _agent->updateSomeConfigValues(_request->toVelocyPackBuilderPtr()->slice());
     } catch (std::exception const& e) {
@@ -613,6 +613,7 @@ RestStatus RestAgencyHandler::execute() {
         return handleTransact();
       } else if (suffixes[0] == "config") {
         if (_request->requestType() != rest::RequestType::GET &&
+            _request->requestType() != rest::RequestType::PUT &&
             _request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }
