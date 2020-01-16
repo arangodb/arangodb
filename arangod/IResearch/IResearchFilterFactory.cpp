@@ -222,7 +222,7 @@ arangodb::Result malformedNode(arangodb::aql::AstNodeType type) {
 }
 
 template<typename T, bool CheckDeterminism = false>
-arangodb::Result evaluate(
+arangodb::Result evaluateArg(
     T& out, ScopedAqlValue& value,
     char const* funcName,
     arangodb::aql::AstNode const& args,
@@ -280,6 +280,73 @@ arangodb::Result evaluate(
     } else if constexpr (std::is_same<T, bool>::value) {
       out = value.getBoolean();
     }
+  }
+
+  return {};
+}
+
+arangodb::Result extractAnalyzerFromArg(
+    arangodb::iresearch::FieldMeta::Analyzer& out,
+    char const* funcName,
+    irs::boolean_filter const* filter,
+    arangodb::aql::AstNode const& args,
+    size_t i,
+    QueryContext const& ctx) {
+  auto const* analyzerArg = args.getMemberUnchecked(i);
+
+  if (!analyzerArg) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: ")
+          .append(std::to_string(i + 1)).append(" argument is invalid analyzer")
+    };
+  }
+
+  TRI_ASSERT(ctx.trx);
+  auto& server = ctx.trx->vocbase().server();
+  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "'"s.append(IResearchAnalyzerFeature::name())
+          .append("' feature is not registered, unable to evaluate '")
+          .append(funcName).append("' function")
+    };
+  }
+  auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
+
+  ScopedAqlValue analyzerValue(*analyzerArg);
+  irs::string_ref analyzerId;
+
+  auto rv = evaluateArg(analyzerId, analyzerValue, funcName, args, i, bool(filter), ctx);
+
+  if (rv.fail()) {
+    return rv;
+  }
+
+  if (!filter && !analyzerValue.isConstant()) {
+    return {};
+  }
+
+  auto& analyzer = out._pool;
+  auto& shortName = out._shortName;
+
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
+
+  if (sysVocbase) {
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+        analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
+  }
+
+  if (!analyzer) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append("' AQL function: Unable to load requested analyzer '")
+          .append(analyzerId.c_str(), analyzerId.size()).append("'")
+    };
   }
 
   return {};
@@ -347,83 +414,6 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
   auto& exprFilter = filter.add<arangodb::iresearch::ByExpression>();
   exprFilter.init(*ctx.plan, *ctx.ast, std::move(node));
   exprFilter.boost(filterCtx.boost);
-}
-
-arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
-    irs::boolean_filter const* filter, arangodb::aql::AstNode const* analyzerArg,
-    QueryContext const& ctx, size_t argIdx, irs::string_ref const& functionName) {
-  static const arangodb::iresearch::FieldMeta::Analyzer invalid( // invalid analyzer
-    nullptr, "");
-
-  if (!analyzerArg) {
-    auto message =  "'"s + std::string(functionName.c_str(), functionName.size()) + "' AQL function: " + std::to_string(argIdx) + " argument is invalid analyzer";
-    LOG_TOPIC("a33c4", WARN, arangodb::iresearch::TOPIC) << message;
-
-    return invalid;
-  }
-
-  TRI_ASSERT(ctx.trx);
-  auto& server = ctx.trx->vocbase().server();
-  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
-    LOG_TOPIC("03314", WARN, arangodb::iresearch::TOPIC)
-        << "'" << IResearchAnalyzerFeature::name()
-        << "' feature is not registered, unable to evaluate '" << functionName
-        << "' function";
-
-    return invalid;
-  }
-  auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-
-  ScopedAqlValue analyzerValue(*analyzerArg);
-
-  if (!filter && !analyzerValue.isConstant()) {
-    return arangodb::iresearch::FieldMeta::Analyzer();
-  }
-
-  if (!analyzerValue.execute(ctx)) {
-    LOG_TOPIC("9f918", WARN, arangodb::iresearch::TOPIC)
-      << "'" << functionName << "' AQL function: Failed to evaluate " << argIdx << " argument";
-
-    return invalid;
-  }
-
-  if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != analyzerValue.type()) {
-    LOG_TOPIC("3ac4c", WARN, arangodb::iresearch::TOPIC)
-      << "'" << functionName << "' AQL function: " << argIdx << " argument has invalid type '" << arangodb::iresearch::ScopedAqlValue::typeString(analyzerValue.type()) << "' (string expected)";
-
-    return invalid;
-  }
-
-  irs::string_ref analyzerId;
-
-  if (!analyzerValue.getString(analyzerId)) {
-    LOG_TOPIC("73ca9", WARN, arangodb::iresearch::TOPIC)
-      << "'" << functionName << "' AQL function: Unable to parse " << argIdx << " argument as a string";
-
-    return invalid;
-  }
-
-  arangodb::iresearch::FieldMeta::Analyzer result(nullptr, analyzerId);
-  auto& analyzer = result._pool;
-  auto& shortName = result._shortName;
-
-  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                        : nullptr;
-
-  if (sysVocbase) {
-    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
-
-    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-        analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
-  }
-
-  if (!analyzer) {
-    LOG_TOPIC("402b1", WARN, arangodb::iresearch::TOPIC)
-      << "'" << functionName << "' AQL function: Unable to load requested analyzer '" << analyzerId << "'";
-  }
-
-  return result;
 }
 
 arangodb::Result byTerm(irs::by_term* filter, std::string name,
@@ -1730,7 +1720,7 @@ arangodb::Result fromFuncAnalyzer(
   irs::string_ref analyzerId;
   ScopedAqlValue analyzerIdValue;
 
-  auto rv = evaluate<decltype(analyzerId), true>(
+  auto rv = evaluateArg<decltype(analyzerId), true>(
         analyzerId, analyzerIdValue, funcName,
         args, 1, bool(filter), ctx);
 
@@ -1818,7 +1808,8 @@ arangodb::Result fromFuncBoost(
 
   // 2nd argument defines a boost
   double_t boostValue = 0;
-  auto rv = evaluate<decltype(boostValue), true>(boostValue, tmpValue, funcName, args, 1, bool(filter), ctx);
+  auto rv = evaluateArg<decltype(boostValue), true>(
+        boostValue, tmpValue, funcName, args, 1, bool(filter), ctx);
 
   if (rv.fail()) {
     return rv;
@@ -1828,8 +1819,9 @@ arangodb::Result fromFuncBoost(
                                        filterCtx.boost * static_cast<float_t>(boostValue)};
 
   rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
+
   if (rv.fail()) {
-    return arangodb::Result{rv.errorNumber(), "error in sub-filter context: " + rv.errorMessage()};
+    return {rv.errorNumber(), "error in sub-filter context: " + rv.errorMessage()};
   }
 
   return {};
@@ -1875,7 +1867,7 @@ arangodb::Result fromFuncExists(
     // 2nd argument defines a type (if present)
     ScopedAqlValue argValue;
     irs::string_ref arg;
-    auto rv = evaluate(arg, argValue, funcName, args, 1, bool(filter), ctx);
+    auto rv = evaluateArg(arg, argValue, funcName, args, 1, bool(filter), ctx);
 
     if (rv.fail()) {
       return rv;
@@ -1933,8 +1925,9 @@ arangodb::Result fromFuncExists(
       if (TypeHandlers.end() == typeHandler) {
         return {
           TRI_ERROR_BAD_PARAMETER,
-           "'EXISTS' AQL function: 2nd argument must be equal to one of the following: 'string', 'type', 'analyzer', 'numeric', 'bool', 'boolean', 'null', but got '"s
-              .append(arg.c_str()).append("'")
+          "'"s.append("' AQL function: 2nd argument must be equal to one of the following: "
+                      "'string', 'type', 'analyzer', 'numeric', 'bool', 'boolean', 'null', but got '")
+             .append(arg.c_str()).append("'")
         };
       }
 
@@ -1942,12 +1935,17 @@ arangodb::Result fromFuncExists(
         if (TypeAnalyzer.c_str() != typeHandler->first.c_str()) {
           return {
             TRI_ERROR_BAD_PARAMETER,
-            "'EXISTS' AQL function: 3rd argument is intended to use with 'analyzer' type only"
+            "'"s.append(funcName).append("' AQL function: 3rd argument is intended to be used with 'analyzer' type only")
           };
         }
 
-        analyzer = extractAnalyzerFromArg(filter, args.getMemberUnchecked(2), ctx, 2, funcName);
+        rv = extractAnalyzerFromArg(analyzer, funcName, filter, args, 2, ctx);
 
+        if (rv.fail()) {
+          return rv;
+        }
+
+        TRI_ASSERT(analyzer._pool);
         if (!analyzer._pool) {
           return {TRI_ERROR_INTERNAL, "analyzer not found"};
         }
@@ -1982,7 +1980,6 @@ arangodb::Result fromFuncMinMatch(
     return error::invalidArgsCount<error::OpenRange<false, 2>>(funcName);
   }
 
-
   // ...........................................................................
   // last argument defines min match count
   // ...........................................................................
@@ -1991,7 +1988,8 @@ arangodb::Result fromFuncMinMatch(
   ScopedAqlValue minMatchCountValue;
   int64_t minMatchCount= 0;
 
-  auto rv = evaluate<int64_t, true>(minMatchCount, minMatchCountValue, funcName, args, lastArg, bool(filter), ctx);
+  auto rv = evaluateArg<decltype(minMatchCount), true>(
+        minMatchCount, minMatchCountValue, funcName, args, lastArg, bool(filter), ctx);
 
   if (rv.fail()) {
     return rv;
@@ -2021,7 +2019,8 @@ arangodb::Result fromFuncMinMatch(
     if (!subFilterExpression) {
       return {
         TRI_ERROR_BAD_PARAMETER,
-        "'MIN_MATCH' AQL function: Failed to evaluate argument at position '"s.append(std::to_string(i)).append("'")
+        "'"s.append(funcName).append("' AQL function: Failed to evaluate argument at position '")
+            .append(std::to_string(i)).append("'")
       };
     }
 
@@ -2031,7 +2030,7 @@ arangodb::Result fromFuncMinMatch(
     if (rv.fail()) {
       return {
         TRI_ERROR_BAD_PARAMETER,
-        "'MIN_MATCH' AQL function: Failed to instantiate sub-filter for argument at position '"s
+        "'"s.append(funcName).append("' AQL function: Failed to instantiate sub-filter for argument at position '")
             .append(std::to_string(i)).append("': ").append(rv.errorMessage())
       };
     }
@@ -2039,7 +2038,6 @@ arangodb::Result fromFuncMinMatch(
 
   return {};
 }
-
 
 arangodb::Result processPhraseArgs(
     char const* funcName,
@@ -2160,9 +2158,13 @@ arangodb::Result fromFuncPhrase(
   if (0 != (argc & 1)) {  // override analyzer
     --argc;
 
-    analyzerPool = extractAnalyzerFromArg(filter, args.getMemberUnchecked(argc),
-                                          ctx, argc, "PHRASE");
+    auto rv = extractAnalyzerFromArg(analyzerPool, funcName, filter, args, argc, ctx);
 
+    if (rv.fail()) {
+      return rv;
+    }
+
+    TRI_ASSERT(analyzerPool._pool);
     if (!analyzerPool._pool) {
       return {TRI_ERROR_BAD_PARAMETER};
     }
@@ -2202,7 +2204,7 @@ arangodb::Result fromFuncPhrase(
     if (!analyzer) {
       return {
         TRI_ERROR_INTERNAL,
-        "'PHRASE' AQL function: Unable to instantiate analyzer '"s
+        "'"s.append("' AQL function: Unable to instantiate analyzer '")
             .append(analyzerPool._pool->name()).append("'")
       };
     }
@@ -2248,7 +2250,7 @@ arangodb::Result fromFuncStartsWith(
   // 2nd argument defines a value
   ScopedAqlValue prefixValue;
   irs::string_ref prefix;
-  auto rv = evaluate(prefix, prefixValue, funcName, args, 1, bool(filter), ctx);
+  auto rv = evaluateArg(prefix, prefixValue, funcName, args, 1, bool(filter), ctx);
 
   if (rv.fail()) {
     return rv;
@@ -2260,7 +2262,7 @@ arangodb::Result fromFuncStartsWith(
     // 3rd (optional) argument defines a number of scored terms
     ScopedAqlValue scoringLimitValueBuf;
     int64_t scoringLimitValue = static_cast<int64_t>(scoringLimit);
-    rv = evaluate(scoringLimitValue, scoringLimitValueBuf, funcName, args, 2, bool(filter), ctx);
+    rv = evaluateArg(scoringLimitValue, scoringLimitValueBuf, funcName, args, 2, bool(filter), ctx);
 
     if (rv.fail()) {
       return rv;
@@ -2339,7 +2341,7 @@ arangodb::Result fromFuncInRange(
   // 4th argument defines inclusion of lower boundary
   bool lhsInclude = false;
 
-  auto rv = evaluate(lhsInclude, includeValue, funcName, args, 3, bool(filter), ctx);
+  auto rv = evaluateArg(lhsInclude, includeValue, funcName, args, 3, bool(filter), ctx);
 
   if (rv.fail()) {
     return rv;
@@ -2348,7 +2350,7 @@ arangodb::Result fromFuncInRange(
   // 5th argument defines inclusion of upper boundary
   bool rhsInclude = false;
 
-  rv = evaluate(rhsInclude, includeValue, funcName, args, 4, bool(filter), ctx);
+  rv = evaluateArg(rhsInclude, includeValue, funcName, args, 4, bool(filter), ctx);
 
   if (rv.fail()) {
     return rv;
@@ -2394,7 +2396,7 @@ arangodb::Result fromFuncLike(
   // 2nd argument defines a matching pattern
   ScopedAqlValue patternValue;
   irs::string_ref pattern;
-  arangodb::Result res = evaluate(pattern, patternValue, funcName, args, 1, bool(filter), ctx);
+  arangodb::Result res = evaluateArg(pattern, patternValue, funcName, args, 1, bool(filter), ctx);
 
   if (!res.ok()) {
     return res;
@@ -2452,7 +2454,7 @@ arangodb::Result fromFuncLevenshteinMatch(
   // 2nd argument defines a target
   ScopedAqlValue targetValue;
   irs::string_ref target;
-  arangodb::Result res = evaluate(target, targetValue, funcName, args, 1, bool(filter), ctx);
+  arangodb::Result res = evaluateArg(target, targetValue, funcName, args, 1, bool(filter), ctx);
 
   if (!res.ok()) {
     return res;
@@ -2462,7 +2464,7 @@ arangodb::Result fromFuncLevenshteinMatch(
 
   // 3rd argument defines a max distance
   int64_t maxDistance;
-  res = evaluate(maxDistance, tmpValue, funcName, args, 2, bool(filter), ctx);
+  res = evaluateArg(maxDistance, tmpValue, funcName, args, 2, bool(filter), ctx);
 
   if (!res.ok()) {
     return res;
@@ -2472,7 +2474,7 @@ arangodb::Result fromFuncLevenshteinMatch(
   bool withTranspositions = false;
 
   if (4 == argc) {
-    res = evaluate(withTranspositions, tmpValue, funcName, args, 3, bool(filter), ctx);
+    res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3, bool(filter), ctx);
 
     if (!res.ok()) {
       return res;
@@ -2482,7 +2484,7 @@ arangodb::Result fromFuncLevenshteinMatch(
   if (maxDistance < 0 || maxDistance > 4) {
     return {
       TRI_ERROR_BAD_PARAMETER,
-      "'LEVENSHTEIN_MATCH' AQL function: maxDistance argument must be in range [0, 4]"
+      "'"s.append(funcName).append("' AQL function: maxDistance argument must be in range [0, 4]")
     };
   }
 
