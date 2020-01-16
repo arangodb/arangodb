@@ -216,6 +216,7 @@ class TraverserHelper : public Traverser {
   }
 
   void destroyEngines() override {}
+  void clear() override {}
 
   std::string const& startVertexUsedAt(uint64_t index) {
     TRI_ASSERT(index < _usedVertexAt.size());
