@@ -703,86 +703,69 @@ INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest,
 
 enum CallAsserterState { INITIAL, SKIP, GET, COUNT, DONE };
 
-// Asserts if AqlCalls are forwarded onmodified correctly.
-// TODO implement
-struct SkipCallAsserter {
-  explicit SkipCallAsserter(AqlCall const& expectedCall)
-      : expected{expectedCall} {}
-
+struct BaseCallAsserter {
   size_t call = 0;
   size_t maxCall = 0;
-  CallAsserterState state = CallAsserterState::INITIAL;
+  CallAsserterState state = CallAsserterState::DONE;
   AqlCall const expected;
+
+  explicit BaseCallAsserter(AqlCall const& expectedCall)
+      : expected{expectedCall} {}
+
+  auto hasSkip() const -> bool { return expected.getOffset() > 0; }
+  auto hasLimit() const -> bool { return expected.getLimit() > 0; }
+  auto needsFullCount() const -> bool { return expected.needsFullCount(); }
+};
+
+// Asserts if AqlCalls are forwarded onmodified correctly.
+struct SkipCallAsserter : public BaseCallAsserter {
+  bool firstCall = false;
+
+  explicit SkipCallAsserter(AqlCall const& expectedCall)
+      : BaseCallAsserter{expectedCall} {
+    // Calculate number of calls
+    // Ordering here is important, as it defines the start
+    // state of the asserter. We first get called for skip
+    // so skip needs to be last here
+    if (needsFullCount()) {
+      maxCall += 2;
+      state = CallAsserterState::COUNT;
+    }
+    if (hasSkip()) {
+      maxCall += 2;
+      state = CallAsserterState::SKIP;
+    }
+    // It is possible that we actually have 0 calls.
+    // if there is neither skip nor limit
+  }
 
   auto gotCalled(AqlCall const& got) -> void {
     call++;
-    EXPECT_FALSE(got.getOffset() > 0);
     switch (state) {
-      case CallAsserterState::INITIAL: {
-        bool hasOffset = expected.getOffset() > 0;
-        bool hasLimit = expected.getLimit() > 0;
-        bool hasFullCount = expected.needsFullCount();
-        if (hasOffset) {
-          // TODO i think this is correct:
-          // EXPECT_EQ(got.getOffset(), expected.getOffset());
-          // This is how it is implemented right now
-          EXPECT_EQ(got.getLimit(), expected.getOffset());
-          state = CallAsserterState::SKIP;
-        } else if (hasLimit) {
-          EXPECT_EQ(got.getLimit(), expected.getLimit());
-          state = CallAsserterState::GET;
-        } else {
-          // We do not test 0,0,false
-          EXPECT_EQ(expected.needsFullCount(), true);
-          // The executor does not need to care.
-          EXPECT_EQ(got.needsFullCount(), expected.needsFullCount());
-          state = CallAsserterState::COUNT;
-        }
-        maxCall = 1;
-        if (hasOffset) {
-          maxCall++;
-        }
-        if (hasLimit) {
-          maxCall++;
-        }
-        if (hasFullCount) {
-          maxCall++;
-        }
-        break;
-      }
       case CallAsserterState::SKIP: {
-        // TODO i think this is correct:
-        // EXPECT_EQ(got.getOffset(), expected.getOffset());
-        // This is how it is implemented right now
-        EXPECT_EQ(got.getLimit(), expected.getOffset());
-        if (expected.getLimit() > 0) {
-          state = CallAsserterState::GET;
-        } else if (expected.needsFullCount()) {
-          state = CallAsserterState::COUNT;
-        } else {
-          state = CallAsserterState::DONE;
-        }
-        break;
-      }
-      case CallAsserterState::GET: {
-        EXPECT_EQ(got.getOffset(), 0);
-        EXPECT_EQ(got.getLimit(), expected.getLimit());
-        if (expected.needsFullCount()) {
-          state = CallAsserterState::COUNT;
-        } else {
-          state = CallAsserterState::DONE;
+        EXPECT_EQ(got.getOffset(), expected.getOffset());
+        firstCall = !firstCall;
+        if (!firstCall) {
+          if (needsFullCount()) {
+            state = CallAsserterState::COUNT;
+          } else {
+            state = CallAsserterState::DONE;
+          }
         }
         break;
       }
       case CallAsserterState::COUNT: {
-        //  TODO Fixme, this needs improvement on Outputblock
-        // EXPECT_EQ(got.getLimit(), 0);
-        EXPECT_EQ(got.getLimit(), ExecutionBlock::DefaultBatchSize);
+        EXPECT_EQ(got.getLimit(), 0);
         EXPECT_EQ(got.getOffset(), 0);
         EXPECT_TRUE(got.needsFullCount());
-        state = CallAsserterState::DONE;
+        firstCall = !firstCall;
+        if (!firstCall) {
+          state = CallAsserterState::DONE;
+        }
         break;
       }
+      case CallAsserterState::INITIAL:
+      case CallAsserterState::GET:
       case CallAsserterState::DONE: {
         // This should not be reached
         EXPECT_FALSE(true);
@@ -791,23 +774,22 @@ struct SkipCallAsserter {
     }
     EXPECT_LE(call, maxCall);
     if (call > maxCall) {
-      LOG_DEVEL << got;
-      if (call > maxCall + 2) {
-        // Security bailout to avoid infinite loops
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-      }
+      // Security bailout to avoid infinite loops
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   }
 };
 
 // Asserts if AqlCalls are forwarded onmodified correctly.
-struct CallAsserter {
-  explicit CallAsserter(AqlCall const& expectedCall) : expected{expectedCall} {}
-
-  size_t call = 0;
-  size_t maxCall = 0;
-  CallAsserterState state = CallAsserterState::INITIAL;
-  AqlCall const expected;
+struct CallAsserter : public BaseCallAsserter {
+  explicit CallAsserter(AqlCall const& expectedCall)
+      : BaseCallAsserter{expectedCall} {
+    // Calculate number of calls
+    if (hasLimit()) {
+      maxCall += 2;
+      state = CallAsserterState::INITIAL;
+    }
+  }
 
   auto gotCalled(AqlCall const& got) -> void {
     EXPECT_EQ(got.getOffset(), 0);
@@ -816,20 +798,106 @@ struct CallAsserter {
       case CallAsserterState::INITIAL: {
         EXPECT_EQ(got.getLimit(), expected.getLimit());
         state = CallAsserterState::GET;
-        maxCall = 1;
-        if (expected.getLimit() > 0) {
-          maxCall++;
-        }
         break;
       }
       case CallAsserterState::GET: {
-        EXPECT_EQ(got.getOffset(), 0);
         EXPECT_EQ(got.getLimit(), expected.getLimit());
         state = CallAsserterState::DONE;
         break;
       }
       case CallAsserterState::SKIP:
       case CallAsserterState::COUNT:
+      case CallAsserterState::DONE: {
+        // This should not be reached
+        EXPECT_FALSE(true);
+        break;
+      }
+    }
+    EXPECT_LE(call, maxCall);
+    if (call > maxCall) {
+      // Security bailout to avoid infinite loops
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+  }
+};
+
+struct GetOnlyCallAsserter : public BaseCallAsserter {
+  bool firstCall = false;
+
+  explicit GetOnlyCallAsserter(AqlCall const& expectedCall)
+      : BaseCallAsserter{expectedCall} {
+    // Calculate number of calls
+    // Ordering here is important, as it defines the start
+    // state of the asserter. We first get called for skip
+    // so skip needs to be last here
+    if (needsFullCount()) {
+      maxCall += 2;
+      state = CallAsserterState::COUNT;
+    }
+    if (hasLimit()) {
+      maxCall += 2;
+      state = CallAsserterState::GET;
+    }
+    if (hasSkip()) {
+      maxCall += 2;
+      state = CallAsserterState::SKIP;
+    }
+    // Make sure setup worked
+    EXPECT_GT(maxCall, 0);
+    EXPECT_NE(state, CallAsserterState::DONE);
+  }
+
+  auto gotCalled(AqlCall const& got) -> void {
+    EXPECT_EQ(got.getOffset(), 0);
+    EXPECT_FALSE(got.needsFullCount());
+    call++;
+
+    switch (state) {
+      case CallAsserterState::SKIP: {
+        EXPECT_EQ(got.getLimit(), expected.getOffset());
+        firstCall = !firstCall;
+        if (!firstCall) {
+          // We only switch to next state every second call.
+          // The first call is "empty" and only forwards to upwards
+          if (hasLimit()) {
+            state = CallAsserterState::GET;
+          } else if (needsFullCount()) {
+            state = CallAsserterState::COUNT;
+          } else {
+            state = CallAsserterState::DONE;
+          }
+        }
+        break;
+      }
+      case CallAsserterState::GET: {
+        EXPECT_EQ(got.getLimit(), expected.getLimit());
+        firstCall = !firstCall;
+        if (!firstCall) {
+          // We only switch to next state every second call.
+          // The first call is "empty" and only forwards to upwards
+          if (needsFullCount()) {
+            state = CallAsserterState::COUNT;
+          } else {
+            state = CallAsserterState::DONE;
+          }
+        }
+        break;
+      }
+
+      case CallAsserterState::COUNT: {
+        // We do not test 0,0,false
+        EXPECT_TRUE(needsFullCount());
+        EXPECT_EQ(got.softLimit, AqlCall::Infinity{});
+        EXPECT_EQ(got.hardLimit, AqlCall::Infinity{});
+        firstCall = !firstCall;
+        if (!firstCall) {
+          // We only switch to next state every second call.
+          // The first call is "empty" and only forwards to upwards
+          state = CallAsserterState::DONE;
+        }
+        break;
+      }
+      case CallAsserterState::INITIAL:
       case CallAsserterState::DONE: {
         // This should not be reached
         EXPECT_FALSE(true);
@@ -1176,7 +1244,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthroug
   ValidateResult(builder, skipped, block, outReg);
 }
 
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_implement_skip) {
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_skip) {
   auto singleton = createSingleton();
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1187,8 +1255,9 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_i
   builder->close();
   RegisterId outReg = 0;
   auto producer = produceBlock(singleton.get(), builder, outReg);
-  CallAsserter upperState{GetParam()};
+  GetOnlyCallAsserter upperState{GetParam()};
   CallAsserter lowerState{GetParam()};
+  SkipCallAsserter skipState{GetParam()};
 
   auto testForwarding =
       [&](AqlItemBlockInputRange& inputRange,
@@ -1211,19 +1280,39 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_call_forwarding_i
       output.copyRow(input);
       output.advanceRow();
     }
-    return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
+    auto getClient = output.getClientCall();
+    AqlCall request{};
+    request.softLimit = (std::min)(getClient.softLimit, getClient.hardLimit);
+    return {inputRange.upstreamState(), NoStats{}, request};
   };
   auto forwardSkipCall = [&](AqlItemBlockInputRange& inputRange,
                              AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    skipState.gotCalled(call);
+    size_t skipped = 0;
+    while (inputRange.hasDataRow() &&
+           (call.getOffset() > 0 || (call.getLimit() == 0 && call.needsFullCount()))) {
+      auto const& [state, input] = inputRange.nextDataRow();
+      EXPECT_TRUE(input.isInitialized());
+      skipped++;
+    }
+    call.didSkip(skipped);
+    // Do forward a softLimit call only.
+    // Do not oeverfetch here.
+    AqlCall request;
+    if (call.getOffset() > 0) {
+      request.softLimit = call.getOffset();
+    }  // else fullCount case, simple get UNLIMITED from above
+
+    return {inputRange.upstreamState(), skipped, request};
   };
 
   auto upper = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-      fakedQuery->engine(), generateNodeDummy(), makeInfos(std::move(testForwarding)));
+      fakedQuery->engine(), generateNodeDummy(),
+      makeInfos(std::move(testForwarding), outReg, outReg));
   upper->addDependency(producer.get());
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
       fakedQuery->engine(), generateNodeDummy(),
-      makeSkipInfos(std::move(forwardCall), std::move(forwardSkipCall)));
+      makeSkipInfos(std::move(forwardCall), std::move(forwardSkipCall), outReg, outReg));
   lower->addDependency(upper.get());
 
   auto const& call = GetParam();

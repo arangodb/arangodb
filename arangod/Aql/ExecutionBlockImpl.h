@@ -289,6 +289,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   size_t _skipped{};
 
   DataRange _lastRange;
+
+  // Only used in passthrough variant.
+  bool _hasUsedDataRangeBlock;
 };
 
 }  // namespace arangodb::aql

@@ -172,7 +172,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _outputItemRow(),
       _query(*engine->getQuery()),
       _state(InternalState::FETCH_DATA),
-      _lastRange{ExecutorState::HASMORE} {
+      _lastRange{ExecutorState::HASMORE},
+      _hasUsedDataRangeBlock{false} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.try_emplace(node->id(), ExecutionStats::Node());
@@ -1015,8 +1016,16 @@ template <class Executor>
 auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
     -> std::unique_ptr<OutputAqlItemRow> {
   if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+    SharedAqlItemBlockPtr newBlock{nullptr};
     // Passthrough variant, re-use the block stored in InputRange
-    auto newBlock = _lastRange.getBlock();
+    if (!_hasUsedDataRangeBlock) {
+      // In the pass through variant we have the contract that we work on a
+      // block all or nothing, so if we have used the block once, we cannot use it again
+      // however we cannot remove the _lastRange as it may contain additional information.
+      newBlock = _lastRange.getBlock();
+      _hasUsedDataRangeBlock = true;
+    }
+
     return createOutputRow(newBlock, std::move(call));
   } else {
     // Non-Passthrough variant, we need to allocate the block ourselfs
@@ -1304,6 +1313,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             TRI_ASSERT(skipped == 0);
             return {_upstreamState, 0, nullptr};
           }
+          // We have a new range, passthrough can use this range.
+          _hasUsedDataRangeBlock = false;
           skipped += skippedLocal;
           // We skipped through passthroug, so count that a skip was solved.
           clientCall.didSkip(skippedLocal);
