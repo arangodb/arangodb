@@ -541,6 +541,28 @@ JOB_STATUS MoveShard::pendingLeader() {
 
     // We need to switch leaders:
     {
+      for (auto const& sh : shardsLikeMe) {
+        auto const shardPath = curColPrefix + _database + "/" + sh.collection + "/" + sh.shard;
+        auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
+        if (tmp.second) {
+          bool found = false;
+          for (auto const& server : VPackArrayIterator(tmp.first)) {
+            if (server.isEqualString(_to)) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            // _to server no longer replica of this shard
+            abort(_to + " no longer holds a replica of " + shardPath);
+            return FAILED;
+          }
+        } else {
+          // this shard is either gone or
+          abort(shardPath + " no longer has replica");
+          return FAILED;
+        }
+      }
       VPackArrayBuilder trxArray(&trx);
       {
         VPackObjectBuilder trxObject(&trx);
