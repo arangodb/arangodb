@@ -1009,7 +1009,7 @@ class Slice {
 
  private:
   // get the type for the slice (including tags)
-  constexpr inline ValueType type(uint8_t h) const noexcept {
+  static constexpr inline ValueType type(uint8_t h) {
     return SliceStaticData::TypeMap[h];
   }
 
