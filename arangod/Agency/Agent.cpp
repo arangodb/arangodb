@@ -1664,7 +1664,6 @@ void Agent::executeLockedWrite(std::function<void()> const& cb) {
 }
 
 void Agent::executeTransientLocked(std::function<void()> const& cb) {
-  _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(transientLocker, _transientLock);
   cb();
 }
