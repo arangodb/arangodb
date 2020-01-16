@@ -67,19 +67,19 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</OutDir>
+    <OutDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</OutDir>
+    <OutDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</OutDir>
+    <OutDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <OutDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</OutDir>
+    <OutDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -149,8 +149,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="mimalloc.vcxproj">
-      <Project>{abb5eae7-b3e6-432e-b636-333449892ea6}</Project>
+    <ProjectReference Include="mimalloc-override.vcxproj">
+      <Project>{abb5eae7-b3e6-432e-b636-333449892ea7}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

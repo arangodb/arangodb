@@ -41,9 +41,6 @@
     <ClCompile Include="..\..\src\alloc-override.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\alloc-override-win.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\options.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -64,10 +61,16 @@
     <ClInclude Include="$(ProjectDir)..\..\include\mimalloc-internal.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mimalloc-types.h">
+    <ClInclude Include="$(ProjectDir)..\..\include\mimalloc-atomic.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\include\mimalloc-atomic.h">
+    <ClInclude Include="$(ProjectDir)..\..\include\mimalloc-override.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="$(ProjectDir)..\..\include\mimalloc-types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\include\mimalloc-new-delete.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

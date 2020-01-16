@@ -66,7 +66,7 @@ bool test_heap2();
 // Main testing
 // ---------------------------------------------------------------------------
 int main() {
-  mi_option_enable(mi_option_verbose,false);
+  mi_option_disable(mi_option_verbose);
 
   // ---------------------------------------------------
   // Malloc
@@ -121,16 +121,16 @@ int main() {
   // Aligned API
   // ---------------------------------------------------
   CHECK_BODY("malloc-aligned1", {
-    void* p = mi_malloc_aligned(32,24); result = (p != NULL && (uintptr_t)(p) % 24 == 0); mi_free(p);
+    void* p = mi_malloc_aligned(32,32); result = (p != NULL && (uintptr_t)(p) % 32 == 0); mi_free(p);
   });
   CHECK_BODY("malloc-aligned2", {
-    void* p = mi_malloc_aligned(8,24); result = (p != NULL && (uintptr_t)(p) % 24 == 0); mi_free(p);
+    void* p = mi_malloc_aligned(48,32); result = (p != NULL && (uintptr_t)(p) % 32 == 0); mi_free(p);
   });
   CHECK_BODY("malloc-aligned-at1", {
-    void* p = mi_malloc_aligned_at(8,24,0); result = (p != NULL && ((uintptr_t)(p) + 0) % 24 == 0); mi_free(p);
+    void* p = mi_malloc_aligned_at(48,32,0); result = (p != NULL && ((uintptr_t)(p) + 0) % 32 == 0); mi_free(p);
   });
   CHECK_BODY("malloc-aligned-at2", {
-    void* p = mi_malloc_aligned_at(5,24,8); result = (p != NULL && ((uintptr_t)(p) + 8) % 24 == 0); mi_free(p);
+    void* p = mi_malloc_aligned_at(50,32,8); result = (p != NULL && ((uintptr_t)(p) + 8) % 32 == 0); mi_free(p);
   });
 
   // ---------------------------------------------------

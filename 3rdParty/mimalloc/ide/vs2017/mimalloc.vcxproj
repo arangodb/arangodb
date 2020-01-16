@@ -70,21 +70,25 @@
     <OutDir>$(SolutionDir)..\..\out\msvc-$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
     <TargetExt>.lib</TargetExt>
+    <TargetName>mimalloc-static</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)..\..\out\msvc-$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
     <TargetExt>.lib</TargetExt>
+    <TargetName>mimalloc-static</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)..\..\out\msvc-$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
     <TargetExt>.lib</TargetExt>
+    <TargetName>mimalloc-static</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)..\..\out\msvc-$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)..\..\out\msvc-$(Platform)\$(ProjectName)\$(Configuration)\</IntDir>
     <TargetExt>.lib</TargetExt>
+    <TargetName>mimalloc-static</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -94,8 +98,9 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>../../include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>MI_DEBUG=3;%(PreprocessorDefinitions);</PreprocessorDefinitions>
-      <CompileAs>Default</CompileAs>
+      <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Lib>
       <AdditionalLibraryDirectories>
@@ -112,8 +117,9 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>../../include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>MI_DEBUG=3;%(PreprocessorDefinitions);</PreprocessorDefinitions>
-      <CompileAs>Default</CompileAs>
+      <CompileAs>CompileAsCpp</CompileAs>
       <SupportJustMyCode>false</SupportJustMyCode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <PostBuildEvent>
       <Command>
@@ -135,8 +141,6 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>../../include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG</PreprocessorDefinitions>
@@ -144,11 +148,9 @@
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <OmitFramePointers>false</OmitFramePointers>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
-      <CompileAs>Default</CompileAs>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -166,8 +168,6 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
-      <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>../../include</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);NDEBUG</PreprocessorDefinitions>
@@ -175,11 +175,9 @@
       <AssemblerListingLocation>$(IntDir)</AssemblerListingLocation>
       <WholeProgramOptimization>false</WholeProgramOptimization>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
-      <FavorSizeOrSpeed>Neither</FavorSizeOrSpeed>
-      <OmitFramePointers>false</OmitFramePointers>
-      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
-      <CompileAs>Default</CompileAs>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
+      <CompileAs>CompileAsCpp</CompileAs>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -211,12 +209,6 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\src\alloc-override-win.c">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\..\src\alloc-override.c">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
@@ -243,8 +235,10 @@
   <ItemGroup>
     <ClInclude Include="$(ProjectDir)..\..\include\mimalloc-internal.h" />
     <ClInclude Include="$(ProjectDir)..\..\include\mimalloc.h" />
-    <ClInclude Include="..\..\include\mimalloc-atomic.h" />
-    <ClInclude Include="..\..\include\mimalloc-types.h" />
+    <ClInclude Include="$(ProjectDir)..\..\include\mimalloc-atomic.h" />
+    <ClInclude Include="$(ProjectDir)..\..\include\mimalloc-override.h" />
+    <ClInclude Include="$(ProjectDir)..\..\include\mimalloc-types.h" />
+    <ClInclude Include="..\..\include\mimalloc-new-delete.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

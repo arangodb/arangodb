@@ -85,7 +85,7 @@ static bool mi_heap_page_collect(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_t
   UNUSED(arg2);
   UNUSED(heap);
   mi_collect_t collect = *((mi_collect_t*)arg_collect);
-  _mi_page_free_collect(page);
+  _mi_page_free_collect(page, collect >= ABANDON);
   if (mi_page_all_free(page)) {
     // no more used blocks, free the page. TODO: should we retire here and be less aggressive?
     _mi_page_free(page, pq, collect != NORMAL);
@@ -108,10 +108,9 @@ static bool mi_heap_page_never_delayed_free(mi_heap_t* heap, mi_page_queue_t* pq
 
 static void mi_heap_collect_ex(mi_heap_t* heap, mi_collect_t collect)
 {
-  _mi_deferred_free(heap,collect > NORMAL);
   if (!mi_heap_is_initialized(heap)) return;
-
-
+  _mi_deferred_free(heap, collect > NORMAL);
+  
   // collect (some) abandoned pages
   if (collect >= NORMAL && !heap->no_reclaim) {
     if (collect == NORMAL) {
@@ -172,7 +171,7 @@ void mi_collect(bool force) mi_attr_noexcept {
 ----------------------------------------------------------- */
 
 mi_heap_t* mi_heap_get_default(void) {
-  mi_thread_init();
+  mi_thread_init(); 
   return mi_get_default_heap();
 }
 
@@ -224,7 +223,7 @@ static void mi_heap_free(mi_heap_t* heap) {
   
   // reset default
   if (mi_heap_is_default(heap)) {
-    _mi_heap_default = heap->tld->heap_backing;
+    _mi_heap_set_default_direct(heap->tld->heap_backing);
   }
   // and free the used memory
   mi_free(heap);
@@ -245,12 +244,17 @@ static bool _mi_heap_page_destroy(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_
   _mi_page_use_delayed_free(page, MI_NEVER_DELAYED_FREE);  
 
   // stats
-  if (page->block_size > MI_LARGE_SIZE_MAX) {
-    mi_heap_stat_decrease(heap,huge,page->block_size);
+  if (page->block_size > MI_LARGE_OBJ_SIZE_MAX) {
+    if (page->block_size > MI_HUGE_OBJ_SIZE_MAX) {
+      _mi_stat_decrease(&heap->tld->stats.giant,page->block_size);
+    }
+    else {
+      _mi_stat_decrease(&heap->tld->stats.huge, page->block_size);
+    }
   }
   #if (MI_STAT>1)
   size_t inuse = page->used - page->thread_freed;
-  if (page->block_size <= MI_LARGE_SIZE_MAX)  {
+  if (page->block_size <= MI_LARGE_OBJ_SIZE_MAX)  {
     mi_heap_stat_decrease(heap,normal[_mi_bin(page->block_size)], inuse);
   }
   mi_heap_stat_decrease(heap,malloc, page->block_size * inuse);  // todo: off for aligned blocks...
@@ -298,14 +302,14 @@ static void mi_heap_absorb(mi_heap_t* heap, mi_heap_t* from) {
   mi_assert_internal(heap!=NULL);
   if (from==NULL || from->page_count == 0) return;
 
-  // unfull all full pages
-  mi_page_t* page = heap->pages[MI_BIN_FULL].first; 
+  // unfull all full pages in the `from` heap
+  mi_page_t* page = from->pages[MI_BIN_FULL].first; 
   while (page != NULL) {
     mi_page_t* next = page->next;
     _mi_page_unfull(page);
     page = next;
   }
-  mi_assert_internal(heap->pages[MI_BIN_FULL].first == NULL);
+  mi_assert_internal(from->pages[MI_BIN_FULL].first == NULL);
 
   // free outstanding thread delayed free blocks
   _mi_heap_delayed_free(from);
@@ -350,8 +354,8 @@ mi_heap_t* mi_heap_set_default(mi_heap_t* heap) {
   mi_assert(mi_heap_is_initialized(heap));
   if (!mi_heap_is_initialized(heap)) return NULL;
   mi_assert_expensive(mi_heap_is_valid(heap));
-  mi_heap_t* old   = _mi_heap_default;
-  _mi_heap_default = heap;
+  mi_heap_t* old = mi_get_default_heap(); 
+  _mi_heap_set_default_direct(heap);
   return old;
 }
 
@@ -423,7 +427,7 @@ static bool mi_heap_area_visit_blocks(const mi_heap_area_ex_t* xarea, mi_block_v
   mi_assert(page != NULL);
   if (page == NULL) return true;
 
-  _mi_page_free_collect(page);
+  _mi_page_free_collect(page,true);
   mi_assert_internal(page->local_free == NULL);
   if (page->used == 0) return true;
 

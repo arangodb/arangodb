@@ -9,63 +9,109 @@ terms of the MIT license. A copy of the license can be found in the file
 #define MIMALLOC_ATOMIC_H
 
 // ------------------------------------------------------
-// Atomics
+// Atomics 
+// We need to be portable between C, C++, and MSVC.
 // ------------------------------------------------------
 
-// Atomically increment a value; returns the incremented result.
-static inline uintptr_t mi_atomic_increment(volatile uintptr_t* p);
+#if defined(_MSC_VER)
+#define _Atomic(tp)         tp
+#define ATOMIC_VAR_INIT(x)  x
+#elif defined(__cplusplus)
+#include <atomic>
+#define  _Atomic(tp)        std::atomic<tp>
+#else
+#include <stdatomic.h>
+#endif
 
-// Atomically increment a value; returns the incremented result.
-static inline uint32_t mi_atomic_increment32(volatile uint32_t* p);
+#define mi_atomic_cast(tp,x)  (volatile _Atomic(tp)*)(x)
 
-// Atomically decrement a value; returns the decremented result.
-static inline uintptr_t mi_atomic_decrement(volatile uintptr_t* p);
+// ------------------------------------------------------
+// Atomic operations specialized for mimalloc
+// ------------------------------------------------------
 
-// Atomically add a 64-bit value; returns the added result.
-static inline int64_t mi_atomic_add(volatile int64_t* p, int64_t add);
+// Atomically add a 64-bit value; returns the previous value. 
+// Note: not using _Atomic(int64_t) as it is only used for statistics.
+static inline void mi_atomic_add64(volatile int64_t* p, int64_t add);
 
-// Atomically subtract a value; returns the subtracted result.
-static inline uintptr_t mi_atomic_subtract(volatile uintptr_t* p, uintptr_t sub);
+// Atomically add a value; returns the previous value. Memory ordering is relaxed.
+static inline intptr_t mi_atomic_add(volatile _Atomic(intptr_t)* p, intptr_t add);
 
-// Atomically subtract a value; returns the subtracted result.
-static inline uint32_t mi_atomic_subtract32(volatile uint32_t* p, uint32_t sub);
+// Atomically compare and exchange a value; returns `true` if successful. 
+// May fail spuriously. Memory ordering as release on success, and relaxed on failure.
+// (Note: expected and desired are in opposite order from atomic_compare_exchange)
+static inline bool mi_atomic_cas_weak(volatile _Atomic(uintptr_t)* p, uintptr_t desired, uintptr_t expected);
 
 // Atomically compare and exchange a value; returns `true` if successful.
-static inline bool mi_atomic_compare_exchange32(volatile uint32_t* p, uint32_t exchange, uint32_t compare);
+// Memory ordering is acquire-release
+// (Note: expected and desired are in opposite order from atomic_compare_exchange)
+static inline bool mi_atomic_cas_strong(volatile _Atomic(uintptr_t)* p, uintptr_t desired, uintptr_t expected);
 
-// Atomically compare and exchange a value; returns `true` if successful.
-static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t exchange, uintptr_t compare);
+// Atomically exchange a value. Memory ordering is acquire-release.
+static inline uintptr_t mi_atomic_exchange(volatile _Atomic(uintptr_t)* p, uintptr_t exchange);
 
-// Atomically exchange a value.
-static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange);
+// Atomically read a value. Memory ordering is relaxed.
+static inline uintptr_t mi_atomic_read_relaxed(const volatile _Atomic(uintptr_t)* p);
 
-// Atomically read a value
-static inline uintptr_t mi_atomic_read(volatile uintptr_t* p);
+// Atomically read a value. Memory ordering is acquire.
+static inline uintptr_t mi_atomic_read(const volatile _Atomic(uintptr_t)* p);
 
-// Atomically write a value
-static inline void mi_atomic_write(volatile uintptr_t* p, uintptr_t x);
+// Atomically write a value. Memory ordering is release.
+static inline void mi_atomic_write(volatile _Atomic(uintptr_t)* p, uintptr_t x);
 
-// Atomically read a pointer
-static inline void* mi_atomic_read_ptr(volatile void** p) {
-  return (void*)mi_atomic_read( (volatile uintptr_t*)p );
-}
-
+// Yield
 static inline void mi_atomic_yield(void);
 
 
+
+// Atomically add a value; returns the previous value.
+static inline uintptr_t mi_atomic_addu(volatile _Atomic(uintptr_t)* p, uintptr_t add) {
+  return (uintptr_t)mi_atomic_add((volatile _Atomic(intptr_t)*)p, (intptr_t)add);
+}
+// Atomically subtract a value; returns the previous value.
+static inline uintptr_t mi_atomic_subu(volatile _Atomic(uintptr_t)* p, uintptr_t sub) {
+  return (uintptr_t)mi_atomic_add((volatile _Atomic(intptr_t)*)p, -((intptr_t)sub));
+}
+
+// Atomically increment a value; returns the incremented result.
+static inline uintptr_t mi_atomic_increment(volatile _Atomic(uintptr_t)* p) {
+  return mi_atomic_addu(p, 1);
+}
+
+// Atomically decrement a value; returns the decremented result.
+static inline uintptr_t mi_atomic_decrement(volatile _Atomic(uintptr_t)* p) {
+  return mi_atomic_subu(p, 1);
+}
+
+// Atomically read a pointer; Memory order is relaxed.
+static inline void* mi_atomic_read_ptr_relaxed(volatile _Atomic(void*) const * p) {
+  return (void*)mi_atomic_read_relaxed((const volatile _Atomic(uintptr_t)*)p);
+}
+
+// Atomically read a pointer; Memory order is acquire.
+static inline void* mi_atomic_read_ptr(volatile _Atomic(void*) const * p) {
+  return (void*)mi_atomic_read((const volatile _Atomic(uintptr_t)*)p);
+}
+
 // Atomically write a pointer
-static inline void mi_atomic_write_ptr(volatile void** p, void* x) {
-  mi_atomic_write((volatile uintptr_t*)p, (uintptr_t)x );
+static inline void mi_atomic_write_ptr(volatile _Atomic(void*)* p, void* x) {
+  mi_atomic_write((volatile _Atomic(uintptr_t)*)p, (uintptr_t)x );
+}
+
+// Atomically compare and exchange a pointer; returns `true` if successful. May fail spuriously.
+// (Note: expected and desired are in opposite order from atomic_compare_exchange)
+static inline bool mi_atomic_cas_ptr_weak(volatile _Atomic(void*)* p, void* desired, void* expected) {
+  return mi_atomic_cas_weak((volatile _Atomic(uintptr_t)*)p, (uintptr_t)desired, (uintptr_t)expected);
 }
 
 // Atomically compare and exchange a pointer; returns `true` if successful.
-static inline bool mi_atomic_compare_exchange_ptr(volatile void** p, void* newp, void* compare) {
-  return mi_atomic_compare_exchange((volatile uintptr_t*)p, (uintptr_t)newp, (uintptr_t)compare);
+// (Note: expected and desired are in opposite order from atomic_compare_exchange)
+static inline bool mi_atomic_cas_ptr_strong(volatile _Atomic(void*)* p, void* desired, void* expected) {
+  return mi_atomic_cas_strong((volatile _Atomic(uintptr_t)*)p, (uintptr_t)desired, (uintptr_t)expected);
 }
 
 // Atomically exchange a pointer value.
-static inline void* mi_atomic_exchange_ptr(volatile void** p, void* exchange) {
-  return (void*)mi_atomic_exchange((volatile uintptr_t*)p, (uintptr_t)exchange);
+static inline void* mi_atomic_exchange_ptr(volatile _Atomic(void*)* p, void* exchange) {
+  return (void*)mi_atomic_exchange((volatile _Atomic(uintptr_t)*)p, (uintptr_t)exchange);
 }
 
 
@@ -73,49 +119,40 @@ static inline void* mi_atomic_exchange_ptr(volatile void** p, void* exchange) {
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <intrin.h>
-#if (MI_INTPTR_SIZE==8)
+#ifdef _WIN64
 typedef LONG64   msc_intptr_t;
 #define RC64(f)  f##64
 #else
 typedef LONG     msc_intptr_t;
 #define RC64(f)  f
 #endif
-static inline uintptr_t mi_atomic_increment(volatile uintptr_t* p) {
-  return (uintptr_t)RC64(_InterlockedIncrement)((volatile msc_intptr_t*)p);
+static inline intptr_t mi_atomic_add(volatile _Atomic(intptr_t)* p, intptr_t add) {
+  return (intptr_t)RC64(_InterlockedExchangeAdd)((volatile msc_intptr_t*)p, (msc_intptr_t)add);
 }
-static inline uint32_t mi_atomic_increment32(volatile uint32_t* p) {
-  return (uint32_t)_InterlockedIncrement((volatile LONG*)p);
+static inline bool mi_atomic_cas_strong(volatile _Atomic(uintptr_t)* p, uintptr_t desired, uintptr_t expected) {
+  return (expected == (uintptr_t)RC64(_InterlockedCompareExchange)((volatile msc_intptr_t*)p, (msc_intptr_t)desired, (msc_intptr_t)expected));
 }
-static inline uintptr_t mi_atomic_decrement(volatile uintptr_t* p) {
-  return (uintptr_t)RC64(_InterlockedDecrement)((volatile msc_intptr_t*)p);
+static inline bool mi_atomic_cas_weak(volatile _Atomic(uintptr_t)* p, uintptr_t desired, uintptr_t expected) {
+  return mi_atomic_cas_strong(p,desired,expected);
 }
-static inline uintptr_t mi_atomic_subtract(volatile uintptr_t* p, uintptr_t sub) {
-  return (uintptr_t)RC64(_InterlockedExchangeAdd)((volatile msc_intptr_t*)p, -((msc_intptr_t)sub)) - sub;
-}
-static inline uint32_t mi_atomic_subtract32(volatile uint32_t* p, uint32_t sub) {
-  return (uint32_t)_InterlockedExchangeAdd((volatile LONG*)p, -((LONG)sub)) - sub;
-}
-static inline bool mi_atomic_compare_exchange32(volatile uint32_t* p, uint32_t exchange, uint32_t compare) {
-  return ((int32_t)compare == _InterlockedCompareExchange((volatile LONG*)p, (LONG)exchange, (LONG)compare));
-}
-static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t exchange, uintptr_t compare) {
-  return (compare == RC64(_InterlockedCompareExchange)((volatile msc_intptr_t*)p, (msc_intptr_t)exchange, (msc_intptr_t)compare));
-}
-static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange) {
+static inline uintptr_t mi_atomic_exchange(volatile _Atomic(uintptr_t)* p, uintptr_t exchange) {
   return (uintptr_t)RC64(_InterlockedExchange)((volatile msc_intptr_t*)p, (msc_intptr_t)exchange);
 }
-static inline uintptr_t mi_atomic_read(volatile uintptr_t* p) {
+static inline uintptr_t mi_atomic_read(volatile _Atomic(uintptr_t) const* p) {
   return *p;
 }
-static inline void mi_atomic_write(volatile uintptr_t* p, uintptr_t x) {
-  *p = x;
+static inline uintptr_t mi_atomic_read_relaxed(volatile _Atomic(uintptr_t) const* p) {
+  return mi_atomic_read(p);
+}
+static inline void mi_atomic_write(volatile _Atomic(uintptr_t)* p, uintptr_t x) {
+  mi_atomic_exchange(p,x);
 }
 static inline void mi_atomic_yield(void) {
   YieldProcessor();
 }
-static inline int64_t mi_atomic_add(volatile int64_t* p, int64_t add) {
-  #if (MI_INTPTR_SIZE==8)
-  return _InterlockedExchangeAdd64(p, add) + add;
+static inline void mi_atomic_add64(volatile _Atomic(int64_t)* p, int64_t add) {
+  #ifdef _WIN64
+  mi_atomic_add(p,add);
   #else
   int64_t current;
   int64_t sum;
@@ -123,62 +160,46 @@ static inline int64_t mi_atomic_add(volatile int64_t* p, int64_t add) {
     current = *p;
     sum = current + add;
   } while (_InterlockedCompareExchange64(p, sum, current) != current);
-  return sum;
   #endif
 }
 
 #else
 #ifdef __cplusplus
-#include <atomic>
 #define  MI_USING_STD   using namespace std;
-#define  _Atomic(tp)    atomic<tp>
 #else
-#include <stdatomic.h>
 #define  MI_USING_STD
 #endif
-static inline uintptr_t mi_atomic_increment(volatile uintptr_t* p) {
+static inline void mi_atomic_add64(volatile int64_t* p, int64_t add) {
   MI_USING_STD
-  return atomic_fetch_add_explicit((volatile atomic_uintptr_t*)p, (uintptr_t)1, memory_order_relaxed) + 1;
+  atomic_fetch_add_explicit((volatile _Atomic(int64_t)*)p, add, memory_order_relaxed);
 }
-static inline uint32_t mi_atomic_increment32(volatile uint32_t* p) {
+static inline intptr_t mi_atomic_add(volatile _Atomic(intptr_t)* p, intptr_t add) {
   MI_USING_STD
-  return atomic_fetch_add_explicit((volatile _Atomic(uint32_t)*)p, (uint32_t)1, memory_order_relaxed) + 1;
+  return atomic_fetch_add_explicit(p, add, memory_order_relaxed);
 }
-static inline uintptr_t mi_atomic_decrement(volatile uintptr_t* p) {
+static inline bool mi_atomic_cas_weak(volatile _Atomic(uintptr_t)* p, uintptr_t desired, uintptr_t expected) {
   MI_USING_STD
-  return atomic_fetch_sub_explicit((volatile atomic_uintptr_t*)p, (uintptr_t)1, memory_order_relaxed) - 1;
+  return atomic_compare_exchange_weak_explicit(p, &expected, desired, memory_order_release, memory_order_relaxed);
 }
-static inline int64_t mi_atomic_add(volatile int64_t* p, int64_t add) {
+static inline bool mi_atomic_cas_strong(volatile _Atomic(uintptr_t)* p, uintptr_t desired, uintptr_t expected) {
   MI_USING_STD
-  return atomic_fetch_add_explicit((volatile _Atomic(int64_t)*)p, add, memory_order_relaxed) + add;
+  return atomic_compare_exchange_strong_explicit(p, &expected, desired, memory_order_acq_rel, memory_order_relaxed);
 }
-static inline uintptr_t mi_atomic_subtract(volatile uintptr_t* p, uintptr_t sub) {
+static inline uintptr_t mi_atomic_exchange(volatile _Atomic(uintptr_t)* p, uintptr_t exchange) {
   MI_USING_STD
-  return atomic_fetch_sub_explicit((volatile atomic_uintptr_t*)p, sub, memory_order_relaxed) - sub;
+  return atomic_exchange_explicit(p, exchange, memory_order_acq_rel);
 }
-static inline uint32_t mi_atomic_subtract32(volatile uint32_t* p, uint32_t sub) {
+static inline uintptr_t mi_atomic_read_relaxed(const volatile _Atomic(uintptr_t)* p) {
   MI_USING_STD
-  return atomic_fetch_sub_explicit((volatile _Atomic(uint32_t)*)p, sub, memory_order_relaxed) - sub;
+  return atomic_load_explicit((volatile _Atomic(uintptr_t)*) p, memory_order_relaxed);
 }
-static inline bool mi_atomic_compare_exchange32(volatile uint32_t* p, uint32_t exchange, uint32_t compare) {
+static inline uintptr_t mi_atomic_read(const volatile _Atomic(uintptr_t)* p) {
   MI_USING_STD
-  return atomic_compare_exchange_weak_explicit((volatile _Atomic(uint32_t)*)p, &compare, exchange, memory_order_release, memory_order_relaxed);
+  return atomic_load_explicit((volatile _Atomic(uintptr_t)*) p, memory_order_acquire);
 }
-static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t exchange, uintptr_t compare) {
+static inline void mi_atomic_write(volatile _Atomic(uintptr_t)* p, uintptr_t x) {
   MI_USING_STD
-  return atomic_compare_exchange_weak_explicit((volatile atomic_uintptr_t*)p, &compare, exchange, memory_order_release, memory_order_relaxed);
-}
-static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange) {
-  MI_USING_STD
-  return atomic_exchange_explicit((volatile atomic_uintptr_t*)p, exchange, memory_order_acquire);
-}
-static inline uintptr_t mi_atomic_read(volatile uintptr_t* p) {
-  MI_USING_STD
-  return atomic_load_explicit((volatile atomic_uintptr_t*)p, memory_order_relaxed);
-}
-static inline void mi_atomic_write(volatile uintptr_t* p, uintptr_t x) {
-  MI_USING_STD
-  return atomic_store_explicit((volatile atomic_uintptr_t*)p, x, memory_order_relaxed);
+  return atomic_store_explicit(p, x, memory_order_release);
 }
 
 #if defined(__cplusplus)
@@ -199,7 +220,7 @@ static inline void mi_atomic_write(volatile uintptr_t* p, uintptr_t x) {
 #endif
 #elif defined(__wasi__)
   #include <sched.h>
-  static inline void mi_atomic_yield() {
+  static inline void mi_atomic_yield(void) {
     sched_yield();
   }
 #else

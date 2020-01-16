@@ -48,20 +48,23 @@ Notable aspects of the design include:
 - __first-class heaps__: efficiently create and use multiple heaps to allocate across different regions.
   A heap can be destroyed at once instead of deallocating each object separately.
 - __bounded__: it does not suffer from _blowup_ \[1\], has bounded worst-case allocation
-  times (_wcat_), bounded space overhead (~0.2% meta-data, with at most 16.7% waste in allocation sizes),
+  times (_wcat_), bounded space overhead (~0.2% meta-data, with at most 12.5% waste in allocation sizes),
   and has no internal points of contention using only atomic operations.
 - __fast__: In our benchmarks (see [below](#performance)),
   _mimalloc_ always outperforms all other leading allocators (_jemalloc_, _tcmalloc_, _Hoard_, etc),
   and usually uses less memory (up to 25% more in the worst case). A nice property
   is that it does consistently well over a wide range of benchmarks.
 
-You can read more on the design of _mimalloc_ in the upcoming technical report
+You can read more on the design of _mimalloc_ in the
+[technical report](https://www.microsoft.com/en-us/research/publication/mimalloc-free-list-sharding-in-action)
 which also has detailed benchmark results.
+
 
 Further information:
 
 - \ref build
 - \ref using
+- \ref environment
 - \ref overrides
 - \ref bench
 - \ref malloc
@@ -293,31 +296,34 @@ size_t mi_good_size(size_t size);
 /// resource usage by calling this every once in a while.
 void   mi_collect(bool force);
 
-/// Print statistics.
-/// @param out Output file. Use \a NULL for \a stderr.
+/// Print the main statistics.
+/// @param out Output function. Use \a NULL for outputting to \a stderr.
 ///
 /// Most detailed when using a debug build.
-void   mi_stats_print(FILE* out);
+void mi_stats_print(mi_output_fun* out);
 
 /// Reset statistics.
-void   mi_stats_reset();
+void mi_stats_reset(void);
+
+/// Merge thread local statistics with the main statistics and reset.
+void mi_stats_merge(void);
 
 /// Initialize mimalloc on a thread.
 /// Should not be used as on most systems (pthreads, windows) this is done
 /// automatically.
-void   mi_thread_init();
+void mi_thread_init(void);
 
 /// Uninitialize mimalloc on a thread.
 /// Should not be used as on most systems (pthreads, windows) this is done
 /// automatically. Ensures that any memory that is not freed yet (but will
 /// be freed by other threads in the future) is properly handled.
-void   mi_thread_done();
+void mi_thread_done(void);
 
 /// Print out heap statistics for this thread.
-/// @param out Output file. Use \a NULL for \a stderr.
+/// @param out Output function. Use \a NULL for outputting to \a stderr.
 ///
 /// Most detailed when using a debug build.
-void   mi_thread_stats_print(FILE* out);
+void mi_thread_stats_print(mi_output_fun* out);
 
 /// Type of deferred free functions.
 /// @param force If \a true all outstanding items should be freed.
@@ -341,6 +347,45 @@ typedef void (mi_deferred_free_fun)(bool force, unsigned long long heartbeat);
 /// (regardless of freeing or available free memory).
 /// At most one \a deferred_free function can be active.
 void   mi_register_deferred_free(mi_deferred_free_fun* deferred_free);
+
+/// Type of output functions.
+/// @param msg Message to output.
+///
+/// @see mi_register_output()
+typedef void (mi_output_fun)(const char* msg);
+
+/// Register an output function.
+/// @param out The output function, use `NULL` to output to stdout.
+///
+/// The `out` function is called to output any information from mimalloc,
+/// like verbose or warning messages.
+void mi_register_output(mi_output_fun* out) mi_attr_noexcept;
+
+/// Is a pointer part of our heap?
+/// @param p The pointer to check.
+/// @returns \a true if this is a pointer into our heap.
+/// This function is relatively fast.
+bool mi_is_in_heap_region(const void* p);
+
+/// Reserve \a pages of huge OS pages (1GiB) but stops after at most `max_secs` seconds.
+/// @param pages The number of 1GiB pages to reserve.
+/// @param max_secs Maximum number of seconds to try reserving.
+/// @param pages_reserved If not \a NULL, it is set to the actual number of pages that were reserved.
+/// @returns 0 if successfull, \a ENOMEM if running out of memory, or \a ETIMEDOUT if timed out.
+///
+/// The reserved memory is used by mimalloc to satisfy allocations.
+/// May quit before \a max_secs are expired if it estimates it will take more than
+/// 1.5 times \a max_secs. The time limit is needed because on some operating systems
+/// it can take a long time to reserve contiguous memory if the physical memory is
+/// fragmented.
+int  mi_reserve_huge_os_pages(size_t pages, double max_secs, size_t* pages_reserved);
+
+/// Is the C runtime \a malloc API redirected?
+/// @returns \a true if all malloc API calls are redirected to mimalloc.
+///
+/// Currenty only used on Windows.
+bool mi_is_redirected();
+
 
 /// \}
 
@@ -443,9 +488,17 @@ mi_heap_t* mi_heap_get_default();
 /// except by exiting the thread.
 mi_heap_t* mi_heap_get_backing();
 
+/// Release outstanding resources in a specific heap.
+void mi_heap_collect(mi_heap_t* heap, bool force);
+
 /// Allocate in a specific heap.
 /// @see mi_malloc()
 void* mi_heap_malloc(mi_heap_t* heap, size_t size);
+
+/// Allocate a small object in a specific heap.
+/// \a size must be smaller or equal to MI_SMALL_SIZE_MAX().
+/// @see mi_malloc()
+void* mi_heap_malloc_small(mi_heap_t* heap, size_t size);
 
 /// Allocate zero-initialized in a specific heap.
 /// @see mi_zalloc()
@@ -483,6 +536,34 @@ void* mi_heap_calloc_aligned(mi_heap_t* heap, size_t count, size_t size, size_t 
 void* mi_heap_calloc_aligned_at(mi_heap_t* heap, size_t count, size_t size, size_t alignment, size_t offset);
 void* mi_heap_realloc_aligned(mi_heap_t* heap, void* p, size_t newsize, size_t alignment);
 void* mi_heap_realloc_aligned_at(mi_heap_t* heap, void* p, size_t newsize, size_t alignment, size_t offset);
+
+/// \}
+
+
+/// \defgroup zeroinit Zero initialized re-allocation
+///
+/// The zero-initialized re-allocations are only valid on memory that was
+/// originally allocated with zero initialization too.
+/// e.g. `mi_calloc`, `mi_zalloc`, `mi_zalloc_aligned` etc.
+/// see <https://github.com/microsoft/mimalloc/issues/63#issuecomment-508272992>
+///
+/// \{
+
+void* mi_rezalloc(void* p, size_t newsize);
+void* mi_recalloc(void* p, size_t newcount, size_t size) ;
+
+void* mi_rezalloc_aligned(void* p, size_t newsize, size_t alignment);
+void* mi_rezalloc_aligned_at(void* p, size_t newsize, size_t alignment, size_t offset);
+void* mi_recalloc_aligned(void* p, size_t newcount, size_t size, size_t alignment);
+void* mi_recalloc_aligned_at(void* p, size_t newcount, size_t size, size_t alignment, size_t offset);
+
+void* mi_heap_rezalloc(mi_heap_t* heap, void* p, size_t newsize);
+void* mi_heap_recalloc(mi_heap_t* heap, void* p, size_t newcount, size_t size);
+
+void* mi_heap_rezalloc_aligned(mi_heap_t* heap, void* p, size_t newsize, size_t alignment);
+void* mi_heap_rezalloc_aligned_at(mi_heap_t* heap, void* p, size_t newsize, size_t alignment, size_t offset);
+void* mi_heap_recalloc_aligned(mi_heap_t* heap, void* p, size_t newcount, size_t size, size_t alignment);
+void* mi_heap_recalloc_aligned_at(mi_heap_t* heap, void* p, size_t newcount, size_t size, size_t alignment, size_t offset);
 
 /// \}
 
@@ -531,6 +612,9 @@ void* mi_heap_realloc_aligned_at(mi_heap_t* heap, void* p, size_t newsize, size_
 
 /// Re-allocate to \a count blocks of type \a tp in a heap \a hp.
 #define mi_heap_reallocn_tp(hp,p,tp,count)  ((tp*)mi_heap_reallocn(p,count,sizeof(tp)))
+
+/// Re-allocate to \a count zero initialized blocks of type \a tp in a heap \a hp.
+#define mi_heap_recalloc_tp(hp,p,tp,count)  ((tp*)mi_heap_recalloc(p,count,sizeof(tp)))
 
 /// \}
 
@@ -614,14 +698,17 @@ typedef enum mi_option_e {
   mi_option_show_errors,  ///< Print error messages to `stderr`.
   mi_option_verbose,      ///< Print verbose messages to `stderr`.
   // the following options are experimental
-  mi_option_secure,       ///< Experimental
   mi_option_eager_commit, ///< Eagerly commit segments (4MiB) (enabled by default).
-  mi_option_eager_region_commit, ///< Eagerly commit large (256MiB) memory regions (enabled by default except on Windows)
-  mi_option_large_os_pages,      ///< Use large OS pages if possible
+  mi_option_eager_region_commit, ///< Eagerly commit large (256MiB) memory regions (enabled by default, except on Windows)
+  mi_option_large_os_pages,      ///< Use large OS pages (2MiB in size) if possible
+  mi_option_reserve_huge_os_pages, ///< The number of huge OS pages (1GiB in size) to reserve at the start of the program.
+  mi_option_segment_cache, ///< The number of segments per thread to keep cached.
   mi_option_page_reset,   ///< Reset page memory when it becomes free.
   mi_option_cache_reset,  ///< Reset segment memory when a segment is cached.
   mi_option_reset_decommits, ///< Experimental
-  mi_option_reset_discards,  ///< Experimental
+  mi_option_eager_commit_delay,  ///< Experimental
+  mi_option_segment_reset,   ///< Experimental
+  mi_option_os_tag,       ///< OS tag to assign to mimalloc'd memory
   _mi_option_last
 } mi_option_t;
 
@@ -647,6 +734,8 @@ void  mi_option_set_default(mi_option_t option, long value);
 void*  mi_recalloc(void* p, size_t count, size_t size);
 size_t mi_malloc_size(const void* p);
 size_t mi_malloc_usable_size(const void *p);
+
+/// Just as `free` but also checks if the pointer `p` belongs to our heap.
 void   mi_cfree(void* p);
 
 int mi_posix_memalign(void** p, size_t alignment, size_t size);
@@ -804,9 +893,12 @@ completely and redirect all calls to the _mimalloc_ library instead.
 
 See \ref overrides for more info.
 
-## Environment Options
+*/
 
-You can set further options either programmatically (using [`mi_option_set`](https://microsoft.github.io/mimalloc/group__options.html)),
+/*! \page environment Environment Options
+
+You can set further options either programmatically
+(using [`mi_option_set`](https://microsoft.github.io/mimalloc/group__options.html)),
 or via environment variables.
 
 - `MIMALLOC_SHOW_STATS=1`: show statistics when the program terminates.
@@ -869,19 +961,23 @@ Note: unfortunately, at this time, dynamic overriding on macOS seems broken but 
 ### Windows
 
 On Windows you need to link your program explicitly with the mimalloc
-DLL, and use the C-runtime library as a DLL (the `/MD` or `/MDd` switch).
-To ensure the mimalloc DLL gets loaded it is easiest to insert some
+DLL and use the C-runtime library as a DLL (using the `/MD` or `/MDd` switch).
+Moreover, you need to ensure the `mimalloc-redirect.dll` (or `mimalloc-redirect32.dll`) is available
+in the same folder as the mimalloc DLL at runtime (as it as referred to by the mimalloc DLL).
+The redirection DLL's ensure all calls to the C runtime malloc API get redirected to mimalloc.
+
+To ensure the mimalloc DLL is loaded at run-time it is easiest to insert some
 call to the mimalloc API in the `main` function, like `mi_version()`
-(or use the `/INCLUDE:mi_version` switch on the linker)
+(or use the `/INCLUDE:mi_version` switch on the linker). See the `mimalloc-override-test` project
+for an example on how to use this.
 
-Due to the way mimalloc intercepts the standard malloc at runtime, it is best
-to link to the mimalloc import library first on the command line so it gets
-loaded right after the universal C runtime DLL (`ucrtbase`). See
-the `mimalloc-override-test` project for an example.
+The environment variable `MIMALLOC_DISABLE_REDIRECT=1` can be used to disable dynamic
+overriding at run-time. Use `MIMALLOC_VERBOSE=1` to check if mimalloc successfully redirected.
 
-Note: the current overriding on Windows works for most programs but some programs still have
-trouble -- the `dev-exp` branch contains a newer way of overriding that is more
-robust; try this out if you experience troubles.
+(Note: in principle, it should be possible to patch existing executables
+that are linked with the dynamic C runtime (`ucrtbase.dll`) by just putting the mimalloc DLL into
+the import table (and putting `mimalloc-redirect.dll` in the same folder)
+Such patching can be done for example with [CFF Explorer](https://ntcore.com/?page_id=388)).
 
 ## Static override
 
@@ -896,8 +992,6 @@ object file. For example:
 ```
 gcc -o myprogram mimalloc-override.o  myfile1.c ...
 ```
-
-
 
 ## List of Overrides:
 

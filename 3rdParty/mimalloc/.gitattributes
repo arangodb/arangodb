@@ -6,3 +6,5 @@
 *.suo binary
 *.vcproj binary
 *.patch binary
+*.dll binary
+*.lib binary

@@ -1,7 +1,8 @@
-ide/vs2017/*.db
-ide/vs2017/*.opendb
-ide/vs2017/*.user
-ide/vs2017/.vs
+ide/vs20??/*.db
+ide/vs20??/*.opendb
+ide/vs20??/*.user
+ide/vs20??/*.vcxproj.filters
+ide/vs20??/.vs
 out/
 docs/
 *.zip

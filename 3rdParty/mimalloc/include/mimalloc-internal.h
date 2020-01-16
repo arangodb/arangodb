@@ -10,7 +10,7 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #include "mimalloc-types.h"
 
-#if defined(MI_MALLOC_OVERRIDE) && defined(__APPLE__)
+#if defined(MI_MALLOC_OVERRIDE) && (defined(__APPLE__) || defined(__OpenBSD__))
 #define MI_TLS_RECURSE_GUARD
 #endif
 
@@ -20,37 +20,50 @@ terms of the MIT license. A copy of the license can be found in the file
 #define mi_trace_message(...)  
 #endif
 
+#if defined(_MSC_VER)
+#define mi_decl_noinline   __declspec(noinline)
+#define mi_attr_noreturn 
+#elif defined(__GNUC__) || defined(__clang__)
+#define mi_decl_noinline   __attribute__((noinline))
+#define mi_attr_noreturn   __attribute__((noreturn))
+#else
+#define mi_decl_noinline
+#define mi_attr_noreturn   
+#endif
+
 
 // "options.c"
-void       _mi_fprintf(FILE* out, const char* fmt, ...);
+void       _mi_fputs(mi_output_fun* out, const char* prefix, const char* message);
+void       _mi_fprintf(mi_output_fun* out, const char* fmt, ...);
 void       _mi_error_message(const char* fmt, ...);
 void       _mi_warning_message(const char* fmt, ...);
 void       _mi_verbose_message(const char* fmt, ...);
 void       _mi_trace_message(const char* fmt, ...);
+void       _mi_options_init(void);
+void       _mi_fatal_error(const char* fmt, ...) mi_attr_noreturn;
 
 // "init.c"
 extern mi_stats_t       _mi_stats_main;
 extern const mi_page_t  _mi_page_empty;
 bool       _mi_is_main_thread(void);
-uintptr_t  _mi_ptr_cookie(const void* p);
 uintptr_t  _mi_random_shuffle(uintptr_t x);
 uintptr_t  _mi_random_init(uintptr_t seed /* can be zero */);
+bool       _mi_preloading();  // true while the C runtime is not ready
 
 // os.c
 size_t     _mi_os_page_size(void);
-uintptr_t  _mi_align_up(uintptr_t sz, size_t alignment);
 void       _mi_os_init(void);                                      // called from process init
 void*      _mi_os_alloc(size_t size, mi_stats_t* stats);           // to allocate thread local data
 void       _mi_os_free(void* p, size_t size, mi_stats_t* stats);   // to free thread local data
+size_t     _mi_os_good_alloc_size(size_t size);
 
 // memory.c
-void*      _mi_mem_alloc_aligned(size_t size, size_t alignment, bool commit, size_t* id, mi_os_tld_t* tld);
-void*      _mi_mem_alloc(size_t size, bool commit, size_t* id, mi_os_tld_t* tld);
+void*      _mi_mem_alloc_aligned(size_t size, size_t alignment, bool* commit, bool* large, bool* is_zero, size_t* id, mi_os_tld_t* tld);
 void       _mi_mem_free(void* p, size_t size, size_t id, mi_stats_t* stats);
 
 bool       _mi_mem_reset(void* p, size_t size, mi_stats_t* stats);
-bool       _mi_mem_unreset(void* p, size_t size, mi_stats_t* stats);
-bool       _mi_mem_commit(void* p, size_t size, mi_stats_t* stats);
+bool       _mi_mem_unreset(void* p, size_t size, bool* is_zero, mi_stats_t* stats);
+bool       _mi_mem_commit(void* p, size_t size, bool* is_zero, mi_stats_t* stats);
 bool       _mi_mem_protect(void* addr, size_t size);
 bool       _mi_mem_unprotect(void* addr, size_t size);
 
@@ -77,7 +90,7 @@ void       _mi_page_use_delayed_free(mi_page_t* page, mi_delayed_t delay);
 size_t     _mi_page_queue_append(mi_heap_t* heap, mi_page_queue_t* pq, mi_page_queue_t* append);
 void       _mi_deferred_free(mi_heap_t* heap, bool force);
 
-void       _mi_page_free_collect(mi_page_t* page);
+void       _mi_page_free_collect(mi_page_t* page,bool force);
 void       _mi_page_reclaim(mi_heap_t* heap, mi_page_t* page);   // callback from segments
 
 size_t     _mi_bin_size(uint8_t bin);           // for stats
@@ -88,9 +101,12 @@ uint8_t    _mi_bsr(uintptr_t x);                // bit-scan-right, used on BSD i
 void       _mi_heap_destroy_pages(mi_heap_t* heap);
 void       _mi_heap_collect_abandon(mi_heap_t* heap);
 uintptr_t  _mi_heap_random(mi_heap_t* heap);
+void       _mi_heap_set_default_direct(mi_heap_t* heap);
 
 // "stats.c"
 void       _mi_stats_done(mi_stats_t* stats);
+double     _mi_clock_end(double start);
+double     _mi_clock_start(void);
 
 // "alloc.c"
 void*       _mi_page_malloc(mi_heap_t* heap, mi_page_t* page, size_t size) mi_attr_noexcept;  // called from `_mi_malloc_generic`
@@ -98,6 +114,7 @@ void*       _mi_heap_malloc_zero(mi_heap_t* heap, size_t size, bool zero);
 void*       _mi_heap_realloc_zero(mi_heap_t* heap, void* p, size_t newsize, bool zero);
 mi_block_t* _mi_page_ptr_unalign(const mi_segment_t* segment, const mi_page_t* page, const void* p);
 bool        _mi_free_delayed_block(mi_block_t* block);
+void        _mi_block_zero_init(const mi_page_t* page, void* p, size_t size);
 
 #if MI_DEBUG>1
 bool        _mi_page_is_valid(mi_page_t* page);
@@ -120,13 +137,6 @@ bool        _mi_page_is_valid(mi_page_t* page);
 #define __has_builtin(x)  0
 #endif
 
-#if defined(_MSC_VER)
-#define mi_decl_noinline   __declspec(noinline)
-#elif defined(__GNUC__) || defined(__clang__)
-#define mi_decl_noinline   __attribute__((noinline))
-#else
-#define mi_decl_noinline
-#endif
 
 
 /* -----------------------------------------------------------
@@ -150,18 +160,45 @@ bool        _mi_page_is_valid(mi_page_t* page);
 
 // Overflow detecting multiply
 #define MI_MUL_NO_OVERFLOW ((size_t)1 << (4*sizeof(size_t)))  // sqrt(SIZE_MAX)
-static inline bool mi_mul_overflow(size_t size, size_t count, size_t* total) {
+static inline bool mi_mul_overflow(size_t count, size_t size, size_t* total) {
 #if __has_builtin(__builtin_umul_overflow) || __GNUC__ >= 5
-#if (MI_INTPTR_SIZE == 4)
-  return __builtin_umul_overflow(size, count, total);
+#include <limits.h>   // UINT_MAX, ULONG_MAX
+#if (SIZE_MAX == UINT_MAX)
+  return __builtin_umul_overflow(count, size, total);
+#elif (SIZE_MAX == ULONG_MAX)
+  return __builtin_umull_overflow(count, size, total);
 #else
-  return __builtin_umull_overflow(size, count, total);
+  return __builtin_umulll_overflow(count, size, total);
 #endif
 #else /* __builtin_umul_overflow is unavailable */
-  *total = size * count;
+  *total = count * size;
   return ((size >= MI_MUL_NO_OVERFLOW || count >= MI_MUL_NO_OVERFLOW)
           && size > 0 && (SIZE_MAX / size) < count);
 #endif
+}
+
+// Is `x` a power of two? (0 is considered a power of two)
+static inline bool _mi_is_power_of_two(uintptr_t x) {
+  return ((x & (x - 1)) == 0);
+}
+
+// Align upwards
+static inline uintptr_t _mi_align_up(uintptr_t sz, size_t alignment) {
+  uintptr_t mask = alignment - 1;
+  if ((alignment & mask) == 0) {  // power of two?
+    return ((sz + mask) & ~mask);
+  }
+  else {
+    return (((sz + mask)/alignment)*alignment);
+  }
+}
+
+// Is memory zero initialized?
+static inline bool mi_mem_is_zero(void* p, size_t size) {
+  for (size_t i = 0; i < size; i++) {
+    if (((uint8_t*)p)[i] != 0) return false;
+  }
+  return true;
 }
 
 // Align a byte size to a size in _machine words_,
@@ -170,6 +207,11 @@ static inline size_t _mi_wsize_from_size(size_t size) {
   mi_assert_internal(size <= SIZE_MAX - sizeof(uintptr_t));
   return (size + sizeof(uintptr_t) - 1) / sizeof(uintptr_t);
 }
+
+
+/* -----------------------------------------------------------
+  The thread local default heap
+----------------------------------------------------------- */
 
 extern const mi_heap_t _mi_heap_empty;  // read-only empty heap, initial value of the thread local default heap
 extern mi_heap_t _mi_heap_main;         // statically allocated main backing heap
@@ -202,6 +244,14 @@ static inline bool mi_heap_is_initialized(mi_heap_t* heap) {
   return (heap != &_mi_heap_empty);
 }
 
+static inline uintptr_t _mi_ptr_cookie(const void* p) {
+  return ((uintptr_t)p ^ _mi_heap_main.cookie);
+}
+
+/* -----------------------------------------------------------
+  Pages
+----------------------------------------------------------- */
+
 static inline mi_page_t* _mi_heap_get_free_small_page(mi_heap_t* heap, size_t size) {
   mi_assert_internal(size <= MI_SMALL_SIZE_MAX);
   return heap->pages_free_direct[_mi_wsize_from_size(size)];
@@ -211,7 +261,6 @@ static inline mi_page_t* _mi_heap_get_free_small_page(mi_heap_t* heap, size_t si
 static inline mi_page_t* _mi_get_free_small_page(size_t size) {
   return _mi_heap_get_free_small_page(mi_get_default_heap(), size);
 }
-
 
 // Segment that contains the pointer
 static inline mi_segment_t* _mi_ptr_segment(const void* p) {
@@ -226,14 +275,20 @@ static inline mi_segment_t* _mi_page_segment(const mi_page_t* page) {
   return segment;
 }
 
-// Get the page containing the pointer
-static inline mi_page_t* _mi_segment_page_of(const mi_segment_t* segment, const void* p) {
+// used internally
+static inline uintptr_t _mi_segment_page_idx_of(const mi_segment_t* segment, const void* p) {
   // if (segment->page_size > MI_SEGMENT_SIZE) return &segment->pages[0];  // huge pages
   ptrdiff_t diff = (uint8_t*)p - (uint8_t*)segment;
   mi_assert_internal(diff >= 0 && diff < MI_SEGMENT_SIZE);
   uintptr_t idx = (uintptr_t)diff >> segment->page_shift;
   mi_assert_internal(idx < segment->capacity);
   mi_assert_internal(segment->page_kind <= MI_PAGE_MEDIUM || idx == 0);
+  return idx;
+}
+
+// Get the page containing the pointer
+static inline mi_page_t* _mi_segment_page_of(const mi_segment_t* segment, const void* p) {
+  uintptr_t idx = _mi_segment_page_idx_of(segment, p);  
   return &((mi_segment_t*)segment)->pages[idx];
 }
 
@@ -293,42 +348,101 @@ static inline bool mi_page_all_used(mi_page_t* page) {
 static inline bool mi_page_mostly_used(const mi_page_t* page) {
   if (page==NULL) return true;
   uint16_t frac = page->reserved / 8U;
-  return (page->reserved - page->used + page->thread_freed < frac);
+  return (page->reserved - page->used + page->thread_freed <= frac);
 }
 
 static inline mi_page_queue_t* mi_page_queue(const mi_heap_t* heap, size_t size) {
   return &((mi_heap_t*)heap)->pages[_mi_bin(size)];
 }
 
+
+
+//-----------------------------------------------------------
+// Page flags
+//-----------------------------------------------------------
+static inline bool mi_page_is_in_full(const mi_page_t* page) {
+  return page->flags.x.in_full;
+}
+
+static inline void mi_page_set_in_full(mi_page_t* page, bool in_full) {
+  page->flags.x.in_full = in_full;
+}
+
+static inline bool mi_page_has_aligned(const mi_page_t* page) {
+  return page->flags.x.has_aligned;
+}
+
+static inline void mi_page_set_has_aligned(mi_page_t* page, bool has_aligned) {
+  page->flags.x.has_aligned = has_aligned;
+}
+
+
 // -------------------------------------------------------------------
 // Encoding/Decoding the free list next pointers
+// Note: we pass a `null` value to be used as the `NULL` value for the 
+// end of a free list. This is to prevent the cookie itself to ever 
+// be present among user blocks (as `cookie^0==cookie`).
 // -------------------------------------------------------------------
 
-static inline mi_block_t* mi_block_nextx( uintptr_t cookie, mi_block_t* block ) {
-  #if MI_SECURE
-  return (mi_block_t*)(block->next ^ cookie);
+static inline bool mi_is_in_same_segment(const void* p, const void* q) {
+  return (_mi_ptr_segment(p) == _mi_ptr_segment(q));
+}
+
+static inline bool mi_is_in_same_page(const void* p, const void* q) {
+  mi_segment_t* segmentp = _mi_ptr_segment(p);
+  mi_segment_t* segmentq = _mi_ptr_segment(q);
+  if (segmentp != segmentq) return false;
+  uintptr_t idxp = _mi_segment_page_idx_of(segmentp, p);
+  uintptr_t idxq = _mi_segment_page_idx_of(segmentq, q);
+  return (idxp == idxq);
+}
+
+static inline mi_block_t* mi_block_nextx( const void* null, const mi_block_t* block, uintptr_t cookie ) {
+  #ifdef MI_ENCODE_FREELIST
+  mi_block_t* b = (mi_block_t*)(block->next ^ cookie);
+  if (mi_unlikely((void*)b==null)) { b = NULL; }
+  return b;
   #else
-  UNUSED(cookie);
+  UNUSED(cookie); UNUSED(null);
   return (mi_block_t*)block->next;
   #endif
 }
 
-static inline void mi_block_set_nextx(uintptr_t cookie, mi_block_t* block, mi_block_t* next) {
-  #if MI_SECURE
+static inline void mi_block_set_nextx(const void* null, mi_block_t* block, const mi_block_t* next, uintptr_t cookie) {
+  #ifdef MI_ENCODE_FREELIST
+  if (mi_unlikely(next==NULL)) { next = (mi_block_t*)null; }
   block->next = (mi_encoded_t)next ^ cookie;
   #else
-  UNUSED(cookie);
+  UNUSED(cookie); UNUSED(null);
   block->next = (mi_encoded_t)next;
   #endif
 }
 
-static inline mi_block_t* mi_block_next(mi_page_t* page, mi_block_t* block) {
-  return mi_block_nextx(page->cookie,block);
+static inline mi_block_t* mi_block_next(const mi_page_t* page, const mi_block_t* block) {
+  #ifdef MI_ENCODE_FREELIST
+  mi_block_t* next = mi_block_nextx(page,block,page->cookie);
+  // check for free list corruption: is `next` at least in our segment range?
+  // TODO: check if `next` is `page->block_size` aligned?
+  if (next!=NULL && !mi_is_in_same_page(block, next)) {
+    _mi_fatal_error("corrupted free list entry of size %zub at %p: value 0x%zx\n", page->block_size, block, (uintptr_t)next);
+    next = NULL;
+  }   
+  return next;
+  #else
+  UNUSED(page);
+  return mi_block_nextx(page,block,0);
+  #endif
 }
 
-static inline void mi_block_set_next(mi_page_t* page, mi_block_t* block, mi_block_t* next) {
-  mi_block_set_nextx(page->cookie,block,next);
+static inline void mi_block_set_next(const mi_page_t* page, mi_block_t* block, const mi_block_t* next) {
+  #ifdef MI_ENCODE_FREELIST
+  mi_block_set_nextx(page,block,next, page->cookie);
+  #else
+  UNUSED(page);
+  mi_block_set_nextx(page,block, next,0);
+  #endif
 }
+
 // -------------------------------------------------------------------
 // Getting the thread id should be performant
 // as it is called in the fast path of `_mi_free`,

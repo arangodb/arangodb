@@ -10,7 +10,7 @@ terms of the MIT license. A copy of the license can be found in the file
 #endif
 
 #if defined(MI_MALLOC_OVERRIDE) && defined(_WIN32) && !(defined(MI_SHARED_LIB) && defined(_DLL))
-#error "It is only possible to override malloc on Windows when building as a DLL (and linking the C runtime as a DLL)"
+#error "It is only possible to override "malloc" on Windows when building as a DLL (and linking the C runtime as a DLL)"
 #endif
 
 #if defined(MI_MALLOC_OVERRIDE) && !defined(_WIN32)
@@ -18,10 +18,6 @@ terms of the MIT license. A copy of the license can be found in the file
 // ------------------------------------------------------
 // Override system malloc
 // ------------------------------------------------------
-
-#if defined(_MSC_VER)
-#pragma warning(disable:4273)  // inconsistent dll linking
-#endif
 
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(__MACH__)
   // use aliasing to alias the exported function to one of our `mi_` functions
@@ -62,6 +58,9 @@ terms of the MIT license. A copy of the license can be found in the file
     MI_INTERPOSE_MI(strdup),
     MI_INTERPOSE_MI(strndup)
   };
+#elif defined(_MSC_VER)
+  // cannot override malloc unless using a dll.
+  // we just override new/delete which does work in a static library.
 #else
   // On all other systems forward to our API
   void* malloc(size_t size)              mi_attr_noexcept  MI_FORWARD1(mi_malloc, size);
@@ -94,7 +93,7 @@ terms of the MIT license. A copy of the license can be found in the file
   void* operator new  (std::size_t n, const std::nothrow_t& tag) noexcept { UNUSED(tag); return mi_new_nothrow(n); }
   void* operator new[](std::size_t n, const std::nothrow_t& tag) noexcept { UNUSED(tag); return mi_new_nothrow(n); }
 
-  #if (__cplusplus >= 201402L)
+  #if (__cplusplus >= 201402L || _MSC_VER >= 1916)
   void operator delete  (void* p, std::size_t n) MI_FORWARD02(mi_free_size,p,n);
   void operator delete[](void* p, std::size_t n) MI_FORWARD02(mi_free_size,p,n);
   #endif
@@ -194,4 +193,5 @@ int posix_memalign(void** p, size_t alignment, size_t size) { return mi_posix_me
 #pragma GCC visibility pop
 #endif
 
-#endif // MI_MALLOC_OVERRIDE & !_WIN32
+#endif // MI_MALLOC_OVERRIDE && !_WIN32
+

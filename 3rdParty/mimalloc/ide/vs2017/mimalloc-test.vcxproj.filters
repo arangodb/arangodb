@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\test\test-api.c">
+    <ClCompile Include="..\..\test\main-override-static.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
