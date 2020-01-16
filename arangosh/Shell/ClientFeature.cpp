@@ -321,8 +321,8 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(std::st
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
-                                       _retries, _sslProtocol));
+      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
+                                       _connectionTimeout, _retries, _sslProtocol));
 
   return connection;
 }
@@ -346,8 +346,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
-                                       _retries, _sslProtocol));
+      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
+                                       _connectionTimeout, _retries, _sslProtocol));
 
   return std::make_unique<SimpleHttpClient>(connection, params);
 }

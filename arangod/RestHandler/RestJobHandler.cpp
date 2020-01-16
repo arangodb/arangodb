@@ -26,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
@@ -43,7 +44,6 @@ RestJobHandler::RestJobHandler(application_features::ApplicationServer& server,
                                AsyncJobManager* jobManager)
     : RestBaseHandler(server, request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
-  _allowDirectExecution = true;
 }
 
 RestStatus RestJobHandler::execute() {

@@ -22,6 +22,7 @@
 
 #include "NetworkFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"

@@ -1115,8 +1115,8 @@ static void JS_ThrowCollectionNotLoaded(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& databaseFeature = server.getFeature<DatabaseFeature>();
+  TRI_GET_GLOBALS();
+  auto& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
   if (args.Length() == 0) {
     bool const value = databaseFeature.throwCollectionNotLoadedError();
     TRI_V8_RETURN(v8::Boolean::New(isolate, value));
@@ -1459,8 +1459,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& databaseFeature = server.getFeature<DatabaseFeature>();
+  auto& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
   std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto* vocbase = &GetContextVocBase(isolate);
 
@@ -1515,7 +1514,8 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     user = TRI_ObjectToString(isolate, args[0]);
   }
 
-  std::vector<std::string> names = methods::Databases::list(user);
+  TRI_GET_GLOBALS();
+  std::vector<std::string> names = methods::Databases::list(v8g->_server, user);
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
 
   for (size_t i = 0; i < names.size(); ++i) {
@@ -1662,9 +1662,9 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._endpoints()");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  TRI_ASSERT(server.hasFeature<HttpEndpointProvider>());
-  auto& endpoints = server.getFeature<HttpEndpointProvider>();
+  TRI_GET_GLOBALS();
+  TRI_ASSERT(v8g->_server.hasFeature<HttpEndpointProvider>());
+  auto& endpoints = v8g->_server.getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
@@ -1711,8 +1711,8 @@ static void JS_AuthenticationEnabled(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& authentication = server.getFeature<AuthenticationFeature>();
+  TRI_GET_GLOBALS();
+  auto& authentication = v8g->_server.getFeature<AuthenticationFeature>();
 
   v8::Handle<v8::Boolean> result = v8::Boolean::New(isolate, authentication.isActive());
 
@@ -1725,9 +1725,9 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
 #ifdef USE_ENTERPRISE
-  auto& server = application_features::ApplicationServer::server();
-  TRI_ASSERT(server.hasFeature<LdapFeature>());
-  auto& ldap = server.getFeature<LdapFeature>();
+  TRI_GET_GLOBALS();
+  TRI_ASSERT(v8g->_server.hasFeature<LdapFeature>());
+  auto& ldap = v8g->_server.getFeature<LdapFeature>();
   TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
 #else
   // LDAP only enabled in enterprise mode

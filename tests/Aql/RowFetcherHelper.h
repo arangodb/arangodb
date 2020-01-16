@@ -73,11 +73,11 @@ class SingleRowFetcherHelper
 
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
 
   // NOLINTNEXTLINE google-default-arguments
   std::pair<arangodb::aql::ExecutionState, arangodb::aql::ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize) override;
 
   uint64_t nrCalled() { return _nrCalled; }
   uint64_t nrReturned() { return _nrReturned; }
