@@ -1704,7 +1704,7 @@ arangodb::Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
   return {};
 }
 
-// Analyze(<filter-expression>, analyzer)
+// ANALYZER(<filter-expression>, analyzer)
 arangodb::Result fromFuncAnalyzer(
     char const* funcName,
     irs::boolean_filter* filter,
@@ -1727,85 +1727,67 @@ arangodb::Result fromFuncAnalyzer(
   }
 
   // 2nd argument defines an analyzer
-  auto const analyzerArg = args.getMemberUnchecked(1);
+  irs::string_ref analyzerId;
+  ScopedAqlValue analyzerIdValue;
 
-  if (!analyzerArg) {
-    auto message = "'ANALYZER' AQL function: 2nd argument is invalid"s;
-    LOG_TOPIC("d9b1c", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  auto rv = evaluate<decltype(analyzerId), true>(
+        analyzerId, analyzerIdValue, funcName,
+        args, 1, bool(filter), ctx);
+
+  if (rv.fail()) {
+    return rv;
   }
 
-  if (!analyzerArg->isDeterministic()) {
-    auto message = "'ANALYZER' AQL function: 2nd argument is intended to be deterministic"s;
-    LOG_TOPIC("f7ad1", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-  }
-
-  ScopedAqlValue analyzerId(*analyzerArg);
   arangodb::iresearch::FieldMeta::Analyzer analyzerValue; // default analyzer
   auto& analyzer = analyzerValue._pool;
   auto& shortName = analyzerValue._shortName;
 
-  if (filter || analyzerId.isConstant()) {
-    if (!analyzerId.execute(ctx)) {
-      auto message = "'ANALYZER' AQL function: Failed to evaluate 2nd argument"s;
-      LOG_TOPIC("f361f", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != analyzerId.type()) {
-      auto message =
-          "'ANALYZER' AQL function: 'analyzer' argument has invalid type '"s +
-          std::string(ScopedAqlValue::typeString(analyzerId.type())) +
-          "' (string expected)";
-      LOG_TOPIC("624cc", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    irs::string_ref analyzerIdValue;
-
-    if (!analyzerId.getString(analyzerIdValue)) {
-      auto message = "'ANALYZER' AQL function: Unable to parse 2nd argument as string"s;
-      LOG_TOPIC("0c41f", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
+  if (filter || analyzerIdValue.isConstant()) {
     TRI_ASSERT(ctx.trx);
     auto& server = ctx.trx->vocbase().server();
     if (!server.hasFeature<IResearchAnalyzerFeature>()) {
-      auto message =
-          "'"s + IResearchAnalyzerFeature::name() +
-          "' feature is not registered, unable to evaluate 'ANALYZER' function";
-      LOG_TOPIC("26571", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, message};
+      return {
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "'"s.append(IResearchAnalyzerFeature::name())
+            .append("' feature is not registered, unable to evaluate '")
+            .append(funcName).append("' function")
+      };
     }
+
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-    shortName = analyzerIdValue;
+    shortName = analyzerId;
 
     auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
                           ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
                           : nullptr;
 
     if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
+      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
 
       shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
-          analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false);  // args
+          analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
     }
 
     if (!analyzer) {
-      auto message = "'ANALYZER' AQL function: Unable to lookup analyzer '"s + analyzerIdValue.c_str() + "'"s;
-      LOG_TOPIC("404c9", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "'"s.append(funcName).append("' AQL function: Unable to lookup analyzer '")
+            .append(analyzerId.c_str()).append("'")
+      };
     }
   }
 
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer
 
-  auto rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
+  rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
+
   if (rv.fail()) {
-    return arangodb::Result{rv.errorNumber(), "failed to get filter for analyzer: " + analyzer->name() + " : " + rv.errorMessage()};
+    return {
+      rv.errorNumber(),
+      "failed to get filter for analyzer: "s
+          .append(analyzer->name()).append(" : ").append(rv.errorMessage())
+    };
   }
   return rv;
 }
