@@ -123,8 +123,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   /// @revision tree management for replication
   containers::RevisionTree _revisionTree;
-  std::multimap<rocksdb::SequenceNumber, std::vector<TRI_voc_rid_t>> _revisionInsertBuffers;
-  std::multimap<rocksdb::SequenceNumber, std::vector<TRI_voc_rid_t>> _revisionRemovalBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionInsertBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
   mutable std::shared_mutex _revisionBufferLock;
 };
