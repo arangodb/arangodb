@@ -1,6 +1,9 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fix "random" Valgrind "invalid free/delete" errors caused by usage of `alignas(64)`
+  for shared_ptrs in the SupervisedScheduler.
+
 * Fixed issue #10867: arangod based binaries lack product version info and icon
   on Windows
 
