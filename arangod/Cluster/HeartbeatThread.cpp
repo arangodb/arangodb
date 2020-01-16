@@ -200,7 +200,6 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _ready(false),
       _currentVersions(0, 0),
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
-      _wasNotified(false),
       _backgroundJobsPosted(0),
       _lastSyncTime(0),
       _maintenanceThread(nullptr),
@@ -354,6 +353,10 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       }
     }
   }
+  // Check Plan/Version and Current/Version in case a callback did not get
+  // through:
+  _planAgencyCallback->refetchAndUpdate(true, false);
+  _currentAgencyCallback->refetchAndUpdate(true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,15 +425,15 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
-  auto planAgencyCallback =
+  _planAgencyCallback =
       std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
 
-  auto currentAgencyCallback =
+  _currentAgencyCallback =
       std::make_shared<AgencyCallback>(_agency, "Current/Version", updateCurrent, true);
 
   bool registered = false;
   while (!registered && !isStopping()) {
-    registered = _agencyCallbackRegistry->registerCallback(planAgencyCallback);
+    registered = _agencyCallbackRegistry->registerCallback(_planAgencyCallback);
     if (!registered) {
       LOG_TOPIC("52ce5", ERR, Logger::HEARTBEAT)
           << "Couldn't register plan change in agency!";
@@ -440,7 +443,7 @@ void HeartbeatThread::runDBServer() {
 
   registered = false;
   while (!registered && !isStopping()) {
-    registered = _agencyCallbackRegistry->registerCallback(currentAgencyCallback);
+    registered = _agencyCallbackRegistry->registerCallback(_currentAgencyCallback);
     if (!registered) {
       LOG_TOPIC("f1df2", ERR, Logger::HEARTBEAT)
           << "Couldn't register current change in agency!";
@@ -508,45 +511,14 @@ void HeartbeatThread::runDBServer() {
         break;
       }
 
+      syncDBServerStatusQuo();
+
+      CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
-      // mop: execute at least once
-      do {
-        if (isStopping()) {
-          break;
-        }
+      if (remain.count() > 0 && !isStopping()) {
+        locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
+      }
 
-        LOG_TOPIC("1c79a", TRACE, Logger::HEARTBEAT) << "Entering update loop";
-
-        bool wasNotified;
-        {
-          CONDITION_LOCKER(locker, _condition);
-          wasNotified = _wasNotified;
-          if (!wasNotified && !isStopping()) {
-            if (remain.count() > 0) {
-              locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
-              wasNotified = _wasNotified;
-            }
-          }
-          _wasNotified = false;
-        }
-
-        if (isStopping()) {
-          break;
-        }
-
-        if (!wasNotified) {
-          LOG_TOPIC("52d4c", DEBUG, Logger::HEARTBEAT) << "Heart beating...";
-          planAgencyCallback->refetchAndUpdate(true, false);
-          currentAgencyCallback->refetchAndUpdate(true, false);
-        } else {
-          // mop: a plan change returned successfully...
-          // recheck and redispatch in case our desired versions increased
-          // in the meantime
-          LOG_TOPIC("4d825", TRACE, Logger::HEARTBEAT) << "wasNotified==true";
-          syncDBServerStatusQuo();
-        }
-        remain = _interval - (std::chrono::steady_clock::now() - start);
-      } while (remain.count() > 0);
     } catch (std::exception const& e) {
       LOG_TOPIC("49198", ERR, Logger::HEARTBEAT)
           << "Got an exception in DBServer heartbeat: " << e.what();
@@ -554,11 +526,12 @@ void HeartbeatThread::runDBServer() {
       LOG_TOPIC("9946d", ERR, Logger::HEARTBEAT)
           << "Got an unknown exception in DBServer heartbeat";
     }
+    LOG_TOPIC("f5628", DEBUG, Logger::HEARTBEAT) << "Heart beating.";
   }
 
   // TODO should these be defered?
-  _agencyCallbackRegistry->unregisterCallback(currentAgencyCallback);
-  _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
+  _agencyCallbackRegistry->unregisterCallback(_currentAgencyCallback);
+  _agencyCallbackRegistry->unregisterCallback(_planAgencyCallback);
 }
 
 void HeartbeatThread::getNewsFromAgencyForCoordinator() {
@@ -1130,6 +1103,7 @@ void HeartbeatThread::runCoordinator() {
       LOG_TOPIC("f4de9", ERR, Logger::HEARTBEAT)
           << "Got an unknown exception in coordinator heartbeat";
     }
+    LOG_TOPIC("f5627", DEBUG, Logger::HEARTBEAT) << "Heart beating.";
   }
 }
 

@@ -29,6 +29,7 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 
@@ -281,8 +282,6 @@ class HeartbeatThread : public CriticalThread,
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<AgencyVersions> _desiredVersions;
 
-  bool _wasNotified;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of background jobs that have been posted to the scheduler
   //////////////////////////////////////////////////////////////////////////////
@@ -320,6 +319,11 @@ class HeartbeatThread : public CriticalThread,
   // For periodic update of the current DBServer list:
   std::atomic<int> _DBServerUpdateCounter;
 
+  // The following are used in the DBServer case to store the agency callback
+  // objects. We need to have them available as members since a scheduler thread
+  // might call refetchAndUpdate.
+  std::shared_ptr<AgencyCallback> _planAgencyCallback;
+  std::shared_ptr<AgencyCallback> _currentAgencyCallback;
 };
 }  // namespace arangodb
 
