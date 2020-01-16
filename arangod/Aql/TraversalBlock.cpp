@@ -311,6 +311,8 @@ size_t TraversalBlock::skipPaths(size_t hint) {
 }
 
 void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos) {
+  _traverser->clear();
+
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is computed right now.
   _opts->clearVariableValues();

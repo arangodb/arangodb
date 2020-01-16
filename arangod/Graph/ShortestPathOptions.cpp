@@ -228,6 +228,6 @@ void ShortestPathOptions::fetchVerticesCoordinator(std::deque<StringRef> const& 
     transaction::BuilderLeaser leased(trx());
 
     fetchVerticesFromEngines(trx()->vocbase().name(), ch->engines(), fetch,
-                             cache, ch->datalake(), *(leased.get()));
+                             cache, ch->datalake(), *(leased.get()), true);
   }
 }
