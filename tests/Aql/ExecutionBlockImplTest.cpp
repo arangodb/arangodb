@@ -401,6 +401,13 @@ TEST_F(ExecutionBlockImplTest,
   ASSERT_EQ(block, nullptr);
 }
 
+/**
+ * @brief Shared Test case initializer to test the execute API
+ *        of the ExecutionBlockImpl implementation.
+ *        This base class creates a server with a faked AQL query
+ *        where we set our test node into.
+ *        Also provides helper methods to create the building blocks of the query.
+ */
 class SharedExecutionBlockImplTest {
  protected:
   mocks::MockAqlServer server{};
@@ -414,6 +421,13 @@ class SharedExecutionBlockImplTest {
     fakedQuery->setEngine(engine.release());
   }
 
+  /**
+   * @brief Creates and manages a ExecutionNode.
+   *        These nodes can be used to create the Executors
+   *        Caller does not need to manage the memory.
+   *
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
+   */
   ExecutionNode* generateNodeDummy() {
     auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
     auto res = dummy.get();
@@ -421,68 +435,95 @@ class SharedExecutionBlockImplTest {
     return res;
   }
 
-  LambdaExecutorInfos makeInfos(ProduceCall call, RegisterId read = RegisterPlan::MaxRegisterId,
-                                RegisterId write = RegisterPlan::MaxRegisterId) {
-    if (read != RegisterPlan::MaxRegisterId) {
-      EXPECT_LE(read, write);
-    } else if (write != RegisterPlan::MaxRegisterId) {
-      EXPECT_EQ(write, 0);
+  /**
+   * @brief Prepare the executor infos for a LambdaExecutor with passthrough.
+   *
+   * @param call produceRows implementation that should be used
+   * @param inputRegisters highest input register index. RegisterPlan::MaxRegisterId (default) describes there is no input. call is allowed to read any register <= inputRegisters.
+   * @param outputRegisters highest output register index. RegisterPlan::MaxRegisterId (default) describes there is no output. call is allowed to write any inputRegisters < register <= outputRegisters. Invariant inputRegisters <= outputRegisters
+   * @return LambdaExecutorInfos Infos to build the Executor.
+   */
+  LambdaExecutorInfos makeInfos(ProduceCall call,
+                                RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
+                                RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
+    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+      EXPECT_LE(inputRegisters, outputRegisters);
+    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      EXPECT_EQ(outputRegisters, 0);
     }
 
     auto readAble = make_shared_unordered_set();
     auto writeAble = make_shared_unordered_set();
     auto registersToKeep = std::unordered_set<RegisterId>{};
-    if (read != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= read; ++i) {
+    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+      for (RegisterId i = 0; i <= inputRegisters; ++i) {
         readAble->emplace(i);
         registersToKeep.emplace(i);
       }
-      for (RegisterId i = read + 1; i <= write; ++i) {
+      for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
         writeAble->emplace(i);
       }
-    } else if (write != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= write; ++i) {
+    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      for (RegisterId i = 0; i <= outputRegisters; ++i) {
         writeAble->emplace(i);
       }
     }
-    RegisterId regsToRead = (read == RegisterPlan::MaxRegisterId) ? 0 : read + 1;
-    RegisterId regsToWrite = (write == RegisterPlan::MaxRegisterId) ? 0 : write + 1;
+    RegisterId regsToRead =
+        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
+    RegisterId regsToWrite =
+        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
     return LambdaExecutorInfos(readAble, writeAble, regsToRead, regsToWrite, {},
                                registersToKeep, std::move(call));
   }
 
+  /**
+   * @brief Prepare the executor infos for a LambdaExecutor with implemented skip.
+   *
+   * @param call produceRows implementation that should be used
+   * @param skipCall skipRowsRange implementation that should be used
+   * @param inputRegisters highest input register index. RegisterPlan::MaxRegisterId (default) describes there is no input. call is allowed to read any register <= inputRegisters.
+   * @param outputRegisters highest output register index. RegisterPlan::MaxRegisterId (default) describes there is no output. call is allowed to write any inputRegisters < register <= outputRegisters. Invariant inputRegisters <= outputRegisters
+   * @return LambdaExecutorInfos Infos to build the Executor.
+   */
   LambdaSkipExecutorInfos makeSkipInfos(ProduceCall call, SkipCall skipCall,
-                                        RegisterId read = RegisterPlan::MaxRegisterId,
-                                        RegisterId write = RegisterPlan::MaxRegisterId) {
-    if (read != RegisterPlan::MaxRegisterId) {
-      EXPECT_LE(read, write);
-    } else if (write != RegisterPlan::MaxRegisterId) {
-      EXPECT_EQ(write, 0);
+                                        RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
+                                        RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
+    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+      EXPECT_LE(inputRegisters, outputRegisters);
+    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      EXPECT_EQ(outputRegisters, 0);
     }
 
     auto readAble = make_shared_unordered_set();
     auto writeAble = make_shared_unordered_set();
     auto registersToKeep = std::unordered_set<RegisterId>{};
-    if (read != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= read; ++i) {
+    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+      for (RegisterId i = 0; i <= inputRegisters; ++i) {
         readAble->emplace(i);
         registersToKeep.emplace(i);
       }
-      for (RegisterId i = read + 1; i <= write; ++i) {
+      for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
         writeAble->emplace(i);
       }
-    } else if (write != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= write; ++i) {
+    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      for (RegisterId i = 0; i <= outputRegisters; ++i) {
         writeAble->emplace(i);
       }
     }
-    RegisterId regsToRead = (read == RegisterPlan::MaxRegisterId) ? 0 : read + 1;
-    RegisterId regsToWrite = (write == RegisterPlan::MaxRegisterId) ? 0 : write + 1;
+    RegisterId regsToRead =
+        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
+    RegisterId regsToWrite =
+        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
     return LambdaSkipExecutorInfos(readAble, writeAble, regsToRead, regsToWrite,
                                    {}, registersToKeep, std::move(call),
                                    std::move(skipCall));
   }
-
+  /**
+   * @brief Create a Singleton ExecutionBlock. Just like the original one in the
+   * query. it is already initialized and ready to use.
+   *
+   * @return std::unique_ptr<ExecutionBlock> The singleton ExecutionBlock.
+   */
   std::unique_ptr<ExecutionBlock> createSingleton() {
     auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
         fakedQuery->engine(), generateNodeDummy(), IdExecutorInfos{0, {}, {}});
@@ -493,6 +534,24 @@ class SharedExecutionBlockImplTest {
     return res;
   }
 
+  /**
+   * @brief Generate a generic produce call with the following behaviour:
+   *        1. For every input row, create a new ouput row 1:1 using copy.
+   *        2. Return the input state, along with an unlimited produce call.
+   *
+   *        In addition we have the following assertions:
+   *        1. Whenever this produce is called, it asserts that is called with the expectedCall
+   *        2. This call has been called less then 10 times (emergency bailout against infinite loop)
+   *        3. If there is an input row, this row is valid.
+   *        4. If called with empty input, we still have exactly numRowsLeftNoInput many rows free in the output
+   *        5. If called with input, we still have exactly numRowsLeftWithInput many rows free in the output
+   *
+   * @param nrCalls Reference! Will count how many times this function was invoked.
+   * @param expectedCall The call that is expected on every invocation of this function.
+   * @param numRowsLeftNoInput The number of available rows in the output, if we have empty input (cold start)
+   * @param numRowsLeftWithInput The number of available rows in the output, if we have given an input
+   * @return ProduceCall The call ready to hand over to the LambdaExecutorInfos
+   */
   ProduceCall generateProduceCall(size_t& nrCalls, AqlCall expectedCall,
                                   size_t numRowsLeftNoInput = ExecutionBlock::DefaultBatchSize,
                                   size_t numRowsLeftWithInput = ExecutionBlock::DefaultBatchSize) {
@@ -526,6 +585,21 @@ class SharedExecutionBlockImplTest {
     };
   }
 
+  /**
+   * @brief Generate a generic skip call with the following behaviour:
+   *        1. For every given input: skip it, and count skip as one.
+   *        2. Do never skip more then offset()
+   *        3. Return the input state, the locally skipped number, a call with softLimit = offset + softLimit, hardLimit = offset + hardLimit
+   *
+   *        In addition we have the following assertions:
+   *        1. Whenever this produce is called, it asserts that is called with the expectedCall
+   *        2. This call has been called less then 10 times (emergency bailout against infinite loop)
+   *        3. If there is an input row, this row is valid.
+   *
+   * @param nrCalls Reference! Will count how many times this function was invoked.
+   * @param expectedCall The call that is expected on every invocation of this function.
+   * @return SkipCall The call ready to hand over to the LambdaExecutorInfos
+   */
   SkipCall generateSkipCall(size_t& nrCalls, AqlCall expectedCall) {
     return [&nrCalls,
             expectedCall](AqlItemBlockInputRange& inputRange,
@@ -557,6 +631,12 @@ class SharedExecutionBlockImplTest {
     };
   }
 
+  /**
+   * @brief Generate a call that failes whenever it is actually called.
+   *        Used to check that SKIP is not invoked
+   *
+   * @return SkipCall The always failing call to be used for the executor.
+   */
   SkipCall generateNeverSkipCall() {
     return [](AqlItemBlockInputRange& input,
               AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
@@ -566,6 +646,12 @@ class SharedExecutionBlockImplTest {
     };
   }
 
+  /**
+   * @brief Generate a call that failes whenever it is actually called.
+   *        Used to check that produce is not invoked
+   *
+   * @return ProduceCall The always failing call to be used for the executor.
+   */
   ProduceCall generateNeverProduceCall() {
     return [](AqlItemBlockInputRange& input,
               OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
@@ -576,10 +662,23 @@ class SharedExecutionBlockImplTest {
   }
 };
 
-// Test of the execute() Logic stack
+/**
+ * @brief Test the internal statemachine of the ExecutionBlockImpl.
+ *        These test-cases focus on a single executor and assert that this Executor is called
+ *        correctly given an input.
+ *        This is a parameterized test and tests passthrough (true) and non-passthrough variants (false)
+ */
 class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTest,
                                               public testing::TestWithParam<bool> {
  protected:
+  /**
+   * @brief Generic test runner. Creates Lambda Executors, and returns ExecutionBlockImpl.execute(call),
+   *
+   * @param prod The Produce call that should be used within the Lambda Executor
+   * @param skip The Skip call that should be used wiithin the Lambda Executor (only used for non-passthrough)
+   * @param call The AqlCall that should be applied on the Executors.
+   * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>  Response of execute(call);
+   */
   auto runTest(ProduceCall& prod, SkipCall& skip, AqlCall call)
       -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
     AqlCallStack stack{std::move(call)};
@@ -599,10 +698,15 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
   }
 };
 
+// Test a default call: no skip, no limits.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
   AqlCall fullCall{};
   size_t nrCalls = 0;
 
+  // Note here: passthrough only reserves the correct amount of rows.
+  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
+  // in the executor.
+  // Non passthrough does not make an estimate for this, so Batchsize is used.
   ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
                                     : generateProduceCall(nrCalls, fullCall);
   SkipCall skipCall = generateNeverSkipCall();
@@ -615,11 +719,16 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_unlimited_call) {
   EXPECT_EQ(nrCalls, 2);
 }
 
+// Test a softlimit call: no skip, given softlimit.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   AqlCall fullCall{};
   fullCall.softLimit = 20;
   size_t nrCalls = 0;
 
+  // Note here: passthrough only reserves the correct amount of rows.
+  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
+  // in the executor.
+  // Non passthrough the available lines (visible to executor) are only the given soft limit.
   ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
                                     : generateProduceCall(nrCalls, fullCall, 20, 20);
   SkipCall skipCall = generateNeverSkipCall();
@@ -632,11 +741,16 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_softlimit_call) {
   EXPECT_EQ(nrCalls, 2);
 }
 
+// Test a hardlimit call: no skip, given hardlimit.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   AqlCall fullCall{};
   fullCall.hardLimit = 20;
   size_t nrCalls = 0;
 
+  // Note here: passthrough only reserves the correct amount of rows.
+  // As we fetch from a singleton (1 row) we will have 0 rows (cold-start) and then exactly 1 row
+  // in the executor.
+  // Non passthrough the available lines (visible to executor) are only the given soft limit.
   ProduceCall execImpl = GetParam() ? generateProduceCall(nrCalls, fullCall, 0, 1)
                                     : generateProduceCall(nrCalls, fullCall, 20, 20);
   SkipCall skipCall = generateNeverSkipCall();
@@ -649,11 +763,13 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_hardlimit_call) {
   EXPECT_EQ(nrCalls, 2);
 }
 
+// Test a skip call: given skip, no limits.
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_offset_call) {
   AqlCall fullCall{};
   fullCall.offset = 20;
   size_t nrCalls = 0;
 
+  // Note here: We skip everything, no produce should be called
   ProduceCall execImpl = generateNeverProduceCall();
   SkipCall skipCall = generateSkipCall(nrCalls, fullCall);
 
@@ -672,6 +788,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_offset_call) {
   EXPECT_EQ(block, nullptr);
 }
 
+// Test a skip call: given skip, limit: 0 (formerly known as skipSome)
 TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_offset_only_call) {
   AqlCall fullCall{};
   fullCall.offset = 20;
@@ -680,6 +797,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, test_toplevel_offset_only_call) {
   fullCall.softLimit = 0;
   size_t nrCalls = 0;
 
+  // Note here: We skip everything, no produce should be called
   ProduceCall execImpl = generateNeverProduceCall();
   SkipCall skipCall = generateSkipCall(nrCalls, fullCall);
 
