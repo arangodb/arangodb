@@ -599,22 +599,6 @@ struct ParsedDateTime {
   int tzOffsetMinute = 0;
 };
 
-/// @brief parses a number value, and returns its length
-int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
-  char const* p = dateTime.data();
-  char const* e = p + dateTime.size();
-
-  while (p != e) {
-    char c = *p;
-    if (c < '0' || c > '9') {
-      break;
-    }
-    ++p;
-  }
-  result = arangodb::NumberUtils::atoi_positive_unchecked<int>(dateTime.data(), p);
-  return static_cast<int>(p - dateTime.data());
-}
-
 namespace {
   using namespace tao::json::pegtl;
 
