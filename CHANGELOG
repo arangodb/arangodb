@@ -1,6 +1,20 @@
 devel
 -----
 
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows.
+
+* Fix string comparison bug that lead to traversal queries accepting prefixes of
+  "edges" and "vertices" to be used as object accessors for the path object.
+
+* Fixed internal traversal edge collection cache being filled up correctly.
+  Edges are able to point to other edges, but those we're not applied to the
+  cache.
+
+* Fix string comparison bug that lead to traversal queries accepting
+  prefixes of "edges" and "vertices" to be used as object accessors
+  for the path object.
+
 * Fix #10852. Nested spliced subqueries could return wrong results in some cases
   when some of the concerned subqueries did not return any values.
 
