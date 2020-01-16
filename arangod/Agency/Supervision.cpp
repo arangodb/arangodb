@@ -458,6 +458,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
+    LOG_TOPIC("44252", TRACE, Logger::SUPERVISION)
+      << "Checking health of server " << machine.first << " ...";
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
             lastStatus, serverID(machine.first), shortName;
 
@@ -561,6 +563,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
         handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId, envelope);
+      } else {
+        LOG_TOPIC("44253", TRACE, Logger::SUPERVISION)
+          << "Health of server " << machine.first << " remains "
+          << transist.status;
       }
 
       persist = transist;  // Now copy Status, SyncStatus from transient to persited
