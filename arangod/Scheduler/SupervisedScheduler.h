@@ -29,7 +29,6 @@
 #include <condition_variable>
 #include <list>
 #include <mutex>
-#include <queue>
 
 #include "Scheduler/Scheduler.h"
 
@@ -45,7 +44,6 @@ class SupervisedScheduler final : public Scheduler {
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
-
 
  private:
   std::atomic<size_t> _numWorkers;
