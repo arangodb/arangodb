@@ -557,7 +557,7 @@ JOB_STATUS MoveShard::pendingLeader() {
             abort(_to + " no longer holds a replica of " + shardPath);
           }
         } else {
-          // this shard is either gone or
+          // this shard is either gone or worse
           abort(shardPath + " no longer has replica");
         }
       }
