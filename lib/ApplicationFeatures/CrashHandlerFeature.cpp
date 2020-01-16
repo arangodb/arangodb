@@ -30,7 +30,6 @@
 #endif
 #include <sys/types.h>
 
-#include <dirent.h>
 #include <thread>
 
 #ifndef _WIN32
@@ -69,13 +68,17 @@ size_t buildLogMessage(char* s, int signal, int stackSize) {
   appendNullTerminatedString("thread ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
   
+#if defined(ARANGODB_HAVE_GETTID)
   appendNullTerminatedString(", tid ", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(gettid()), p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(::gettid()), p);
 
   char const* name = arangodb::Thread::currentThreadName();
-  if (gettid() == getpid()) {
+  if (::gettid() == ::getpid()) {
     name = "main";
   }
+#else
+  char const* name = nullptr;
+#endif
   if (name != nullptr && *name != '\0') {
     appendNullTerminatedString(" [", p);
     appendNullTerminatedString(name, p);
@@ -140,7 +143,7 @@ void crashHandler(int signal, siginfo_t* info, void*) {
   sigaction(signal, &act, nullptr);
 
   // resend signal to ourselves to invoke default action for the signal
-  kill(getpid(), signal);
+  ::kill(::getpid(), signal);
 }
 } // namespace
 #endif
