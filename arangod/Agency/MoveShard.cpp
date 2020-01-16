@@ -570,6 +570,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          }
                        });
         addPreconditionCollectionStillThere(pre, _database, _collection);
+        addPreconditionCurrentReplicaShardGroup(pre, _database, shardsLikeMe, _to);
         addIncreasePlanVersion(trx);
       }
       // Add precondition to transaction:
