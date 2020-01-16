@@ -49,4 +49,4 @@ bool NonAction::first() {
   return false;
 }
 
-NonAction::~NonAction() {}
+NonAction::~NonAction() = default;

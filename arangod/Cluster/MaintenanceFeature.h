@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
@@ -50,7 +51,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   explicit MaintenanceFeature(application_features::ApplicationServer&);
 
-  virtual ~MaintenanceFeature() {}
+  virtual ~MaintenanceFeature() = default;
 
   struct errors_t {
     std::map<std::string, std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>> indexes;

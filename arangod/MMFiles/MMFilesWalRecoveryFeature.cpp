@@ -23,13 +23,19 @@
 
 #include "MMFilesWalRecoveryFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/application-exit.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -40,16 +46,16 @@ namespace arangodb {
 MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("Database");
-  startsAfter("MMFilesLogfileManager");
-  startsAfter("MMFilesPersistentIndex");
-  startsAfter("ServerId");
-  startsAfter("SystemDatabase");
+  startsAfter<DatabaseFeature>();
+  startsAfter<MMFilesLogfileManager>();
+  startsAfter<MMFilesPersistentIndexFeature>();
+  startsAfter<ServerIdFeature>();
+  startsAfter<SystemDatabaseFeature>();
 
-  onlyEnabledWith("MMFilesEngine");
-  onlyEnabledWith("MMFilesLogfileManager");
+  onlyEnabledWith<MMFilesEngine>();
+  onlyEnabledWith<MMFilesLogfileManager>();
 }
 
 /// @brief run the recovery procedure
@@ -57,13 +63,11 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(application_features::Appli
 /// recovery state has been build. additionally, all databases have been
 /// opened already so we can use collections
 void MMFilesWalRecoveryFeature::start() {
-  MMFilesLogfileManager* logfileManager =
-      ApplicationServer::getFeature<MMFilesLogfileManager>(
-          "MMFilesLogfileManager");
+  MMFilesLogfileManager& logfileManager = server().getFeature<MMFilesLogfileManager>();
 
-  TRI_ASSERT(!logfileManager->allowWrites());
+  TRI_ASSERT(!logfileManager.allowWrites());
 
-  int res = logfileManager->runRecovery();
+  int res = logfileManager.runRecovery();
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("c6422", FATAL, arangodb::Logger::ENGINES)
@@ -74,16 +78,15 @@ void MMFilesWalRecoveryFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!logfileManager->open()) {
+  if (!logfileManager.open()) {
     // if we got here, the MMFilesLogfileManager has already logged a fatal
     // error and we can simply abort
     FATAL_ERROR_EXIT();
   }
 
   // notify everyone that recovery is now done
-  auto databaseFeature =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-  databaseFeature->recoveryDone();
+  auto& databaseFeature = server().getFeature<DatabaseFeature>();
+  databaseFeature.recoveryDone();
 
   LOG_TOPIC("8767f", INFO, arangodb::Logger::ENGINES)
       << "DB recovery finished successfully";

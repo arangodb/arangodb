@@ -28,13 +28,14 @@
 using namespace arangodb;
 using velocypack::StringRef;
 
-RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request,
+RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestHandler(request, response) {}
+    : RestHandler(server, request, response) {}
 
 RestStatus RestPleaseUpgradeHandler::execute() {
   resetResponse(rest::ResponseCode::OK);
-  
+
   _response->setContentType(rest::ContentType::TEXT);
   _response->addRawPayload(StringRef("Database: "));
   _response->addRawPayload(StringRef(_request->databaseName()));

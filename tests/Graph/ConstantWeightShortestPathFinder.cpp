@@ -76,7 +76,7 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
 
   ConstantWeightShortestPathFinder* finder;
 
-  ConstantWeightShortestPathFinderTest() : gdb("testVocbase") {
+  ConstantWeightShortestPathFinderTest() : gdb(s.server, "testVocbase") {
     gdb.addVertexCollection("v", 100);
     gdb.addEdgeCollection("e", "v",
                           {{1, 2},   {2, 3},   {3, 4},   {5, 4},   {6, 5},
@@ -98,7 +98,7 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_from_vertex_to_itself) {
   auto end = velocypack::Parser::fromJson("\"v/0\"");
   ShortestPathResult result;
 
-  ASSERT_TRUE(true == finder->shortestPath(start->slice(), end->slice(), result));
+  ASSERT_TRUE(finder->shortestPath(start->slice(), end->slice(), result));
 }
 
 TEST_F(ConstantWeightShortestPathFinderTest, no_path_exists) {
@@ -106,8 +106,8 @@ TEST_F(ConstantWeightShortestPathFinderTest, no_path_exists) {
   auto end = velocypack::Parser::fromJson("\"v/1\"");
   ShortestPathResult result;
 
-  ASSERT_TRUE(false == finder->shortestPath(start->slice(), end->slice(), result));
-  EXPECT_TRUE(result.length() == 0);
+  ASSERT_FALSE(finder->shortestPath(start->slice(), end->slice(), result));
+  EXPECT_EQ(result.length(), 0);
 }
 
 TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_1) {
@@ -166,7 +166,7 @@ TEST_F(ConstantWeightShortestPathFinderTest, two_paths_of_length_5) {
 
   {
     auto rr = finder->shortestPath(end->slice(), start->slice(), result);
-    ASSERT_TRUE(!rr);
+    ASSERT_FALSE(rr);
   }
 }
 

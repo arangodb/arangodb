@@ -39,18 +39,16 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestVersionHandler::RestVersionHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestVersionHandler::RestVersionHandler(application_features::ApplicationServer& server,
+                                       GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
-  bool const allowInfo = security->canAccessHardenedApi();
+  bool const allowInfo = security.canAccessHardenedApi();
 
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
@@ -69,14 +67,11 @@ RestStatus RestVersionHandler::execute() {
       result.add("details", VPackValue(VPackValueType::Object));
       Version::getVPack(result);
 
-      if (application_features::ApplicationServer::server != nullptr) {
-        auto server = application_features::ApplicationServer::server->getFeature<ServerFeature>(
-            "Server");
-        result.add("mode", VPackValue(server->operationModeString()));
-        auto serverState = ServerState::instance();
-        if (serverState != nullptr) {
-          result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
-        }
+      auto& serverFeature = server().getFeature<ServerFeature>();
+      result.add("mode", VPackValue(serverFeature.operationModeString()));
+      auto serverState = ServerState::instance();
+      if (serverState != nullptr) {
+        result.add("role", VPackValue(ServerState::roleToString(serverState->getRole())));
       }
 
       std::string host = ServerState::instance()->getHost();

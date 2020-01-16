@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestAqlReloadHandler : public arangodb::RestBaseHandler {
  public:
-  RestAqlReloadHandler(GeneralRequest*, GeneralResponse*);
+  RestAqlReloadHandler(application_features::ApplicationServer&,
+                       GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAqlReloadHandler"; }

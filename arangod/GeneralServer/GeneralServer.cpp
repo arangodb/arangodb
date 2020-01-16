@@ -32,12 +32,13 @@
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Ssl/SslServerFeature.h"
 
 #include <chrono>
 #include <thread>
@@ -49,13 +50,18 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-GeneralServer::GeneralServer(uint64_t numIoThreads)
-    : _endpointList(nullptr), _contexts(numIoThreads) {}
+GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThreads)
+    : _feature(feature), _endpointList(nullptr), _contexts() {
+  auto& server = feature.server();
+  for (size_t i = 0; i < numIoThreads; ++i) {
+    _contexts.emplace_back(server);
+  }
+}
 
-GeneralServer::~GeneralServer() {}
+GeneralServer::~GeneralServer() = default;
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
-  if (application_features::ApplicationServer::isStopping()) {
+  if (_feature.server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   auto* t = task.get();
@@ -64,7 +70,7 @@ void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   {
     auto* t = task.get();
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-    _commTasks.emplace(t, std::move(task));
+    _commTasks.try_emplace(t, std::move(task));
   }
   t->start();
 }
@@ -113,19 +119,37 @@ void GeneralServer::startListening() {
   }
 }
 
+/// stop accepting new connections
 void GeneralServer::stopListening() {
   for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
     acceptor->close();
   }
+}
 
+/// stop connections
+void GeneralServer::stopConnections() {
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
   std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-  _commTasks.clear();
+  for (auto const& pair : _commTasks) {
+    pair.second->stop();
+  }
 }
 
 void GeneralServer::stopWorking() {
   _acceptors.clear();
+  std::unique_lock<std::recursive_mutex> guard(_tasksLock);
+  auto now = std::chrono::system_clock::now();
+  while (!_commTasks.empty()) {  // CommTasks should deregister themselves
+    guard.unlock();
+    std::this_thread::yield();
+    if ((std::chrono::system_clock::now() - now) > std::chrono::seconds(5)) {
+      guard.lock();
+      break;
+    }
+    guard.lock();
+  }
+  _commTasks.clear();
   _contexts.clear();  // stops threads
 }
 
@@ -165,4 +189,8 @@ asio_ns::ssl::context& GeneralServer::sslContext() {
     _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
   }
   return *_sslContext;
+}
+
+application_features::ApplicationServer& GeneralServer::server() const {
+  return _feature.server();
 }

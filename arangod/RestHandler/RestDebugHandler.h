@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestDebugHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestDebugHandler(GeneralRequest*, GeneralResponse*);
+  RestDebugHandler(application_features::ApplicationServer&, GeneralRequest*,
+                   GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestDebugHandler"; }

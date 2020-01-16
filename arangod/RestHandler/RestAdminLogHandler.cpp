@@ -27,6 +27,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogBuffer.h"
@@ -36,16 +37,14 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer& server,
+                                         GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminLogHandler::execute() {
-  ServerSecurityFeature* security =
-    application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-        "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
-  if (!security->canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
@@ -318,7 +317,7 @@ void RestAdminLogHandler::setLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
-      for (auto const& it : VPackObjectIterator(slice)) {
+      for (auto it : VPackObjectIterator(slice)) {
         if (it.value.isString()) {
           std::string const l = it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);

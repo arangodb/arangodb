@@ -52,9 +52,9 @@ TEST(CachePlainCacheTest, test_basic_cache_creation) {
   ASSERT_TRUE(true);
   auto cache2 = manager.createCache(CacheType::Plain, false, 512 * 1024);
 
-  ASSERT_TRUE(0 == cache1->usage());
+  ASSERT_EQ(0, cache1->usage());
   ASSERT_TRUE(256 * 1024 >= cache1->size());
-  ASSERT_TRUE(0 == cache2->usage());
+  ASSERT_EQ(0, cache2->usage());
   ASSERT_TRUE(512 * 1024 >= cache2->size());
 
   manager.destroyCache(cache1);
@@ -89,7 +89,7 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
     if (status.ok()) {
       auto f = cache->find(&i, sizeof(uint64_t));
       ASSERT_TRUE(f.found());
-      ASSERT_TRUE(0 == memcmp(f.value()->value(), &j, sizeof(uint64_t)));
+      ASSERT_EQ(0, memcmp(f.value()->value(), &j, sizeof(uint64_t)));
     } else {
       delete value;
     }
@@ -126,7 +126,7 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
     if (status.ok()) {
       auto f = cache->find(&i, sizeof(uint64_t));
       ASSERT_TRUE(f.found());
-      ASSERT_TRUE(f.value() != nullptr);
+      ASSERT_NE(f.value(), nullptr);
       ASSERT_TRUE(f.value()->sameKey(&i, sizeof(uint64_t)));
     } else {
       delete value;
@@ -137,7 +137,7 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
     auto f = cache->find(&j, sizeof(uint64_t));
     if (f.found()) {
       inserted++;
-      ASSERT_TRUE(f.value() != nullptr);
+      ASSERT_NE(f.value(), nullptr);
       ASSERT_TRUE(f.value()->sameKey(&j, sizeof(uint64_t)));
     }
   }
@@ -152,11 +152,11 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
       auto f = cache->find(&j, sizeof(uint64_t));
       if (f.found()) {
         found++;
-        ASSERT_TRUE(f.value() != nullptr);
+        ASSERT_NE(f.value(), nullptr);
         ASSERT_TRUE(f.value()->sameKey(&j, sizeof(uint64_t)));
       }
     }
-    ASSERT_TRUE(inserted == found);
+    ASSERT_EQ(inserted, found);
   }
 
   // remove actual keys
@@ -164,7 +164,7 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
     auto status = cache->remove(&i, sizeof(uint64_t));
     ASSERT_TRUE(status.ok());
     auto f = cache->find(&i, sizeof(uint64_t));
-    ASSERT_TRUE(!f.found());
+    ASSERT_FALSE(f.found());
   }
 
   manager.destroyCache(cache);
@@ -342,8 +342,8 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   {
     auto cacheStats = cacheMiss->hitRates();
     auto managerStats = manager.globalHitRates();
-    ASSERT_TRUE(cacheStats.first == 0.0);
-    ASSERT_TRUE(cacheStats.second == 0.0);
+    ASSERT_EQ(cacheStats.first, 0.0);
+    ASSERT_EQ(cacheStats.second, 0.0);
     ASSERT_TRUE(managerStats.first > 10.0);
     ASSERT_TRUE(managerStats.first < 60.0);
     ASSERT_TRUE(managerStats.second > 10.0);

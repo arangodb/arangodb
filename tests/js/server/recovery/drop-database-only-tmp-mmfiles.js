@@ -43,7 +43,7 @@ function runSetup () {
   fs.writeFileSync(fs.join(path, "parameter.json"), JSON.stringify(data));
   fs.writeFileSync(fs.join(path, ".tmp"), "");
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

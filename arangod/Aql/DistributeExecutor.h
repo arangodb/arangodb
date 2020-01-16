@@ -25,6 +25,7 @@
 
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutorInfos.h"
 
 namespace arangodb {
 namespace aql {
@@ -34,6 +35,8 @@ class DistributeNode;
 // The DistributeBlock is actually implemented by specializing
 // ExecutionBlockImpl, so this class only exists to identify the specialization.
 class DistributeExecutor {};
+
+class Query;
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
@@ -95,7 +98,9 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
   /// @brief create a new document key
   std::string createKey(arangodb::velocypack::Slice) const;
 
-  ExecutorInfos const& infos() const { return _infos; }
+  ExecutorInfos const& infos() const;
+  
+  Query const& getQuery() const noexcept;
 
  private:
   ExecutorInfos _infos;
@@ -114,6 +119,10 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
 
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
+
+  /// @brief Cache for the Logical Collection. This way it is not refetched
+  /// on every document.
+  std::shared_ptr<arangodb::LogicalCollection> _logCol;
 
   /// @brief _index: the block in _buffer we are currently considering
   size_t _index;

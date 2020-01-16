@@ -45,7 +45,7 @@ struct EdgeDocumentToken;
 class EdgeCursor {
  public:
   EdgeCursor() {}
-  virtual ~EdgeCursor() {}
+  virtual ~EdgeCursor() = default;
   
   using Callback =
       std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;

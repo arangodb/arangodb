@@ -147,7 +147,7 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 // files
 
@@ -283,7 +283,7 @@
 
 #define TRI_OVERLOAD_FUNCS_SIZE_T 1
 
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 #define TRI_SC_NPROCESSORS_ONLN 1
 
@@ -431,8 +431,6 @@
 // available features
 
 #define TRI_HAVE_POSIX 1
-
-#define TRI_GCC_THREAD_LOCAL_STORAGE 1
 
 #define TRI_HAVE_LINUX_PROC 1
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
@@ -583,8 +581,6 @@
 
 // available features
 
-#define TRI_GCC_THREAD_LOCAL_STORAGE 1
-
 #define TRI_HAVE_POSIX 1
 
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
@@ -734,7 +730,10 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
+#if ( defined(_MSC_VER) && _MSC_VER < 1900 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
 #define snprintf _snprintf
+#endif
+
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 
@@ -749,7 +748,6 @@
 #define YY_NO_UNISTD_H 1
 
 #define TRI_WIN32_CONSOLE 1
-#define TRI_WIN32_THREAD_LOCAL_STORAGE 1
 
 #define TRI_HAVE_WIN32_CLOSE_ON_EXEC 1
 #define TRI_HAVE_WIN32_FILE_LOCKING 1
@@ -763,7 +761,7 @@
 #define TRI_HAVE_WIN32_THREADS 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 typedef int ssize_t;
 

@@ -33,7 +33,8 @@ class SingleCollectionTransaction;
 /// @brief replication request handler
 class MMFilesRestReplicationHandler : public RestReplicationHandler {
  public:
-  MMFilesRestReplicationHandler(GeneralRequest*, GeneralResponse*);
+  MMFilesRestReplicationHandler(application_features::ApplicationServer&,
+                                GeneralRequest*, GeneralResponse*);
   ~MMFilesRestReplicationHandler();
 
  public:

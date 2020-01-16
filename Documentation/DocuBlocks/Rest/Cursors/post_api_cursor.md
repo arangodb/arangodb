@@ -51,12 +51,12 @@ if set to *true* and the query contains a *LIMIT* clause, then the
 result will have an *extra* attribute with the sub-attributes *stats*
 and *fullCount*, `{ ... , "extra": { "stats": { "fullCount": 123 } } }`.
 The *fullCount* attribute will contain the number of documents in the result before the
-last top-level LIMIT in the query was applied. It can be used to count the number of 
+last top-level LIMIT in the query was applied. It can be used to count the number of
 documents that match certain filter criteria, but only return a subset of them, in one go.
 It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
 will disable a few LIMIT optimizations and may lead to more documents being processed,
 and thus make queries run longer. Note that the *fullCount* attribute may only
-be present in the result if the query has a top-level LIMIT clause and the LIMIT 
+be present in the result if the query has a top-level LIMIT clause and the LIMIT
 clause is actually used in the query.
 
 @RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
@@ -78,21 +78,24 @@ default value for *failOnWarning* so it does not need to be set on a per-query l
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
 Specify *true* and the query will be executed in a **streaming** fashion. The query result is
 not stored on the server, but calculated on the fly. *Beware*: long-running queries will
-need to hold the collection locks for as long as the query cursor exists. 
-When set to *false* a query will be executed right away in its entirety. 
+need to hold the collection locks for as long as the query cursor exists.
+When set to *false* a query will be executed right away in its entirety.
 In that case query results are either returned right away (if the result set is small enough),
-or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`). 
-It is advisable to *only* use this option on short-running queries or without exclusive locks 
+or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`).
+It is advisable to *only* use this option on short-running queries or without exclusive locks
 (write-locks on MMFiles).
 Please note that the query options `cache`, `count` and `fullCount` will not work on streaming queries.
 Additionally query statistics, warnings and profiling data will only be available after the query is finished.
 The default value is *false*
 
-@RESTSTRUCT{optimizer.rules,post_api_cursor_opts,array,optional,string}
-A list of to-be-included or to-be-excluded optimizer rules
-can be put into this attribute, telling the optimizer to include or exclude
-specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
-with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+@RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
+Options related to the query optimizer.
+
+@RESTSTRUCT{rules,post_api_cursor_opts_optimizer,array,optional,string}
+A list of to-be-included or to-be-excluded optimizer rules can be put into this
+attribute, telling the optimizer to include or exclude specific rules. To disable
+a rule, prefix its name with a `-`, to enable a rule, prefix it with a `+`. There is
+also a pseudo-rule `all`, which matches all optimizer rules. `-all` disables all rules.
 
 @RESTSTRUCT{profile,post_api_cursor_opts,integer,optional,}
 If set to *true* or *1*, then the additional query profiling information will be returned
@@ -106,6 +109,10 @@ This *Enterprise Edition* parameter allows to configure how long a DBServer will
 to bring the satellite collections involved in the query into sync.
 The default value is *60.0* (seconds). When the max time has been reached the query
 will be stopped.
+
+@RESTSTRUCT{maxRuntime,post_api_cursor_opts,number,optional,double}
+The query has to be executed within the given runtime or it will be killed.
+The value is specified in seconds. The default value is *0.0* (no timeout).
 
 @RESTSTRUCT{maxTransactionSize,post_api_cursor_opts,integer,optional,int64}
 Transaction size limit in bytes. Honored by the RocksDB storage engine only.
@@ -184,14 +191,11 @@ the HTTP status code
 the server error number
 
 @RESTREPLYBODY{errorMessage,string,required,string}
-a descriptive error message
-
+a descriptive error message<br>
 If the query specification is complete, the server will process the query. If an
 error occurs during query processing, the server will respond with *HTTP 400*.
-Again, the body of the response will contain details about the error.
-
+Again, the body of the response will contain details about the error.<br>
 A [list of query errors can be found here](../../Manual/Appendix/ErrorCodes.html).
-
 
 @RESTRETURNCODE{404}
 The server will respond with *HTTP 404* in case a non-existing collection is
@@ -419,4 +423,3 @@ document
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

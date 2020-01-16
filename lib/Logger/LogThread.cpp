@@ -31,7 +31,8 @@ using namespace arangodb;
 arangodb::basics::ConditionVariable* LogThread::CONDITION = nullptr;
 boost::lockfree::queue<LogMessage*>* LogThread::MESSAGES = nullptr;
 
-LogThread::LogThread(std::string const& name) : Thread(name), _messages(0) {
+LogThread::LogThread(application_features::ApplicationServer& server, std::string const& name)
+    : Thread(server, name), _messages(0) {
   MESSAGES = &_messages;
   CONDITION = &_condition;
 }
@@ -43,12 +44,14 @@ LogThread::~LogThread() {
   shutdown();
 }
 
-void LogThread::log(std::unique_ptr<LogMessage>& message) {
+bool LogThread::log(std::unique_ptr<LogMessage>& message) {
   if (MESSAGES->push(message.get())) {
     // only release message if adding to the queue succeeded
     // otherwise we would leak here
     message.release();
+    return true;
   }
+  return false;
 }
 
 void LogThread::flush() {

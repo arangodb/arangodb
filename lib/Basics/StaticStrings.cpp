@@ -78,8 +78,32 @@ std::string const StaticStrings::ReplicationHeaderFromPresent(
 std::string const StaticStrings::ReplicationHeaderActive(
     "x-arango-replication-active");
 
-// database and collection names
+// database names
 std::string const StaticStrings::SystemDatabase("_system");
+
+// collection names
+std::string const StaticStrings::AnalyzersCollection("_analyzers");
+std::string const StaticStrings::LegacyAnalyzersCollection(
+    "_iresearch_analyzers");
+std::string const StaticStrings::UsersCollection("_users");
+std::string const StaticStrings::GraphsCollection("_graphs");
+std::string const StaticStrings::AqlFunctionsCollection("_aqlfunctions");
+std::string const StaticStrings::QueuesCollection("_queues");
+std::string const StaticStrings::JobsCollection("_jobs");
+std::string const StaticStrings::AppsCollection("_apps");
+std::string const StaticStrings::AppBundlesCollection("_appbundles");
+std::string const StaticStrings::ModulesCollection("_modules");
+std::string const StaticStrings::FishbowlCollection("_fishbowl");
+std::string const StaticStrings::FrontendCollection("_frontend");
+std::string const StaticStrings::StatisticsCollection("_statistics");
+std::string const StaticStrings::Statistics15Collection("_statistics15");
+std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
+
+// Database definition fields
+std::string const StaticStrings::DatabaseId("id");
+std::string const StaticStrings::DatabaseName("name");
+std::string const StaticStrings::DatabaseOptions("options");
+std::string const StaticStrings::Properties("properties");
 
 // LogicalDataSource definition fields
 std::string const StaticStrings::DataSourceDeleted("deleted");
@@ -173,7 +197,6 @@ std::string const StaticStrings::PotentialDirtyRead(
     "x-arango-potential-dirty-read");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
-std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::TransferEncoding("transfer-encoding");
 std::string const StaticStrings::TransactionBody("x-arango-trx-body");
@@ -185,8 +208,12 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 
 // mime types
+std::string const StaticStrings::MimeTypeDump(
+    "application/x-arango-dump; charset=utf-8");
+std::string const StaticStrings::MimeTypeHtml("text/html; charset=utf-8");
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
+std::string const StaticStrings::MimeTypeJsonNoEncoding("application/json");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
@@ -207,6 +234,9 @@ std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
 std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
+std::string const StaticStrings::Sharding("sharding");
+std::string const StaticStrings::Satellite("satellite");
+std::string const StaticStrings::WriteConcern("writeConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
@@ -222,6 +252,17 @@ std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
 
+// Query Strings
+std::string const StaticStrings::QuerySortASC("ASC");
+std::string const StaticStrings::QuerySortDESC("DESC");
+
+// Graph Query Strings
+std::string const StaticStrings::GraphQueryEdges("edges");
+std::string const StaticStrings::GraphQueryVertices("vertices");
+std::string const StaticStrings::GraphQueryPath("path");
+std::string const StaticStrings::GraphQueryGlobal("global");
+std::string const StaticStrings::GraphQueryNone("none");
+
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
@@ -232,8 +273,22 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
 
+// Generic attribute names
+std::string const StaticStrings::AttrCoordinator("coordinator");
+std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::AttrIsBuilding("isBuilding");
+
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");
 std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
 
-std::string const StaticStrings::IsBuilding("isBuilding");
+std::string const StaticStrings::RebootId("rebootId");
+
+std::string const StaticStrings::New("new");
+std::string const StaticStrings::Old("old");
+std::string const StaticStrings::UpgradeEnvName(
+    "ARANGODB_UPGRADE_DURING_RESTORE");
+std::string const StaticStrings::BackupToDeleteName("DIRECTORY_TO_DELETE");
+std::string const StaticStrings::BackupSearchToDeleteName(
+    "DIRECTORY_TO_DELETE_SEARCH");
+std::string const StaticStrings::SerializationFormat("serializationFormat");

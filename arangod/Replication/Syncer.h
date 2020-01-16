@@ -36,6 +36,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;

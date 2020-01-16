@@ -5,6 +5,32 @@ include_directories(.)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 ################################################################################
+## shell common
+################################################################################
+
+set(LIB_ARANGO_SHELL_SOURCES
+  FeaturePhases/BasicFeaturePhaseClient.cpp
+  FeaturePhases/V8ShellFeaturePhase.cpp
+  Shell/ClientFeature.cpp
+  Shell/ConsoleFeature.cpp  
+  Utils/ClientManager.cpp
+  Utils/ManagedDirectory.cpp
+  V8Client/ArangoClientHelper.cpp
+)
+
+add_library(arango_shell STATIC
+  ${LIB_ARANGO_SHELL_SOURCES}
+)
+
+target_link_libraries(arango_shell
+  arango
+  ${MSVC_LIBS}
+  ${SYSTEM_LIBRARIES}
+  boost_system
+  boost_boost
+)
+
+################################################################################
 ## arangobench
 ################################################################################
 
@@ -24,17 +50,17 @@ add_executable(${BIN_ARANGOBENCH}
   ${ProductVersionFiles_arangobench}
   Benchmark/BenchFeature.cpp
   Benchmark/arangobench.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
 )
+target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOBENCH}
   mimalloc-static
-  ${LIB_ARANGO}
+  arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  arango_shell
 )
 
 install(
@@ -50,17 +76,19 @@ else ()
 endif ()
 
 
-if(MSVC)
-  target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangobench PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangobench PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangobackup
 ################################################################################
+
+if (USE_ENTERPRISE)
 
 if (MSVC AND NOT(SKIP_PACKAGING))
   generate_product_version(ProductVersionFiles_arangobackup
@@ -78,18 +106,17 @@ add_executable(${BIN_ARANGOBACKUP}
   ${ProductVersionFiles_arangobackup}
   Backup/BackupFeature.cpp
   Backup/arangobackup.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ClientManager.cpp
   ${ADDITIONAL_BIN_ARANGOBACKUP_SOURCES}
 )
+target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOBACKUP}
-  ${LIB_ARANGO}
+  arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  arango_shell
 )
 
 install(
@@ -106,13 +133,15 @@ endif ()
 
   add_dependencies(arangobackup mimalloc)
 
-if(MSVC)
-  target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangobackup PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
-if (DARWIN)
-  target_compile_options(arangobackup PRIVATE -Werror)
-endif()
+endif () # USE_ENTERPRISE
 
 ################################################################################
 ## arangodump
@@ -134,20 +163,18 @@ add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ClientManager.cpp
-  Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
+target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGODUMP}
   mimalloc-static
-  ${LIB_ARANGO}
+  arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  arango_shell
 )
 
 install(
@@ -162,13 +189,17 @@ else ()
   add_dependencies(arangodump zlibstatic)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
+if (USE_JEMALLOC)
+  add_dependencies(arangodump jemalloc)
+endif ()
 
-if (DARWIN)
-  target_compile_options(arangodump PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangodump PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangoexport
@@ -190,19 +221,17 @@ add_executable(${BIN_ARANGOEXPORT}
   ${ProductVersionFiles_arangoexport}
   Export/ExportFeature.cpp
   Export/arangoexport.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
 )
+target_include_directories(${BIN_ARANGOEXPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOEXPORT}
   mimalloc-static
-  ${LIB_ARANGO}
+  arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  arango_shell
 )
 
 install(
@@ -218,13 +247,13 @@ else ()
 endif ()
 
 
-if(MSVC)
-  target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangoexport PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangoexport PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangoimport
@@ -242,27 +271,25 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-add_executable(arangoimport
+add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Import/arangoimport.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
 )
+target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOIMPORT}
   mimalloc-static
-  ${LIB_ARANGO}
+  arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   fuerte
   boost_system
   boost_boost
+  arango_shell
 )
 
 install(
@@ -285,13 +312,13 @@ install_command_alias(arangoimport
   arangoimp
 )
 
-if(MSVC)
-  target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangoimport PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangoimport PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangorestore
@@ -313,20 +340,18 @@ add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}
   Restore/RestoreFeature.cpp
   Restore/arangorestore.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
-  Utils/ClientManager.cpp
-  Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
+target_include_directories(${BIN_ARANGORESTORE} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGORESTORE}
   mimalloc-static
-  ${LIB_ARANGO}
+  arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  arango_shell
 )
 
 install(
@@ -341,13 +366,17 @@ else ()
   add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
 endif ()
 
-if(MSVC)
-  target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
+if (USE_JEMALLOC)
+  add_dependencies(arangorestore jemalloc)
+endif ()
 
-if (DARWIN)
-  target_compile_options(arangorestore PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangorestore PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangosh
@@ -370,20 +399,17 @@ add_executable(${BIN_ARANGOSH}
   Import/AutoTuneThread.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
   Shell/ShellFeature.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
-  Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
 )
+target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOSH}
   mimalloc-static 
-  ${LIB_ARANGO_V8}
-  ${LIB_ARANGO}
+  arango_v8
+  arango
   ${LINENOISE_LIBS}
   ${V8_LIBS}
   fuerte
@@ -391,6 +417,7 @@ target_link_libraries(${BIN_ARANGOSH}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  arango_shell
 )
 
 install(
@@ -405,13 +432,17 @@ else ()
   add_dependencies(arangosh zlibstatic)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
+if (USE_JEMALLOC)
+  add_dependencies(arangosh jemalloc)
+endif ()
 
-if (DARWIN)
-  target_compile_options(arangosh PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangosh PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangovpack
@@ -431,19 +462,19 @@ endif ()
 
 add_executable(${BIN_ARANGOVPACK}
   ${ProductVersionFiles_arangovpack}
-  Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp
   VPack/VPackFeature.cpp
   VPack/arangovpack.cpp
 )
+target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOVPACK}
   mimalloc-static
-  ${LIB_ARANGO}
+  arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
+  arango_shell
 )
 
 install(
@@ -459,13 +490,13 @@ else ()
 endif ()
 
 
-if(MSVC)
-  target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangovpack PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangovpack PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## foxx-manager

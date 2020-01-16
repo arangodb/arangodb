@@ -361,7 +361,7 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 
 /// 1202: ERROR_ARANGO_DOCUMENT_NOT_FOUND
 /// "document not found"
-/// Will be raised when a document with a given identifier or handle is unknown.
+/// Will be raised when a document with a given identifier is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
 /// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
@@ -376,8 +376,8 @@ constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            
 constexpr int TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING                     = 1204;
 
 /// 1205: ERROR_ARANGO_DOCUMENT_HANDLE_BAD
-/// "illegal document handle"
-/// Will be raised when a document handle is corrupt.
+/// "illegal document identifier"
+/// Will be raised when a document identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD                              = 1205;
 
 /// 1206: ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL
@@ -416,8 +416,8 @@ constexpr int TRI_ERROR_ARANGO_INDEX_NOT_FOUND                                  
 constexpr int TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST                         = 1213;
 
 /// 1214: ERROR_ARANGO_INDEX_HANDLE_BAD
-/// "illegal index handle"
-/// Will be raised when a index handle is corrupt.
+/// "illegal index identifier"
+/// Will be raised when a index identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                 = 1214;
 
 /// 1216: ERROR_ARANGO_DOCUMENT_TOO_LARGE
@@ -663,6 +663,12 @@ constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              
 /// Will be raised on some occasions when one server gets a request from
 /// another, which has not (yet?) been made known via the agency.
 constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1449;
+
+/// 1450: ERROR_CLUSTER_TOO_MANY_SHARDS
+/// "too many shards"
+/// Will be raised when the number of shards for a collection is higher than
+/// allowed.
+constexpr int TRI_ERROR_CLUSTER_TOO_MANY_SHARDS                                 = 1450;
 
 /// 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
 /// "collection ID already exists"
@@ -1369,13 +1375,13 @@ constexpr int TRI_ERROR_GRAPH_DUPLICATE                                         
 constexpr int TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         = 1926;
 
 /// 1927: ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX
-/// "not a vertex collection"
+/// "collection not a vertex collection"
 /// the collection is not a vertex collection.
 constexpr int TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX                      = 1927;
 
 /// 1928: ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION
-/// "not in orphan collection"
-/// Vertex collection not in orphan collection of the graph.
+/// "collection is not in list of orphan collections"
+/// Vertex collection not in list of orphan collections of the graph.
 constexpr int TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          = 1928;
 
 /// 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
@@ -1483,6 +1489,11 @@ constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE                           
 /// "could not read from server"
 /// Will be raised when the client could not read data.
 constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ                            = 2003;
+
+/// 2019: ERROR_WAS_ERLAUBE
+/// "was erlaube?!"
+/// Will be raised if was erlaube?!
+constexpr int TRI_ERROR_WAS_ERLAUBE                                             = 2019;
 
 /// 2100: ERROR_COMMUNICATOR_REQUEST_ABORTED
 /// "Request aborted"
@@ -1790,16 +1801,6 @@ constexpr int TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS                               
 /// General supervision failure.
 constexpr int TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             = 20501;
 
-/// 21001: ERROR_DISPATCHER_IS_STOPPING
-/// "dispatcher stopped"
-/// Will be returned if a shutdown is in progress.
-constexpr int TRI_ERROR_DISPATCHER_IS_STOPPING                                  = 21001;
-
-/// 21002: ERROR_QUEUE_UNKNOWN
-/// "named queue does not exist"
-/// Will be returned if a queue with this name does not exist.
-constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           = 21002;
-
 /// 21003: ERROR_QUEUE_FULL
 /// "named queue is full"
 /// Will be returned if a queue with this name is full.
@@ -1875,6 +1876,11 @@ constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        
 /// " "hot backup conflict""
 ///  "Conflict of multiple hot backup processes."
 constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     =  7011;
+
+///  7012: ERROR_HOT_BACKUP_DBSERVERS_AWOL
+/// " "hot backup not all db servers reachable""
+///  "One or more db servers could not be reached for hot backup inquiry"
+constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               =  7012;
 
 
 /// register all errors for ArangoDB

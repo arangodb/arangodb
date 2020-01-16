@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,15 +29,22 @@
 #include <chrono>
 #include <thread>
 
+#include "Agency/AgencyFeature.h"
 #include "Agency/AgentCallback.h"
-#include "Agency/GossipCallback.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -54,21 +61,38 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(config_t const& config)
-    : Thread("Agent"),
+Agent::Agent(ApplicationServer& server, config_t const& config)
+    : Thread(server, "Agent"),
+      _constituent(server),
+      _supervision(server),
       _config(config),
       _commitIndex(0),
-      _spearhead(this),
-      _readDB(this),
-      _transient(this),
+      _spearhead(server, this),
+      _readDB(server, this),
+      _transient(server, this),
       _agentNeedsWakeup(false),
       _compactor(this),
       _ready(false),
-      _preparing(0) {
+      _preparing(0),
+      _write_ok(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_write_ok", 0, "Agency write ok")),
+      _write_no_leader(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_write_no_leader", 0, "Agency write no leader")),
+      _read_ok(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_read_ok", 0, "Agency write ok")),
+      _read_no_leader(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_read_no_leader", 0, "Agency write no leader")),
+      _write_hist_msec(
+        _server.getFeature<arangodb::MetricsFeature>().histogram(
+          "agency_agent_write_hist", 10, 0., 20., "Agency write histogram [ms]")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
-    _inception = std::make_unique<Inception>(this);
+    _inception = std::make_unique<Inception>(*this);
   } else {
     _leaderSince = 0;
   }
@@ -426,11 +450,9 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
+  
+  auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
   // _lastSent only accessed in main thread
   std::string const myid = id();
@@ -529,7 +551,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       index_t lowest = unconfirmed.front().index;
 
-      Store snapshot(this, "snapshot");
+      Store snapshot(_server, this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
 
@@ -572,7 +594,8 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       // Body
-      Builder builder;
+      VPackBufferUInt8 buffer;
+      Builder builder(buffer);
       builder.add(VPackValue(VPackValueType::Array));
 
       if (needSnapshot) {
@@ -627,14 +650,17 @@ void Agent::sendAppendEntriesRPC() {
       }
       LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
           << "Setting _earliestPackage to now + 30s for id " << followerId;
+      
+      network::RequestOptions reqOpts;
+      reqOpts.timeout = network::Timeout(150);
 
       // Send request
-      std::unordered_map<std::string, std::string> headerFields;
-      cc->asyncRequest(1, _config.poolAt(followerId),
-                       arangodb::rest::RequestType::POST, path.str(),
-                       std::make_shared<std::string>(builder.toJson()), headerFields,
-                       std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-                       150.0, true);
+      auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
+      network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+                           std::move(buffer), reqOpts).thenValue([=](network::Response r) {
+        ac->operator()(r);
+      });
+      
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
@@ -664,12 +690,7 @@ void Agent::resign(term_t otherTerm) {
 }
 
 /// Leader's append entries, empty ones for heartbeat, triggered by Constituent
-void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens during controlled shutdown
-    return;
-  }
+void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   if (!leading()) {
     LOG_TOPIC("95220", DEBUG, Logger::AGENCY)
@@ -700,13 +721,23 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
         << " because we are no longer leading.";
     return;
   }
+  
+  auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
 
   // Send request
-  std::unordered_map<std::string, std::string> headerFields;
-  cc->asyncRequest(1, _config.poolAt(followerId), arangodb::rest::RequestType::POST,
-                   path.str(), std::make_shared<std::string>("[]"), headerFields,
-                   std::make_shared<AgentCallback>(this, followerId, 0, 0),
-                   3 * _config.minPing() * _config.timeoutMult(), true);
+  VPackBufferUInt8 buffer;
+  buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
+  auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
+
+  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+                       std::move(buffer), reqOpts).thenValue([=](network::Response r) {
+    ac->operator()(r);
+  });
+  
   _constituent.notifyHeartbeatSent(followerId);
 
   double now = TRI_microtime();
@@ -786,10 +817,10 @@ void Agent::activateAgency() {
 
 /// Load persistent state called once
 void Agent::load() {
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      sysDbFeature ? sysDbFeature->use() : nullptr;
+      _server.hasFeature<SystemDatabaseFeature>()
+          ? _server.getFeature<SystemDatabaseFeature>().use()
+          : nullptr;
   auto queryRegistry = QueryRegistryFeature::registry();
 
   if (vocbase == nullptr) {
@@ -1080,7 +1111,7 @@ write_ret_t Agent::inquire(query_t const& query) {
   while (true) {
     // Check ongoing ones:
     bool found = false;
-    for (auto const& s : VPackArrayIterator(query->slice())) {
+    for (VPackSlice s : VPackArrayIterator(query->slice())) {
       std::string ss = s.copyString();
       if (isTrxOngoing(ss)) {
         found = true;
@@ -1109,6 +1140,8 @@ write_ret_t Agent::inquire(query_t const& query) {
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
+
+  using namespace std::chrono;
   std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;
   auto multihost = size() > 1;
@@ -1119,6 +1152,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (multihost && leader != id()) {
+    ++_write_no_leader;
     return write_ret_t(false, leader);
   }
 
@@ -1150,9 +1184,11 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
     // Check that we are actually still the leader:
     if (!leading()) {
+      ++_write_no_leader;
       return write_ret_t(false, NO_LEADER);
     }
 
+    auto const start = high_resolution_clock::now();
     // Apply to spearhead and get indices for log entries
     // Avoid keeping lock indefinitely
     for (size_t i = 0, l = 0; i < npacks; ++i) {
@@ -1167,11 +1203,13 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       // Only leader else redirect
       if (multihost && challengeLeadership()) {
         resign();
+        ++_write_no_leader;
         return write_ret_t(false, NO_LEADER);
       }
 
       // Check that we are actually still the leader:
       if (!leading()) {
+        ++_write_no_leader;
         return write_ret_t(false, NO_LEADER);
       }
 
@@ -1182,6 +1220,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       auto tmp = _state.logLeaderMulti(chunk, applied, currentTerm);
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
+    _write_hist_msec.count(
+      duration<double,std::milli>(high_resolution_clock::now()-start).count());
   }
 
   // Maximum log index
@@ -1197,6 +1237,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     advanceCommitIndex();
   }
 
+  ++_write_ok;
   return write_ret_t(true, id(), applied, indices);
 }
 
@@ -1208,6 +1249,7 @@ read_ret_t Agent::read(query_t const& query) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
+    ++_read_no_leader;
     return read_ret_t(false, leader);
   }
 
@@ -1221,10 +1263,12 @@ read_ret_t Agent::read(query_t const& query) {
   // Only leader else redirect
   if (challengeLeadership()) {
     resign();
+    ++_read_no_leader;
     return read_ret_t(false, NO_LEADER);
   }
 
   leader = _constituent.leaderID();
+  
   auto result = std::make_shared<arangodb::velocypack::Builder>();
 
   READ_LOCKER(oLocker, _outputLock);
@@ -1232,6 +1276,7 @@ read_ret_t Agent::read(query_t const& query) {
   // Retrieve data from readDB
   std::vector<bool> success = _readDB.read(query, result);
 
+  ++_read_no_leader;
   return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
@@ -1239,6 +1284,7 @@ read_ret_t Agent::read(query_t const& query) {
 void Agent::run() {
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
+
     {
       // We set the variable to false here, if any change happens during
       // or after the calls in this loop, this will be set to true to
@@ -1289,6 +1335,9 @@ void Agent::run() {
 
       // Check whether we can advance _commitIndex
       advanceCommitIndex();
+
+      // Empty store callback trash bin
+      emptyCbTrashBin();
 
       bool commenceService = false;
       {
@@ -1627,7 +1676,7 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
 
   uint64_t commitIndex = 0;
-   
+
   { READ_LOCKER(oLocker, _outputLock);
 
     commitIndex = _commitIndex;
@@ -1638,10 +1687,10 @@ arangodb::consensus::index_t Agent::readDB(VPackBuilder& builder) const {
     // key-value store {}
     builder.add(VPackValue("agency"));
     _readDB.get().toBuilder(builder, true); }
-  
+
   // replicated log []
   _state.toVelocyPack(commitIndex, builder);
-  
+
   return commitIndex;
 }
 
@@ -1696,10 +1745,9 @@ bool Agent::booting() { return (!_config.poolComplete()); }
 /// Add whatever is missing in our list.
 /// Compare whatever is in our list already. (ASSERT identity)
 /// If I know more immediately contact peer with my list.
-query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
-  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY) << "Incoming gossip: " << in->slice().toJson();
+query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
+  LOG_TOPIC("1ae7b", DEBUG, Logger::AGENCY) << "Incoming gossip: " << slice.toJson();
 
-  VPackSlice slice = in->slice();
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20001,
@@ -1760,7 +1808,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   VPackSlice pslice = slice.get("pool");
 
   LOG_TOPIC("65dd8", TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
-  for (auto const& pair : VPackObjectIterator(pslice)) {
+  for (auto pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           20004, "Gossip message pool must contain string parameters");
@@ -1905,8 +1953,86 @@ bool Agent::ready() const {
   return _ready;
 }
 
+
+
+void Agent::trashStoreCallback(std::string const& url, VPackSlice slice) {
+
+  TRI_ASSERT(slice.isObject());
+
+  // body consists of object holding keys index, term and the observed keys
+  // we'll remove observation on every key and according observer url
+  for (auto const& i : VPackObjectIterator(slice)) {
+    if (!i.key.isEqualString("term") && !i.key.isEqualString("index")) {
+      MUTEX_LOCKER(lock, _cbtLock);
+      _callbackTrashBin[i.key.copyString()].emplace(url);
+    }
+  }
+}
+
+
+void Agent::emptyCbTrashBin() {
+
+  using clock = std::chrono::steady_clock;
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    _cbtLock.assertNotLockedByCurrentThread();
+    MUTEX_LOCKER(lock, _cbtLock);
+
+    auto early =
+      std::chrono::duration_cast<std::chrono::seconds>(
+        clock::now() - _callbackLastPurged).count() < 10;
+
+    if (early || _callbackTrashBin.empty()) {
+      return;
+    }
+
+    {
+      VPackArrayBuilder trxs(envelope.get());
+      for (auto const& i : _callbackTrashBin) {
+        for (auto const& j : i.second) {
+          {
+            VPackArrayBuilder trx(envelope.get());
+            {
+              VPackObjectBuilder ak(envelope.get());
+              envelope->add(VPackValue(i.first));
+              {
+                VPackObjectBuilder oper(envelope.get());
+                envelope->add("op", VPackValue("unobserve"));
+                envelope->add("url", VPackValue(j));
+              }
+            }
+          }
+        }
+      }
+    }
+    _callbackTrashBin.clear();
+    _callbackLastPurged = std::chrono::steady_clock::now();
+  }
+
+  LOG_TOPIC("12ad3", DEBUG, Logger::AGENCY) << "unobserving: " << envelope->toJson();
+
+  // This is a best effort attempt. If either the queueing or the write fail,
+  // while above _callbackTrashBin has been cleaned, entries will repopulate with
+  // future 404 errors, when they are triggered again. So either way these attempts
+  // are repeated until such time, when the callbacks are gone successfully through
+  // queue + write.
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler != nullptr) {
+    bool ok = scheduler->queue(RequestLane::INTERNAL_LOW, [&server = server(), envelope = std::move(envelope)] {
+        auto* agent = server.getFeature<AgencyFeature>().agent();
+        if (!server.isStopping() && agent) {
+          agent->write(envelope);
+        }
+      });
+    LOG_TOPIC_IF("52461", DEBUG, Logger::AGENCY, !ok) << "Could not schedule callback cleanup job.";
+  }
+
+}
+
+
 query_t Agent::buildDB(arangodb::consensus::index_t index) {
-  Store store(this);
+  Store store(_server, this);
   index_t oldIndex;
   term_t term;
   if (!_state.loadLastCompactedSnapshot(store, oldIndex, term)) {

@@ -29,6 +29,7 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/LogMacros.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -44,7 +45,8 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ApplicationServer::server->isEnabled("Agency")));
+  TRI_GET_GLOBALS();
+  TRI_V8_RETURN(v8::Boolean::New(isolate, v8g->_server.isEnabled<AgencyFeature>()));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -55,9 +57,9 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature* feature =
-        ApplicationServer::getEnabledFeature<AgencyFeature>("Agency");
-    agent = feature->agent();
+    TRI_GET_GLOBALS();
+    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    agent = feature.agent();
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -79,9 +81,9 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature* feature =
-        ApplicationServer::getEnabledFeature<AgencyFeature>("Agency");
-    agent = feature->agent();
+    TRI_GET_GLOBALS();
+    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    agent = feature.agent();
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
@@ -112,9 +114,9 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    AgencyFeature* feature =
-        ApplicationServer::getEnabledFeature<AgencyFeature>("Agency");
-    agent = feature->agent();
+    TRI_GET_GLOBALS();
+    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
+    agent = feature.agent();
 
   } catch (std::exception const& e) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(

@@ -57,7 +57,7 @@ struct IRESEARCH_API segment_meta {
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;
-  segment_meta(segment_meta&& rhs) NOEXCEPT;
+  segment_meta(segment_meta&& rhs) noexcept;
   segment_meta(const string_ref& name, format_ptr codec);
   segment_meta(
     std::string&& name,
@@ -68,13 +68,13 @@ struct IRESEARCH_API segment_meta {
     file_set&& files,
     size_t size = 0,
     field_id sort = field_limits::invalid()
-  ) NOEXCEPT;
+  ) noexcept;
 
-  segment_meta& operator=(segment_meta&& rhs) NOEXCEPT;
+  segment_meta& operator=(segment_meta&& rhs) noexcept;
   segment_meta& operator=(const segment_meta&) = default;
 
-  bool operator==(const segment_meta& other) const NOEXCEPT;
-  bool operator!=(const segment_meta& other) const NOEXCEPT;
+  bool operator==(const segment_meta& other) const noexcept;
+  bool operator!=(const segment_meta& other) const noexcept;
 
   file_set files;
   std::string name;
@@ -101,10 +101,10 @@ class IRESEARCH_API index_meta {
     index_segment_t(segment_meta&& v_meta);
     index_segment_t(const index_segment_t& other) = default;
     index_segment_t& operator=(const index_segment_t& other) = default;
-    index_segment_t(index_segment_t&& other) NOEXCEPT;
-    index_segment_t& operator=(index_segment_t&& other) NOEXCEPT;
-    bool operator==(const index_segment_t& other) const NOEXCEPT;
-    bool operator!=(const index_segment_t& other) const NOEXCEPT;
+    index_segment_t(index_segment_t&& other) noexcept;
+    index_segment_t& operator=(index_segment_t&& other) noexcept;
+    bool operator==(const index_segment_t& other) const noexcept;
+    bool operator!=(const index_segment_t& other) const noexcept;
 
     std::string filename;
     segment_meta meta;
@@ -114,13 +114,13 @@ class IRESEARCH_API index_meta {
   DECLARE_UNIQUE_PTR(index_meta);
 
   index_meta();
-  index_meta(index_meta&& rhs) NOEXCEPT;
+  index_meta(index_meta&& rhs) noexcept;
   index_meta(const index_meta& rhs);
-  index_meta& operator=(index_meta&& rhs) NOEXCEPT;
+  index_meta& operator=(index_meta&& rhs) noexcept;
   index_meta& operator=(const index_meta&) = delete;
 
-  bool operator==(const index_meta& other) const NOEXCEPT;
-  bool operator!=(const index_meta& other) const NOEXCEPT {
+  bool operator==(const index_meta& other) const noexcept;
+  bool operator!=(const index_meta& other) const noexcept {
     return !(*this == other);
   }
 
@@ -175,13 +175,13 @@ class IRESEARCH_API index_meta {
   index_segments_t::const_iterator begin() const { return segments_.begin(); }
   index_segments_t::const_iterator end() const { return segments_.end(); }
 
-  void update_generation(const index_meta& rhs) NOEXCEPT{
+  void update_generation(const index_meta& rhs) noexcept{
     gen_ = rhs.gen_;
     last_gen_ = rhs.last_gen_;
   }
 
-  size_t size() const NOEXCEPT { return segments_.size(); }
-  bool empty() const NOEXCEPT { return segments_.empty(); }
+  size_t size() const noexcept { return segments_.size(); }
+  bool empty() const noexcept { return segments_.empty(); }
 
   void clear() {
     segments_.clear();
@@ -193,21 +193,21 @@ class IRESEARCH_API index_meta {
     segments_ = rhs.segments_;
   }
 
-  const index_segment_t& segment(size_t i) const NOEXCEPT {
+  const index_segment_t& segment(size_t i) const noexcept {
     assert(i < segments_.size());
     return segments_[i];
   }
 
-  const index_segment_t& operator[](size_t i) const NOEXCEPT {
+  const index_segment_t& operator[](size_t i) const noexcept {
     assert(i < segments_.size());
     return segments_[i];
   }
 
-  const index_segments_t& segments() const NOEXCEPT {
+  const index_segments_t& segments() const noexcept {
     return segments_;
   }
 
-  const bytes_ref& payload() const NOEXCEPT {
+  const bytes_ref& payload() const noexcept {
     return payload_;
   }
 
@@ -225,9 +225,9 @@ class IRESEARCH_API index_meta {
   bytes_ref payload_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
-  uint64_t next_generation() const NOEXCEPT;
+  uint64_t next_generation() const noexcept;
 
-  void payload(bstring&& payload) NOEXCEPT {
+  void payload(bstring&& payload) noexcept {
     payload_buf_ = std::move(payload);
     payload_ = payload_buf_;
   }

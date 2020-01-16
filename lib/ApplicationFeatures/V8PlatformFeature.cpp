@@ -157,11 +157,10 @@ static void fatalCallback(char const* location, char const* message) {
 V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Platform") {
   setOptional(true);
-  startsAfter("ClusterPhase");
 }
 
 void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.v8-options", "options to pass to v8",
                      new VectorParameter<StringParameter>(&_v8Options),
@@ -183,7 +182,9 @@ void V8PlatformFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 
   if (0 < _v8MaxHeap) {
-    if (_v8MaxHeap > (std::numeric_limits<int>::max)()) {
+    // we have to compare against INT_MAX here, because the value is an int
+    // inside V8
+    if (_v8MaxHeap > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
       LOG_TOPIC("81a63", FATAL, arangodb::Logger::FIXME)
           << "value for '--javascript.v8-max-heap' exceeds maximum value "
           << (std::numeric_limits<int>::max)();
@@ -241,7 +242,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   {
     MUTEX_LOCKER(guard, _lock);
     try {
-      _isolateData.emplace(isolate, std::move(data));
+      _isolateData.try_emplace(isolate, std::move(data));
     } catch (...) {
       isolate->SetData(V8_INFO, nullptr);
       isolate->Dispose();

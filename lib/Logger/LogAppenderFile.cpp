@@ -23,6 +23,7 @@
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <algorithm>
 #include <iostream>
 
 #include "Basics/operating-system.h"
@@ -66,7 +67,7 @@ size_t LogAppenderStream::determineOutputBufferSize(std::string const& message) 
 
 size_t LogAppenderStream::writeIntoOutputBuffer(std::string const& message) {
   if (_escape) {
-    size_t escapedLength;
+    size_t escapedLength = 0;
     // this is guaranteed to succeed given that we already have a buffer
     TRI_EscapeControlsCString(message.data(), message.size(), _buffer.get(),
                               &escapedLength, true);

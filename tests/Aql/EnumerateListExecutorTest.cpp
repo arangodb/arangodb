@@ -31,10 +31,9 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -52,9 +51,10 @@ class EnumerateListExecutorTest : public ::testing::Test {
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
 
-  EnumerateListExecutorTest() : itemBlockManager(&monitor) {}
+  EnumerateListExecutorTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };
 
 TEST_F(EnumerateListExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
@@ -62,7 +62,7 @@ TEST_F(EnumerateListExecutorTest, there_are_no_rows_upstream_the_producer_does_n
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -72,15 +72,15 @@ TEST_F(EnumerateListExecutorTest, there_are_no_rows_upstream_the_producer_does_n
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 TEST_F(EnumerateListExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   EnumerateListExecutorInfos infos(0, 1, 1, 2, {}, {0});
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -90,12 +90,12 @@ TEST_F(EnumerateListExecutorTest, there_are_no_rows_upstream_the_producer_waits)
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(EnumerateListExecutorTest, there_is_one_row_in_the_upstream_the_producer_waits) {
@@ -103,7 +103,7 @@ TEST_F(EnumerateListExecutorTest, there_is_one_row_in_the_upstream_the_producer_
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
   auto input = VPackParser::fromJson("[ [1, 2, 3, [true, true, true]] ]");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -125,62 +125,62 @@ TEST_F(EnumerateListExecutorTest, there_is_one_row_in_the_upstream_the_producer_
    */
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   block = result.stealBlock();
   AqlValue v = block->getValue(0, 0);
   ASSERT_TRUE(v.isNumber());
   int64_t number = v.toInt64();
-  ASSERT_TRUE(number == 1);
+  ASSERT_EQ(number, 1);
 
   v = block->getValue(1, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 1);
+  ASSERT_EQ(number, 1);
 
   v = block->getValue(1, 1);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 2);
+  ASSERT_EQ(number, 2);
 
   v = block->getValue(1, 2);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 3);
+  ASSERT_EQ(number, 3);
 
   bool mustDestroy = false;
   v = block->getValue(1, 3);
   ASSERT_TRUE(v.isArray());
-  ASSERT_TRUE(v.at(0, mustDestroy, false).toBoolean() == true);
-  ASSERT_TRUE(v.at(1, mustDestroy, false).toBoolean() == true);
-  ASSERT_TRUE(v.at(2, mustDestroy, false).toBoolean() == true);
+  ASSERT_TRUE(v.at(0, mustDestroy, false).toBoolean());
+  ASSERT_TRUE(v.at(1, mustDestroy, false).toBoolean());
+  ASSERT_TRUE(v.at(2, mustDestroy, false).toBoolean());
 
   v = block->getValue(1, 4);
   ASSERT_TRUE(v.isBoolean());
-  ASSERT_TRUE(v.toBoolean() == true);
+  ASSERT_TRUE(v.toBoolean());
 }
 
 TEST_F(EnumerateListExecutorTest, there_is_one_empty_array_row_in_the_upstream_the_producer_waits) {
@@ -188,7 +188,7 @@ TEST_F(EnumerateListExecutorTest, there_is_one_empty_array_row_in_the_upstream_t
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
   auto input = VPackParser::fromJson("[ [1, 2, 3, [] ] ]");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -199,15 +199,15 @@ TEST_F(EnumerateListExecutorTest, there_is_one_empty_array_row_in_the_upstream_t
                           infos.registersToKeep(), infos.registersToClear()};
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   block = result.stealBlock();
-  ASSERT_TRUE(block == nullptr);
+  ASSERT_EQ(block, nullptr);
 }
 
 TEST_F(EnumerateListExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
@@ -216,7 +216,7 @@ TEST_F(EnumerateListExecutorTest, there_are_rows_in_the_upstream_the_producer_wa
   auto input = VPackParser::fromJson(
       "[ [1, 2, 3, [true, true, true]], [1, 2, 3, [true, true, true]] ]");
 
-  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   EnumerateListExecutor testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -230,52 +230,52 @@ TEST_F(EnumerateListExecutorTest, there_are_rows_in_the_upstream_the_producer_wa
   // are available
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::WAITING);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_TRUE(result.produced());
+
+  result.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 
   block = result.stealBlock();
   bool mustDestroy = false;
@@ -284,60 +284,60 @@ TEST_F(EnumerateListExecutorTest, there_are_rows_in_the_upstream_the_producer_wa
   AqlValue v = block->getValue(0, 0);
   ASSERT_TRUE(v.isNumber());
   int64_t number = v.toInt64();
-  ASSERT_TRUE(number == 1);
+  ASSERT_EQ(number, 1);
 
   v = block->getValue(1, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 1);
+  ASSERT_EQ(number, 1);
 
   v = block->getValue(1, 1);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 2);
+  ASSERT_EQ(number, 2);
 
   v = block->getValue(1, 2);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 3);
+  ASSERT_EQ(number, 3);
 
   v = block->getValue(1, 3);
   ASSERT_TRUE(v.isArray());
-  ASSERT_TRUE(v.at(0, mustDestroy, false).toBoolean() == true);
-  ASSERT_TRUE(v.at(1, mustDestroy, false).toBoolean() == true);
-  ASSERT_TRUE(v.at(2, mustDestroy, false).toBoolean() == true);
+  ASSERT_TRUE(v.at(0, mustDestroy, false).toBoolean());
+  ASSERT_TRUE(v.at(1, mustDestroy, false).toBoolean());
+  ASSERT_TRUE(v.at(2, mustDestroy, false).toBoolean());
 
   v = block->getValue(1, 4);
   ASSERT_TRUE(v.isBoolean());
-  ASSERT_TRUE(v.toBoolean() == true);
+  ASSERT_TRUE(v.toBoolean());
 
   // second row
   v = block->getValue(2, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 1);
+  ASSERT_EQ(number, 1);
 
   v = block->getValue(2, 1);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 2);
+  ASSERT_EQ(number, 2);
 
   v = block->getValue(2, 2);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 3);
+  ASSERT_EQ(number, 3);
 
   v = block->getValue(2, 3);
   ASSERT_TRUE(v.isArray());
-  ASSERT_TRUE(v.at(0, mustDestroy, false).toBoolean() == true);
-  ASSERT_TRUE(v.at(1, mustDestroy, false).toBoolean() == true);
-  ASSERT_TRUE(v.at(2, mustDestroy, false).toBoolean() == true);
+  ASSERT_TRUE(v.at(0, mustDestroy, false).toBoolean());
+  ASSERT_TRUE(v.at(1, mustDestroy, false).toBoolean());
+  ASSERT_TRUE(v.at(2, mustDestroy, false).toBoolean());
 
   v = block->getValue(2, 4);
   ASSERT_TRUE(v.isBoolean());
-  ASSERT_TRUE(v.toBoolean() == true);
+  ASSERT_TRUE(v.toBoolean());
 }
 
+}  // namespace aql
 }  // namespace tests
-}  // namespace arangodb
 }  // namespace arangodb

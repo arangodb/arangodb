@@ -41,11 +41,8 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "IResearch/IResearchRocksDBLink.h"
 
 using namespace arangodb;
 
@@ -54,7 +51,9 @@ namespace {
 struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
   arangodb::Index::IndexType const _type;
 
-  explicit DefaultIndexFactory(arangodb::Index::IndexType type) : _type(type) {}
+  explicit DefaultIndexFactory(arangodb::application_features::ApplicationServer& server,
+                               arangodb::Index::IndexType type)
+      : IndexTypeFactory(server), _type(type) {}
 
   bool equal(arangodb::velocypack::Slice const& lhs,
              arangodb::velocypack::Slice const& rhs) const override {
@@ -63,8 +62,8 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  EdgeIndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {}
+  EdgeIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -103,8 +102,8 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct FulltextIndexFactory : public DefaultIndexFactory {
-  FulltextIndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
+  FulltextIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -134,8 +133,8 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 };
 
 struct GeoIndexFactory : public DefaultIndexFactory {
-  GeoIndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
+  GeoIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -164,8 +163,8 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo1IndexFactory : public DefaultIndexFactory {
-  Geo1IndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
+  Geo1IndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -195,8 +194,8 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo2IndexFactory : public DefaultIndexFactory {
-  Geo2IndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
+  Geo2IndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -227,7 +226,8 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 
 template <typename F, arangodb::Index::IndexType type>
 struct SecondaryIndexFactory : public DefaultIndexFactory {
-  SecondaryIndexFactory() : DefaultIndexFactory(type) {}
+  SecondaryIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -256,8 +256,9 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
-  explicit TtlIndexFactory(arangodb::Index::IndexType type)
-      : DefaultIndexFactory(type) {}
+  explicit TtlIndexFactory(arangodb::application_features::ApplicationServer& server,
+                           arangodb::Index::IndexType type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -286,8 +287,8 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  PrimaryIndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {}
+  PrimaryIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -322,17 +323,21 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 }  // namespace
 
-RocksDBIndexFactory::RocksDBIndexFactory() {
-  static const EdgeIndexFactory edgeIndexFactory;
-  static const FulltextIndexFactory fulltextIndexFactory;
-  static const GeoIndexFactory geoIndexFactory;
-  static const Geo1IndexFactory geo1IndexFactory;
-  static const Geo2IndexFactory geo2IndexFactory;
-  static const SecondaryIndexFactory<arangodb::RocksDBHashIndex, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX> hashIndexFactory;
-  static const SecondaryIndexFactory<arangodb::RocksDBPersistentIndex, arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX> persistentIndexFactory;
-  static const SecondaryIndexFactory<arangodb::RocksDBSkiplistIndex, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX> skiplistIndexFactory;
-  static const TtlIndexFactory ttlIndexFactory(arangodb::Index::TRI_IDX_TYPE_TTL_INDEX);
-  static const PrimaryIndexFactory primaryIndexFactory;
+RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
+  static const EdgeIndexFactory edgeIndexFactory(server);
+  static const FulltextIndexFactory fulltextIndexFactory(server);
+  static const GeoIndexFactory geoIndexFactory(server);
+  static const Geo1IndexFactory geo1IndexFactory(server);
+  static const Geo2IndexFactory geo2IndexFactory(server);
+  static const SecondaryIndexFactory<arangodb::RocksDBHashIndex, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX> hashIndexFactory(
+      server);
+  static const SecondaryIndexFactory<arangodb::RocksDBPersistentIndex, arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX> persistentIndexFactory(
+      server);
+  static const SecondaryIndexFactory<arangodb::RocksDBSkiplistIndex, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX> skiplistIndexFactory(
+      server);
+  static const TtlIndexFactory ttlIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_TTL_INDEX);
+  static const PrimaryIndexFactory primaryIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -403,7 +408,7 @@ void RocksDBIndexFactory::prepareIndexes(
 
           from.openObject();
 
-          for (auto const& f : VPackObjectIterator(v)) {
+          for (auto f : VPackObjectIterator(v)) {
             if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               from.add(VPackValue(StaticStrings::IndexFields));
               from.openArray();
@@ -420,7 +425,7 @@ void RocksDBIndexFactory::prepareIndexes(
           VPackBuilder to;
 
           to.openObject();
-          for (auto const& f : VPackObjectIterator(v)) {
+          for (auto f : VPackObjectIterator(v)) {
             if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               to.add(VPackValue(StaticStrings::IndexFields));
               to.openArray();

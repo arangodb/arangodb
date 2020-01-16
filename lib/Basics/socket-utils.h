@@ -49,14 +49,14 @@ typedef long suseconds_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WIN32
-typedef struct TRI_socket_s {
+struct TRI_socket_t {
   int fileDescriptor;
   SOCKET fileHandle;
-} TRI_socket_t;
+};
 #else
-typedef struct TRI_socket_s {
+struct TRI_socket_t {
   int fileDescriptor;
-} TRI_socket_t;
+};
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,22 +84,6 @@ static inline int TRI_listen(TRI_socket_t s, int backlog) {
 #else
   return listen(s.fileDescriptor, backlog);
 #endif
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief accept abstraction for different OSes
-////////////////////////////////////////////////////////////////////////////////
-
-static inline TRI_socket_t TRI_accept(TRI_socket_t s, struct sockaddr* address,
-                                      socklen_t* address_len) {
-  TRI_socket_t res;
-#ifdef _WIN32
-  res.fileHandle = accept(s.fileHandle, address, address_len);
-  res.fileDescriptor = -1;
-#else
-  res.fileDescriptor = accept(s.fileDescriptor, address, address_len);
-#endif
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,20 +121,6 @@ static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length, i
   return send(s.fileDescriptor, buffer, length, flags);
 #endif
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getsockname abstraction for different OSes
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr, int* len) {
-  return getsockname(s.fileHandle, addr, len);
-}
-#else
-static inline int TRI_getsockname(TRI_socket_t s, struct sockaddr* addr, socklen_t* len) {
-  return getsockname(s.fileDescriptor, addr, len);
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getsockopt abstraction for different OSes

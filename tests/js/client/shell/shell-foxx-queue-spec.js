@@ -40,6 +40,7 @@ const request = require('@arangodb/request');
 
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 const aql = arangodb.aql;
 const db = internal.db;
 
@@ -53,7 +54,7 @@ describe('Foxx service', () => {
   });
   afterEach(() => {
     waitForJob();
-    download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+    download(`${origin}/${mount}`, '', {
       method: 'delete'
     });
     if (db._collection('foxx_queue_test')) {
@@ -65,7 +66,7 @@ describe('Foxx service', () => {
       FOR queue IN _queues
       RETURN queue
     `).toArray();
-    const res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+    const res = download(`${origin}/${mount}`, '', {
       method: 'post'
     });
     expect(res.code).to.equal(204);
@@ -80,12 +81,12 @@ describe('Foxx service', () => {
       FOR queue IN _queues
       RETURN queue
     `).toArray();
-    let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+    let res = download(`${origin}/${mount}`, '', {
       method: 'post'
     });
     expect(res.code).to.equal(204);
     waitForJob();
-    res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+    res = download(`${origin}/${mount}`, '', {
       method: 'post'
     });
     expect(res.code).to.equal(204);
@@ -96,7 +97,7 @@ describe('Foxx service', () => {
     expect(queuesAfter.length - queuesBefore.length).to.equal(1);
   });
   it('should support jobs running in the queue', () => {
-    let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+    let res = download(`${origin}/${mount}`, '', {
       method: 'post'
     });
     expect(res.code).to.equal(204);
@@ -109,7 +110,7 @@ describe('Foxx service', () => {
     expect(jobResult.length).to.equal(1);
   });
   it('should support repeating job running in the queue', () => {
-    let res = request.post(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, {
+    let res = request.post(`${origin}/${mount}`, {
       body: JSON.stringify({repeatTimes: 2})
     });
     expect(res.statusCode).to.equal(204);

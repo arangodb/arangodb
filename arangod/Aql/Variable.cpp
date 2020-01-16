@@ -52,7 +52,7 @@ Variable::Variable(arangodb::velocypack::Slice const& slice)
 }
 
 /// @brief destroy the variable
-Variable::~Variable() {}
+Variable::~Variable() = default;
 
 /// @brief return a VelocyPack representation of the variable
 void Variable::toVelocyPack(VPackBuilder& builder) const {
@@ -91,4 +91,8 @@ Variable* Variable::varFromVPack(Ast* ast, arangodb::velocypack::Slice const& ba
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
   return ast->variables()->createVariable(variable);
+}
+
+bool Variable::isEqualTo(Variable const& other) const {
+  return (id == other.id) && (name == other.name);
 }

@@ -23,7 +23,13 @@
 #ifndef ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H
 #define ARANGOD_AQL_SINGLE_REMOTE_MODIFICATION_EXECUTOR_H 1
 
-#include "Aql/ModificationExecutor.h"
+#include "Aql/AllRowsFetcher.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/ModificationExecutorInfos.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 
 namespace arangodb {
 namespace aql {
@@ -39,8 +45,8 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
       IgnoreDocumentNotFound ignoreDocumentNotFound,  // end of base class params
       std::string key, bool hasParent, bool replaceIndex)
-      : ModificationExecutorInfos(inputRegister, ExecutionNode::MaxRegisterId,
-                                  ExecutionNode::MaxRegisterId, outputNewRegisterId,
+      : ModificationExecutorInfos(inputRegister, RegisterPlan::MaxRegisterId,
+                                  RegisterPlan::MaxRegisterId, outputNewRegisterId,
                                   outputOldRegisterId, outputRegisterId,
                                   nrInputRegisters, nrOutputRegisters,
                                   registersToClear, std::move(registersToKeep),
@@ -61,14 +67,21 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
   constexpr static double const defaultTimeOut = 3600.0;
 };
 
+// These tags are used to instantiate SingleRemoteModificationExecutor
+// for the different use cases
 struct IndexTag {};
+struct Insert {};
+struct Remove {};
+struct Replace {};
+struct Update {};
+struct Upsert {};
 
 template <typename Modifier>
 struct SingleRemoteModificationExecutor {
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Infos = SingleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

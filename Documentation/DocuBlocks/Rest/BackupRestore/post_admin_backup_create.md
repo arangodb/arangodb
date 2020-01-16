@@ -12,8 +12,6 @@ guarantee consistency. Note that the backup at first resides on the
 same machine and hard drive as the original data. Make sure to upload
 it to a remote site for an actual backup.
 
-The body of the request may contain an object with the following attributes:
-
 @RESTBODYPARAM{label,string,optional,string}
 The label for this backup. The label is used together with a
 timestamp string create a unique backup identifier, `<timestamp>_<label>`.
@@ -22,13 +20,23 @@ UUID is created for this part of the ID.
 
 @RESTBODYPARAM{timeout,number,optional,double}
 The time in seconds that the operation tries to get a consistent
-snapshot. The default is 120 seconds. 
+snapshot. The default is 120 seconds.
 
-@RESTBODYPARAM{forceBackup,boolean,optional,boolean}
+@RESTBODYPARAM{allowInconsistent,boolean,optional,}
 If this flag is set to `true` and no global transaction lock can be
 acquired within the given timeout, a possibly inconsistent backup
 is taken. The default for this flag is `false` and in this case
 a timeout results in an HTTP 408 error.
+
+@RESTBODYPARAM{force,boolean,optional,}
+If this flag is set to `true` and no global transaction lock can be acquired
+within the given timeout, all running transactions are forcefully aborted to
+ensure that a consistent backup can be created. This is almost certainly not
+what you want for your application. In the presence of intermediate commits
+it can even destroy the atomicity of your transactions. Use at your own risk,
+and only if you need a consistent backup at all costs. The default and
+recommended value is `false`. If both `allowInconsistent` and `force` are set
+to `true`, then the latter takes precedence and transactions are aborted.
 
 @RESTRETURNCODES
 
@@ -64,5 +72,7 @@ within the timeout, then an *HTTP 408* is returned.
       }
     };
 @END_EXAMPLE_ARANGOSH_RUN
+
+The result `body` contains besides the above discussed error codes the `result` object, if `code` is equal to `201`, which holds the unique identifier of this hot backup as the string attibute `id`, the full size in bytes as `sizeInBytes`, the number of idividual files as `nrFiles` and the number of database servers as `nrDBServers`. Single server deployments list potentially misleadingly `nrDBServers: 1`. Furthermore, the body contains a `datetime` time stamp and the flag `potentiallyInconsistent`, which indicates that the backup could inconsistent. This only happens if `allowInconsistent` has happened.
 
 @endDocuBlock

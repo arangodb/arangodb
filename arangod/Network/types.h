@@ -35,8 +35,12 @@ typedef std::string DestinationId;
 using Headers = std::map<std::string, std::string>;
 using Timeout = std::chrono::duration<double>;
 
-/// @brief unified endpoint
-typedef std::string EndpointSpec;
+struct EndpointSpec {
+  std::string shardId;
+  std::string serverId;
+  std::string endpoint;
+
+};
 
 }  // namespace network
 }  // namespace arangodb

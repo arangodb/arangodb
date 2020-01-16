@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
 
@@ -35,7 +36,7 @@ namespace arangodb {
 GreetingsFeature::GreetingsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Greetings") {
   setOptional(false);
-  startsAfter("Logger");
+  startsAfter<LoggerFeature>();
 }
 
 void GreetingsFeature::prepare() {

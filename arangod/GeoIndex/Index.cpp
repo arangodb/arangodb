@@ -34,6 +34,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"

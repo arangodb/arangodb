@@ -684,7 +684,7 @@ int TRI_RemoveDirectoryDeterministic(char const* filename) {
 
 std::string TRI_Dirname(std::string const& path) {
   size_t n = path.size();
-  
+
   if (n == 0) {
     // "" => "."
     return std::string(".");
@@ -764,6 +764,10 @@ std::string TRI_Basename(char const* path) {
       return std::string(p + 1, n - 1);
     }
   }
+}
+
+std::string TRI_Basename(std::string const& path) {
+  return TRI_Basename(path.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1123,9 +1127,14 @@ bool TRI_ProcessFile(char const* filename,
 
 char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
-  gzFile gzFd(gzopen(filename,"rb"));
-  auto fdGuard = arangodb::scopeGuard([&gzFd](){ if (nullptr != gzFd) gzclose(gzFd); });
-  char * retPtr = nullptr;
+  gzFile gzFd = gzopen(filename,"rb");
+  auto fdGuard = arangodb::scopeGuard([&gzFd]() {
+    if (nullptr != gzFd) {
+      gzclose(gzFd);
+    }
+  });
+
+  char* retPtr = nullptr;
 
   if (nullptr != gzFd) {
     TRI_string_buffer_t result;
@@ -1172,19 +1181,13 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
 /// @brief slurps in a file that is encrypted and return unencrypted contents
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* length) {
+char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
-  EncryptionFeature*  encryptionFeature;
 
-  encryptionFeature = application_features::ApplicationServer::getFeature<EncryptionFeature>("Encryption");
-
-  if (nullptr == encryptionFeature) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    return nullptr;
-  }
-
-  encryptionFeature->setKeyFile(keyfile);
-  auto keyGuard = arangodb::scopeGuard([encryptionFeature](){ encryptionFeature->clearKey(); });
+  encryptionFeature.setKeyFile(keyfile);
+  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() {
+    encryptionFeature.clearKey();
+  });
 
   int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
@@ -1194,7 +1197,7 @@ char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* l
   }
 
   std::unique_ptr<EncryptionFeature::Context> context;
-  context = encryptionFeature->beginDecryption(fd);
+  context = encryptionFeature.beginDecryption(fd);
 
   if (nullptr == context.get() || !context->status().ok()) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1215,7 +1218,7 @@ char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* l
       return nullptr;
     }
 
-    ssize_t n = encryptionFeature->readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    ssize_t n = encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -1748,7 +1751,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   else {
     std::string pv;
     if (TRI_GETENV("PATH", pv)) {
-      std::vector<std::string> files = basics::StringUtils::split(pv, ':', '\0');
+      std::vector<std::string> files = basics::StringUtils::split(pv, ':');
 
       for (auto const& prefix : files) {
         std::string full;
@@ -2255,14 +2258,15 @@ class SystemTempPathSweeper {
   std::string _systemTempPath;
 
  public:
-  SystemTempPathSweeper() : _systemTempPath(){};
+  SystemTempPathSweeper() : _systemTempPath() {}
 
-  ~SystemTempPathSweeper(void) {
+  ~SystemTempPathSweeper() {
     if (!_systemTempPath.empty()) {
       // delete directory iff directory is empty
       TRI_RMDIR(_systemTempPath.c_str());
     }
   }
+
   void init(const char* path) { _systemTempPath = path; }
 };
 
@@ -2320,16 +2324,23 @@ std::string TRI_GetTempPath() {
         // no --temp.path was specified
         // fill template and create directory
         tries = 9;
-  
+
         // create base directories of the new directory (but ignore any failures
         // if they already exist. if this fails, the following mkDTemp will either
         // succeed or fail and return an error
         try {
           long systemError;
           std::string systemErrorStr;
-          TRI_CreateRecursiveDirectory(SystemTempPath.get(), systemError, systemErrorStr);
+          std::string baseDirectory = TRI_Dirname(SystemTempPath.get());
+          if (baseDirectory.size() <= 1) {
+            baseDirectory = SystemTempPath.get();
+          }
+          // create base directory if it does not yet exist
+          TRI_CreateRecursiveDirectory(baseDirectory.data(), systemError, systemErrorStr);
         } catch (...) {}
 
+        // fill template string (XXXXXX) with some pseudo-random value and create
+        // the directory
         res = mkDTemp(SystemTempPath.get(), system.size() + 1);
       }
 
@@ -2434,7 +2445,11 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
 
 std::string TRI_LocateInstallDirectory(char const* argv0, char const* binaryPath) {
   std::string thisPath = TRI_LocateBinaryPath(argv0);
-  return TRI_GetInstallRoot(thisPath, binaryPath) + TRI_DIR_SEPARATOR_CHAR;
+  std::string ret = TRI_GetInstallRoot(thisPath, binaryPath);
+  if (ret.length() != 1 || ret != TRI_DIR_SEPARATOR_STR) {
+    ret += TRI_DIR_SEPARATOR_CHAR;
+  }
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2453,8 +2468,14 @@ std::string TRI_LocateConfigDirectory(char const* binaryPath) {
   }
 
   std::string r = TRI_LocateInstallDirectory(nullptr, binaryPath);
-
-  r += _SYSCONFDIR_;
+  std::string scDir =  _SYSCONFDIR_;
+  if (r.length() == 1 &&
+      r == TRI_DIR_SEPARATOR_STR &&
+      scDir[0] == TRI_DIR_SEPARATOR_CHAR) {
+    r = scDir;
+  } else {
+    r += _SYSCONFDIR_;
+  }
   r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
 
   return r;
@@ -2651,3 +2672,4 @@ bool TRI_GETENV(char const* which, std::string& value) {
   return true;
 #endif
 }
+

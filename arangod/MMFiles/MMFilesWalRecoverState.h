@@ -42,7 +42,8 @@ struct MMFilesWalRecoverState {
   MMFilesWalRecoverState& operator=(MMFilesWalRecoverState const&) = delete;
 
   /// @brief creates the recover state
-  explicit MMFilesWalRecoverState(bool ignoreRecoveryErrors, TRI_voc_tick_t& recoveryTick);
+  explicit MMFilesWalRecoverState(DatabaseFeature&, bool ignoreRecoveryErrors,
+                                  TRI_voc_tick_t& recoveryTick);
 
   /// @brief destroys the recover state
   ~MMFilesWalRecoverState();
@@ -169,7 +170,7 @@ struct MMFilesWalRecoverState {
   /// @brief fill the secondary indexes of all collections used in recovery
   int fillIndexes();
 
-  DatabaseFeature* databaseFeature;
+  DatabaseFeature& databaseFeature;
   std::unordered_map<TRI_voc_tid_t, std::pair<TRI_voc_tick_t, bool>> failedTransactions;
   std::unordered_set<TRI_voc_cid_t> droppedCollections;
   std::unordered_set<TRI_voc_cid_t> droppedViews;

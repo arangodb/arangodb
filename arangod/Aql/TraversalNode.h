@@ -66,7 +66,7 @@ class TraversalNode : public GraphNode {
 
     TraversalEdgeConditionBuilder(TraversalNode const*, TraversalEdgeConditionBuilder const*);
 
-    ~TraversalEdgeConditionBuilder() {}
+    ~TraversalEdgeConditionBuilder() = default;
 
     void toVelocyPack(arangodb::velocypack::Builder&, bool);
   };
@@ -98,7 +98,8 @@ class TraversalNode : public GraphNode {
   NodeType getType() const override final { return TRAVERSAL; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -113,7 +114,7 @@ class TraversalNode : public GraphNode {
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   /// @brief getVariablesUsedHere
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& result) const override final {
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& result) const override final {
     for (auto const& condVar : _conditionVariables) {
       if (condVar != getTemporaryVariable()) {
         result.emplace(condVar);
@@ -157,10 +158,10 @@ class TraversalNode : public GraphNode {
   std::string const getStartVertex() const { return _vertexId; }
 
   /// @brief remember the condition to execute for early traversal abortion.
-  void setCondition(Condition* condition);
+  void setCondition(std::unique_ptr<Condition> condition);
 
   /// @brief return the condition for the node
-  Condition* condition() const { return _condition; }
+  Condition* condition() const { return _condition.get(); }
 
   /// @brief which variable? -1 none, 0 Edge, 1 Vertex, 2 path
   int checkIsOutVariable(size_t variableId) const;
@@ -194,7 +195,7 @@ class TraversalNode : public GraphNode {
   Expression* pruneExpression() const { return _pruneExpression.get(); }
 
  private:
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
 
@@ -209,10 +210,10 @@ class TraversalNode : public GraphNode {
   std::string _vertexId;
 
   /// @brief early abort traversal conditions:
-  Condition* _condition;
+  std::unique_ptr<Condition> _condition;
 
   /// @brief variables that are inside of the condition
-  arangodb::HashSet<Variable const*> _conditionVariables;
+  ::arangodb::containers::HashSet<Variable const*> _conditionVariables;
 
   /// @brief The hard coded condition on _from
   AstNode* _fromCondition;
@@ -237,7 +238,7 @@ class TraversalNode : public GraphNode {
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
   /// @brief the hashSet for variables used in pruning
-  arangodb::HashSet<Variable const*> _pruneVariables;
+  ::arangodb::containers::HashSet<Variable const*> _pruneVariables;
 };
 
 }  // namespace aql

@@ -140,7 +140,7 @@ static void JS_DropIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   if (args.Length() != 1) {
     events::DropIndex(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
-    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-handle>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-id>)");
   }
 
   VPackBuilder builder;
@@ -213,8 +213,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
         "_create(<name>, <properties>, <type>, <options>)");
   }
 
-  if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseDatabase(vocbase.name(), auth::Level::RW)) {
+  if (!ExecContext::current().canUseDatabase(vocbase.name(), auth::Level::RW)) {
     events::CreateCollection(vocbase.name(), "", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
@@ -250,9 +249,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   // waitForSync can be 3. or 4. parameter
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>(
-      "Cluster");
-  bool createWaitsForSyncReplication = cluster->createWaitsForSyncReplication();
+  TRI_GET_GLOBALS();
+  auto& cluster = v8g->_server.getFeature<ClusterFeature>();
+  bool createWaitsForSyncReplication = cluster.createWaitsForSyncReplication();
   bool enforceReplicationFactor = true;
 
   if (args.Length() >= 3 && args[args.Length() - 1]->IsObject()) {
@@ -268,20 +267,23 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   v8::Handle<v8::Value> result;
+  std::shared_ptr<LogicalCollection> coll;
   auto res = methods::Collections::create(
-    vocbase, // collection vocbase
-    name, // collection name
-    collectionType, // collection type
-    propSlice, // collection properties
-    createWaitsForSyncReplication, // replication wait flag
+      vocbase,                        // collection vocbase
+      name,                           // collection name
+      collectionType,                 // collection type
+      propSlice,                      // collection properties
+      createWaitsForSyncReplication,  // replication wait flag
       enforceReplicationFactor,
-      [&isolate, &result](std::shared_ptr<LogicalCollection> const& coll) -> void {
-        TRI_ASSERT(coll);
-        result = WrapCollection(isolate, coll);
-      });
+      false,  // is new Database?, here always false
+      coll);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  if (coll) {
+    result = WrapCollection(isolate, coll);
   }
 
   TRI_V8_RETURN(result);

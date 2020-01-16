@@ -112,31 +112,46 @@ static int dumb_socketpair(SOCKET socks[2], int make_overlapped) {
 
   for (;;) {
     if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, (char*)&reuse,
-                   (socklen_t)sizeof(reuse)) == -1)
+                   (socklen_t)sizeof(reuse)) == -1) {
       break;
-    if (bind(listener, &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) break;
+    }
+    if (bind(listener, &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) {
+      break;
+    }
 
     memset(&a, 0, sizeof(a));
-    if (getsockname(listener, &a.addr, &addrlen) == SOCKET_ERROR) break;
+    if (getsockname(listener, &a.addr, &addrlen) == SOCKET_ERROR) {
+      break;
+    }
     // win32 getsockname may only set the port number, p=0.0005.
     // ( http://msdn.microsoft.com/library/ms738543.aspx ):
     a.inaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     a.inaddr.sin_family = AF_INET;
 
-    if (listen(listener, 1) == SOCKET_ERROR) break;
+    if (listen(listener, 1) == SOCKET_ERROR) {
+      break;
+    }
 
     socks[0] = WSASocketW(AF_INET, SOCK_STREAM, 0, NULL, 0, flags);
-    if (socks[0] == -1) break;
-    if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) break;
+    if (socks[0] == -1) {
+      break;
+    }
+    if (connect(socks[0], &a.addr, sizeof(a.inaddr)) == SOCKET_ERROR) {
+      break;
+    }
 
     socks[1] = accept(listener, NULL, NULL);
-    if (socks[1] == -1) break;
+    if (socks[1] == -1) {
+      break;
+    }
 
     closesocket(listener);
 
     u_long mode = 1;
     int res = ioctlsocket(socks[0], FIONBIO, &mode);
-    if (res != NO_ERROR) break;
+    if (res != NO_ERROR) {
+      break;
+    }
 
     return 0;
   }
@@ -462,7 +477,7 @@ void Communicator::createRequestInProgress(std::unique_ptr<NewRequest> newReques
     // should never happen that the key for the ticketId already exists
     // in the map
     auto result =
-        _handlesInProgress.emplace(ticketId, std::move(handleInProgress));
+        _handlesInProgress.try_emplace(ticketId, std::move(handleInProgress));
     TRI_ASSERT(result.second);
   }
   curl_multi_add_handle(_curl, handle);
@@ -506,7 +521,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   // defensive code:  intentionally not passing "this".  There is a
   //   possibility that Scheduler will execute the code after Communicator
   //   object destroyed.  use shared_from_this() if ever essential.
-  rip->_newRequest->_callbacks._scheduleMe([curlHandle, handle, rc, rip] { 
+  bool queued = rip->_newRequest->_callbacks._scheduleMe([curlHandle, handle, rc, rip] { 
     double connectTime = 0.0;
     LOG_TOPIC("44845", TRACE, Logger::COMMUNICATION)
         << ::buildPrefix(rip->_newRequest->_ticketId) << "curl rc is : " << rc << " after "
@@ -539,8 +554,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
         // take over ownership for _responseBody
-        auto response = std::make_unique<HttpResponse>(static_cast<ResponseCode>(httpStatusCode),
-                                                       std::move(rip->_responseBody));  
+        auto response = std::make_unique<HttpResponse>(static_cast<ResponseCode>(httpStatusCode), 1, std::move(rip->_responseBody));
         response->setHeaders(std::move(rip->_responseHeaders));
 
         if (httpStatusCode < 400) {
@@ -588,6 +602,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         break;
     }
   });
+
+  if (!queued) {
+    callErrorFn(rip, TRI_ERROR_QUEUE_FULL, {nullptr});
+  }
 }
 
 size_t Communicator::readBody(void* data, size_t size, size_t nitems, void* userp) {
@@ -685,7 +703,7 @@ size_t Communicator::readHeaders(char* buffer, size_t size, size_t nitems, void*
     // mop: hmm response needs lowercased headers
     std::string headerKey =
         basics::StringUtils::tolower(std::string(header.c_str(), pivot));
-    rip->_responseHeaders.emplace(std::move(headerKey),
+    rip->_responseHeaders.try_emplace(std::move(headerKey),
                                   header.substr(pivot + 2, header.length() - pivot - 4));
   }
   return realsize;

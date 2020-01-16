@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, prettyBytes, Backbone, templateEngine, $, window, _, nv, d3 */
+/* global frontendConfig, arangoHelper, prettyBytes, Backbone, templateEngine, $, window, _, nv, d3 */
 (function () {
   'use strict';
 
@@ -185,7 +185,8 @@
       if (typeof value === 'number') {
         $(id).html(value);
       } else if ($.isArray(value)) {
-        var a = value[0]; var b = value[1];
+        var a = value[0]; 
+        var b = value[1];
 
         var percent = 1 / (b / a) * 100;
         if (percent > 90) {
@@ -193,7 +194,11 @@
         } else if (percent > 70 && percent < 90) {
           warning = true;
         }
-        $(id).html(percent.toFixed(1) + ' %');
+        if (isNaN(percent)) {
+          $(id).html('n/a');
+        } else {
+          $(id).html(percent.toFixed(1) + ' %');
+        }
       } else if (typeof value === 'string') {
         $(id).html(value);
       }
@@ -534,8 +539,14 @@
     getCoordStatHistory: function (callback) {
       if (this.coordshortSuccess || this.coordshortSuccess === undefined || (Date.now() - this.coordshortTimestamp) / 1000 > 60) {
         this.coordshortSuccess = false;
+        var url = 'statistics/coordshort';
+
+        if (frontendConfig.react) {
+          url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
+        }
+
         $.ajax({
-          url: 'statistics/coordshort',
+          url: url,
           json: true
         })
           .success(function (data) {

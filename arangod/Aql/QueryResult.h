@@ -58,7 +58,7 @@ struct QueryResult {
       : result(std::move(res)),
         cached(false) {}
 
-  virtual ~QueryResult() {}
+  virtual ~QueryResult() = default;
 
   void reset(Result const& res) {
     result.reset(res);

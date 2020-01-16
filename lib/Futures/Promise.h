@@ -58,10 +58,13 @@ class Promise {
 
   Promise& operator=(Promise const&) = delete;
   Promise& operator=(Promise<T>&& o) noexcept {
-    detach();
-    _state = std::move(o._state);
-    _retrieved = o._retrieved;
-    o._state = nullptr;
+    if (this != &o) {
+      detach();
+      _state = std::move(o._state);
+      _retrieved = o._retrieved;
+      o._retrieved = false;
+      o._state = nullptr;
+    }
     return *this;
   }
 

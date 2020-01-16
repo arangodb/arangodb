@@ -236,12 +236,6 @@ int TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d);
 // string buffer with formatting routines
 // -----------------------------------------------------------------------------
 
-#ifdef STRING_BUFFER_MACROS
-
-#define STR(a) __STRING_##a
-
-#endif
-
 namespace arangodb {
 namespace basics {
 

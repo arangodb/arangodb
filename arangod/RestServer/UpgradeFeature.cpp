@@ -22,15 +22,29 @@
 
 #include "UpgradeFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/SupervisorFeature.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
+#endif
+#include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Pregel/PregelFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -43,14 +57,14 @@ using namespace arangodb::options;
 namespace arangodb {
 
 UpgradeFeature::UpgradeFeature(application_features::ApplicationServer& server,
-                               int* result, std::vector<std::string> const& nonServerFeatures)
+                               int* result, std::vector<std::type_index> const& nonServerFeatures)
     : ApplicationFeature(server, "Upgrade"),
       _upgrade(false),
       _upgradeCheck(true),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  startsAfter("AQLPhase");
+  startsAfter<AqlFeaturePhase>();
 }
 
 void UpgradeFeature::addTask(methods::Upgrade::Task&& task) {
@@ -71,68 +85,111 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
+/// @brief This external is buried in RestServer/arangod.cpp.
+///        Used to perform one last action upon shutdown.
+extern std::function<int()> * restartAction;
+
+#ifndef _WIN32
+static int upgradeRestart() {
+  unsetenv(StaticStrings::UpgradeEnvName.c_str());
+  return 0;
+}
+#endif
+
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+#ifndef _WIN32
+  // The following environment variable is another way to run a database
+  // upgrade. If the environment variable is set, the system does a database
+  // upgrade and then restarts itself without the environment variable.
+  // This is used in hotbackup if a restore to a backup happens which is from
+  // an older database version. The restore process sets the environment
+  // variable at runtime and then does a restore. After the restart (with
+  // the old data) the database upgrade is run and another restart is
+  // happening afterwards with the environment variable being cleared.
+  char* upgrade = getenv(StaticStrings::UpgradeEnvName.c_str());
+  if (upgrade != nullptr) {
+    _upgrade = true;
+    restartAction = new std::function<int()>();
+    *restartAction = upgradeRestart;
+    LOG_TOPIC("fdeae", INFO, Logger::STARTUP)
+        << "Detected environment variable " << StaticStrings::UpgradeEnvName
+        << " with value " << upgrade
+        << " will perform database auto-upgrade and immediately restart.";
+  }
+#endif
   if (_upgrade && !_upgradeCheck) {
     LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
            "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT();
   }
-
+  
   if (!_upgrade) {
     LOG_TOPIC("ed226", TRACE, arangodb::Logger::FIXME)
         << "executing upgrade check: not disabling server features";
     return;
   }
-
+    
   LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
-      << "executing upgrade procedure: disabling server features";
+        << "executing upgrade procedure: disabling server features";
 
-  ApplicationServer::forceDisableFeatures(_nonServerFeatures);
-  std::vector<std::string> otherFeaturesToDisable = {
-      "Bootstrap",
-      "Endpoint",
-  };
-  ApplicationServer::forceDisableFeatures(otherFeaturesToDisable);
+  // if we run the upgrade, we need to disable a few features that may get
+  // in the way...
+  if (ServerState::instance()->isCoordinator()) {
+    std::vector<std::type_index> otherFeaturesToDisable = {
+        std::type_index(typeid(DaemonFeature)),
+        std::type_index(typeid(GreetingsFeature)),
+        std::type_index(typeid(pregel::PregelFeature)),
+        std::type_index(typeid(SupervisorFeature))
+    };
+    server().forceDisableFeatures(otherFeaturesToDisable);
+  } else {
+    server().forceDisableFeatures(_nonServerFeatures);
+    std::vector<std::type_index> otherFeaturesToDisable = {
+        std::type_index(typeid(BootstrapFeature)),
+        std::type_index(typeid(HttpEndpointProvider))
+    };
+    server().forceDisableFeatures(otherFeaturesToDisable);
+  }
 
-  ReplicationFeature* replicationFeature =
-      ApplicationServer::getFeature<ReplicationFeature>("Replication");
-  replicationFeature->disableReplicationApplier();
+  ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
+  replicationFeature.disableReplicationApplier();
 
-  DatabaseFeature* database =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-  database->enableUpgrade();
+  DatabaseFeature& database = server().getFeature<DatabaseFeature>();
+  database.enableUpgrade();
 
-  ClusterFeature* cluster =
-      ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  cluster->forceDisable();
-  ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
+#ifdef USE_ENTERPRISE
+  HotBackupFeature& hotBackupFeature = server().getFeature<HotBackupFeature>();
+  hotBackupFeature.forceDisable();
+#endif
 }
 
 void UpgradeFeature::prepare() {
   // need to register tasks before creating any database
-  methods::Upgrade::registerTasks();
+  methods::Upgrade::registerTasks(*this);
 }
 
 void UpgradeFeature::start() {
-  auto init =
-      ApplicationServer::getFeature<InitDatabaseFeature>("InitDatabase");
-  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  auto& init = server().getFeature<InitDatabaseFeature>();
+  auth::UserManager* um = server().getFeature<AuthenticationFeature>().userManager();
 
   // upgrade the database
   if (_upgradeCheck) {
-    upgradeDatabase();
+    if (!ServerState::instance()->isCoordinator()) {
+      // no need to run local upgrades in the coordinator
+      upgradeLocalDatabase();
+    }
 
-    if (!init->restoreAdmin() && !init->defaultPassword().empty() && um != nullptr) {
+    if (!init.restoreAdmin() && !init.defaultPassword().empty() && um != nullptr) {
       um->updateUser("root", [&](auth::User& user) {
-        user.updatePassword(init->defaultPassword());
+        user.updatePassword(init.defaultPassword());
         return TRI_ERROR_NO_ERROR;
       });
     }
   }
 
   // change admin user
-  if (init->restoreAdmin() && ServerState::instance()->isSingleServerOrCoordinator()) {
+  if (init.restoreAdmin() && ServerState::instance()->isSingleServerOrCoordinator()) {
     Result res = um->removeAllUsers();
     if (res.fail()) {
       LOG_TOPIC("70922", ERR, arangodb::Logger::FIXME)
@@ -142,9 +199,9 @@ void UpgradeFeature::start() {
     }
 
     VPackSlice extras = VPackSlice::noneSlice();
-    res = um->storeUser(true, "root", init->defaultPassword(), true, extras);
+    res = um->storeUser(true, "root", init.defaultPassword(), true, extras);
     if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
-      res = um->storeUser(false, "root", init->defaultPassword(), true, extras);
+      res = um->storeUser(false, "root", init.defaultPassword(), true, extras);
     }
 
     if (res.fail()) {
@@ -161,29 +218,32 @@ void UpgradeFeature::start() {
   }
 
   // and force shutdown
-  if (_upgrade || init->isInitDatabase() || init->restoreAdmin()) {
-    if (init->isInitDatabase()) {
+  if (_upgrade || init.isInitDatabase() || init.restoreAdmin()) {
+    if (init.isInitDatabase()) {
       *_result = EXIT_SUCCESS;
     }
 
-    LOG_TOPIC("7da27", INFO, arangodb::Logger::STARTUP)
-        << "server will now shut down due to upgrade, database initialization "
-           "or admin restoration.";
+    if (!ServerState::instance()->isCoordinator() || !_upgrade) {
+      LOG_TOPIC("7da27", INFO, arangodb::Logger::STARTUP)
+          << "server will now shut down due to upgrade, database initialization "
+             "or admin restoration.";
 
-    server()->beginShutdown();
+      // in the non-coordinator case, we are already done now and will shut down.
+      // in the coordinator case, the actual upgrade is performed by the 
+      // ClusterUpgradeFeature, which is way later in the startup sequence.
+      server().beginShutdown();
+    }
   }
 }
 
-void UpgradeFeature::upgradeDatabase() {
+void UpgradeFeature::upgradeLocalDatabase() {
   LOG_TOPIC("05dff", TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
 
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
   bool ignoreDatafileErrors = false;
   {
-    VPackBuilder options = server()->options([](std::string const& name) {
+    VPackBuilder options = server().options([](std::string const& name) {
       return (name.find("database.ignore-datafile-errors") != std::string::npos);
     });
     VPackSlice s = options.slice();
@@ -192,8 +252,8 @@ void UpgradeFeature::upgradeDatabase() {
     }
   }
 
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
 
     auto res = methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);

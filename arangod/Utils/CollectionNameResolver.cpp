@@ -23,16 +23,17 @@
 
 #include "CollectionNameResolver.h"
 
-#include "Basics/Common.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
-  
+
 namespace {
 std::string const UNKNOWN("_unknown");
 }
@@ -70,6 +71,10 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(std::st
 //////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& name) const {
+  if (name.empty()) {
+    return 0;
+  }
+
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
     return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
@@ -82,7 +87,6 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& na
   }
 
   auto view = _vocbase.lookupView(name);
-
   if (view) {
     return view->id();
   }
@@ -101,6 +105,9 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
   if (!ServerState::isRunningInCluster(_serverRole)) {
     return getCollectionIdLocal(name);
   }
+  if (name.empty()) {
+    return 0;
+  }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
     TRI_voc_cid_t cid =
@@ -117,19 +124,18 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
 
   try {
     // We have to look up the collection info:
-    auto* ci = ClusterInfo::instance();
-
-    if (ci == nullptr) {
+    if (!_vocbase.server().hasFeature<ClusterFeature>()) {
       return 0;
     }
+    auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-    auto const cinfo = ci->getCollectionNT(_vocbase.name(), name);
+    auto const cinfo = ci.getCollectionNT(_vocbase.name(), name);
 
     if (cinfo != nullptr) {
       return cinfo->id();
     }
 
-    auto const vinfo = ci->getView(_vocbase.name(), name);
+    auto const vinfo = ci.getView(_vocbase.name(), name);
 
     if (vinfo) {
       return vinfo->id();
@@ -147,8 +153,10 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollectionStructCl
   }
 
   // We have to look up the collection info:
-  ClusterInfo* ci = ClusterInfo::instance();
-  return (ci) ? ci->getCollectionNT(_vocbase.name(), name) : nullptr;
+  return _vocbase.server().hasFeature<ClusterFeature>()
+             ? _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+                   _vocbase.name(), name)
+             : nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -226,9 +234,8 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
   int tries = 0;
 
   while (tries++ < 2) {
-    auto ci =
-        ClusterInfo::instance()->getCollectionNT(_vocbase.name(),
-                                                 arangodb::basics::StringUtils::itoa(cid));
+    auto ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+        _vocbase.name(), arangodb::basics::StringUtils::itoa(cid));
     if (ci != nullptr) {
       name = ci->name();
       {
@@ -239,7 +246,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(TRI_voc_cid_t cid) 
       return name;
     } else {
       // most likely collection not found. now try again
-      ClusterInfo::instance()->flush();
+      _vocbase.server().getFeature<ClusterFeature>().clusterInfo().flush();
     }
   }
 
@@ -296,17 +303,16 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(std::st
     ptr = _vocbase.lookupDataSource(nameOrId);
   } else {
     // cluster coordinator
-    auto* ci = ClusterInfo::instance();
-
-    if (ci == nullptr) {
+    if (!_vocbase.server().hasFeature<ClusterFeature>()) {
       return nullptr;
     }
+    auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-    ptr = ci->getCollectionNT(_vocbase.name(), nameOrId);
+    ptr = ci.getCollectionNT(_vocbase.name(), nameOrId);
 
     if (ptr == nullptr) {
       try {
-        ptr = ci->getView(_vocbase.name(), nameOrId);
+        ptr = ci.getView(_vocbase.name(), nameOrId);
       } catch (...) {
         LOG_TOPIC("426e6", ERR, arangodb::Logger::FIXME)
             << "caught exception while resolving cluster data-source: " << nameOrId;
@@ -392,16 +398,15 @@ std::string CollectionNameResolver::lookupName(TRI_voc_cid_t cid) const {
 
   // DBserver case of a shard:
   if (collection && collection->planId() != collection->id()) {
-    collection =
-        ClusterInfo::instance()->getCollectionNT(collection->vocbase().name(),
-                                                 std::to_string(collection->planId()));
+    collection = _vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+        collection->vocbase().name(), std::to_string(collection->planId()));
   }
 
   // can be empty, if collection unknown
   if (collection != nullptr && !collection->name().empty()) {
     return collection->name();
   }
-  
+
   return ::UNKNOWN;
 }
 

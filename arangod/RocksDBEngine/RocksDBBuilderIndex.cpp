@@ -22,9 +22,10 @@
 
 #include "RocksDBBuilderIndex.h"
 
-#include "Basics/HashSet.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -71,7 +72,7 @@ struct BuilderTrx : public arangodb::transaction::Methods {
 
 struct BuilderCookie : public arangodb::TransactionState::Cookie {
   // do not track removed documents twice
-  arangodb::HashSet<LocalDocumentId::BaseType> tracked;
+  ::arangodb::containers::HashSet<LocalDocumentId::BaseType> tracked;
 };
 }  // namespace
 
@@ -178,6 +179,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
   Result res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -214,16 +216,17 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
           ridx.estimator()->remove(hash);
         }
       } else {
+        uint64_t seq = rootDB->GetLatestSequenceNumber();
         // since cuckoo estimator uses a map with seq as key we need to 
-        ridx.estimator()->bufferUpdates(1, std::move(it->second.inserts),
-                                           std::move(it->second.removals));
+        ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
+                                             std::move(it->second.removals));
       }
     }
   };
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
-    if (application_features::ApplicationServer::isStopping()) {
+    if (ridx.collection().vocbase().server().isStopping()) {
       res.reset(TRI_ERROR_SHUTTING_DOWN);
       break;
     }
@@ -298,7 +301,7 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       : _objectId(oid), _index(idx), _trx(trx), _methods(methods) {}
 
   bool Continue() override {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (_index.collection().vocbase().server().isStopping()) {
       tmpRes.reset(TRI_ERROR_SHUTTING_DOWN);
     }
     return tmpRes.ok();
@@ -498,9 +501,10 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   s = iterator->status();
-  // we can ignore it if we get a try again when we have exclusive access,
-  // because that indicates a write to another collection
-  if (!s.ok() && res.ok() && !(haveExclusiveAccess && s.IsTryAgain())) {
+  // we can ignore it if we get a try again return value, because that either
+  // indicates a write to another collection, or a write to this collection if
+  // we are not in exclusive mode, in which case we will call catchup again
+  if (!s.ok() && res.ok() && !s.IsTryAgain()) {
     LOG_TOPIC("8e3a4", WARN, Logger::ENGINES) << "iterator error '" <<
       s.ToString() << "'";
     res = rocksutils::convertStatus(s);

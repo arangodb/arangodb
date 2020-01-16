@@ -383,6 +383,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING:
     case TRI_ERROR_QUERY_NOT_FOUND:
     case TRI_ERROR_USER_NOT_FOUND:
+    case TRI_ERROR_TRANSACTION_NOT_FOUND:
     case TRI_ERROR_TASK_NOT_FOUND:
     case TRI_ERROR_GRAPH_NOT_FOUND:
     case TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST:
@@ -440,8 +441,9 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
   }
 }
 
-GeneralResponse::GeneralResponse(ResponseCode responseCode)
-    : _responseCode(responseCode),
+GeneralResponse::GeneralResponse(ResponseCode responseCode, uint64_t mid)
+    : _messageId(mid),
+      _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _contentTypeRequested(ContentType::UNSET),
       _generateBody(false),

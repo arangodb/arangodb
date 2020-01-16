@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/ManagerTasks.h"
-#include "Basics/Common.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
@@ -33,7 +32,7 @@ FreeMemoryTask::FreeMemoryTask(Manager::TaskEnvironment environment,
                                Manager* manager, std::shared_ptr<Cache> cache)
     : _environment(environment), _manager(manager), _cache(cache) {}
 
-FreeMemoryTask::~FreeMemoryTask() {}
+FreeMemoryTask::~FreeMemoryTask() = default;
 
 bool FreeMemoryTask::dispatch() {
   _manager->prepareTask(_environment);
@@ -62,7 +61,7 @@ MigrateTask::MigrateTask(Manager::TaskEnvironment environment, Manager* manager,
                          std::shared_ptr<Cache> cache, std::shared_ptr<Table> table)
     : _environment(environment), _manager(manager), _cache(cache), _table(table) {}
 
-MigrateTask::~MigrateTask() {}
+MigrateTask::~MigrateTask() = default;
 
 bool MigrateTask::dispatch() {
   _manager->prepareTask(_environment);

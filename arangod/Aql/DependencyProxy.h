@@ -23,24 +23,25 @@
 #ifndef ARANGOD_AQL_BLOCK_FETCHER_H
 #define ARANGOD_AQL_BLOCK_FETCHER_H
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
-#include "Basics/Exceptions.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/types.h"
 
 #include <memory>
 #include <queue>
+#include <unordered_set>
 #include <utility>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
+class ExecutionBlock;
+class AqlItemBlockManager;
 
 /**
  * @brief Thin interface to access the methods of ExecutionBlock that are
  * necessary for the row Fetchers. Makes it easier to test the Fetchers.
  */
-template <bool allowBlockPassthrough>
+template <BlockPassthrough allowBlockPassthrough>
 class DependencyProxy {
  public:
   /**
@@ -67,89 +68,67 @@ class DependencyProxy {
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
                   std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-                  RegisterId nrInputRegisters)
-      : _dependencies(dependencies),
-        _itemBlockManager(itemBlockManager),
-        _inputRegisters(std::move(inputRegisters)),
-        _nrInputRegisters(nrInputRegisters),
-        _blockQueue(),
-        _blockPassThroughQueue(),
-        _currentDependency(0),
-        _skipped(0) {}
+                  RegisterId nrInputRegisters,
+                  velocypack::Options const*);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // This fetches a block from the given dependency.
   // NOTE: It is not allowed to be used in conjunction with prefetching
   // of blocks and will work around the blockQueue
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
+      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize);
+
+  // See comment on fetchBlockForDependency().
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSomeForDependency(
+      size_t dependency, size_t atMost);
 
   // TODO enable_if<allowBlockPassthrough>
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost);
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
-  TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
-    return _nrInputRegisters;
-  }
+  [[nodiscard]] TEST_VIRTUAL RegisterId getNrInputRegisters() const;
 
   // Tries to fetch a block from upstream and push it, wrapped, onto
   // _blockQueue. If it succeeds, it returns HASMORE (the returned state
   // regards the _blockQueue). If it doesn't it's either because
   //  - upstream returned WAITING - then so does prefetchBlock().
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
-  ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
+  [[nodiscard]] ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
-  TEST_VIRTUAL inline size_t numberDependencies() const {
-    return _dependencies.size();
-  }
+  [[nodiscard]] TEST_VIRTUAL size_t numberDependencies() const;
 
-  inline void reset() {
-    _blockQueue.clear();
-    _blockPassThroughQueue.clear();
-    _currentDependency = 0;
-    // We shouldn't be in a half-skipped state when reset is called
-    TRI_ASSERT(_skipped == 0);
-    _skipped = 0;
-  }
+  void reset();
+
+  void setDistributeId(std::string const& distId) { _distributeId = distId; }
+
+  [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
 
  protected:
-  inline AqlItemBlockManager& itemBlockManager() { return _itemBlockManager; }
-  inline AqlItemBlockManager const& itemBlockManager() const {
-    return _itemBlockManager;
-  }
+  [[nodiscard]] AqlItemBlockManager& itemBlockManager();
+  [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;
 
-  inline ExecutionBlock& upstreamBlock() {
-    return upstreamBlockForDependency(_currentDependency);
-  }
+  [[nodiscard]] ExecutionBlock& upstreamBlock();
 
-  inline ExecutionBlock& upstreamBlockForDependency(size_t index) {
-    TRI_ASSERT(_dependencies.size() > index);
-    return *_dependencies[index];
-  }
+  [[nodiscard]] ExecutionBlock& upstreamBlockForDependency(size_t index);
 
  private:
-  inline bool advanceDependency() {
-    if (_currentDependency + 1 >= _dependencies.size()) {
-      return false;
-    }
-    _currentDependency++;
-    return true;
-  }
+  [[nodiscard]] bool advanceDependency();
 
  private:
   std::vector<ExecutionBlock*> const& _dependencies;
   AqlItemBlockManager& _itemBlockManager;
   std::shared_ptr<std::unordered_set<RegisterId> const> const _inputRegisters;
   RegisterId const _nrInputRegisters;
+  std::string _distributeId;
 
   // A queue would suffice, but for the clear() call in reset().
   std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockQueue;
@@ -158,9 +137,9 @@ class DependencyProxy {
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
   size_t _skipped;
+  velocypack::Options const* const _vpackOptions;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_BLOCK_FETCHER_H

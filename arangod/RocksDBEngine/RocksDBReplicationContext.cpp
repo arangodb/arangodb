@@ -182,7 +182,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   TRI_ASSERT(_snapshot != nullptr);
 
   auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
-  auto result = _iterators.emplace(cid, std::move(iter));
+  auto result = _iterators.try_emplace(cid, std::move(iter));
   TRI_ASSERT(result.second);
 
   CollectionIterator* cIter = result.first->second.get();
@@ -636,13 +636,13 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
-  auto buffer = b.buffer();
+  auto& buffer = b.bufferRef();
   bool hasMore = true;
   b.openArray(true);
   size_t oldPos = from;
   size_t offset = 0;
 
-  for (auto const& it : VPackArrayIterator(ids)) {
+  for (VPackSlice it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       return rv.reset(TRI_ERROR_BAD_PARAMETER);
     }
@@ -693,7 +693,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         hasMore = cIter->hasMore();
       }
 
-      if (buffer->byteSize() > maxChunkSize) {
+      if (buffer.byteSize() > maxChunkSize) {
         // result is big enough so that we abort prematurely
         full = true;
       }
@@ -906,7 +906,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
 
     if (nullptr != logical) {
       auto result =
-          _iterators.emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
+          _iterators.try_emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
                                                                        _snapshot));
 
       if (result.second) {

@@ -26,7 +26,9 @@
 #include <mutex>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 
 using namespace arangodb;
 
@@ -38,7 +40,9 @@ using namespace arangodb;
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
-  transaction::Manager tm(false);
+  application_features::ApplicationServer server{nullptr, nullptr};
+  transaction::ManagerFeature feature(server);
+  transaction::Manager tm(feature, false);
 
   EXPECT_EQ(tm.getActiveTransactionCount(), 0);
   EXPECT_TRUE(tm.holdTransactions(500) );
@@ -55,7 +59,9 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_overlapping) {
-  transaction::Manager tm(false);
+  application_features::ApplicationServer server{nullptr, nullptr};
+  transaction::ManagerFeature feature(server);
+  transaction::Manager tm(feature, false);
 
   std::chrono::milliseconds five(5);
   std::mutex mu;

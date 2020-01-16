@@ -317,19 +317,16 @@ void Logger::log(char const* function, char const* file, int line,
   }
 #endif
 
-  if (!_active.load(std::memory_order_relaxed)) {
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, message.data(), message.size(), true);
-    return;
-  }
+  std::string out;
+  out.reserve(64 + message.size());
 
-  std::stringstream out;
   LogTimeFormats::writeTime(out, _timeFormat);
-  out << ' ';
+  out.push_back(' ');
 
   // output prefix
   if (!_outputPrefix.empty()) {
-    out << _outputPrefix << ' ';
+    out.append(_outputPrefix);
+    out.push_back(' ');
   }
 
   // append the process / thread identifier
@@ -343,10 +340,12 @@ void Logger::log(char const* function, char const* file, int line,
     _cachedPid = Thread::currentProcessId();
   }
   TRI_ASSERT(_cachedPid != 0);
-  out << '[' << _cachedPid;
+  out.push_back('[');
+  StringUtils::itoa(uint64_t(_cachedPid), out);
 
   if (_showThreadIdentifier) {
-    out << '-' << Thread::currentThreadNumber();
+    out.push_back('-');
+    StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
   }
 
   // log thread name
@@ -356,17 +355,20 @@ void Logger::log(char const* function, char const* file, int line,
       threadName = "main";
     }
 
-    out << '-' << threadName;
+    out.push_back('-');
+    out.append(threadName);
   }
 
-  out << "] ";
+  out.append("] ", 2);
 
   if (_showRole && _role != '\0') {
-    out << _role << ' ';
+    out.push_back(_role);
+    out.push_back(' ');
   }
 
   // log level
-  out << Logger::translateLogLevel(level) << ' ';
+  out.append(Logger::translateLogLevel(level));
+  out.push_back(' ');
 
   // check if we must display the line number
   if (_showLineNumber && file != nullptr && function != nullptr) {
@@ -379,38 +381,54 @@ void Logger::log(char const* function, char const* file, int line,
         filename = shortened + 1;
       }
     }
-    out << '[' << function << "@" << filename << ':' << line << "] ";
+    out.push_back('[');
+    out.append(function);
+    out.push_back('@');
+    out.append(filename);
+    out.push_back(':');
+    StringUtils::itoa(uint64_t(line), out);
+    out.append("] ", 2);
   }
 
   // generate the complete message
-  out << message;
-  std::string ostreamContent = out.str();
-  size_t offset = ostreamContent.size() - message.size();
-  auto msg = std::make_unique<LogMessage>(level, topicId, std::move(ostreamContent), offset);
+  out.append(message);
+ 
+  if (!_active.load(std::memory_order_relaxed)) {
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                          level, out.data(), out.size(), true);
+    return;
+  }
+
+  size_t offset = out.size() - message.size();
+  auto msg = std::make_unique<LogMessage>(level, topicId, std::move(out), offset);
 
   // now either queue or output the message
+  bool handled = false;
   if (_threaded) {
     try {
-      _loggingThread->log(msg);
-      bool const isDirectLogLevel =
-          (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
-      if (isDirectLogLevel) {
-        _loggingThread->flush();
+      handled = _loggingThread->log(msg);
+      if (handled) {
+        bool const isDirectLogLevel =
+            (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+        if (isDirectLogLevel) {
+          _loggingThread->flush();
+        }
       }
-      return;
     } catch (...) {
       // fall-through to non-threaded logging
     }
   }
 
-  LogAppender::log(msg.get());
+  if (!handled) {
+    LogAppender::log(msg.get());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(bool threaded) {
+void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
   MUTEX_LOCKER(locker, _initializeMutex);
 
   if (_active) {
@@ -425,7 +443,7 @@ void Logger::initialize(bool threaded) {
   _threaded = threaded;
 
   if (threaded) {
-    _loggingThread = std::make_unique<LogThread>("Logging");
+    _loggingThread = std::make_unique<LogThread>(server, "Logging");
     _loggingThread->start();
   }
 }

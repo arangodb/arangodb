@@ -23,6 +23,7 @@
 
 #include "RestQueryHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/StringUtils.h"
@@ -40,8 +41,9 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestQueryHandler::RestQueryHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestQueryHandler::RestQueryHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestQueryHandler::execute() {
   // extract the sub-request type
@@ -149,7 +151,7 @@ bool RestQueryHandler::readQuery() {
   return true;
 }
 
-bool RestQueryHandler::deleteQuerySlow() {
+void RestQueryHandler::deleteQuerySlow() {
   auto queryList = _vocbase.queryList();
   queryList->clearSlow();
 
@@ -161,18 +163,16 @@ bool RestQueryHandler::deleteQuerySlow() {
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
-
-  return true;
 }
 
-bool RestQueryHandler::deleteQuery(std::string const& name) {
+void RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
   auto queryList = _vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
-  auto res = queryList->kill(id);
+  Result res = queryList->kill(id);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add(StaticStrings::Error, VPackValue(false));
@@ -181,29 +181,28 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
 
     generateResult(rest::ResponseCode::OK, result.slice());
   } else {
-    generateError(GeneralResponse::responseCode(res), res,
-                  "cannot kill query '" + name + "': " + TRI_errno_string(res));
+    generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(),
+                  "cannot kill query '" + name + "': " + res.errorMessage());
   }
-
-  return true;
 }
 
 /// @brief interrupts a query
-bool RestQueryHandler::deleteQuery() {
+void RestQueryHandler::deleteQuery() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/query/<id> or /_api/query/slow");
-    return true;
+    return;
   }
 
   auto const& name = suffixes[0];
 
   if (name == "slow") {
-    return deleteQuerySlow();
+    deleteQuerySlow();
+  } else {
+    deleteQuery(name);
   }
-  return deleteQuery(name);
 }
 
 bool RestQueryHandler::replaceProperties() {
@@ -217,9 +216,8 @@ bool RestQueryHandler::replaceProperties() {
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return true;
   }
 
@@ -349,22 +347,26 @@ bool RestQueryHandler::parseQuery() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestQueryHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
-    return 0;
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     uint64_t tid = basics::StringUtils::uint64(value);
     if (!transaction::isCoordinatorTransactionId(tid)) {
       TRI_ASSERT(transaction::isLegacyTransactionId(tid));
-      return 0;
+      return {std::make_pair(StaticStrings::Empty, false)};
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
-    return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+    if (sourceServer == ServerState::instance()->getShortId()) {
+      return {std::make_pair(StaticStrings::Empty, false)};
+    }
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
   }
 
-  return 0;
+  return {std::make_pair(StaticStrings::Empty, false)};
 }

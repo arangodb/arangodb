@@ -556,9 +556,9 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
            * This vertex is a global leader. Set Membership degree to
            * 100%
            */
-          vertexState->membershipDegree.emplace(_id, 1.0f);
+          vertexState->membershipDegree.try_emplace(_id, 1.0f);
         } else {
-          vertexState->membershipDegree.emplace(_id, 0.0f);
+          vertexState->membershipDegree.try_emplace(_id, 0.0f);
         }
       }
     });
@@ -576,21 +576,13 @@ VertexComputation<DMIDValue, float, DMIDMessage>* DMID::createComputation(Worker
 
 struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
   const std::string _resultField;
-  uint64_t _vertexIdRange = 0;
   unsigned _maxCommunities;
 
-  explicit DMIDGraphFormat(std::string const& result, unsigned mc)
-      : _resultField(result), _maxCommunities(mc) {}
-
-  void willLoadVertices(uint64_t count) override {
-    // if we aren't running in a cluster it doesn't matter
-    if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
-      if (ci) {
-        _vertexIdRange = ci->uniqid(count);
-      }
-    }
-  }
+  explicit DMIDGraphFormat(application_features::ApplicationServer& server,
+                           std::string const& result, unsigned mc)
+      : GraphFormat<DMIDValue, float>(server),
+        _resultField(result),
+        _maxCommunities(mc) {}
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                         DMIDValue& value) override {
@@ -653,7 +645,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
 };
 
 GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
-  return new DMIDGraphFormat(_resultField, _maxCommunities);
+  return new DMIDGraphFormat(_server, _resultField, _maxCommunities);
 }
 
 struct DMIDMasterContext : public MasterContext {

@@ -31,7 +31,12 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
 #include "Rest/CommonDefines.h"
+
+#ifdef USE_ENTERPRISE
+#include "Auth/Handler.h"
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -57,9 +62,10 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// exist on coordinators and single servers.
 class UserManager {
  public:
-  explicit UserManager();
+  explicit UserManager(application_features::ApplicationServer&);
 #ifdef USE_ENTERPRISE
-  explicit UserManager(std::unique_ptr<arangodb::auth::Handler>);
+  explicit UserManager(application_features::ApplicationServer&,
+                       std::unique_ptr<arangodb::auth::Handler>);
 #endif
   ~UserManager() = default;
 
@@ -89,6 +95,9 @@ class UserManager {
 
   /// Trigger eventual reload on all other coordinators (and in TokenCache)
   void triggerGlobalReload();
+
+  /// Trigger cache revalidation after user restore
+  void triggerCacheRevalidation();
 
   /// Create the root user with a default password, will fail if the user
   /// already exists. Only ever call if you can guarantee to be in charge
@@ -157,6 +166,9 @@ class UserManager {
   Result storeUserInternal(auth::User const& user, bool replace);
 
  private:
+  /// underlying application server
+  application_features::ApplicationServer& _server;
+
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
   Mutex _loadFromDBLock;

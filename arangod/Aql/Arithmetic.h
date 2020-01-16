@@ -24,11 +24,7 @@
 #ifndef ARANGOD_AQL_ARITHMETIC_H
 #define ARANGOD_AQL_ARITHMETIC_H 1
 
-#include <algorithm>
-#include <limits>
 #include <string>
-
-#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -36,49 +32,16 @@ namespace aql {
 double stringToNumber(std::string const& value, bool& failed) noexcept;
 
 template <typename T>
-bool isUnsafeAddition(T l, T r) {
-  return ((r > 0 && l > (std::numeric_limits<T>::max)() - r) ||
-          (r < 0 && l < (std::numeric_limits<T>::min)() - r));
-}
+bool isUnsafeAddition(T l, T r);
 
 template <typename T>
-bool isUnsafeSubtraction(T l, T r) {
-  return ((r > 0 && l < (std::numeric_limits<T>::min)() + r) ||
-          (r < 0 && l > (std::numeric_limits<T>::max)() + r));
-}
+bool isUnsafeSubtraction(T l, T r);
 
 template <typename T>
-bool isUnsafeMultiplication(T l, T r) {
-  if (l > 0) {
-    if (r > 0) {
-      if (l > ((std::numeric_limits<T>::max)() / r)) {
-        return true;
-      }
-    } else {
-      if (r < ((std::numeric_limits<T>::min)() / l)) {
-        return true;
-      }
-    }
-  } else {
-    if (r > 0) {
-      if (l < ((std::numeric_limits<T>::min)() / r)) {
-        return true;
-      }
-    } else {
-      if ((l != 0) && (r < ((std::numeric_limits<T>::max)() / l))) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
+bool isUnsafeMultiplication(T l, T r);
 
 template <typename T>
-bool isUnsafeDivision(T l, T r) {
-  // note: the caller still has to check whether r is zero (division by zero)
-  return (l == (std::numeric_limits<T>::min)() && r == -1);
-}
+bool isUnsafeDivision(T l, T r);
 
 }  // namespace aql
 }  // namespace arangodb

@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestAqlUserFunctionsHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestAqlUserFunctionsHandler(GeneralRequest*, GeneralResponse*);
+  RestAqlUserFunctionsHandler(application_features::ApplicationServer&,
+                              GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final {

@@ -53,7 +53,7 @@ function runSetup () {
     c.save({ _key: 'foo' });
   } catch (err) {}
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

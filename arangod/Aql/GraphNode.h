@@ -25,8 +25,15 @@
 #define ARANGOD_AQL_GRAPH_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
+
+#include <map>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 
@@ -60,37 +67,40 @@ class GraphNode : public ExecutionNode {
             std::vector<TRI_edge_direction_e> const& directions,
             std::unique_ptr<graph::BaseOptions> options);
 
- public:
-  virtual ~GraphNode();
+  std::string const& collectionToShardName(std::string const& collName) const;
 
-  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags) const override;
+ public:
+  ~GraphNode() override;
+
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
   /// @brief flag, if smart traversal (enterprise edition only!) is done
-  bool isSmart() const { return _isSmart; }
+  bool isSmart() const;
 
   /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TRI_vocbase_t* vocbase() const;
 
   /// @brief return the vertex out variable
-  Variable const* vertexOutVariable() const { return _vertexOutVariable; }
+  Variable const* vertexOutVariable() const;
 
   /// @brief checks if the vertex out variable is used
-  bool usesVertexOutVariable() const { return _vertexOutVariable != nullptr; }
+  bool usesVertexOutVariable() const;
 
   /// @brief set the vertex out variable
-  void setVertexOutput(Variable const* outVar) { _vertexOutVariable = outVar; }
+  void setVertexOutput(Variable const* outVar);
 
   /// @brief return the edge out variable
-  Variable const* edgeOutVariable() const { return _edgeOutVariable; }
+  Variable const* edgeOutVariable() const;
 
   /// @brief checks if the edge out variable is used
-  bool usesEdgeOutVariable() const { return _edgeOutVariable != nullptr; }
+  bool usesEdgeOutVariable() const;
 
   /// @brief set the edge out variable
-  void setEdgeOutput(Variable const* outVar) { _edgeOutVariable = outVar; }
+  void setEdgeOutput(Variable const* outVar);
 
   /// @brief Compute the shortest path options containing the expressions
   ///        MUST! be called after optimization and before creation
@@ -116,18 +126,20 @@ class GraphNode : public ExecutionNode {
   /// @brief Returns a reference to the engines. (CLUSTER ONLY)
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines() const;
 
-  std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const {
-    return _edgeColls;
-  }
+  std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const;
 
-  std::vector<std::unique_ptr<aql::Collection>> const& vertexColls() const {
-    return _vertexColls;
-  }
+  std::vector<std::unique_ptr<aql::Collection>> const& vertexColls() const;
 
   virtual void getConditionVariables(std::vector<Variable const*>&) const;
 
   /// @brief return any of the collections
   Collection const* collection() const;
+
+  void injectVertexCollection(aql::Collection const* other);
+
+  std::vector<aql::Collection const*> const collections() const;
+  void setCollectionToShard(std::map<std::string, std::string> const& map) { _collectionToShard = map; }
+  void addCollectionToShard(std::string const& coll, std::string const& shard) { _collectionToShard.emplace(coll,shard); }
 
  private:
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
@@ -160,7 +172,8 @@ class GraphNode : public ExecutionNode {
   /// @brief the edge collection names
   std::vector<std::unique_ptr<aql::Collection>> _edgeColls;
 
-  /// @brief the vertex collection names
+  /// @brief the vertex collection names (can also be edge collections
+  /// as an edge can also point to another edge, instead of a vertex).
   std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
 
   /// @brief The default direction given in the query
@@ -182,6 +195,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief flag, if graph is smart (enterprise edition only!)
   bool _isSmart;
+
+  /// @brief list of shards involved, requried for one-shard-databases
+  std::map<std::string, std::string> _collectionToShard;
 };
 
 }  // namespace aql

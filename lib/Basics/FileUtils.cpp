@@ -128,7 +128,10 @@ std::string buildFilename(char const* path, char const* name) {
   std::string result(path);
 
   if (!result.empty()) {
-    result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
+    result = removeTrailingSeparator(result);
+    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
+      result += TRI_DIR_SEPARATOR_CHAR;
+    }
   }
 
   if (!result.empty() && *name == TRI_DIR_SEPARATOR_CHAR) {
@@ -147,7 +150,10 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   std::string result(path);
 
   if (!result.empty()) {
-    result = removeTrailingSeparator(result) + TRI_DIR_SEPARATOR_CHAR;
+    result = removeTrailingSeparator(result);
+    if (result.length() != 1 || result[0] != TRI_DIR_SEPARATOR_CHAR) {
+      result += TRI_DIR_SEPARATOR_CHAR;
+    }
   }
 
   if (!result.empty() && !name.empty() && name[0] == TRI_DIR_SEPARATOR_CHAR) {
@@ -477,7 +483,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
         if (isSubDirectory(src)) {
           long systemError;
           int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
-          if (rc != TRI_ERROR_NO_ERROR) {
+          if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
             rc_bool = false;
             break;
           }

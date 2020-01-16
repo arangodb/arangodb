@@ -4,7 +4,7 @@
 %defines
 %parse-param { arangodb::aql::Parser* parser }
 %lex-param { void* scanner }
-%error-verbose
+%define parse.error verbose
 
 %{
 // we are using alloca here explicitly because we may
@@ -68,12 +68,12 @@ void Aqlerror(YYLTYPE* locp,
 /// introduced by the COLLECT itself, in which case it would fail
 static void CheckIntoVariables(Parser* parser, AstNode const* expression,
                                int line, int column,
-                               arangodb::HashSet<Variable const*> const& variablesIntroduced) {
+                               ::arangodb::containers::HashSet<Variable const*> const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
 
-  arangodb::HashSet<Variable const*> varsInAssignment;
+  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
   Ast::getReferencedVariables(expression, varsInAssignment);
 
   for (auto const& it : varsInAssignment) {
@@ -88,9 +88,9 @@ static void CheckIntoVariables(Parser* parser, AstNode const* expression,
 /// @brief register variables in the scope
 static void RegisterAssignVariables(Parser* parser, arangodb::aql::Scopes* scopes,
                                     int line, int column,
-                                    arangodb::HashSet<Variable const*>& variablesIntroduced,
+                                    ::arangodb::containers::HashSet<Variable const*>& variablesIntroduced,
                                     AstNode const* vars) {
-  arangodb::HashSet<Variable const*> varsInAssignment;
+  ::arangodb::containers::HashSet<Variable const*> varsInAssignment;
 
   size_t const n = vars->numMembers();
 
@@ -256,7 +256,6 @@ static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_NOT "not operator"
 %token T_AND "and operator"
 %token T_OR "or operator"
-%token T_NIN "not in operator"
 
 %token T_REGEX_MATCH "~= operator"
 %token T_REGEX_NON_MATCH "~! operator"
@@ -309,12 +308,12 @@ static AstNode* TransformOutputVariables(Parser* parser, AstNode const* names) {
 %left T_AND
 %nonassoc T_OUTBOUND T_INBOUND T_ANY T_ALL T_NONE
 %left T_EQ T_NE T_LIKE T_REGEX_MATCH T_REGEX_NON_MATCH
-%left T_IN T_NIN
+%left T_IN T_NOT 
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
 %left T_PLUS T_MINUS
 %left T_TIMES T_DIV T_MOD
-%right UMINUS UPLUS T_NOT
+%right UMINUS UPLUS UNEGATION
 %left FUNCCALL
 %left REFERENCE
 %left INDEXED
@@ -570,7 +569,6 @@ prune_and_options:
       node->addMember($2);
       // Options
       node->addMember($4);
-
     }
   ;
 
@@ -712,6 +710,15 @@ for_statement:
     } prune_and_options {
       auto graphInfoNode = static_cast<AstNode*>(parser->popStack());
       auto variablesNode = static_cast<AstNode*>(parser->popStack());
+
+      auto prune = graphInfoNode->getMember(3);
+      if (prune != nullptr) {
+        Ast::traverseReadOnly(prune, [&](AstNode const* node) {
+          if (node->type == NODE_TYPE_REFERENCE && node->hasFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE)) {
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "prune condition must not use a subquery", yylloc.first_line, yylloc.first_column);
+          }
+        });
+      }
       auto node = parser->ast()->createNodeTraversal(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
@@ -820,7 +827,7 @@ collect_statement:
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
-        arangodb::HashSet<Variable const*> variables;
+        ::arangodb::containers::HashSet<Variable const*> variables;
         RegisterAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
       }
 
@@ -829,7 +836,7 @@ collect_statement:
     }
   | T_COLLECT aggregate collect_optional_into options {
       /* AGGREGATE var = expr OPTIONS ... */
-      arangodb::HashSet<Variable const*> variablesIntroduced;
+      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -853,7 +860,7 @@ collect_statement:
     }
   | collect_variable_list aggregate collect_optional_into options {
       /* COLLECT var = expr AGGREGATE var = expr OPTIONS ... */
-      arangodb::HashSet<Variable const*> variablesIntroduced;
+      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -870,7 +877,7 @@ collect_statement:
       }
 
       // note all group variables
-      arangodb::HashSet<Variable const*> groupVars;
+      ::arangodb::containers::HashSet<Variable const*> groupVars;
       size_t n = $1->numMembers();
       for (size_t i = 0; i < n; ++i) {
         auto member = $1->getMember(i);
@@ -888,7 +895,7 @@ collect_statement:
 
         if (member != nullptr) {
           TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
-          arangodb::HashSet<Variable const*> variablesUsed;
+          ::arangodb::containers::HashSet<Variable const*> variablesUsed;
           Ast::getReferencedVariables(member->getMember(1), variablesUsed);
 
           for (auto& it : groupVars) {
@@ -909,7 +916,7 @@ collect_statement:
     }
   | collect_variable_list collect_optional_into options {
       /* COLLECT var = expr INTO var OPTIONS ... */
-      arangodb::HashSet<Variable const*> variablesIntroduced;
+      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -928,7 +935,7 @@ collect_statement:
     }
   | collect_variable_list collect_optional_into keep options {
       /* COLLECT var = expr INTO var KEEP ... OPTIONS ... */
-      arangodb::HashSet<Variable const*> variablesIntroduced;
+      ::arangodb::containers::HashSet<Variable const*> variablesIntroduced;
       auto scopes = parser->ast()->scopes();
 
       if (StartCollectScope(scopes)) {
@@ -1333,7 +1340,7 @@ operator_unary:
   | T_MINUS expression %prec UMINUS {
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_MINUS, $2);
     }
-  | T_NOT expression %prec T_NOT {
+  | T_NOT expression %prec UNEGATION {
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, $2);
     }
   ;
@@ -1381,8 +1388,28 @@ operator_binary:
   | expression T_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, $1, $3);
     }
-  | expression T_NIN expression {
-      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $3);
+  | expression T_NOT T_IN expression {
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $4);
+    }
+  | expression T_NOT T_LIKE expression {
+      AstNode* arguments = parser->ast()->createNodeArray(2);
+      arguments->addMember($1);
+      arguments->addMember($4);
+      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments);
+      $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
+    }
+  | expression T_NOT T_REGEX_MATCH expression {
+      AstNode* arguments = parser->ast()->createNodeArray(2);
+      arguments->addMember($1);
+      arguments->addMember($4);
+      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
+    }
+  | expression T_NOT T_REGEX_NON_MATCH expression {
+      AstNode* arguments = parser->ast()->createNodeArray(2);
+      arguments->addMember($1);
+      arguments->addMember($4);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
     }
   | expression T_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
@@ -1424,8 +1451,17 @@ operator_binary:
   | expression quantifier T_IN expression {
       $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_IN, $1, $4, $2);
     }
-  | expression quantifier T_NIN expression {
-      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $4, $2);
+  | expression T_ALL T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ALL);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
+    }
+  | expression T_ANY T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::ANY);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
+    }
+  | expression T_NONE T_NOT T_IN expression {
+      auto quantifier = parser->ast()->createNodeQuantifier(Quantifier::NONE);
+      $$ = parser->ast()->createNodeBinaryArrayOperator(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN, $1, $5, quantifier);
     }
   ;
 
@@ -1460,7 +1496,7 @@ expression_or_query:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeReference(variableName);
+      $$ = parser->ast()->createNodeSubqueryReference(variableName);
     }
   ;
 
@@ -1758,8 +1794,7 @@ reference:
         // now try special variables
         if (ast->scopes()->canUseCurrentVariable() && strcmp($1.value, "CURRENT") == 0) {
           variable = ast->scopes()->getCurrentVariable();
-        }
-        else if (strcmp($1.value, Variable::NAME_CURRENT) == 0) {
+        } else if (strcmp($1.value, Variable::NAME_CURRENT) == 0) {
           variable = ast->scopes()->getCurrentVariable();
         }
       }

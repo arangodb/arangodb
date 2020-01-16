@@ -24,6 +24,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Basics/StaticStrings.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
@@ -62,7 +63,7 @@ AddFollower::AddFollower(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-AddFollower::~AddFollower() {}
+AddFollower::~AddFollower() = default;
 
 void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
@@ -147,12 +148,12 @@ bool AddFollower::start(bool&) {
   // First check that we still have too few followers for the current
   // `replicationFactor`:
   size_t desiredReplFactor = 1;
-  auto replFact = collection.hasAsUInt("replicationFactor");
+  auto replFact = collection.hasAsUInt(StaticStrings::ReplicationFactor);
   if (replFact.second) {
     desiredReplFactor = replFact.first;
   } else {
-    auto replFact2 = collection.hasAsString("replicationFactor");
-    if (replFact2.second && replFact2.first == "satellite") {
+    auto replFact2 = collection.hasAsString(StaticStrings::ReplicationFactor);
+    if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
       desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
@@ -274,7 +275,7 @@ bool AddFollower::start(bool&) {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&trx);
-                         for (auto const& srv : VPackArrayIterator(plan)) {
+                         for (VPackSlice srv : VPackArrayIterator(plan)) {
                            trx.add(srv);
                          }
                          for (auto const& srv : chosen) {
@@ -329,13 +330,12 @@ arangodb::Result AddFollower::abort(std::string const& reason) {
                   "Failed aborting addFollower job beyond pending stage");
   }
 
-  Result result;
   // Can now only be TODO or PENDING
   if (_status == TODO) {
     finish("", "", false, "job aborted:" + reason);
-    return result;
+    return Result{};
   }
 
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
-  return result;
+  return Result{};
 }

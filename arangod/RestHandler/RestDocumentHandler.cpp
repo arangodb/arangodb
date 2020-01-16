@@ -22,9 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -35,13 +39,17 @@
 #include "VocBase/vocbase.h"
 
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestDocumentHandler::RestDocumentHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer& server,
+                                         GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
+
+RestDocumentHandler::~RestDocumentHandler() = default;
 
 RestStatus RestDocumentHandler::execute() {
   // extract the sub-request type
@@ -50,23 +58,17 @@ RestStatus RestDocumentHandler::execute() {
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::DELETE_REQ:
-      removeDocument();
-      break;
+      return removeDocument();
     case rest::RequestType::GET:
-      readDocument();
-      break;
+      return readDocument();
     case rest::RequestType::HEAD:
-      checkDocument();
-      break;
+      return checkDocument();
     case rest::RequestType::POST:
-      insertDocument();
-      break;
+      return insertDocument();
     case rest::RequestType::PUT:
-      replaceDocument();
-      break;
+      return replaceDocument();
     case rest::RequestType::PATCH:
-      updateDocument();
-      break;
+      return updateDocument();
     default: { generateNotImplemented("ILLEGAL " + DOCUMENT_PATH); }
   }
 
@@ -75,83 +77,93 @@ RestStatus RestDocumentHandler::execute() {
 }
 
 void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
-  try {
-    GeneralRequest const* request = _request.get();
-    auto const type = request->requestType();
-    int result = static_cast<int>(_response->responseCode());
+  if (isFinalized) {
+    // reset the transaction so it releases all locks as early as possible
+    _activeTrx.reset();
 
-    switch (type) {
-      case rest::RequestType::DELETE_REQ:
-      case rest::RequestType::GET:
-      case rest::RequestType::HEAD:
-      case rest::RequestType::POST:
-      case rest::RequestType::PUT:
-      case rest::RequestType::PATCH:
-        break;
-      default:
-        events::IllegalDocumentOperation(*request, result);
-        break;
+    try {
+      GeneralRequest const* request = _request.get();
+      auto const type = request->requestType();
+      int result = static_cast<int>(_response->responseCode());
+
+      switch (type) {
+        case rest::RequestType::DELETE_REQ:
+        case rest::RequestType::GET:
+        case rest::RequestType::HEAD:
+        case rest::RequestType::POST:
+        case rest::RequestType::PUT:
+        case rest::RequestType::PATCH:
+          break;
+        default:
+          events::IllegalDocumentOperation(*request, result);
+          break;
+      }
+    } catch (...) {
     }
-  } catch (...) {
   }
+
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestDocumentHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestDocumentHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
-    return 0;
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   if (found) {
     uint64_t tid = basics::StringUtils::uint64(value);
     if (!transaction::isCoordinatorTransactionId(tid)) {
       TRI_ASSERT(transaction::isLegacyTransactionId(tid));
-      return 0;
+      return {std::make_pair(StaticStrings::Empty, false)};
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
-    return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+    if (sourceServer == ServerState::instance()->getShortId()) {
+      return {std::make_pair(StaticStrings::Empty, false)};
+    }
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
   }
 
-  return 0;
+  return {std::make_pair(StaticStrings::Empty, false)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_CREATE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::insertDocument() {
+RestStatus RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting " + DOCUMENT_PATH +
                       "?collection=<identifier>");
-    return false;
+    return RestStatus::DONE;
   }
 
   bool found;
-  std::string collectionName;
+  std::string cname;
   if (suffixes.size() == 1) {
-    collectionName = suffixes[0];
+    cname = suffixes[0];
     found = true;
   } else {
-    collectionName = _request->value("collection", found);
+    cname = _request->value("collection", found);
   }
 
-  if (!found || collectionName.empty()) {
+  if (!found || cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      "/<collectionname> or query parameter 'collection'");
-    return false;
+                  " POST /_api/document/<collection> or query parameter 'collection'");
+    return RestStatus::DONE;
   }
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {
-    return false;
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
   }
 
   arangodb::OperationOptions opOptions;
@@ -166,39 +178,41 @@ bool RestDocumentHandler::insertDocument() {
                          opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
-  auto trx = createTransaction(collectionName, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
 
   if (!isMultiple && !opOptions.overwrite) {
-    trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+     _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  Result res = trx->begin();
+  Result res = _activeTrx->begin();
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
+    generateTransactionError(cname, res, "");
+    return RestStatus::DONE;
   }
 
-  arangodb::OperationResult result = trx->insert(collectionName, body, opOptions);
+  return waitForFuture(
+      _activeTrx->insertAsync(cname, body, opOptions)
+          .thenValue([=](OperationResult&& opres) {
+            // Will commit if no error occured.
+            // or abort if an error occured.
+            // result stays valid!
+            Result res = _activeTrx->finish(opres.result);
+            if (opres.fail()) {
+              generateTransactionError(opres);
+              return;
+            }
 
-  // Will commit if no error occured.
-  // or abort if an error occured.
-  // result stays valid!
-  res = trx->finish(result.result);
-  if (result.fail()) {
-    generateTransactionError(result);
-    return false;
-  }
+            if (res.fail()) {
+              generateTransactionError(cname, res, "");
+              return;
+            }
 
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
-
-  generateSaved(result, collectionName,
-                TRI_col_type_e(trx->getCollectionType(collectionName)),
-                trx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
-  return true;
+            generateSaved(opres, cname,
+                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                          _activeTrx->transactionContextPtr()->getVPackOptionsForDump(),
+                          isMultiple);
+          }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,22 +221,22 @@ bool RestDocumentHandler::insertDocument() {
 /// Either readSingleDocument or readAllDocuments.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::readDocument() {
+RestStatus RestDocumentHandler::readDocument() {
   size_t const len = _request->suffixes().size();
 
   switch (len) {
     case 0:
     case 1:
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                    "expecting GET /_api/document/<document-handle>");
-      return false;
+                    "expecting GET /_api/document/<collection>/<key>");
+      return RestStatus::DONE;
     case 2:
       return readSingleDocument(true);
 
     default:
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "expecting GET /_api/document/<document-handle>");
-      return false;
+                    "expecting GET /_api/document/<collection>/<key>");
+      return RestStatus::DONE;
   }
 }
 
@@ -230,7 +244,7 @@ bool RestDocumentHandler::readDocument() {
 /// @brief was docuBlock REST_DOCUMENT_READ
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::readSingleDocument(bool generateBody) {
+RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // split the document reference
@@ -252,7 +266,8 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
     ifRid = UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
-  VPackBuilder builder;
+  auto buffer = std::make_shared<VPackBuffer<uint8_t>>();
+  VPackBuilder builder(buffer);
   {
     VPackObjectBuilder guard(&builder);
     builder.add(StaticStrings::KeyString, VPackValue(key));
@@ -265,67 +280,66 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  auto trx = createTransaction(collection, AccessMode::Type::READ);
+  _activeTrx = createTransaction(collection, AccessMode::Type::READ);
 
-  trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
 
-  Result res = trx->begin();
+  Result res = _activeTrx->begin();
 
   if (!res.ok()) {
     generateTransactionError(collection, res, "");
-    return false;
+    return RestStatus::DONE;
   }
 
-  OperationResult result = trx->document(collection, search, options);
+  return waitForFuture(
+      _activeTrx->documentAsync(collection, search, options).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
+        auto res = _activeTrx->finish(opRes.result);
 
-  res = trx->finish(result.result);
+        if (!opRes.ok()) {
+          if (opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+            generateDocumentNotFound(collection, key);
+          } else if (ifRid != 0 && opRes.is(TRI_ERROR_ARANGO_CONFLICT)) {
+            generatePreconditionFailed(opRes.slice());
+          } else {
+            generateTransactionError(collection, res, key);
+          }
+          return;
+        }
 
-  if (!result.ok()) {
-    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      generateDocumentNotFound(collection, key);
-      return false;
-    } else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
-      generatePreconditionFailed(result.slice());
-    } else {
-      generateTransactionError(collection, res, key);
-    }
-    return false;
-  }
+        if (!res.ok()) {
+          generateTransactionError(collection, res, key);
+          return;
+        }
 
-  if (!res.ok()) {
-    generateTransactionError(collection, res, key);
-    return false;
-  }
+        if (ifNoneRid != 0) {
+          TRI_voc_rid_t const rid = TRI_ExtractRevisionId(opRes.slice());
+          if (ifNoneRid == rid) {
+            generateNotModified(rid);
+            return;
+          }
+        }
 
-  if (ifNoneRid != 0) {
-    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
-    if (ifNoneRid == rid) {
-      generateNotModified(rid);
-      return true;
-    }
-  }
-
-  // use default options
-  generateDocument(result.slice(), generateBody,
-                   trx->transactionContextPtr()->getVPackOptionsForDump());
-  return true;
+        // use default options
+        generateDocument(opRes.slice(), generateBody,
+                         _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
+      }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_READ_HEAD
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::checkDocument() {
+RestStatus RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting URI /_api/document/<document-handle>");
-    return false;
+                  "expecting HEAD /_api/document/<collection>/<key>");
+    return RestStatus::DONE;
   }
 
   return readSingleDocument(false);
@@ -335,7 +349,7 @@ bool RestDocumentHandler::checkDocument() {
 /// @brief was docuBlock REST_DOCUMENT_REPLACE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::replaceDocument() {
+RestStatus RestDocumentHandler::replaceDocument() {
   bool found;
   _request->value("onlyget", found);
   if (found) {
@@ -348,63 +362,63 @@ bool RestDocumentHandler::replaceDocument() {
 /// @brief was docuBlock REST_DOCUMENT_UPDATE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::updateDocument() { return modifyDocument(true); }
+RestStatus RestDocumentHandler::updateDocument() { return modifyDocument(true); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function for replaceDocument and updateDocument
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::modifyDocument(bool isPatch) {
+RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 2) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(
-        " /_api/document/<collectionname> or "
-        "/_api/document/<document-handle> "
-        "or /_api/document and query parameter 'collection'");
+        " /_api/document/<collection> or"
+        " /_api/document/<collection>/<key> or"
+        " /_api/document and query parameter 'collection'");
 
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
-    return false;
+    return RestStatus::DONE;
   }
 
   bool isArrayCase = suffixes.size() <= 1;
 
-  std::string collectionName;
+  std::string cname;
   std::string key;
 
   if (isArrayCase) {
     bool found;
     if (suffixes.size() == 1) {
-      collectionName = suffixes[0];
+      cname = suffixes[0];
       found = true;
     } else {
-      collectionName = _request->value("collection", found);
+      cname = _request->value("collection", found);
     }
     if (!found) {
       std::string msg(
           "collection must be given in URL path or query parameter "
           "'collection' must be specified");
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
-      return false;
+      return RestStatus::DONE;
     }
   } else {
-    collectionName = suffixes[0];
+    cname = suffixes[0];
     key = suffixes[1];
   }
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {
-    return false;
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
   }
 
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
-    generateTransactionError(collectionName,
+    generateTransactionError(cname,
                              OperationResult(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID),
                              "");
-    return false;
+    return RestStatus::DONE;
   }
 
   OperationOptions opOptions;
@@ -418,7 +432,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
                          opOptions.isSynchronousReplicationFrom);
 
   // extract the revision, if single document variant and header given:
-  std::shared_ptr<VPackBuilder> builder;
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   if (!isArrayCase) {
     bool isValidRevision;
     TRI_voc_rid_t headerRev = extractRevision("if-match", isValidRevision);
@@ -434,89 +448,89 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     if ((headerRev != 0 && revInBody != headerRev) || keyInBody.isNone() ||
         keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
       // We need to rewrite the document with the given revision and key:
-      builder = std::make_shared<VPackBuilder>();
+      buffer = std::make_shared<VPackBuffer<uint8_t>>();
+      VPackBuilder builder(buffer);
       {
-        VPackObjectBuilder guard(builder.get());
-        TRI_SanitizeObject(body, *builder);
-        builder->add(StaticStrings::KeyString, VPackValue(key));
+        VPackObjectBuilder guard(&builder);
+        TRI_SanitizeObject(body, builder);
+        builder.add(StaticStrings::KeyString, VPackValue(key));
         if (headerRev != 0) {
-          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         } else if (!opOptions.ignoreRevs && revInBody != 0) {
-          builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
+          builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(headerRev)));
         }
       }
 
-      body = builder->slice();
+      body = builder.slice();
     }
   }
 
   // find and load collection given by name or identifier
-  auto trx = createTransaction(collectionName, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
 
   if (!isArrayCase) {
-    trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
   // ...........................................................................
   // inside write transaction
   // ...........................................................................
 
-  Result res = trx->begin();
+  Result res = _activeTrx->begin();
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
+    generateTransactionError(cname, res, "");
+    return RestStatus::DONE;
   }
 
-  OperationResult result(TRI_ERROR_NO_ERROR);
+  auto f = futures::Future<OperationResult>::makeEmpty();
   if (isPatch) {
     // patching an existing document
     opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
     opOptions.mergeObjects =
         _request->parsedValue(StaticStrings::MergeObjectsString, true);
-    result = trx->update(collectionName, body, opOptions);
+    f = _activeTrx->updateAsync(cname, body, opOptions);
   } else {
-    result = trx->replace(collectionName, body, opOptions);
+    f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
+  
+  return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
+    auto res = _activeTrx->finish(opRes.result);
 
-  res = trx->finish(result.result);
-
-  // ...........................................................................
-  // outside write transaction
-  // ...........................................................................
-
-  if (result.fail()) {
-    generateTransactionError(result);
-    return false;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, key, 0);
-    return false;
-  }
-
-  generateSaved(result, collectionName,
-                TRI_col_type_e(trx->getCollectionType(collectionName)),
-                trx->transactionContextPtr()->getVPackOptionsForDump(), isArrayCase);
-
-  return true;
+    // ...........................................................................
+    // outside write transaction
+    // ...........................................................................
+    
+    if (opRes.fail()) {
+      generateTransactionError(opRes);
+      return;
+    }
+    
+    if (!res.ok()) {
+      generateTransactionError(cname, res, key, 0);
+      return;
+    }
+    
+    generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                  _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isArrayCase);
+  }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_DELETE
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::removeDocument() {
+RestStatus RestDocumentHandler::removeDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() < 1 || suffixes.size() > 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting DELETE /_api/document/<document-handle> or "
-                  "/_api/document/<collection> with a BODY");
-    return false;
+                  "expecting DELETE /_api/document/<collection>/<key> or "
+                  "/_api/document/<collection> with a body");
+    return RestStatus::DONE;
   }
 
   // split the document reference
-  std::string const& collectionName = suffixes[0];
+  std::string const& cname = suffixes[0];
   std::string key;
   if (suffixes.size() == 2) {
     key = suffixes[1];
@@ -540,11 +554,12 @@ bool RestDocumentHandler::removeDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  VPackBuilder builder;
   VPackSlice search;
-  std::shared_ptr<VPackBuilder> builderPtr;
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
   if (suffixes.size() == 2) {
+    buffer = std::make_shared<VPackBuffer<uint8_t>>();
+    VPackBuilder builder(buffer);
     {
       VPackObjectBuilder guard(&builder);
 
@@ -558,108 +573,110 @@ bool RestDocumentHandler::removeDocument() {
 
     search = builder.slice();
   } else {
-    try {
-      TRI_ASSERT(_request != nullptr);
-      builderPtr = _request->toVelocyPackBuilderPtr();
-    } catch (...) {
-      // If an error occurs here the body is not parsable. Fail with bad
-      // parameter
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "Request body not parseable");
-      return false;
+    bool parseSuccess = false;
+    search = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {  // error message generated in parseVPackBody
+      return RestStatus::DONE;
     }
-    search = builderPtr->slice();
   }
 
   if (!search.isArray() && !search.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Request body not parseable");
-    return false;
+    return RestStatus::DONE;
   }
 
-  auto trx = createTransaction(collectionName, AccessMode::Type::WRITE);
+  _activeTrx = createTransaction(cname, AccessMode::Type::WRITE);
   if (suffixes.size() == 2 || !search.isArray()) {
-    trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 
-  Result res = trx->begin();
+  Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
+    generateTransactionError(cname, res, "");
+    return RestStatus::DONE;
   }
 
   bool const isMultiple = search.isArray();
-  OperationResult result = trx->remove(collectionName, search, opOptions);
-
-  res = trx->finish(result.result);
-
-  if (result.fail()) {
-    generateTransactionError(result);
-    return false;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, key);
-    return false;
-  }
-
-  generateDeleted(result, collectionName,
-                  TRI_col_type_e(trx->getCollectionType(collectionName)),
-                  trx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
-  return true;
+  
+  return waitForFuture(_activeTrx->removeAsync(cname, search, opOptions)
+                       .thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
+    auto res = _activeTrx->finish(opRes.result);
+    
+    // ...........................................................................
+    // outside write transaction
+    // ...........................................................................
+    
+    if (opRes.fail()) {
+      generateTransactionError(opRes);
+      return;
+    }
+    
+    if (!res.ok()) {
+      generateTransactionError(cname, res, key);
+      return;
+    }
+    
+    generateDeleted(opRes, cname,
+                    TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                    _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
+  }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock REST_DOCUMENT_READ_MANY
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDocumentHandler::readManyDocuments() {
+RestStatus RestDocumentHandler::readManyDocuments() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting PUT /_api/document/<collection> with a BODY");
-    return false;
+                  "expecting PUT /_api/document/<collection> with a body");
+    return RestStatus::DONE;
   }
 
   // split the document reference
-  std::string const& collectionName = suffixes[0];
+  std::string const& cname = suffixes[0];
 
   OperationOptions opOptions;
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
-  auto trx = createTransaction(collectionName, AccessMode::Type::READ);
+  _activeTrx = createTransaction(cname, AccessMode::Type::READ);
 
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
 
-  Result res = trx->begin();
+  Result res = _activeTrx->begin();
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
+    generateTransactionError(cname, res, "");
+    return RestStatus::DONE;
   }
 
-  TRI_ASSERT(_request != nullptr);
-  VPackSlice search = _request->payload(trx->transactionContextPtr()->getVPackOptions());
-
-  OperationResult result = trx->document(collectionName, search, opOptions);
-
-  res = trx->finish(result.result);
-
-  if (result.fail()) {
-    generateTransactionError(result);
-    return false;
+  bool success;
+  VPackSlice const search = this->parseVPackBody(success);
+  if (!success) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
   }
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
-
-  generateDocument(result.slice(), true,
-                   trx->transactionContextPtr()->getVPackOptionsForDump());
-  return true;
+  
+  return waitForFuture(_activeTrx->documentAsync(cname, search, opOptions)
+                       .thenValue([=](OperationResult opRes) {
+    auto res = _activeTrx->finish(opRes.result);
+    
+    if (opRes.fail()) {
+      generateTransactionError(opRes);
+      return;
+    }
+    
+    if (!res.ok()) {
+      generateTransactionError(cname, res, "");
+      return;
+    }
+    
+    generateDocument(opRes.slice(), true,
+                     _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
+  }));
 }

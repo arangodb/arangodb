@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Expression.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
@@ -33,8 +34,10 @@
 #include "Aql/Functions.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
+#include "Aql/Range.h"
 #include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
@@ -73,7 +76,7 @@ Expression::Expression(ExecutionPlan const* plan, Ast* ast, arangodb::velocypack
 Expression::~Expression() { freeInternals(); }
 
 /// @brief return all variables used in the expression
-void Expression::variables(arangodb::HashSet<Variable const*>& result) const {
+void Expression::variables(::arangodb::containers::HashSet<Variable const*>& result) const {
   Ast::getReferencedVariables(_node, result);
 }
 
@@ -409,13 +412,10 @@ AqlValue Expression::executeSimpleExpression(AstNode const* node, transaction::M
     case NODE_TYPE_OPERATOR_NARY_OR:
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
     case NODE_TYPE_COLLECTION:
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "node type 'collection' is not supported in ArangoDB 3.4");
     case NODE_TYPE_VIEW:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
-          "node type 'view' is not supported in ArangoDB 3.4");
+          std::string("node type '") + node->getTypeString() + "' is not supported in expressions");
 
     default:
       std::string msg("unhandled type '");
@@ -766,12 +766,12 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
     // use stack-based allocation for the first few function call
     // parameters. this saves a few heap allocations per function
     // call invocation
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    ::arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
     VPackFunctionParameters parameters{arena};
 
     // same here
-    SmallVector<uint64_t>::allocator_type::arena_type arena2;
-    SmallVector<uint64_t> destroyParameters{arena2};
+    ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type arena2;
+    ::arangodb::containers::SmallVector<uint64_t> destroyParameters{arena2};
 
     explicit FunctionParameters(size_t n) {
       parameters.reserve(n);
@@ -839,7 +839,6 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
 
   // actually call the V8 function
   v8::TryCatch tryCatch(isolate);
-  ;
   v8::Handle<v8::Value> result =
       v8::Handle<v8::Function>::Cast(function)->Call(current, static_cast<int>(callArgs), args);
 
@@ -1557,7 +1556,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
     TRI_ASSERT(!mustDestroy);
     r = 0.0;
   }
-
+  
   if (r == 0.0) {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV || node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       // division by zero
@@ -1570,7 +1569,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
       return AqlValue(AqlValueHintNull());
     }
   }
-
+  
   mustDestroy = false;
   double result;
 
@@ -1597,3 +1596,88 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
   // this will convert NaN, +inf & -inf to null
   return AqlValue(AqlValueHintDouble(result));
 }
+void Expression::replaceNode(AstNode* node) {
+  if (node != _node) {
+    _node = node;
+    invalidateAfterReplacements();
+  }
+}
+Ast* Expression::ast() const noexcept { return _ast; }
+AstNode const* Expression::node() const { return _node; }
+AstNode* Expression::nodeForModification() const { return _node; }
+bool Expression::canRunOnDBServer() {
+  if (_type == UNPROCESSED) {
+    initExpression();
+  }
+
+  if (_type == JSON) {
+    // can always run on DB server
+    return true;
+  }
+
+  TRI_ASSERT(_type == SIMPLE || _type == ATTRIBUTE_ACCESS);
+  TRI_ASSERT(_node != nullptr);
+  return _node->canRunOnDBServer();
+}
+
+bool Expression::isDeterministic() {
+  if (_type == UNPROCESSED) {
+    initExpression();
+  }
+
+  if (_type == JSON) {
+    // always deterministic
+    return true;
+  }
+
+  TRI_ASSERT(_type == SIMPLE || _type == ATTRIBUTE_ACCESS);
+  TRI_ASSERT(_node != nullptr);
+  return _node->isDeterministic();
+}
+bool Expression::willUseV8() {
+  if (_type == UNPROCESSED) {
+    initExpression();
+  }
+
+  if (_type != SIMPLE) {
+    return false;
+  }
+
+  // only simple expressions can make use of V8
+  TRI_ASSERT(_type == SIMPLE);
+  TRI_ASSERT(_node != nullptr);
+  return _node->willUseV8();
+}
+
+std::unique_ptr<Expression> Expression::clone(ExecutionPlan* plan, Ast* ast) {
+  // We do not need to copy the _ast, since it is managed by the
+  // query object and the memory management of the ASTs
+  return std::make_unique<Expression>(plan, ast != nullptr ? ast : _ast, _node);
+}
+
+void Expression::toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const {
+  _node->toVelocyPack(builder, verbose);
+}
+
+std::string Expression::typeString() {
+  if (_type == UNPROCESSED) {
+    initExpression();
+  }
+
+  switch (_type) {
+    case JSON:
+      return "json";
+    case SIMPLE:
+      return "simple";
+    case ATTRIBUTE_ACCESS:
+      return "attribute";
+    case UNPROCESSED: {
+    }
+  }
+  TRI_ASSERT(false);
+  return "unknown";
+}
+void Expression::setVariable(Variable const* variable, arangodb::velocypack::Slice value) {
+  _variables.emplace(variable, value);
+}
+void Expression::clearVariable(Variable const* variable) { _variables.erase(variable); }

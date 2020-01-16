@@ -69,3 +69,52 @@ TEST(StoreTest, store_preconditions) {
 
   ASSERT_EQ(node, other.slice());
 }
+
+TEST(StoreTest, store_split) {
+  using namespace arangodb::consensus;
+
+  ASSERT_EQ(std::vector<std::string>(), Store::split(""));
+  ASSERT_EQ(std::vector<std::string>(), Store::split("/"));
+  ASSERT_EQ(std::vector<std::string>(), Store::split("//"));
+  ASSERT_EQ(std::vector<std::string>(), Store::split("///"));
+  
+  ASSERT_EQ((std::vector<std::string>{"a"}), Store::split("a"));
+  ASSERT_EQ((std::vector<std::string>{"a c"}), Store::split("a c"));
+  ASSERT_EQ((std::vector<std::string>{"foobar"}), Store::split("foobar"));
+  ASSERT_EQ((std::vector<std::string>{"foo bar"}), Store::split("foo bar"));
+  
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("a/b/c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("/a/b/c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("/a/b/c/"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("//a/b/c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("//a/b/c/"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("a/b/c//"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("//a/b/c//"));
+  ASSERT_EQ((std::vector<std::string>{"a", "b", "c"}), Store::split("//a/b/c//"));
+  ASSERT_EQ((std::vector<std::string>{"a"}), Store::split("//////a"));
+  ASSERT_EQ((std::vector<std::string>{"a"}), Store::split("a//////////////"));
+  ASSERT_EQ((std::vector<std::string>{"a"}), Store::split("/////////////a//////////////"));
+  ASSERT_EQ((std::vector<std::string>{"foobar"}), Store::split("//////foobar"));
+  ASSERT_EQ((std::vector<std::string>{"foobar"}), Store::split("foobar//////////////"));
+  ASSERT_EQ((std::vector<std::string>{"foobar"}), Store::split("/////////////foobar//////////////"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("a/c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("a//c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("a///c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("/a//c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("/a//c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("/a///c"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("/a//c/"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("/a//c//"));
+  ASSERT_EQ((std::vector<std::string>{"a", "c"}), Store::split("/a///c//"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("foo/bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("foo//bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("foo///bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo//bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo//bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo///bar"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo//bar/"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo//bar//"));
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar"}), Store::split("/foo///bar//"));
+  
+  ASSERT_EQ((std::vector<std::string>{"foo", "bar", "baz"}), Store::split("/foo///bar//baz"));
+}

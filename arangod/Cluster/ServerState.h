@@ -28,10 +28,14 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/ResultT.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class AgencyComm;
 class Result;
 
@@ -68,7 +72,7 @@ class ServerState {
   };
 
  public:
-  ServerState();
+  explicit ServerState(application_features::ApplicationServer&);
 
   ~ServerState();
 
@@ -203,14 +207,14 @@ class ServerState {
   void setId(std::string const&);
 
   /// @brief get the short id
-  uint32_t getShortId();
+  uint32_t getShortId() const;
 
   /// @brief set the server short id
   void setShortId(uint32_t);
 
-  uint64_t getRebootId() const;
+  RebootId getRebootId() const;
 
-  void setRebootId(uint64_t const rebootId);
+  void setRebootId(RebootId rebootId);
 
   /// @brief get the server endpoint
   std::string getEndpoint();
@@ -256,8 +260,8 @@ class ServerState {
   /// @brief sets server mode and propagates new mode to agency
   Result propagateClusterReadOnly(bool);
 
-  /// file where the server persists it's UUID
-  std::string getUuidFilename();
+  /// file where the server persists its UUID
+  std::string getUuidFilename() const;
 
  private:
   /// @brief atomically fetches the server role
@@ -277,15 +281,23 @@ class ServerState {
   /// @brief try to read the rebootID from the Agency
   ResultT<uint64_t> readRebootIdFromAgency(AgencyComm& comm);
 
+  /// @brief check whether the agency has been initalized
+  bool checkIfAgencyInitialized(AgencyComm&, RoleEnum const&);
+
   /// @brief register at agency, might already be done
-  bool registerAtAgencyPhase1(AgencyComm&, const RoleEnum&);
+  bool registerAtAgencyPhase1(AgencyComm&, RoleEnum const&);
 
   /// @brief write the Current/ServersRegistered entry
-  bool registerAtAgencyPhase2(AgencyComm&, bool const hadPersistedId);
+  bool registerAtAgencyPhase2(AgencyComm&, bool hadPersistedId);
 
   void setFoxxmasterSinceNow();
 
+  /// @brief whether or not "value" is a server UUID
+  bool isUuid(std::string const& value) const;
+
  private:
+  application_features::ApplicationServer& _server;
+
   /// @brief server role
   std::atomic<RoleEnum> _role;
 
@@ -313,7 +325,7 @@ class ServerState {
   ///
   /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
   /// can be used through a notification architecture from there
-  uint64_t _rebootId;
+  RebootId _rebootId;
 
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;
@@ -333,10 +345,10 @@ class ServerState {
 
   /// @brief whether or not the cluster was initialized
   bool _initialized;
+  
+  bool _foxxmasterQueueupdate;
 
   std::string _foxxmaster;
-
-  bool _foxxmasterQueueupdate;
 
   // @brief point in time since which this server is the Foxxmaster
   TRI_voc_tick_t _foxxmasterSince;

@@ -31,6 +31,7 @@
 const arangodb = require('@arangodb');
 const expect = require('chai').expect;
 const graph = require("@arangodb/general-graph");
+const _ = require("lodash");
 const db = arangodb.db;
 
 describe('General graph creation', function () {
@@ -66,7 +67,7 @@ describe('General graph creation', function () {
   describe('with defaults', function () {
     let g;
 
-    before(function() {
+    before(function () {
       let rel = graph._relation(en, vn, vn);
       // Create with default options
       g = graph._create(gn, [rel], [on]);
@@ -138,7 +139,7 @@ describe('General graph creation', function () {
 
     describe('adding collections later', function () {
 
-      before(function() {
+      before(function () {
         let rel = graph._relation(en2, vn2, vn2);
         g._extendEdgeDefinitions(rel);
         g._addVertexCollection(on2);
@@ -190,7 +191,7 @@ describe('General graph creation', function () {
     });
 
     describe('modify edge definition', function () {
-      before(function() {
+      before(function () {
         // We modify the first relation by adding a new vertex collection
         let rel = graph._relation(en, vn, vn3);
         g._editEdgeDefinitions(rel);
@@ -225,7 +226,7 @@ describe('General graph creation', function () {
     const replicationFactor = 2;
     const numberOfShards = 3;
 
-    before(function() {
+    before(function () {
       const options = {
         replicationFactor,
         numberOfShards
@@ -301,7 +302,7 @@ describe('General graph creation', function () {
 
     describe('adding collections later', function () {
 
-      before(function() {
+      before(function () {
         let rel = graph._relation(en2, vn2, vn2);
         g._extendEdgeDefinitions(rel);
         g._addVertexCollection(on2);
@@ -353,35 +354,46 @@ describe('General graph creation', function () {
     });
 
     describe('modify edge definition', function () {
-      before(function() {
+      before(function () {
         // We modify the first relation by adding a new vertex collection
         let rel = graph._relation(en, vn, vn3);
         g._editEdgeDefinitions(rel);
-
         expect(db._collection(vn3)).to.exist;
       });
 
       describe('replication factor', function () {
-
         it(`should be ${replicationFactor} for vertex collection`, function () {
           let props = db._collection(vn3).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
         });
-
       });
 
       describe('number of shards', function () {
-
         it(`should be ${numberOfShards} for vertex collection`, function () {
           let props = db._collection(vn3).properties();
           expect(props.numberOfShards).to.equal(numberOfShards);
         });
-
       });
-
     });
 
+    describe('modify vertices', function () {
+      it(`remove a vertex collection from the graph definition and also drop the collection`, function () {
+        expect(db[on].name() === on);
+        g._removeVertexCollection(on, true);
+
+        // check that the collection is really dropped
+        // using collections list
+        var collections = db._collections();
+        var found = false;
+        _.each(collections, function (collection) {
+          if (collection.name() === on) {
+            found = true;
+          }
+        });
+
+        expect(found).to.be.false;
+      });
+    });
 
   });
-
 });

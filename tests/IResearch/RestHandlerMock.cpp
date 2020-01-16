@@ -25,13 +25,15 @@
 #include "RestServer/VocbaseContext.h"
 #include "VocBase/vocbase.h"
 
-GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase) {
+GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase)
+  : arangodb::GeneralRequest(arangodb::ConnectionInfo{}, 1) {
   _authenticated = false; // must be set before VocbaseContext::create(...)
   _isRequestContextOwner = false; // must be set before VocbaseContext::create(...)
   _context.reset(arangodb::VocbaseContext::create(*this, vocbase));
   _context->vocbase().forceUse(); // must be called or ~VocbaseContext() will fail at '_vocbase.release()'
   _requestContext = _context.get(); // do not use setRequestContext(...) since '_requestContext' has not been initialized and contains garbage
 }
+GeneralRequestMock::~GeneralRequestMock() = default;
 
 size_t GeneralRequestMock::contentLength() const {
   return _contentLength;
@@ -47,13 +49,17 @@ arangodb::velocypack::Slice GeneralRequestMock::payload(
   return _payload.slice();
 }
 
+void GeneralRequestMock::setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) {
+  _payload.clear();
+}
+
 arangodb::Endpoint::TransportType GeneralRequestMock::transportType() {
   return arangodb::Endpoint::TransportType::HTTP; // arbitrary value
 }
 
 GeneralResponseMock::GeneralResponseMock(
     arangodb::ResponseCode code /*= arangodb::ResponseCode::OK*/
-): arangodb::GeneralResponse(code) {
+): arangodb::GeneralResponse(code, 1) {
 }
 
 void GeneralResponseMock::addPayload(

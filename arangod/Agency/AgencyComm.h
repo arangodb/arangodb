@@ -31,10 +31,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -185,7 +181,8 @@ class AgencyCommManager {
   static AgencyConnectionOptions CONNECTION_OPTIONS;
 
  public:
-  static void initialize(std::string const& prefix);
+  static void initialize(application_features::ApplicationServer& server,
+                         std::string const& prefix);
   static void shutdown();
 
   static bool isEnabled() { return MANAGER != nullptr; }
@@ -198,7 +195,9 @@ class AgencyCommManager {
   static std::string generateStamp();
 
  public:
-  explicit AgencyCommManager(std::string const& prefix) : _prefix(prefix) {}
+  explicit AgencyCommManager(application_features::ApplicationServer& server,
+                             std::string const& prefix)
+      : _server(server), _prefix(prefix) {}
 
  public:
   bool start();
@@ -255,6 +254,7 @@ class AgencyCommManager {
   void switchCurrentEndpoint();
 
  private:
+  application_features::ApplicationServer& _server;
   std::string const _prefix;
 
   // protects all the members
@@ -290,13 +290,13 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
-  template<typename T> 
+  template<typename T>
   AgencyPrecondition(std::string const& key, Type t, T const& v)
     : key(AgencyCommManager::path(key)), type(t), empty(false),
       builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
-  }; 
+  };
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -363,7 +363,7 @@ class AgencyCommResult {
                    std::string const& transactionId = std::string());
 
   ~AgencyCommResult() = default;
-  
+
   AgencyCommResult(AgencyCommResult const& other) = delete;
   AgencyCommResult& operator=(AgencyCommResult const& other) = delete;
 
@@ -405,6 +405,10 @@ class AgencyCommResult {
     }
     return Result{errorCode(), errorMessage()};
   }
+
+  void toVelocyPack(VPackBuilder& builder) const;
+
+  VPackBuilder toVelocyPack() const;
 
  public:
   std::string _location;
@@ -657,6 +661,8 @@ class AgencyComm {
 #endif
 
  public:
+  explicit AgencyComm(application_features::ApplicationServer&);
+
   AgencyCommResult sendServerState(double ttl);
 
   std::string version();
@@ -712,6 +718,8 @@ class AgencyComm {
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
+  application_features::ApplicationServer& server();
+
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
@@ -728,7 +736,14 @@ class AgencyComm {
   bool tryInitializeStructure();
 
   bool shouldInitializeStructure();
+
+ private:
+  application_features::ApplicationServer& _server;
 };
 }  // namespace arangodb
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
+}
 
 #endif

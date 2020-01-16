@@ -55,7 +55,7 @@ ReplicationApplierState::ReplicationApplierState()
   _startTime[0] = '\0';
 }
 
-ReplicationApplierState::~ReplicationApplierState() {}
+ReplicationApplierState::~ReplicationApplierState() = default;
 
 ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierState const& other) {
   reset(true);

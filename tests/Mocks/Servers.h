@@ -23,8 +23,15 @@
 #ifndef ARANGODB_TESTS_MOCKS_SERVERS_H
 #define ARANGODB_TESTS_MOCKS_SERVERS_H 1
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "StorageEngineMock.h"
+
+#include "Mocks/LogLevels.h"
+
+#include "Agency/Store.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
+#include "IResearch/IResearchCommon.h"
+#include "Logger/LogMacros.h"
 
 struct TRI_vocbase_t;
 
@@ -45,59 +52,143 @@ class ApplicationFeature;
 namespace tests {
 namespace mocks {
 
-class MockApplicationServer : public arangodb::application_features::ApplicationServer {
- public:
-  MockApplicationServer(std::shared_ptr<options::ProgramOptions> options, char const* binaryPath)
-      : ApplicationServer(std::move(options), binaryPath) {}
-  ~MockApplicationServer() override = default;
-
-  // Appear to be started
-  State state() const override { return State::IN_START; }
-};
-
 class MockServer {
  public:
   MockServer();
   virtual ~MockServer();
 
+  application_features::ApplicationServer& server();
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
+  std::string const testFilesystemPath() const {
+    return _testFilesystemPath;
+  }
 
- protected:
+  // add a feature to the underlying server, keep track of it;
+  // all added features will be prepared in startFeatures(), and unprepared in
+  // stopFeatures(); if start == true, then it will also be started and stopped
+  // in those methods; after startFeatures() is called, this method can no
+  // longer be called, and additional features must be added via
+  // addFeatureUntracked(), and will not be managed by this class
+  template <typename Type, typename As = Type, typename... Args>
+  As& addFeature(bool start, Args&&... args) {
+    TRI_ASSERT(!_started);
+    As& feature = _server.addFeature<Type, As>(std::forward<Args>(args)...);
+    _features.emplace(&feature, start);
+    return feature;
+  }
+
+  // add a feature to the underlying server, but do not track it;
+  // it will not be prepared, started, etc.
+  template <typename Type, typename As = Type, typename... Args>
+  As& addFeatureUntracked(Args&&... args) {
+    return _server.addFeature<Type, As>(std::forward<Args>(args)...);
+  }
+
+  // convenience method to fetch feature, equivalent to server().getFeature....
+  template <typename T>
+  T& getFeature() {
+    return _server.getFeature<T>();
+  }
+
   // Implementation knows the place when all features are included
-  void startFeatures();
+  virtual void startFeatures();
 
  private:
   // Will be called by destructor
   void stopFeatures();
 
  protected:
-  MockApplicationServer _server;
+
+  arangodb::application_features::ApplicationServer::State
+    _oldApplicationServerState;
+  arangodb::application_features::ApplicationServer _server;
   StorageEngineMock _engine;
-  std::unique_ptr<TRI_vocbase_t> _system;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> _features;
+  std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
+  std::string _testFilesystemPath;
+
+ private:
+  bool _started;
 };
 
-class MockEmptyServer : public MockServer {
+class MockV8Server : public MockServer,
+                     public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                     public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                     public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                     public IResearchLogSuppressor {
  public:
-  MockEmptyServer();
-  ~MockEmptyServer() override;
+  MockV8Server(bool startFeatures = true);
 };
 
-class MockAqlServer : public MockServer {
+class MockAqlServer : public MockServer,
+                      public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                      public LogSuppressor<Logger::CLUSTER, LogLevel::ERR>,
+                      public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                      public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                      public IResearchLogSuppressor {
  public:
-  MockAqlServer();
-  ~MockAqlServer() override;
+  MockAqlServer(bool startFeatures = true);
+  ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
   std::unique_ptr<arangodb::aql::Query> createFakeQuery() const;
 };
 
-class MockRestServer : public MockServer {
+class MockRestServer : public MockServer,
+                       public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                       public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                       public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                       public IResearchLogSuppressor {
  public:
-  MockRestServer();
-  ~MockRestServer() override;
+  MockRestServer(bool startFeatures = true);
+};
+
+class MockClusterServer : public MockServer,
+                          public LogSuppressor<Logger::AGENCY, LogLevel::FATAL>,
+                          public LogSuppressor<Logger::AUTHENTICATION, LogLevel::ERR>,
+                          public LogSuppressor<Logger::CLUSTER, LogLevel::WARN>,
+                          public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                          public IResearchLogSuppressor {
+ public:
+  virtual TRI_vocbase_t* createDatabase(std::string const& name) = 0;
+  virtual void dropDatabase(std::string const& name) = 0;
+  arangodb::consensus::Store& getAgencyStore() { return _agencyStore; };
+  void startFeatures() override;
+
+  // You can only create specialized types
+ protected:
+  MockClusterServer();
+  ~MockClusterServer();
+
+ protected:
+  // Implementation knows the place when all features are included
+  void agencyTrx(std::string const& key, std::string const& value);
+  void agencyCreateDatabase(std::string const& name);
+  void agencyDropDatabase(std::string const& name);
+
+ private:
+  arangodb::consensus::Store _agencyStore;
+  arangodb::ServerState::RoleEnum _oldRole;
+  int _dummy;
+};
+
+class MockDBServer : public MockClusterServer {
+ public:
+  MockDBServer(bool startFeatures = true);
+  ~MockDBServer();
+
+  TRI_vocbase_t* createDatabase(std::string const& name) override;
+  void dropDatabase(std::string const& name) override;
+};
+
+class MockCoordinator : public MockClusterServer {
+ public:
+  MockCoordinator(bool startFeatures = true);
+  ~MockCoordinator();
+
+  TRI_vocbase_t* createDatabase(std::string const& name) override;
+  void dropDatabase(std::string const& name) override;
 };
 
 }  // namespace mocks

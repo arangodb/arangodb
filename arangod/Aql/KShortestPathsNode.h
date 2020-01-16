@@ -70,7 +70,8 @@ class KShortestPathsNode : public GraphNode {
   NodeType getType() const override final { return K_SHORTEST_PATHS; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -120,7 +121,7 @@ class KShortestPathsNode : public GraphNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override {
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override {
     if (_inStartVariable != nullptr) {
       vars.emplace(_inStartVariable);
     }

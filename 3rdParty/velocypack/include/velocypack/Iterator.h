@@ -42,7 +42,7 @@ class ArrayIterator {
   ArrayIterator() = delete;
 
   explicit ArrayIterator(Slice slice)
-      : _slice(slice), _size(0), _position(0), _current(nullptr) {
+      : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
     
     uint8_t const head = slice.head();     
 
@@ -59,6 +59,7 @@ class ArrayIterator {
       } else {
         _current = slice.begin() + slice.findDataOffset(head);
       }
+      _first = _current;
     }
   }
 
@@ -144,16 +145,7 @@ class ArrayIterator {
     
   inline void reset() {
     _position = 0;
-    _current = nullptr;
-    if (_size > 0) {
-      auto h = _slice.head();
-      VELOCYPACK_ASSERT(h != 0x01); // no empty array allowed here
-      if (h == 0x13) {
-        _current = _slice.start() + _slice.getStartOffsetFromCompact();
-      } else {
-        _current = _slice.begin() + _slice.findDataOffset(h);
-      }
-    }
+    _current = _first;
   }
 
  private:
@@ -161,6 +153,7 @@ class ArrayIterator {
   ValueLength _size;
   ValueLength _position;
   uint8_t const* _current;
+  uint8_t const* _first;
 };
 
 class ObjectIterator {
@@ -177,7 +170,7 @@ class ObjectIterator {
   // simply jumps from key/value pair to key/value pair without using the
   // index. The default `false` is to use the index if it is there.
   explicit ObjectIterator(Slice slice, bool useSequentialIteration = false)
-      : _slice(slice), _size(0), _position(0), _current(nullptr) {
+      : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
     
     uint8_t const head = slice.head();     
 
@@ -194,6 +187,7 @@ class ObjectIterator {
       } else if (useSequentialIteration) {
         _current = slice.begin() + slice.findDataOffset(head);
       }
+      _first = _current;
     }
   }
 
@@ -278,12 +272,18 @@ class ObjectIterator {
   inline bool isFirst() const noexcept { return (_position == 0); }
 
   inline bool isLast() const noexcept { return (_position + 1 >= _size); }
+  
+  inline void reset() {
+    _position = 0;
+    _current = _first;
+  }
 
  private:
   Slice _slice;
   ValueLength _size;
   ValueLength _position;
   uint8_t const* _current;
+  uint8_t const* _first;
 };
 
 }  // namespace arangodb::velocypack

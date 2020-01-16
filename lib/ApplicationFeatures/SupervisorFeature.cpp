@@ -30,6 +30,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -172,9 +173,8 @@ static void HUPHandler(int) {
 SupervisorFeature::SupervisorFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
   setOptional(true);
-  startsAfter("GreetingsPhase");
-
-  startsAfter("Daemon");
+  startsAfter<GreetingsFeaturePhase>();
+  startsAfter<DaemonFeature>();
 }
 
 void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -187,14 +187,13 @@ void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 void SupervisorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_supervisor) {
     try {
-      DaemonFeature* daemon =
-          ApplicationServer::getFeature<DaemonFeature>("Daemon");
+      DaemonFeature& daemon = server().getFeature<DaemonFeature>();
 
       // force daemon mode
-      daemon->setDaemon(true);
+      daemon.setDaemon(true);
 
       // revalidate options
-      daemon->validateOptions(options);
+      daemon.validateOptions(options);
     } catch (...) {
       LOG_TOPIC("9207d", FATAL, arangodb::Logger::FIXME)
           << "daemon mode not available, cannot start supervisor";
@@ -218,22 +217,19 @@ void SupervisorFeature::daemonize() {
   // will be reseted in SchedulerFeature
   ArangoGlobalContext::CONTEXT->unmaskStandardSignals();
 
-  LoggerFeature* logger = nullptr;
-
-  try {
-    logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
-  } catch (...) {
+  if (!server().hasFeature<LoggerFeature>()) {
     LOG_TOPIC("4e6ee", FATAL, Logger::STARTUP) << "unknown feature 'Logger', giving up";
     FATAL_ERROR_EXIT();
   }
 
-  logger->setSupervisor(true);
-  logger->prepare();
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
+  logger.setSupervisor(true);
+  logger.prepare();
 
   LOG_TOPIC("47d80", DEBUG, Logger::STARTUP) << "starting supervisor loop";
 
   while (!done) {
-    logger->setSupervisor(false);
+    logger.setSupervisor(false);
 
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
@@ -390,11 +386,10 @@ void SupervisorFeature::daemonize() {
 #endif
 
       try {
-        DaemonFeature* daemon =
-            ApplicationServer::getFeature<DaemonFeature>("Daemon");
+        DaemonFeature& daemon = server().getFeature<DaemonFeature>();
 
         // disable daemon mode
-        daemon->setDaemon(false);
+        daemon.setDaemon(false);
       } catch (...) {
       }
 

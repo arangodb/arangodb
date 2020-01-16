@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aggregator.h"
+
+#include "Aql/AqlValue.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -607,8 +610,11 @@ struct AggregatorUnique : public Aggregator {
              basics::VelocyPackHelper::VPackEqual(
                  trx->transactionContext()->getVPackOptions())) {}
 
-  ~AggregatorUnique() { reset(); }
+  ~AggregatorUnique() {
+    reset();
+  }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     builder.clear();
@@ -666,7 +672,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(it) != seen.end()) {
         // already saw the same value
         return;
@@ -692,6 +698,7 @@ struct AggregatorSortedUnique : public Aggregator {
 
   ~AggregatorSortedUnique() { reset(); }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     allocator.clear();
@@ -744,7 +751,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(it) != seen.end()) {
         // already saw the same value
         return;
@@ -766,6 +773,7 @@ struct AggregatorCountDistinct : public Aggregator {
 
   ~AggregatorCountDistinct() { reset(); }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     allocator.clear();
@@ -811,7 +819,7 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(s) != seen.end()) {
         // already saw the same value
         return;

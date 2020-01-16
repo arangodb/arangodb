@@ -86,8 +86,7 @@
         ],
         layout: "StandaloneLayout",
         //#region ArangoDB-specific changes
-        // Expand the API documentation by default.
-        docExpansion: "list",
+        docExpansion: "none",
         requestInterceptor: function (request) {
           var jwt = sessionStorage.getItem("jwt");
           // Inject the web interface JWT for bearer authentication if the

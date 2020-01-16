@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 
 #include <unicode/regex.h>
+#include <memory>
 
 namespace arangodb {
 

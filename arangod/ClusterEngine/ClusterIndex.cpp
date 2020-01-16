@@ -75,7 +75,7 @@ ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection,
   }
 }
 
-ClusterIndex::~ClusterIndex() {}
+ClusterIndex::~ClusterIndex() = default;
 
 void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
@@ -185,7 +185,7 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
     // nothing to update here
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     merge.add("cacheEnabled",
-              VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", false)));
+              VPackValue(Helper::getBooleanValue(slice, "cacheEnabled", false)));
 
   } else {
     TRI_ASSERT(false);

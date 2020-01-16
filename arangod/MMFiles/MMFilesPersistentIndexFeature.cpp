@@ -23,18 +23,21 @@
 
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 
-#include "ApplicationFeatures/RocksDBOptionFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -65,11 +68,11 @@ MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(application_feature
       _comparator(nullptr),
       _path() {
   setOptional(true);
-  onlyEnabledWith("MMFilesEngine");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("BasicsPhase");
+  startsAfter<RocksDBOptionFeature>();
 
-  startsAfter("RocksDBOption");
+  onlyEnabledWith<MMFilesEngine>();
 }
 
 MMFilesPersistentIndexFeature::~MMFilesPersistentIndexFeature() {
@@ -94,13 +97,11 @@ void MMFilesPersistentIndexFeature::start() {
     return;
   }
 
-  auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
-      "RocksDBOption");
+  auto& opts = server().getFeature<arangodb::RocksDBOptionFeature>();
 
   // set the database sub-directory for RocksDB
-  auto database =
-      ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _path = database->subdirectoryName("rocksdb");
+  auto& database = server().getFeature<DatabasePathFeature>();
+  _path = database.subdirectoryName("rocksdb");
 
   LOG_TOPIC("73d58", TRACE, arangodb::Logger::ENGINES)
       << "initializing rocksdb for persistent indexes, path: " << _path;
@@ -121,19 +122,19 @@ void MMFilesPersistentIndexFeature::start() {
   _options.max_open_files = -1;
   _options.comparator = _comparator;
 
-  _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
-  _options.max_write_buffer_number = static_cast<int>(opts->_maxWriteBufferNumber);
-  _options.delayed_write_rate = opts->_delayedWriteRate;
+  _options.write_buffer_size = static_cast<size_t>(opts._writeBufferSize);
+  _options.max_write_buffer_number = static_cast<int>(opts._maxWriteBufferNumber);
+  _options.delayed_write_rate = opts._delayedWriteRate;
   _options.min_write_buffer_number_to_merge =
-      static_cast<int>(opts->_minWriteBufferNumberToMerge);
-  _options.num_levels = static_cast<int>(opts->_numLevels);
-  _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
+      static_cast<int>(opts._minWriteBufferNumberToMerge);
+  _options.num_levels = static_cast<int>(opts._numLevels);
+  _options.max_bytes_for_level_base = opts._maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier =
-      static_cast<int>(opts->_maxBytesForLevelMultiplier);
-  _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
+      static_cast<int>(opts._maxBytesForLevelMultiplier);
+  _options.optimize_filters_for_hits = opts._optimizeFiltersForHits;
 
-  _options.max_background_jobs = static_cast<int>(opts->_maxBackgroundJobs);
-  _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
+  _options.max_background_jobs = static_cast<int>(opts._maxBackgroundJobs);
+  _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
   if (_options.max_background_jobs > 1) {
     _options.env->SetBackgroundThreads(std::max(1, _options.max_background_jobs),
                                        rocksdb::Env::Priority::LOW);

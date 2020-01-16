@@ -53,7 +53,7 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
-    for (auto const& v : VPackArrayIterator(value)) {
+    for (VPackSlice v : VPackArrayIterator(value)) {
       extractWords(words, v, level + 1);
     }
   } else if (value.isObject() && level == 0) {
@@ -207,7 +207,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods& trx,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice const& doc,
                                     Index::OperationMode mode) {
-  Result res;
+  Result res{TRI_ERROR_NO_ERROR};
   int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
   if (!words.empty()) {
@@ -216,6 +216,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods& trx,
   if (r != TRI_ERROR_NO_ERROR) {
     addErrorMsg(res, r);
   }
+  //cppcheck-suppress uninitvar; false positive
   return res;
 }
 
@@ -223,7 +224,7 @@ Result MMFilesFulltextIndex::remove(transaction::Methods& trx,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice const& doc,
                                     Index::OperationMode mode) {
-  Result res;
+  Result res{TRI_ERROR_NO_ERROR};
   int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
@@ -233,6 +234,7 @@ Result MMFilesFulltextIndex::remove(transaction::Methods& trx,
   if (r != TRI_ERROR_NO_ERROR) {
     addErrorMsg(res, r);
   }
+  //cppcheck-suppress uninitvar; false positive
   return res;
 }
 

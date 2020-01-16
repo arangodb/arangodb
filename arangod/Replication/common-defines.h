@@ -76,10 +76,6 @@ bool TRI_ExcludeCollectionReplication(std::string const& name,
                                       bool includeSystem,
                                       bool includeFoxxQueues);
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-char const* TRI_TranslateMarkerTypeReplication(TRI_replication_operation_e type);
-#endif
-
 }  // namespace arangodb
 
 #endif

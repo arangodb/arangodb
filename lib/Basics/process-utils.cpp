@@ -34,6 +34,7 @@
 #include <type_traits>
 
 #include "process-utils.h"
+#include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
@@ -172,6 +173,18 @@ ExternalProcess::~ExternalProcess() {
 
 ExternalProcessStatus::ExternalProcessStatus()
     : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
+
+static ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
+  {
+    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+    auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
+                              [pid](const ExternalProcess * m) -> bool { return m->_pid == pid; });
+    if (found != ExternalProcesses.end()) {
+      return *found;
+    }
+  }
+  return nullptr;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates pipe pair
@@ -535,19 +548,6 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
 }
 #endif
 
-void TRI_LogProcessInfoSelf(char const* message) {
-  ProcessInfo info = TRI_ProcessInfoSelf();
-
-  if (message == nullptr) {
-    message = "";
-  }
-
-  LOG_TOPIC("5b37c", TRACE, Logger::MEMORY)
-      << message << "virtualSize: " << info._virtualSize
-      << ", residentSize: " << info._residentSize
-      << ", numberThreads: " << info._numberThreads;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
 ////////////////////////////////////////////////////////////////////////////////
@@ -668,13 +668,14 @@ static time_t _FileTime_to_POSIX(FILETIME* ft) {
   return (ts - 116444736000000000) / 10000000;
 }
 
-ProcessInfo TRI_ProcessInfoSelf() {
+ProcessInfo TRI_ProcessInfoH(HANDLE processHandle, TRI_pid_t pid) {
   ProcessInfo result;
+
   PROCESS_MEMORY_COUNTERS_EX pmc;
   pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
   // compiler warning wird in kauf genommen!c
   // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
-  if (GetProcessMemoryInfo(GetCurrentProcess(), (PPROCESS_MEMORY_COUNTERS)&pmc, pmc.cb)) {
+  if (GetProcessMemoryInfo(processHandle, (PPROCESS_MEMORY_COUNTERS)&pmc, pmc.cb)) {
     result._majorPageFaults = pmc.PageFaultCount;
     // there is not any corresponce to minflt in linux
     result._minorPageFaults = 0;
@@ -699,7 +700,7 @@ ProcessInfo TRI_ProcessInfoSelf() {
   }
   /// computing times
   FILETIME creationTime, exitTime, kernelTime, userTime;
-  if (GetProcessTimes(GetCurrentProcess(), &creationTime, &exitTime, &kernelTime, &userTime)) {
+  if (GetProcessTimes(processHandle, &creationTime, &exitTime, &kernelTime, &userTime)) {
     // see remarks in
     // http://msdn.microsoft.com/en-us/library/windows/desktop/ms683223(v=vs.85).aspx
     // value in seconds
@@ -710,8 +711,7 @@ ProcessInfo TRI_ProcessInfoSelf() {
     // the function '_FileTime_to_POSIX' should be called
   }
   /// computing number of threads
-  DWORD myPID = GetCurrentProcessId();
-  HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, myPID);
+  HANDLE snapShot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, pid);
 
   if (snapShot != INVALID_HANDLE_VALUE) {
     THREADENTRY32 te32;
@@ -719,16 +719,35 @@ ProcessInfo TRI_ProcessInfoSelf() {
     if (Thread32First(snapShot, &te32)) {
       result._numberThreads++;
       while (Thread32Next(snapShot, &te32)) {
-        if (te32.th32OwnerProcessID == myPID) {
+        if (te32.th32OwnerProcessID == pid) {
           result._numberThreads++;
         }
       }
     }
+    else {
+      LOG_TOPIC("66667", ERR, arangodb::Logger::FIXME) << "failed to acquire thread from snapshot - " << GetLastError();
+    }
     CloseHandle(snapShot);
+  }
+  else {
+    LOG_TOPIC("66668", ERR, arangodb::Logger::FIXME) << "failed to acquire process threads count - " << GetLastError();
   }
 
   return result;
 }
+
+ProcessInfo TRI_ProcessInfoSelf() {
+  return TRI_ProcessInfoH(GetCurrentProcess(), GetCurrentProcessId());
+}
+
+ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
+  auto external = TRI_LookupSpawnedProcess(pid);
+  if (external != nullptr) {
+    return TRI_ProcessInfoH(external->_process, pid);
+  }
+  return {};
+}
+
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -895,7 +914,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
 }
 
 #else
-
+#ifndef _WIN32
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   ProcessInfo result;
 
@@ -903,7 +922,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
 
   return result;
 }
-
+#endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -996,17 +1015,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
   status._status = TRI_EXT_NOT_FOUND;
   status._exitStatus = 0;
 
-  ExternalProcess* external = nullptr;
-  {
-    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
-
-    for (auto& it : ExternalProcesses) {
-      if (it->_pid == pid._pid) {
-        external = it;
-        break;
-      }
-    }
-  }
+  auto external = TRI_LookupSpawnedProcess(pid._pid);
 
   if (external == nullptr) {
     status._errorMessage =
@@ -1021,16 +1030,41 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
 
   if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
-    int opts;
-    int loc = 0;
+    if (timeout > 0) {
+      // if we use a timeout, it means we cannot use blocking
+      wait = false;
+    }
 
+    int opts;
     if (wait) {
       opts = WUNTRACED;
     } else {
       opts = WNOHANG | WUNTRACED;
     }
 
-    TRI_pid_t res = waitpid(external->_pid, &loc, opts);
+    int loc = 0;
+    TRI_pid_t res = 0;
+    if (timeout) {
+      TRI_ASSERT((opts & WNOHANG) != 0);
+      double endTime = 0.0; 
+      while (true) {
+        res = waitpid(external->_pid, &loc, opts);
+        if (res != 0) {
+          break;
+        }
+        double now = TRI_microtime();
+        if (endTime <= 0.000001) {
+          // set endtime only once
+          endTime = now + timeout / 1000.0;
+        } else if (now >= endTime) {
+          // timeout
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      }
+    } else {
+      res = waitpid(external->_pid, &loc, opts);
+    }
 
     if (res == 0) {
       if (wait) {

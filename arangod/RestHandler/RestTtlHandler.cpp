@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/TtlFeature.h"
 #include "VocBase/Methods/Ttl.h"
 
 #include <velocypack/Builder.h>
@@ -34,8 +35,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTtlHandler::RestTtlHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestTtlHandler::RestTtlHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTtlHandler::execute() {
   if (!_vocbase.isSystem()) {
@@ -62,7 +64,8 @@ RestStatus RestTtlHandler::handleProperties() {
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     VPackBuilder builder;
-    Result result = methods::Ttl::getProperties(builder);
+    Result result =
+        methods::Ttl::getProperties(_vocbase.server().getFeature<TtlFeature>(), builder);
 
     if (result.fail()) {
       generateError(result);
@@ -76,12 +79,13 @@ RestStatus RestTtlHandler::handleProperties() {
     VPackSlice body = this->parseVPackBody(parseSuccess);
 
     if (!parseSuccess) {
-      // error message generated in parseVelocyPackBody
+      // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
     
     VPackBuilder builder;
-    Result result = methods::Ttl::setProperties(body, builder);
+    Result result =
+        methods::Ttl::setProperties(_vocbase.server().getFeature<TtlFeature>(), body, builder);
 
     if (result.fail()) {
       generateError(result);
@@ -101,7 +105,8 @@ RestStatus RestTtlHandler::handleStatistics() {
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     VPackBuilder builder;
-    Result result = methods::Ttl::getStatistics(builder);
+    Result result =
+        methods::Ttl::getStatistics(_vocbase.server().getFeature<TtlFeature>(), builder);
 
     if (result.fail()) {
       generateError(result);

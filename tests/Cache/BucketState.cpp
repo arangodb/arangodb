@@ -45,21 +45,21 @@ TEST(CacheBucketStateTest, test_lock_methods) {
   auto cb2 = [&outsideBucketState]() -> void { outsideBucketState = 2; };
 
   // check lock without contention
-  ASSERT_TRUE(!state.isLocked());
+  ASSERT_FALSE(state.isLocked());
   success = state.lock(-1, cb1);
   ASSERT_TRUE(success);
   ASSERT_TRUE(state.isLocked());
-  ASSERT_TRUE(1UL == outsideBucketState);
+  ASSERT_EQ(1UL, outsideBucketState);
 
   // check lock with contention
   success = state.lock(10LL, cb2);
-  ASSERT_TRUE(!success);
+  ASSERT_FALSE(success);
   ASSERT_TRUE(state.isLocked());
-  ASSERT_TRUE(1UL == outsideBucketState);
+  ASSERT_EQ(1UL, outsideBucketState);
 
   // check unlock
   state.unlock();
-  ASSERT_TRUE(!state.isLocked());
+  ASSERT_FALSE(state.isLocked());
 }
 
 TEST(CacheBucketStateTest, test_methods_for_nonlock_flags) {
@@ -68,12 +68,12 @@ TEST(CacheBucketStateTest, test_methods_for_nonlock_flags) {
 
   success = state.lock();
   ASSERT_TRUE(success);
-  ASSERT_TRUE(!state.isSet(BucketState::Flag::migrated));
+  ASSERT_FALSE(state.isSet(BucketState::Flag::migrated));
   state.unlock();
 
   success = state.lock();
   ASSERT_TRUE(success);
-  ASSERT_TRUE(!state.isSet(BucketState::Flag::migrated));
+  ASSERT_FALSE(state.isSet(BucketState::Flag::migrated));
   state.toggleFlag(BucketState::Flag::migrated);
   ASSERT_TRUE(state.isSet(BucketState::Flag::migrated));
   state.unlock();
@@ -87,11 +87,11 @@ TEST(CacheBucketStateTest, test_methods_for_nonlock_flags) {
   ASSERT_TRUE(success);
   ASSERT_TRUE(state.isSet(BucketState::Flag::migrated));
   state.toggleFlag(BucketState::Flag::migrated);
-  ASSERT_TRUE(!state.isSet(BucketState::Flag::migrated));
+  ASSERT_FALSE(state.isSet(BucketState::Flag::migrated));
   state.unlock();
 
   success = state.lock();
   ASSERT_TRUE(success);
-  ASSERT_TRUE(!state.isSet(BucketState::Flag::migrated));
+  ASSERT_FALSE(state.isSet(BucketState::Flag::migrated));
   state.unlock();
 }

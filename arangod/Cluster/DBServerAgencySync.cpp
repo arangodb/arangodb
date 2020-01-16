@@ -23,6 +23,7 @@
 
 #include "DBServerAgencySync.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -47,8 +48,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::methods;
 using namespace arangodb::rest;
 
-DBServerAgencySync::DBServerAgencySync(HeartbeatThread* heartbeat)
-    : _heartbeat(heartbeat) {}
+DBServerAgencySync::DBServerAgencySync(ApplicationServer& server, HeartbeatThread* heartbeat)
+    : _server(server), _heartbeat(heartbeat) {}
 
 void DBServerAgencySync::work() {
   LOG_TOPIC("57898", TRACE, Logger::CLUSTER) << "starting plan update handler";
@@ -64,22 +65,17 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
   using namespace arangodb::basics;
   Result result;
-  DatabaseFeature* dbfeature = nullptr;
 
-  try {
-    dbfeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  } catch (...) {
-  }
-
-  if (dbfeature == nullptr) {
+  if (!_server.hasFeature<DatabaseFeature>()) {
     LOG_TOPIC("d0ef2", ERR, Logger::HEARTBEAT)
         << "Failed to get feature database";
     return Result(TRI_ERROR_INTERNAL, "Failed to get feature database");
   }
+  DatabaseFeature& dbfeature = _server.getFeature<DatabaseFeature>();
 
   VPackObjectBuilder c(&collections);
 
-  dbfeature->enumerateDatabases([&](TRI_vocbase_t& vocbase) {
+  dbfeature.enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (!vocbase.use()) {
       return;
     }
@@ -100,9 +96,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
-        collection->properties(collections,
-                               LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                                            LogicalDataSource::Serialize::ForPersistence));
+        collection->properties(collections, LogicalDataSource::Serialization::Persistence);
 
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();
@@ -132,7 +126,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
   TRI_ASSERT(AgencyCommManager::isEnabled());
-  AgencyComm comm;
+  AgencyComm comm(_server);
 
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
@@ -140,19 +134,18 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
   DBServerAgencySyncResult result;
-  auto* sysDbFeature =
-      application_features::ApplicationServer::lookupFeature<SystemDatabaseFeature>();
-  MaintenanceFeature* mfeature =
-      ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
-  if (mfeature == nullptr) {
+  if (!_server.hasFeature<MaintenanceFeature>()) {
     LOG_TOPIC("3a1f7", ERR, Logger::MAINTENANCE)
         << "Could not load maintenance feature, can happen during shutdown.";
     result.success = false;
     result.errorMessage = "Could not load maintenance feature";
     return result;
   }
+  MaintenanceFeature& mfeature = _server.getFeature<MaintenanceFeature>();
   arangodb::SystemDatabaseFeature::ptr vocbase =
-      sysDbFeature ? sysDbFeature->use() : nullptr;
+      _server.hasFeature<SystemDatabaseFeature>()
+          ? _server.getFeature<SystemDatabaseFeature>().use()
+          : nullptr;
 
   if (vocbase == nullptr) {
     LOG_TOPIC("18d67", DEBUG, Logger::MAINTENANCE)
@@ -163,8 +156,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   Result tmp;
   VPackBuilder rb;
-  auto clusterInfo = ClusterInfo::instance();
-  auto plan = clusterInfo->getPlan();
+  auto& clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo();
+  auto plan = clusterInfo.getPlan();
   auto serverId = arangodb::ServerState::instance()->getId();
 
   if (plan == nullptr) {
@@ -193,7 +186,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(plan->slice(), local.slice(),
-                                          serverId, *mfeature, rb);
+                                          serverId, mfeature, rb);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
@@ -208,7 +201,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
-    auto current = clusterInfo->getCurrent();
+    auto current = clusterInfo.getCurrent();
     if (current == nullptr) {
       // TODO increase log level, except during shutdown?
       LOG_TOPIC("ab562", DEBUG, Logger::MAINTENANCE)
@@ -219,7 +212,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
 
-    mfeature->increaseCurrentCounter();
+    mfeature.increaseCurrentCounter();
 
     local.clear();
     glc = getLocalCollections(local);
@@ -238,7 +231,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
-                                          local.slice(), serverId, *mfeature, rb);
+                                          local.slice(), serverId, mfeature, rb);
 
     LOG_TOPIC("dfc54", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -291,7 +284,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           } else {
             LOG_TOPIC("9b0b3", DEBUG, Logger::MAINTENANCE)
                 << "Invalidating current in ClusterInfo";
-            clusterInfo->invalidateCurrent();
+            clusterInfo.invalidateCurrent();
           }
         }
       }

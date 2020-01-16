@@ -36,7 +36,7 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
 #define WRITE_UNLOCKER(obj, lock) \
   arangodb::basics::WriteUnlocker obj(&lock, __FILE__, __LINE__)
@@ -68,7 +68,7 @@ class WriteUnlocker {
   /// The constructor unlocks the lock, the destructors acquires a write-lock.
   //////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlocks the lock
@@ -103,7 +103,7 @@ class WriteUnlocker {
 
   basics::ReadWriteLock* _readWriteLock;
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief file

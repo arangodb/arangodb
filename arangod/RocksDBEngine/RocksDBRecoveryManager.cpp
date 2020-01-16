@@ -32,13 +32,17 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -46,6 +50,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -63,10 +68,6 @@ using namespace arangodb::application_features;
 
 namespace arangodb {
 
-RocksDBRecoveryManager* RocksDBRecoveryManager::instance() {
-  return ApplicationServer::getFeature<RocksDBRecoveryManager>(featureName());
-}
-
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::ApplicationServer& server)
@@ -75,15 +76,15 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::Application
       _tick(0),
       _recoveryState(RecoveryState::BEFORE) {
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("Database");
-  startsAfter("SystemDatabase");
-  startsAfter("RocksDBEngine");
-  startsAfter("ServerId");
-  startsAfter("StorageEngine");
+  startsAfter<DatabaseFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<ServerIdFeature>();
+  startsAfter<StorageEngineFeature>();
+  startsAfter<SystemDatabaseFeature>();
 
-  onlyEnabledWith("RocksDBEngine");
+  onlyEnabledWith<RocksDBEngine>();
 }
 
 void RocksDBRecoveryManager::start() {
@@ -93,15 +94,15 @@ void RocksDBRecoveryManager::start() {
   _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
 
   // start recovery
-  _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
+  _db = server().getFeature<RocksDBEngine>().db();
   runRecovery();
 
   // synchronizes with acquire inRecovery()
   _recoveryState.store(RecoveryState::DONE, std::memory_order_release);
 
   // notify everyone that recovery is now done
-  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
-  databaseFeature->recoveryDone();
+  auto& databaseFeature = server().getFeature<DatabaseFeature>();
+  databaseFeature.recoveryDone();
 }
 
 /// parse recent RocksDB WAL entries and notify the
@@ -262,7 +263,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (idx) {
         KeyGenerator* keyGen = idx->collection().keyGenerator();
         if (keyGen) {
-          keyGen->track(ref.begin(), ref.size());
+          keyGen->track(ref.data(), ref.size());
         }
       }
 
@@ -274,7 +275,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         auto slice = RocksDBValue::data(value);
         storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
         VPackSlice indexes = slice.get("indexes");
-        for (VPackSlice const& idx : VPackArrayIterator(indexes)) {
+        for (VPackSlice idx : VPackArrayIterator(indexes)) {
           storeMaxTick(
               std::max(basics::VelocyPackHelper::stringUInt64(idx, "objectId"),
                        basics::VelocyPackHelper::stringUInt64(idx, "id")));

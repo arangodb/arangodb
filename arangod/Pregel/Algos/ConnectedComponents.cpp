@@ -28,6 +28,7 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 
+using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
@@ -59,20 +60,9 @@ VertexComputation<int64_t, int64_t, int64_t>* ConnectedComponents::createComputa
 }
 
 struct MyGraphFormat final : public VertexGraphFormat<int64_t, int64_t> {
-  uint64_t vertexIdRange = 0;
-
-  explicit MyGraphFormat(std::string const& result)
-      : VertexGraphFormat<int64_t, int64_t>(result, 0) {}
-
-  void willLoadVertices(uint64_t count) override {
-    // if we aren't running in a cluster it doesn't matter
-    if (arangodb::ServerState::instance()->isRunningInCluster()) {
-      arangodb::ClusterInfo* ci = arangodb::ClusterInfo::instance();
-      if (ci) {
-        vertexIdRange = ci->uniqid(count);
-      }
-    }
-  }
+  explicit MyGraphFormat(application_features::ApplicationServer& server,
+                         std::string const& result)
+      : VertexGraphFormat<int64_t, int64_t>(server, result, 0) {}
 
   void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
                       int64_t& targetPtr) override {
@@ -81,7 +71,7 @@ struct MyGraphFormat final : public VertexGraphFormat<int64_t, int64_t> {
 };
 
 GraphFormat<int64_t, int64_t>* ConnectedComponents::inputFormat() const {
-  return new MyGraphFormat(_resultField);
+  return new MyGraphFormat(_server, _resultField);
 }
 
 struct MyCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {

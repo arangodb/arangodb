@@ -25,6 +25,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <date/date.h>
+#include <velocypack/StringRef.h>
+
 #include "Basics/datetime.h"
 #include "gtest/gtest.h"
 
@@ -64,12 +66,12 @@ TEST(DateTimeTest, testing) {
                                        "2017-01-01:12:34Z-10:20"};
 
   for (auto const& dateTime : datesToTest) {
-    bool ret = parseDateTime(dateTime, tp);
+    bool ret = parseDateTime(arangodb::velocypack::StringRef(dateTime), tp);
     ASSERT_TRUE(ret);
   }
 
   for (auto const& dateTime : datesToFail) {
-    bool ret = parseDateTime(dateTime, tp);
+    bool ret = parseDateTime(arangodb::velocypack::StringRef(dateTime), tp);
     ASSERT_FALSE(ret);
   }
 }

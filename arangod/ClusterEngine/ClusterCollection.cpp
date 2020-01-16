@@ -20,15 +20,19 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterCollection.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
-#include "ClusterCollection.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
+#include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -62,7 +66,7 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
       _selectivityEstimates(collection) {
   // duplicate all the error handling
   if (_engineType == ClusterEngineType::MMFilesEngine) {
-    bool isVolatile = Helper::readBooleanValue(_info.slice(), "isVolatile", false);
+    bool isVolatile = Helper::getBooleanValue(_info.slice(), "isVolatile", false);
 
     if (isVolatile && _logicalCollection.waitForSync()) {
       // Illegal collection configuration
@@ -104,7 +108,7 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection,
       _info(static_cast<ClusterCollection const*>(physical)->_info),
       _selectivityEstimates(collection) {}
 
-ClusterCollection::~ClusterCollection() {}
+ClusterCollection::~ClusterCollection() = default;
 
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
@@ -145,7 +149,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
               "indexBuckets must be a two-power between 1 and 1024"};
     }
 
-    bool isVolatile = Helper::readBooleanValue(_info.slice(), "isVolatile", false);
+    bool isVolatile = Helper::getBooleanValue(_info.slice(), "isVolatile", false);
     if (isVolatile && arangodb::basics::VelocyPackHelper::getBooleanValue(
                           slice, "waitForSync", _logicalCollection.waitForSync())) {
       // the combination of waitForSync and isVolatile makes no sense
@@ -174,16 +178,16 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     }
 
     merge.add("doCompact",
-              VPackValue(Helper::readBooleanValue(slice, "doCompact", true)));
+              VPackValue(Helper::getBooleanValue(slice, "doCompact", true)));
     merge.add("indexBuckets",
-              VPackValue(Helper::readNumericValue(slice, "indexBuckets",
+              VPackValue(Helper::getNumericValue(slice, "indexBuckets",
                                                   MMFilesCollection::defaultIndexBuckets)));
     merge.add("journalSize", VPackValue(journalSize));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    bool def = Helper::readBooleanValue(_info.slice(), "cacheEnabled", false);
+    bool def = Helper::getBooleanValue(_info.slice(), "cacheEnabled", false);
     merge.add("cacheEnabled",
-              VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", def)));
+              VPackValue(Helper::getBooleanValue(slice, "cacheEnabled", def)));
 
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
@@ -228,19 +232,19 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 
   if (_engineType == ClusterEngineType::MMFilesEngine) {
     result.add("doCompact",
-               VPackValue(Helper::readBooleanValue(_info.slice(), "doCompact", true)));
+               VPackValue(Helper::getBooleanValue(_info.slice(), "doCompact", true)));
     result.add("indexBuckets",
-               VPackValue(Helper::readNumericValue(_info.slice(), "indexBuckets",
+               VPackValue(Helper::getNumericValue(_info.slice(), "indexBuckets",
                                                    MMFilesCollection::defaultIndexBuckets)));
     result.add("isVolatile",
-               VPackValue(Helper::readBooleanValue(_info.slice(), "isVolatile", false)));
+               VPackValue(Helper::getBooleanValue(_info.slice(), "isVolatile", false)));
     result.add("journalSize",
-               VPackValue(Helper::readNumericValue(_info.slice(), "journalSize",
+               VPackValue(Helper::getNumericValue(_info.slice(), "journalSize",
                                                    TRI_JOURNAL_DEFAULT_SIZE)));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add("cacheEnabled",
-               VPackValue(Helper::readBooleanValue(_info.slice(), "cacheEnabled", false)));
+               VPackValue(Helper::getBooleanValue(_info.slice(), "cacheEnabled", false)));
 
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
@@ -249,22 +253,13 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<VPackBuilder> ClusterCollection::figures() {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
-  builder->close();
-
-  auto res = figuresOnCoordinator(_logicalCollection.vocbase().name(),
-                                  std::to_string(_logicalCollection.id()), builder);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return builder;
+futures::Future<OperationResult> ClusterCollection::figures() {
+  auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
+  return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
+                              std::to_string(_logicalCollection.id()));
 }
 
-void ClusterCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void ClusterCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 
@@ -404,11 +399,6 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Me
 }
 
 std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Methods* trx) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-void ClusterCollection::invokeOnAllElements(transaction::Methods* trx,
-                                            std::function<bool(LocalDocumentId const&)> /*callback*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

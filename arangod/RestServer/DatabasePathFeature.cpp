@@ -23,6 +23,9 @@
 #include "DatabasePathFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/LanguageFeature.h"
+#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -34,6 +37,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/FileDescriptorsFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -45,12 +49,12 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
     : ApplicationFeature(server, DatabasePathFeature::name()),
       _requiredDirectoryState("any") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<GreetingsFeaturePhase>();
 
-  startsAfter("FileDescriptors");
-  startsAfter("Language");
-  startsAfter("PageSize");
-  startsAfter("Temp");
+  startsAfter<FileDescriptorsFeature>();
+  startsAfter<LanguageFeature>();
+  startsAfter<PageSizeFeature>();
+  startsAfter<TempFeature>();
 }
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -112,11 +116,11 @@ void DatabasePathFeature::prepare() {
     std::string directoryCopy = _directory;
     basics::FileUtils::makePathAbsolute(directoryCopy);
 
-    auto* tf = application_features::ApplicationServer::lookupFeature<TempFeature>("Temp");
-    if (tf) {
+    if (server().hasFeature<TempFeature>()) {
+      auto& tf = server().getFeature<TempFeature>();
       // the feature is not present in unit tests, so make the execution depend
       // on whether the feature is available
-      std::string tempPathCopy = tf->path();
+      std::string tempPathCopy = tf.path();
       basics::FileUtils::makePathAbsolute(tempPathCopy);
       tempPathCopy = basics::StringUtils::rTrim(tempPathCopy, TRI_DIR_SEPARATOR_STR);
 

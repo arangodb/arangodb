@@ -8,6 +8,10 @@
     el: '#content',
     el2: '#collectionsThumbnailsIn',
     readOnly: false,
+    defaultReplicationFactor: 0,
+    minReplicationFactor: 0,
+    maxReplicationFactor: 0,
+    maxNumberOfShards: 0,
 
     searchTimeout: null,
     refreshRate: 10000,
@@ -35,9 +39,7 @@
     checkLockedCollections: function () {
       var callback = function (error, lockedCollections) {
         var self = this;
-        if (error) {
-          console.log('Could not check locked collections');
-        } else {
+        if (!error) {
           this.collection.each(function (model) {
             model.set('locked', false);
           });
@@ -90,6 +92,11 @@
 
     initialize: function () {
       var self = this;
+
+      this.defaultReplicationFactor = frontendConfig.defaultReplicationFactor;
+      this.minReplicationFactor = frontendConfig.minReplicationFactor;
+      this.maxReplicationFactor = frontendConfig.maxReplicationFactor;
+      this.maxNumberOfShards = frontendConfig.maxNumberOfShards;
 
       window.setInterval(function () {
         if (window.location.hash === '#collections' && window.VISIBLE) {
@@ -350,8 +357,8 @@
         } else {
           var collName = $('#new-collection-name').val();
           var collSize = $('#new-collection-size').val();
-          var replicationFactor = $('#new-replication-factor').val();
-          var minReplicationFactor = $('#new-min-replication-factor').val();
+          var replicationFactor = Number($('#new-replication-factor').val());
+          var writeConcern = Number($('#new-write-concern').val());
           var collType = $('#new-collection-type').val();
           var collSync = $('#new-collection-sync').val();
           var shards = 1;
@@ -360,10 +367,14 @@
           var distributeShardsLike = '';
 
           if (replicationFactor === '') {
-            replicationFactor = 1;
+            if (self.defaultReplicationFactor) {
+              replicationFactor = self.defaultReplicationFactor;
+            } else {
+              replicationFactor = 1;
+            }
           }
-          if (minReplicationFactor === '') {
-            minReplicationFactor = 1;
+          if (writeConcern === '') {
+            writeConcern = 1;
           }
           if ($('#is-satellite-collection').val() === 'true') {
             replicationFactor = 'satellite';
@@ -373,7 +384,7 @@
             if (frontendConfig.isEnterprise && $('#smart-join-attribute').val() !== '') {
               smartJoinAttribute = $('#smart-join-attribute').val().trim();
             }
-            if (frontendConfig.isEnterprise && $('#distribute-shards-like').val() !== '') {
+            if (frontendConfig.isEnterprise) {
               distributeShardsLike = $('#distribute-shards-like').val().trim();
             }
 
@@ -432,9 +443,9 @@
 
           var abort = false;
           try {
-            if (Number.parseInt(minReplicationFactor) > Number.parseInt(replicationFactor)) {
+            if (Number.parseInt(writeConcern) > Number.parseInt(replicationFactor)) {
               // validation here, as our Joi integration misses some core features
-              arangoHelper.arangoError("New Collection", "Minimal replication factor is not allowed to be greater than replication factor");
+              arangoHelper.arangoError("New Collection", "Write concern is not allowed to be greater than replication factor");
               abort = true;
             }
           } catch (ignore) {
@@ -444,21 +455,26 @@
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            replicationFactor: replicationFactor,
-            minReplicationFactor: minReplicationFactor,
             collType: collType,
             shards: shards,
             shardKeys: shardKeys
           };
+
           if (self.engine.name !== 'rocksdb') {
             tmpObj.journalSize = collSize;
           }
           if (smartJoinAttribute !== '') {
             tmpObj.smartJoinAttribute = smartJoinAttribute;
           }
-          if (distributeShardsLike !== '') {
-            tmpObj.distributeShardsLike = distributeShardsLike;
+
+          tmpObj.distributeShardsLike = distributeShardsLike;
+          if (distributeShardsLike === '' && window.App.isCluster) {
+            // if we are in the cluster and are not using distribute shards like
+            // then we want to make use of the replication factor
+            tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
+            tmpObj.writeConcern = Number(writeConcern);
           }
+
           if (!abort) {
             this.collection.newCollection(tmpObj, callback);
             window.modalView.hide();
@@ -471,6 +487,24 @@
     },
 
     createNewCollectionModal: function () {
+        var self = this;
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/database/current'), //get default properties of current db
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.createNewCollectionModalReal(data.result);
+          },
+          error: function () {
+            arangoHelper.arangoError('Engine', 'Could not fetch default collection properties.');
+          }
+        });
+
+    },
+
+    createNewCollectionModalReal: function (properties) {
       var self = this;
       var callbackCoord2 = function (error, isCoordinator) {
         if (error) {
@@ -505,6 +539,7 @@
               ]
             )
           );
+
           tableContent.push(
             window.modalView.createSelectEntry(
               'new-collection-type',
@@ -519,9 +554,9 @@
             tableContent.push(
               window.modalView.createTextEntry(
                 'new-collection-shards',
-                'Shards',
-                '',
-                'The number of shards to create. You cannot change this afterwards. ',
+                'Number of shards',
+                this.maxNumberOfShards === 1 ? String(this.maxNumberOfShards) : 0,
+                'The number of shards to create. The maximum value is ' + this.maxNumberOfShards + '. You cannot change this afterwards.',
                 '',
                 true
               )
@@ -537,6 +572,32 @@
                 false
               )
             );
+          
+            if (window.App.isCluster) {
+              tableContent.push(
+                window.modalView.createTextEntry(
+                  'new-replication-factor',
+                  'Replication factor',
+                  properties.replicationFactor ? properties.replicationFactor : '',
+                  'Numeric value. Must be between ' + 
+                  (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
+                  ' and ' + 
+                  (this.maxReplicationFactor ? this.maxReplicationFactor : 10) +
+                  '. Total number of copies of the data in the cluster',
+                  '',
+                  false,
+                  [
+                    {
+                      rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
+                      msg: 'Must be a number between ' + 
+                           (this.minReplicationFactor ? this.minReplicationFactor : 1) + 
+                           ' and ' + 
+                           (this.maxReplicationFactor ? this.maxReplicationFactor : 10) + '.'
+                    }
+                  ]
+                )
+              );
+            }
           }
 
           buttons.push(
@@ -551,7 +612,7 @@
                 window.modalView.createTextEntry(
                   'distribute-shards-like',
                   'Distribute shards like',
-                  '',
+                  properties.sharding === "single" ? "_graphs" : "",
                   'Name of another collection that should be used as a prototype for sharding this collection.',
                   '',
                   false,
@@ -581,28 +642,13 @@
                 )
               );
             }
+
             advancedTableContent.push(
               window.modalView.createTextEntry(
-                'new-replication-factor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
-                    msg: 'Must be a number between 1 and 10.'
-                  }
-                ]
-              )
-            );
-            advancedTableContent.push(
-              window.modalView.createTextEntry(
-                'new-min-replication-factor',
-                'Mininum replication factor',
-                '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+                'new-write-concern',
+                'Write concern',
+                properties.writeConcern ? properties.writeConcern : '',
+                'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
                 '',
                 false,
                 [
@@ -610,8 +656,6 @@
                     rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
                     msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                   }
-                  // TODO: Due our validation mechanism, no reference to replicationFactor is possible here.
-                  // So we cannot easily verify if minReplication > replicationFactor...
                 ]
               )
             );
@@ -668,13 +712,16 @@
             $('#is-satellite-collection').on('change', function (element) {
               if ($('#is-satellite-collection').val() === 'true') {
                 $('#new-replication-factor').prop('disabled', true);
-                $('#new-min-replication-factor').prop('disabled', true);
+                $('#new-write-concern').prop('disabled', true);
+                $('#new-collection-shards').prop('disabled', true);
               } else {
                 $('#new-replication-factor').prop('disabled', false);
-                $('#new-min-replication-factor').prop('disabled', false);
+                $('#new-write-concern').prop('disabled', false);
+                $('#new-collection-shards').prop('disabled', false);
               }
               $('#new-replication-factor').val('').focus().focusout();
-              $('#new-min-replication-factor').val('').focus().focusout();
+              $('#new-write-concern').val('').focus().focusout();
+              $('#new-collection-shards').val('').focus().focusout();
             });
           }
         }

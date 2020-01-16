@@ -40,16 +40,16 @@ using namespace arangodb::network;
 
 TEST(NetworkUtilsTest, errorFromBody) {
   const char* str = "{\"errorNum\":1337, \"errorMessage\":\"abc\"}";
-  auto res = network::errorFromBody(VPackParser::fromJson(str), 0);
-  ASSERT_TRUE(res.errorNumber() == 1337);
-  ASSERT_TRUE(res.errorMessage() == "abc");
+  auto res = network::resultFromBody(VPackParser::fromJson(str), 0);
+  ASSERT_EQ(res.errorNumber(), 1337);
+  ASSERT_EQ(res.errorMessage(), "abc");
 }
 
 TEST(NetworkUtilsTest, errorCodeFromBody) {
   const char* str = "{\"errorNum\":1337, \"errorMessage\":\"abc\"}";
   auto body = VPackParser::fromJson(str);
   auto res = network::errorCodeFromBody(body->slice());
-  ASSERT_TRUE(res == 1337);
+  ASSERT_EQ(res, 1337);
 }
 
 TEST(NetworkUtilsTest, errorCodesFromHeaders) {
@@ -58,7 +58,7 @@ TEST(NetworkUtilsTest, errorCodesFromHeaders) {
   
   std::unordered_map<int, size_t> errorCounter;
   network::errorCodesFromHeaders(headers, errorCounter, true);
-  ASSERT_TRUE(errorCounter.size() == 1);
-  ASSERT_TRUE(errorCounter.begin()->first == 5);
-  ASSERT_TRUE(errorCounter.begin()->second == 2);
+  ASSERT_EQ(errorCounter.size(), 1);
+  ASSERT_EQ(errorCounter.begin()->first, 5);
+  ASSERT_EQ(errorCounter.begin()->second, 2);
 }

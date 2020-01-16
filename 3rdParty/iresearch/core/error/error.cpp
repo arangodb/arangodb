@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -30,7 +29,7 @@ NS_ROOT
 //                                                                   error_base
 // ----------------------------------------------------------------------------
 
-const char* error_base::what() const NOEXCEPT {
+const char* error_base::what() const noexcept {
   return "An unspecified error has occured.";
 }
 
@@ -38,7 +37,7 @@ const char* error_base::what() const NOEXCEPT {
 //                                                                not_supported
 // ----------------------------------------------------------------------------
 
-const char* not_supported::what() const NOEXCEPT {
+const char* not_supported::what() const noexcept {
   return "Operation not supported."; 
 }
 
@@ -46,7 +45,7 @@ const char* not_supported::what() const NOEXCEPT {
 //                                                                    eof_error
 // ----------------------------------------------------------------------------
 
-const char* eof_error::what() const NOEXCEPT { 
+const char* eof_error::what() const noexcept { 
   return "Read past EOF."; 
 }
 
@@ -61,11 +60,11 @@ lock_obtain_failed::lock_obtain_failed(
     error_ += ".";
   } else {
     error_ += ": ";
-    error_ + filename.c_str();
+    error_ += filename.c_str();
   }
 }
 
-const char* lock_obtain_failed::what() const NOEXCEPT {
+const char* lock_obtain_failed::what() const noexcept {
   return error_.c_str();
 }
 
@@ -84,7 +83,7 @@ file_not_found::file_not_found(
   }
 }
 
-const char* file_not_found::what() const NOEXCEPT { 
+const char* file_not_found::what() const noexcept { 
   return error_.c_str();
 }
 
@@ -92,7 +91,7 @@ const char* file_not_found::what() const NOEXCEPT {
 //                                                              index_not_found
 // ----------------------------------------------------------------------------
 
-const char* index_not_found::what() const NOEXCEPT {
+const char* index_not_found::what() const noexcept {
   return "No segments* file found.";
 }
 
@@ -100,7 +99,7 @@ const char* index_not_found::what() const NOEXCEPT {
 //                                                               not_impl_error
 // ----------------------------------------------------------------------------
 
-const char* not_impl_error::what() const NOEXCEPT { 
+const char* not_impl_error::what() const noexcept { 
   return "Not implemented."; 
 }
 
@@ -108,7 +107,7 @@ const char* not_impl_error::what() const NOEXCEPT {
 //                                                             illegal_argument
 // ----------------------------------------------------------------------------
 
-const char* illegal_argument::what() const NOEXCEPT{ 
+const char* illegal_argument::what() const noexcept{ 
   return "Invalid argument."; 
 }
 
@@ -116,7 +115,7 @@ const char* illegal_argument::what() const NOEXCEPT{
 //                                                             illegal_argument
 // ----------------------------------------------------------------------------
 
-const char* illegal_state::what() const NOEXCEPT{
+const char* illegal_state::what() const noexcept{
   return "Illegal state."; 
 }
 

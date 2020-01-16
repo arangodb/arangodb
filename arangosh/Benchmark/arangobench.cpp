@@ -24,16 +24,22 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Benchmark/BenchFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -59,20 +65,21 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
-    server.addFeature(new application_features::CommunicationFeaturePhase(server));
-    server.addFeature(new application_features::BasicFeaturePhase(server, true));
-    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<GreetingsFeaturePhase>(true);
 
-    server.addFeature(new BenchFeature(server, &ret));
-    server.addFeature(new ClientFeature(server, false));
-    server.addFeature(new ConfigFeature(server, "arangobench"));
-    server.addFeature(new LoggerFeature(server, false));
-    server.addFeature(new RandomFeature(server));
-    server.addFeature(new ShellColorsFeature(server));
-    server.addFeature(new ShutdownFeature(server, {"Bench"}));
-    server.addFeature(new SslFeature(server));
-    server.addFeature(new TempFeature(server, "arangobench"));
-    server.addFeature(new VersionFeature(server));
+    server.addFeature<BenchFeature>(&ret);
+    server.addFeature<ClientFeature, HttpEndpointProvider>(false);
+    server.addFeature<ConfigFeature>("arangobench");
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<RandomFeature>();
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::vector<std::type_index>{std::type_index(typeid(BenchFeature))});
+    server.addFeature<SslFeature>();
+    server.addFeature<TempFeature>("arangobench");
+    server.addFeature<VersionFeature>();
 
     try {
       server.run(argc, argv);

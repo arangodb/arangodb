@@ -316,7 +316,7 @@ function IResearchFeatureDDLTestSuite () {
 
       var meta = { links: {
         "TestCollection0": { },
-        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true, storeValues: "full" },
+        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true, storeValues: "value" },
         "TestCollection2": { fields: {
           "b": { fields: { "b1": {} } },
           "c": { includeAllFields: true },
@@ -352,7 +352,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
       assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
-      assertEqual("full", properties.links.TestCollection1.storeValues);
+      assertEqual("value", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
@@ -405,7 +405,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
       assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
-      assertEqual("full", properties.links.TestCollection1.storeValues);
+      assertEqual("value", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
@@ -472,11 +472,11 @@ function IResearchFeatureDDLTestSuite () {
       var meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      var result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(0, result.length);
 
       col0.save({ name: "quarter", text: "quick over" });
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].name);
 
@@ -494,7 +494,7 @@ function IResearchFeatureDDLTestSuite () {
       meta = { links: { "TestCollection0": { includeAllFields: true } } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -520,7 +520,7 @@ function IResearchFeatureDDLTestSuite () {
       } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -549,7 +549,7 @@ function IResearchFeatureDDLTestSuite () {
       } };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -586,7 +586,7 @@ function IResearchFeatureDDLTestSuite () {
       };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      var result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(0, result.length);
       var properties = view.properties();
       assertTrue(Object === properties.constructor);
@@ -598,7 +598,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       col0.save({ name: "quarter", text: "quick over" });
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(1, result.length);
       assertEqual("quarter", result[0].name);
 
@@ -623,7 +624,7 @@ function IResearchFeatureDDLTestSuite () {
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -664,7 +665,7 @@ function IResearchFeatureDDLTestSuite () {
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -708,7 +709,7 @@ function IResearchFeatureDDLTestSuite () {
       };
       view.properties(meta, true); // partial update
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(4, result.length);
       assertEqual("full", result[0].name);
       assertEqual("half", result[1].name);
@@ -724,7 +725,8 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual((0.5).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
 
       view.properties({}, false); // full update (reset to defaults)
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
+
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.name RETURN doc").toArray();
       assertEqual(0, result.length);
       properties = view.properties();
       assertTrue(Object === properties.constructor);
@@ -836,7 +838,7 @@ function IResearchFeatureDDLTestSuite () {
       var meta = { links: { "TestCollection0": { fields: { a: {} } } } };
       view.properties(meta, true); // partial update
 
-      var result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      var result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(1, result[1].z);
@@ -848,7 +850,7 @@ function IResearchFeatureDDLTestSuite () {
       assertNotEqual(undefined, updatedMeta.links.TestCollection0.fields.b);
       assertEqual(undefined, updatedMeta.links.TestCollection0.fields.a);
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(2, result[0].z);
       assertEqual(3, result[1].z);
@@ -856,7 +858,7 @@ function IResearchFeatureDDLTestSuite () {
       meta = { links: { "TestCollection0": { fields: { c: {} } } } };
       view.properties(meta, false); // full update
 
-      result = db._query("FOR doc IN  TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
+      result = db._query("FOR doc IN TestView OPTIONS { waitForSync: true } SORT doc.z RETURN doc").toArray();
       assertEqual(2, result.length);
       assertEqual(0, result[0].z);
       assertEqual(2, result[1].z);
@@ -900,6 +902,131 @@ function IResearchFeatureDDLTestSuite () {
       });
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test link on analyzers collection
+    /// FIXME not supported in cluster atm
+    ////////////////////////////////////////////////////////////////////////////////
+    testIndexStats : function() {
+      const colName = 'TestCollection';
+      const viewName = 'TestView';
+
+      db._drop(colName);
+      db._dropView(viewName);
+
+      const col = db._create(colName);
+      const view = db._createView(viewName, 'arangosearch', {
+        commitIntervalMsec: 0,        // disable auto-commit
+        consolidationIntervalMsec: 0, // disable consolidation
+        cleanupIntervalStep: 0        // disable cleanup
+      });
+      view.properties({ links: { [colName]: { includeAllFields: true } } });
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type === 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertEqual(0, figures.indexSize);
+        assertEqual(0, figures.numDocs);
+        assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(0, figures.numFiles);
+        assertEqual(0, figures.numSegments);
+      }
+
+      // insert documents
+      col.save({ foo: 'bar' });
+      col.save({ foo: 'baz' });
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type === 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertEqual(0, figures.indexSize);
+        assertEqual(0, figures.numDocs);
+        assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(0, figures.numFiles);
+        assertEqual(0, figures.numSegments);
+      }
+
+      // ensure data is synchronized
+      var res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
+      assertEqual(2, res.length);
+      assertEqual('bar', res[0].foo);
+      assertEqual('baz', res[1].foo);
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type === 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertEqual(0, figures.indexSize);
+        assertEqual(0, figures.numDocs);
+        assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(0, figures.numFiles);
+        assertEqual(0, figures.numSegments);
+      }
+
+      // remove document
+      col.remove(res[0]._key);
+
+      // ensure data is synchronized
+      res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
+      assertEqual(1, res.length);
+      assertEqual('baz', res[0].foo);
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type === 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertEqual(0, figures.indexSize);
+        assertEqual(0, figures.numDocs);
+        assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(0, figures.numFiles);
+        assertEqual(0, figures.numSegments);
+      }
+
+      // truncate collection
+      col.truncate();
+
+      // ensure data is synchronized
+      res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
+      assertEqual(0, res.length);
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type === 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertEqual(0, figures.indexSize);
+        assertEqual(0, figures.numDocs);
+        assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(0, figures.numFiles);
+        assertEqual(0, figures.numSegments);
+      }
+    },
+
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test create & drop of a view with a link.
     /// Regression test for arangodb/backlog#486.
@@ -922,6 +1049,7 @@ function IResearchFeatureDDLTestSuite () {
       } // forget variable `view`, it's invalid now
       assertEqual(db[viewName], undefined);
     },
+
     testLinkWithAnalyzerFromOtherDb: function() {
       let databaseNameAnalyzer = "testDatabaseAnalyzer";
       let databaseNameView = "testDatabaseView";
@@ -1114,7 +1242,47 @@ function IResearchFeatureDDLTestSuite () {
       assertNull(analyzers.analyzer(analyzerName));
       // this should be no name conflict
       analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
-     
+
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+
+    testIndexAnalyzerCollection : function() {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      assertNotEqual(null, db._collection("_analyzers"));
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { analyzers.remove(analyzerName); } catch (e) {}
+      assertEqual(0, db._analyzers.count());
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save(analyzerName, "identity");
+      // recreating database
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      assertNull(analyzers.analyzer(analyzerName));
+      // this should be no name conflict
+      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+      assertEqual(1, db._analyzers.count());
+
+      var view = db._createView("analyzersView", "arangosearch", {
+        links: {
+          _analyzers : {
+            includeAllFields:true,
+            analyzers: [ analyzerName ]
+          }
+        }
+      });
+
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
+
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     }

@@ -24,13 +24,14 @@
 #ifndef ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H
 #define ARANGOD_AQL_ENGINE_INFO_CONTAINER_COORDINATOR_H 1
 
-#include "Basics/Common.h"
-
 #include "Aql/types.h"
-#include "Cluster/ClusterInfo.h"
 
 #include <stack>
+#include <string>
+#include <unordered_set>
+
 namespace arangodb {
+class Result;
 
 namespace aql {
 
@@ -55,12 +56,12 @@ class EngineInfoContainerCoordinator {
 
     void addNode(ExecutionNode* en);
 
-    Result buildEngine(Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
+    Result buildEngine(Query& query, QueryRegistry* queryRegistry, std::string const& dbname,
                        std::unordered_set<std::string> const& restrictToShards,
                        MapRemoteToSnippet const& dbServerQueryIds,
                        std::vector<uint64_t>& coordinatorQueryIds) const;
 
-    QueryId queryId() const { return _id; }
+    QueryId queryId() const;
 
    private:
     // The generated id how we can find this query part
@@ -96,16 +97,17 @@ class EngineInfoContainerCoordinator {
   //   * Creates the ExecutionBlocks
   //   * Injects all Parts but the First one into QueryRegistery
   //   Return the first engine which is not added in the Registry
-  ExecutionEngineResult buildEngines(Query* query, QueryRegistry* registry,
+  ExecutionEngineResult buildEngines(Query& query, QueryRegistry* registry,
                                      std::string const& dbname,
                                      std::unordered_set<std::string> const& restrictToShards,
-                                     MapRemoteToSnippet const& dbServerQueryIds) const;
+                                     MapRemoteToSnippet const& dbServerQueryIds,
+                                     std::vector<uint64_t>& coordinatorQueryIds) const;
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster
   std::vector<EngineInfo> _engines;
 
-  std::stack<size_t> _engineStack;
+  std::stack<size_t, std::vector<size_t>> _engineStack;
 };
 
 }  // namespace aql

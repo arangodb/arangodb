@@ -28,6 +28,8 @@
 #include <unordered_set>
 #include <utility>
 
+#include <boost/core/demangle.hpp>
+
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -65,44 +67,19 @@ static void failCallback(std::string const& message) {
 }
 }  // namespace
 
-ApplicationServer* ApplicationServer::server = nullptr;
+std::atomic<bool> ApplicationServer::CTRL_C(false);
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
-                                     const char* binaryPath)
+                                     char const* binaryPath)
     : _state(State::UNINITIALIZED),
       _options(options),
       _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
-
-  if (ApplicationServer::server != nullptr) {
-    LOG_TOPIC("fbe91", ERR, arangodb::Logger::FIXME)
-        << "ApplicationServer initialized twice";
-  }
-
-  ApplicationServer::server = this;
-}
-
-ApplicationServer::~ApplicationServer() {
-  for (auto& it : _features) {
-    try {
-      delete it.second;
-    } catch (...) {
-      // we must skip over errors here as we're in the destructor.
-      // we cannot rely on the LoggerFeature being present either, so
-      // we have to suppress errors here
-    }
-  }
-
-  ApplicationServer::server = nullptr;
 }
 
 bool ApplicationServer::isPrepared() {
-  if (server == nullptr) {
-    return false;
-  }
-
-  auto tmp = server->state();
+  auto tmp = state();
   return tmp == State::IN_START || 
          tmp == State::IN_WAIT ||
          tmp == State::IN_SHUTDOWN ||
@@ -110,11 +87,7 @@ bool ApplicationServer::isPrepared() {
 }
 
 bool ApplicationServer::isStopping() {
-  if (server == nullptr) {
-    return false;
-  }
-
-  auto tmp = server->state();
+  auto tmp = state();
   return isStoppingState(tmp);
 }
 
@@ -123,94 +96,40 @@ bool ApplicationServer::isStoppingState(State state) {
          state == State::IN_STOP ||
          state == State::IN_UNPREPARE ||
          state == State::STOPPED ||
-         state == State::ABORTED; 
+         state == State::ABORTED;
 }
 
-void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
+void ApplicationServer::throwFeatureNotFoundException(char const* name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "unknown feature '" + name + "'");
+                                 "unknown feature '" +
+                                     boost::core::demangle(name) + "'");
 }
 
-void ApplicationServer::throwFeatureNotEnabledException(std::string const& name) {
+void ApplicationServer::throwFeatureNotEnabledException(char const* name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "feature '" + name + "' is not enabled");
+                                 "feature '" + boost::core::demangle(name) +
+                                     "' is not enabled");
 }
 
-ApplicationFeature* ApplicationServer::lookupFeature(std::string const& name) {
-  if (ApplicationServer::server == nullptr) {
-    return nullptr;
-  }
-
-  try {
-    return ApplicationServer::server->feature(name);
-  } catch (...) {
-    return nullptr;
-  }
+void ApplicationServer::disableFeatures(std::vector<std::type_index> const& types) {
+  disableFeatures(types, false);
 }
 
-void ApplicationServer::disableFeatures(std::vector<std::string> const& names) {
-  disableFeatures(names, false);
+void ApplicationServer::forceDisableFeatures(std::vector<std::type_index> const& types) {
+  disableFeatures(types, true);
 }
 
-void ApplicationServer::forceDisableFeatures(std::vector<std::string> const& names) {
-  disableFeatures(names, true);
-}
-
-void ApplicationServer::disableFeatures(std::vector<std::string> const& names, bool force) {
-  for (auto const& name : names) {
-    auto feature = ApplicationServer::lookupFeature(name);
-
-    if (feature != nullptr) {
+void ApplicationServer::disableFeatures(std::vector<std::type_index> const& types, bool force) {
+  for (auto const& type : types) {
+    if (hasFeature(type)) {
+      auto& feature = getFeature<ApplicationFeature>(type);
       if (force) {
-        feature->forceDisable();
+        feature.forceDisable();
       } else {
-        feature->disable();
+        feature.disable();
       }
     }
   }
-}
-
-// adds a feature to the application server. the application server
-// will take ownership of the feature object and destroy it in its
-// destructor
-void ApplicationServer::addFeature(ApplicationFeature* feature) {
-  TRI_ASSERT(feature->state() == ApplicationFeature::State::UNINITIALIZED);
-  _features.emplace(feature->name(), feature);
-}
-
-// checks for the existence of a named feature. will not throw when used for
-// a non-existing feature
-bool ApplicationServer::exists(std::string const& name) const {
-  return (_features.find(name) != _features.end());
-}
-
-// returns a pointer to a named feature. will throw when used for
-// a non-existing feature
-ApplicationFeature* ApplicationServer::feature(std::string const& name) const {
-  auto it = _features.find(name);
-
-  if (it == _features.end()) {
-    throwFeatureNotFoundException(name);
-  }
-  return (*it).second;
-}
-
-// return whether or not a feature is enabled
-// will throw when called for a non-existing feature
-bool ApplicationServer::isEnabled(std::string const& name) const {
-  return feature(name)->isEnabled();
-}
-
-// return whether or not a feature is optional
-// will throw when called for a non-existing feature
-bool ApplicationServer::isOptional(std::string const& name) const {
-  return feature(name)->isOptional();
-}
-
-// return whether or not a feature is required
-// will throw when called for a non-existing feature
-bool ApplicationServer::isRequired(std::string const& name) const {
-  return feature(name)->isRequired();
 }
 
 // this method will initialize and validate options
@@ -312,33 +231,34 @@ void ApplicationServer::beginShutdown() {
     }
     // try to enter the new state, but make sure nobody changed it in between
   } while (!_state.compare_exchange_weak(old, State::IN_SHUTDOWN, std::memory_order_relaxed));
-  
+
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
   // make sure that we advance the state when we get out of here
-  auto waitAborter = scopeGuard([this]() { 
+  auto waitAborter = scopeGuard([this]() {
     CONDITION_LOCKER(guard, _shutdownCondition);
 
     _abortWaiting = true;
     guard.signal();
   });
-  
+
   // now we can execute the actual shutdown sequence
 
   // fowards the begin shutdown signal to all features
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-    if ((*it)->isEnabled()) {
-      LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
+    ApplicationFeature& feature = it->get();
+    if (feature.isEnabled()) {
+      LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it).get().name() << "::beginShutdown";
       try {
-        (*it)->beginShutdown();
+        feature.beginShutdown();
       } catch (std::exception const& ex) {
         LOG_TOPIC("b2cf4", ERR, Logger::STARTUP)
             << "caught exception during beginShutdown of feature '"
-            << (*it)->name() << "': " << ex.what();
+            << feature.name() << "': " << ex.what();
       } catch (...) {
         LOG_TOPIC("3f708", ERR, Logger::STARTUP)
             << "caught unknown exception during beginShutdown of feature '"
-            << (*it)->name() << "'";
+            << feature.name() << "'";
       }
     }
   }
@@ -357,11 +277,11 @@ VPackBuilder ApplicationServer::options(std::function<bool(std::string const&)> 
 
 // walks over all features and runs a callback function for them
 // the order in which features are visited is unspecified
-void ApplicationServer::apply(std::function<void(ApplicationFeature*)> callback,
+void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
                               bool enabledOnly) {
   for (auto& it : _features) {
     if (!enabledOnly || it.second->isEnabled()) {
-      callback(it.second);
+      callback(*it.second);
     }
   }
 }
@@ -383,10 +303,10 @@ void ApplicationServer::collectOptions() {
                                                    arangodb::options::Flags::Command));
 
   apply(
-      [this](ApplicationFeature* feature) {
-        LOG_TOPIC("b2731", TRACE, Logger::STARTUP) << feature->name() << "::loadOptions";
-        feature->collectOptions(_options);
-        reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
+      [this](ApplicationFeature& feature) {
+        LOG_TOPIC("b2731", TRACE, Logger::STARTUP) << feature.name() << "::loadOptions";
+        feature.collectOptions(_options);
+        reportFeatureProgress(_state.load(std::memory_order_relaxed), feature.name());
       },
       true);
 }
@@ -417,9 +337,13 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
     std::cout << "digraph dependencies\n"
               << "{\n"
               << "  overlap = false;\n";
-    for (auto feature : _features) {
+    for (auto& feature : _features) {
       for (auto before : feature.second->startsAfter()) {
-        std::cout << "  " << feature.first << " -> " << before << ";\n";
+        std::string depName = before.name();
+        if (hasFeature(before)) {
+          depName = getFeature<ApplicationFeature>(before).name();
+        }
+        std::cout << "  " << feature.second->name() << " -> " << depName << ";\n";
       }
     }
     std::cout << "}\n";
@@ -427,9 +351,10 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   }
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    if ((*it)->isEnabled()) {
-      LOG_TOPIC("5c642", TRACE, Logger::STARTUP) << (*it)->name() << "::loadOptions";
-      (*it)->loadOptions(_options, _binaryPath);
+    ApplicationFeature& feature = (*it).get();
+    if (feature.isEnabled()) {
+      LOG_TOPIC("5c642", TRACE, Logger::STARTUP) << feature.name() << "::loadOptions";
+      feature.loadOptions(_options, _binaryPath);
     }
   }
 
@@ -445,12 +370,12 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
 void ApplicationServer::validateOptions() {
   LOG_TOPIC("1ed27", TRACE, Logger::STARTUP) << "ApplicationServer::validateOptions";
 
-  for (auto feature : _orderedFeatures) {
-    if (feature->isEnabled()) {
-      LOG_TOPIC("fa73c", TRACE, Logger::STARTUP) << feature->name() << "::validateOptions";
-      feature->validateOptions(_options);
-      feature->state(ApplicationFeature::State::VALIDATED);
-      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
+  for (ApplicationFeature& feature : _orderedFeatures) {
+    if (feature.isEnabled()) {
+      LOG_TOPIC("fa73c", TRACE, Logger::STARTUP) << feature.name() << "::validateOptions";
+      feature.validateOptions(_options);
+      feature.state(ApplicationFeature::State::VALIDATED);
+      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature.name());
     }
   }
 
@@ -473,35 +398,37 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
 
   // apply all "startsBefore" values
   for (auto& it : _features) {
-    for (auto const& other : it.second->startsBefore()) {
-      if (!this->exists(other)) {
+    auto& feature = *it.second;
+    for (auto const& other : feature.startsBefore()) {
+      if (!hasFeature(other)) {
         if (failOnMissing) {
-          fail("feature '" + it.second->name() +
-               "' depends on unknown feature '" + other + "'");
+          fail("feature '" + feature.name() + "' depends on unknown feature '" +
+               other.name() + "'");
         }
         continue;
       }
-      this->feature(other)->startsAfter(it.second->name());
+      getFeature<ApplicationFeature>(other).startsAfter(std::type_index(typeid(feature)));
     }
   }
 
   // calculate ancestors for all features
   for (auto& it : _features) {
-    it.second->determineAncestors();
+    it.second->determineAncestors(it.first);
   }
 
   // first check if a feature references an unknown other feature
   if (failOnMissing) {
     apply(
-        [this](ApplicationFeature* feature) {
-          for (auto& other : feature->requires()) {
-            if (!this->exists(other)) {
-              fail("feature '" + feature->name() +
-                   "' depends on unknown feature '" + other + "'");
+        [this](ApplicationFeature& feature) {
+          for (auto& other : feature.requires()) {
+            if (!hasFeature(other)) {
+              fail("feature '" + feature.name() +
+                   "' depends on unknown feature '" + other.name() + "'");
             }
-            if (!this->feature(other)->isEnabled()) {
-              fail("enabled feature '" + feature->name() +
-                   "' depends on other feature '" + other +
+            if (!getFeature<ApplicationFeature>(other).isEnabled()) {
+              fail("enabled feature '" + feature.name() +
+                   "' depends on other feature '" +
+                   getFeature<ApplicationFeature>(other).name() +
                    "', which is disabled");
             }
           }
@@ -510,49 +437,52 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   }
 
   // first insert all features, even the inactive ones
-  std::vector<ApplicationFeature*> features;
+  std::vector<std::reference_wrapper<ApplicationFeature>> features;
   for (auto& it : _features) {
-    auto const& us = it.second;
+    auto const& us = *it.second;
     auto insertPosition = features.end();
 
     for (size_t i = features.size(); i > 0; --i) {
-      auto const& other = features[i - 1];
-      if (us->doesStartBefore(other->name())) {
+      auto const& other = features[i - 1].get();
+      if (us.doesStartBefore(std::type_index(typeid(other)))) {
         // we start before the other feature. so move ourselves up
         insertPosition = features.begin() + (i - 1);
-      } else if (other->doesStartBefore(us->name())) {
+      } else if (other.doesStartBefore(std::type_index(typeid(us)))) {
         // the other feature starts before us. so stop moving up
         break;
       } else {
         // no dependencies between the two features
-        if (us->name() < other->name()) {
+        if (us.name() < other.name()) {
           insertPosition = features.begin() + (i - 1);
         }
       }
     }
-    features.insert(insertPosition, it.second);
+    features.insert(insertPosition, *it.second);
   }
 
   LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";
 
   int position = 0;
-  for (auto feature : features) {
-    auto const& startsAfter = feature->startsAfter();
+  for (ApplicationFeature& feature : features) {
+    auto const& startsAfter = feature.startsAfter();
 
     std::string dependencies;
     if (!startsAfter.empty()) {
-      dependencies = " - depends on: " + StringUtils::join(startsAfter, ", ");
+      std::function<std::string(std::type_index)> cb =
+          [](std::type_index type) -> std::string { return type.name(); };
+      dependencies = " - depends on: " + StringUtils::join(startsAfter, ", ", cb);
     }
     LOG_TOPIC("b2ad5", TRACE, Logger::STARTUP)
-        << "feature #" << ++position << ": " << feature->name()
-        << (feature->isEnabled() ? "" : " (disabled)") << dependencies;
+        << "feature #" << ++position << ": " << feature.name()
+        << (feature.isEnabled() ? "" : " (disabled)") << dependencies;
   }
 
   // remove all inactive features
   for (auto it = features.begin(); it != features.end(); /* no hoisting */) {
-    if ((*it)->isEnabled()) {
+    ApplicationFeature& feature = (*it).get();
+    if (feature.isEnabled()) {
       // keep feature
-      (*it)->state(ApplicationFeature::State::INITIALIZED);
+      feature.state(ApplicationFeature::State::INITIALIZED);
       ++it;
     } else {
       // remove feature
@@ -567,8 +497,9 @@ void ApplicationServer::daemonize() {
   LOG_TOPIC("ca0b1", TRACE, Logger::STARTUP) << "ApplicationServer::daemonize";
 
   for (auto it = _orderedFeatures.begin(); it != _orderedFeatures.end(); ++it) {
-    if ((*it)->isEnabled()) {
-      (*it)->daemonize();
+    ApplicationFeature& feature = (*it).get();
+    if (feature.isEnabled()) {
+      feature.daemonize();
     }
   }
 }
@@ -577,30 +508,31 @@ void ApplicationServer::disableDependentFeatures() {
   LOG_TOPIC("3e03b", TRACE, Logger::STARTUP)
       << "ApplicationServer::disableDependentFeatures";
 
-  for (auto feature : _orderedFeatures) {
-    auto const& onlyEnabledWith = feature->onlyEnabledWith();
+  for (ApplicationFeature& feature : _orderedFeatures) {
+    auto const& onlyEnabledWith = feature.onlyEnabledWith();
 
-    if (!feature->isEnabled() || onlyEnabledWith.empty()) {
+    if (!feature.isEnabled() || onlyEnabledWith.empty()) {
       continue;
     }
 
     for (auto const& other : onlyEnabledWith) {
-      ApplicationFeature* f = lookupFeature(other);
-      if (f == nullptr) {
+      if (!hasFeature(other)) {
         LOG_TOPIC("f70cc", TRACE, Logger::STARTUP)
-            << "turning off feature '" << feature->name()
+            << "turning off feature '" << feature.name()
             << "' because it is enabled only in conjunction with non-existing "
                "feature '"
-            << other << "'";
-        feature->disable();
+            << other.name() << "'";
+        feature.disable();
         break;
-      } else if (!f->isEnabled()) {
+      }
+      ApplicationFeature& f = getFeature<ApplicationFeature>(other);
+      if (!f.isEnabled()) {
         LOG_TOPIC("58e0e", TRACE, Logger::STARTUP)
-            << "turning off feature '" << feature->name()
+            << "turning off feature '" << feature.name()
             << "' because it is enabled only in conjunction with disabled "
                "feature '"
-            << f->name() << "'";
-        feature->disable();
+            << f.name() << "'";
+        feature.disable();
         break;
       }
     }
@@ -613,9 +545,9 @@ void ApplicationServer::prepare() {
   // we start with elevated privileges
   bool privilegesElevated = true;
 
-  for (auto feature : _orderedFeatures) {
-    if (feature->isEnabled()) {
-      bool const requiresElevated = feature->requiresElevatedPrivileges();
+  for (ApplicationFeature& feature : _orderedFeatures) {
+    if (feature.isEnabled()) {
+      bool const requiresElevated = feature.requiresElevatedPrivileges();
 
       if (requiresElevated != privilegesElevated) {
         // must change privileges for the feature
@@ -629,12 +561,12 @@ void ApplicationServer::prepare() {
       }
 
       try {
-        LOG_TOPIC("d4e57", TRACE, Logger::STARTUP) << feature->name() << "::prepare";
-        feature->prepare();
-        feature->state(ApplicationFeature::State::PREPARED);
+        LOG_TOPIC("d4e57", TRACE, Logger::STARTUP) << feature.name() << "::prepare";
+        feature.prepare();
+        feature.state(ApplicationFeature::State::PREPARED);
       } catch (std::exception const& ex) {
         LOG_TOPIC("37921", ERR, Logger::STARTUP)
-            << "caught exception during prepare of feature '" << feature->name()
+            << "caught exception during prepare of feature '" << feature.name()
             << "': " << ex.what();
         // restore original privileges
         if (!privilegesElevated) {
@@ -644,7 +576,7 @@ void ApplicationServer::prepare() {
       } catch (...) {
         LOG_TOPIC("a1b9f", ERR, Logger::STARTUP)
             << "caught unknown exception during preparation of feature '"
-            << feature->name() << "'";
+            << feature.name() << "'";
         // restore original privileges
         if (!privilegesElevated) {
           raisePrivilegesTemporarily();
@@ -652,7 +584,7 @@ void ApplicationServer::prepare() {
         throw;
       }
 
-      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
+      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature.name());
     }
   }
 }
@@ -662,81 +594,100 @@ void ApplicationServer::start() {
 
   Result res;
 
-  for (auto feature : _orderedFeatures) {
-    if (!feature->isEnabled()) {
+  for (ApplicationFeature& feature : _orderedFeatures) {
+    if (!feature.isEnabled()) {
       continue;
     }
 
-    LOG_TOPIC("27b63", TRACE, Logger::STARTUP) << feature->name() << "::start";
+    LOG_TOPIC("27b63", TRACE, Logger::STARTUP) << feature.name() << "::start";
 
     try {
-      feature->start();
-      feature->state(ApplicationFeature::State::STARTED);
-      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
+      feature.start();
+      feature.state(ApplicationFeature::State::STARTED);
+      reportFeatureProgress(_state.load(std::memory_order_relaxed), feature.name());
     } catch (basics::Exception const& ex) {
       res.reset(
           ex.code(),
           std::string(
               "startup aborted: caught exception during start of feature '") +
-              feature->name() + "': " + ex.what());
+              feature.name() + "': " + ex.what());
     } catch (std::bad_alloc const& ex) {
       res.reset(
           TRI_ERROR_OUT_OF_MEMORY,
           std::string(
               "startup aborted: caught exception during start of feature '") +
-              feature->name() + "': " + ex.what());
+              feature.name() + "': " + ex.what());
     } catch (std::exception const& ex) {
       res.reset(
           TRI_ERROR_INTERNAL,
           std::string(
               "startup aborted: caught exception during start of feature '") +
-              feature->name() + "': " + ex.what());
+              feature.name() + "': " + ex.what());
     } catch (...) {
       res.reset(TRI_ERROR_INTERNAL,
                 std::string("startup aborted: caught unknown exception during "
                             "start of feature '") +
-                    feature->name() + "'");
+                    feature.name() + "'");
     }
 
     if (res.fail()) {
       LOG_TOPIC("4ec19", ERR, Logger::STARTUP) << res.errorMessage() << ". shutting down";
       LOG_TOPIC("51732", TRACE, Logger::STARTUP)
           << "aborting startup, now stopping and unpreparing all features";
+
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-        auto feature = *it;
-        if (!feature->isEnabled()) {
+        ApplicationFeature& feature = *it;
+        if (!feature.isEnabled()) {
           continue;
         }
-        if (feature->state() == ApplicationFeature::State::STARTED) {
-          LOG_TOPIC("e5cfd", TRACE, Logger::STARTUP)
-              << "forcefully stopping feature '" << feature->name() << "'";
+        if (feature.state() == ApplicationFeature::State::STARTED) {
+          LOG_TOPIC("e5cfe", TRACE, Logger::STARTUP)
+          << "forcefully beginning stop of feature '" << feature.name() << "'";
           try {
-            feature->beginShutdown();
-            feature->stop();
-            feature->state(ApplicationFeature::State::STOPPED);
+            feature.beginShutdown();
+          } catch (...) {
+            // ignore errors on shutdown
+            LOG_TOPIC("13224", TRACE, Logger::STARTUP)
+            << "caught exception while stopping feature '" << feature.name() << "'";
+          }
+        }
+      }
+
+      // try to stop all feature that we just started
+      for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+        ApplicationFeature& feature = *it;
+        if (!feature.isEnabled()) {
+          continue;
+        }
+        if (feature.state() == ApplicationFeature::State::STARTED) {
+          LOG_TOPIC("e5cfd", TRACE, Logger::STARTUP)
+              << "forcefully stopping feature '" << feature.name() << "'";
+          try {
+            feature.stop();
+            feature.state(ApplicationFeature::State::STOPPED);
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("13223", TRACE, Logger::STARTUP)
-                << "caught exception while stopping feature '" << feature->name() << "'";
+                << "caught exception while stopping feature '" << feature.name() << "'";
           }
         }
       }
 
       // try to unprepare all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-        auto feature = *it;
-        if (feature->state() == ApplicationFeature::State::STOPPED) {
+        ApplicationFeature& feature = *it;
+        if (feature.state() == ApplicationFeature::State::STOPPED) {
           LOG_TOPIC("6ba4f", TRACE, Logger::STARTUP)
-              << "forcefully unpreparing feature '" << feature->name() << "'";
+              << "forcefully unpreparing feature '" << feature.name() << "'";
           try {
-            feature->unprepare();
-            feature->state(ApplicationFeature::State::UNPREPARED);
+            feature.unprepare();
+            feature.state(ApplicationFeature::State::UNPREPARED);
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("7d68f", TRACE, Logger::STARTUP)
                 << "caught exception while unpreparing feature '"
-                << feature->name() << "'";
+                << feature.name() << "'";
           }
         }
       }
@@ -755,25 +706,25 @@ void ApplicationServer::stop() {
   LOG_TOPIC("3e53e", TRACE, Logger::STARTUP) << "ApplicationServer::stop";
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-    auto feature = *it;
-    if (!feature->isEnabled()) {
+    ApplicationFeature& feature = (*it).get();
+    if (!feature.isEnabled()) {
       continue;
     }
 
-    LOG_TOPIC("4cd18", TRACE, Logger::STARTUP) << feature->name() << "::stop";
+    LOG_TOPIC("4cd18", TRACE, Logger::STARTUP) << feature.name() << "::stop";
     try {
-      feature->stop();
+      feature.stop();
     } catch (std::exception const& ex) {
       LOG_TOPIC("f07eb", ERR, Logger::STARTUP)
-          << "caught exception during stop of feature '" << feature->name()
+          << "caught exception during stop of feature '" << feature.name()
           << "': " << ex.what();
     } catch (...) {
       LOG_TOPIC("6d496", ERR, Logger::STARTUP)
           << "caught unknown exception during stop of feature '"
-          << feature->name() << "'";
+          << feature.name() << "'";
     }
-    feature->state(ApplicationFeature::State::STOPPED);
-    reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
+    feature.state(ApplicationFeature::State::STOPPED);
+    reportFeatureProgress(_state.load(std::memory_order_relaxed), feature.name());
   }
 }
 
@@ -781,25 +732,25 @@ void ApplicationServer::unprepare() {
   LOG_TOPIC("d6764", TRACE, Logger::STARTUP) << "ApplicationServer::unprepare";
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-    auto feature = *it;
-    if (!feature->isEnabled()) {
+    ApplicationFeature& feature = (*it).get();
+    if (!feature.isEnabled()) {
       continue;
     }
 
-    LOG_TOPIC("98be4", TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
+    LOG_TOPIC("98be4", TRACE, Logger::STARTUP) << feature.name() << "::unprepare";
     try {
-      feature->unprepare();
+      feature.unprepare();
     } catch (std::exception const& ex) {
       LOG_TOPIC("dc019", ERR, Logger::STARTUP)
-          << "caught exception during unprepare of feature '" << feature->name()
+          << "caught exception during unprepare of feature '" << feature.name()
           << "': " << ex.what();
     } catch (...) {
       LOG_TOPIC("859a3", ERR, Logger::STARTUP)
           << "caught unknown exception during unprepare of feature '"
-          << feature->name() << "'";
+          << feature.name() << "'";
     }
-    feature->state(ApplicationFeature::State::UNPREPARED);
-    reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
+    feature.state(ApplicationFeature::State::UNPREPARED);
+    reportFeatureProgress(_state.load(std::memory_order_relaxed), feature.name());
   }
 }
 
@@ -808,9 +759,13 @@ void ApplicationServer::wait() {
 
   // wait here until beginShutdown has been called and finished
   while (true) {
+    if (CTRL_C.load()) {
+      beginShutdown();
+    }
+
     // wait until somebody calls beginShutdown and it finishes
     CONDITION_LOCKER(guard, _shutdownCondition);
-    
+
     if (_abortWaiting) {
       // yippieh!
       break;
@@ -852,12 +807,8 @@ void ApplicationServer::dropPrivilegesPermanently() {
         "must not try to drop privileges after having dropped them");
   }
 
-  if (exists("Privilege")) {
-    auto privilege =
-        dynamic_cast<PrivilegeFeature*>(lookupFeature("Privilege"));
-    if (privilege != nullptr) {
-      privilege->dropPrivilegesPermanently();
-    }
+  if (hasFeature<PrivilegeFeature>()) {
+    getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
   }
 
   _privilegesDropped = true;
@@ -875,9 +826,9 @@ void ApplicationServer::reportFeatureProgress(State state, std::string const& na
   }
 }
 
-char const* ApplicationServer::stringifyState() const { 
+char const* ApplicationServer::stringifyState() const {
   switch (_state.load()) {
-    case State::UNINITIALIZED: 
+    case State::UNINITIALIZED:
       return "uninitialized";
     case State::IN_COLLECT_OPTIONS:
       return "in collect options";

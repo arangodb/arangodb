@@ -28,7 +28,12 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Cache/CacheManagerFeature.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Indexes/IndexFactory.h"
+#include "RestServer/ViewTypesFeature.h"
+#include "StorageEngineFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -52,6 +57,10 @@ enum class RecoveryState : uint32_t {
   DONE
 };
 
+namespace aql {
+class OptimizerRulesFeature;
+}
+
 class DatabaseInitialSyncer;
 class LogicalCollection;
 class LogicalView;
@@ -71,6 +80,7 @@ namespace transaction {
 class Context;
 class ContextData;
 class Manager;
+class ManagerFeature;
 struct Options;
 
 }  // namespace transaction
@@ -89,17 +99,17 @@ class StorageEngine : public application_features::ApplicationFeature {
     // startup
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
+    startsAfter<application_features::BasicFeaturePhaseServer>();
 
-    startsAfter("BasicsPhase");
-    startsAfter("CacheManager");
-    startsBefore("StorageEngine");
-    startsAfter("TransactionManager");
-    startsAfter("ViewTypes");
+    startsAfter<CacheManagerFeature>();
+    startsBefore<StorageEngineFeature>();
+    startsAfter<transaction::ManagerFeature>();
+    startsAfter<ViewTypesFeature>();
   }
 
   virtual bool supportsDfdb() const = 0;
 
-  virtual std::unique_ptr<transaction::Manager> createTransactionManager() = 0;
+  virtual std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) = 0;
   virtual std::unique_ptr<transaction::ContextData> createTransactionContextData() = 0;
   virtual std::unique_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) = 0;
@@ -114,9 +124,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create storage-engine specific collection
   virtual std::unique_ptr<PhysicalCollection> createPhysicalCollection(
       LogicalCollection& collection, velocypack::Slice const& info) = 0;
-
-  // minimum timeout for the synchronous replication
-  virtual double minimumSyncReplicationTimeout() const = 0;
 
   // status functionality
   // --------------------
@@ -179,15 +186,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   //// operations on databases
 
   /// @brief opens a database
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args,
-                                                      bool isUpgrade, int& status) = 0;
-  std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& args, bool isUpgrade) {
-    int status;
-    auto rv = openDatabase(args, isUpgrade, status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
-    TRI_ASSERT(rv != nullptr);
-    return rv;
-  }
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                      bool isUpgrade) = 0;
 
   // asks the storage engine to create a database as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server
@@ -197,8 +197,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // then, so that subsequent database creation requests will not fail. the WAL
   // entry for the database creation will be written *after* the call to
   // "createDatabase" returns no way to acquire id within this function?!
-  virtual std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                        velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                         int& status) = 0;
 
   // @brief write create marker for database
@@ -349,7 +348,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // -------------
 
   /// @brief Add engine-specific optimizer rules
-  virtual void addOptimizerRules() {}
+  virtual void addOptimizerRules(aql::OptimizerRulesFeature&) {}
 
   /// @brief Add engine-specific V8 functions
   virtual void addV8Functions() {}
@@ -390,13 +389,13 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.add("name", velocypack::Value(typeName()));
     builder.add("supports", velocypack::Value(VPackValueType::Object));
     builder.add("dfdb", velocypack::Value(supportsDfdb()));
-    
+
     builder.add("indexes", velocypack::Value(VPackValueType::Array));
     for (auto const& it : indexFactory().supportedIndexes()) {
       builder.add(velocypack::Value(it));
     }
     builder.close();  // indexes
-    
+
     builder.add("aliases", velocypack::Value(VPackValueType::Object));
     builder.add("indexes", velocypack::Value(VPackValueType::Object));
     for (auto const& it : indexFactory().indexAliases()) {
@@ -404,7 +403,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     }
     builder.close();  // indexes
     builder.close();  // aliases
-    
+
     builder.close();  // supports
     builder.close();  // object
   }
@@ -413,6 +412,8 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.openObject();
     builder.close();
   }
+
+  virtual void getStatistics(std::string& result) const {}
 
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;

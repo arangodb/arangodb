@@ -37,8 +37,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestShutdownHandler::RestShutdownHandler(application_features::ApplicationServer& server,
+                                         GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_get_api_initiate
@@ -74,7 +75,7 @@ RestStatus RestShutdownHandler::execute() {
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
   if (shutdownClusterFound && shutdownCluster == "1" && AgencyCommManager::isEnabled()) {
-    AgencyComm agency;
+    AgencyComm agency(server());
     VPackBuilder builder;
     builder.add(VPackValue(true));
     AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
@@ -85,9 +86,8 @@ RestStatus RestShutdownHandler::execute() {
     removeFromCluster = true;
   }
   if (removeFromCluster) {
-    ClusterFeature* clusterFeature =
-        ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    clusterFeature->setUnregisterOnShutdown(true);
+    ClusterFeature& clusterFeature = server().getFeature<ClusterFeature>();
+    clusterFeature.setUnregisterOnShutdown(true);
   }
 
   auto self = shared_from_this();
@@ -98,7 +98,7 @@ RestStatus RestShutdownHandler::execute() {
     // Give the server 2 seconds to send the reply:
     std::this_thread::sleep_for(std::chrono::seconds(2));
     // Go down:
-    ApplicationServer::server->beginShutdown();
+    self->server().beginShutdown();
   });
   if (queued) {
     VPackBuilder result;

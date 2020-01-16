@@ -229,7 +229,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                      syncer._state.master.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const responseBody = builder.slice();
@@ -426,7 +426,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
                         syncer._state.master.endpoint +
-                        ": response is no array");
+                        ": " + r.errorMessage());
     }
 
     VPackSlice const slice = docsBuilder->slice();
@@ -439,7 +439,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
 
     size_t foundLength = slice.length();
 
-    for (auto const& it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
       if (it.isNull()) {
         continue;
       }
@@ -501,13 +501,17 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
               return res;
             }
 
+            options.indexOperationMode = Index::OperationMode::normal;
             res = physical->insert(trx, it, mdr, options,
                                    /*lock*/false, nullptr, nullptr);
+            options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
             }
             // fall-through
           } else {
+            int errorNumber = res.errorNumber();
+            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
             return res;
           }
         }
@@ -528,13 +532,17 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             if (inner.fail()) {
               return res;
             }
+            options.indexOperationMode = Index::OperationMode::normal;
             res = physical->replace(trx, it, mdr, options,
                                     /*lock*/false, previous);
+            options.indexOperationMode = Index::OperationMode::internal;
             if (res.fail()) {
               return res;
             }
             // fall-through
           } else {
+            int errorNumber = res.errorNumber();
+            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
             return res;
           }
         }
@@ -606,7 +614,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   if (r.fail()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      syncer._state.master.endpoint + ": response is no array");
+                      syncer._state.master.endpoint + ": " + r.errorMessage());
   }
 
   VPackSlice const chunkSlice = builder.slice();
@@ -818,6 +826,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             col->readDocumentWithCallback(&trx, documentId,
                                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
                                             docRev = TRI_ExtractRevisionId(doc);
+                                            return true;
                                           });
           }
           compareChunk(docKey, docRev);
@@ -846,7 +855,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           col->numberDocuments(&trx, transaction::CountType::Normal);
       syncer.setProgress(
           std::string("number of remaining documents in collection '") +
-          col->name() + "' " + std::to_string(numberDocumentsAfterSync) +
+          col->name() + "': " + std::to_string(numberDocumentsAfterSync) +
           ", number of documents due to collection count: " +
           std::to_string(numberDocumentsDueToCounter));
 

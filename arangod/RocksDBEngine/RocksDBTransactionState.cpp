@@ -23,6 +23,7 @@
 
 #include "RocksDBTransactionState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
@@ -32,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -39,6 +41,7 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -105,6 +108,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     // register with manager
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     updateStatus(transaction::Status::RUNNING);
+    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
     setRegistered();
 
@@ -192,7 +196,7 @@ void RocksDBTransactionState::createTransaction() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
-  
+
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
   if (isOnlyExclusiveTransaction()) {
@@ -256,16 +260,16 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 #endif
     return Result();
   }
-  
+
   // we may need to block intermediate commits
-  ExecContext const* exe = ExecContext::CURRENT;
-  if (!isReadOnlyTransaction() && exe != nullptr) {
-    bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
-    if (exe->isCanceled() || cancelRW) {
+  ExecContext const& exec = ExecContext::current();
+  if (!isReadOnlyTransaction()) {
+    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    if (exec.isCanceled() || cancelRW) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
-  
+
   auto commitCounts = [this]() {
     TRI_ASSERT(_lastWrittenOperationTick > 0);
     for (auto& trxColl : _collections) {
@@ -279,7 +283,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       coll->commitCounts(id(), _lastWrittenOperationTick);
     }
   };
-  
+
   // we are actually going to attempt a commit
   if (!isSingleOperation()) {
     // add custom commit marker to increase WAL tailing reliability
@@ -317,7 +321,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     auto* coll = static_cast<RocksDBTransactionCollection*>(trxColl);
     coll->prepareCommit(id(), preCommitSeq);
   }
-  
+
   // if we fail during commit, make sure we remove blockers, etc.
   auto cleanupCollTrx = scopeGuard([this]() {
     for (auto& trxColl : _collections) {
@@ -341,12 +345,12 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   uint64_t numOps = _rocksTransaction->GetNumPuts() +
                     _rocksTransaction->GetNumDeletes() +
                     _rocksTransaction->GetNumMerges();
-  
+
   rocksdb::Status s = _rocksTransaction->Commit();
   if (!s.ok()) { // cleanup performed by scope-guard
     return rocksutils::convertStatus(s);
   }
-  
+
   TRI_ASSERT(numOps > 0);  // simon: should hold unless we're being stupid
   rocksdb::SequenceNumber postCommitSeq = _rocksTransaction->GetId();
   TRI_ASSERT(postCommitSeq != 0);
@@ -355,7 +359,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   }
   TRI_ASSERT(postCommitSeq <= rocksutils::globalRocksDB()->GetLatestSequenceNumber());
   _lastWrittenOperationTick = postCommitSeq;
-  
+
   commitCounts();
   cleanupCollTrx.cancel();
 
@@ -395,6 +399,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     if (res.ok()) {
       updateStatus(transaction::Status::COMMITTED);
       cleanupTransaction();  // deletes trx
+      _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
     } else {
       abortTransaction(activeTrx);  // deletes trx
     }
@@ -426,6 +431,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
     TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
   }
 
+  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   unuseCollections(nestingLevel());
   return result;
 }
@@ -582,7 +588,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultBeforeIntermediateCommit") {
-    TRI_SegfaultDebugging("SegfaultBeforeIntermediateCommit");
+    TRI_TerminateDebugging("SegfaultBeforeIntermediateCommit");
   }
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
@@ -597,12 +603,13 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   }
 
   hasPerformedIntermediateCommit = true;
+  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._intermediateCommits++;
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_IF_FAILURE("SegfaultAfterIntermediateCommit") {
-    TRI_SegfaultDebugging("SegfaultAfterIntermediateCommit");
+    TRI_TerminateDebugging("SegfaultAfterIntermediateCommit");
   }
 
   _numInserts = 0;

@@ -39,4 +39,3 @@ Return the active storage engine with the RocksDB storage engine in use:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

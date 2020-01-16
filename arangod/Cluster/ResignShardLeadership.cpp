@@ -75,7 +75,7 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
   }
 }
 
-ResignShardLeadership::~ResignShardLeadership() {}
+ResignShardLeadership::~ResignShardLeadership() = default;
 
 bool ResignShardLeadership::first() {
   std::string const& database = _description.get(DATABASE);

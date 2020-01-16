@@ -24,18 +24,23 @@
 #include "RestAdminServerHandler.h"
 
 #include "Actions/RestActionHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
+#include "VocBase/VocbaseInfo.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminServerHandler::RestAdminServerHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestAdminServerHandler::RestAdminServerHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -47,6 +52,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleRole();
   } else if (suffixes.size() == 1 && suffixes[0] == "availability") {
     handleAvailability();
+  } else if (suffixes.size() == 1 && suffixes[0] == "databaseDefaults") {
+    handleDatabaseDefaults();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, 404);
   }
@@ -118,7 +125,7 @@ void RestAdminServerHandler::handleAvailability() {
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
-      available = !application_features::ApplicationServer::isStopping();
+      available = !server().isStopping();
       break;
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
@@ -201,4 +208,14 @@ void RestAdminServerHandler::handleMode() {
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
+}
+
+
+void RestAdminServerHandler::handleDatabaseDefaults() {
+  auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
+  VPackBuilder builder;
+  builder.openObject();
+  addClusterOptions(builder, defaults);
+  builder.close();
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }

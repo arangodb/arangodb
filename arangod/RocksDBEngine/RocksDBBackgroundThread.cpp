@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBBackgroundThread.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
@@ -32,8 +34,8 @@
 
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine* eng, double interval)
-    : Thread("RocksDBThread"), _engine(eng), _interval(interval) {}
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng, double interval)
+    : Thread(eng.server(), "RocksDBThread"), _engine(eng), _interval(interval) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -54,7 +56,7 @@ void RocksDBBackgroundThread::run() {
       guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
     }
 
-    if (_engine->inRecovery()) {
+    if (_engine.inRecovery()) {
       continue;
     }
 
@@ -63,7 +65,7 @@ void RocksDBBackgroundThread::run() {
     try {
       if (!isStopping()) {
         double start = TRI_microtime();
-        Result res = _engine->settingsManager()->sync(false);
+        Result res = _engine.settingsManager()->sync(false);
         if (res.fail()) {
           LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
               << "background settings sync failed: " << res.errorMessage();
@@ -78,21 +80,22 @@ void RocksDBBackgroundThread::run() {
       }
 
       bool force = isStopping();
-      _engine->replicationManager()->garbageCollect(force);
+      _engine.replicationManager()->garbageCollect(force);
 
       uint64_t minTick = rocksutils::latestSequenceNumber();
-      auto cmTick = _engine->settingsManager()->earliestSeqNeeded();
+      auto cmTick = _engine.settingsManager()->earliestSeqNeeded();
 
       if (cmTick < minTick) {
         minTick = cmTick;
       }
 
-      if (DatabaseFeature::DATABASE != nullptr) {
-        DatabaseFeature::DATABASE->enumerateDatabases([&minTick](TRI_vocbase_t& vocbase) -> void {
-          // lowestServedValue will return the lowest of the lastServedTick values stored,
-          // or UINT64_MAX if no clients are registered
-          minTick = std::min(minTick, vocbase.replicationClients().lowestServedValue());
-        });
+      if (_engine.server().hasFeature<DatabaseFeature>()) {
+        _engine.server().getFeature<DatabaseFeature>().enumerateDatabases(
+            [&minTick](TRI_vocbase_t& vocbase) -> void {
+              // lowestServedValue will return the lowest of the lastServedTick
+              // values stored, or UINT64_MAX if no clients are registered
+              minTick = std::min(minTick, vocbase.replicationClients().lowestServedValue());
+            });
       }
 
       // only start pruning of obsolete WAL files a few minutes after
@@ -100,11 +103,11 @@ void RocksDBBackgroundThread::run() {
       // will not have a chance to reconnect to a restarted master in
       // time so the master may purge WAL files that replication slaves
       // would still like to peek into
-      if (TRI_microtime() >= startTime + _engine->pruneWaitTimeInitial()) {
+      if (TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial()) {
         // determine which WAL files can be pruned
-        _engine->determinePrunableWalFiles(minTick);
+        _engine.determinePrunableWalFiles(minTick);
         // and then prune them when they expired
-        _engine->pruneWalFiles();
+        _engine.pruneWalFiles();
       }
         
     } catch (std::exception const& ex) {
@@ -116,5 +119,5 @@ void RocksDBBackgroundThread::run() {
     }
   }
 
-  _engine->settingsManager()->sync(true);  // final write on shutdown
+  _engine.settingsManager()->sync(true);  // final write on shutdown
 }

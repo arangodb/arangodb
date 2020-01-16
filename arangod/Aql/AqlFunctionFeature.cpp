@@ -21,8 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFunctionFeature.h"
+
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -38,8 +42,9 @@ AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
-  startsAfter("V8Phase");
-  startsAfter("Aql");
+  startsAfter<V8FeaturePhase>();
+
+  startsAfter<AqlFeature>();
 }
 
 // This feature does not have any options
@@ -79,7 +84,7 @@ Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
 void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
   // add function to the map
-  _functionNames.emplace(func.name, func);
+  _functionNames.try_emplace(func.name, func);
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& original) {
@@ -401,6 +406,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
+  add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
 
   // special flags:
   add({"DATE_NOW", "", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer),

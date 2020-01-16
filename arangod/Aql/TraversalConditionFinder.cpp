@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalConditionFinder.h"
+
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -29,7 +30,11 @@
 #include "Aql/Query.h"
 #include "Aql/TraversalNode.h"
 #include "Graph/TraverserOptions.h"
+#include "Logger/LogMacros.h"
 
+#include "Basics/StaticStrings.h"
+
+using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
@@ -270,9 +275,9 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t te
           notSupported = true;
           return node;
         }
-        if (node->stringEquals("edges", false)) {
+        if (node->stringEquals(StaticStrings::GraphQueryEdges)) {
           isEdge = true;
-        } else if (node->stringEquals("vertices", false)) {
+        } else if (node->stringEquals(StaticStrings::GraphQueryVertices)) {
           isEdge = false;
         } else {
           notSupported = true;
@@ -515,8 +520,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
     case EN::K_SHORTEST_PATHS:
-    case EN::ENUMERATE_IRESEARCH_VIEW:
-    {
+    case EN::ENUMERATE_IRESEARCH_VIEW: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
@@ -542,7 +546,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
     case EN::FILTER: {
       // register which variable is used in a FILTER
-      _filterVariables.emplace(ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id);
+      _filterVariables.emplace(
+          ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id);
       break;
     }
 
@@ -600,7 +605,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
       // edit in-place; TODO: replace node instead
       TEMPORARILY_UNLOCK_NODE(andNode);
-      arangodb::HashSet<Variable const*> varsUsedByCondition;
+      ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
 
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
@@ -710,9 +715,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
 
       if (!isEmpty) {
-        // node->setCondition(_condition.release());
         originalFilterConditions->normalize();
-        node->setCondition(originalFilterConditions.release());
+        node->setCondition(std::move(originalFilterConditions));
         // We restart here with an empty condition.
         // All Filters that have been collected thus far
         // depend on sth issued by this traverser or later
@@ -736,7 +740,7 @@ bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
-  arangodb::HashSet<Variable const*> vars;
+  ::arangodb::containers::HashSet<Variable const*> vars;
   Ast::getReferencedVariables(node, vars);
   if (vars.size() > 1) {
     // More then one variable.

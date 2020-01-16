@@ -140,7 +140,7 @@ function gtestRunner (options) {
           argv.push('--gtest_filter=-'+greyItem);
         });
       }
-      results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, false, options.coreCheck);
+      results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {
         results.failed += 1;

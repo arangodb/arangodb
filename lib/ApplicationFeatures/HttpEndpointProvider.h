@@ -23,11 +23,13 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_HTTP_ENDPOINT_PROVIDER_H
 #define ARANGODB_APPLICATION_FEATURES_HTTP_ENDPOINT_PROVIDER_H 1
 
-#include "Basics/Common.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-class HttpEndpointProvider {
+class HttpEndpointProvider : public application_features::ApplicationFeature {
  public:
+  HttpEndpointProvider(application_features::ApplicationServer& server, std::string const& name)
+      : ApplicationFeature(server, name) {}
   virtual ~HttpEndpointProvider() = default;
   virtual std::vector<std::string> httpEndpoints() = 0;
 };

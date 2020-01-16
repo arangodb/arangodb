@@ -22,27 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerStatistics.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    static members
-// -----------------------------------------------------------------------------
-
-double ServerStatistics::START_TIME = 0.0;
+TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
+    : _metrics(metrics),
+      _transactionsStarted(_metrics.counter("arangodb_transactions_started", 0,
+                                            "Transactions started")),
+      _transactionsAborted(_metrics.counter("arangodb_transactions_aborted", 0,
+                                            "Transactions aborted")),
+      _transactionsCommitted(_metrics.counter("arangodb_transactions_committed",
+                                              0, "Transactions committed")),
+      _intermediateCommits(_metrics.counter("arangodb_intermediate_commits", 0,
+                                            "Intermediate commits")) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
-ServerStatistics ServerStatistics::statistics() {
-  ServerStatistics server;
-
-  server._startTime = START_TIME;
-  server._uptime = StatisticsFeature::time() - START_TIME;
-
-  return server;
+void ServerStatistics::initialize(double startTime) {
+    _startTime = startTime;
 }
-
-void ServerStatistics::initialize() { START_TIME = StatisticsFeature::time(); }

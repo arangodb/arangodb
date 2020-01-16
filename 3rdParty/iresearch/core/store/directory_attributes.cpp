@@ -44,7 +44,7 @@ DEFINE_ATTRIBUTE_TYPE(memory_allocator)
   return memory::make_unique<byte_type[]>(size);
 }
 
-/*static*/ memory_allocator& memory_allocator::global() NOEXCEPT {
+/*static*/ memory_allocator& memory_allocator::global() noexcept {
   return GLOBAL_ALLOC;
 }
 
@@ -65,11 +65,11 @@ DEFINE_FACTORY_DEFAULT(fd_pool_size)
 
 const size_t FD_POOL_DEFAULT_SIZE = 8;
 
-fd_pool_size::fd_pool_size() NOEXCEPT
-  : size(FD_POOL_DEFAULT_SIZE) { // arbitary size
+fd_pool_size::fd_pool_size() noexcept
+  : size(FD_POOL_DEFAULT_SIZE) { // arbitrary size
 }
 
-void fd_pool_size::clear() NOEXCEPT {
+void fd_pool_size::clear() noexcept {
   size = FD_POOL_DEFAULT_SIZE;
 }
 

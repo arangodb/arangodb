@@ -22,7 +22,10 @@
 
 #include "ApplicationFeatures/ShutdownFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
@@ -31,18 +34,18 @@ using namespace arangodb::options;
 namespace arangodb {
 
 ShutdownFeature::ShutdownFeature(application_features::ApplicationServer& server,
-                                 std::vector<std::string> const& features)
+                                 std::vector<std::type_index> const& features)
     : ApplicationFeature(server, "Shutdown") {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 
   for (auto feature : features) {
-    if (feature != "Logger") {
+    if (feature != std::type_index(typeid(LoggerFeature))) {
       startsAfter(feature);
     }
   }
 }
 
-void ShutdownFeature::start() { server()->beginShutdown(); }
+void ShutdownFeature::start() { server().beginShutdown(); }
 
 }  // namespace arangodb

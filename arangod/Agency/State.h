@@ -28,8 +28,6 @@
 #include "AgencyCommon.h"
 #include "Utils/OperationOptions.h"
 
-#include <velocypack/vpack.h>
-
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -41,6 +39,11 @@ namespace arangodb {
 
 namespace aql {
 class QueryRegistry;
+}
+
+namespace velocypack {
+class Builder;
+class Slice;
 }
 
 namespace consensus {

@@ -23,20 +23,20 @@
 
 #ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
+
 #include <set>
-#include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
-#include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 
-namespace arangodb {
+#include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+#include "Futures/Future.h"
+#include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
+#include "Utils/OperationResult.h"
+#include "VocBase/voc-types.h"
 
-namespace transaction {
-class Methods;
-}
+namespace arangodb {
 
 struct KeyLockInfo;
 class LocalDocumentId;
@@ -123,11 +123,11 @@ class PhysicalCollection {
   /// @brief get list of all indices
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, unsigned flags,
-                       std::function<bool(arangodb::Index const*)> const& filter) const;
+  void getIndexesVPack(velocypack::Builder&,
+                       std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual std::shared_ptr<velocypack::Builder> figures();
+  virtual futures::Future<OperationResult> figures();
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
@@ -138,8 +138,6 @@ class PhysicalCollection {
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
-  virtual void invokeOnAllElements(transaction::Methods* trx,
-                                   std::function<bool(LocalDocumentId const&)> callback) = 0;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -216,7 +214,7 @@ class PhysicalCollection {
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  virtual void figuresSpecific(arangodb::velocypack::Builder&) = 0;
 
   // SECTION: Document pre commit preperation
 

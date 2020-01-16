@@ -31,7 +31,7 @@ bool checkPath(ShortestPathOptions* spo, ShortestPathResult result, std::vector<
   }
 
   // First edge is by convention null
-  EXPECT_TRUE((result.edgeToAqlValue(spo->cache(), 0).isNull(true)));
+  EXPECT_TRUE(result.edgeToAqlValue(spo->cache(), 0).isNull(true));
   for (size_t i = 1; i < result.length(); i++) {
     AqlValue edge = result.edgeToAqlValue(spo->cache(), i);
     AqlValueGuard guard{edge, true};

@@ -34,8 +34,9 @@ namespace arangodb {
 /// @brief replication request handler
 class RocksDBRestReplicationHandler : public RestReplicationHandler {
  public:
-  RocksDBRestReplicationHandler(GeneralRequest*, GeneralResponse*);
-  ~RocksDBRestReplicationHandler() {}
+  RocksDBRestReplicationHandler(application_features::ApplicationServer&,
+                                GeneralRequest*, GeneralResponse*);
+  ~RocksDBRestReplicationHandler() = default;
 
  public:
   char const* name() const override final {
