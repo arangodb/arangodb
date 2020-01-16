@@ -554,13 +554,7 @@ Collection const* GraphNode::collection() const {
 
 void GraphNode::injectVertexCollection(aql::Collection const* other) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  for (auto const& e : _edgeColls) {
-    if (e->name() == other->name()) {
-      // This collection is already known.
-      // unfortunately we cannot do pointer comparison
-      return;
-    }
-  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This is a workaround to inject all unknown aql collections into
   // this node, that should be list of unique values!
