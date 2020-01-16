@@ -564,7 +564,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
     LOG_TOPIC("77622", WARN, Logger::HEARTBEAT)
         << "ATTENTION: Getting news from agency took longer than 10 seconds, "
            "this might be causing trouble. Please "
-           "contact ArangoDB and ask for help.";
+           "contact ArangoDB Support.";
   }
 
   if (!result.successful()) {
@@ -1063,7 +1063,7 @@ void HeartbeatThread::runCoordinator() {
         LOG_TOPIC("77655", WARN, Logger::HEARTBEAT)
         << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
            "this might be causing trouble with health checks. Please "
-           "contact ArangoDB and ask for help.";
+           "contact ArangoDB Support.";
       }
 
       if (isStopping()) {
