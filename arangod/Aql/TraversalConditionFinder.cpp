@@ -30,6 +30,9 @@
 #include "Aql/TraversalNode.h"
 #include "Graph/TraverserOptions.h"
 
+#include "Basics/StaticStrings.h"
+
+using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
@@ -269,9 +272,9 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent, size_t te
           notSupported = true;
           return node;
         }
-        if (node->stringEquals("edges", false)) {
+        if (node->stringEquals(StaticStrings::GraphQueryEdges)) {
           isEdge = true;
-        } else if (node->stringEquals("vertices", false)) {
+        } else if (node->stringEquals(StaticStrings::GraphQueryVertices)) {
           isEdge = false;
         } else {
           notSupported = true;
@@ -513,8 +516,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::ENUMERATE_COLLECTION:
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
-    case EN::ENUMERATE_IRESEARCH_VIEW:
-    {
+    case EN::ENUMERATE_IRESEARCH_VIEW: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
