@@ -57,7 +57,7 @@ class LogAppender {
 
  public:
   explicit LogAppender(std::string const& filter) : _filter(filter) {}
-  virtual ~LogAppender() {}
+  virtual ~LogAppender() = default;
 
  public:
   virtual void logMessage(LogLevel, std::string const& message, size_t offset) = 0;

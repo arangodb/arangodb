@@ -487,7 +487,9 @@ class ClusterComm {
   /// beforehand but the background thread is only started here.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void initialize();
+  static void initialize(application_features::ApplicationServer&);
+
+  static void start();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup function to call once when shutting down

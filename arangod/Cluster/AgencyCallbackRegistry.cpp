@@ -40,8 +40,9 @@
 
 using namespace arangodb;
 
-AgencyCallbackRegistry::AgencyCallbackRegistry(std::string const& callbackBasePath)
-    : _agency(), _callbackBasePath(callbackBasePath) {}
+AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
+                                               std::string const& callbackBasePath)
+    : _agency(server), _callbackBasePath(callbackBasePath) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 

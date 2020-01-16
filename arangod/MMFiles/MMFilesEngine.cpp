@@ -166,7 +166,7 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 // create the storage engine
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::make_unique<MMFilesIndexFactory>()),
+                    std::make_unique<MMFilesIndexFactory>(server)),
       _isUpgrade(false),
       _maxTick(0),
       _walAccess(new MMFilesWalAccess()),

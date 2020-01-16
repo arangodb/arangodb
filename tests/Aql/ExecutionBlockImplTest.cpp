@@ -494,8 +494,8 @@ class SharedExecutionBlockImplTest {
   }
 
   ProduceCall generateProduceCall(size_t& nrCalls, AqlCall expectedCall,
-                                  size_t numRowsLeftNoInput = ExecutionBlock::DefaultBatchSize(),
-                                  size_t numRowsLeftWithInput = ExecutionBlock::DefaultBatchSize()) {
+                                  size_t numRowsLeftNoInput = ExecutionBlock::DefaultBatchSize,
+                                  size_t numRowsLeftWithInput = ExecutionBlock::DefaultBatchSize) {
     return [&nrCalls, numRowsLeftNoInput, numRowsLeftWithInput,
             expectedCall](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
                -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
@@ -769,7 +769,7 @@ struct CallAsserter {
       case CallAsserterState::COUNT: {
         //  TODO Fixme, this needs improvement on Outputblock
         // EXPECT_EQ(got.getLimit(), 0);
-        EXPECT_EQ(got.getLimit(), ExecutionBlock::DefaultBatchSize());
+        EXPECT_EQ(got.getLimit(), ExecutionBlock::DefaultBatchSize);
         EXPECT_EQ(got.getOffset(), 0);
         EXPECT_TRUE(got.needsFullCount());
         state = CallAsserterState::DONE;

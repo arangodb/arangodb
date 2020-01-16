@@ -44,6 +44,7 @@ StatusCode constexpr StatusCreated = 201;
 StatusCode constexpr StatusAccepted = 202;
 StatusCode constexpr StatusPartial = 203;
 StatusCode constexpr StatusNoContent = 204;
+StatusCode constexpr StatusTemporaryRedirect = 307;
 StatusCode constexpr StatusBadRequest = 400;
 StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;
@@ -53,7 +54,7 @@ StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
 StatusCode constexpr StatusInternalError = 500;
-StatusCode constexpr StatusUnavailable = 503;
+StatusCode constexpr StatusServiceUnavailable = 503;
 StatusCode constexpr StatusVersionNotSupported = 505;
 
 // -----------------------------------------------------------------------------
@@ -73,7 +74,7 @@ enum class Error : uint16_t {
   WriteError = 1103,
 
   Canceled = 1104,
-  
+
   VstUnauthorized = 2000,
 
   ProtocolError = 3000,

@@ -181,7 +181,8 @@ class AgencyCommManager {
   static AgencyConnectionOptions CONNECTION_OPTIONS;
 
  public:
-  static void initialize(std::string const& prefix);
+  static void initialize(application_features::ApplicationServer& server,
+                         std::string const& prefix);
   static void shutdown();
 
   static bool isEnabled() { return MANAGER != nullptr; }
@@ -194,7 +195,9 @@ class AgencyCommManager {
   static std::string generateStamp();
 
  public:
-  explicit AgencyCommManager(std::string const& prefix) : _prefix(prefix) {}
+  explicit AgencyCommManager(application_features::ApplicationServer& server,
+                             std::string const& prefix)
+      : _server(server), _prefix(prefix) {}
 
  public:
   bool start();
@@ -251,6 +254,7 @@ class AgencyCommManager {
   void switchCurrentEndpoint();
 
  private:
+  application_features::ApplicationServer& _server;
   std::string const _prefix;
 
   // protects all the members
@@ -657,6 +661,8 @@ class AgencyComm {
 #endif
 
  public:
+  explicit AgencyComm(application_features::ApplicationServer&);
+
   AgencyCommResult sendServerState(double ttl);
 
   std::string version();
@@ -712,6 +718,8 @@ class AgencyComm {
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
+  application_features::ApplicationServer& server();
+
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
@@ -728,6 +736,9 @@ class AgencyComm {
   bool tryInitializeStructure();
 
   bool shouldInitializeStructure();
+
+ private:
+  application_features::ApplicationServer& _server;
 };
 }  // namespace arangodb
 

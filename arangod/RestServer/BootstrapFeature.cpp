@@ -23,6 +23,7 @@
 #include "RestServer/BootstrapFeature.h"
 
 #include "Agency/AgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -96,7 +97,7 @@ namespace {
 /// and various similar things. Only runs through on a SINGLE coordinator.
 /// must only return if we are bootstrap lead or bootstrap is done.
 void raceForClusterBootstrap(BootstrapFeature& feature) {
-  AgencyComm agency;
+  AgencyComm agency(feature.server());
   auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
   while (true) {
     AgencyCommResult result = agency.getValues(::bootstrapKey);
@@ -245,12 +246,12 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
 }
 
 // Try to become leader in active-failover setup
-void runActiveFailoverStart(std::string const& myId) {
+void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) {
   std::string const leaderPath = "Plan/AsyncReplication/Leader";
   try {
     VPackBuilder myIdBuilder;
     myIdBuilder.add(VPackValue(myId));
-    AgencyComm agency;
+    AgencyComm agency(feature.server());
     AgencyCommResult res = agency.getValues(leaderPath);
     if (res.successful()) {
       VPackSlice leader = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
@@ -325,7 +326,7 @@ void BootstrapFeature::start() {
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
     if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
-      ::runActiveFailoverStart(myId);
+      ::runActiveFailoverStart(*this, myId);
     } else {
       ServerState::instance()->setFoxxmaster(myId);  // could be empty, but set anyway
     }
@@ -387,7 +388,7 @@ void BootstrapFeature::unprepare() {
 void BootstrapFeature::waitForHealthEntry() {
   LOG_TOPIC("4000c", DEBUG, arangodb::Logger::CLUSTER) << "waiting for our health entry to appear in Supervision/Health";
   bool found = false;
-  AgencyComm agency;
+  AgencyComm agency(server());
   int tries = 0;
   while (++tries < 30) {
     AgencyCommResult result = agency.getValues(::healthKey);

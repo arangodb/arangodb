@@ -197,7 +197,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
-  TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize());
+  TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -522,7 +522,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWith
   constexpr SkipVariants customSkipType = skipType<Executor>();
 
   if (customSkipType == SkipVariants::GET_SOME) {
-    atMost = std::min(atMost, DefaultBatchSize());
+    atMost = std::min(atMost, DefaultBatchSize);
     auto res = getSomeWithoutTrace(atMost);
 
     size_t skipped = 0;
@@ -1020,7 +1020,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
     return createOutputRow(newBlock, std::move(call));
   } else {
     // Non-Passthrough variant, we need to allocate the block ourselfs
-    size_t blockSize = ExecutionBlock::DefaultBatchSize();
+    size_t blockSize = ExecutionBlock::DefaultBatchSize;
     SharedAqlItemBlockPtr newBlock =
         _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
     return createOutputRow(newBlock, std::move(call));

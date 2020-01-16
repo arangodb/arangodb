@@ -554,8 +554,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
         // take over ownership for _responseBody
-        auto response = std::make_unique<HttpResponse>(static_cast<ResponseCode>(httpStatusCode),
-                                                       std::move(rip->_responseBody));  
+        auto response = std::make_unique<HttpResponse>(static_cast<ResponseCode>(httpStatusCode), 1, std::move(rip->_responseBody));
         response->setHeaders(std::move(rip->_responseHeaders));
 
         if (httpStatusCode < 400) {
