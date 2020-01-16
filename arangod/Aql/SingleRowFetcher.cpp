@@ -143,6 +143,17 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
   return {returnState(false), _currentRow};
 }
 
+template <BlockPassthrough blockPassthrough>
+auto SingleRowFetcher<blockPassthrough>::fetchRowWithGlobalState(size_t atMost)
+    -> RowWithStates {
+  auto [state, row] = fetchRow(atMost);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, ExecutionState::WAITING, row};
+  }
+
+  return {state, returnState(true), row};
+}
+
 template <BlockPassthrough passBlocksThrough>
 std::pair<ExecutionState, ShadowAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchShadowRow(size_t atMost) {
   // TODO We should never fetch from upstream here, as we can't know atMost - only the executor does.
