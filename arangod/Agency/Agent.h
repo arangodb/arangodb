@@ -326,6 +326,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief add agent to configuration (from State after successful local persistence)
   void updateConfiguration(VPackSlice const&);
 
+  /// @brief patch some configuration values, this is for manual interaction with
+  /// the agency leader.
+  void updateSomeConfigValues(VPackSlice);
+
  private:
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();

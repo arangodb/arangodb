@@ -543,6 +543,14 @@ RestStatus RestAgencyHandler::handleConfig() {
       return RestStatus::DONE;
     }
   }
+  if (_request->requestType() == rest::RequestType::PUT) {
+    try {
+      _agent->updateSomeConfigValues(_request->toVelocyPackBuilderPtr()->slice());
+    } catch (std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      return RestStatus::DONE;
+    }
+  }
 
   // Respond with configuration
   auto last = _agent->lastCommitted();

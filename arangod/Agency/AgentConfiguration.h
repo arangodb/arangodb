@@ -239,6 +239,16 @@ struct config_t {
   /// @brief Supervision ok threshold
   double supervisionOkThreshold() const;
 
+  /// @brief set Supervision grace period
+  void setSupervisionGracePeriod(double d) {
+    _supervisionGracePeriod = d;
+  }
+
+  /// @brief set Supervision ok threshold
+  void setSupervisionOkThreshold(double d) {
+    _supervisionOkThreshold = d;
+  }
+
   /// @brief
   std::string startup() const;
 

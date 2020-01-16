@@ -2073,5 +2073,24 @@ void Agent::updateConfiguration(Slice const& slice) {
   _config.updateConfiguration(slice);
 }
 
+void Agent::updateSomeConfigValues(VPackSlice data) {
+  if (!data.isObject()) {
+    return;
+  }
+  double d;
+  VPackSlice slice = data.get("okThreshold");
+  if (slice.isNumber()) {
+    d = slice.getNumber<double>();
+    _config.setSupervisionOkThreshold(d);
+    _supervision.setOkThreshold(d);
+  }
+  slice = data.get("gracePeriod");
+  if (slice.isNumber()) {
+    d = slice.getNumber<double>();
+    _config.setSupervisionGracePeriod(d);
+    _supervision.setGracePeriod(d);
+  }
+}
+
 }  // namespace consensus
 }  // namespace arangodb
