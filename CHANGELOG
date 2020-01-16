@@ -1,6 +1,9 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows
+
 * Fixed internal traversal edge collection cache being filled up correctly.
   Edges are able to point to other edges, but those we're not applied to the
 	cache.
