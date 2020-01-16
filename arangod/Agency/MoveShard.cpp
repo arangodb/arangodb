@@ -543,7 +543,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     {
       for (auto const& sh : shardsLikeMe) {
         auto const shardPath = curColPrefix + _database + "/" + sh.collection + "/" + sh.shard;
-        auto const tmp = _snapshot(shardPath + "/servers").hasAsArray();
+        auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
         if (tmp.second) {
           bool found = false;
           for (auto const& server : VPackArrayIterator(tmp.first)) {
