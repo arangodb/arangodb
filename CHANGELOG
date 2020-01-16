@@ -5,6 +5,11 @@ v3.5.4 (XXXX-XX-XX)
   prefixes of "edges" and "vertices" to be used as object accessors
   for the path object
 
+* Fix installation of arangoinspect and libraries in Windows client installer.
+
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows.
+
 * Now clearing an internal map inside the traverser engine correctly.
 
 * Fix Windows client package JS installation paths.
