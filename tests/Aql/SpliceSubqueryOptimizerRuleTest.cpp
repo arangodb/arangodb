@@ -547,7 +547,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   auto const document = VPackSlice{mdr.vpack()};
   ASSERT_TRUE(document.isObject());
   ASSERT_TRUE(document.get("_key").isString());
-  ASSERT_EQ(std::string_view{"myKey"}, document.get("_key").stringView());
+  ASSERT_EQ(std::string{"myKey"}, document.get("_key").copyString());
 }
 
 // Disabled as long as the subquery implementation with shadow rows cannot yet handle skipping.
