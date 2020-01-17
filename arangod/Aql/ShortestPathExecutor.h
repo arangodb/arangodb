@@ -174,18 +174,30 @@ class ShortestPathExecutor {
    *
    * @return ExecutionState and no error.
    */
-  [[nodiscard]] std::pair<ExecutionState, Result> shutdown(int errorCode);
+  [[nodiscard]] auto shutdown(int errorCode) -> std::pair<ExecutionState, Result>;
+
   /**
    * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
-      -> std::pair<ExecutionState, Stats>;
+      -> std::pair<ExecutionState, NoStats>;
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
 
  private:
+  /**
+   *  @brief fetches a path given the current row in input. Returns a pair consisting of
+   *  a flag indicating whether we produced a path, and the upstream state
+   */
+  [[nodiscard]] auto fetchPath(AqlItemBlockInputRange& input)
+      -> std::pair<bool, ExecutorState>;
+  /**
+   *  @brief produce the output from the currently stored path until either
+   *  the path is exhausted or there is no output space left.
+   */
+  auto doOutputPath(OutputAqlItemRow& output) -> void;
   /**
    * @brief get the id of a input vertex
    * Result will be written into the given Slice.
@@ -194,17 +206,12 @@ class ShortestPathExecutor {
    * In any case it will stay valid at least until the reference to the input
    * row is lost, or the builder is resetted.
    */
-  [[nodiscard]] bool getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
-                                 InputAqlItemRow& row, Builder& builder, Slice& id);
+  [[nodiscard]] auto getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
+                                 InputAqlItemRow& row, Builder& builder, Slice& id) -> bool;
 
  private:
   Infos& _infos;
   InputAqlItemRow _inputRow;
-
-  // Internal state machine, are we requesting data / checking if a path exists
-  // or do we write output.
-  enum class State { PATH_FETCH, PATH_OUTPUT };
-  State _myState;
 
   /// @brief the shortest path finder.
   arangodb::graph::ShortestPathFinder& _finder;

@@ -1062,7 +1062,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor == (std::is_same<Executor, FilterExecutor>::value),
+  static_assert(useExecutor == (std::is_same<Executor, FilterExecutor>::value ||
+                                std::is_same_v<Executor, ShortestPathExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!

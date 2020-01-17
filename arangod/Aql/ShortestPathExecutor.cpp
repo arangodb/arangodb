@@ -140,7 +140,6 @@ graph::TraverserCache* ShortestPathExecutorInfos::cache() const {
 ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
       _inputRow{CreateInvalidInputRowHint{}},
-      _myState{State::PATH_FETCH},
       _finder{infos.finder()},
       _path{new arangodb::graph::ShortestPathResult{}},
       _posInPath(1),
@@ -160,81 +159,98 @@ std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
+auto ShortestPathExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
+  while (!output.isFull() && _posInPath < _path->length()) {
+    if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
+      AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
+      output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+                            _inputRow, vertex);
+    }
+    if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
+      AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
+      output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
+                            _inputRow, edge);
+    }
+    output.advanceRow();
+    _posInPath++;
+  }
+}
+
+auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input)
+    -> std::pair<bool, ExecutorState> {
+  if (_posInPath < _path->length()) {
+    return {true, ExecutorState::HASMORE};
+  } else {
+    while (true) {
+      // We don't want any old path muck lying around
+      _path->clear();
+      _posInPath = 0;
+
+      if (input.hasDataRow()) {
+        auto source = VPackSlice{};
+        auto target = VPackSlice{};
+        std::tie(std::ignore, _inputRow) = input.nextDataRow();
+        TRI_ASSERT(_inputRow.isInitialized());
+
+        // Ordering important here.
+        // Read source and target vertex, then try to find a shortest path (if both worked).
+        if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
+            getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target) &&
+            _finder.shortestPath(source, target, *_path)) {
+          return {true, input.upstreamState()};
+        }
+      } else {
+        // input.state() can be DONE in which case we are done too,
+        // or HASMORE, in which case we wait for ExecutionBlockImpl
+        // to produce us some inputs to process
+        return {false, input.upstreamState()};
+      }
+    }
+  }
+}
+
 std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-// new executor interface
 auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  auto stats = NoStats{};
-
-  // We always request unlimited rows, because we cannot sensibly bound
-  // our output size by the input size at all.
-  auto upstreamCall = AqlCall{};
-
   while (true) {
-    switch (_myState) {
-      case State::PATH_FETCH: {
-        // We don't want any old path muck lying around
-        _path->clear();
-        _posInPath = 0;
-
-        if (input.hasDataRow()) {
-          auto source = VPackSlice{};
-          auto target = VPackSlice{};
-          std::tie(std::ignore, _inputRow) = input.nextDataRow();
-          TRI_ASSERT(_inputRow.isInitialized());
-
-          // Ordering important here.
-          // Read source and target vertex, then try to find a shortest path (if both worked).
-          if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
-              getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target) &&
-              _finder.shortestPath(source, target, *_path)) {
-            _myState = State::PATH_OUTPUT;
-          }
-        } else {
-          // input.state() can be DONE in which case we are done too,
-          // or HASMORE, in which case we wait for ExecutionBlockImpl
-          // to produce us some inputs to process
-          return {input.upstreamState(), stats, upstreamCall};
-        }
-      } break;
-      case State::PATH_OUTPUT: {
-        if (output.isFull()) {
-          if (_posInPath < _path->length()) {
-            // We have more locally
-            return {ExecutorState::HASMORE, stats, upstreamCall};
-          }
-          // We are also done locally, report from upstream.
-          return {input.upstreamState(), stats, upstreamCall};
-        } else {
-          if (_posInPath < _path->length()) {
-            if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
-              AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
-              output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                                    _inputRow, vertex);
-            }
-            if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
-              AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
-              output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                                    _inputRow, edge);
-            }
-            _posInPath++;
-            output.advanceRow();
-          } else {
-            _myState = State::PATH_FETCH;
-          }
-        }
-      } break;
-      default:
-        TRI_ASSERT(false);
+    auto [havePath, upstreamState] = fetchPath(input);
+    if (havePath) {
+      doOutputPath(output);
+      if (output.isFull()) {
+        return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
+      }
+      // only if output is full do we return here, namely
+      // HAS_MORE
+    } else {
+      return {upstreamState, NoStats{}, AqlCall{}};
     }
   }
+}
 
-  TRI_ASSERT(false);  // never should a while(true) be exited.
-  return {ExecutorState::DONE, stats, upstreamCall};
+auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, size_t, AqlCall> {
+  auto skipped = size_t{0};
+  while (true) {
+    auto [havePath, upstreamState] = fetchPath(input);
+    if (havePath) {
+      if (call.getOffset() >= _path->length()) {
+        call.didSkip(_path->length());
+        skipped += _path->length();
+        _posInPath = _path->length();
+      } else {
+        _posInPath += call.getOffset();
+        skipped += call.getOffset();
+        call.didSkip(call.getOffset());
+        return {ExecutorState::HASMORE, skipped, AqlCall{}};
+      }
+    } else {
+      return {upstreamState, skipped, AqlCall{}};
+    }
+  }
 }
 
 bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
