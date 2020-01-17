@@ -323,6 +323,24 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     }
   }
 
+  // Step 4. store the revision tree
+  {
+    LOG_DEVEL << "STORE REVISION TREE FOR '" << coll.id() << "'";
+    rcoll->applyUpdates(maxCommitSeq);
+    auto& tree = rcoll->revisionTree();
+    output = tree.serialize();
+
+    key.constructRevisionTreeValue(rcoll->objectId());
+    rocksdb::Slice value(output);
+
+    rocksdb::Status s = batch.Put(cf, key.string(), value);
+    if (!s.ok()) {
+      LOG_TOPIC("ff234", WARN, Logger::ENGINES)
+          << "writing revision tree failed";
+      return res.reset(rocksutils::convertStatus(s));
+    }
+  }
+
   return res;
 }
 
@@ -409,6 +427,29 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       LOG_TOPIC("dcd98", ERR, Logger::ENGINES)
           << "unsupported index estimator format in index "
           << "with objectId '" << idx->objectId() << "'";
+    }
+  }
+
+  // Step 4. load the revision tree
+  {
+    LOG_DEVEL << "LOAD REVISION TREE FOR '" << coll.id() << "'";
+    key.constructRevisionTreeValue(rcoll->objectId());
+    s = db->Get(ro, cf, key.string(), &value);
+    if (!s.ok() && !s.IsNotFound()) {
+      return rocksutils::convertStatus(s);
+    } else if (s.IsNotFound()) {  // expected with nosync recovery tests
+      LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
+          << "no revision tree found for collection with id '" << coll.id() << "'";
+    } else {
+      auto tree = containers::RevisionTree::fromBuffer(
+          std::string_view(value.data(), value.size()));
+      if (tree) {
+        rcoll->setRevisionTree(std::move(tree));
+      } else {
+        LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
+            << "unsupported revision tree format in collection "
+            << "with id '" << coll.id() << "'";
+      }
     }
   }
 

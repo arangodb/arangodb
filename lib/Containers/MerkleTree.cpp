@@ -207,12 +207,38 @@ template <std::size_t const BranchingBits, std::size_t const LockStripes>
 MerkleTree<BranchingBits, LockStripes>::~MerkleTree() {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
 
+  if (!_buffer) {
+    return;
+  }
+
   std::size_t const last = nodeCountUpToDepth(meta().maxDepth);
   for (std::size_t i = 0; i < last; ++i) {
     node(i).~Node();
   }
 
   meta().~Meta();
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
+MerkleTree<BranchingBits, LockStripes>& MerkleTree<BranchingBits, LockStripes>::operator=(
+    std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>&& other) {
+  if (!other) {
+    return *this;
+  }
+
+  std::unique_lock<std::shared_mutex> guard1(_bufferLock);
+  std::unique_lock<std::shared_mutex> guard2(other->_bufferLock);
+
+  TRI_ASSERT(this->meta().maxDepth == other->meta().maxDepth);
+  TRI_ASSERT(this->_buffer);
+  TRI_ASSERT(other->_buffer);
+
+  _buffer = std::move(other->_buffer);
+
+  TRI_ASSERT(this->_buffer);
+  TRI_ASSERT(!other->_buffer);
+
+  return *this;
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
@@ -442,6 +468,7 @@ MerkleTree<BranchingBits, LockStripes>::MerkleTree(MerkleTree<BranchingBits, Loc
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
 typename MerkleTree<BranchingBits, LockStripes>::Meta& MerkleTree<BranchingBits, LockStripes>::meta() const {
   // not thread-safe, lock buffer from outside
+  TRI_ASSERT(_buffer);
   return *reinterpret_cast<Meta*>(_buffer.get());
 }
 

@@ -232,6 +232,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::ReplicationApplierConfig:
     case RocksDBEntryType::IndexEstimateValue:
     case RocksDBEntryType::KeyGeneratorValue:
+    case RocksDBEntryType::RevisionTreeValue:
     case RocksDBEntryType::View:
       return RocksDBColumnFamily::definitions();
   }

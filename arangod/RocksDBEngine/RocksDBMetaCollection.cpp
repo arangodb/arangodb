@@ -323,6 +323,14 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   builder.close();
 }
 
+void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree) {
+  _revisionTree = std::move(tree);
+}
+
+containers::RevisionTree& RocksDBMetaCollection::revisionTree() {
+  return _revisionTree;
+}
+
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(transaction::Methods& trx) {
   // first apply any updates that can be safely applied
   RocksDBEngine* engine = rocksutils::globalRocksEngine();

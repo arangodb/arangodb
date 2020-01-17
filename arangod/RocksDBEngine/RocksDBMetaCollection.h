@@ -26,8 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "RocksDBEngine/RocksDBMetadata.h"
+#include "Containers/MerkleTree.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetadata.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -78,6 +79,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// estimate size of collection and indexes
   void estimateSize(velocypack::Builder& builder);
 
+  void setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree);
+  containers::RevisionTree& revisionTree();
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
 

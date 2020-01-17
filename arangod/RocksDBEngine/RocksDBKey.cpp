@@ -266,6 +266,17 @@ void RocksDBKey::constructKeyGeneratorValue(uint64_t objectId) {
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
+void RocksDBKey::constructRevisionTreeValue(uint64_t collectionObjectId) {
+  TRI_ASSERT(collectionObjectId != 0);
+  _type = RocksDBEntryType::RevisionTreeValue;
+  size_t keyLength = sizeof(char) + sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  _buffer->push_back(static_cast<char>(_type));
+  uint64ToPersistent(*_buffer, collectionObjectId);
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
 // ========================= Member methods ===========================
 
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {

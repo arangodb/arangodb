@@ -185,12 +185,12 @@ Result RocksDBSettingsManager::sync(bool force) {
       continue;
     }
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
-    
-    LOG_TOPIC("afb17", TRACE, Logger::ENGINES) << "syncing metadata for collection '" << coll->name() << "'";    
+
+    LOG_TOPIC("afb17", TRACE, Logger::ENGINES)
+        << "syncing metadata for collection '" << coll->name() << "'";
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
-    rcoll->applyUpdates(rcoll->meta().committableSeq(maxSeqNr));
     Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 

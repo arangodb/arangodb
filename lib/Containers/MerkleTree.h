@@ -118,6 +118,13 @@ class MerkleTree {
   ~MerkleTree();
 
   /**
+   * @brief Move assignment operator from pointer
+   *
+   * @param other Input tree, intended assignment
+   */
+  MerkleTree& operator=(std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>&& other);
+
+  /**
    * @brief Returns the number of hashed keys contained in the tree
    */
   std::size_t count() const;
