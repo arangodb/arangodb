@@ -1088,7 +1088,7 @@ void HeartbeatThread::runCoordinator() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning](bool) {
+        bool queued = scheduler->queue(RequestPriority::HIGH, [self, getNewsRunning](bool) {
           self->getNewsFromAgencyForCoordinator();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
