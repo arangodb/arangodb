@@ -87,7 +87,7 @@ std::string auth::TokenCache::jwtSecret() const {
   return _jwtSecret;  // intentional copy
 }
 
-// public called from HttpCommTask.cpp and VstCommTask.cpp
+// public called from {H2,Http,Vst}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(AuthenticationMethod authType,
@@ -220,7 +220,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   }
 
   auth::TokenCache::Entry newEntry = validateJwtBody(body);
-  if (!newEntry._authenticated) {
+  if (!newEntry.authenticated()) {
     LOG_TOPIC("5fcba", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt body " << body;
     return auth::TokenCache::Entry::Unauthenticated();

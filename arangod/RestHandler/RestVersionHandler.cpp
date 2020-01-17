@@ -41,15 +41,12 @@ using namespace arangodb::rest;
 
 RestVersionHandler::RestVersionHandler(application_features::ApplicationServer& server,
                                        GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
-  auto& server = application_features::ApplicationServer::server();
 
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   bool const allowInfo = security.canAccessHardenedApi();
 
@@ -70,7 +67,7 @@ RestStatus RestVersionHandler::execute() {
       result.add("details", VPackValue(VPackValueType::Object));
       Version::getVPack(result);
 
-      auto& serverFeature = server.getFeature<ServerFeature>();
+      auto& serverFeature = server().getFeature<ServerFeature>();
       result.add("mode", VPackValue(serverFeature.operationModeString()));
       auto serverState = ServerState::instance();
       if (serverState != nullptr) {

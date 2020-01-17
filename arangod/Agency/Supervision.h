@@ -139,6 +139,20 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Check for orphaned index creations, which have been successfully built
   void checkBrokenCreatedDatabases();
 
+  /// @brief Check for boken collections
+  void checkBrokenCollections();
+
+  struct ResourceCreatorLostEvent {
+    std::shared_ptr<Node> const& resource;
+    std::string const& coordinatorId;
+    uint64_t coordinatorRebootId;
+    bool coordinatorFound;
+  };
+
+  // @brief Checks if a resource (database or collection). Action is called if resource should be deleted
+  void ifResourceCreatorLost(std::shared_ptr<Node> const& resource,
+                             std::function<void(ResourceCreatorLostEvent const&)> const& action);
+
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
@@ -192,6 +206,9 @@ class Supervision : public arangodb::CriticalThread {
                                  uint64_t wantedRebootID, bool& coordinatorFound);
   void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
                             uint64_t rebootID, bool coordinatorFound);
+  void deleteBrokenCollection(std::string const& database, std::string const& collection,
+                              std::string const& coordinatorID,
+                              uint64_t rebootID, bool coordinatorFound);
 
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);

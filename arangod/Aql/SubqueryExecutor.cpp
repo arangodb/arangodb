@@ -89,7 +89,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::pro
       }
 
       // Non const case, or first run in const
-      auto res = _subquery.getSome(ExecutionBlock::DefaultBatchSize());
+      auto res = _subquery.getSome(ExecutionBlock::DefaultBatchSize);
       if (res.first == ExecutionState::WAITING) {
         TRI_ASSERT(res.second == nullptr);
         return {res.first, NoStats{}};

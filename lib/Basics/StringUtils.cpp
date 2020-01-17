@@ -1406,6 +1406,68 @@ size_t itoa(uint64_t attr, char* buffer) {
   return p - buffer;
 }
 
+void itoa(uint64_t attr, std::string& out) {
+  if (10000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000ULL) % 10 + '0'));
+  }
+  if (10000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000ULL) % 10 + '0'));
+  }
+  if (1000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000ULL) % 10 + '0'));
+  }
+  if (100000000ULL <= attr) {
+    out.push_back(char((attr / 100000000ULL) % 10 + '0'));
+  }
+  if (10000000ULL <= attr) {
+    out.push_back(char((attr / 10000000ULL) % 10 + '0'));
+  }
+  if (1000000ULL <= attr) {
+    out.push_back(char((attr / 1000000ULL) % 10 + '0'));
+  }
+  if (100000ULL <= attr) {
+    out.push_back(char((attr / 100000ULL) % 10 + '0'));
+  }
+  if (10000ULL <= attr) {
+    out.push_back(char((attr / 10000ULL) % 10 + '0'));
+  }
+  if (1000ULL <= attr) {
+    out.push_back(char((attr / 1000ULL) % 10 + '0'));
+  }
+  if (100ULL <= attr) {
+    out.push_back(char((attr / 100ULL) % 10 + '0'));
+  }
+  if (10ULL <= attr) {
+    out.push_back(char((attr / 10ULL) % 10 + '0'));
+  }
+
+  out.push_back(char(attr % 10 + '0'));
+}
+
 std::string ftoa(double i) {
   char buffer[24];
   int length = fpconv_dtoa(i, &buffer[0]);

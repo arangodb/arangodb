@@ -22,6 +22,7 @@
 
 #include "StatisticsFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
@@ -30,14 +31,15 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <chrono>
@@ -150,7 +152,7 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
-      _descriptions(new stats::Descriptions()) {
+      _descriptions(new stats::Descriptions(server)) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
 }
