@@ -23,13 +23,12 @@
 #ifndef IRESEARCH_STD_H
 #define IRESEARCH_STD_H
 
-#include "shared.hpp"
-
 #include <iterator>
 #include <algorithm>
 
-NS_ROOT
+#include "shared.hpp"
 
+NS_ROOT
 NS_BEGIN(irstd)
 
 template<typename In, typename Out>
@@ -251,7 +250,81 @@ input_stream_iterator<Stream> make_istream_iterator(Stream& strm) {
   return input_stream_iterator<Stream>(strm);
 }
 
-NS_END
-NS_END
+NS_BEGIN(detail)
+
+template<typename Builder, size_t Size>
+struct initializer {
+  using type = typename Builder::type;
+
+  template<typename Array>
+#ifndef IRESEARCH_CXX_11
+  constexpr
+#endif
+  initializer(Array& cache) : init_(cache) {
+    constexpr const auto Idx = Size - 1;
+
+    cache[Idx] = []() -> const type& {
+      static const typename Builder::type INSTANCE
+        = Builder::make(Idx);
+      return INSTANCE;
+    };
+  }
+
+  initializer<Builder, Size - 1> init_;
+};
+
+template<typename Builder>
+struct initializer<Builder, 1> {
+  using type = typename Builder::type;
+
+  template<typename Array>
+#ifndef IRESEARCH_CXX_11
+  constexpr
+#endif
+  initializer(Array& cache) {
+    constexpr const auto Idx = 0;
+
+    cache[Idx] = []() -> const type& {
+      static const typename Builder::type INSTANCE
+        = Builder::make(Idx);
+      return INSTANCE;
+    };
+  }
+};
+
+template<typename Builder>
+struct initializer<Builder, 0>;
+
+NS_END // detail
+
+template<typename Builder, size_t Size>
+class static_lazy_array {
+ public:
+  using type = typename Builder::type;
+
+  static const type& at(size_t i) {
+    static const static_lazy_array INSTANCE;
+    return INSTANCE.cache_[std::min(i, Size)]();
+  }
+
+ private:
+#ifndef IRESEARCH_CXX_11
+  constexpr
+#endif
+  static_lazy_array() : init_{cache_} {
+    cache_[Size] = []() -> const type& {
+      static const type INSTANCE;
+      return INSTANCE;
+    };
+  }
+
+  using func = const type&(*)();
+
+  func cache_[Size+1];
+  detail::initializer<Builder, Size> init_;
+};
+
+NS_END // irstd
+NS_END // ROOT
 
 #endif
