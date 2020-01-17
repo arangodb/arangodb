@@ -74,7 +74,7 @@ struct AqlCall {
 
   std::size_t getLimit() const {
     // By default we use batchsize
-    std::size_t limit = ExecutionBlock::DefaultBatchSize();
+    std::size_t limit = ExecutionBlock::DefaultBatchSize;
     // We are not allowed to go above softLimit
     if (std::holds_alternative<std::size_t>(softLimit)) {
       limit = (std::min)(std::get<std::size_t>(softLimit), limit);
