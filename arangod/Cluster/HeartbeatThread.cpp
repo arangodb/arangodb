@@ -368,13 +368,13 @@ void HeartbeatThread::runDBServer() {
   if (!_maintenanceThread->start()) {
     // WHAT TO DO NOW?
     LOG_TOPIC("12cee", ERR, Logger::HEARTBEAT)
-    << "Failed to start dedicated thread for maintenance";
+        << "Failed to start dedicated thread for maintenance";
   }
 
   std::function<bool(VPackSlice const& result)> updatePlan = [=](VPackSlice const& result) {
     if (!result.isNumber()) {
       LOG_TOPIC("f0d86", ERR, Logger::HEARTBEAT)
-      << "Plan Version is not a number! " << result.toJson();
+          << "Plan Version is not a number! " << result.toJson();
       return false;
     }
 
