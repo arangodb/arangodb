@@ -559,12 +559,12 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
       if (changed) {
-        LOG_TOPIC("bbbde", DEBUG, Logger::SUPERVISION)
+        LOG_TOPIC(DEBUG, Logger::SUPERVISION)
             << "Status of server " << serverID << " has changed from "
             << persist.status << " to " << transist.status;
         handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId, envelope);
       } else {
-        LOG_TOPIC("44253", TRACE, Logger::SUPERVISION)
+        LOG_TOPIC(TRACE, Logger::SUPERVISION)
           << "Health of server " << machine.first << " remains "
           << transist.status;
       }

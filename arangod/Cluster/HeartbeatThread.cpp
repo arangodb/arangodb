@@ -363,18 +363,18 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       for (auto const& server : VPackObjectIterator(failedServersSlice)) {
         failedServers.push_back(server.key.copyString());
       }
-      LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
       ClusterInfo::instance()->setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers();
     } else {
-      LOG_TOPIC("80491", WARN, Logger::HEARTBEAT)
+      LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
     }
 
     VPackSlice s = result.slice()[0].get(std::vector<std::string>(
         {AgencyCommManager::path(), std::string("Current"), std::string("Version")}));
     if (!s.isInteger()) {
-      LOG_TOPIC("40527", ERR, Logger::HEARTBEAT)
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Current/Version in agency is not an integer.";
     } else {
       uint64_t currentVersion = 0;
@@ -383,14 +383,14 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
       } catch (...) {
       }
       if (currentVersion == 0) {
-        LOG_TOPIC("12a02", ERR, Logger::HEARTBEAT)
+        LOG_TOPIC(ERR, Logger::HEARTBEAT)
             << "Current/Version in agency is 0.";
       } else {
         {
           MUTEX_LOCKER(mutexLocker, *_statusLock);
           if (currentVersion > _desiredVersions->current) {
             _desiredVersions->current = currentVersion;
-            LOG_TOPIC("33559", DEBUG, Logger::HEARTBEAT)
+            LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
                 << "Found greater Current/Version in agency.";
           }
         }
@@ -522,7 +522,7 @@ void HeartbeatThread::runDBServer() {
       sendServerState();
       auto timeDiff = std::chrono::steady_clock::now() - start;
       if (timeDiff > std::chrono::seconds(2)) {
-        LOG_TOPIC("77653", WARN, Logger::HEARTBEAT)
+        LOG_TOPIC(WARN, Logger::HEARTBEAT)
             << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
                "this might be causing trouble with health checks. Please "
                "contact ArangoDB and ask for help.";
@@ -542,12 +542,12 @@ void HeartbeatThread::runDBServer() {
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
         if (!queued) {
-          LOG_TOPIC("aacce", WARN, Logger::HEARTBEAT)
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "Could not schedule getNewsFromAgency job in scheduler. Don't "
                  "worry, this will be tried again later.";
           *getNewsRunning = 0;
         } else {
-          LOG_TOPIC("aaccf", DEBUG, Logger::HEARTBEAT)
+          LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
               << "Have scheduled getNewsFromAgency job.";
         }
       }
@@ -565,13 +565,13 @@ void HeartbeatThread::runDBServer() {
       }
 
     } catch (std::exception const& e) {
-      LOG_TOPIC("49198", ERR, Logger::HEARTBEAT)
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an exception in DBServer heartbeat: " << e.what();
     } catch (...) {
-      LOG_TOPIC("9946d", ERR, Logger::HEARTBEAT)
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an unknown exception in DBServer heartbeat";
     }
-    LOG_TOPIC("f5628", DEBUG, Logger::HEARTBEAT) << "Heart beating.";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Heart beating.";
   }
 
   // TODO should these be defered?
@@ -584,7 +584,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
   // against concurrent accesses.
 
-  LOG_TOPIC("33452", DEBUG, Logger::HEARTBEAT) << "getting news from agency...";
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "getting news from agency...";
 
   AuthenticationFeature* af =
       application_features::ApplicationServer::getFeature<AuthenticationFeature>(
@@ -602,11 +602,11 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
        AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
   auto start = std::chrono::steady_clock::now();
   AgencyCommResult result = agency.sendTransactionWithFailover(trx, timeout);
-  LOG_TOPIC("53262", DEBUG, Logger::HEARTBEAT)
+  LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
       << "got news from agency: " << result.successful();
   auto timeDiff = std::chrono::steady_clock::now() - start;
   if (timeDiff > std::chrono::seconds(10)) {
-    LOG_TOPIC("77622", WARN, Logger::HEARTBEAT)
+    LOG_TOPIC(WARN, Logger::HEARTBEAT)
         << "ATTENTION: Getting news from agency took longer than 10 seconds, "
            "this might be causing trouble. Please "
            "contact ArangoDB Support.";
@@ -614,7 +614,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
   if (!result.successful()) {
     if (!application_features::ApplicationServer::isStopping()) {
-      LOG_TOPIC("539fc", WARN, Logger::HEARTBEAT)
+      LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read from agency! status code: " << result._statusCode
           << ", incriminating body: " << result.bodyRef() << ", timeout: " << timeout;
     }
@@ -675,13 +675,13 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       }
 
       if (planVersion > _lastPlanVersionNoticed) {
-        LOG_TOPIC("7c80a", TRACE, Logger::HEARTBEAT)
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
             << "Found planVersion " << planVersion << " which is newer than "
             << _lastPlanVersionNoticed;
         if (handlePlanChangeCoordinator(planVersion)) {
           _lastPlanVersionNoticed = planVersion;
         } else {
-          LOG_TOPIC("1bfb0", WARN, Logger::HEARTBEAT)
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "handlePlanChangeCoordinator was unsuccessful";
         }
       }
@@ -714,7 +714,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       } catch (...) {
       }
       if (currentVersion > _lastCurrentVersionNoticed) {
-        LOG_TOPIC("c3bcb", TRACE, Logger::HEARTBEAT)
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
             << "Found currentVersion " << currentVersion
             << " which is newer than " << _lastCurrentVersionNoticed;
         _lastCurrentVersionNoticed = currentVersion;
@@ -732,7 +732,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       for (auto const& server : VPackObjectIterator(failedServersSlice)) {
         failedServers.push_back(server.key.copyString());
       }
-      LOG_TOPIC("43332", DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
+      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
       ClusterInfo::instance()->setFailedServers(failedServers);
       transaction::cluster::abortTransactionsWithFailedServers();
 
@@ -745,7 +745,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       }
 
     } else {
-      LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
+      LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
     }
 
@@ -1085,7 +1085,7 @@ void HeartbeatThread::runCoordinator() {
       sendServerState();
       auto timeDiff = std::chrono::steady_clock::now() - start;
       if (timeDiff > std::chrono::seconds(2)) {
-        LOG_TOPIC("77655", WARN, Logger::HEARTBEAT)
+        LOG_TOPIC(WARN, Logger::HEARTBEAT)
         << "ATTENTION: Sending a heartbeat took longer than 2 seconds, "
            "this might be causing trouble with health checks. Please "
            "contact ArangoDB Support.";
@@ -1105,12 +1105,12 @@ void HeartbeatThread::runCoordinator() {
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
         if (!queued) {
-          LOG_TOPIC("aacc2", WARN, Logger::HEARTBEAT)
+          LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "Could not schedule getNewsFromAgency job in scheduler. Don't "
              "worry, this will be tried again later.";
           *getNewsRunning = 0;
         } else {
-          LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT)
+          LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
           << "Have scheduled getNewsFromAgency job.";
         }
       }
@@ -1128,7 +1128,7 @@ void HeartbeatThread::runCoordinator() {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an unknown exception in coordinator heartbeat";
     }
-    LOG_TOPIC("f5627", DEBUG, Logger::HEARTBEAT) << "Heart beating.";
+    LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Heart beating.";
   }
 }
 

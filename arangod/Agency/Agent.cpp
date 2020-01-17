@@ -2075,14 +2075,14 @@ void Agent::updateSomeConfigValues(VPackSlice data) {
   VPackSlice slice = data.get("okThreshold");
   if (slice.isNumber()) {
     d = slice.getNumber<double>();
-    LOG_TOPIC("12341", DEBUG, Logger::SUPERVISION) << "Updating okThreshold to " << d;
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Updating okThreshold to " << d;
     _config.setSupervisionOkThreshold(d);
     _supervision.setOkThreshold(d);
   }
   slice = data.get("gracePeriod");
   if (slice.isNumber()) {
     d = slice.getNumber<double>();
-    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION) << "Updating gracePeriod to " << d;
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Updating gracePeriod to " << d;
     _config.setSupervisionGracePeriod(d);
     _supervision.setGracePeriod(d);
   }
