@@ -327,7 +327,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
   auto start = std::chrono::steady_clock::now();
   AgencyReadTransaction trx(std::vector<std::string>(
       {AgencyCommManager::path("Shutdown"), AgencyCommManager::path("Current/Version"),
-       AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
+       "/.agency"}));
   auto timeDiff = std::chrono::steady_clock::now() - start;
   if (timeDiff > std::chrono::seconds(10)) {
     LOG_TOPIC(WARN, Logger::HEARTBEAT)
@@ -354,21 +354,6 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
 
     if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
       ApplicationServer::server->beginShutdown();
-    }
-
-    VPackSlice failedServersSlice = result.slice()[0].get(std::vector<std::string>(
-        {AgencyCommManager::path(), "Target", "FailedServers"}));
-    if (failedServersSlice.isObject()) {
-      std::vector<ServerID> failedServers = {};
-      for (auto const& server : VPackObjectIterator(failedServersSlice)) {
-        failedServers.push_back(server.key.copyString());
-      }
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
-      ClusterInfo::instance()->setFailedServers(failedServers);
-      transaction::cluster::abortTransactionsWithFailedServers();
-    } else {
-      LOG_TOPIC(WARN, Logger::HEARTBEAT)
-          << "FailedServers is not an object. ignoring for now";
     }
 
     VPackSlice s = result.slice()[0].get(std::vector<std::string>(
@@ -537,7 +522,7 @@ void HeartbeatThread::runDBServer() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
+        bool queued = scheduler->queue(RequestPriority::HIGH, [self, getNewsRunning](bool) {
           self->getNewsFromAgencyForDBServer();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
@@ -734,16 +719,19 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       }
       LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
       ClusterInfo::instance()->setFailedServers(failedServers);
-      transaction::cluster::abortTransactionsWithFailedServers();
 
       std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
-      if (prgl) {
+      if (prgl && failedServers.size() > 0) {
         pregel::RecoveryManager* mngr = prgl->recoveryManager();
         if (mngr != nullptr) {
-          mngr->updatedFailedServers(failedServers);
+          try {
+            mngr->updatedFailedServers();
+          } catch (std::exception const& e) {
+            LOG_TOPIC(ERR, Logger::HEARTBEAT)
+                << "Got an exception in coordinator heartbeat: " << e.what();
+          }
         }
       }
-
     } else {
       LOG_TOPIC(WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
@@ -1100,7 +1088,7 @@ void HeartbeatThread::runCoordinator() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
+        bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning](bool) {
           self->getNewsFromAgencyForCoordinator();
           *getNewsRunning = 0;  // indicate completion to trigger a new schedule
         });
