@@ -55,6 +55,7 @@
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/ShortestPathExecutor.h"
+#include "Aql/SimpleModifier.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
@@ -65,9 +66,9 @@
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
-
-#include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
+
+#include <boost/core/demangle.hpp>
 
 #include <type_traits>
 
@@ -769,6 +770,12 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);
+      if (state != ExecutionState::DONE) {
+        auto const executorName = boost::core::demangle(typeid(Executor).name()).c_str();
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_INTERNAL_AQL,
+            "Unexpected result of expectedNumberOfRows in %s", executorName);
+      }
       return {state, nullptr};
     }
     block = engine.itemBlockManager().requestBlock(nrItems, nrRegs);
