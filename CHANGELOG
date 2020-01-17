@@ -1,6 +1,8 @@
 devel
 -----
 
+* Make sure heartbeats are actually sent out and received every second.
+
 * Fixed issue #10867: arangod based binaries lack product version info and icon
   on Windows.
 
