@@ -1183,22 +1183,48 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
   return std::make_tuple(ExecutorState::DONE, 0, call);
 }
 
-// This is the central function of an executor, and it acts like a
-// coroutine: It can be called multiple times and keeps state across
-// calls.
-//
-// The intended behaviour of this function is best described in terms of
-// a state machine; the possible states are the ExecStates
-// SKIP, PRODUCE, FULLCOUNT, UPSTREAM, SHADOWROWS, DONE
-//
-// SKIP       skipping rows. How rows are skipped is determined by
-//            the Executor that is used. See SkipVariants
-// PRODUCE    calls produceRows of the executor
-// FULLCOUNT
-// UPSTREAM   fetches rows from the upstream executor(s) to be processed by
-//            our executor.
-// SHADOWROWS process any shadow rows
-// DONE       processing is done
+/**
+ * @brief This is the central function of an executor, and it acts like a
+ * coroutine: It can be called multiple times and keeps state across
+ * calls.
+ *
+ * The intended behaviour of this function is best described in terms of
+ * a state machine; the possible states are the ExecStates
+ * SKIP, PRODUCE, FULLCOUNT, FASTFORWARD, UPSTREAM, SHADOWROWS, DONE
+ *
+ * SKIP       skipping rows. How rows are skipped is determined by
+ *            the Executor that is used. See SkipVariants
+ * PRODUCE    calls produceRows of the executor
+ * FULLCOUNT  again skipping rows. like skip, but will skip all rows
+ * FASTFORWARD like fullcount, but does not count skipped rows.
+ * UPSTREAM   fetches rows from the upstream executor(s) to be processed by
+ *            our executor.
+ * SHADOWROWS process any shadow rows
+ * DONE       processing is done, we return
+ *
+ * We progress within the states in the following way:
+ *   There is a nextState method that determines the next state based on the call, it can only lead to:
+ *   SKIP, PRODUCE, FULLCOUNT, FASTFORWAD, DONE
+ *
+ *   On the first call we will use nextState to get to our starting point.
+ *   After any of SKIP, PRODUCE, FULLCOUNT, FASTFORWAD, DONE We either go to
+ *   1. DONE (if output is full)
+ *   2. SHADOWROWS (if executor is done)
+ *   3. UPSTREAM if executor has More, (Invariant: input fully consumed)
+ *   4. NextState (if none of the above applies)
+ *
+ *   From SHADOWROWS we can only go to DONE
+ *   From UPSTREAM we go to NextState.
+ *
+ * @tparam Executor The Executor that will implement the logic of what needs to happen to the data
+ * @param stack The call stack of lower levels
+ * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+ *        ExecutionState: WAITING -> We wait for IO, secure state, return you will be called again
+ *        ExecutionState: HASMORE -> We still have data
+ *        ExecutionState: DONE -> We do not have any more data, do never call again
+ *        size_t -> Amount of documents skipped within this one call. (contains offset and fullCount)
+ *        SharedAqlItemBlockPtr -> The resulting data
+ */
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
