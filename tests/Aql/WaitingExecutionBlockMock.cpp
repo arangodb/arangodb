@@ -109,7 +109,44 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   }
 }
 
+// NOTE: Does not care for shadowrows!
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
+  auto myCall = stack.popCall();
+  if (!_hasWaited) {
+    _hasWaited = true;
+    return {ExecutionState::WAITING, 0, nullptr};
+  }
+  size_t skipped = 0;
+  while (!_data.empty()) {
+    // Drop while skip
+    if (myCall.getOffset() > 0) {
+      size_t canSkip = _data.front()->size();
+      // For simplicity we can only skip full blocks
+      TRI_ASSERT(canSkip <= myCall.getOffset());
+      _data.pop_front();
+      myCall.didSkip(canSkip);
+      skipped += canSkip;
+      continue;
+    }
+    if (myCall.getLimit() > 0) {
+      // For simplicity we can only request blocks of defined size.
+      TRI_ASSERT(myCall.getLimit() >= _data.front()->size());
+      auto result = std::move(_data.front());
+      _data.pop_front();
+      if (_data.empty()) {
+        return {ExecutionState::DONE, skipped, result};
+      } else {
+        return {ExecutionState::HASMORE, skipped, result};
+      }
+    }
+    TRI_ASSERT(myCall.needsFullCount());
+    size_t counts = _data.front()->size();
+    _data.pop_front();
+    myCall.didSkip(counts);
+    skipped += counts;
+  }
+  return {ExecutionState::DONE, skipped, nullptr};
+
   // TODO implement!
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
