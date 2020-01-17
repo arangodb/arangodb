@@ -180,12 +180,12 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
 bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   VPackSlice const left = l.slice().get("parameters");
   VPackSlice const right = r.slice().get("parameters");
-  
+
   std::string leftName =
       arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
   std::string rightName =
       arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
-  
+
   // First we sort by shard distribution.
   // We first have to create the collections which have no dependencies.
   // NB: Dependency graph has depth at most 1, no need to manage complex DAG
@@ -937,17 +937,19 @@ arangodb::Result processInputDirectory(
 
     std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs(
         collections.size());
+    std::unique_ptr<arangodb::RestoreFeature::JobData> usersData;
 
     bool didModifyFoxxCollection = false;
     // Step 2: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
       VPackSlice params = collection.get("parameters");
+      VPackSlice name = VPackSlice::emptyStringSlice();
       if (params.isObject()) {
-        params = params.get("name");
+        name = params.get("name");
         // Only these two are relevant for FOXX.
-        if (params.isString() && (params.isEqualString("_apps") ||
-                                  params.isEqualString("_appbundles"))) {
+        if (name.isString() && (name.isEqualString("_apps") ||
+                                  name.isEqualString("_appbundles"))) {
           didModifyFoxxCollection = true;
         }
       };
@@ -963,9 +965,17 @@ arangodb::Result processInputDirectory(
           return result;
         }
       }
-      stats.totalCollections++;
 
-      jobs.push_back(std::move(jobData));
+      if (name.isString() && name.isEqualString("_users")) {
+        // special treatment for _users collection - this must be the very last,
+        // and run isolated from all previous data loading operations - the
+        // reason is that loading into the users collection may change the
+        // credentials for the current arangorestore connection!
+        usersData = std::move(jobData);
+      } else {
+        stats.totalCollections++;
+        jobs.push_back(std::move(jobData));
+      }
     }
 
     // Step 3: create views
@@ -1045,6 +1055,21 @@ arangodb::Result processInputDirectory(
       }
     }
 
+    // Last step: reload data into _users. Note: this can change the credentials
+    // of the arangorestore user itself
+    if (usersData) {
+      TRI_ASSERT(jobs.empty());
+      if (!jobQueue.queueJob(std::move(usersData))) {
+        return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
+      }
+      jobQueue.waitForIdle();
+      jobs.clear();
+
+      Result firstError = feature.getFirstError();
+      if (firstError.fail()) {
+        return firstError;
+      }
+    }
   } catch (std::exception const& ex) {
     return {TRI_ERROR_INTERNAL,
             std::string(
