@@ -299,7 +299,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
   LOG_TOPIC("26373", DEBUG, Logger::HEARTBEAT)
       << "got news from agency: " << result.successful();
   if (!result.successful()) {
-    if (!application_features::ApplicationServer::isStopping()) {
+    if (!_server.isStopping()) {
       LOG_TOPIC("17c99", WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read from agency!";
     }
@@ -311,7 +311,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
         std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
 
     if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
-      ApplicationServer::server->beginShutdown();
+      _server.beginShutdown();
     }
 
     VPackSlice failedServersSlice = result.slice()[0].get(std::vector<std::string>(
@@ -322,8 +322,9 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
         failedServers.push_back(server.key.copyString());
       }
       LOG_TOPIC("52626", DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
-      ClusterInfo::instance()->setFailedServers(failedServers);
-      transaction::cluster::abortTransactionsWithFailedServers();
+      auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+      ci.setFailedServers(failedServers);
+      transaction::cluster::abortTransactionsWithFailedServers(ci);
     } else {
       LOG_TOPIC("80491", WARN, Logger::HEARTBEAT)
           << "FailedServers is not an object. ignoring for now";
@@ -544,12 +545,10 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   // not in the HeartbeatThread itself. Therefore, we must protect ourselves
   // against concurrent accesses.
 
-  LOG_TOPIC("33452", DEBUG, Logger::HEARTBEAT) << "getting news from agency...";
+  AuthenticationFeature& af = _server.getFeature<AuthenticationFeature>();
+  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
 
-  AuthenticationFeature* af =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
-  TRI_ASSERT(af != nullptr);
+  LOG_TOPIC("33452", DEBUG, Logger::HEARTBEAT) << "getting news from agency...";
 
   double const timeout = 60.0;
 
@@ -573,7 +572,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   }
 
   if (!result.successful()) {
-    if (!application_features::ApplicationServer::isStopping()) {
+    if (!_server.isStopping()) {
       LOG_TOPIC("539fc", WARN, Logger::HEARTBEAT)
           << "Heartbeat: Could not read from agency! status code: " << result._statusCode
           << ", incriminating body: " << result.bodyRef() << ", timeout: " << timeout;
@@ -586,7 +585,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
         std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
 
     if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
-      ApplicationServer::server->beginShutdown();
+      _server.beginShutdown();
     }
 
     // mop: order is actually important here...FoxxmasterQueueupdate will
@@ -659,8 +658,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
       }
 
       if (userVersion > 0) {
-        if (af->isActive() && af->userManager() != nullptr) {
-          af->userManager()->setGlobalVersion(userVersion);
+        if (af.isActive() && af.userManager() != nullptr) {
+          af.userManager()->setGlobalVersion(userVersion);
         }
       }
     }
@@ -679,7 +678,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
             << " which is newer than " << _lastCurrentVersionNoticed;
         _lastCurrentVersionNoticed = currentVersion;
 
-        ClusterInfo::instance()->invalidateCurrent();
+        ci.invalidateCurrent();
         _invalidateCoordinators = false;
       }
     }
@@ -693,8 +692,8 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
         failedServers.push_back(server.key.copyString());
       }
       LOG_TOPIC("43332", DEBUG, Logger::HEARTBEAT) << "Updating failed servers list.";
-      ClusterInfo::instance()->setFailedServers(failedServers);
-      transaction::cluster::abortTransactionsWithFailedServers();
+      ci.setFailedServers(failedServers);
+      transaction::cluster::abortTransactionsWithFailedServers(ci);
 
       std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
       if (prgl) {
@@ -717,13 +716,13 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
   // the Foxx stuff needs an updated list of coordinators
   // and this is only updated when current version has changed
   if (_invalidateCoordinators) {
-    ClusterInfo::instance()->invalidateCurrentCoordinators();
+    ci.invalidateCurrentCoordinators();
   }
   _invalidateCoordinators = !_invalidateCoordinators;
 
   // Periodically update the list of DBServers:
   if (++_DBServerUpdateCounter >= 60) {
-    ClusterInfo::instance()->loadCurrentDBServers();
+    ci.loadCurrentDBServers();
     _DBServerUpdateCounter = 0;
   }
 }
