@@ -26,8 +26,6 @@
 #define ARANGODB_ENDPOINT_CONNECTION_INFO_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/StringUtils.h"
 #include "Endpoint/Endpoint.h"
 
 namespace arangodb {
@@ -35,11 +33,11 @@ namespace arangodb {
 struct ConnectionInfo {
  public:
   ConnectionInfo()
-      : serverPort(0),
-        clientPort(0),
-        serverAddress(),
+      : serverAddress(),
         clientAddress(),
         endpoint(),
+        serverPort(0),
+        clientPort(0),
         endpointType(Endpoint::DomainType::UNKNOWN),
         encryptionType(Endpoint::EncryptionType::NONE) {}
 
@@ -60,12 +58,13 @@ struct ConnectionInfo {
     return clientAddress + ":" + std::to_string(clientPort);
   }
 
-  int serverPort;
-  int clientPort;
-
   std::string serverAddress;
   std::string clientAddress;
   std::string endpoint;
+  
+  int serverPort;
+  int clientPort;
+  
   Endpoint::DomainType endpointType;
   Endpoint::EncryptionType encryptionType;
 };

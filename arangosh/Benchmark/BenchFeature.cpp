@@ -37,10 +37,11 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
@@ -480,11 +481,7 @@ bool BenchFeature::writeJunitReport(BenchRunResult const& result) {
   memset(date, 0, sizeof(date));
   strftime(date, sizeof(date) - 1, "%FT%T%z", &tm);
 
-  char host[255];
-  memset(host, 0, sizeof(host));
-  gethostname(host, sizeof(host) - 1);
-
-  std::string hostname(host);
+  std::string hostname = utilities::hostname();
   bool ok = false;
   try {
     outfile << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << '\n'

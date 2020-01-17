@@ -2529,8 +2529,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
-      auto& server = arangodb::application_features::ApplicationServer::server();
-      if (server.isStopping()) {
+      if (feature.server().isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -3085,8 +3084,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   auto startTime = std::chrono::steady_clock::now();
   while (true) {  // will be left by a timeout
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    auto& server = application_features::ApplicationServer::server();
-    if (server.isStopping()) {
+    if (feature.server().isStopping()) {
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Shutdown of coordinator!");
     }
@@ -3935,9 +3933,8 @@ arangodb::Result listHotBackupsOnCoordinator(ClusterFeature& feature, VPackSlice
   auto timeout = steady_clock::now() + duration<double>(120.0);
   arangodb::Result result;
   std::chrono::duration<double> wait(1.0);
-  auto& server = application_features::ApplicationServer::server();
   while (true) {
-    if (server.isStopping()) {
+    if (feature.server().isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
     }
 

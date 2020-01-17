@@ -28,7 +28,8 @@
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 
-TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
+TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServer& server,
+                                 v8::Isolate* isolate, size_t id)
     : AgencyTempl(),
       AgentTempl(),
       ClusterInfoTempl(),
@@ -137,7 +138,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
       _lastMaxTime(TRI_microtime()),
       _countOfTimes(0),
       _heapMax(0),
-      _heapLow(0) {
+      _heapLow(0),
+      _server(server) {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));
@@ -277,11 +279,12 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
 TRI_v8_global_t::~TRI_v8_global_t() {}
 
 /// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate, size_t id) {
+TRI_v8_global_t* TRI_CreateV8Globals(arangodb::application_features::ApplicationServer& server,
+                                     v8::Isolate* isolate, size_t id) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g == nullptr);
-  v8g = new TRI_v8_global_t(isolate, id);
+  v8g = new TRI_v8_global_t(server, isolate, id);
   isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
 
   return v8g;
@@ -290,10 +293,6 @@ TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate, size_t id) {
 /// @brief returns a global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
-
-  if (v8g == nullptr) {
-    v8g = TRI_CreateV8Globals(isolate, 0);
-  }
 
   TRI_ASSERT(v8g != nullptr);
   return v8g;
