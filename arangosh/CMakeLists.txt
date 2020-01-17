@@ -189,9 +189,7 @@ else ()
   add_dependencies(arangodump zlibstatic)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangodump jemalloc)
-endif ()
+add_dependencies(arangodump mimalloc)
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
@@ -366,9 +364,7 @@ else ()
   add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangorestore jemalloc)
-endif ()
+add_dependencies(arangodump mimalloc)
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
@@ -432,9 +428,7 @@ else ()
   add_dependencies(arangosh zlibstatic)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangosh jemalloc)
-endif ()
+add_dependencies(arangodump mimalloc)
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)

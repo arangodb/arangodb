@@ -999,9 +999,7 @@ else ()
   add_dependencies(arangod zlibstatic arango_iresearch)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangod jemalloc)
-endif ()
+add_dependencies(arangod mimalloc)
   
 foreach(TARGET
   arango_agency
