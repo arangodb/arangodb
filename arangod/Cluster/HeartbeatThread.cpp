@@ -295,7 +295,7 @@ void HeartbeatThread::getNewsFromAgencyForDBServer() {
            "contact ArangoDB and ask for help.";
   }
 
-  AgencyComm agency;
+  AgencyComm agency(_server);
   AgencyCommResult result = agency.sendTransactionWithFailover(trx, 60.0);
   LOG_TOPIC("26373", DEBUG, Logger::HEARTBEAT)
       << "got news from agency: " << result.successful();
@@ -553,7 +553,7 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 
   double const timeout = 60.0;
 
-  AgencyComm agency;
+  AgencyComm agency(_server);
   AgencyReadTransaction trx(std::vector<std::string>(
       {AgencyCommManager::path("Current/Version"), AgencyCommManager::path("Current/Foxxmaster"),
        AgencyCommManager::path("Current/FoxxmasterQueueupdate"),
