@@ -227,7 +227,7 @@ arangodb::Result evaluateArg(
     char const* funcName,
     arangodb::aql::AstNode const& args,
     size_t i,
-    bool evaluate,
+    irs::boolean_filter const* filter,
     QueryContext const& ctx) {
   static_assert(
     std::is_same<T, irs::string_ref>::value ||
@@ -249,7 +249,7 @@ arangodb::Result evaluateArg(
 
   value.reset(*arg);
 
-  if (evaluate || value.isConstant()) {
+  if (filter || value.isConstant()) {
     if (!value.execute(ctx)) {
       return error::failedToEvaluate(funcName, i + 1);
     }
@@ -317,7 +317,7 @@ arangodb::Result extractAnalyzerFromArg(
   ScopedAqlValue analyzerValue(*analyzerArg);
   irs::string_ref analyzerId;
 
-  auto rv = evaluateArg(analyzerId, analyzerValue, funcName, args, i, bool(filter), ctx);
+  auto rv = evaluateArg(analyzerId, analyzerValue, funcName, args, i, filter, ctx);
 
   if (rv.fail()) {
     return rv;
@@ -1722,7 +1722,7 @@ arangodb::Result fromFuncAnalyzer(
 
   auto rv = evaluateArg<decltype(analyzerId), true>(
         analyzerId, analyzerIdValue, funcName,
-        args, 1, bool(filter), ctx);
+        args, 1, filter, ctx);
 
   if (rv.fail()) {
     return rv;
@@ -1809,7 +1809,7 @@ arangodb::Result fromFuncBoost(
   // 2nd argument defines a boost
   double_t boostValue = 0;
   auto rv = evaluateArg<decltype(boostValue), true>(
-        boostValue, tmpValue, funcName, args, 1, bool(filter), ctx);
+        boostValue, tmpValue, funcName, args, 1, filter, ctx);
 
   if (rv.fail()) {
     return rv;
@@ -1867,7 +1867,7 @@ arangodb::Result fromFuncExists(
     // 2nd argument defines a type (if present)
     ScopedAqlValue argValue;
     irs::string_ref arg;
-    auto rv = evaluateArg(arg, argValue, funcName, args, 1, bool(filter), ctx);
+    auto rv = evaluateArg(arg, argValue, funcName, args, 1, filter, ctx);
 
     if (rv.fail()) {
       return rv;
@@ -1989,7 +1989,7 @@ arangodb::Result fromFuncMinMatch(
   int64_t minMatchCount= 0;
 
   auto rv = evaluateArg<decltype(minMatchCount), true>(
-        minMatchCount, minMatchCountValue, funcName, args, lastArg, bool(filter), ctx);
+        minMatchCount, minMatchCountValue, funcName, args, lastArg, filter, ctx);
 
   if (rv.fail()) {
     return rv;
@@ -2250,7 +2250,7 @@ arangodb::Result fromFuncStartsWith(
   // 2nd argument defines a value
   ScopedAqlValue prefixValue;
   irs::string_ref prefix;
-  auto rv = evaluateArg(prefix, prefixValue, funcName, args, 1, bool(filter), ctx);
+  auto rv = evaluateArg(prefix, prefixValue, funcName, args, 1, filter, ctx);
 
   if (rv.fail()) {
     return rv;
@@ -2262,7 +2262,7 @@ arangodb::Result fromFuncStartsWith(
     // 3rd (optional) argument defines a number of scored terms
     ScopedAqlValue scoringLimitValueBuf;
     int64_t scoringLimitValue = static_cast<int64_t>(scoringLimit);
-    rv = evaluateArg(scoringLimitValue, scoringLimitValueBuf, funcName, args, 2, bool(filter), ctx);
+    rv = evaluateArg(scoringLimitValue, scoringLimitValueBuf, funcName, args, 2, filter, ctx);
 
     if (rv.fail()) {
       return rv;
@@ -2341,7 +2341,7 @@ arangodb::Result fromFuncInRange(
   // 4th argument defines inclusion of lower boundary
   bool lhsInclude = false;
 
-  auto rv = evaluateArg(lhsInclude, includeValue, funcName, args, 3, bool(filter), ctx);
+  auto rv = evaluateArg(lhsInclude, includeValue, funcName, args, 3, filter, ctx);
 
   if (rv.fail()) {
     return rv;
@@ -2350,7 +2350,7 @@ arangodb::Result fromFuncInRange(
   // 5th argument defines inclusion of upper boundary
   bool rhsInclude = false;
 
-  rv = evaluateArg(rhsInclude, includeValue, funcName, args, 4, bool(filter), ctx);
+  rv = evaluateArg(rhsInclude, includeValue, funcName, args, 4, filter, ctx);
 
   if (rv.fail()) {
     return rv;
@@ -2396,7 +2396,7 @@ arangodb::Result fromFuncLike(
   // 2nd argument defines a matching pattern
   ScopedAqlValue patternValue;
   irs::string_ref pattern;
-  arangodb::Result res = evaluateArg(pattern, patternValue, funcName, args, 1, bool(filter), ctx);
+  arangodb::Result res = evaluateArg(pattern, patternValue, funcName, args, 1, filter, ctx);
 
   if (!res.ok()) {
     return res;
@@ -2454,7 +2454,7 @@ arangodb::Result fromFuncLevenshteinMatch(
   // 2nd argument defines a target
   ScopedAqlValue targetValue;
   irs::string_ref target;
-  arangodb::Result res = evaluateArg(target, targetValue, funcName, args, 1, bool(filter), ctx);
+  arangodb::Result res = evaluateArg(target, targetValue, funcName, args, 1, filter, ctx);
 
   if (!res.ok()) {
     return res;
@@ -2463,8 +2463,8 @@ arangodb::Result fromFuncLevenshteinMatch(
   ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
 
   // 3rd argument defines a max distance
-  int64_t maxDistance;
-  res = evaluateArg(maxDistance, tmpValue, funcName, args, 2, bool(filter), ctx);
+  int64_t maxDistance = 0;
+  res = evaluateArg(maxDistance, tmpValue, funcName, args, 2, filter, ctx);
 
   if (!res.ok()) {
     return res;
@@ -2474,7 +2474,7 @@ arangodb::Result fromFuncLevenshteinMatch(
   bool withTranspositions = false;
 
   if (4 == argc) {
-    res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3, bool(filter), ctx);
+    res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3, filter, ctx);
 
     if (!res.ok()) {
       return res;
