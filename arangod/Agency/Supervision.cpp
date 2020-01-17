@@ -1305,7 +1305,7 @@ bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID,
     << coordinatorID << " health=" << health;
 
   // if the server is not found, health is an empty string
-  coordinatorFound = health.empty();
+  coordinatorFound = !health.empty();
   if (health != "GOOD" && health != "BAD") {
     return false;
   }
