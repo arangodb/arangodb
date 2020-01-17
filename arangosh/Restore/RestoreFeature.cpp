@@ -1037,6 +1037,7 @@ arangodb::Result processInputDirectory(
 
     // should instantly return
     jobQueue.waitForIdle();
+    jobs.clear();
 
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
