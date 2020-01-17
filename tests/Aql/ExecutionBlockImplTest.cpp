@@ -821,21 +821,62 @@ INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest,
 
 enum CallAsserterState { INITIAL, SKIP, GET, COUNT, DONE };
 
+/**
+ * @brief Base class for call assertions.
+ * Every asserter holds an internal statemachine.
+ * And is called on every invocation of the LambdaFunction.
+ * According to it's internal machine, it asserts that the input Call
+ * Is expected in this situation.
+ *
+ */
 struct BaseCallAsserter {
+  // Actual number of calls for this machine
   size_t call = 0;
+  // Maximum allowed calls to this machine, we assert that call <= maxCall
   size_t maxCall = 0;
+  // Internal state
   CallAsserterState state = CallAsserterState::DONE;
+  // The expected outer call, the machine needs to extract relevant parts
   AqlCall const expected;
 
+  /**
+   * @brief Construct a new Base Call Asserter object
+   *
+   * @param expectedCall The given outer call. As we play several rounds (e.g. one call for skip one for get) the asserter needs to decompose this call
+   */
   explicit BaseCallAsserter(AqlCall const& expectedCall)
       : expected{expectedCall} {}
 
+  /**
+   * @brief Test if we need to expect a skip phase
+   *
+   * @return true Yes we have skip
+   * @return false No we do not have skip
+   */
   auto hasSkip() const -> bool { return expected.getOffset() > 0; }
+  /**
+   * @brief Test if we need to expect a produce phase
+   *
+   * @return true
+   * @return false
+   */
   auto hasLimit() const -> bool { return expected.getLimit() > 0; }
+  /**
+   * @brief Test if we need to expect a fullcount phase
+   *
+   * @return true
+   * @return false
+   */
   auto needsFullCount() const -> bool { return expected.needsFullCount(); }
 };
 
-// Asserts if AqlCalls are forwarded onmodified correctly.
+/**
+ * @brief Asserter used for the skipRows implementation.
+ *        Assumes that we are always called once with an empty input.
+ *        And once with a given input.
+ *        Will expect to be called for skip and fullCount (4 counts)
+ *        Does expect to not be called if skip and/or fullCount are ommited.
+ */
 struct SkipCallAsserter : public BaseCallAsserter {
   bool firstCall = false;
 
@@ -898,7 +939,11 @@ struct SkipCallAsserter : public BaseCallAsserter {
   }
 };
 
-// Asserts if AqlCalls are forwarded onmodified correctly.
+/**
+ * @brief Asserter used for the produce method.
+ *        Asserts to be called twice if data is requested. (limit > 0)
+ *        Once with, once without data.
+ */
 struct CallAsserter : public BaseCallAsserter {
   explicit CallAsserter(AqlCall const& expectedCall)
       : BaseCallAsserter{expectedCall} {
@@ -939,6 +984,12 @@ struct CallAsserter : public BaseCallAsserter {
   }
 };
 
+/**
+ * @brief Asserter used "above" an executor that implements
+ *        skip and produce, and transforms everything to produce.
+ *        Expects to be called twice for each sitation (with and without input).
+ *        Expect up to three situations: SKIP, GET and FULLCOUNT.
+ */
 struct GetOnlyCallAsserter : public BaseCallAsserter {
   bool firstCall = false;
 
@@ -1030,10 +1081,31 @@ struct GetOnlyCallAsserter : public BaseCallAsserter {
   }
 };
 
+/**
+ * @brief Integration tests.
+ *        These test tests a chain of Executors.
+ *        It focuses on the part that all executors
+ *        get injected the correct calls in each iteration
+ *        of the Execute state machine.
+ *        Also asserts that "UPSTREAM" is called with the correct
+ *        forwarded call.
+ *        This is a parameterized testsuite that uses a set of pseudo-random AqlCalls of different formats.
+ */
 class ExecutionBlockImplExecuteIntegrationTest
     : public SharedExecutionBlockImplTest,
       public testing::TestWithParam<AqlCall> {
  protected:
+  /**
+   * @brief Create a Producing ExecutionBlock
+   *        For every input row this block will write the array given in data
+   *        into the output once.
+   *        Each entry in the array goes into one line and is writen into outReg.
+   *
+   * @param dependency The dependecy of this block (produces input)
+   * @param data The data to be written, needs to be an array.
+   * @param outReg The register to be written to
+   * @return std::unique_ptr<ExecutionBlock> ready to use ProducerBlock.
+   */
   std::unique_ptr<ExecutionBlock> produceBlock(ExecutionBlock* dependency,
                                                std::shared_ptr<VPackBuilder> data,
                                                RegisterId outReg) {
@@ -1108,6 +1180,14 @@ class ExecutionBlockImplExecuteIntegrationTest
     return producer;
   }
 
+  /**
+   * @brief Create a simple row forwarding Block.
+   *        It simply takes one input row and copies it into the output
+   *
+   * @param dependency The dependecy of this block (produces input)
+   * @param maxReg The number of registers in input and output. (required for forwarding of data)
+   * @return std::unique_ptr<ExecutionBlock> ready to use ForwardingBlock.
+   */
   std::unique_ptr<ExecutionBlock> forwardBlock(ExecutionBlock* dependency, RegisterId maxReg) {
     TRI_ASSERT(dependency != nullptr);
     auto forwardData = [](AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
@@ -1127,6 +1207,21 @@ class ExecutionBlockImplExecuteIntegrationTest
     return producer;
   }
 
+  /**
+   * @brief Helper method to validate the result
+   *        It will take into account the call used as Parameter
+   *        and slice the expectated outcome to it.
+   *
+   * It asserts the following:
+   *   1. skipped == offset() + (data.length - hardLimit [fullcount])
+   *   2. result.length = (hardLimit||data.length) - offset.
+   *   3. result register entry matches the entry at the correct position in data.
+   *
+   * @param data The data to be expected, if we would just get it in full
+   * @param skipped The number of rows the executor reported as skipped
+   * @param result The resulting data output
+   * @param testReg The register to evaluate
+   */
   void ValidateResult(std::shared_ptr<VPackBuilder> data, size_t skipped,
                       SharedAqlItemBlockPtr result, RegisterId testReg) {
     auto const& call = GetParam();
@@ -1175,6 +1270,7 @@ class ExecutionBlockImplExecuteIntegrationTest
   }
 };
 
+// Test a simple produce block. that has is supposed to write 1000 rows.
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
   auto singleton = createSingleton();
 
@@ -1199,6 +1295,9 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
   ValidateResult(builder, skipped, block, outReg);
 }
 
+// Test two consecutive produce blocks.
+// The first writes 10 lines
+// The second another 100 per input (1000 in total)
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
   auto singleton = createSingleton();
 
@@ -1246,66 +1345,10 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
   ValidateResult(secondRegBuilder, skipped, block, outRegSecond);
 }
 
-// The following forwarding tests are disabled because we need to make modifications to the output row.
-
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding) {
-  auto singleton = createSingleton();
-
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openArray();
-  for (size_t i = 0; i < 1000; ++i) {
-    builder->add(VPackValue(i));
-  }
-  builder->close();
-  RegisterId outReg = 0;
-  auto producer = produceBlock(singleton.get(), builder, outReg);
-
-  CallAsserter upperState{GetParam()};
-  CallAsserter lowerState{GetParam()};
-
-  auto testForwarding =
-      [&](AqlItemBlockInputRange& inputRange,
-          OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
-    upperState.gotCalled(output.getClientCall());
-    while (inputRange.hasDataRow() && !output.isFull()) {
-      auto const& [state, input] = inputRange.nextDataRow();
-      EXPECT_TRUE(input.isInitialized());
-      output.copyRow(input);
-      output.advanceRow();
-    }
-    return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
-  };
-  auto forwardCall = [&](AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
-      -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
-    lowerState.gotCalled(output.getClientCall());
-    while (inputRange.hasDataRow() && !output.isFull()) {
-      auto const& [state, input] = inputRange.nextDataRow();
-      EXPECT_TRUE(input.isInitialized());
-      output.copyRow(input);
-      output.advanceRow();
-    }
-    return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
-  };
-  auto upper = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-      fakedQuery->engine(), generateNodeDummy(),
-      makeInfos(std::move(testForwarding), outReg, outReg));
-  upper->addDependency(producer.get());
-  auto lower = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-      fakedQuery->engine(), generateNodeDummy(),
-      makeInfos(std::move(forwardCall), outReg, outReg));
-  lower->addDependency(upper.get());
-
-  auto const& call = GetParam();
-  AqlCallStack stack{call};
-  auto const [state, skipped, block] = lower->execute(stack);
-  if (std::holds_alternative<size_t>(call.softLimit) && !call.hasHardLimit()) {
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-  } else {
-    EXPECT_EQ(state, ExecutionState::DONE);
-  }
-  ValidateResult(builder, skipped, block, outReg);
-}
-
+// Explicitly test call forwarding, on exectors.
+// We use two pass-through producers, that simply copy over input and assert an calls.
+// On top of them we have a 1000 line producer.
+// We expect the result to be identical to the 1000 line producer only.
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthrough) {
   auto singleton = createSingleton();
 
@@ -1362,6 +1405,12 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_passthroug
   ValidateResult(builder, skipped, block, outReg);
 }
 
+// Explicitly test call forwarding, on exectors.
+// We use one pass-through producer, that simply copy over input and assert an calls.
+// And we have one non-passthrough below it, that requests all data from upstream, and internally
+// does skipping.
+// On top of them we have a 1000 line producer.
+// We expect the result to be identical to the 1000 line producer only.
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_skip) {
   auto singleton = createSingleton();
 
