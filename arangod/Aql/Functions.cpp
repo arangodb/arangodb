@@ -58,6 +58,7 @@
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "Ssl/SslInterface.h"
@@ -70,6 +71,9 @@
 #include "V8Server/v8-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+
+#include "utils/levenshtein_utils.hpp"
+#include "search/levenshtein_filter.hpp"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -1563,6 +1567,68 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
       std::string(buffer2->begin(), buffer2->length()));
 
   return AqlValue(AqlValueHintInt(encoded));
+}
+
+/// Executes LEVENSHTEIN_MATCH
+AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Methods* trx,
+                                     VPackFunctionParameters const& args) {
+  static char const* AFN = "LEVENSHTEIN_MATCH";
+
+  TRI_ASSERT(args.size() >= 3 && args.size() <= 4); // ensured by function signature
+
+  auto& maxDistance = args[2];
+
+  if (ADB_UNLIKELY(!maxDistance.isNumber())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+  }
+
+  bool withTranspositionsValue = false;
+  int64_t maxDistanceValue = maxDistance.toInt64();
+
+  if (args.size() > 3) {
+    auto& withTranspositions = args[3];
+
+    if (ADB_UNLIKELY(!withTranspositions.isBoolean())) {
+      registerInvalidArgumentWarning(ctx, AFN);
+      return AqlValue{AqlValueHintNull{}};
+    }
+
+    withTranspositionsValue = withTranspositions.toBoolean();
+  }
+
+  if (maxDistanceValue < 0 || (withTranspositionsValue && maxDistanceValue > 3)) {
+    registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  if (!withTranspositionsValue && maxDistanceValue > 4) {
+    // fallback to LEVENSHTEIN_DISTANCE
+    auto const dist = Functions::LevenshteinDistance(ctx, trx, args);
+    TRI_ASSERT(dist.isNumber());
+
+    return AqlValue{AqlValueHintBool{maxDistanceValue <= dist.toInt64()}};
+  }
+
+  size_t const unsignedMaxDistanceValue = static_cast<size_t>(maxDistanceValue);
+
+  auto& description = irs::parametric_description_provider(
+    static_cast<irs::byte_type>(unsignedMaxDistanceValue),
+    withTranspositionsValue);
+
+  if (ADB_UNLIKELY(!description)) {
+    registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  auto const lhs = args[0].slice();
+  auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs) : irs::bytes_ref::EMPTY;
+  auto const rhs = args[1].slice();
+  auto const rhsValue = lhs.isString() ? iresearch::getBytesRef(rhs) : irs::bytes_ref::EMPTY;
+
+  size_t const dist = irs::edit_distance(description, lhsValue, rhsValue);
+
+  return AqlValue(AqlValueHintBool(dist <= unsignedMaxDistanceValue));
 }
 
 /// @brief function TO_BOOL
@@ -4712,6 +4778,61 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   return AqlValue(builder.get());
+}
+
+/// @brief function JACCARD
+AqlValue Functions::Jaccard(ExpressionContext* ctx,
+                            transaction::Methods* trx,
+                            VPackFunctionParameters const& args) {
+  static char const* AFN = "JACCARD";
+
+  typedef std::unordered_map<
+    VPackSlice, size_t,
+    basics::VelocyPackHelper::VPackHash,
+    basics::VelocyPackHelper::VPackEqual> ValuesMap;
+
+  auto options = trx->transactionContextPtr()->getVPackOptions();
+  ValuesMap values(512, basics::VelocyPackHelper::VPackHash(),
+                        basics::VelocyPackHelper::VPackEqual(options));
+
+  AqlValue const& lhs = extractFunctionParameterValue(args, 0);
+
+  if (!lhs.isArray()) {
+    // not an array
+    registerWarning(ctx, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& rhs = extractFunctionParameterValue(args, 1);
+
+  if (!rhs.isArray()) {
+    // not an array
+    registerWarning(ctx, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer lhsMaterializer(trx);
+  AqlValueMaterializer rhsMaterializer(trx);
+
+  VPackSlice lhsSlice = lhsMaterializer.slice(lhs, false);
+  VPackSlice rhsSlice = rhsMaterializer.slice(rhs, false);
+
+  size_t cardinality = 0; // cardinality of intersection
+
+  for (VPackSlice slice : VPackArrayIterator(lhsSlice)) {
+    values.try_emplace(slice, 1);
+  }
+
+  for (VPackSlice slice : VPackArrayIterator(rhsSlice)) {
+    auto& count = values.try_emplace(slice, 0).first->second;
+    cardinality += count;
+    count = 0;
+  }
+
+  auto const jaccard = values.empty()
+    ? 0.0 : double_t(cardinality)/values.size();
+
+  return AqlValue{AqlValueHintDouble{jaccard}};
 }
 
 /// @brief function OUTERSECTION

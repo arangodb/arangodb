@@ -51,6 +51,7 @@
 #include "IResearch/IResearchRocksDBRecoveryHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesEngine.h"
@@ -119,7 +120,7 @@ arangodb::aql::AqlValue startsWithFunc(arangodb::aql::ExpressionContext* ctx,
                                        arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
   static char const* AFN = "STARTS_WITH";
 
-  TRI_ASSERT(args.size() >= 2); //ensured by function signature
+  TRI_ASSERT(args.size() >= 2); // ensured by function signature
   auto& value = args[0];
 
   if (ADB_UNLIKELY(!value.isString())) {
@@ -404,7 +405,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
   addFunction(functions, { "IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc });  // (attribute, lower, upper, include lower, include upper)
   addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &minMatchFunc });  // (filter expression [, filter expression, ... ], min match count)
-  addFunction(functions, { "LEVENSHTEIN_MATCH", ".,.,.|.", flags, &dummyFilterFunc });  // (attribute, target, max distance, [include transpositions])
   addFunction(functions, { "BOOST", ".,.", flags, &contextFunc });  // (filter expression, boost)
   addFunction(functions, { "ANALYZER", ".,.", flags, &contextFunc });  // (filter expression, analyzer)
 }
@@ -582,6 +582,7 @@ bool isFilter(arangodb::aql::Function const& func) noexcept {
          func.implementation == &contextFunc ||
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
+         func.implementation == &aql::Functions::LevenshteinMatch ||
          func.implementation == &aql::Functions::Like;
 }
 
