@@ -49,9 +49,7 @@ using namespace arangodb::rest;
 
 RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestStatusHandler::execute() {
   ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();

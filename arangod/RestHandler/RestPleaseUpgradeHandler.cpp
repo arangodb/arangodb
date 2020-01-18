@@ -31,9 +31,7 @@ using velocypack::StringRef;
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(application_features::ApplicationServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestHandler(server, request, response) {}
 
 RestStatus RestPleaseUpgradeHandler::execute() {
   resetResponse(rest::ResponseCode::OK);
