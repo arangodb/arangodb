@@ -2388,7 +2388,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
             << "Compare with shortCut Leader: " << nr
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
-          Result res = col->followers()->add(followerId);
+          res = col->followers()->add(followerId);
 
           if (res.fail()) {
             // this will create an error response with the appropriate message

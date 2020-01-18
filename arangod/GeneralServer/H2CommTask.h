@@ -35,10 +35,6 @@ namespace arangodb {
 class HttpRequest;
 class HttpResponse;
 
-namespace basics {
-class StringBuffer;
-}
-
 namespace rest {
 
 template <SocketType T>
@@ -49,15 +45,12 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   void start() override;
   /// @brief upgrade from  H1 connection, must not call start
-  void upgrade(std::unique_ptr<HttpRequest> req);
+  void upgradeHttp1(std::unique_ptr<HttpRequest> req);
 
  protected:
-  
   // set a read timeout in asyncReadSome
-  bool enableReadTimeout() const override {
-    return true;
-  }
-  
+  bool enableReadTimeout() const override { return true; }
+
   bool readCallback(asio_ns::error_code ec) override;
 
   void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics* stat) override;
@@ -86,12 +79,14 @@ class H2CommTask final : public GeneralCommTask<T> {
   // ongoing Http2 stream
   struct Stream {
     Stream(std::unique_ptr<HttpRequest> req) : request(std::move(req)) {}
-
+    
     std::string origin;
+
     std::unique_ptr<HttpRequest> request;
     std::unique_ptr<HttpResponse> response;
 
-    size_t responseOffset = 0;
+    size_t headerBuffSize = 0; // total header size
+    size_t responseOffset = 0; // current offset in response body
   };
 
   /// init h2 session
@@ -110,15 +105,16 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   Stream* createStream(int32_t sid, std::unique_ptr<HttpRequest>);
   Stream* findStream(int32_t sid) const;
-  
+
   // may be used to signal a write from sendResponse
   void signalWrite();
 
  private:
-  static constexpr size_t kOutBufferLen = 32 * 1024 * 1024;
+  static constexpr size_t kOutBufferLen = 64 * 1024 * 1024;
   std::array<uint8_t, kOutBufferLen> _outbuffer;
 
-  boost::lockfree::queue<int32_t, boost::lockfree::capacity<512>> _waitingResponses;
+  // no more than 64 streams allowed
+  boost::lockfree::queue<HttpResponse*, boost::lockfree::capacity<64>> _responses;
 
   std::map<int32_t, std::unique_ptr<Stream>> _streams;
 

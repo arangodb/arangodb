@@ -201,9 +201,7 @@ class BIOGuard {
 static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg) {
-  int rv;
-
-  rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+  int rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
 
   if (rv != 1) {
     return SSL_TLSEXT_ERR_NOACK;
@@ -335,7 +333,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
     
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-      SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
+    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     return sslContext;

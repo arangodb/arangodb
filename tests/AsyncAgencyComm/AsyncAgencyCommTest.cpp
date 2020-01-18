@@ -139,8 +139,8 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
       ASSERT_EQ(VPackSlice(expectReq.body.data()).toJson(), req->slice().toJson());
     }
 
-    fuerte::MessageID sendRequest(std::unique_ptr<fuerte::Request> req,
-                                  fuerte::RequestCallback cb) override {
+    void sendRequest(std::unique_ptr<fuerte::Request> req,
+                     fuerte::RequestCallback cb) override {
       validateRequest(req);
 
       // send response
@@ -151,8 +151,6 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
       } else {
         cb(fuerte::Error::Canceled, std::move(req), nullptr);
       }
-
-      return 0;
     }
   };
 

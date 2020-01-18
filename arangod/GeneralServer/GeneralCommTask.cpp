@@ -46,23 +46,27 @@ GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
 
 template <SocketType T>
 void GeneralCommTask<T>::stop() {
+  if (!_protocol) {
+    return;
+  }
   asio_ns::dispatch(_protocol->context.io_context, [self = shared_from_this()] {
     static_cast<GeneralCommTask<T>&>(*self).close(asio_ns::error_code());
   });
 }
 
 template <SocketType T>
-void GeneralCommTask<T>::close(asio_ns::error_code const& err) {
-  if (err && err != asio_ns::error::misc_errors::eof) {
+void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
+  if (ec && ec != asio_ns::error::misc_errors::eof &&
+      ec != asio_ns::error::operation_aborted) {
     LOG_TOPIC("2b6b3", WARN, arangodb::Logger::REQUESTS)
-    << "asio IO error: '" << err.message() << "'";
+    << "asio IO error: '" << ec.message() << "'";
   }
   
   if (_protocol) {
     _protocol->timer.cancel();
     _protocol->shutdown([this, self(shared_from_this())](asio_ns::error_code ec) {
       if (ec) {
-        LOG_TOPIC("2c6b4", WARN, arangodb::Logger::REQUESTS)
+        LOG_TOPIC("2c6b4", INFO, arangodb::Logger::REQUESTS)
             << "error shutting down asio socket: '" << ec.message() << "'";
       }
       _server.unregisterTask(this);
@@ -75,8 +79,8 @@ void GeneralCommTask<T>::close(asio_ns::error_code const& err) {
 /// set / reset connection timeout
 template <SocketType T>
 void GeneralCommTask<T>::setTimeout(std::chrono::milliseconds millis) {
-  this->_protocol->timer.expires_after(millis);
-  this->_protocol->timer.async_wait([self = CommTask::weak_from_this()](asio_ns::error_code ec) {
+  _protocol->timer.expires_after(millis);
+  _protocol->timer.async_wait([self = CommTask::weak_from_this()](asio_ns::error_code ec) {
     std::shared_ptr<CommTask> s;
     if (ec || !(s = self.lock())) {  // was canceled / deallocated
       return;

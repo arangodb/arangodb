@@ -317,7 +317,8 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/GeneralConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/HttpConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H1Connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H2Connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/jwt.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/loop.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/message.cpp
@@ -328,6 +329,8 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
   )
+
+target_link_libraries(fuerte nghttp2)
 
 target_include_directories(fuerte SYSTEM PRIVATE
   "${Boost_INCLUDE_DIRS}/"

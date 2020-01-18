@@ -75,8 +75,8 @@ VstCommTask<T>::~VstCommTask() {
 
 template <SocketType T>
 void VstCommTask<T>::start() {
-  LOG_TOPIC("7215f", DEBUG, Logger::REQUESTS)
-    << "start VST connection \"" << (void*)this << "\"";
+  LOG_TOPIC("7215f", TRACE, Logger::REQUESTS)
+    << "<vst> opened connection \"" << (void*)this << "\"";
   asio_ns::dispatch(this->_protocol->context.io_context, [self = this->shared_from_this()] {
     static_cast<VstCommTask<T>&>(*self).asyncReadSome();
   });
@@ -280,7 +280,7 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   VstResponse& response = static_cast<VstResponse&>(*baseRes);
 #endif
 
-  this->finishExecution(*baseRes, /*cors*/StaticStrings::Empty);
+  this->finishExecution(*baseRes, /*origin*/StaticStrings::Empty);
 
   auto resItem = std::make_unique<ResponseItem>();
   response.writeMessageHeader(resItem->metadata);
@@ -314,10 +314,7 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   << static_cast<int>(response.responseCode()) << ","
   << "\"," << Logger::FIXED(totalTime, 6);
 
-  while (true) {
-    if (_writeQueue.push(resItem.get())) {
-      break;
-    }
+  while (!_writeQueue.push(resItem.get())) {
     std::this_thread::yield();
   }
   resItem.release();
