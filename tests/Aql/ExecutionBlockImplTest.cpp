@@ -1150,23 +1150,14 @@ class ExecutionBlockImplExecuteIntegrationTest
    * @return std::unique_ptr<ExecutionBlock> The singleton ExecutionBlock.
    */
   std::unique_ptr<ExecutionBlock> createSingleton() {
-    if (!doesWaiting()) {
-      auto res = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
-          fakedQuery->engine(), generateNodeDummy(), IdExecutorInfos{0, {}, {}});
-      InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
-      auto const [state, result] = res->initializeCursor(inputRow);
-      EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_TRUE(result.ok());
-      return res;
-    } else {
-      std::deque<SharedAqlItemBlockPtr> blockDeque;
-      SharedAqlItemBlockPtr block =
-          buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
-      blockDeque.push_back(std::move(block));
-      return std::make_unique<WaitingExecutionBlockMock>(fakedQuery->engine(),
-                                                         generateNodeDummy(),
-                                                         std::move(blockDeque));
-    }
+    std::deque<SharedAqlItemBlockPtr> blockDeque;
+    SharedAqlItemBlockPtr block =
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}});
+    blockDeque.push_back(std::move(block));
+    return std::make_unique<WaitingExecutionBlockMock>(
+        fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+        doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+                      : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   }
 
   /**
@@ -1566,6 +1557,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   }
   ValidateResult(builder, skipped, block, outReg);
 }
+
+/* TODO
+ * [] Test in between waiting variant
+ * [] Test shadowRows
+ *   [] ShadowRows at end of block forwarding
+ *   [] ShadowRow BlockEnd ShadowRow higher depth
+ *   [] ShadowRow BlockEnd ShadowRow equal depth
+ */
 
 /*
 // We simulate the situation within a subquery.
