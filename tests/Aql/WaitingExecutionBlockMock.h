@@ -46,15 +46,26 @@ namespace aql {
 class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
  public:
   /**
+   * @brief Define how often this Block should return "WAITING"
+   */
+  enum WaitingBehaviour {
+    NEVER,  // Never return WAITING
+    ONCE,  // Return WAITING on the first execute call, afterwards return all blocks
+    ALLWAYS  // Return Waiting once for every execute Call.
+  };
+
+  /**
    * @brief Create a WAITING ExecutionBlockMock
    *
    * @param engine Required by API.
    * @param node Required by API.
    * @param data Must be a shared_ptr to an VPackArray.
+   * @param variant The waiting behaviour of this block (default ONCE), see WaitingBehaviour
    */
   WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
                             arangodb::aql::ExecutionNode const* node,
-                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data);
+                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
+                            WaitingBehaviour variant = WaitingBehaviour::ALLWAYS);
 
   virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
 
@@ -105,6 +116,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   size_t _inflight;
   bool _returnedDone = false;
   bool _hasWaited;
+  WaitingBehaviour _variant;
 };
 }  // namespace aql
 

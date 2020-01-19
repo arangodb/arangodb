@@ -37,12 +37,14 @@ using namespace arangodb::tests::aql;
 
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
-                                                     std::deque<SharedAqlItemBlockPtr>&& data)
+                                                     std::deque<SharedAqlItemBlockPtr>&& data,
+                                                     WaitingBehaviour variant)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
-      _hasWaited(false) {}
+      _hasWaited(false),
+      _variant{variant} {}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
@@ -112,9 +114,14 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
 // NOTE: Does not care for shadowrows!
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
   auto myCall = stack.popCall();
-  if (!_hasWaited) {
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
+    // If we orderd waiting check on _hasWaited and wait if not
     _hasWaited = true;
     return {ExecutionState::WAITING, 0, nullptr};
+  }
+  if (_variant == WaitingBehaviour::ALLWAYS) {
+    // If we allways wait, reset.
+    _hasWaited = false;
   }
   size_t skipped = 0;
   while (!_data.empty()) {
