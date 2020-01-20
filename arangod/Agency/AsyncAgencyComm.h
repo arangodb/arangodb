@@ -122,12 +122,16 @@ class AsyncAgencyCommManager final {
 
   application_features::ApplicationServer& server();
 
+  uint64_t nextRequestId() { return _nextRequestId++; }
+
  private:
   bool _skipScheduler = true;
   application_features::ApplicationServer& _server;
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
   network::ConnectionPool* _pool = nullptr;
+
+  std::atomic<uint64_t> _nextRequestId = 0;
 };
 
 class AsyncAgencyComm final {
