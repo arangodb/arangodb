@@ -227,11 +227,27 @@ function optimizerCollectExpressionTestSuite () {
     },
 
     testMultiCollectWithConstExpression : function () {
-      var query = "LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ] FOR p1 IN values COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time) FOR p2 IN values FILTER m != p2.time COLLECT q = 0 INTO qs = p2 RETURN {q}"; 
+      var query = `
+        LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ]
+        FOR p1 IN values
+          COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time)
+          FOR p2 IN values
+            FILTER m != p2.time
+            COLLECT q = 0 INTO qs = p2
+            RETURN {q}
+      `;
       var results = AQL_EXECUTE(query);
       assertEqual([ { q: 0 } ], results.json);
       
-      query = "LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ] FOR p1 IN values COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time) FOR p2 IN values FILTER m == p2.time COLLECT q = 0 INTO qs = p2 RETURN {q}"; 
+      query = `
+        LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ]
+        FOR p1 IN values
+          COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time)
+          FOR p2 IN values
+            FILTER m == p2.time
+            COLLECT q = 0 INTO qs = p2
+            RETURN {q}
+      `;
       results = AQL_EXECUTE(query);
       assertEqual([ { q: 0 } ], results.json);
     },
