@@ -18,7 +18,6 @@
     el: '#content',
     interval: 10000, // in milliseconds
     defaultTimeFrame: 20 * 60 * 1000, // 20 minutes in milliseconds
-    defaultDetailFrame: 2 * 24 * 60 * 60 * 1000,
     reRender: true,
     reRenderDistribution: true,
     isVisible: true,
@@ -507,7 +506,6 @@
         }
       ];
 
-      // remember next start
       this.nextStart = newData.nextStart;
     },
 
@@ -687,9 +685,13 @@
       var urlParams = '?start=';
 
       if (self.nextStart) {
+        // remember next start
+        if (typeof self.nextStart === 'number') {
+          self.nextStart = Number.parseInt(self.nextStart);
+        }
         urlParams += self.nextStart;
       } else {
-        urlParams += (new Date().getTime() - self.defaultTimeFrame) / 1000;
+        urlParams += Number.parseInt((new Date().getTime() - self.defaultTimeFrame) / 1000);
       }
 
       if (self.server !== '-local-') {
