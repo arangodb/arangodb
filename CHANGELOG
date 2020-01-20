@@ -3,6 +3,8 @@ devel
 
 * Supervision maintenance mode from "on" and TTL to expiry string.
 
+* React dev mode now supports hot reload combined with proxy for development.
+
 * Added read-write-locks for parallel move shard operations.
 
 * Fixed issue #10867: arangod based binaries lack product version info and icon
