@@ -923,7 +923,7 @@ bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
   char* ptr = static_cast<char*>(buffer);
 
   while (0 < length) {
-    ssize_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
+    TRI_read_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1847,7 +1847,7 @@ static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string
   size_t chunkRemain = fileSize;
   while (rc && (chunkRemain > 0)) {
     size_t readChunk = (std::min)(C128, chunkRemain);
-    ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
+    TRI_read_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
 
     if (nRead < 0) {
       error = std::string("failed to read a chunk: ") + strerror(errno);
