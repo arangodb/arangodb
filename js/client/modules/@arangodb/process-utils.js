@@ -1693,7 +1693,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       internal.sleep(5);
       arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
     } else {
-      throw(e);
+      throw e;
     }
   }
   return true;
