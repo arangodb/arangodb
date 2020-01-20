@@ -29,7 +29,7 @@ Upload ID to specify for which upload operation progress is queried or
 the upload operation to abort.
 If you specify this, leave out all the above body parameters.
 
-@RESTBODYPARAM{abort,boolean,optional,boolean}
+@RESTBODYPARAM{abort,boolean,optional,}
 Set this to `true` if a running upload operation should be aborted. In
 this case, the only other body parameter which is needed is `uploadId`.
 
