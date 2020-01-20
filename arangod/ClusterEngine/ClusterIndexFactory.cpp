@@ -46,7 +46,9 @@ namespace {
 struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
   std::string const _type;
 
-  explicit DefaultIndexFactory(std::string const& type) : _type(type) {}
+  explicit DefaultIndexFactory(arangodb::application_features::ApplicationServer& server,
+                               std::string const& type)
+      : IndexTypeFactory(server), _type(type) {}
 
   bool equal(arangodb::velocypack::Slice const& lhs,
              arangodb::velocypack::Slice const& rhs) const override {
@@ -118,8 +120,9 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(std::string const& type)
-      : DefaultIndexFactory(type) {}
+  explicit EdgeIndexFactory(arangodb::application_features::ApplicationServer& server,
+                            std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -146,8 +149,9 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(std::string const& type)
-      : DefaultIndexFactory(type) {}
+  explicit PrimaryIndexFactory(arangodb::application_features::ApplicationServer& server,
+                               std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -177,17 +181,18 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 namespace arangodb {
 
-ClusterIndexFactory::ClusterIndexFactory() {
-  static const EdgeIndexFactory edgeIndexFactory("edge");
-  static const DefaultIndexFactory fulltextIndexFactory("fulltext");
-  static const DefaultIndexFactory geoIndexFactory("geo");
-  static const DefaultIndexFactory geo1IndexFactory("geo1");
-  static const DefaultIndexFactory geo2IndexFactory("geo2");
-  static const DefaultIndexFactory hashIndexFactory("hash");
-  static const DefaultIndexFactory persistentIndexFactory("persistent");
-  static const PrimaryIndexFactory primaryIndexFactory("primary");
-  static const DefaultIndexFactory skiplistIndexFactory("skiplist");
-  static const DefaultIndexFactory ttlIndexFactory("ttl");
+ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
+  static const EdgeIndexFactory edgeIndexFactory(server, "edge");
+  static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext");
+  static const DefaultIndexFactory geoIndexFactory(server, "geo");
+  static const DefaultIndexFactory geo1IndexFactory(server, "geo1");
+  static const DefaultIndexFactory geo2IndexFactory(server, "geo2");
+  static const DefaultIndexFactory hashIndexFactory(server, "hash");
+  static const DefaultIndexFactory persistentIndexFactory(server, "persistent");
+  static const PrimaryIndexFactory primaryIndexFactory(server, "primary");
+  static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
+  static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
 
   emplace(edgeIndexFactory._type, edgeIndexFactory);
   emplace(fulltextIndexFactory._type, fulltextIndexFactory);

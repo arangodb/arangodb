@@ -23,6 +23,7 @@
 
 #include "MMFilesLogfileManager.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"

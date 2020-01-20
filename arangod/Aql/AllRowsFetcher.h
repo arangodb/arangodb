@@ -151,7 +151,7 @@ class AllRowsFetcher {
    */
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize());
+  std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   /**
    * @brief Prefetch the number of rows that will be returned from upstream.
@@ -180,7 +180,7 @@ class AllRowsFetcher {
 
   // NOLINTNEXTLINE google-default-arguments
   std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+      size_t atMost = ExecutionBlock::DefaultBatchSize);
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;

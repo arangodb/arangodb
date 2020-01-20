@@ -164,7 +164,7 @@ bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
 
 bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   _documentIds.clear();
-  _documentIds.reserve((std::min)(limit, aql::ExecutionBlock::DefaultBatchSize()));
+  _documentIds.reserve((std::min)(limit, aql::ExecutionBlock::DefaultBatchSize));
 
   bool done = false;
   while (limit > 0) {
