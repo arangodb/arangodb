@@ -569,6 +569,78 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_before_collect) {
   verifyQueryResult(queryString, expected->slice());
 }
 
+/*
+ * `COLLECT ... INTO group` should not collect any variables declared outside
+ * its containing subquery, especially not from subqueries before it.
+ */
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_after_spliced_subquery) {
+  auto const queryString = R"aql(
+    FOR x IN 0..2
+      LET is = (FOR i IN 0..2 RETURN i + 3*x)
+      LET ys = (
+        FOR y IN 0..x
+          COLLECT p = 1 INTO group
+          RETURN {x, is, group}
+      )
+      RETURN {ys}
+  )aql";
+
+  auto const expectedString = R"res([
+    {"ys": [ {"x": 0, "is": [0, 1, 2], "group": [{"y": 0}] } ] },
+    {"ys": [ {"x": 1, "is": [3, 4, 5], "group": [{"y": 0}, {"y": 1}] } ] },
+    {"ys": [ {"x": 2, "is": [6, 7, 8], "group": [{"y": 0}, {"y": 1}, {"y": 2}] } ] }
+  ])res";
+
+  verifySubquerySplicing(queryString, 2, 0);
+  auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
+  verifyQueryResult(queryString, expected->slice());
+}
+
+/*
+ * `COLLECT ... INTO group` should not collect any variables declared outside
+ * its containing subquery, especially not from subqueries before it.
+ */
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_after_spliced_subquery_with_collect) {
+  auto const queryString = R"aql(
+    FOR x IN 0..2
+      LET is = (
+        LET f = "foo"
+        FOR i IN 0..x
+          COLLECT p = 1 INTO igroup
+          RETURN {x, igroup}
+      )
+      LET ys = (
+        LET b = "bar"
+        FOR y IN 0..x
+          COLLECT p = 1 INTO ygroup
+          RETURN {x, is, ygroup}
+      )
+      RETURN {ys}
+  )aql";
+
+  auto const expectedString = R"res([
+    {"ys": [{
+          "x": 0,
+          "is": [{"x": 0, "igroup": [{"i": 0}]}],
+          "ygroup": [{"y": 0}]
+        }]},
+    {"ys": [{
+          "x": 1,
+          "is": [{"x": 1, "igroup": [{"i": 0}, {"i": 1}]}],
+          "ygroup": [{"y": 0}, {"y": 1}]
+        }]},
+    {"ys": [{
+          "x": 2,
+          "is": [{"x": 2, "igroup": [{"i": 0}, {"i": 1}, {"i": 2}]}],
+          "ygroup": [{"y": 0}, {"y": 1}, {"y": 2}]
+        }]}
+  ])res";
+
+  verifySubquerySplicing(queryString, 2, 0);
+  auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
+  verifyQueryResult(queryString, expected->slice());
+}
+
 // Disabled as long as the subquery implementation with shadow rows cannot yet handle skipping.
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_with_limit_and_offset) {
   auto query = R"aql(

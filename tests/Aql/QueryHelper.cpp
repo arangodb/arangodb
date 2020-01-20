@@ -67,7 +67,7 @@ void arangodb::tests::aql::AssertQueryResultToSlice(QueryResult const& result,
                            << result.errorMessage();
   auto resultSlice = result.data->slice();
   ASSERT_TRUE(resultSlice.isArray());
-  ASSERT_FALSE(vpackHasNoneRecursive(result.data->slice()));
+  EXPECT_FALSE(vpackHasNoneRecursive(result.data->slice()));
   ASSERT_EQ(expected.length(), resultSlice.length()) << resultSlice.toJson();
   for (VPackValueLength i = 0; i < expected.length(); ++i) {
     EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i), expected.at(i), false))
