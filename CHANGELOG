@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added read-write-locks for parallel move shard operations.
+
 * Fixed issue #10867: arangod based binaries lack product version info and icon
   on Windows.
 
