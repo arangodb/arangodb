@@ -28,6 +28,7 @@
 
 #include "Actions/ActionFeature.h"
 #include "Agency/AgencyFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
@@ -55,6 +56,7 @@
 #include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
+#include "Cluster/ServerState.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
@@ -70,8 +72,8 @@
 #include "GeneralServer/SslServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
-#include "Pregel/PregelFeature.h"
 #include "Network/NetworkFeature.h"
+#include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
@@ -145,6 +147,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
 
     ApplicationServer server(options, SBIN_DIRECTORY);
+    ServerState state(server);
 
     std::vector<std::type_index> nonServerFeatures = {
         std::type_index(typeid(ActionFeature)),

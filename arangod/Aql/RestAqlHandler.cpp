@@ -672,7 +672,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     }
     auto atMost =
         VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                  ExecutionBlock::DefaultBatchSize());
+                                                  ExecutionBlock::DefaultBatchSize);
     SharedAqlItemBlockPtr items;
     ExecutionState state;
     if (shardId.empty()) {
@@ -706,7 +706,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   } else if (operation == "skipSome") {
     auto atMost =
         VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                  ExecutionBlock::DefaultBatchSize());
+                                                  ExecutionBlock::DefaultBatchSize);
     size_t skipped;
     if (shardId.empty()) {
       auto tmpRes = _query->engine()->skipSome(atMost);

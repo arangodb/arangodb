@@ -61,8 +61,7 @@ GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThread
 GeneralServer::~GeneralServer() = default;
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
-  auto& server = application_features::ApplicationServer::server();
-  if (server.isStopping()) {
+  if (_feature.server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   auto* t = task.get();
@@ -120,19 +119,37 @@ void GeneralServer::startListening() {
   }
 }
 
+/// stop accepting new connections
 void GeneralServer::stopListening() {
   for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
     acceptor->close();
   }
+}
 
+/// stop connections
+void GeneralServer::stopConnections() {
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
   std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-  _commTasks.clear();
+  for (auto const& pair : _commTasks) {
+    pair.second->stop();
+  }
 }
 
 void GeneralServer::stopWorking() {
   _acceptors.clear();
+  std::unique_lock<std::recursive_mutex> guard(_tasksLock);
+  auto now = std::chrono::system_clock::now();
+  while (!_commTasks.empty()) {  // CommTasks should deregister themselves
+    guard.unlock();
+    std::this_thread::yield();
+    if ((std::chrono::system_clock::now() - now) > std::chrono::seconds(5)) {
+      guard.lock();
+      break;
+    }
+    guard.lock();
+  }
+  _commTasks.clear();
   _contexts.clear();  // stops threads
 }
 

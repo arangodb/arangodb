@@ -23,6 +23,7 @@
 
 #include <fcntl.h>
 #include <stdio.h>
+#include <algorithm>
 #include <iostream>
 
 #include "Basics/operating-system.h"

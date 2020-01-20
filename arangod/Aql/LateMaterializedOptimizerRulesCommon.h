@@ -46,20 +46,27 @@ struct AstAndFieldData {
 
   // index data
   std::vector<arangodb::basics::AttributeName> const* field;
-  size_t number;
+  size_t fieldNumber;
 };
 
+struct AstAndColumnFieldData : AstAndFieldData {
+  ptrdiff_t columnNumber;
+  std::vector<std::string> postfix;
+};
+
+template<typename T>
 struct NodeWithAttrs {
   struct AttributeAndField {
     std::vector<arangodb::basics::AttributeName> attr;
-    AstAndFieldData afData;
+    T afData;
   };
 
   std::vector<AttributeAndField> attrs;
   CalculationNode* node;
 };
 
-bool getReferencedAttributes(AstNode* node, Variable const* variable, NodeWithAttrs& nodeAttrs);
+template<typename T>
+bool getReferencedAttributes(AstNode* node, Variable const* variable, NodeWithAttrs<T>& nodeAttrs);
 
 }  // latematerialized
 }  // namespace aql

@@ -10,6 +10,7 @@
 #include <cmath>
 #include <iostream>
 #include <sstream>
+#include <type_traits>
 #include <utility>
 
 #include <fst/compat.h>
@@ -60,15 +61,26 @@ namespace fst {
 //
 //   Quantize: quantizes w.r.t delta (for inexact weights)
 //
-//   Divide: for all a, b, c s.t. Times(a, b) == c
-//
-//     --> b' = Divide(c, a, DIVIDE_LEFT) if a left semiring, b'.Member()
-//      and Times(a, b') == c
-//     --> a' = Divide(c, b, DIVIDE_RIGHT) if a right semiring, a'.Member()
-//      and Times(a', b) == c
-//     --> b' = Divide(c, a) = Divide(c, a, DIVIDE_ANY) =
-//      Divide(c, a, DIVIDE_LEFT) = Divide(c, a, DIVIDE_RIGHT) if a
-//      commutative semiring, b'.Member() and Times(a, b') = Times(b', a) = c
+//   Divide:
+//     - In a left semiring, for all a, b, b', c:
+//       if Times(a, b) = c, Divide(c, a, DIVIDE_LEFT) = b' and b'.Member(),
+//       then Times(a, b') = c.
+//     - In a right semiring, for all a, a', b, c:
+//       if Times(a, b) = c, Divide(c, b, DIVIDE_RIGHT) = a' and a'.Member(),
+//       then Times(a', b) = c.
+//     - In a commutative semiring,
+//        * for all a, c:
+//          Divide(c, a, DIVIDE_ANY) = Divide(c, a, DIVIDE_LEFT)
+//           = Divide(c, a, DIVIDE_RIGHT)
+//        * for all a, b, b', c:
+//          if Times(a, b), Divide(c, a, DIVIDE_ANY) = b' and b'.Member(),
+//          then Times(a, b') = c
+//     - In the case where there exist no b such that c = Times(a, b), the
+//       return value of Divide(c, a, DIVIDE_LEFT) is unspecified. Returning
+//       Weight::NoWeight() is recommemded but not required in order to
+//       allow the most efficient implementation.
+//     - All algorithms in this library only call Divide(c, a) when it is
+//       guaranteed that there exists a b such that c = Times(a, b).
 //
 //   ReverseWeight: the type of the corresponding reverse weight.
 //
@@ -94,29 +106,67 @@ namespace fst {
 // CONSTANT DEFINITIONS
 
 // A representable float near .001.
-FST_CONSTEXPR const float kDelta = 1.0F / 1024.0F;
+constexpr float kDelta = 1.0F / 1024.0F;
 
 // For all a, b, c: Times(c, Plus(a, b)) = Plus(Times(c, a), Times(c, b)).
-FST_CONSTEXPR const uint64 kLeftSemiring = 0x0000000000000001ULL;
+constexpr uint64 kLeftSemiring = 0x0000000000000001ULL;
 
 // For all a, b, c: Times(Plus(a, b), c) = Plus(Times(a, c), Times(b, c)).
-FST_CONSTEXPR const uint64 kRightSemiring = 0x0000000000000002ULL;
+constexpr uint64 kRightSemiring = 0x0000000000000002ULL;
 
-FST_CONSTEXPR const uint64 kSemiring = kLeftSemiring | kRightSemiring;
+constexpr uint64 kSemiring = kLeftSemiring | kRightSemiring;
 
 // For all a, b: Times(a, b) = Times(b, a).
-FST_CONSTEXPR const uint64 kCommutative = 0x0000000000000004ULL;
+constexpr uint64 kCommutative = 0x0000000000000004ULL;
 
 // For all a: Plus(a, a) = a.
-FST_CONSTEXPR const uint64 kIdempotent = 0x0000000000000008ULL;
+constexpr uint64 kIdempotent = 0x0000000000000008ULL;
 
 // For all a, b: Plus(a, b) = a or Plus(a, b) = b.
-FST_CONSTEXPR const uint64 kPath = 0x0000000000000010ULL;
+constexpr uint64 kPath = 0x0000000000000010ULL;
 
 // For random weight generation: default number of distinct weights.
 // This is also used for a few other weight generation defaults.
-FST_CONSTEXPR const size_t kNumRandomWeights = 5;
+constexpr size_t kNumRandomWeights = 5;
 
+// Weight property boolean constants needed for SFINAE.
+
+// MSVC compiler bug workaround: an expression containing W::Properties() cannot
+
+// be directly used as a value argument to std::enable_if or integral_constant.
+
+// WeightPropertiesThunk<W>::Properties works instead, however.
+#ifdef _MSC_VER
+// MSVC compiler bug workaround: an expression containing W::Properties() cannot
+// be directly used as a value argument to std::enable_if or integral_constant.
+// WeightPropertiesThunk<W>::Properties works instead, however.
+namespace bug {
+template <class W>
+struct WeightPropertiesThunk {
+  WeightPropertiesThunk() = delete;
+  constexpr static const uint64 Properties = W::Properties();
+};
+
+template <class W, uint64 props>
+using TestWeightProperties = std::integral_constant<bool,
+        (WeightPropertiesThunk<W>::Properties & props) == props>;
+}  // namespace bug
+
+template <class W>
+using IsIdempotent = bug::TestWeightProperties<W, kIdempotent>;
+template <class W>
+using IsPath = bug::TestWeightProperties<W, kPath>;
+
+#else
+
+template <class W>
+using IsIdempotent = std::integral_constant<bool,
+    (W::Properties() & kIdempotent) != 0>;
+
+template <class W>
+using IsPath = std::integral_constant<bool, (W::Properties() & kPath) != 0>;
+
+#endif // _MSC_VER
 // Determines direction of division.
 enum DivideType {
   DIVIDE_LEFT,   // left division
@@ -144,33 +194,45 @@ enum DivideType {
 //
 // We define the strict version of this order below.
 
+// Declares the template with a second parameter determining whether or not it
+// can actually be constructed.
+template <class W, class IdempotentType = void>
+class NaturalLess;
+
+// Variant for idempotent weights.
 template <class W>
-class NaturalLess {
+class NaturalLess<W, typename std::enable_if<IsIdempotent<W>::value>::type> {
  public:
   using Weight = W;
 
-  NaturalLess() {
-    // TODO(kbg): Make this a compile-time static_assert once we have a pleasant
-    // way to "deregister" this operation for non-path semirings so an
-    // informative error message is produced.
-    if (!(W::Properties() & kIdempotent)) {
-      FSTERROR() << "NaturalLess: Weight type is not idempotent: " << W::Type();
-    }
-  }
+  NaturalLess() {}
 
-  bool operator()(const W &w1, const W &w2) const {
-    return (Plus(w1, w2) == w1) && w1 != w2;
+  bool operator()(const Weight &w1, const Weight &w2) const {
+    return w1 != w2 && Plus(w1, w2) == w1;
   }
 };
 
-// Power is the iterated product for arbitrary semirings such that
-// Power(w, 0) is One() for the semiring, and Power(w, n) =
-// Times(Power(w, n-1), w).
+// Non-constructible variant for non-idempotent weights.
+template <class W>
+class NaturalLess<W, typename std::enable_if<!IsIdempotent<W>::value>::type> {
+ public:
+  using Weight = W;
 
+  // TODO(kbg): Trace down anywhere this is being instantiated, then add a
+  // static_assert to prevent this from being instantiated.
+  NaturalLess() {
+    FSTERROR() << "NaturalLess: Weight type is not idempotent: " << W::Type();
+  }
+
+  bool operator()(const Weight &, const Weight &) const { return false; }
+};
+
+// Power is the iterated product for arbitrary semirings such that Power(w, 0)
+// is One() for the semiring, and Power(w, n) = Times(Power(w, n - 1), w).
 template <class Weight>
-Weight Power(Weight w, size_t n) {
+Weight Power(const Weight &weight, size_t n) {
   auto result = Weight::One();
-  for (size_t i = 0; i < n; ++i) result = Times(result, w);
+  for (size_t i = 0; i < n; ++i) result = Times(result, weight);
   return result;
 }
 
@@ -178,16 +240,18 @@ Weight Power(Weight w, size_t n) {
 template <class Weight>
 class Adder {
  public:
-  explicit Adder(Weight w = Weight::Zero()) : sum_(w) { }
+  Adder() : sum_(Weight::Zero()) {}
+
+  explicit Adder(Weight w) : sum_(std::move(w)) {}
 
   Weight Add(const Weight &w) {
     sum_ = Plus(sum_, w);
     return sum_;
   }
 
-  Weight Sum() { return sum_; }
+  Weight Sum() const { return sum_; }
 
-  void Reset(Weight w = Weight::Zero()) { sum_ = w; }
+  void Reset(Weight w = Weight::Zero()) { sum_ = std::move(w); }
 
  private:
   Weight sum_;
@@ -206,7 +270,7 @@ struct WeightConvert {
 // Specialized weight converter to self.
 template <class W>
 struct WeightConvert<W, W> {
-  W operator()(W weight) const { return weight; }
+  constexpr W operator()(W weight) const { return weight; }
 };
 
 // General random weight generator: raises error.
@@ -314,7 +378,7 @@ class CompositeWeightReader : public internal::CompositeWeightIO {
 
 template <class T>
 inline bool CompositeWeightReader::ReadElement(T *comp, bool last) {
-  string s;
+  std::string s;
   const bool has_parens = open_paren_ != 0;
   while ((c_ != std::istream::traits_type::eof()) && !std::isspace(c_) &&
          (c_ != separator_ || depth_ > 1 || last) &&

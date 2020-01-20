@@ -27,6 +27,7 @@
 #include "IResearchLinkHelper.h"
 #include "VelocyPackHelper.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
@@ -134,6 +135,7 @@ void ensureImmutableProperties(
   dst._writebufferIdle = src._writebufferIdle;
   dst._writebufferSizeMax = src._writebufferSizeMax;
   dst._primarySort = src._primarySort;
+  dst._storedValues = src._storedValues;
 }
 
 }

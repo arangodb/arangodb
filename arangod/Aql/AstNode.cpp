@@ -2591,27 +2591,6 @@ void AstNode::stealComputedValue() {
   }
 }
 
-/// @brief Removes all members from the current node that are also
-///        members of the other node (ignoring ording)
-///        Can only be applied if this and other are of type
-///        n-ary-and
-void AstNode::removeMembersInOtherAndNode(AstNode const* other) {
-  TRI_ASSERT(type == NODE_TYPE_OPERATOR_NARY_AND);
-  TRI_ASSERT(other->type == NODE_TYPE_OPERATOR_NARY_AND);
-  for (size_t i = 0; i < other->numMembers(); ++i) {
-    auto theirs = other->getMemberUnchecked(i);
-    for (size_t j = 0; j < numMembers(); ++j) {
-      auto ours = getMemberUnchecked(j);
-      // NOTE: Pointer comparison on purpose.
-      // We do not want to reduce equivalent but identical nodes
-      if (ours == theirs) {
-        removeMemberUnchecked(j);
-        break;
-      }
-    }
-  }
-}
-
 void AstNode::markFinalized(AstNode* subtreeRoot) {
   if ((nullptr == subtreeRoot) || subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
     return;
@@ -2771,9 +2750,10 @@ void AstNode::removeMemberUnchecked(size_t i) {
   members.erase(members.begin() + i);
 }
 
-void AstNode::removeMembers() {
+void AstNode::removeMemberUncheckedUnordered(size_t i) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-  members.clear();
+  std::swap(members[i], members.back());
+  members.pop_back();
 }
 
 AstNode* AstNode::getMember(size_t i) const {
@@ -2858,14 +2838,20 @@ void AstNode::setStringValue(char const* v, size_t length) {
   value.length = static_cast<uint32_t>(length);
 }
 
-bool AstNode::stringEquals(char const* other, bool caseInsensitive) const {
-  if (caseInsensitive) {
-    return (strncasecmp(getStringValue(), other, getStringLength()) == 0);
-  }
-  return (strncmp(getStringValue(), other, getStringLength()) == 0);
+bool AstNode::stringEqualsCaseInsensitive(std::string const& other) const {
+  // Since we're not sure in how much trouble we are with unicode
+  // strings, we assert here that strings we use are 7-bit ASCII
+  TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                          [](const char c) { return c & 0x80; }));
+  return (other.size() == getStringLength() &&
+          strncasecmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }
 
 bool AstNode::stringEquals(std::string const& other) const {
+  // Since we're not sure in how much trouble we are with unicode
+  // strings, we assert here that strings we use are 7-bit ASCII
+  TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                          [](const char c) { return c & 0x80; }));
   return (other.size() == getStringLength() &&
           memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
 }

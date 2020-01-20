@@ -18,11 +18,10 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "score.hpp"
+#include "shared.hpp"
 
 NS_LOCAL
 
@@ -38,12 +37,100 @@ NS_ROOT
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::score)
 
-/*static*/ const irs::score& score::no_score() NOEXCEPT {
+/*static*/ const irs::score& score::no_score() noexcept {
   return EMPTY_SCORE;
 }
 
-score::score() NOEXCEPT
-  : func_([](const void*, byte_type*){}) {
+score::score() noexcept
+  : func_([](const score_ctx*, byte_type*){}) {
+}
+
+
+bool score::prepare(const order::prepared& ord,
+                    order::prepared::scorers&& scorers) {
+  if (ord.empty()) {
+    value_.resize(0);
+    func_ = [](const score_ctx*, byte_type*){};
+
+    return false;
+  }
+
+  value_.resize(ord.score_size());
+  ord.prepare_score(leak());
+
+  switch (scorers.size()) {
+    case 0: {
+      ctx_ = nullptr;
+      func_ = [](const score_ctx*, byte_type*){};
+    } break;
+    case 1: {
+      auto& scorer = scorers[0];
+
+      if (scorer.offset) {
+        struct ctx : score_ctx {
+          ctx(score_f func, score_ctx_ptr&& context, size_t offset) noexcept
+            : func(func), context(std::move(context)), offset(offset) {
+          }
+
+          score_f func;
+          score_ctx_ptr context;
+          size_t offset;
+        };
+
+        ctx_ = memory::make_managed<const score_ctx>(new ctx(scorer.func, std::move(scorer.ctx), scorer.offset));
+        func_ = [](const score_ctx* ctx, byte_type* score) {
+          auto& scorer = *static_cast<const struct ctx*>(ctx);
+          (*scorer.func)(scorer.context.get(), score + scorer.offset);
+        };
+      } else {
+        ctx_ = memory::make_managed<const score_ctx>(std::move(scorer.ctx));
+        func_ = scorer.func;
+      }
+    } break;
+    case 2: {
+      struct ctx : score_ctx {
+        explicit ctx(order::prepared::scorers&& scorers) noexcept
+          : scorers(std::move(scorers)) {
+        }
+
+        order::prepared::scorers scorers;
+      };
+
+      const bool has_offset = bool(scorers[0].offset);
+      ctx_ = memory::make_managed<const score_ctx>(new ctx(std::move(scorers)));
+
+      if (has_offset) {
+        func_ = [](const score_ctx* ctx, byte_type* score) {
+          auto& scorers = static_cast<const struct ctx*>(ctx)->scorers;
+          (*scorers[0].func)(scorers[0].ctx.get(), score + scorers[0].offset);
+          (*scorers[1].func)(scorers[1].ctx.get(), score + scorers[1].offset);
+        };
+      } else {
+         func_ = [](const score_ctx* ctx, byte_type* score) {
+          auto& scorers = static_cast<const struct ctx*>(ctx)->scorers;
+          (*scorers[0].func)(scorers[0].ctx.get(), score);
+          (*scorers[1].func)(scorers[1].ctx.get(), score + scorers[1].offset);
+        };
+      }
+    } break;
+    default: {
+      struct ctx : score_ctx {
+        explicit ctx(order::prepared::scorers&& scorers) noexcept
+          : scorers(std::move(scorers)) {
+        }
+
+        order::prepared::scorers scorers;
+      };
+
+      ctx_ = memory::make_managed<const score_ctx>(new ctx(std::move(scorers)));
+      func_ = [](const score_ctx* ctx, byte_type* score) {
+        auto& scorers = static_cast<const struct ctx*>(ctx)->scorers;
+        scorers.score(score);
+      };
+    } break;
+  }
+
+  return true;
 }
 
 NS_END // ROOT

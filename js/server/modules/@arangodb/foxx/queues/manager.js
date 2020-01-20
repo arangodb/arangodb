@@ -29,6 +29,7 @@ const db = require('@arangodb').db;
 const foxxManager = require('@arangodb/foxx/manager');
 const wait = require('internal').wait;
 const warn = require('console').warn;
+const errors = require('internal').errors;
 
 const coordinatorId = (
   isCluster && cluster.isCoordinator()
@@ -115,6 +116,17 @@ var runInDatabase = function () {
   }
 };
 
+//
+// If a Foxxmaster failover happened it can be the case that
+// some jobs were in state 'progress' on the failed Foxxmaster.
+// This procedure resets these jobs on all databases to 'pending'
+// state to restart execution.
+//
+// Since the failed Foxxmaster might have held a lock on the _jobs
+// collection, we have to retry sufficiently long, keeping in mind
+// that while retrying, the database might be deleted or the server
+// might be shut down.
+//
 const resetDeadJobs = function () {
   const queues = require('@arangodb/foxx/queues');
   var query = global.aqlQuery`
@@ -127,26 +139,47 @@ const resetDeadJobs = function () {
 
   const initialDatabase = db._name();
   db._databases().forEach(function (name) {
-    try {
-      db._useDatabase(name);
-      var ok = false;
-      while (!ok) {
-        try {
-          db._query(query);
-          ok = true;
-        } catch(e) {
-          warn("Exception while resetting dead jobs " + e.message, " retrying in 10s");
+    var done = false;
+    // The below code retries under the assumption that it should be
+    // sufficient that
+    //   * the database exists
+    //   * the collection _jobs exists
+    //   * we are not shutting down
+    // for this operation to eventually succeed work.
+    // If any one of the above conditions is violated we abort,
+    // otherwise we retry for some time (currently a hard-coded minute)
+    var maxTries = 6;
+    while (!done && maxTries > 0) {
+      try {
+        // this will throw when DB does not exist (anymore)
+        db._useDatabase(name);
+
+        // this might throw if the _jobs collection does not
+        // exist (or the database was deleted between the
+        // statement above and now...)
+        db._query(query);
+
+        // Now the jobs are reset
+        if (!isCluster) {
+          queues._updateQueueDelay();
+        } else {
+          global.KEYSPACE_CREATE('queue-control', 1, true);
+        }
+        done = true;
+      } catch(e) {
+        if (e.code === errors.ERROR_SHUTTING_DOWN.code) {
+          warn("Shutting down while resetting dead jobs on database " + name + ", aborting.");
+          done = true; // we're quitting because shutdown is in progress
+        } else if (e.code === errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+          warn("'_jobs' collection not found while resetting dead jobs on database " + name + ", aborting.");
+          done = true; // we're quitting because the _jobs collection is missing
+        } else {
+          maxTries--;
+          warn("Exception while resetting dead jobs on database " + name + ": " + e.message +
+               ", retrying in 10s. " + maxTries + " retries left.");
           wait(10);
         }
       }
-      if (!isCluster) {
-        queues._updateQueueDelay();
-      } else {
-        global.KEYSPACE_CREATE('queue-control', 1, true);
-      }
-    } catch (e) {
-      warn("Exception while resetting dead jobs " + e.message);
-      // noop
     }
   });
   db._useDatabase(initialDatabase);
@@ -233,10 +266,15 @@ exports.manage = function () {
         runInDatabase();
       }
     } catch (e) {
-      warn("An exception occurred while setting up foxx queue handling in database "
-            + e.message + " "
-            + JSON.stringify(e));
-      // noop
+      // it is possible that the underlying database is deleted while we are in here.
+      // this is not an error
+      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
+        warn("An exception occurred while setting up foxx queue handling in database '"
+              + database + "' "
+              + e.message + " "
+              + JSON.stringify(e));
+        // noop
+      }
     }
   });
 

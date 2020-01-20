@@ -88,7 +88,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.session-timeout",
       "timeout of web interface server sessions (in seconds)", true);
 
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));

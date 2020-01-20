@@ -208,7 +208,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
-        node->removeMembers();
+        node->clearMembers();
         node->addMember(op);
 
         return node;
@@ -220,7 +220,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
                           reference, nonNullAttributes, false)) {
         // we can use the index
         // now return only the child node we need
-        node->removeMembers();
+        node->clearMembers();
         node->addMember(op);
 
         return node;
@@ -292,7 +292,7 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
 
   if (_found.size() == _attributes.size()) {
     // remove node's existing members
-    node->removeMembers();
+    node->clearMembers();
 
     // found contains all nodes required for this condition sorted by
     // _attributes

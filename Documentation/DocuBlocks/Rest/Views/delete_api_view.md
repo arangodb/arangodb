@@ -11,7 +11,7 @@ The name of the View to drop.
 @RESTDESCRIPTION
 Drops the View identified by *view-name*.
 
-If the view was successfully dropped, an object is returned with
+If the View was successfully dropped, an object is returned with
 the following attributes:
 - *error*: *false*
 - *id*: The identifier of the dropped View

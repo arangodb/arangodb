@@ -226,7 +226,7 @@ TEST_P(bm25_test, test_phrase) {
 
   // read segment
   auto index = open_reader();
-  ASSERT(1, index->size());
+  ASSERT_EQ(1, index->size());
   auto& segment = *(index.begin());
 
   // "jumps high" with order

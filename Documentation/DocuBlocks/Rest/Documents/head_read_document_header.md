@@ -2,12 +2,15 @@
 @startDocuBlock head_read_document_header
 @brief reads a single document head
 
-@RESTHEADER{HEAD /_api/document/{document-handle},Read document header, checkDocument}
+@RESTHEADER{HEAD /_api/document/{collection}/{key},Read document header,checkDocument}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{document-handle,string,required}
-The handle of the document.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* from which the document is to be read.
+
+@RESTURLPARAM{key,string,required}
+The document key.
 
 @RESTHEADERPARAMETERS
 
@@ -60,5 +63,3 @@ document's current revision in the *Etag* header.
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-@endDocuBlock
-
