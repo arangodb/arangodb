@@ -569,7 +569,9 @@ auto isLoop(ExecutionNode const& node) -> bool {
 // Get all variables that should be collected "INTO" the group variable.
 // Returns whether we are at the top level.
 // Gets passed whether we did encounter a loop "on the way" from the collect node.
-auto getGroupVariables(ExecutionNode const& node, bool const encounteredLoop, std::vector<Variable const*>& groupVariables) -> bool {
+auto getGroupVariables(ExecutionNode const& node, bool const encounteredLoop,
+                       std::vector<Variable const*>& groupVariables) -> bool {
+  // TODO skip subqueries
   bool const depIsTopLevel = [&]() {
     // Abort recursion on invalidating nodes
     if (auto const dep = node.getFirstDependency(); dep != nullptr && !isVariableInvalidatingNode(node)) {
