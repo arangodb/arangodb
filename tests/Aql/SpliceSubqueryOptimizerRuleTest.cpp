@@ -550,6 +550,25 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
   ASSERT_EQ(std::string{"myKey"}, document.get("_key").copyString());
 }
 
+// Regression test for https://github.com/arangodb/arangodb/issues/10896
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_before_collect) {
+  auto const queryString = R"aql(
+    LET tokens = (
+      FOR word IN TOKENS("Some Text", "text_en")
+        FILTER word IN TOKENS("Some Other Thing", "text_en")
+        RETURN word
+    )
+    COLLECT token = tokens INTO bucket
+    RETURN bucket[0]
+  )aql";
+
+  auto const expectedString = R"res([ {"tokens": ["some"]} ])res";
+
+  verifySubquerySplicing(queryString, 1, 0);
+  auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
+  verifyQueryResult(queryString, expected->slice());
+}
+
 // Disabled as long as the subquery implementation with shadow rows cannot yet handle skipping.
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_with_limit_and_offset) {
   auto query = R"aql(
