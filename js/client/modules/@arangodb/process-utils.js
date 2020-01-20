@@ -1564,7 +1564,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
           internal.sleep(5);
           reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
         } else {
-          throw(e);
+          throw e;
         }
       }
       if (reply.error || reply.code !== 200) {
