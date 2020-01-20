@@ -1,8 +1,17 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
-* Fixed an edge case in VelocyPack when the padding of a 1-byte offsetSize array 
-  is removed but the first few entries of the array contain a Slice of type None.
+* Fixed an edge case in VelocyPack when the padding of a 1-byte offsetSize array
+  is removed but the first few entries of the array contain a Slice of type
+  None.
+
+* Fix Foxxmaster failover retry loop to not spin forever and give up after a
+  while.
+
+* Fix "random" Valgrind "invalid free/delete" errors caused by usage of
+  `alignas(64)` for shared_ptrs in the SupervisedScheduler.
+
+* MoveShard to check, if target is in sync follower before promotion to leader.
 
 * Fixed issue #10867: arangod based binaries lack product version info and icon
   on Windows
