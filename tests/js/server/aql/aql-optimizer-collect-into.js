@@ -260,7 +260,36 @@ function optimizerCollectExpressionTestSuite () {
       query = "FOR v IN 1..3 COLLECT w = v INTO x RETURN w";
       results = AQL_EXECUTE(query);
       assertEqual([ 1, 2, 3 ], results.json);
-    }
+    },
+
+    // regression test.
+    // COLLECT should invalidate all previous variables.
+    // COLLECT INTO should collect all those variables into the group variable.
+    // There is one exception: Unless the COLLECT itself is on the top level,
+    // top-level variables are *neither* invalidated *nor* collected.
+    testCollectAfterCollect : function () {
+      const query = `
+        LET foo = "bar"
+        FOR x IN 1..3
+          COLLECT p = 'p' INTO groups
+          COLLECT o = 'o' INTO ngroups
+          RETURN {foo, ngroup: FIRST(ngroups)}
+      `;
+
+      const expectedResults = [
+        {
+          foo: 'bar',
+          ngroup:
+            {
+              p: 'p',
+              groups: [{x: 1}, {x: 2}, {x: 3}],
+            },
+        },
+      ];
+
+      const results = AQL_EXECUTE(query);
+      assertEqual(expectedResults, results.json);
+    },
      
   };
 }
