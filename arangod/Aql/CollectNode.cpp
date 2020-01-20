@@ -439,33 +439,53 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief helper struct for finding variables
 struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
-  explicit UserVarFinder(int mindepth) : mindepth(mindepth), depth(-1) {}
+  explicit UserVarFinder(bool includeTopLevelVariables) : includeTopLevelVariables(includeTopLevelVariables) {}
 
   ~UserVarFinder() = default;
 
   std::vector<Variable const*> userVars;
-  int mindepth;  // minimal depth to consider
-  int depth;
+  bool includeTopLevelVariables{};
+  // int mindepth;  // minimal depth to consider
+  int depth{-1};
+  int subqueryDepth{0};
+
+  bool isTopLevel() const noexcept {
+    return depth < 1;
+  }
+
+  bool includeVariablesHere() const noexcept {
+    return (includeTopLevelVariables || !isTopLevel()) && subqueryDepth == 0;
+  }
+
+  void updateDepth(ExecutionNode::NodeType const nodeType) {
+    if (nodeType == ExecutionNode::SINGLETON) {
+      depth = 0;
+    } else if (nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
+               nodeType == ExecutionNode::INDEX ||
+               nodeType == ExecutionNode::ENUMERATE_LIST ||
+               nodeType == ExecutionNode::TRAVERSAL ||
+               nodeType == ExecutionNode::SHORTEST_PATH ||
+               nodeType == ExecutionNode::K_SHORTEST_PATHS ||
+               nodeType == ExecutionNode::ENUMERATE_IRESEARCH_VIEW ||
+               nodeType == ExecutionNode::COLLECT) {
+      depth += 1;
+    }
+    // if (nodeType == ExecutionNode::SUBQUERY_START) {
+    //   ++subqueryDepth;
+    // }
+    // if (nodeType == ExecutionNode::SUBQUERY_END) {
+    //   --subqueryDepth;
+    // }
+  }
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
   }
 
   void after(ExecutionNode* en) override final {
-    if (en->getType() == ExecutionNode::SINGLETON) {
-      depth = 0;
-    } else if (en->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-               en->getType() == ExecutionNode::INDEX ||
-               en->getType() == ExecutionNode::ENUMERATE_LIST ||
-               en->getType() == ExecutionNode::TRAVERSAL ||
-               en->getType() == ExecutionNode::SHORTEST_PATH ||
-               en->getType() == ExecutionNode::K_SHORTEST_PATHS ||
-               en->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW ||
-               en->getType() == ExecutionNode::COLLECT) {
-      depth += 1;
-    }
+    updateDepth(en->getType());
     // Now depth is set correct for this node.
-    if (depth >= mindepth) {
+    if (includeVariablesHere()) {
       for (auto const& v : en->getVariablesSetHere()) {
         if (v->isUserDefined()) {
           userVars.emplace_back(v);
@@ -492,13 +512,13 @@ void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable 
     if (_keepVariables.empty()) {
       // Here we have to find all user defined variables in this query
       // amongst our dependencies:
-      UserVarFinder finder(1);
+      UserVarFinder finder(false);
       auto myselfAsNonConst = const_cast<CollectNode*>(this);
       myselfAsNonConst->walk(finder);
       if (finder.depth == 1) {
         // we are top level, let's run again with mindepth = 0
         finder.userVars.clear();
-        finder.mindepth = 0;
+        finder.includeTopLevelVariables = true;
         finder.depth = -1;
         finder.reset();
         myselfAsNonConst->walk(finder);
