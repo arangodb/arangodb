@@ -188,7 +188,7 @@ void MaintenanceFeature::beginShutdown() {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     auto shared = std::make_shared<callback_data>(ci.uniqid());
 
-    AgencyComm am;
+    AgencyComm am(server());
 
     std::string serverId = ServerState::instance()->getId();
     VPackBuilder jobDesc;

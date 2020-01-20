@@ -80,22 +80,18 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
  public:
   CommTask(GeneralServer& server,
-                  char const* name,
-                  ConnectionInfo);
+           ConnectionInfo info);
 
   virtual ~CommTask();
 
+  // callable from any thread
   virtual void start() = 0;
-  virtual void close() = 0;
+  virtual void stop() = 0;
   
 protected:
   
   virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                           uint64_t messageId) = 0;
-
-  /// @brief send simple response including response body
-  virtual void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
-                                 velocypack::Buffer<uint8_t>&&) = 0;
 
   /// @brief send the response to the client.
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
@@ -108,10 +104,10 @@ protected:
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
-  Flow prepareExecution(GeneralRequest&);
+  Flow prepareExecution(auth::TokenCache::Entry const&, GeneralRequest&);
 
   /// Must be called from sendResponse, before response is rendered
-  void finishExecution(GeneralResponse&) const;
+  void finishExecution(GeneralResponse&, std::string const& corsOrigin) const;
 
   /// Push this request into the execution pipeline
   void executeRequest(std::unique_ptr<GeneralRequest>,
@@ -120,16 +116,33 @@ protected:
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);
+  
+  /// @brief send simple response including response body
+  void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
+                         velocypack::Buffer<uint8_t>&&);
 
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum, char const* errorMessage = nullptr);
+                        uint64_t messageId, int errorNum,
+                        char const* errorMessage = nullptr);
   
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic
   ///        exceptions for /_api/users to allow logins without authorization
   ////////////////////////////////////////////////////////////////////////////////
-  rest::ResponseCode canAccessPath(GeneralRequest&) const;
+  Flow canAccessPath(auth::TokenCache::Entry const&,
+                     GeneralRequest&) const;
+  
+  bool allowCorsCredentials(std::string const& origin) const;
+  
+  /// handle an OPTIONS request, will send response
+  void processCorsOptions(std::unique_ptr<GeneralRequest> req);
+  
+  /// check authentication headers
+  auth::TokenCache::Entry checkAuthHeader(GeneralRequest& request);
+  
+  /// decompress content
+  bool handleContentEncoding(GeneralRequest&);
   
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
@@ -138,7 +151,6 @@ protected:
  protected:
   
   GeneralServer& _server;
-  char const* _name;
   ConnectionInfo _connectionInfo;
   
   ConnectionStatistics* _connectionStatistics;
@@ -147,8 +159,6 @@ protected:
 
   std::mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
-
-  auth::TokenCache::Entry _authToken;
 };
 }  // namespace rest
 }  // namespace arangodb

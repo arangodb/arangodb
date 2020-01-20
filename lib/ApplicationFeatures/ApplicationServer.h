@@ -32,6 +32,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
@@ -42,7 +43,6 @@ namespace options {
 class ProgramOptions;
 }
 namespace application_features {
-class ApplicationFeature;
 
 // the following phases exists:
 //
@@ -127,14 +127,12 @@ class ApplicationServer {
     std::function<void(State, std::string const& featureName)> _feature;
    };
 
-   static ApplicationServer& server();
-
    static std::atomic<bool> CTRL_C;
 
   public:
    ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
-   TEST_VIRTUAL ~ApplicationServer();
+   TEST_VIRTUAL ~ApplicationServer() = default;
 
    std::string helpSection() const { return _helpSection; }
    bool helpShown() const { return !_helpSection.empty(); }
@@ -216,7 +214,7 @@ class ApplicationServer {
    }
 
 #ifdef TEST_VIRTUAL
-   void setStateUnsafe(State ss) { server()._state = ss; }
+   void setStateUnsafe(State ss) { _state = ss; }
 #endif
 
    // adds a feature to the application server. the application server
@@ -359,8 +357,6 @@ class ApplicationServer {
    void reportFeatureProgress(State, std::string const&);
 
   private:
-   static ApplicationServer* INSTANCE;
-
    // the current state
    std::atomic<State> _state;
 
