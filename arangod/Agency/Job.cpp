@@ -644,6 +644,20 @@ void Job::addPutJobIntoSomewhere(Builder& trx, std::string const& where,
   }
 }
 
+void Job::addPreconditionCurrentReplicaShardGroup(Builder& pre, std::string const& database,
+                                                  std::vector<shard_t> const& shardGroup,
+                                                  std::string const& serverId) {
+  for (auto const& sh : shardGroup) {
+    std::string const curPath =
+      curColPrefix + database + "/" + sh.collection + "/" + sh.shard + "/servers";
+    pre.add(VPackValue(curPath));
+    {
+      VPackObjectBuilder guard(&pre);
+      pre.add("in", VPackValue(serverId));
+    }
+  }
+}
+
 void Job::addPreconditionCollectionStillThere(Builder& pre, std::string const& database,
                                               std::string const& collection) {
   std::string planPath = planColPrefix + database + "/" + collection;
