@@ -5,6 +5,8 @@ devel
   Like for the existing variant the `overwrite` flag has to be set to true.
   Then the update version can be selected by setting the `overwriteMode` to `"update"`.
 
+* Added read-write-locks for parallel move shard operations.
+
 * Fixed issue #10867: arangod based binaries lack product version info and icon
   on Windows.
 
