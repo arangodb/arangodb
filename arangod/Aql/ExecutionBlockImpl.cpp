@@ -137,7 +137,7 @@ CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
  */
 template <class Executor>
 static bool constexpr isNewStyleExecutor() {
-  return std::is_same<Executor, FilterExecutor>::value;
+  return std::is_same<Executor, FilterExecutor>::value || std::is_same<Executor, EnumerateListExecutor>::value;
 }
 
 template <class Executor>
