@@ -1574,7 +1574,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, "Current/Databases/" + database.getName(),
+      std::make_shared<AgencyCallback>(_server, "Current/Databases/" + database.getName(),
                                        dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
@@ -1792,7 +1792,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+      std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
     _agencyCallbackRegistry->unregisterCallback(agencyCallback);
@@ -2113,7 +2113,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     // AgencyCallback for this.
 
     auto agencyCallback =
-        std::make_shared<AgencyCallback>(ac,
+        std::make_shared<AgencyCallback>(_server,
                                          "Current/Collections/" + databaseName +
                                              "/" + info.collectionID,
                                          closure, true, false);
@@ -2469,7 +2469,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+      std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard([this, &agencyCallback]() -> void {
     _agencyCallbackRegistry->unregisterCallback(agencyCallback);
@@ -3135,7 +3135,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+      std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
 
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
@@ -3492,7 +3492,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+      std::make_shared<AgencyCallback>(_server, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
@@ -4743,8 +4743,12 @@ VPackSlice PlanCollectionReader::indexes() {
 }
 
 CollectionWatcher::~CollectionWatcher() {
-  _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
-};
+  try {
+    _agencyCallbackRegistry->unregisterCallback(_agencyCallback);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("42af2", WARN, Logger::CLUSTER) << "caught unexpected exception in CollectionWatcher: " << ex.what();
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

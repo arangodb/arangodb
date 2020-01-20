@@ -161,19 +161,19 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
         if (name == "bfs") {
           options->useBreadthFirst = value->isTrue();
         } else if (name == "uniqueVertices" && value->isStringValue()) {
-          if (value->stringEquals("path", true)) {
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
-          } else if (value->stringEquals("global", true)) {
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryGlobal)) {
             options->uniqueVertices =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
           // path is the default
-          if (value->stringEquals("none", true)) {
+          if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryNone)) {
             options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
-          } else if (value->stringEquals("global", true)) {
+          } else if (value->stringEqualsCaseInsensitive(StaticStrings::GraphQueryGlobal)) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
                 "uniqueEdges: 'global' is not supported, "
@@ -444,13 +444,9 @@ bool ExecutionPlan::hasAppliedRule(int level) const {
                      [level](int l) { return l == level; });
 }
 
-void ExecutionPlan::enableRule(int rule) {
-  _disabledRules.erase(rule);
-}
+void ExecutionPlan::enableRule(int rule) { _disabledRules.erase(rule); }
 
-void ExecutionPlan::disableRule(int rule) {
-  _disabledRules.emplace(rule);
-}
+void ExecutionPlan::disableRule(int rule) { _disabledRules.emplace(rule); }
 
 bool ExecutionPlan::isDisabledRule(int rule) const {
   return (_disabledRules.find(rule) != _disabledRules.end());
@@ -472,8 +468,7 @@ ExecutionNode* ExecutionPlan::getNodeById(size_t id) const {
 }
 
 /// @brief creates a calculation node for an arbitrary expression
-ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
-                                                AstNode const* expression,
+ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* expression,
                                                 ExecutionNode* previous) {
   TRI_ASSERT(out != nullptr);
 
@@ -834,7 +829,8 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   try {
     auto [it, emplaced] = _ids.try_emplace(node->id(), node);
     if (!emplaced) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to register node in plan");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to register node in plan");
     }
     TRI_ASSERT(it != _ids.end());
   } catch (...) {
@@ -1324,10 +1320,10 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous, AstNode cons
     if (ascending->type == NODE_TYPE_VALUE) {
       if (ascending->value.type == VALUE_TYPE_STRING) {
         // special treatment for string values ASC/DESC
-        if (ascending->stringEquals("ASC", true)) {
+        if (ascending->stringEqualsCaseInsensitive(StaticStrings::QuerySortASC)) {
           isAscending = true;
           handled = true;
-        } else if (ascending->stringEquals("DESC", true)) {
+        } else if (ascending->stringEqualsCaseInsensitive(StaticStrings::QuerySortDESC)) {
           isAscending = false;
           handled = true;
         }
@@ -2390,9 +2386,9 @@ bool ExecutionPlan::isDeadSimple() const {
     auto const nodeType = current->getType();
 
     if (nodeType == ExecutionNode::SUBQUERY || nodeType == ExecutionNode::ENUMERATE_COLLECTION ||
-        nodeType == ExecutionNode::ENUMERATE_LIST || nodeType == ExecutionNode::TRAVERSAL ||
-        nodeType == ExecutionNode::SHORTEST_PATH || nodeType == ExecutionNode::K_SHORTEST_PATHS ||
-        nodeType == ExecutionNode::INDEX) {
+        nodeType == ExecutionNode::ENUMERATE_LIST ||
+        nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH ||
+        nodeType == ExecutionNode::K_SHORTEST_PATHS || nodeType == ExecutionNode::INDEX) {
       // these node types are not simple
       return false;
     }
@@ -2426,13 +2422,9 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
     return true;
   }
 
-  void leaveSubquery(ExecutionNode*, ExecutionNode*) final {
-    indent--;
-  }
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) final { indent--; }
 
-  bool before(ExecutionNode* en) final {
-    return false;
-  }
+  bool before(ExecutionNode* en) final { return false; }
 
   void after(ExecutionNode* en) final {
     if (en->getType() == ExecutionNode::SUBQUERY_END) {
