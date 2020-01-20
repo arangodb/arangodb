@@ -39,12 +39,12 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
+AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
-    : key(key),
-      _agency(agency),
-      _cb(cb),
+    : key(key), 
+      _agency(server), 
+      _cb(cb), 
       _needsValue(needsValue),
       _wasSignaled(false) {
   if (_needsValue && needsInitialValue) {

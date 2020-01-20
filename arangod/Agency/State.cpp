@@ -76,7 +76,7 @@ State::~State() = default;
 inline static std::string timestamp(uint64_t m) {
 
   using namespace std::chrono;
-  
+
   std::time_t t = (m == 0) ? std::time(nullptr) :
     system_clock::to_time_t(system_clock::time_point(milliseconds(m)));
   char mbstr[100];
@@ -517,7 +517,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
-  
+
   for (auto lit = rbegin; lit != rend; lit++) {
     std::string const& clientId = lit->clientId;
     if (!clientId.empty()) {
@@ -1577,7 +1577,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   TRI_ASSERT(builder.isOpenObject());
-  
+
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
@@ -1597,7 +1597,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   VPackSlice result = logQueryResult.data->slice().resolveExternals();
   std::string firstIndex;
   uint64_t n = 0;
-  
+
   auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
     // Need to remove custom attribute in _id:
     { VPackObjectBuilder guard(&builder);
@@ -1634,7 +1634,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     std::string const compQueryStr =
       std::string("FOR c in compact FILTER c._key >= '") + firstIndex
       + std::string("' SORT c._key LIMIT 1 RETURN c");
-        
+
     arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compQueryStr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
@@ -1643,7 +1643,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     if (compQueryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);
     }
-    
+
     result = compQueryResult.data->slice().resolveExternals();
 
     if (result.isArray()) {
@@ -1659,7 +1659,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       }
     }
   }
-  
+
   return n;
 }
 

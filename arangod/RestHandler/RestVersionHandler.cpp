@@ -41,9 +41,7 @@ using namespace arangodb::rest;
 
 RestVersionHandler::RestVersionHandler(application_features::ApplicationServer& server,
                                        GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestVersionHandler::execute() {
   VPackBuilder result;
