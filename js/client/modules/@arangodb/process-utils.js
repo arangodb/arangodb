@@ -1559,7 +1559,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
       try {
         reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       } catch (e) {
-        print(RED + Date() + " error requesting agent '" + JSON.stringify(arangod) + "' Error: " + JSON.stringify(e) + RESET);
+        print(RED + Date() + " error requesting server '" + JSON.stringify(arangod) + "' Error: " + JSON.stringify(e) + RESET);
         if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
           internal.sleep(5);
           reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
