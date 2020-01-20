@@ -1,6 +1,9 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fix Foxxmaster failover retry loop to not spin forever and give up after a
+  while.
+
 * Fix "random" Valgrind "invalid free/delete" errors caused by usage of
   `alignas(64)` for shared_ptrs in the SupervisedScheduler.
 
