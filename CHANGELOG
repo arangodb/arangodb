@@ -4,6 +4,13 @@ v3.6.1 (2020-XX-XX)
 * Fix potential nullptr dereference in view optimizer rule, when there were
   was a LIMIT outside of a FOR loop.
 
+* Added missing "global" parameter in Swagger REST API documentation for some
+  replication endpoints.
+
+* Fixed an edge case in VelocyPack when the padding of a 1-byte offsetSize array
+  is removed but the first few entries of the array contain a Slice of type
+  None.
+
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
   while.
 
