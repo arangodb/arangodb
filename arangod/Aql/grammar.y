@@ -155,7 +155,8 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
 /// @brief start a new scope for the collect
 static bool StartCollectScope(arangodb::aql::Scopes* scopes) { 
   // check if we are in the main scope
-  if (scopes->type() == arangodb::aql::AQL_SCOPE_MAIN) {
+  if (scopes->type() == arangodb::aql::AQL_SCOPE_MAIN ||
+      scopes->type() == arangodb::aql::AQL_SCOPE_SUBQUERY) {
     return false;
   }
 

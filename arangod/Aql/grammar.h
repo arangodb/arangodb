@@ -1,4 +1,4 @@
-/* A Bison parser, made by GNU Bison 3.3.2.  */
+/* A Bison parser, made by GNU Bison 3.5.  */
 
 /* Bison interface for Yacc-like parsers in C
 
@@ -126,10 +126,9 @@ extern int Aqldebug;
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
-
 union YYSTYPE
 {
-#line 34 "Aql/grammar.y" /* yacc.c:1921  */
+#line 34 "Aql/grammar.y"
 
   arangodb::aql::AstNode*  node;
   struct {
@@ -139,9 +138,9 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 143 "Aql/grammar.hpp" /* yacc.c:1921  */
-};
+#line 142 "Aql/grammar.hpp"
 
+};
 typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1
