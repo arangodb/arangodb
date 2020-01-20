@@ -114,7 +114,7 @@ class SupervisedScheduler final : public Scheduler {
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
 
-  struct alignas(64) WorkerState {
+  struct WorkerState {
     uint64_t _queueRetryTime_us; // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working, _sleeping;
