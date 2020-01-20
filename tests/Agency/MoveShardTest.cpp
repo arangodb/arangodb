@@ -996,6 +996,71 @@ TEST_F(MoveShardTest, if_the_job_is_too_old_it_should_be_aborted_to_prevent_a_de
   Verify(Method(spy, abort));
 }
 
+TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
+  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
+      [&](VPackSlice const& s, std::string const& path) {
+        std::unique_ptr<VPackBuilder> builder;
+        builder.reset(new VPackBuilder());
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/Pending") {
+            VPackBuilder pendingJob;
+            {
+              VPackObjectBuilder b(&pendingJob);
+              auto plainJob = createJob(COLLECTION, LEADER, SHARD_FOLLOWE1);
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
+                pendingJob.add(it.key.copyString(), it.value);
+              }
+              pendingJob.add("timeCreated", VPackValue("2015-01-03T20:00:00Z"));
+            }
+            builder->add(jobId, pendingJob.slice());
+          }
+          builder->close();
+        } else {
+          if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/shards/" + SHARD) {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue("_" + SHARD_LEADER));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->add(VPackValue(SHARD_FOLLOWER2));
+            builder->close();
+          } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/" + SHARD + "/servers") {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue("_" + SHARD_LEADER));
+            builder->add(VPackValue(SHARD_FOLLOWER2));
+            builder->close();
+          } else {
+            builder->add(s);
+          }
+        }
+        return builder;
+      };
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  Node agency = createAgencyFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  AgentInterface& agent = mockAgent.get();
+
+  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  Mock<Job> spy(moveShard);
+  Fake(Method(spy, abort));
+
+  Job& spyMoveShard = spy.get();
+  spyMoveShard.run(aborts);
+
+  Verify(Method(spy, abort));
+}
+
 TEST_F(MoveShardTest, if_the_job_is_too_old_leader_case_it_should_be_aborted_to_prevent_deadloop) {
   std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
       [&](VPackSlice const& s, std::string const& path) {
