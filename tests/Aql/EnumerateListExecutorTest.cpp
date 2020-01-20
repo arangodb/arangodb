@@ -367,10 +367,10 @@ TEST_F(EnumerateListExecutorTest, test_produce_datarange_single_row) {
                           infos.registersToKeep(), infos.registersToClear());
 
   EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 3);
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 
   block = output.stealBlock();
   // check registers that should be kept
@@ -432,10 +432,10 @@ TEST_F(EnumerateListExecutorTest, test_produce_datarange) {
                           infos.registersToKeep(), infos.registersToClear());
 
   EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::DONE);
   EXPECT_EQ(output.numRowsWritten(), 6);
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 
   block = output.stealBlock();
   // check registers that should be kept

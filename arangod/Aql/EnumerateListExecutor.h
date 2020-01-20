@@ -102,9 +102,8 @@ class EnumerateListExecutor {
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
-                                                        AqlItemBlockInputRange& input,
-                                                        OutputAqlItemRow& output);
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& input, OutputAqlItemRow& output);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
@@ -117,6 +116,7 @@ class EnumerateListExecutor {
   ExecutionState _rowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
+  size_t _produced;
 };
 
 }  // namespace aql

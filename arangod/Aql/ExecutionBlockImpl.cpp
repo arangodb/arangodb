@@ -980,7 +980,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
     -> std::unique_ptr<OutputAqlItemRow> {
-  size_t blockSize = ExecutionBlock::DefaultBatchSize();
+  size_t blockSize = ExecutionBlock::DefaultBatchSize;
   SharedAqlItemBlockPtr newBlock =
       _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
   return createOutputRow(newBlock, std::move(call));
@@ -1100,7 +1100,7 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       // In all other cases, we skip by letting the executor produce rows, and
       // then throw them away.
 
-      size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
+      size_t toSkip = std::min(call.getOffset(), DefaultBatchSize);
       AqlCall skipCall{};
       skipCall.softLimit = toSkip;
       skipCall.hardLimit = toSkip;

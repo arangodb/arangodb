@@ -153,10 +153,10 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlI
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
-    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
-  while (inputRange.hasMore() && limit > 0) {
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  while (inputRange.hasDataRow() && !output.isFull() > 0) {
     initialize();
-    auto const& [state, input] = inputRange.next();
+    auto const& [state, input] = inputRange.nextDataRow();
     TRI_ASSERT(input.isInitialized());
     // HIT in first run, because pos and length are initiliazed
     // both with 0
@@ -181,6 +181,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
         continue;
       } else if (_inputArrayLength == _inputArrayPosition) {
         // we reached the end, forget all state
+        initialize();
         break;
       } else {
         bool mustDestroy;
@@ -193,7 +194,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
 
         output.moveValueInto(_infos.getOutputRegister(), input, guard);
         output.advanceRow();
-        limit--;
+        _produced++;
 
         // set position to +1 for next iteration after new fetchRow
         _inputArrayPosition++;
@@ -202,13 +203,15 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = limit;
-  return {inputRange.peek().first, NoStats{}, upstreamCall};
+  auto const& clientCall = output.getClientCall();
+  upstreamCall.softLimit = clientCall.getLimit();
+  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
 }
 
 void EnumerateListExecutor::initialize() {
   _inputArrayLength = 0;
   _inputArrayPosition = 0;
+  _produced = 0;
   _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
 }
 
