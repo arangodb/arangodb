@@ -1,6 +1,10 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behaviour sometimes leads to failed requests because of parse errors
+	which occured in the internal used JavaScript joi library.
+
 * Added missing "global" parameter in Swagger REST API documentation for some
   replication endpoints.
 
