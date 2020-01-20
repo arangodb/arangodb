@@ -70,8 +70,8 @@ TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   return nullptr;
 }
 
-std::vector<std::string> Databases::list(std::string const& user) {
-  auto& server = application_features::ApplicationServer::server();
+std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
+                                         std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -93,7 +93,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
 
 arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   if (ServerState::instance()->isCoordinator()) {
-    AgencyComm agency;
+    AgencyComm agency(vocbase->server());
     AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
@@ -282,8 +282,6 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 arangodb::Result Databases::create(application_features::ApplicationServer& server,
                                    std::string const& dbName, VPackSlice const& users,
                                    VPackSlice const& options) {
-  arangodb::Result res;
-
   // Only admin users are permitted to create databases
   ExecContext const& exec = ExecContext::current();
 
@@ -293,7 +291,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   }
 
   CreateDatabaseInfo createInfo(server);
-  res = createInfo.load(dbName, options, users);
+  arangodb::Result res = createInfo.load(dbName, options, users);
 
   if (!res.ok()) {
     LOG_TOPIC("15580", ERR, Logger::FIXME)
@@ -308,7 +306,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       createInfo.setId(clusterInfo.uniqid());
     }
 
-    res = ShardingInfo::validateShardsAndReplicationFactor(options, server);
+    res = ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
     if (res.ok()) {
       res = createCoordinator(createInfo);
     }
@@ -330,7 +328,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   // because the cache entry has a TTL
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      auto& server = application_features::ApplicationServer::server();
       auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
       auto database = sysDbFeature.use();
 

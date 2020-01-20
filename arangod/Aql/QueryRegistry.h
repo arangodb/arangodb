@@ -86,6 +86,7 @@ class QueryRegistry {
   /// if the ignoreOpened flag is set, it means the query will be shut down
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
+  // cppcheck-suppress virtualCallInConstructor
   TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened);
 
   /// @brief destroy all queries for the specified database. this can be used

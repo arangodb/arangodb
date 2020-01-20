@@ -122,4 +122,3 @@ Using Parameter: waitForSync and limit with new signature
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -25,7 +25,6 @@
 // 3rdParty\iresearch\core\shared.hpp
 #if defined(_MSC_VER)
 #include "date/date.h"
-#undef NOEXCEPT
 #endif
 
 #include "search/all_filter.hpp"
@@ -36,11 +35,13 @@
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+#include "search/wildcard_filter.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
-#include "Aql/Range.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Range.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/ExpressionFilter.h"
@@ -152,7 +153,8 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
     return invalid;
   }
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
+  TRI_ASSERT(ctx.trx);
+  auto& server = ctx.trx->vocbase().server();
   if (!server.hasFeature<IResearchAnalyzerFeature>()) {
     LOG_TOPIC("03314", WARN, arangodb::iresearch::TOPIC)
         << "'" << IResearchAnalyzerFeature::name()
@@ -196,20 +198,15 @@ arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
   auto& analyzer = result._pool;
   auto& shortName = result._shortName;
 
-  if (ctx.trx) {
-    auto& server = arangodb::application_features::ApplicationServer::server();
-    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                          : nullptr;
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
-    if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+  if (sysVocbase) {
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
 
-      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-        analyzerId, ctx.trx->vocbase(), *sysVocbase, false); // args
-    }
-  } else {
-    analyzer = analyzerFeature.get(analyzerId);  // verbatim
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+        analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
   }
 
   if (!analyzer) {
@@ -744,8 +741,8 @@ arangodb::Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ct
   return {};
 }
 
-std::pair<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparsionPreFilter(
-    irs::boolean_filter* &filter, arangodb::aql::AstNodeType arrayComparsion,
+std::pair<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
+    irs::boolean_filter* &filter, arangodb::aql::AstNodeType arrayComparison,
     const arangodb::aql::AstNode* qualifierNode, size_t arraySize) {
   TRI_ASSERT(qualifierNode);
   auto qualifierType = qualifierNode->getIntValue(true);
@@ -774,29 +771,29 @@ std::pair<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparsi
     // NONE is inverted ALL so do conversion
     if (arangodb::aql::Quantifier::NONE == qualifierType) {
       qualifierType = arangodb::aql::Quantifier::ALL;
-      switch (arrayComparsion) {
+      switch (arrayComparison) {
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
-          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN;
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN;
           break;
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
-          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN;
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN;
           break;
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
-          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT;
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT;
           break;
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
-          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE;
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE;
           break;
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
-          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT;
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT;
           break;
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
-          arrayComparsion = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE;
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE;
           break;
         default:
-          TRI_ASSERT(false); // new array comparsion operator?
+          TRI_ASSERT(false); // new array comparison operator?
           return std::make_pair(
               arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array NONE comparison operator"),
               arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
@@ -806,8 +803,8 @@ std::pair<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparsi
       case arangodb::aql::Quantifier::ALL:
         // calculate node type for expanding operation
         // As soon as array is left argument but for filter we place document to the left
-        // we reverse comparsion operation
-        switch (arrayComparsion) {
+        // we reverse comparison operation
+        switch (arrayComparison) {
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
             if (filter) {
@@ -847,14 +844,14 @@ std::pair<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparsi
             expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE;
             break;
           default:
-            TRI_ASSERT(false); // new array comparsion operator?
+            TRI_ASSERT(false); // new array comparison operator?
             return std::make_pair(
                 arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ALL/NONE comparison operator"),
                 arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
         }
         break;
       case arangodb::aql::Quantifier::ANY: {
-        switch (arrayComparsion) {
+        switch (arrayComparison) {
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
             if (filter) {
@@ -894,7 +891,7 @@ std::pair<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparsi
             expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE;
             break;
           default:
-            TRI_ASSERT(false); // new array comparsion operator?
+            TRI_ASSERT(false); // new array comparison operator?
             return std::make_pair(
                 arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ANY comparison operator"),
                 arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
@@ -974,7 +971,7 @@ class ByRangeSubFilterFactory {
 
 
 template<typename SubFilterFactory>
-arangodb::Result fromArrayComparsion(irs::boolean_filter*& filter, QueryContext const& ctx,
+arangodb::Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx,
                                      FilterContext const& filterCtx, arangodb::aql::AstNode const& node) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT == node.type ||
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE == node.type ||
@@ -986,7 +983,7 @@ arangodb::Result fromArrayComparsion(irs::boolean_filter*& filter, QueryContext 
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type);
   if (node.numMembers() != 3) {
     auto rv = logMalformedNode(node.type);
-    return rv.reset(rv.errorNumber(), "error in Array comparsion operator " + rv.errorMessage());
+    return rv.reset(rv.errorNumber(), "error in Array comparison operator " + rv.errorMessage());
   }
 
   auto const* valueNode = node.getMemberUnchecked(0);
@@ -1022,7 +1019,7 @@ arangodb::Result fromArrayComparsion(irs::boolean_filter*& filter, QueryContext 
     }
     arangodb::Result buildRes;
     arangodb::aql::AstNodeType arrayExpansionNodeType;
-    std::tie(buildRes, arrayExpansionNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
+    std::tie(buildRes, arrayExpansionNodeType) = buildBinaryArrayComparisonPreFilter(filter, node.type, qualifierNode, n);
     if (!buildRes.ok()) {
       return buildRes;
     }
@@ -1100,7 +1097,7 @@ arangodb::Result fromArrayComparsion(irs::boolean_filter*& filter, QueryContext 
       size_t const n = value.size();
       arangodb::Result buildRes;
       arangodb::aql::AstNodeType arrayExpansionNodeType;
-      std::tie(buildRes, arrayExpansionNodeType) = buildBinaryArrayComparsionPreFilter(filter, node.type, qualifierNode, n);
+      std::tie(buildRes, arrayExpansionNodeType) = buildBinaryArrayComparisonPreFilter(filter, node.type, qualifierNode, n);
       if (!buildRes.ok()) {
         return buildRes;
       }
@@ -1555,7 +1552,8 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
       return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
     }
 
-    auto& server = arangodb::application_features::ApplicationServer::server();
+    TRI_ASSERT(ctx.trx);
+    auto& server = ctx.trx->vocbase().server();
     if (!server.hasFeature<IResearchAnalyzerFeature>()) {
       auto message =
           "'"s + IResearchAnalyzerFeature::name() +
@@ -1567,21 +1565,15 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
 
     shortName = analyzerIdValue;
 
-    if (ctx.trx) {
-      auto& server = arangodb::application_features::ApplicationServer::server();
-      auto sysVocbase =
-          server.hasFeature<arangodb::SystemDatabaseFeature>()
-              ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-              : nullptr;
+    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                          : nullptr;
 
-      if (sysVocbase) {
-        analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
+    if (sysVocbase) {
+      analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
 
-        shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false); // args
-      }
-    } else {
-      analyzer = analyzerFeature.get(analyzerIdValue);  // verbatim
+      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+          analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false);  // args
     }
 
     if (!analyzer) {
@@ -2120,7 +2112,7 @@ arangodb::Result fromFuncStartsWith(irs::boolean_filter* filter, QueryContext co
   if (filter || prefixValue.isConstant()) {
     if (!prefixValue.execute(ctx)) {
       auto message = "'STARTS_WITH' AQL function: Failed to evaluate 2nd argument";
-      LOG_TOPIC("e196b", WARN, arangodb::iresearch::TOPIC) << message;
+      LOG_TOPIC("e196c", WARN, arangodb::iresearch::TOPIC) << message;
       return {TRI_ERROR_BAD_PARAMETER, message};
     }
 
@@ -2288,6 +2280,90 @@ arangodb::Result fromFuncInRange(irs::boolean_filter* filter, QueryContext const
   return {};
 }
 
+// LIKE(<attribute>, <pattern>)
+arangodb::Result fromFuncLike(
+    irs::boolean_filter* filter, QueryContext const& ctx,
+    FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
+  if (!args.isDeterministic()) {
+    auto message = "Unable to handle non-deterministic arguments for 'LIKE' function";
+    LOG_TOPIC("dff15", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message}; // nondeterministic
+  }
+
+  auto const argc = args.numMembers();
+
+  if (argc != 2) {
+    auto message = "'LIKE' AQL function: Invalid number of arguments passed (should be 2)";
+    LOG_TOPIC("2f1a8", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  // 1st argument defines a field
+  auto const* field =
+      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+  if (!field) {
+    auto message = "'LIKE' AQL function: Unable to parse 1st argument as an attribute identifier";
+    LOG_TOPIC("7c51a", WARN, arangodb::iresearch::TOPIC) << message;
+    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  // 2nd argument defines a matching pattern
+  auto const* patternArg = args.getMemberUnchecked(1);
+
+  if (!patternArg) {
+    auto message = "'LIKE' AQL function: 2nd argument is invalid";
+    LOG_TOPIC("6f501", WARN, arangodb::iresearch::TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, message};
+  }
+
+  irs::string_ref pattern;
+  const size_t scoringLimit = 128;  // FIXME make configurable
+
+  ScopedAqlValue patternValue(*patternArg);
+
+  if (filter || patternValue.isConstant()) {
+    if (!patternValue.execute(ctx)) {
+      auto message = "'LIKE' AQL function: Failed to evaluate 2nd argument";
+      LOG_TOPIC("e196b", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != patternValue.type()) {
+      auto message = "'LIKE' AQL function: 2nd argument has invalid type '"s + ScopedAqlValue::typeString(patternValue.type()).c_str() + "' (string expected)";
+      LOG_TOPIC("bd9c1", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    if (!patternValue.getString(pattern)) {
+      auto message = "'LIKE' AQL function: Unable to parse 2nd argument as string";
+      LOG_TOPIC("e1ebc", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+  }
+
+  if (filter) {
+    std::string name;
+
+    if (!nameFromAttributeAccess(name, *field, ctx)) {
+      auto message = "'LIKE' AQL function: Failed to generate field name from the 1st argument";
+      LOG_TOPIC("91861", WARN, arangodb::iresearch::TOPIC) << message;
+      return {TRI_ERROR_BAD_PARAMETER, message};
+    }
+
+    TRI_ASSERT(filterCtx.analyzer);
+    kludge::mangleStringField(name, filterCtx.analyzer);
+
+    auto& wildcardFilter = filter->add<irs::by_wildcard>();
+    wildcardFilter.scored_terms_limit(scoringLimit);
+    wildcardFilter.field(std::move(name));
+    wildcardFilter.boost(filterCtx.boost);
+    wildcardFilter.term(pattern);
+  }
+
+  return {};
+}
+
 std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
 
 arangodb::Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -2333,7 +2409,7 @@ std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
     {"PHRASE", fromFuncPhrase},     {"STARTS_WITH", fromFuncStartsWith},
     {"EXISTS", fromFuncExists},     {"BOOST", fromFuncBoost},
     {"ANALYZER", fromFuncAnalyzer}, {"MIN_MATCH", fromFuncMinMatch},
-    {"IN_RANGE", fromFuncInRange}
+    {"IN_RANGE", fromFuncInRange},  {"LIKE", fromFuncLike }
 };
 
 arangodb::Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -2433,12 +2509,12 @@ arangodb::Result filter(irs::boolean_filter* filter, QueryContext const& queryCt
     // for iresearch filters IN and EQ queries will be actually the same
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:  // compare ARRAY ==
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:  // compare ARRAY !=
-      return fromArrayComparsion<ByTermSubFilterFactory>(filter, queryCtx, filterCtx, node);
+      return fromArrayComparison<ByTermSubFilterFactory>(filter, queryCtx, filterCtx, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:  // compare ARRAY <
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:  // compare ARRAY <=
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:  // compare ARRAY >
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:  // compare ARRAY >=
-      return fromArrayComparsion<ByRangeSubFilterFactory>(filter, queryCtx, filterCtx, node);
+      return fromArrayComparison<ByRangeSubFilterFactory>(filter, queryCtx, filterCtx, node);
     default:
       return fromExpression(filter, queryCtx, filterCtx, node);
   }

@@ -29,8 +29,9 @@
 #include <chrono>
 #include <thread>
 
-#include "Agency/AgentCallback.h"
 #include "Agency/AgencyFeature.h"
+#include "Agency/AgentCallback.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"

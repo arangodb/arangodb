@@ -188,7 +188,7 @@ void MaintenanceFeature::beginShutdown() {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     auto shared = std::make_shared<callback_data>(ci.uniqid());
 
-    AgencyComm am;
+    AgencyComm am(server());
 
     std::string serverId = ServerState::instance()->getId();
     VPackBuilder jobDesc;
@@ -674,6 +674,7 @@ arangodb::Result MaintenanceFeature::storeShardError(
     auto emplaced = _shardErrors.try_emplace(std::move(key), std::move(error)).second;
     if (!emplaced) {
       std::stringstream error;
+      // cppcheck-suppress accessMoved; try_emplace leaves the movables intact
       error << "shard " << key << " already has pending error";
       LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
       return Result(TRI_ERROR_FAILED, error.str());

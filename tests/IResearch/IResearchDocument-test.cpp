@@ -85,7 +85,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
   static ptr make(irs::string_ref const&) {
@@ -117,7 +117,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
   InvalidAnalyzer() : irs::analysis::analyzer(InvalidAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
   static ptr make(irs::string_ref const&) {
@@ -508,7 +508,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_filt
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(linkMeta.init(linkMetaJson->slice(), false, error));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false, error));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1018,7 +1018,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_check_meta_i
   arangodb::iresearch::IResearchLinkMeta linkMeta;
 
   std::string error;
-  ASSERT_TRUE(linkMeta.init(linkMetaJson->slice(), false, error, sysVocbase.get()));
+  ASSERT_TRUE(linkMeta.init(server.server(), linkMetaJson->slice(), false,
+                            error, sysVocbase.get()));
 
   std::vector<std::string> EMPTY;
   arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1607,7 +1608,7 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
     {
       auto doc = writer->documents().insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
+      EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
       EXPECT_TRUE(doc);
     }
     writer->commit();
@@ -1779,7 +1780,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
       auto ctx = store.writer->documents();
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
+      EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
       EXPECT_TRUE(doc);
       ++expectedDocs;
       ++expectedLiveDocs;
@@ -1793,7 +1794,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
-    EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
+    EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
     EXPECT_TRUE(doc);
   }
 
@@ -1873,7 +1874,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           arangodb::LocalDocumentId(rid)));
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
+      EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
       EXPECT_TRUE(doc);
       ++expectedDocs;
     }
@@ -1887,7 +1888,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
-    EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
+    EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
     EXPECT_TRUE(doc);
   }
 
@@ -1974,7 +1975,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
           arangodb::LocalDocumentId(rid)));
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
+      EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
       EXPECT_TRUE(doc);
       ++expectedDocs;
     }
@@ -1988,7 +1989,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
-    EXPECT_TRUE(doc.insert<irs::Action::INDEX_AND_STORE>(field));
+    EXPECT_TRUE(doc.insert<irs::Action::INDEX | irs::Action::STORE>(field));
     EXPECT_TRUE(doc);
   }
 

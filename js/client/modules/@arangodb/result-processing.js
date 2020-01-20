@@ -495,7 +495,7 @@ function unitTestPrettyPrintResults (options, results) {
     onlyFailedMessages += failText + '\n';
     failText = RED + failText + RESET;
   }
-  if (cu.GDB_OUTPUT !== '') {
+  if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText === options.testFailureText) {
     // write more verbose failures to the testFailureText file
     onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
   }
@@ -511,6 +511,12 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
     onlyFailedMessages += '\n' + crashedText;
   }
   fs.write(options.testOutputDirectory + options.testFailureText, onlyFailedMessages);
+
+  if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText !== options.testFailureText ) {
+    // write more verbose failures to the testFailureText file
+    fs.write(options.testOutputDirectory + options.crashAnalysisText, cu.GDB_OUTPUT);
+  }
+
 }
 
 // //////////////////////////////////////////////////////////////////////////////

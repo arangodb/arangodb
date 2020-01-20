@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GlobalInitialSyncer.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
