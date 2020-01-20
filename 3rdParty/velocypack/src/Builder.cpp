@@ -325,7 +325,7 @@ Builder& Builder::operator=(Builder&& that) noexcept {
 }
 
 std::string Builder::toString() const {
-  Options opts = *options;
+  Options opts;
   opts.prettyPrint = true;
 
   std::string buffer;

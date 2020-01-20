@@ -341,6 +341,7 @@ void HttpCommTask<T>::processRequest() {
 
   // we may have gotten an H2 Upgrade request
   if (ADB_UNLIKELY(_parser.upgrade)) {
+    LOG_TOPIC("5a660", INFO, Logger::REQUESTS) << "detected an 'Upgrade' header";
     bool found;
     std::string const& h2 = _request->header("upgrade");
     std::string const& settings = _request->header("http2-settings", found);
