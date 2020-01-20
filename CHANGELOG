@@ -1,6 +1,9 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fix potential nullptr dereference in view optimizer rule, when there were
+  was a LIMIT outside of a FOR loop.
+
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
   while.
 
