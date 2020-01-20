@@ -72,16 +72,6 @@ using namespace arangodb::basics;
 
 namespace {
 
-static void abortHandler(int signum) {
-  TRI_PrintBacktrace();
-#ifdef _WIN32
-  exit(255 + signum);
-#else
-  signal(signum, SIG_DFL);
-  kill(getpid(), signum);
-#endif
-}
-
 #ifndef _WIN32
 static void ReopenLog(int) { LogAppender::reopen(); }
 #endif
@@ -204,8 +194,6 @@ void ArangoGlobalContext::installHup() {
   signal(SIGHUP, ReopenLog);
 #endif
 }
-
-void ArangoGlobalContext::installSegv() { signal(SIGSEGV, abortHandler); }
 
 void ArangoGlobalContext::runStartupChecks() {
 #ifdef __arm__

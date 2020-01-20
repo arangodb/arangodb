@@ -280,6 +280,7 @@ class Logger {
  public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
+  static void shutdownLogThread();
   static void flush() noexcept;
 
  private:

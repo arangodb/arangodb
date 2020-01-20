@@ -39,13 +39,23 @@ LogThread::~LogThread() {
 }
 
 bool LogThread::log(std::unique_ptr<LogMessage>& message) {
-  if (_messages.push(message.get())) {
-    // only release message if adding to the queue succeeded
-    // otherwise we would leak here
-    message.release();
-    return true;
+  TRI_ASSERT(message != nullptr);
+
+  bool const isDirectLogLevel =
+             (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR || message->_level == LogLevel::WARN);
+
+  if (!_messages.push(message.get())) {
+    return false;
   }
-  return false;
+
+  // only release message if adding to the queue succeeded
+  // otherwise we would leak here
+  message.release();
+
+  if (isDirectLogLevel) {
+    this->flush();
+  }
+  return true;
 }
 
 void LogThread::flush() noexcept {
@@ -56,7 +66,7 @@ void LogThread::flush() noexcept {
   }
 }
 
-void LogThread::wakeup() {
+void LogThread::wakeup() noexcept {
   // cppcheck-suppress redundantPointerOp
   CONDITION_LOCKER(guard, _condition);
   guard.signal();

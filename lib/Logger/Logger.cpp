@@ -394,16 +394,7 @@ void Logger::log(char const* function, char const* file, int line,
       // now either queue or output the message
       bool handled = false;
       if (_threaded) {
-        MUTEX_LOCKER(locker, _initializeMutex);
-
         handled = _loggingThread->log(msg);
-        if (handled) {
-          bool const isDirectLogLevel =
-              (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
-          if (isDirectLogLevel) {
-            _loggingThread->flush();
-          }
-        }
       }
 
       if (!handled) {
@@ -412,7 +403,7 @@ void Logger::log(char const* function, char const* file, int line,
       }
     }
   } catch (...) {
-    // logging itself must never cause an escape to escape
+    // logging itself must never cause an exeption to escape
   }
 }
 
@@ -461,6 +452,8 @@ void Logger::shutdown() {
   // logging is now inactive (this will terminate the logging thread)
   // join with the logging thread
   if (_threaded) {
+    _threaded = false;
+
     // ignore all errors for now as we cannot log them anywhere...
     int tries = 0;
     while (_loggingThread->hasMessages() && ++tries < 1000) {
@@ -468,13 +461,19 @@ void Logger::shutdown() {
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     _loggingThread->beginShutdown();
-    _loggingThread.reset();
+    while (_loggingThread->isRunning()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   }
 
   // cleanup appenders
   LogAppender::shutdown();
 
   _cachedPid = 0;
+}
+
+void Logger::shutdownLogThread() {
+  _loggingThread.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

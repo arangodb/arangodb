@@ -57,7 +57,7 @@ class LogThread final : public Thread {
   // whether or not the log thread has messages queued
   bool hasMessages() const noexcept;
   // wake up the log thread from the outside
-  void wakeup();
+  void wakeup() noexcept;
  
  private:
   void processPendingMessages();

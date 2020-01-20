@@ -30,13 +30,15 @@
 #endif
 #include <sys/types.h>
 
-#include <thread>
-
 #ifndef _WIN32
 #include <execinfo.h>
 #endif
 
-#include "CrashHandlerFeature.h"
+#ifdef __linux__
+#include <syscall.h>
+#endif
+
+#include "CrashHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/signals.h"
@@ -46,7 +48,6 @@
 #include "Logger/LoggerStream.h"
 
 #ifndef _WIN32
-
 namespace {
 /// @brief appends null-terminated string src to dst,
 /// advances dst pointer by length of src
@@ -64,16 +65,21 @@ void appendNullTerminatedString(char const* src, char*& dst) {
 /// hold the thread id, the thread name and the signal name
 /// (512 bytes should be more than enough)
 size_t buildLogMessage(char* s, int signal, int stackSize) {
+  // build a crash message
   char* p = s;
   appendNullTerminatedString("thread ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
   
-#if defined(ARANGODB_HAVE_GETTID)
+#ifdef __linux__
+  // gettid() would be nice to use, unfortunately it is only available
+  // in _very_ recent versions of glibc and current not available in libmusl.
+  // thus we use syscall here. evil, but works
+  uint64_t threadId = static_cast<uint64_t>(syscall(__NR_gettid));
   appendNullTerminatedString(", tid ", p);
-  p += arangodb::basics::StringUtils::itoa(uint64_t(::gettid()), p);
+  p += arangodb::basics::StringUtils::itoa(threadId, p);
 
   char const* name = arangodb::Thread::currentThreadName();
-  if (::gettid() == ::getpid()) {
+  if (threadId == static_cast<uint64_t>(::getpid())) {
     name = "main";
   }
 #else
@@ -98,6 +104,15 @@ size_t buildLogMessage(char* s, int signal, int stackSize) {
 }
 
 void crashHandler(int signal, siginfo_t* info, void*) {
+  // restore default signal action, so that we can write a core dump and crash "properly"
+  struct sigaction act;
+  sigemptyset(&act.sa_mask);
+  act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
+  act.sa_handler = SIG_DFL;
+  sigaction(signal, &act, nullptr);
+  
+  TRI_PrintBacktrace();
+
   try {
     // backtrace
     static constexpr int maxFrames = 100;
@@ -135,28 +150,19 @@ void crashHandler(int signal, siginfo_t* info, void*) {
     // we better not throw an exception from inside a signal handler
   }
 
-  // restore default signal action, so that we can write a core dump and crash "properly"
-  struct sigaction act;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = SA_NODEFER | SA_ONSTACK | SA_RESETHAND;
-  act.sa_handler = SIG_DFL;
-  sigaction(signal, &act, nullptr);
-
+#ifdef _WIN32
+  exit(255 + signal);
+#else
   // resend signal to ourselves to invoke default action for the signal
   ::kill(::getpid(), signal);
+#endif
 }
 } // namespace
 #endif
 
 namespace arangodb {
 
-CrashHandlerFeature::CrashHandlerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "CrashHandler") {
-  setOptional(true);
-  startsAfter<LoggerFeature>();
-}
-
-void CrashHandlerFeature::prepare() {
+void CrashHandler::installCrashHandler() {
 #ifndef _WIN32
   // install signal handler
   struct sigaction act;
@@ -167,6 +173,7 @@ void CrashHandlerFeature::prepare() {
   sigaction(SIGBUS, &act, nullptr);
   sigaction(SIGILL, &act, nullptr);
   sigaction(SIGFPE, &act, nullptr);
+  sigaction(SIGABRT, &act,nullptr);
 #endif
 }
 

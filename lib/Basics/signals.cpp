@@ -220,6 +220,7 @@ void maskAllSignals() {
   sigdelset(&all, SIGBUS);
   sigdelset(&all, SIGILL);
   sigdelset(&all, SIGFPE);
+  sigdelset(&all, SIGABRT);
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 #endif
 }

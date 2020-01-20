@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/CrashHandlerFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -51,6 +50,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
@@ -139,7 +139,7 @@ using namespace arangodb::application_features;
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    context.installSegv();
+    CrashHandler::installCrashHandler();
     context.runStartupChecks();
 
     std::string name = context.binaryName();
@@ -193,7 +193,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ClusterUpgradeFeature>();
     server.addFeature<ConfigFeature>(name);
     server.addFeature<ConsoleFeature>();
-    server.addFeature<CrashHandlerFeature>();
     server.addFeature<DatabaseFeature>();
     server.addFeature<DatabasePathFeature>();
     server.addFeature<EndpointFeature, HttpEndpointProvider>();

@@ -96,7 +96,6 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
-  ApplicationFeatures/CrashHandlerFeature.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
@@ -114,6 +113,7 @@ add_library(arango STATIC
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
+  Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp

@@ -20,21 +20,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_CRASH_HANDLER_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_CRASH_HANDLER_FEATURE_H 1
-
-#include "ApplicationFeatures/ApplicationFeature.h"
+#ifndef ARANGODB_BASICS_CRASH_HANDLER_H
+#define ARANGODB_BASICS_CRASH_HANDLER_H 1
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
-
-class CrashHandlerFeature final : public application_features::ApplicationFeature {
+class CrashHandler {
  public:
-  explicit CrashHandlerFeature(application_features::ApplicationServer& server);
-
-  void prepare() override final;
+  static void installCrashHandler();
 };
 
 }  // namespace arangodb
