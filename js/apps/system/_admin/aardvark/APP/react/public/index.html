@@ -11,6 +11,15 @@
     <meta name="author" content="Heiko Kernbach, Michael Hackstein">
     <script src="%REACT_APP_ARANGODB_CONFIG_PATH%"></script>
   </head>
+
+  <script>
+    <!-- Redirect to entry point of application -->
+    var destination = '/_db/_system/_admin/aardvark/index.html'
+    if (window.location.pathname !== destination) {
+      window.location.pathname = "/_db/_system/_admin/aardvark/index.html";
+    }
+  </script>
+
   <body>
     <noscript>
       You need to enable JavaScript to run this app.
