@@ -124,7 +124,10 @@ struct ResponseHeader final : public MessageHeader {
   /// Response code
   StatusCode responseCode = StatusUndefined;
 
-  MessageType responseType() const { return MessageType::Response; }
+  MessageType responseType() const { return _responseType; }
+
+ private:
+  MessageType _responseType = MessageType::Response;
 };
 
 // Message is base class for message being send to (Request) or
@@ -175,7 +178,7 @@ class Message {
 class Request final : public Message {
  public:
   static constexpr std::chrono::milliseconds defaultTimeout =
-      std::chrono::seconds(300);
+      std::chrono::milliseconds(300 * 1000);
 
   Request(RequestHeader messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
@@ -234,7 +237,7 @@ class Response : public Message {
   /// @brief request header
   ResponseHeader header;
 
-  MessageType type() const override { return header.responseType(); }
+  MessageType type() const override { return header._responseType; }
   MessageHeader const& messageHeader() const override { return header; }
   ///////////////////////////////////////////////
   // get / check status

@@ -136,7 +136,6 @@ std::string to_string(ProtocolType type) {
       return "undefined";
 
     case ProtocolType::Http:
-    case ProtocolType::Http2:
       return "http";
 
     case ProtocolType::Vst:

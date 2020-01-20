@@ -61,6 +61,7 @@ struct RequestItem {
   
  public:
   
+  inline MessageID messageID() { return _messageID; }
   inline void invokeOnError(Error e) {
     _callback(e, std::move(_request), nullptr);
   }
