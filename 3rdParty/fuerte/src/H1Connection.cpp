@@ -221,6 +221,7 @@ size_t H1Connection<ST>::requestsLeft() const {
 
 template <SocketType ST>
 void H1Connection<ST>::finishConnect() {
+  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
   this->_state.store(Connection::State::Connected);
   startWriting();  // starts writing queue if non-empty
 }

@@ -180,7 +180,7 @@ struct ConnectionConfiguration {
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-        _connectTimeout(10000),
+        _connectTimeout(15000),
         _idleTimeout(300000),
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),

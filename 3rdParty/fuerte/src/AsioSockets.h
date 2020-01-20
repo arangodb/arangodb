@@ -154,7 +154,6 @@ struct Socket<fuerte::SocketType::Ssl> {
   void shutdown(F&& cb) {
     asio_ns::error_code ec;  // prevents exceptions
     socket.lowest_layer().cancel(ec);
-    timer.cancel(ec);
     if (socket.lowest_layer().is_open()) {
       timer.expires_from_now(std::chrono::seconds(3));
       timer.async_wait([this](asio_ns::error_code ec) {
@@ -173,6 +172,7 @@ struct Socket<fuerte::SocketType::Ssl> {
         cb(ec);
       });
     } else {
+      timer.cancel(ec);
       std::forward<F>(cb)(ec);
     }
   }

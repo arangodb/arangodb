@@ -60,7 +60,7 @@ void GeneralConnection<ST>::startConnection() {
       auto* me = static_cast<GeneralConnection<ST>*>(self.get());
       me->tryConnect(me->_config._maxConnectRetries);
     };
-    asio_ns::dispatch(*this->_io_context, std::move(cb));
+    asio_ns::post(*this->_io_context, std::move(cb));
   }
 }
 
@@ -104,12 +104,9 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
   if (_config._connectTimeout.count() > 0) {
     _proto.timer.expires_after(_config._connectTimeout);
     _proto.timer.async_wait([self, this](asio_ns::error_code const& ec) {
-      if (!ec) { // someone else will retry
-        if constexpr (ST == SocketType::Ssl) {
-          shutdownConnection(Error::CouldNotConnect);
-        } else {
-          _proto.cancel();
-        }
+      if (!ec) {
+        _proto.cancel();
+        shutdownConnection(Error::CouldNotConnect);
       }
     });
   } else {
@@ -125,7 +122,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
     }
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-      _proto.timer.expires_after(std::chrono::seconds(1));
+      _proto.timer.expires_after(std::chrono::seconds(3));
       _proto.timer.async_wait([self, this, retries](auto ec) {
         if (!ec) {
           tryConnect(retries - 1);
@@ -168,14 +165,9 @@ void GeneralConnection<ST>::asyncReadSome() {
     FUERTE_LOG_TRACE << "received " << nread << " bytes\n";
     
     // received data is "committed" from output sequence to input sequence
-    auto* me = static_cast<GeneralConnection<ST>*>(self.get());
-//    if (nread == 0) {
-//      me->shutdownConnection(Error::ReadError, "broken connection");
-//      return;
-//    }
-//
-    me->_receiveBuffer.commit(nread);
-    me->asyncReadCallback(ec);
+    auto& me = static_cast<GeneralConnection<ST>&>(*self);
+    me._receiveBuffer.commit(nread);
+    me.asyncReadCallback(ec);
   });
 }
 

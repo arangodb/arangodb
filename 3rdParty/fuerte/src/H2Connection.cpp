@@ -350,6 +350,7 @@ std::size_t H2Connection<T>::requestsLeft() const {
 template <SocketType T>
 void H2Connection<T>::finishConnect() {
   FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";
+  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
 
   std::array<nghttp2_settings_entry, 3> iv;
   populateSettings(iv);

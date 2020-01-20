@@ -118,6 +118,8 @@ std::size_t VstConnection<ST>::requestsLeft() const {
 // socket connection is up (with optional SSL), now initiate the VST protocol.
 template <SocketType ST>
 void VstConnection<ST>::finishConnect() {
+  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
+
   FUERTE_LOG_VSTTRACE << "finishInitialization (vst)\n";
   const char* vstHeader;
   switch (_vstVersion) {
