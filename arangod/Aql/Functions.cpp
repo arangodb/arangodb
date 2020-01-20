@@ -4811,8 +4811,8 @@ AqlValue Functions::Jaccard(ExpressionContext* ctx,
     return AqlValue(AqlValueHintNull());
   }
 
-  AqlValueMaterializer lhsMaterializer(trx);
-  AqlValueMaterializer rhsMaterializer(trx);
+  AqlValueMaterializer lhsMaterializer(options);
+  AqlValueMaterializer rhsMaterializer(options);
 
   VPackSlice lhsSlice = lhsMaterializer.slice(lhs, false);
   VPackSlice rhsSlice = rhsMaterializer.slice(rhs, false);
