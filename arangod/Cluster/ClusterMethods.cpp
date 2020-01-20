@@ -2760,6 +2760,7 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
     m.second = *it2++;
   }
 
+
   LOG_TOPIC("a201e", DEBUG, Logger::BACKUP) << "DB server matches: " << match;
 
   return arangodb::Result();
