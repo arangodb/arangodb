@@ -9,7 +9,7 @@
 @RESTQUERYPARAM{global,boolean,optional}
 If set to *true*, adjusts the configuration of the global replication applier for all
 databases. If set to *false*, adjusts the configuration of the replication applier in the
-selected database.
+selected database (default).
 
 @RESTBODYPARAM{endpoint,string,required,string}
 the logger server to connect to (e.g. "tcp://192.168.173.13:8529"). The endpoint must be specified.

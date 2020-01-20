@@ -9,7 +9,7 @@
 @RESTQUERYPARAM{global,boolean,optional}
 If set to *true*, starts the global replication applier for all
 databases. If set to *false*, starts the replication applier in the
-selected database.
+selected database (default).
 
 @RESTQUERYPARAM{from,string,optional}
 The remote *lastLogTick* value from which to start applying. If not specified,

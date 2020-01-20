@@ -9,7 +9,7 @@
 @RESTQUERYPARAM{global,boolean,optional}
 If set to *true*, returns the state of the global replication applier for all
 databases. If set to *false*, returns the state of the replication applier in the
-selected database.
+selected database (default).
 
 @RESTDESCRIPTION
 Returns the state of the replication applier, regardless of whether the

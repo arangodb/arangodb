@@ -9,7 +9,7 @@
 @RESTQUERYPARAM{global,boolean,optional}
 If set to *true*, returns the configuration of the global replication applier for all
 databases. If set to *false*, returns the configuration of the replication applier in the
-selected database.
+selected database (default).
 
 @RESTDESCRIPTION
 Returns the configuration of the replication applier.
