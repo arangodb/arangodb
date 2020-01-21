@@ -276,7 +276,8 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
       "HTTP/1.1 101 Switching Protocols\r\nConnection: "
       "Upgrade\r\nUpgrade: h2c\r\n\r\n");
 
-  asio_ns::async_write(this->_protocol->socket, asio_ns::buffer(str->data(), str->size()),
+  auto buffer = asio_ns::buffer(str->data(), str->size());
+  asio_ns::async_write(this->_protocol->socket, buffer,
                        [self(this->shared_from_this()),
                         str(std::move(str)),
                         req(std::move(req))](const asio_ns::error_code& ec, std::size_t) mutable {
@@ -452,11 +453,19 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
        << "\",\"" << static_cast<int>(res->responseCode()) << "\","
        << Logger::FIXED(totalTime, 6);
   
-  // this uses fixed capacity queue, push might fail
+  auto* tmp = static_cast<HttpResponse*>(res.get());
+  // this uses fixed capacity queue, push might fail (it shouldn't though)
   int retries = 1024;
-  while (!_responses.push(static_cast<HttpResponse*>(res.get()))) {
+  while (ADB_UNLIKELY(!_responses.push(tmp))) {
     std::this_thread::yield();
     if (--retries == 0) {
+      // we are overloaded close stream
+      asio_ns::post(this->_protocol->context.io_context,
+                    [self(this->shared_from_this()), mid(res->messageId())] {
+        auto& me = static_cast<H2CommTask<T>&>(*self);
+        nghttp2_submit_rst_stream(me._session, NGHTTP2_FLAG_NONE,
+                                  static_cast<int32_t>(mid), NGHTTP2_INTERNAL_ERROR);
+      });
       return;
     }
   }
@@ -491,7 +500,6 @@ void H2CommTask<T>::queueHttp2Responses() {
                    status.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
 
     bool seenServerHeader = false;
-    // bool seenConnectionHeader = false;
     for (auto const& it : res.headers()) {
       std::string const& key = it.first;
       std::string const& val = it.second;
@@ -584,11 +592,15 @@ void H2CommTask<T>::doWrite() {
     return;
   }
   _writing = true;
+  
+  static constexpr size_t kMaxOutBufferLen = 32 * 1024 * 1024;
 
   queueHttp2Responses();
+  
+  _outbuffer.resetTo(0);
+  _outbuffer.reserve(16 * 1024);
 
   std::array<asio_ns::const_buffer, 2> outBuffers;
-
   size_t len = 0;
   while (true) {
     const uint8_t* data;
@@ -596,22 +608,23 @@ void H2CommTask<T>::doWrite() {
     if (rv < 0) {  // error
       this->close();
       return;
-    }
-    if (rv == 0) {  // done
+    } else if (rv == 0) {  // done
       break;
     }
 
     const size_t nread = static_cast<size_t>(rv);
     // if the data is long we just pass it to async_write
-    if (len + nread > _outbuffer.size()) {
+    if (len + nread > kMaxOutBufferLen) {
       outBuffers[1] = asio_ns::buffer(data, nread);
       break;
     }
-
-    std::copy_n(data, nread, std::begin(_outbuffer) + len);
+    
+    _outbuffer.reserve(nread); // reserves extra bytes
+    std::copy_n(data, nread, _outbuffer.data() + len);
     len += nread;
+    _outbuffer.advance(nread);
   }
-  outBuffers[0] = asio_ns::buffer(_outbuffer, len);
+  outBuffers[0] = asio_ns::buffer(_outbuffer.data(), len);
 
   if (asio_ns::buffer_size(outBuffers) == 0) {
     if (shouldStop()) {

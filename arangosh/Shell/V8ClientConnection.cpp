@@ -94,7 +94,6 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
 V8ClientConnection::~V8ClientConnection() {
   _builder.onFailure(nullptr);  // reset callback
   shutdownConnection();
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
   _loop.stop();
 }
 

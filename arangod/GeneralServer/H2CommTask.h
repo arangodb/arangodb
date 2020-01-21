@@ -77,8 +77,8 @@ class H2CommTask final : public GeneralCommTask<T> {
 
  private:
   // ongoing Http2 stream
-  struct Stream {
-    Stream(std::unique_ptr<HttpRequest> req) : request(std::move(req)) {}
+  struct Stream final {
+    explicit Stream(std::unique_ptr<HttpRequest> req) : request(std::move(req)) {}
     
     std::string origin;
 
@@ -110,8 +110,7 @@ class H2CommTask final : public GeneralCommTask<T> {
   void signalWrite();
 
  private:
-  static constexpr size_t kOutBufferLen = 64 * 1024 * 1024;
-  std::array<uint8_t, kOutBufferLen> _outbuffer;
+  velocypack::Buffer<uint8_t> _outbuffer;
 
   // no more than 64 streams allowed
   boost::lockfree::queue<HttpResponse*, boost::lockfree::capacity<64>> _responses;
