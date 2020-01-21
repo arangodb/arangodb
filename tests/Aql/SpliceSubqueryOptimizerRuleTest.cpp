@@ -641,6 +641,30 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_collect_after_s
   verifyQueryResult(queryString, expected->slice());
 }
 
+/*
+0)
+  test top-level collect inside subquery
+1)
+  ( ( ) )
+  COLLECT
+2)
+  ( ( ) )
+  ( ( COLLECT ) )
+3)
+  ( ( )
+  COLLECT
+  )
+4)
+  ( ( )
+    ( COLLECT )
+  )
+5)
+  ( ( ( ( ) )
+    ( ( COLLECT ) )
+  ) )
+
+*/
+
 // Disabled as long as the subquery implementation with shadow rows cannot yet handle skipping.
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, DISABLED_splice_subquery_with_limit_and_offset) {
   auto query = R"aql(
