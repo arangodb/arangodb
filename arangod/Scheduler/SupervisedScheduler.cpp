@@ -628,17 +628,7 @@ void SupervisedScheduler::startOneThread() {
     }
 
     // start a new thread
-
-    // wait for windows fix or implement operator new
-#if (_MSC_VER >= 1)
-#pragma warning(push)
-#pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
-#endif
     _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
-
     state = _workerStates.back();
   }
 
