@@ -32,6 +32,8 @@
 #include "utils/misc.hpp"
 #include "utils/std.hpp"
 
+#include "Basics/voc-errors.h"
+
 namespace {
 
 irs::parametric_description read_parametric_description(
@@ -73,6 +75,11 @@ irs::parametric_description const DESCRIPTIONS[] = {
   ),
 };
 
+size_t args2index(irs::byte_type distance,
+                  bool with_transpositions) noexcept {
+  return 2*size_t(distance) + size_t(with_transpositions);
+}
+
 }
 
 namespace arangodb {
@@ -81,7 +88,7 @@ namespace iresearch {
 const irs::parametric_description& compiled_pdp(
     irs::byte_type distance,
     bool with_transpositions) {
-  const size_t idx = 2*size_t(distance) + size_t(with_transpositions);
+  const size_t idx = args2index(distance, with_transpositions);
 
   if (idx < IRESEARCH_COUNTOF(DESCRIPTIONS)) {
     return DESCRIPTIONS[idx];
@@ -95,4 +102,3 @@ const irs::parametric_description& compiled_pdp(
 } // arangodb
 
 #endif // ARANGOD_IRESEARCH__IRESEARCH_PDP_H
-
