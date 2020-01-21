@@ -583,8 +583,9 @@ void epoll_reactor::interrupt()
   ev.events = EPOLLIN | EPOLLERR | EPOLLET;
   ev.data.ptr = &interrupter_;
   epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, interrupter_.read_descriptor(), &ev);
-#endif
+#else
   interrupter_.interrupt();
+#endif
 }
 
 int epoll_reactor::do_epoll_create()
