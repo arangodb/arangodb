@@ -44,8 +44,9 @@ using namespace arangodb::options;
 namespace {
 std::unordered_map<std::string, std::type_index> createEngineMap() {
   std::unordered_map<std::string, std::type_index> map;
+  // mmfiles engine not available for new installations in 3.7
   map.try_emplace(arangodb::MMFilesEngine::EngineName,
-              std::type_index(typeid(arangodb::MMFilesEngine)));
+                  std::type_index(typeid(arangodb::MMFilesEngine)));
   map.try_emplace(arangodb::RocksDBEngine::EngineName,
               std::type_index(typeid(arangodb::RocksDBEngine)));
   return map;
@@ -57,7 +58,9 @@ namespace arangodb {
 StorageEngine* EngineSelectorFeature::ENGINE = nullptr;
 
 EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "EngineSelector"), _engine("auto"), _selected(false) {
+    : ApplicationFeature(server, "EngineSelector"), 
+      _engine("auto"), 
+      _selected(false) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -67,7 +70,7 @@ EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationSe
 void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addOption("--server.storage-engine", "storage engine type",
+  options->addOption("--server.storage-engine", "storage engine type (the mmfiles engine is deprecated and can only be used for existing deployments)",
                      new DiscreteValuesParameter<StringParameter>(&_engine, availableEngineNames()));
 }
 
@@ -112,8 +115,18 @@ void EngineSelectorFeature::prepare() {
     }
   }
 
+  if (!ServerState::instance()->isCoordinator() &&
+      !basics::FileUtils::isRegularFile(_engineFilePath) && 
+      _engine == "mmfiles") {
+    LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
+        << "the MMFiles engine is deprecated and cannot be used for new deployments. "
+        << "please use the RocksDB storage engine for new deployments";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_engine == "auto") {
     _engine = defaultEngine();
+    TRI_ASSERT(_engine != "mmfiles");
   }
 
   TRI_ASSERT(_engine != "auto");

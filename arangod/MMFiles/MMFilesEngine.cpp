@@ -235,7 +235,7 @@ void MMFilesEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 void MMFilesEngine::prepare() {
   TRI_ASSERT(&(server().getFeature<EngineSelectorFeature>().engine()) == this);
 
-  LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
+  LOG_TOPIC("80866", ERR, arangodb::Logger::STARTUP)
       << "The MMFiles storage engine is deprecated starting with ArangoDB "
          "v3.6.0 and will be removed in a future version. "
       << "Please plan for a migration to the RocksDB engine.";
