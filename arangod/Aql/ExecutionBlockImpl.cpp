@@ -1369,7 +1369,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             if (shadowRow.isRelevant()) {
               // We found a relevant shadow Row.
               // We need to reset the Executor
-              // TODO: call reset!
+              // cppcheck-suppress unreadVariable
+              constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
+              InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
             }
             TRI_ASSERT(_outputItemRow->produced());
             _outputItemRow->advanceRow();

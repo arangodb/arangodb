@@ -485,9 +485,11 @@ class SharedExecutionBlockImplTest {
    * @param outputRegisters highest output register index. RegisterPlan::MaxRegisterId (default) describes there is no output. call is allowed to write any inputRegisters < register <= outputRegisters. Invariant inputRegisters <= outputRegisters
    * @return LambdaExecutorInfos Infos to build the Executor.
    */
-  LambdaSkipExecutorInfos makeSkipInfos(ProduceCall call, SkipCall skipCall,
-                                        RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
-                                        RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
+  LambdaSkipExecutorInfos makeSkipInfos(
+      ProduceCall call, SkipCall skipCall,
+      RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
+      RegisterId outputRegisters = RegisterPlan::MaxRegisterId,
+      ResetCall reset = []() -> void {}) {
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       EXPECT_LE(inputRegisters, outputRegisters);
     } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
@@ -516,7 +518,7 @@ class SharedExecutionBlockImplTest {
         (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
     return LambdaSkipExecutorInfos(readAble, writeAble, regsToRead, regsToWrite,
                                    {}, registersToKeep, std::move(call),
-                                   std::move(skipCall));
+                                   std::move(skipCall), std::move(reset));
   }
 
   /**
@@ -1191,8 +1193,10 @@ class ExecutionBlockImplExecuteIntegrationTest
     TRI_ASSERT(dependency != nullptr);
     TRI_ASSERT(data != nullptr);
     TRI_ASSERT(data->slice().isArray());
+
     // We make this a shared ptr just to make sure someone retains the data.
     auto iterator = std::make_shared<VPackArrayIterator>(data->slice());
+    auto resetCall = [iterator]() -> void { iterator->reset(); };
     auto writeData = [data, outReg, iterator](AqlItemBlockInputRange& inputRange,
                                               OutputAqlItemRow& output)
         -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
@@ -1247,10 +1251,10 @@ class ExecutionBlockImplExecuteIntegrationTest
       call.fullCount = false;
       return {inputRange.upstreamState(), skipped, call};
     };
-    auto infos = outReg == 0
-                     ? makeSkipInfos(std::move(writeData), skipData,
-                                     RegisterPlan::MaxRegisterId, outReg)
-                     : makeSkipInfos(std::move(writeData), skipData, outReg - 1, outReg);
+    auto infos = outReg == 0 ? makeSkipInfos(std::move(writeData), skipData,
+                                             RegisterPlan::MaxRegisterId, outReg, resetCall)
+                             : makeSkipInfos(std::move(writeData), skipData,
+                                             outReg - 1, outReg, resetCall);
     auto producer =
         std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->engine(),
                                                         generateNodeDummy(),
@@ -1413,6 +1417,21 @@ class ExecutionBlockImplExecuteIntegrationTest
     } else {
       EXPECT_EQ(limit, 0);
     }
+  }
+
+  /**
+   * @brief Test that there is a shadowrow at the given index of the given depth
+   *
+   * @param block The returned block
+   * @param rowIndex The row index to test
+   * @param depth The expected shadowRow depth
+   */
+  void ValidateShadowRow(SharedAqlItemBlockPtr block, size_t rowIndex, size_t depth) {
+    ASSERT_TRUE(block != nullptr);
+    EXPECT_TRUE(block->hasShadowRows());
+    ASSERT_TRUE(block->isShadowRow(rowIndex));
+    ShadowAqlItemRow row{block, rowIndex};
+    EXPECT_EQ(row.getDepth(), depth);
   }
 };
 
@@ -1852,67 +1871,224 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
   }
 }
 
+// Test a classical input ending in a relevant shadowRow
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  {
+    SharedAqlItemBlockPtr block =
+        buildBlock<0>(fakedQuery->engine()->itemBlockManager(), {{}, {}}, {{1, 0}});
+    blockDeque.push_back(std::move(block));
+  }
+  auto singleton = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    builder->openArray();
+    for (size_t i = 0; i < 999; ++i) {
+      builder->add(VPackValue(i));
+    }
+    builder->close();
+  }
+
+  RegisterId outReg = 0;
+  auto producer = produceBlock(singleton.get(), builder, outReg);
+
+  CallAsserter getAsserter{getCall()};
+  SkipCallAsserter skipAsserter{getCall()};
+  auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
+
+  auto const& call = getCall();
+  AqlCallStack stack{call};
+  if (doesWaiting()) {
+    auto const [state, skipped, block] = testee->execute(stack);
+    EXPECT_EQ(state, ExecutionState::WAITING);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+    getAsserter.reset();
+    skipAsserter.reset();
+  }
+  auto const [state, skipped, block] = testee->execute(stack);
+
+  if (std::holds_alternative<size_t>(call.softLimit) && !call.hasHardLimit()) {
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    // Do not append shadowRow on softLimit
+    ValidateResult(builder, skipped, block, outReg, 0);
+  } else {
+    EXPECT_EQ(state, ExecutionState::DONE);
+    // Forward to shadowRow on hardLimit
+    ValidateResult(builder, skipped, block, outReg, 1);
+    ASSERT_TRUE(block != nullptr);
+    ValidateShadowRow(block, block->size() - 1, 0);
+  }
+}
+
+// Test a classical input ending in a relevant shadowRow and a non-relevant shadow_row
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRow) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  {
+    SharedAqlItemBlockPtr block = buildBlock<0>(fakedQuery->engine()->itemBlockManager(),
+                                                {{}, {}, {}}, {{1, 0}, {2, 1}});
+    blockDeque.push_back(std::move(block));
+  }
+  auto singleton = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    builder->openArray();
+    for (size_t i = 0; i < 998; ++i) {
+      builder->add(VPackValue(i));
+    }
+    builder->close();
+  }
+
+  RegisterId outReg = 0;
+  auto producer = produceBlock(singleton.get(), builder, outReg);
+
+  CallAsserter getAsserter{getCall()};
+  SkipCallAsserter skipAsserter{getCall()};
+  auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
+
+  auto const& call = getCall();
+  AqlCallStack stack{call};
+  if (doesWaiting()) {
+    auto const [state, skipped, block] = testee->execute(stack);
+    EXPECT_EQ(state, ExecutionState::WAITING);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+    getAsserter.reset();
+    skipAsserter.reset();
+  }
+  auto const [state, skipped, block] = testee->execute(stack);
+
+  if (std::holds_alternative<size_t>(call.softLimit) && !call.hasHardLimit()) {
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    // Do not append shadowRow on softLimit
+    ValidateResult(builder, skipped, block, outReg, 0);
+  } else {
+    EXPECT_EQ(state, ExecutionState::DONE);
+    // Forward to shadowRow on hardLimit
+    ValidateResult(builder, skipped, block, outReg, 2);
+    ASSERT_TRUE(block != nullptr);
+    // Include both shadow rows
+    ValidateShadowRow(block, block->size() - 2, 0);
+    ValidateShadowRow(block, block->size() - 1, 1);
+  }
+}
+
+// Test multiple subqueries
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  {
+    // First subquery
+    SharedAqlItemBlockPtr block = buildBlock<1>(fakedQuery->engine()->itemBlockManager(),
+                                                {{1}, {3}, {4}}, {{1, 0}, {2, 1}});
+    blockDeque.push_back(std::move(block));
+  }
+  {
+    // Second subquery
+    SharedAqlItemBlockPtr block = buildBlock<1>(fakedQuery->engine()->itemBlockManager(),
+                                                {{2}, {5}, {6}}, {{1, 0}, {2, 1}});
+    blockDeque.push_back(std::move(block));
+  }
+  auto singleton = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+  size_t dataRowCount = 250;
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    builder->openArray();
+    for (size_t i = 0; i < dataRowCount; ++i) {
+      builder->add(VPackValue(i));
+    }
+    builder->close();
+  }
+
+  RegisterId outReg = 1;
+  auto producer = produceBlock(singleton.get(), builder, outReg);
+
+  CallAsserter getAsserter{getCall()};
+  SkipCallAsserter skipAsserter{getCall()};
+  auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
+  for (size_t subqueryRun = 1; subqueryRun < 3; ++subqueryRun) {
+    getAsserter.reset();
+    skipAsserter.reset();
+    auto subqueryData = std::make_shared<VPackBuilder>();
+    subqueryData->openArray();
+    for (size_t i = 0; i < dataRowCount; ++i) {
+      subqueryData->add(VPackValue(subqueryRun));
+    }
+    subqueryData->close();
+    auto const& call = getCall();
+    AqlCallStack stack{call};
+    if (doesWaiting()) {
+      auto const [state, skipped, block] = testee->execute(stack);
+      EXPECT_EQ(state, ExecutionState::WAITING);
+      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(block, nullptr);
+      getAsserter.reset();
+      skipAsserter.reset();
+    }
+    auto const [state, skipped, block] = testee->execute(stack);
+
+    if (std::holds_alternative<size_t>(call.softLimit) && !call.hasHardLimit()) {
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      // Do not append shadowRow on softLimit
+      ValidateResult(builder, skipped, block, outReg, 0);
+      ValidateResult(subqueryData, skipped, block, 0, 0);
+      if (subqueryRun == 1) {
+        getAsserter.reset();
+        skipAsserter.reset();
+        // Now trigger fast-forward to move to next subquery
+        AqlCall forwardCall{};
+        forwardCall.hardLimit = 0;
+        forwardCall.fullCount = false;
+        AqlCallStack forwardStack{forwardCall};
+        auto const [forwardState, forwardSkipped, forwardBlock] =
+            testee->execute(forwardStack);
+        // We do not care for any data left
+        EXPECT_EQ(forwardState, ExecutionState::HASMORE);
+        EXPECT_EQ(forwardSkipped, 0);
+        // However there need to be two shadow rows
+        ASSERT_NE(forwardBlock, nullptr);
+        ASSERT_EQ(forwardBlock->size(), 2);
+        ValidateShadowRow(forwardBlock, 0, 0);
+        ValidateShadowRow(forwardBlock, 1, 1);
+      }
+
+    } else {
+      if (subqueryRun == 1) {
+        // In the first run, we actually have more after fullCount
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+      } else {
+        // In the second run we do not have more after fullCount, we have returned everything
+        EXPECT_EQ(state, ExecutionState::DONE);
+      }
+
+      // Forward to shadowRow on hardLimit
+      ValidateResult(builder, skipped, block, outReg, 2);
+      ValidateResult(subqueryData, skipped, block, 0, 2);
+      ASSERT_NE(block, nullptr);
+      // Include both shadow rows
+      ValidateShadowRow(block, block->size() - 2, 0);
+      ValidateShadowRow(block, block->size() - 1, 1);
+    }
+  }
+}
+
 /* TODO
  * [] Test shadowRows
- *   [] ShadowRows at end of block forwarding
+ *   [x] ShadowRows at end of block forwarding
  *   [] ShadowRow BlockEnd ShadowRow higher depth
  *   [] ShadowRow BlockEnd ShadowRow equal depth
  *   [] Test in between waiting variant
  */
-
-/*
-// We simulate the situation within a subquery.
-// Everysubquery result fits into a single output block (including shadow rows).
-// So we assert that executors only return results of the subquery they are part of in one go.
-TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_simulate_subquery_execution) {
-  auto singleton = createSingleton();
-  auto subqueryBuilder = std::make_shared<VPackBuilder>();
-  subqueryBuilder->openArray();
-  for (size_t i = 0; i < 10; ++i) {
-    subqueryBuilder->add(VPackValue(i));
-  }
-  subqueryBuilder->close();
-  RegisterId subqueryReg = 0;
-  // We start with 10 times data
-  auto subqueryStarter = produceBlock(singleton.get(), subqueryBuilder, subqueryReg);
-
-  // We start 10 subqueries => (input, shadowRow)
-  auto shadowRowWriter = produceSubqueriesBlock(subqueryStarter.get());
-
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openArray();
-  for (size_t i = 0; i < 100; ++i) {
-    builder->add(VPackValue(i));
-  }
-  builder->close();
-  RegisterId outReg = 1;
-  // In each we write 100 dataRows => (10 input, shadowRow)
-  // Note 100 is important here as our tests have offset + hardLimit > 100
-  auto call = getCall();
-  ASSERT_GT(call.getOffset() + call.getLimit(), 100);
-  auto producer = produceBlock(subqueryStarter.get(), builder, outReg);
-
-  // To assert the calls, include a passthrough forwarder.
-  CallAsserter asserter{getCall()};
-  auto forwarder = forwardBlock(asserter, producer.get(), outReg);
-
-  // Now analyze
-  // We expect 9 identical runs of execute.
-  // Each ending with HASMORE on a shadowRow
-  // The tenth run ends with DONE on a shadowRow
-  for (size_t i = 0; i < 10; ++i) {
-    auto const& call = getCall();
-    AqlCallStack stack{call};
-    auto const [state, skipped, block] = forwarder->execute(stack);
-    if (i < 9) {
-      EXPECT_EQ(state, ExecutionState::HASMORE);
-    } else {
-      EXPECT_EQ(state, ExecutionState::DONE);
-    }
-    ValidateResult(builder, skipped, block, outReg, 1);
-  }
-}
-*/
 
 // The numbers here are random, but all of them are below 1000 which is the default batch size
 static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };

@@ -34,25 +34,30 @@ LambdaExecutorInfos::LambdaExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda)
+    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda, ResetCall reset)
     : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
-      _produceLambda(lambda) {}
+      _produceLambda(lambda),
+      _resetLambda(reset) {}
 
 auto LambdaExecutorInfos::getLambda() const -> ProduceCall const& {
   return _produceLambda;
 }
+
+auto LambdaExecutorInfos::reset() -> void { _resetLambda(); }
 
 LambdaSkipExecutorInfos::LambdaSkipExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda, SkipCall skipLambda)
+    std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
+    SkipCall skipLambda, ResetCall reset)
     : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
                     nrOutputRegisters, registersToClear, registersToKeep),
       _produceLambda(lambda),
-      _skipLambda(skipLambda) {}
+      _skipLambda(skipLambda),
+      _resetLambda(reset) {}
 
 auto LambdaSkipExecutorInfos::getLambda() const -> ProduceCall const& {
   return _produceLambda;
@@ -62,8 +67,11 @@ auto LambdaSkipExecutorInfos::getSkipLambda() const -> SkipCall const& {
   return _skipLambda;
 }
 
-TestLambdaExecutor::TestLambdaExecutor(Fetcher&, Infos& infos)
-    : _infos(infos) {}
+auto LambdaSkipExecutorInfos::reset() -> void { _resetLambda(); }
+
+TestLambdaExecutor::TestLambdaExecutor(Fetcher&, Infos& infos) : _infos(infos) {
+  _infos.reset();
+}
 
 TestLambdaExecutor::~TestLambdaExecutor() {}
 
@@ -85,7 +93,9 @@ auto TestLambdaExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIte
 }
 
 TestLambdaSkipExecutor::TestLambdaSkipExecutor(Fetcher&, Infos& infos)
-    : _infos(infos) {}
+    : _infos(infos) {
+  _infos.reset();
+}
 
 TestLambdaSkipExecutor::~TestLambdaSkipExecutor() {}
 
