@@ -432,12 +432,13 @@ void HeartbeatThread::runDBServer() {
     return true;
   };
 
+  
   _planAgencyCallback =
-      std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
-
+    std::make_shared<AgencyCallback>(_server, "Plan/Version", updatePlan, true, false);
+  
   _currentAgencyCallback =
-      std::make_shared<AgencyCallback>(_agency, "Current/Version", updateCurrent, true);
-
+    std::make_shared<AgencyCallback>(_server, "Current/Version", updateCurrent, true, false);
+  
   bool registered = false;
   while (!registered && !isStopping()) {
     registered = _agencyCallbackRegistry->registerCallback(_planAgencyCallback);
