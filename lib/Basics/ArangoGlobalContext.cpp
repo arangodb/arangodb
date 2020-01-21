@@ -169,7 +169,7 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const*
   // SetUnhandledExceptionFilter(unhandledExceptionHandler);
 #endif
 
-  TRIAGENS_REST_INITIALIZE();
+  arangodb::rest::InitializeRest();
   CONTEXT = this;
 }
 
@@ -180,7 +180,7 @@ ArangoGlobalContext::~ArangoGlobalContext() {
   signal(SIGHUP, SIG_IGN);
 #endif
 
-  TRIAGENS_REST_SHUTDOWN;
+  arangodb::rest::ShutdownRest();
   ADB_WindowsExitFunction(_ret, nullptr);
 }
 
@@ -192,100 +192,6 @@ int ArangoGlobalContext::exit(int ret) {
 void ArangoGlobalContext::installHup() {
 #ifndef _WIN32
   signal(SIGHUP, ReopenLog);
-#endif
-}
-
-void ArangoGlobalContext::runStartupChecks() {
-#ifdef __arm__
-  // detect alignment settings for ARM
-  {
-    LOG_TOPIC("6aec3", TRACE, arangodb::Logger::FIXME) << "running CPU alignment check";
-    // To change the alignment trap behavior, simply echo a number into
-    // /proc/cpu/alignment.  The number is made up from various bits:
-    //
-    // bit             behavior when set
-    // ---             -----------------
-    //
-    // 0               A user process performing an unaligned memory access
-    //                 will cause the kernel to print a message indicating
-    //                 process name, pid, pc, instruction, address, and the
-    //                 fault code.
-    //
-    // 1               The kernel will attempt to fix up the user process
-    //                 performing the unaligned access.  This is of course
-    //                 slow (think about the floating point emulator) and
-    //                 not recommended for production use.
-    //
-    // 2               The kernel will send a SIGBUS signal to the user process
-    //                 performing the unaligned access.
-    bool alignmentDetected = false;
-
-    std::string const filename("/proc/cpu/alignment");
-    try {
-      std::string const cpuAlignment = arangodb::basics::FileUtils::slurp(filename);
-      auto start = cpuAlignment.find("User faults:");
-
-      if (start != std::string::npos) {
-        start += strlen("User faults:");
-        size_t end = start;
-        while (end < cpuAlignment.size()) {
-          if (cpuAlignment[end] == ' ' || cpuAlignment[end] == '\t') {
-            ++end;
-          } else {
-            break;
-          }
-        }
-        while (end < cpuAlignment.size()) {
-          ++end;
-          if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
-            break;
-          }
-        }
-
-        int64_t alignment =
-            std::stol(std::string(cpuAlignment.c_str() + start, end - start));
-        if ((alignment & 2) == 0) {
-          LOG_TOPIC("f1bb9", FATAL, arangodb::Logger::FIXME)
-              << "possibly incompatible CPU alignment settings found in '" << filename
-              << "'. this may cause arangod to abort with "
-                 "SIGBUS. please set the value in '"
-              << filename << "' to 2";
-          FATAL_ERROR_EXIT();
-        }
-
-        alignmentDetected = true;
-      }
-
-    } catch (...) {
-      // ignore that we cannot detect the alignment
-      LOG_TOPIC("14b8a", TRACE, arangodb::Logger::FIXME)
-          << "unable to detect CPU alignment settings. could not process file '"
-          << filename << "'";
-    }
-
-    if (!alignmentDetected) {
-      LOG_TOPIC("b8a20", WARN, arangodb::Logger::FIXME)
-          << "unable to detect CPU alignment settings. could not process file '" << filename
-          << "'. this may cause arangod to abort with SIGBUS. it may be "
-             "necessary to set the value in '"
-          << filename << "' to 2";
-    }
-    std::string const proc_cpuinfo_filename("/proc/cpuinfo");
-    try {
-      std::string const cpuInfo = arangodb::basics::FileUtils::slurp(proc_cpuinfo_filename);
-      auto start = cpuInfo.find("ARMv6");
-
-      if (start != std::string::npos) {
-        LOG_TOPIC("0cfa9", FATAL, arangodb::Logger::FIXME)
-            << "possibly incompatible ARMv6 CPU detected.";
-        FATAL_ERROR_EXIT();
-      }
-    } catch (...) {
-      // ignore that we cannot detect the alignment
-      LOG_TOPIC("a8305", TRACE, arangodb::Logger::FIXME)
-          << "unable to detect CPU type '" << filename << "'";
-    }
-  }
 #endif
 }
 

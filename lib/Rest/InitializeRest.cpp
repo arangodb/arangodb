@@ -58,7 +58,6 @@ void ShutdownRest() {
   RandomGenerator::shutdown();
 
   TRI_ShutdownProcess();
-  TRI_ShutdownFiles();
 }
 }  // namespace rest
 }  // namespace arangodb

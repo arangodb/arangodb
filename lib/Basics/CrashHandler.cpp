@@ -64,7 +64,7 @@ void appendNullTerminatedString(char const* src, char*& dst) {
 /// assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
 /// (512 bytes should be more than enough)
-size_t buildLogMessage(char* s, int signal, int stackSize) {
+size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize) {
   // build a crash message
   char* p = s;
   appendNullTerminatedString("thread ", p);
@@ -95,10 +95,27 @@ size_t buildLogMessage(char* s, int signal, int stackSize) {
   appendNullTerminatedString(" (", p);
   appendNullTerminatedString(arangodb::signals::name(signal), p);
   appendNullTerminatedString(")", p);
+  
+  if (signal == SIGSEGV || signal == SIGBUS) {
+    // dump address that was accessed when the failure occurred (this is very likely
+    // a nullptr)
+    appendNullTerminatedString(" accessing address 0x", p);
+    char chars[] = "0123456789abcdef";
+    unsigned char const* x = reinterpret_cast<unsigned char const*>(info->si_addr);
+    unsigned char const* s = reinterpret_cast<unsigned char const*>(&x);
+    unsigned char const* e = s + sizeof(unsigned char const*);
+
+    while (--e >= s) {
+      unsigned char c = *e;
+      *p++ = chars[c >> 4U];
+      *p++ = chars[c & 0xfU];
+    }
+  }
+
   appendNullTerminatedString(". displaying ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(stackSize), p);
   
-  appendNullTerminatedString(" stack frame(s). use addr2line to resolve symbols!", p);
+  appendNullTerminatedString(" stack frame(s). use addr2line to resolve addresses!", p);
   
   return p - s;
 }
@@ -111,23 +128,30 @@ void crashHandler(int signal, siginfo_t* info, void*) {
   act.sa_handler = SIG_DFL;
   sigaction(signal, &act, nullptr);
   
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // prints a backtrace just in maintainer mode, and only if ARANGODB_ENABLE_BACKTRACE
+  // is defined. Will do nothing in production
   TRI_PrintBacktrace();
+#endif
 
   try {
-    // backtrace
+    // buffer for constructing temporary log messages (to avoid malloc as much as possible)
+    char buffer[512];
+    memset(&buffer[0], 0, sizeof(buffer));
+
+    // acquire backtrace
     static constexpr int maxFrames = 100;
     void* traces[maxFrames];
     int skipFrames = 2;
     int numFrames = backtrace(traces, maxFrames);
-
-    // buffer for constructing log messages (to avoid malloc as much as possible)
-    char buffer[512];
-    memset(&buffer[0], 0, sizeof(buffer));
-
-    size_t length = buildLogMessage(&buffer[0], signal, numFrames - skipFrames);
+    
+    char* p = &buffer[0];
+    size_t length = buildLogMessage(p, signal, info, numFrames - skipFrames);
+    // note: LOG_TOPIC() will allocate memory
     LOG_TOPIC("a7902", ERR, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
     arangodb::Logger::flush();
 
+    // note: backtrace_symbols() will allocate memory
     char** stack = backtrace_symbols(traces, numFrames); 
     if (stack != nullptr) {
       for (int i = skipFrames /* ignore first frames */; i < numFrames; ++i) {
@@ -153,7 +177,7 @@ void crashHandler(int signal, siginfo_t* info, void*) {
 #ifdef _WIN32
   exit(255 + signal);
 #else
-  // resend signal to ourselves to invoke default action for the signal
+  // resend signal to ourselves to invoke default action for the signal (e.g. coredump)
   ::kill(::getpid(), signal);
 #endif
 }
@@ -164,7 +188,7 @@ namespace arangodb {
 
 void CrashHandler::installCrashHandler() {
 #ifndef _WIN32
-  // install signal handler
+  // install signal handlers
   struct sigaction act;
   sigemptyset(&act.sa_mask);
   act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO;
