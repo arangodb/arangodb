@@ -85,6 +85,7 @@
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -503,6 +504,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
+
+  _handlerFactory->addHandler("/_admin/system-report",
+                              RestHandlerCreator<RestSystemReportHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler("/_admin/job",
                                     RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
