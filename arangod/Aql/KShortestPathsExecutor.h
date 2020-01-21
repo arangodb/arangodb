@@ -85,38 +85,38 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
   KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
   ~KShortestPathsExecutorInfos();
 
-  arangodb::graph::KShortestPathsFinder& finder() const;
+  [[nodiscard]] auto finder() const -> arangodb::graph::KShortestPathsFinder&;
 
   /**
    * @brief test if we use a register or a constant input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  bool useRegisterForInput(bool isTarget) const;
+  [[nodiscard]] auto useRegisterForInput(bool isTarget) const -> bool;
 
   /**
    * @brief get the register used for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  RegisterId getInputRegister(bool isTarget) const;
+  [[nodiscard]] auto getInputRegister(bool isTarget) const -> RegisterId;
 
   /**
    * @brief get the const value for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  std::string const& getInputValue(bool isTarget) const;
+  [[nodiscard]] auto getInputValue(bool isTarget) const -> std::string const&;
 
   /**
    * @brief get the output register for the given type
    */
-  RegisterId getOutputRegister() const;
+  [[nodiscard]] auto getOutputRegister() const -> RegisterId;
 
-  graph::TraverserCache* cache() const;
+  [[nodiscard]] auto cache() const -> graph::TraverserCache*;
 
-  InputVertex getSourceVertex() const noexcept;
-  InputVertex getTargetVertex() const noexcept;
+  [[nodiscard]] auto getSourceVertex() const noexcept -> InputVertex;
+  [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
 
  private:
   /// @brief the shortest path finder.
@@ -156,17 +156,19 @@ class KShortestPathsExecutor {
    *
    * @return ExecutionState and no error.
    */
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
+  [[nodiscard]] auto shutdown(int errorCode) -> std::pair<ExecutionState, Result>;
 
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
-                                                        AqlItemBlockInputRange& input,
-                                                        OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
+      -> std::pair<ExecutionState, Stats>;
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
 
  private:
   /**
@@ -174,24 +176,17 @@ class KShortestPathsExecutor {
    *
    * @return false if we are done and no path could be found.
    */
-  bool fetchPaths();
-  bool fetchPaths(AqlItemBlockInputRange& input);
-
-  /**
-   * @brief compute the correct return state
-   *
-   * @return DONE if no more is expected
-   */
-
-  ExecutionState computeState() const;
+  [[nodiscard]] auto fetchPaths(AqlItemBlockInputRange& input)
+      -> std::pair<bool, ExecutorState>;
+  auto doOutputPath(OutputAqlItemRow& output) -> void;
 
   /**
    * @brief get the id of a input vertex
    */
-  bool getVertexId(bool isTarget, arangodb::velocypack::Slice& id);
+  [[nodiscard]] auto getVertexId(bool isTarget, arangodb::velocypack::Slice& id) -> bool;
 
-  bool getVertexId(KShortestPathsExecutorInfos::InputVertex const& vertex,
-                   InputAqlItemRow& row, Builder& builder, Slice& id);
+  [[nodiscard]] auto getVertexId(KShortestPathsExecutorInfos::InputVertex const& vertex,
+                                 InputAqlItemRow& row, Builder& builder, Slice& id) -> bool;
 
  private:
   Infos& _infos;

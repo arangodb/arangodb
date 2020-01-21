@@ -230,6 +230,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   bool getNextPathShortestPathResult(ShortestPathResult& path);
   // get the next available path as a Path
   bool getNextPath(Path& path);
+  virtual bool skipPath();
   virtual bool isPathAvailable() const { return _pathAvailable; }
 
  private:

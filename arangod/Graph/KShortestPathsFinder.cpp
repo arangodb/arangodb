@@ -39,6 +39,8 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
@@ -419,4 +421,10 @@ bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result)
   } else {
     return false;
   }
+}
+
+bool KShortestPathsFinder::skipPath() {
+  LOG_DEVEL << "skip in finder";
+  Path path;
+  return getNextPath(path);
 }
