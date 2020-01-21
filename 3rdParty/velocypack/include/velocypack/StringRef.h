@@ -101,7 +101,7 @@ class StringRef {
   StringRef& operator=(Slice slice);
   
   StringRef substr(size_t pos = 0, size_t count = std::string::npos) const {
-    if (pos >= _length) {
+    if (pos > _length) {
       throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
     }
     if (count == std::string::npos || (count + pos >= _length)) {

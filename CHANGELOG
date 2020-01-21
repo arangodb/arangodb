@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fix spurios "substr index out of bounds" VelocyPack errors when accessing a
+  full substring.
+
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
   while.
 
