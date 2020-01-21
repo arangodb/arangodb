@@ -37,7 +37,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer& server,
+RestAdminLogHandler::RestAdminLogHandler(arangodb::application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
