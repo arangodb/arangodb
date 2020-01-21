@@ -635,7 +635,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
                                 -static_cast<int64_t>(numDocs));
     
     {
-      READ_LOCKER(guard, _indexesLock);
+      READ_LOCKER(idxGuard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
         idx->afterTruncate(seq);  // clears caches / clears links (if applicable)
       }

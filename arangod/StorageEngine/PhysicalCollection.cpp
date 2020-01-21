@@ -420,8 +420,8 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getStringUnchecked(l);
-      revisionId = TRI_StringToRid(p, l, false);
+      char const* str = s.getStringUnchecked(l);
+      revisionId = TRI_StringToRid(str, l, false);
       handled = true;
     }
   }

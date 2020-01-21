@@ -24,6 +24,7 @@
 #include "Node.h"
 #include "Store.h"
 
+#include "AgencyStrings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -304,7 +305,7 @@ NodeType Node::type() const {
 
 
 bool Node::lifetimeExpired() const {
-  using clock = std::chrono::system_clock; 
+  using clock = std::chrono::system_clock;
   return _ttl != clock::time_point() && _ttl < clock::now();
 }
 
@@ -696,13 +697,165 @@ ResultT<std::shared_ptr<Node>> Node::handle<SHIFT>(VPackSlice const& slice) {
   return ResultT<std::shared_ptr<Node>>::success(nullptr);
 }
 
+template<>
+ResultT<std::shared_ptr<Node>> Node::handle<READ_LOCK>(VPackSlice const& slice) {
+  Slice user = slice.get("by");
+  if (!user.isString()) {
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Invalid read lock: ") + slice.toJson());
+  }
+
+  if (isReadLockable(user.stringRef())) {
+    Builder newValue;
+    {
+      VPackArrayBuilder arr(&newValue);
+      if (this->slice().isArray()) {
+        newValue.add(VPackArrayIterator(this->slice()));
+      }
+      newValue.add(user);
+    }
+    this->operator=(newValue.slice());
+    return ResultT<std::shared_ptr<Node>>::success(nullptr);
+  }
+
+  return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_LOCKED);
+}
+
+template <>
+ResultT<std::shared_ptr<Node>> Node::handle<READ_UNLOCK>(VPackSlice const& slice) {
+  Slice user = slice.get("by");
+  if (!user.isString()) {
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Invalid read unlock: ") + slice.toJson());
+  }
+
+  if (isReadUnlockable(user.stringRef())) {
+    Builder newValue;
+    {
+      // isReadUnlockable ensured that `this->slice()` is always an array of strings
+      VPackArrayBuilder arr(&newValue);
+      for (auto const& i : VPackArrayIterator(this->slice())) {
+        if (!i.isEqualString(user.stringRef())) {
+          newValue.add(i);
+        }
+      }
+    }
+    Slice newValueSlice = newValue.slice();
+    if (newValueSlice.length() == 0) {
+      return deleteMe();
+    } else {
+      this->operator=(newValue.slice());
+    }
+    return ResultT<std::shared_ptr<Node>>::success(nullptr);
+  }
+
+  return ResultT<std::shared_ptr<Node>>::error(
+    TRI_ERROR_FAILED, "Read unlock failed");
+
+}
+
+template<>
+ResultT<std::shared_ptr<Node>> Node::handle<WRITE_LOCK>(VPackSlice const& slice) {
+  Slice user = slice.get("by");
+  if (!user.isString()) {
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
+  }
+
+  if (isWriteLockable(user.stringRef())) {
+    this->operator=(user);
+    return ResultT<std::shared_ptr<Node>>::success(nullptr);
+  }
+  return ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_LOCKED);
+
+}
+
+template<>
+ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slice) {
+  Slice user = slice.get("by");
+  if (!user.isString()) {
+    return ResultT<std::shared_ptr<Node>>::error(
+      TRI_ERROR_FAILED, std::string("Invalid write unlock: ") + slice.toJson());
+  }
+
+  if (isWriteUnlockable(user.stringRef())) {
+    return deleteMe();
+  }
+
+  return ResultT<std::shared_ptr<Node>>::error(
+    TRI_ERROR_FAILED, "Write unlock failed");
+}
+
+bool Node::isReadLockable(const VPackStringRef& by) const {
+  if (!_children.empty()) {
+    return false;
+  }
+  Slice slice = this->slice();
+  // the following states are counted as readLockable
+  // array - when read locked or read lock released
+  // empty object - when the node is created
+  if (slice.isArray()) {
+    // check if `by` is not in the array
+    for (auto const& i : VPackArrayIterator(slice)) {
+      if (!i.isString() || i.isEqualString(VPackStringRef(by.data(), by.length()))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return slice.isEmptyObject();
+}
+
+bool Node::isReadUnlockable(const VPackStringRef& by) const {
+  if (!_children.empty()) {
+    return false;
+  }
+  Slice slice = this->slice();
+  // the following states are counted as readUnlockable
+  // array of strings containing the value `by`
+  if (slice.isArray()) {
+    bool valid = false;
+    for (auto const& i : VPackArrayIterator(slice)) {
+      if (!i.isString()) {
+        valid = false;
+        break;
+      }
+      if (i.isEqualString(VPackStringRef(by.data(), by.length()))) {
+        valid = true;
+      }
+    }
+    return valid;
+  }
+  return false;
+}
+
+bool Node::isWriteLockable(const VPackStringRef& by) const {
+  if (!_children.empty()) {
+    return false;
+  }
+  Slice slice = this->slice();
+  // the following states are counted as writeLockable
+  //  empty object - when the node is create
+  return slice.isEmptyObject();
+}
+
+bool Node::isWriteUnlockable(const VPackStringRef& by) const {
+  if (!_children.empty()) {
+    return false;
+  }
+  Slice slice = this->slice();
+  // the following states are counted as writeLockable
+  //  string - when write lock was obtained
+  return slice.isString() && slice.isEqualString(VPackStringRef(by.data(), by.length()));
+}
 
 }  // namespace consensus
 }  // namespace arangodb
 
 arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) {
   std::string oper = slice.get("op").copyString();
-  
+
   if (oper == "delete") {
     return deleteMe();
   } else if (oper == "set") {  // "op":"set"
@@ -723,7 +876,15 @@ arangodb::ResultT<std::shared_ptr<Node>> Node::applyOp(VPackSlice const& slice) 
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"
     return handle<REPLACE>(slice);
-  } 
+  } else if (oper == OP_READ_LOCK) {
+    return handle<READ_LOCK>(slice);
+  } else if (oper == OP_READ_UNLOCK) {
+    return handle<READ_UNLOCK>(slice);
+  } else if (oper == OP_WRITE_LOCK) {
+    return handle<WRITE_LOCK>(slice);
+  } else if (oper == OP_WRITE_UNLOCK) {
+    return handle<WRITE_UNLOCK>(slice);
+  }
 
   return ResultT<std::shared_ptr<Node>>::error(
     TRI_ERROR_FAILED,
@@ -912,8 +1073,6 @@ std::pair<Node const&, bool> Node::hasAsNode(std::string const& url) const {
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC("3e591", DEBUG, Logger::SUPERVISION)
-        << "hasAsNode had exception processing " << url;
   }  // catch
 
   return fail_pair;
@@ -930,8 +1089,6 @@ std::pair<Node&, bool> Node::hasAsWritableNode(std::string const& url) {
     return good_pair;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC("027ed", DEBUG, Logger::SUPERVISION)
-        << "hasAsWritableNode had exception processing " << url;
   }  // catch
 
   return fail_pair;
@@ -947,8 +1104,6 @@ std::pair<NodeType, bool> Node::hasAsType(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, fail_pair second already false
-    LOG_TOPIC("7f66c", DEBUG, Logger::SUPERVISION)
-        << "hasAsType had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -965,8 +1120,6 @@ std::pair<Slice, bool> Node::hasAsSlice(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("16f3d", TRACE, Logger::SUPERVISION)
-        << "hasAsSlice had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -984,8 +1137,6 @@ std::pair<uint64_t, bool> Node::hasAsUInt(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("eaa6b", DEBUG, Logger::SUPERVISION)
-        << "hasAsUInt had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1003,8 +1154,6 @@ std::pair<bool, bool> Node::hasAsBool(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("99238", DEBUG, Logger::SUPERVISION)
-        << "hasAsBool had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1024,8 +1173,6 @@ std::pair<std::string, bool> Node::hasAsString(std::string const& url) const {
     }
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("fd020", DEBUG, Logger::SUPERVISION)
-        << "hasAsString had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1038,8 +1185,6 @@ std::pair<Node::Children const&, bool> Node::hasAsChildren(std::string const& ur
     Node const& target(operator()(url));
     return std::pair<Children const&, bool> {target.children(), true};
   } catch (...) {
-    LOG_TOPIC("4e3cb", DEBUG, Logger::SUPERVISION)
-        << "hasAsChildren had exception processing " << url;
   }  // catch
 
   return std::pair<Children const&, bool> {dummyChildren, false};
@@ -1057,8 +1202,6 @@ std::pair<void*, bool> Node::hasAsBuilder(std::string const& url, Builder& build
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("fb685", DEBUG, Logger::SUPERVISION)
-        << "hasAsBuilder(1) had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1076,8 +1219,6 @@ std::pair<Builder, bool> Node::hasAsBuilder(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("68a75", DEBUG, Logger::SUPERVISION)
-        << "hasAsBuilder(2) had exception processing " << url;
   }  // catch
 
   return ret_pair;
@@ -1094,8 +1235,6 @@ std::pair<Slice, bool> Node::hasAsArray(std::string const& url) const {
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC("0a72b", DEBUG, Logger::SUPERVISION)
-        << "hasAsArray had exception processing " << url;
   }  // catch
 
   return ret_pair;
