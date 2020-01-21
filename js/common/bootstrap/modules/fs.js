@@ -202,7 +202,7 @@ global.DEFINE_MODULE('fs', (function () {
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.FS_GET_TEMP_PATH) {
-    exports.getTempPath = () => { return '/mnt/scratch/work/tmp'; };//global.FS_GET_TEMP_PATH;
+    exports.getTempPath = global.FS_GET_TEMP_PATH;
     delete global.FS_GET_TEMP_PATH;
   }
 
