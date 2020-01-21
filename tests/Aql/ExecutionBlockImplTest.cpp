@@ -1627,6 +1627,9 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   ValidateResult(builder, skipped, block, outReg);
 }
 
+// Simulate many upstream calls, the block upstream only returns a single line.
+// This test forces the executor into internal loops and into keeping internal
+// state due to doesWaiting variant
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_multiple_upstream_calls) {
   // The WAITING block mock can only stop returning after a full block.
   // As the used calls have "random" sizes, we simply create 1 line blocks only.
@@ -1677,6 +1680,9 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, DISABLED_test_multiple_upstream
   ValidateResult(builder, skipped, block, outReg);
 }
 
+// Simulate many upstream calls, the block upstream only returns a single line.
+// This test forces the executor into internal loops and into keeping internal
+// state due to doesWaiting variant. Using a passthrough executor.
 TEST_P(ExecutionBlockImplExecuteIntegrationTest,
        DISABLED_test_multiple_upstream_calls_passthrough) {
   // The WAITING block mock can only stop returning after a full block.
@@ -1782,12 +1788,76 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest,
   }
 }
 
+// Test to simulate an empty Subquery
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  VPackBuilder builder;
+  builder.openArray();
+  for (size_t i = 0; i < 3; ++i) {
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), {{i}}, {{0, 0}});
+    blockDeque.push_back(std::move(block));
+    builder.add(VPackValue(0));
+  }
+  builder.close();
+
+  // We have 3 consecutive shadowRows of Depth 0
+  auto producer = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  RegisterId outReg = 0;
+  // We ask:
+  // Empty input
+  // On waiting: Empty Input
+  // input with shadow row only
+  size_t maxCalls = doesWaiting() ? 9 : 6;
+  NoneAsserter getAsserter{getCall(), maxCalls};
+  NoneAsserter skipAsserter{getCall(), maxCalls};
+  auto testee = forwardBlock(getAsserter, skipAsserter, producer.get(), outReg);
+
+  for (size_t i = 0; i < 3; ++i) {
+    // We always take a new call. We do not want the call to be modified cross
+    // subqueries, this would not be done by Executors.
+    auto const& call = getCall();
+    AqlCallStack stack{call};
+    // We cannot group shadowRows within a single call.
+    // So we end up with 3 results, each 1 shadowRow, no matter what the call is
+    auto [state, skipped, block] = testee->execute(stack);
+    if (doesWaiting()) {
+      // We wait between lines
+      EXPECT_EQ(state, ExecutionState::WAITING);
+      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(block, nullptr);
+      std::tie(state, skipped, block) = testee->execute(stack);
+    }
+    if (i == 2) {
+      // Only the last one is done
+      EXPECT_EQ(state, ExecutionState::DONE);
+    } else {
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+    }
+    // Cannot skip a shadowRow
+    EXPECT_EQ(skipped, 0);
+    ASSERT_NE(block, nullptr);
+    ASSERT_EQ(block->size(), 1);
+    EXPECT_TRUE(block->hasShadowRows());
+    EXPECT_TRUE(block->isShadowRow(0));
+    auto rowIndex = block->getShadowRowDepth(0);
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(rowIndex.slice(),
+                                                builder.slice().at(i), false))
+        << "Expected: " << builder.slice().at(i).toJson()
+        << " got: " << rowIndex.slice().toJson();
+  }
+}
+
 /* TODO
- * [] Test in between waiting variant
  * [] Test shadowRows
  *   [] ShadowRows at end of block forwarding
  *   [] ShadowRow BlockEnd ShadowRow higher depth
  *   [] ShadowRow BlockEnd ShadowRow equal depth
+ *   [] Test in between waiting variant
  */
 
 /*
