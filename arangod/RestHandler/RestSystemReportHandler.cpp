@@ -63,6 +63,7 @@ RestSystemReportHandler::RestSystemReportHandler(
       {"top", "time top -b -n 1 2>&1"}
     }) {}
 
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
 namespace {
 std::string exec(std::string const& cmd) {
   std::array<char, 128> buffer;
@@ -77,6 +78,7 @@ std::string exec(std::string const& cmd) {
   return result;
 }
 }
+#endif
 
 bool RestSystemReportHandler::isAdminUser() const {
   if (!ExecContext::isAuthEnabled()) {
