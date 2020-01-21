@@ -267,8 +267,14 @@ class KShortestPathsExecutorTest
 
     auto const [skipState, skipped, resultSkipCall] = testee.skipRowsRange(input, skipCall);
 
+    // TODO: Do we want to assert more here?
+    EXPECT_TRUE(skipState == ExecutorState::HASMORE || skipState == ExecutorState::DONE);
+
     auto const [produceState, stats, resultProduceCall] =
         testee.produceRows(input, output);
+
+    // TODO: should we make a way to assert the state?
+    EXPECT_TRUE(produceState == ExecutorState::HASMORE || produceState == ExecutorState::DONE);
 
     ValidateResult(output, skipped);
   }
