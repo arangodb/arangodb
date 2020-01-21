@@ -636,7 +636,7 @@
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
 #define TRI_lseek_t off_t
-#define TRI_read_t size_t
+#define TRI_read_t ssize_t
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
