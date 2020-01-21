@@ -59,6 +59,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "IResearch/IResearchPDP.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "Ssl/SslInterface.h"
@@ -73,7 +74,6 @@
 #include "VocBase/LogicalCollection.h"
 
 #include "utils/levenshtein_utils.hpp"
-#include "utils/levenshtein_default_pdp.hpp"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -1612,7 +1612,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
 
   size_t const unsignedMaxDistanceValue = static_cast<size_t>(maxDistanceValue);
 
-  auto& description = irs::default_pdp(
+  auto& description = arangodb::iresearch::compiled_pdp(
     static_cast<irs::byte_type>(unsignedMaxDistanceValue),
     withTranspositionsValue);
 

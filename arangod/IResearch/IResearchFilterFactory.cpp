@@ -51,6 +51,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchKludge.h"
+#include "IResearch/IResearchPDP.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/Methods.h"
@@ -2507,6 +2508,7 @@ arangodb::Result fromFuncLevenshteinMatch(
     levenshtein_filter.boost(filterCtx.boost);
     levenshtein_filter.max_distance(irs::byte_type(maxDistance));
     levenshtein_filter.with_transpositions(withTranspositions);
+    levenshtein_filter.provider(&arangodb::iresearch::compiled_pdp);
   }
 
   return {};

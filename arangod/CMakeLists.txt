@@ -70,6 +70,7 @@ add_library(arango_iresearch
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
+  IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
   IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
