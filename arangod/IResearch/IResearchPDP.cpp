@@ -35,7 +35,10 @@
 namespace {
 
 irs::parametric_description read_parametric_description(
-    size_t rawSize, std::initializer_list<irs::byte_type> data) {
+    std::pair<std::initializer_list<irs::byte_type>, size_t> args) {
+  auto const rawSize = args.second;
+  const auto& data = args.first;
+
   if (data.size() >= LZ4_MAX_INPUT_SIZE
       || rawSize >= irs::integer_traits<int>::const_max) {
     return {};
@@ -63,16 +66,9 @@ irs::parametric_description const DESCRIPTIONS[] = {
   irs::make_parametric_description(1, true),
   irs::make_parametric_description(2, false),
   irs::make_parametric_description(2, true),
+  irs::make_parametric_description(3, false),
+  irs::make_parametric_description(3, true),
   read_parametric_description(
-    58001,
-    #include "PD30"
-  ),
-  read_parametric_description(
-    251219,
-    #include "PD31"
-  ),
-  read_parametric_description(
-    1774873,
     #include "PD40"
   ),
 };
