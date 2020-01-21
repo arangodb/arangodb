@@ -1721,7 +1721,9 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
     _deadlockDetector(false),
     _userStructures(nullptr) {
 
-  QueryRegistryFeature& feature = info.server().getFeature<QueryRegistryFeature>();
+  TRI_ASSERT(_info.valid());
+
+  QueryRegistryFeature& feature = _info.server().getFeature<QueryRegistryFeature>();
   _queries.reset(new arangodb::aql::QueryList(feature, this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
@@ -1733,7 +1735,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
   TRI_CreateUserStructuresVocBase(this);
 }
-
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
