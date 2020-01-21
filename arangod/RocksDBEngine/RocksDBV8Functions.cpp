@@ -200,6 +200,25 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  auto* physical = toRocksDBCollection(*collection);
+  VPackBuilder builder;
+  physical->revisionTreeSummary(builder);
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 void RocksDBV8Functions::registerResources() {
   ISOLATE;
   v8::HandleScope scope(isolate);
@@ -218,6 +237,9 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
                        JS_EstimateCollectionSize);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_revisionTreeSummary"),
+                       JS_CollectionRevisionTreeSummary);
 
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate,

@@ -325,10 +325,10 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
 
   // Step 4. store the revision tree
   {
-    LOG_DEVEL << "STORE REVISION TREE FOR '" << coll.id() << "'";
     rcoll->applyUpdates(maxCommitSeq);
     auto& tree = rcoll->revisionTree();
     output = tree.serialize();
+    rocksutils::uint64ToPersistent(output, maxCommitSeq);
 
     key.constructRevisionTreeValue(rcoll->objectId());
     rocksdb::Slice value(output);
@@ -432,7 +432,6 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
 
   // Step 4. load the revision tree
   {
-    LOG_DEVEL << "LOAD REVISION TREE FOR '" << coll.id() << "'";
     key.constructRevisionTreeValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
     if (!s.ok() && !s.IsNotFound()) {
@@ -442,9 +441,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
           << "no revision tree found for collection with id '" << coll.id() << "'";
     } else {
       auto tree = containers::RevisionTree::fromBuffer(
-          std::string_view(value.data(), value.size()));
+          std::string_view(value.data(), value.size() - sizeof(uint64_t)));
       if (tree) {
-        rcoll->setRevisionTree(std::move(tree));
+        uint64_t seq = rocksutils::uint64FromPersistent(
+            value.data() + value.size() - sizeof(uint64_t));
+        rcoll->setRevisionTree(std::move(tree), seq);
       } else {
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "

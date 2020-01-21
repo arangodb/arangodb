@@ -130,6 +130,12 @@ class MerkleTree {
   std::size_t count() const;
 
   /**
+   * @brief Returns the hash of all values in the tree, equivalently the root
+   *        value
+   */
+  std::size_t rootValue() const;
+
+  /**
    * @brief Returns the current range of the tree
    */
   std::pair<std::size_t, std::size_t> range() const;

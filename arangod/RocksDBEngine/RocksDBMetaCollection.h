@@ -79,10 +79,12 @@ class RocksDBMetaCollection : public PhysicalCollection {
   /// estimate size of collection and indexes
   void estimateSize(velocypack::Builder& builder);
 
-  void setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree);
+  void setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree, uint64_t seq);
   containers::RevisionTree& revisionTree();
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
+
+  void revisionTreeSummary(VPackBuilder& builder);
 
   void placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) override;
   void removeRevisionTreeBlocker(TRI_voc_tid_t transactionId) override;
@@ -126,6 +128,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   /// @revision tree management for replication
   containers::RevisionTree _revisionTree;
+  rocksdb::SequenceNumber _revisionTreeApplied;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionInsertBuffers;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;

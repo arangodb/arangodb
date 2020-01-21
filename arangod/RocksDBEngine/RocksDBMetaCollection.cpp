@@ -323,8 +323,10 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   builder.close();
 }
 
-void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree) {
+void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree,
+                                            uint64_t seq) {
   _revisionTree = std::move(tree);
+  _revisionTreeApplied = seq;
 }
 
 containers::RevisionTree& RocksDBMetaCollection::revisionTree() {
@@ -402,6 +404,13 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   return tree;
 }
 
+void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
+  std::unique_lock guard(_revisionBufferLock);
+  VPackObjectBuilder obj(&builder);
+  obj->add("count", VPackValue(_revisionTree.count()));
+  obj->add("hash", VPackValue(_revisionTree.rootValue()));
+}
+
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
@@ -417,6 +426,9 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
                                           std::vector<std::size_t>&& removals) {
   TRI_ASSERT(!inserts.empty() || !removals.empty());
   std::unique_lock guard(_revisionBufferLock);
+  if (_revisionTreeApplied > seq) {
+    return;
+  }
   if (!inserts.empty()) {
     _revisionInsertBuffers.emplace(seq, std::move(inserts));
   }
@@ -428,6 +440,9 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
 Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
   Result res = basics::catchVoidToResult([&]() -> void {
     std::unique_lock guard(_revisionBufferLock);
+    if (_revisionTreeApplied > seq) {
+      return;
+    }
     _revisionTruncateBuffer.emplace(seq);
   });
   return res;
@@ -510,6 +525,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
       }
     }  // </while(true)>
   });
+  _revisionTreeApplied = appliedSeq;
   return appliedSeq;
 }
 

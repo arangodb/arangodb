@@ -249,6 +249,13 @@ std::size_t MerkleTree<BranchingBits, LockStripes>::count() const {
 }
 
 template <std::size_t const BranchingBits, std::size_t const LockStripes>
+std::size_t MerkleTree<BranchingBits, LockStripes>::rootValue() const {
+  std::shared_lock<std::shared_mutex> guard(_bufferLock);
+  std::unique_lock<std::mutex> lock(this->lock(0));
+  return node(0).hash;
+}
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
 std::pair<std::size_t, std::size_t> MerkleTree<BranchingBits, LockStripes>::range() const {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   return {meta().rangeMin, meta().rangeMax};
