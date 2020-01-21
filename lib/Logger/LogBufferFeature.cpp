@@ -63,7 +63,7 @@ class LogAppenderRingBuffer final : public LogAppender {
   }
 
  public:
-  void logMessage(LogMessage const& message) {
+  void logMessage(LogMessage const& message) override {
     auto timestamp = time(nullptr);
 
     MUTEX_LOCKER(guard, _lock);
