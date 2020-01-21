@@ -108,6 +108,8 @@ RestStatus RestSystemReportHandler::execute() {
   VPackBuilder result;
   { VPackObjectBuilder o(&result);
 
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+
     while (true) {
 
       if (steady_clock::now() - start > seconds(60)) {
@@ -141,7 +143,14 @@ RestStatus RestSystemReportHandler::execute() {
 
     }
 
+#else
+
+    result.add("result", VPackValue("not supported on POSIX uncompliant systems"));
+    
+#endif
+
   } // result
+  
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
