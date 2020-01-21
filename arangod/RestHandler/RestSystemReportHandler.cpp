@@ -88,8 +88,7 @@ bool RestSystemReportHandler::isAdminUser() const {
 
 RestStatus RestSystemReportHandler::execute() {
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -115,12 +114,12 @@ RestStatus RestSystemReportHandler::execute() {
         return RestStatus::DONE;
       }
 
-      if (!server.isStopping()) {
+      if (!server().isStopping()) {
         // Allow only one simultaneous call
         std::unique_lock<std::mutex> exclusive(_exclusive, std::defer_lock);
         if (exclusive.try_lock()) {
           for (auto const& cmd : cmds) {
-            if(server.isStopping()) {
+            if(server().isStopping()) {
               generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
               return RestStatus::DONE;
             }
