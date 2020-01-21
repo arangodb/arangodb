@@ -27,28 +27,12 @@
 #include "index/index_reader.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
+#include "utils/levenshtein_default_pdp.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/std.hpp"
 
 NS_ROOT
-
-const irs::parametric_description& parametric_description_provider(
-    irs::byte_type distance,
-    bool with_transpositions) {
-  struct builder {
-    using type = irs::parametric_description;
-
-    static type make(size_t idx) {
-      const auto max_distance = irs::byte_type(idx >> 1);
-      const auto with_transpositions = 0 != (idx % 2);
-      return irs::make_parametric_description(max_distance, with_transpositions);
-    }
-  };
-
-  const size_t idx = 2*size_t(distance) + size_t(with_transpositions);
-  return irs::irstd::static_lazy_array<builder, 9>::at(idx);
-}
 
 DEFINE_FILTER_TYPE(by_edit_distance)
 DEFINE_FACTORY_DEFAULT(by_edit_distance)
@@ -78,7 +62,17 @@ filter::prepared::ptr by_edit_distance::prepare(
 }
 
 by_edit_distance::by_edit_distance() noexcept
-  : by_prefix(by_edit_distance::type()) {
+  : by_prefix(by_edit_distance::type()),
+    provider_(&default_pdp) {
+}
+
+by_edit_distance& by_edit_distance::provider(pdp_f provider) noexcept {
+  if (!provider) {
+    provider_ = &default_pdp;
+  } else {
+    provider_ = provider;
+  }
+  return *this;
 }
 
 size_t by_edit_distance::hash() const noexcept {

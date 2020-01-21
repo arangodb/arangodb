@@ -32,17 +32,6 @@ NS_ROOT
 class parametric_description;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default parametric description provider, returns parametric
-///        description according to specified arguments.
-/// @note supports building descriptions for distances in range of [0..4] with
-///       the exception for distance 4: can only build description wihtout
-///       transpositions
-////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API const parametric_description& parametric_description_provider(
-    byte_type max_distance,
-    bool with_transpositions);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance
 /// @brief user-side levenstein filter
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,7 +43,7 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parametric description provider
   //////////////////////////////////////////////////////////////////////////////
-  using description_provider_f = const parametric_description&(*)(byte_type, bool);
+  using pdp_f = const parametric_description&(*)(byte_type, bool);
 
   explicit by_edit_distance() noexcept;
 
@@ -119,9 +108,7 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns current parametric description provider
   //////////////////////////////////////////////////////////////////////////////
-  description_provider_f provider() const noexcept {
-    return provider_;
-  }
+  pdp_f provider() const noexcept { return provider_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets parametric description provider,
@@ -130,21 +117,14 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   ///       especially for distances > 4, expert users may want to set its own
   ///       providers
   //////////////////////////////////////////////////////////////////////////////
-  by_edit_distance& provider(description_provider_f provider) noexcept {
-    if (!provider) {
-      provider_ = &parametric_description_provider;
-    } else {
-      provider_ = provider;
-    }
-    return *this;
-  }
+  by_edit_distance& provider(pdp_f provider) noexcept;
 
  protected:
   size_t hash() const noexcept override;
   bool equals(const filter& rhs) const noexcept override;
 
  private:
-  description_provider_f provider_{&parametric_description_provider};
+  pdp_f provider_;
   byte_type max_distance_{0};
   bool with_transpositions_{false};
 }; // by_edit_distance

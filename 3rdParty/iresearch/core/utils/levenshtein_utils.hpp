@@ -27,9 +27,13 @@
 #include <numeric>
 
 #include "string.hpp"
+#include "range.hpp"
 #include "automaton_decl.hpp"
 
 NS_ROOT
+
+struct data_output;
+struct data_input;
 
 template<typename T, size_t SubstCost = 1>
 inline size_t edit_distance(const T* lhs, size_t lhs_size,
@@ -94,6 +98,7 @@ class IRESEARCH_API parametric_description {
   /// @brief describes trasition among parametric states
   ///        first - desination parametric state id
   ///        second - offset
+  //////////////////////////////////////////////////////////////////////////////
   typedef std::pair<uint32_t, uint32_t> transition_t;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -103,9 +108,17 @@ class IRESEARCH_API parametric_description {
   static constexpr byte_type MAX_DISTANCE = 31;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief create default "invalid" description
+  /// @brief creates default "invalid" description
   //////////////////////////////////////////////////////////////////////////////
   parametric_description() = default;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates description
+  //////////////////////////////////////////////////////////////////////////////
+  parametric_description(
+      std::vector<transition_t>&& transitions,
+      std::vector<byte_type>&& distance,
+      byte_type max_distance) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return transition from 'from' state matching a provided
@@ -114,6 +127,13 @@ class IRESEARCH_API parametric_description {
   const transition_t& transition(size_t from, uint64_t chi) const noexcept {
     assert(from*chi_max_ + chi < transitions_.size());
     return transitions_[from*chi_max_ + chi];
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return parametric transitions table
+  //////////////////////////////////////////////////////////////////////////////
+  range<const transition_t> transitions() const noexcept {
+    return { transitions_.data(), transitions_.size() };
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -126,6 +146,13 @@ class IRESEARCH_API parametric_description {
 
      assert(state*chi_size_ + offset < distance_.size());
      return distance_[state*chi_size_ + offset];
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return range of edit distances for all parametric states
+  //////////////////////////////////////////////////////////////////////////////
+  range<const byte_type> distances() const noexcept {
+    return { distance_.data(), distance_.size() };
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -155,30 +182,29 @@ class IRESEARCH_API parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   explicit operator bool() const noexcept { return chi_size_ > 0; }
 
- private:
-  friend parametric_description make_parametric_description(
-      byte_type max_distance, bool with_transposition);
-
-  parametric_description(
-      std::vector<transition_t>&& transitions,
-      std::vector<byte_type>&& distance,
-      size_t num_states,
-      uint64_t chi_size,
-      uint64_t chi_max,
-      byte_type max_distance) noexcept
-    : transitions_(std::move(transitions)),
-      distance_(std::move(distance)),
-      num_states_(num_states),
-      chi_size_(chi_size),
-      chi_max_(chi_max),
-      max_distance_(max_distance) {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if description is equal to a specified one
+  //////////////////////////////////////////////////////////////////////////////
+  bool operator==(const parametric_description& rhs) const noexcept {
+    // all other members are derived
+    return transitions_ == rhs.transitions_
+        && distance_ == rhs.distance_
+        && max_distance_ == rhs.max_distance_;
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return true if description is not equal to a specified one
+  //////////////////////////////////////////////////////////////////////////////
+  bool operator!=(const parametric_description& rhs) const noexcept {
+    return !(*this == rhs);
+  }
+
+ private:
   std::vector<transition_t> transitions_; // transition table
   std::vector<byte_type> distance_;       // distances per state and offset
-  size_t num_states_{};                   // number of parametric states
   uint64_t chi_size_{};                   // 2*max_distance_+1
   uint64_t chi_max_{};                    // 1 << chi_size
+  size_t num_states_{};                   // number of parametric states
   byte_type max_distance_{};              // max allowed distance
 }; // parametric_description
 
@@ -191,6 +217,21 @@ class IRESEARCH_API parametric_description {
 IRESEARCH_API parametric_description make_parametric_description(
   byte_type max_distance,
   bool with_transposition);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes parametric description to a specified output stream
+/// @param description parametric description to write
+/// @param out output stream
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API void write(const parametric_description& description,
+                         data_output& out);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read parametric description from a specified input stream
+/// @param in input stream
+/// @returns the read parametric description
+////////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API parametric_description read(data_input& in);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief instantiates DFA based on provided parametric description and target

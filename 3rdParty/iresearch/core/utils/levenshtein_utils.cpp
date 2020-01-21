@@ -23,11 +23,10 @@
 #include "levenshtein_utils.hpp"
 
 #include <unordered_map>
-#include <unordered_set>
-#include <set>
 #include <cmath>
 
 #include "shared.hpp"
+#include "store/store_utils.hpp"
 #include "automaton.hpp"
 #include "arena_allocator.hpp"
 #include "bit_utils.hpp"
@@ -447,6 +446,20 @@ NS_END
 
 NS_ROOT
 
+parametric_description::parametric_description(
+    std::vector<transition_t>&& transitions,
+    std::vector<byte_type>&& distance,
+    byte_type max_distance) noexcept
+  : transitions_(std::move(transitions)),
+    distance_(std::move(distance)),
+    chi_size_(::chi_size(max_distance)),
+    chi_max_(::chi_max(chi_size_)), // can't be 0
+    num_states_(transitions_.size() / chi_max_),
+    max_distance_(max_distance) {
+  assert(0 == (transitions_.size() % chi_max_));
+  assert(0 == (distance_.size() % chi_size_));
+}
+
 parametric_description make_parametric_description(
     byte_type max_distance,
     bool with_transpositions) {
@@ -503,14 +516,49 @@ parametric_description make_parametric_description(
     }
   }
 
-  return {
-    std::move(transitions),
-    std::move(distance),
-    states.size(),
-    chi_size,
-    chi_max,
-    max_distance
-  };
+  return { std::move(transitions), std::move(distance), max_distance };
+}
+
+void write(const parametric_description& description, data_output& out) {
+  uint32_t last_state = 0;
+  uint32_t last_offset = 0;
+
+  out.write_byte(description.max_distance());
+
+  const auto transitions = description.transitions();
+  out.write_vlong(transitions.size());
+  for (auto& transition : transitions) {
+    write_zvint(out, transition.first - last_state);
+    write_zvint(out, transition.second - last_offset);
+    last_state = transition.first;
+    last_offset = transition.second;
+  }
+
+  const auto distances = description.distances();
+  out.write_vlong(distances.size());
+  out.write_bytes(distances.begin(), distances.size());
+}
+
+parametric_description read(data_input& in) {
+  const byte_type max_distance = in.read_byte();
+
+  const size_t tcount = in.read_vlong();
+  std::vector<parametric_description::transition_t> transitions(tcount);
+
+  uint32_t last_state = 0;
+  uint32_t last_offset = 0;
+  for (auto& transition : transitions) {
+    transition.first = last_state + read_zvint(in);
+    transition.second = last_offset + read_zvint(in);
+    last_state = transition.first;
+    last_offset = transition.second;
+  }
+
+  const size_t dcount = in.read_vlong();
+  std::vector<byte_type> distances(dcount);
+  in.read_bytes(distances.data(), distances.size());
+
+  return { std::move(transitions), std::move(distances), max_distance };
 }
 
 automaton make_levenshtein_automaton(

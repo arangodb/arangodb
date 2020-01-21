@@ -34,6 +34,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
   Aql/JaccardFunctionTest.cpp
+  Aql/LevenshteinMatchFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
   Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp

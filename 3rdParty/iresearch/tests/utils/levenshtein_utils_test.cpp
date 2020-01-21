@@ -23,6 +23,7 @@
 #include "tests_shared.hpp"
 
 #include "store/memory_directory.hpp"
+#include "store/store_utils.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/fst_table_matcher.hpp"
@@ -50,6 +51,19 @@ void assert_description(
     ASSERT_EQ(expected_distance, irs::edit_distance(description, candidate, target));
     ASSERT_EQ(expected_distance, irs::edit_distance(description, target, candidate));
     ASSERT_EQ(expected_distance <= description.max_distance(), irs::accept(a, candidate));
+  }
+}
+
+void assert_read_write(const irs::parametric_description& description) {
+  irs::bstring buf;
+  {
+    irs::bytes_output out(buf);
+    irs::write(description, static_cast<data_output&>(out));
+    ASSERT_FALSE(buf.empty());
+  }
+  {
+    irs::bytes_ref_input in(buf);
+    ASSERT_EQ(description, irs::read(in));
   }
 }
 
@@ -126,8 +140,11 @@ TEST(levenshtein_utils_test, test_description_0) {
     ASSERT_EQ(1, description.chi_size());
     ASSERT_EQ(2, description.chi_max());
     ASSERT_EQ(0, description.max_distance());
+    ASSERT_EQ(description, irs::make_parametric_description(0, true));
+    ASSERT_EQ(description, irs::make_parametric_description(0, false));
     assert_distance(description);
     assert_transitions(description);
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -153,8 +170,11 @@ TEST(levenshtein_utils_test, test_description_0) {
     ASSERT_EQ(1, description.chi_size());
     ASSERT_EQ(2, description.chi_max());
     ASSERT_EQ(0, description.max_distance());
+    ASSERT_EQ(description, irs::make_parametric_description(0, true));
+    ASSERT_EQ(description, irs::make_parametric_description(0, false));
     assert_distance(description);
     assert_transitions(description);
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -266,8 +286,11 @@ TEST(levenshtein_utils_test, test_description_1) {
     ASSERT_EQ(3, description.chi_size());
     ASSERT_EQ(8, description.chi_max());
     ASSERT_EQ(1, description.max_distance());
+    ASSERT_NE(description, irs::make_parametric_description(1, true));
+    ASSERT_EQ(description, irs::make_parametric_description(1, false));
     assert_distance(description);
     assert_transitions(description);
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -290,6 +313,9 @@ TEST(levenshtein_utils_test, test_description_1) {
     ASSERT_EQ(3, description.chi_size());
     ASSERT_EQ(8, description.chi_max());
     ASSERT_EQ(1, description.max_distance());
+    ASSERT_EQ(description, irs::make_parametric_description(1, true));
+    ASSERT_NE(description, irs::make_parametric_description(1, false));
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -315,6 +341,8 @@ TEST(levenshtein_utils_test, test_description_2) {
     ASSERT_EQ(5, description.chi_size());
     ASSERT_EQ(32, description.chi_max());
     ASSERT_EQ(2, description.max_distance());
+    ASSERT_NE(description, irs::make_parametric_description(2, true));
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -340,6 +368,8 @@ TEST(levenshtein_utils_test, test_description_2) {
     ASSERT_EQ(5, description.chi_size());
     ASSERT_EQ(32, description.chi_max());
     ASSERT_EQ(2, description.max_distance());
+    ASSERT_NE(description, irs::make_parametric_description(2, false));
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -367,6 +397,7 @@ TEST(levenshtein_utils_test, test_description_3) {
     ASSERT_EQ(7, description.chi_size());
     ASSERT_EQ(128, description.chi_max());
     ASSERT_EQ(3, description.max_distance());
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -413,6 +444,7 @@ TEST(levenshtein_utils_test, test_description_3) {
     ASSERT_EQ(7, description.chi_size());
     ASSERT_EQ(128, description.chi_max());
     ASSERT_EQ(3, description.max_distance());
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -443,6 +475,8 @@ TEST(levenshtein_utils_test, test_description_4) {
     ASSERT_EQ(9, description.chi_size());
     ASSERT_EQ(512, description.chi_max());
     ASSERT_EQ(4, description.max_distance());
+    ASSERT_EQ(description, description);
+    assert_read_write(description);
 
     assert_description(
       description,
@@ -510,6 +544,8 @@ TEST(levenshtein_utils_test, test_description_invalid) {
     ASSERT_EQ(0, description.chi_size());
     ASSERT_EQ(0, description.chi_max());
     ASSERT_EQ(0, description.max_distance());
+    ASSERT_EQ(irs::parametric_description(), description);
+    ASSERT_NE(description, irs::make_parametric_description(0, false));
   }
 
   // transpositions

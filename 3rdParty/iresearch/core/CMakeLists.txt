@@ -151,6 +151,7 @@ set(IResearch_core_sources
   ./utils/index_utils.cpp
   ./utils/math_utils.cpp 
   ./utils/levenshtein_utils.cpp
+  ./utils/levenshtein_default_pdp.cpp
   ./utils/memory.cpp
   ./utils/text_format.cpp
   ./utils/timer_utils.cpp

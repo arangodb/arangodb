@@ -73,7 +73,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include "utils/levenshtein_utils.hpp"
-#include "search/levenshtein_filter.hpp"
+#include "utils/levenshtein_default_pdp.hpp"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -1612,7 +1612,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
 
   size_t const unsignedMaxDistanceValue = static_cast<size_t>(maxDistanceValue);
 
-  auto& description = irs::parametric_description_provider(
+  auto& description = irs::default_pdp(
     static_cast<irs::byte_type>(unsignedMaxDistanceValue),
     withTranspositionsValue);
 
