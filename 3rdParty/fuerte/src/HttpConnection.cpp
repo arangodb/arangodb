@@ -386,8 +386,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
                        [self(Connection::shared_from_this()),
                         req(std::move(item))](asio_ns::error_code const& ec,
                                               std::size_t nwrite) mutable {
-    auto& thisPtr = static_cast<HttpConnection<ST>&>(*self);
-    thisPtr.asyncWriteCallback(ec, std::move(req), nwrite);
+    static_cast<HttpConnection<ST>&>(*self).asyncWriteCallback(ec, std::move(req), nwrite);
   });
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";
 }
@@ -527,13 +526,13 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
     if (ec || !(s = self.lock())) {  // was canceled / deallocated
       return;
     }
-    auto* thisPtr = static_cast<HttpConnection<ST>*>(s.get());
+    auto* me = static_cast<HttpConnection<ST>*>(s.get());
 
     FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-    if (thisPtr->_active) {
-      thisPtr->restartConnection(Error::Timeout);
+    if (me->_active) {
+      me->restartConnection(Error::Timeout);
     } else {  // close an idle connection
-      thisPtr->shutdownConnection(Error::CloseRequested);
+      me->shutdownConnection(Error::CloseRequested);
     }
   });
 }

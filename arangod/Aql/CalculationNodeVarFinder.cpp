@@ -27,7 +27,7 @@ namespace aql {
 
 CalculationNodeVarFinder::CalculationNodeVarFinder(
     Variable const* lookingFor,
-    ::arangodb::containers::SmallVector<ExecutionNode*>& out)
+    ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept
     : _lookingFor(lookingFor), _out(out) {}
 
 bool CalculationNodeVarFinder::before(ExecutionNode* en) {
@@ -37,6 +37,7 @@ bool CalculationNodeVarFinder::before(ExecutionNode* en) {
     TRI_ASSERT(enterSubquery(nullptr, nullptr));
     return false;
   }
+  _currentUsedVars.clear();
   en->getVariablesUsedHere(_currentUsedVars);
   if (_currentUsedVars.find(_lookingFor) != _currentUsedVars.end()) {
     if (ExecutionNode::CALCULATION != type) {
@@ -45,7 +46,29 @@ bool CalculationNodeVarFinder::before(ExecutionNode* en) {
     }
     _out.emplace_back(en);
   }
+
+  return false;
+}
+
+CalculationNodeVarExistenceFinder::CalculationNodeVarExistenceFinder(
+    Variable const* lookingFor) noexcept
+    : _lookingFor(lookingFor), _isCalculationNodesFound(false) {}
+
+bool CalculationNodeVarExistenceFinder::before(ExecutionNode* en) {
+  auto type = en->getType();
+  // will enter a subquery anyway later
+  if (ExecutionNode::SUBQUERY == type) {
+    TRI_ASSERT(enterSubquery(nullptr, nullptr));
+    return false;
+  }
   _currentUsedVars.clear();
+  en->getVariablesUsedHere(_currentUsedVars);
+  if (_currentUsedVars.find(_lookingFor) != _currentUsedVars.end()) {
+    if (ExecutionNode::CALCULATION != type) {
+      return true;
+    }
+    _isCalculationNodesFound = true;
+  }
 
   return false;
 }

@@ -26,6 +26,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
@@ -53,8 +54,6 @@ ClusterTraverser::ClusterTraverser(arangodb::traverser::TraverserOptions* opts,
 }
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
-  _verticesToFetch.clear();
-  _startIdBuilder.clear();
   _startIdBuilder.add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder.slice();
 
@@ -70,12 +69,12 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  if (!vertexMatchesConditions(arangodb::velocypack::StringRef(vid), 0)) {
+  arangodb::velocypack::StringRef persId = traverserCache()->persistString(arangodb::velocypack::StringRef(vid));
+  if (!vertexMatchesConditions(persId, 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
-  arangodb::velocypack::StringRef persId = traverserCache()->persistString(arangodb::velocypack::StringRef(vid));
 
   _vertexGetter->reset(persId);
   if (_opts->useBreadthFirst) {
@@ -84,6 +83,14 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     _enumerator.reset(new arangodb::traverser::DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
+}
+
+void ClusterTraverser::clear() {
+  _startIdBuilder.clear();
+  traverserCache()->clear();
+
+  _vertices.clear();
+  _verticesToFetch.clear();
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {

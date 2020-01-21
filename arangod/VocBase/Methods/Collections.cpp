@@ -262,7 +262,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
-      
+  
     if (ServerState::instance()->isCoordinator()) {
       Result res = ShardingInfo::validateShardsAndReplicationFactor(info.properties, vocbase.server(), enforceReplicationFactor);
       if (res.fail()) {
@@ -284,10 +284,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     TRI_ASSERT(info.properties.isObject());
     helper.clear();
     helper.openObject();
-    helper.add(arangodb::StaticStrings::DataSourceType,
-               arangodb::velocypack::Value(static_cast<int>(info.collectionType)));
-    helper.add(arangodb::StaticStrings::DataSourceName,
-               arangodb::velocypack::Value(info.name));
+    helper.add(arangodb::StaticStrings::DataSourceType, VPackValue(static_cast<int>(info.collectionType)));
+    helper.add(arangodb::StaticStrings::DataSourceName, VPackValue(info.name));
 
     if (ServerState::instance()->isCoordinator()) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
@@ -312,7 +310,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           auto distributeSlice = info.properties.get(StaticStrings::DistributeShardsLike);
           if (distributeSlice.isNone()) {
             helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
-          } else if (distributeSlice.isString() && distributeSlice.compareString("") == 0) {
+          } else if (distributeSlice.isNull() ||
+                     (distributeSlice.isString() && distributeSlice.compareString("") == 0)) {
             helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
           }
         }
@@ -328,7 +327,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
       }
     } else  { // single server
-      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
+      helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); // delete empty string from info slice
       helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
       helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice()); // deprecated
       helper.add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
@@ -340,8 +339,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
     if (haveShardingFeature && !info.properties.get(StaticStrings::ShardingStrategy).isString()) {
-      // NOTE: We need to do this in a second merge as the geature call requires to have the
-      // DataSourceType set in the JSON, which has just been done by the call above.
+      // NOTE: We need to do this in a second merge as the feature call requires the
+      // DataSourceType to be set in the JSON, which has just been done by the call above.
       helper.clear();
       helper.openObject();
       TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -357,6 +356,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
   TRI_ASSERT(builder.isOpenArray());
   builder.close();
+    
 
   VPackSlice const infoSlice = builder.slice();
   std::vector<std::shared_ptr<LogicalCollection>> collections;
@@ -462,9 +462,10 @@ void Collections::createSystemCollectionProperties(std::string const& collection
   uint32_t defaultReplicationFactor = vocbase.replicationFactor();
   uint32_t defaultWriteConcern = vocbase.writeConcern();
 
-  auto& server = application_features::ApplicationServer::server();
-  if (server.hasFeature<ClusterFeature>()) {
-    defaultReplicationFactor = std::max(defaultReplicationFactor, server.getFeature<ClusterFeature>().systemReplicationFactor());
+  if (vocbase.server().hasFeature<ClusterFeature>()) {
+    defaultReplicationFactor =
+        std::max(defaultReplicationFactor,
+                 vocbase.server().getFeature<ClusterFeature>().systemReplicationFactor());
   }
 
   {
@@ -854,7 +855,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
 
-  auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
+  auto queue = std::make_shared<basics::LocalTaskQueue>(vocbase.server(), poster);
 
   auto idxs = coll.getIndexes();
   for (auto& idx : idxs) {

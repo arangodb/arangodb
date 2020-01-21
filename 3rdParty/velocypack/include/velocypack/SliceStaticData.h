@@ -289,7 +289,7 @@ struct SliceStaticData {
     /* 0xe8 */ VT::None,     /* 0xe9 */ VT::None,
     /* 0xea */ VT::None,     /* 0xeb */ VT::None,
     /* 0xec */ VT::None,     /* 0xed */ VT::None,
-    /* 0xee */ VT::None,     /* 0xef */ VT::None,
+    /* 0xee */ VT::Tagged,   /* 0xef */ VT::Tagged,
     /* 0xf0 */ VT::Custom,   /* 0xf1 */ VT::Custom,
     /* 0xf2 */ VT::Custom,   /* 0xf3 */ VT::Custom,
     /* 0xf4 */ VT::Custom,   /* 0xf5 */ VT::Custom,

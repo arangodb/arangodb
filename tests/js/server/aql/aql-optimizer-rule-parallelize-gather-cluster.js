@@ -34,11 +34,14 @@ let jsunity = require("jsunity");
 function optimizerRuleTestSuite () {
   const ruleName = "parallelize-gather";
   const cn = "UnitTestsAqlOptimizerRule";
+  const en = "UnitTestsAqlOptimizerRuleEdges";
   
   return {
 
     setUpAll : function () {
       db._drop(cn);
+      db._drop(en);
+      db._createEdgeCollection(en, { numberOfShards: 5 });
       let c =  db._create(cn, { numberOfShards: 5 });
       let docs = [];
       for (let i = 0; i < 50000; ++i) {
@@ -52,6 +55,7 @@ function optimizerRuleTestSuite () {
     },
 
     tearDownAll : function () {
+      db._drop(en);
       db._drop(cn);
     },
 
@@ -80,6 +84,12 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..1000 IN " + cn + " FOR doc IN " + cn + " FILTER doc.value == i RETURN doc",
         "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " FILTER doc.value == i RETURN doc) RETURN sub",
         "LET sub = (FOR doc IN " + cn + " FILTER doc.value == 12 LIMIT 10 RETURN doc) FOR doc IN sub RETURN doc",
+        "FOR v, e, p IN 1..1 OUTBOUND '" + cn + "/1' " + en + " RETURN p",
+        "FOR doc IN " + cn + " FOR v, e, p IN 1..1 OUTBOUND doc._id " + en + " RETURN p",
+        "FOR s IN OUTBOUND SHORTEST_PATH '" + cn + "/1' TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR doc IN " + cn + " FOR s IN OUTBOUND SHORTEST_PATH doc._id TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR s IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/1' TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR doc IN " + cn + " FOR s IN OUTBOUND K_SHORTEST_PATHS doc._id TO '" + cn + "/2' " + en + " RETURN s",
       ];
 
       queries.forEach(function(query) {

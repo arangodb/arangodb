@@ -1746,7 +1746,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan, size_t id,
   TRI_ASSERT(_outVariable != nullptr);
 }
 
-CalculationNode::~CalculationNode() {}
+CalculationNode::~CalculationNode() = default;
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 

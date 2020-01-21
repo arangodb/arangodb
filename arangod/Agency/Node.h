@@ -30,11 +30,11 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 enum NodeType { NODE, LEAF };
 enum Operation {
@@ -48,7 +48,11 @@ enum Operation {
   OBSERVE,
   UNOBSERVE,
   ERASE,
-  REPLACE
+  REPLACE,
+  READ_LOCK,
+  READ_UNLOCK,
+  WRITE_LOCK,
+  WRITE_UNLOCK,
 };
 
 using namespace arangodb::velocypack;
@@ -190,7 +194,7 @@ class Node {
 
   /// @brief Split path to path vector
   static std::vector<std::string> split(const std::string& str, char separator);
- 
+
 private:
 
   /// @brief Get store if it exists:
@@ -336,7 +340,26 @@ public:
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
 
+  template<typename T>
+  auto getNumberUnlessExpiredWithDefault() -> T {
+    if (ADB_LIKELY(!lifetimeExpired())) {
+      try {
+        return this->slice().getNumber<T>();
+      } catch (...) {
+      }
+    }
+
+    return T{0};
+  }
+
+  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
+
  public:
+  bool isReadLockable(const VPackStringRef& by) const;
+  bool isReadUnlockable(const VPackStringRef& by) const;
+  bool isWriteLockable(const VPackStringRef& by) const;
+  bool isWriteUnlockable(const VPackStringRef& by) const;
+
   /// @brief Clear key value store
   void clear();
 
@@ -371,7 +394,7 @@ public:
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus
 
 #endif

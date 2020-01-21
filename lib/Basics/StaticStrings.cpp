@@ -103,10 +103,6 @@ std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
 std::string const StaticStrings::DatabaseId("id");
 std::string const StaticStrings::DatabaseName("name");
 std::string const StaticStrings::DatabaseOptions("options");
-std::string const StaticStrings::DatabaseCoordinator("coordinator");
-std::string const StaticStrings::DatabaseCoordinatorRebootId(
-    "coordinatorRebootId");
-std::string const StaticStrings::DatabaseIsBuilding("isBuilding");
 std::string const StaticStrings::Properties("properties");
 
 // LogicalDataSource definition fields
@@ -256,6 +252,17 @@ std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
 
+// Query Strings
+std::string const StaticStrings::QuerySortASC("ASC");
+std::string const StaticStrings::QuerySortDESC("DESC");
+
+// Graph Query Strings
+std::string const StaticStrings::GraphQueryEdges("edges");
+std::string const StaticStrings::GraphQueryVertices("vertices");
+std::string const StaticStrings::GraphQueryPath("path");
+std::string const StaticStrings::GraphQueryGlobal("global");
+std::string const StaticStrings::GraphQueryNone("none");
+
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
@@ -266,11 +273,15 @@ std::string const StaticStrings::GraphCreateCollection("createCollection");
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 std::string const StaticStrings::FailoverCandidates("failoverCandidates");
 
+// Generic attribute names
+std::string const StaticStrings::AttrCoordinator("coordinator");
+std::string const StaticStrings::AttrCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::AttrIsBuilding("isBuilding");
+
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");
 std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
 
-std::string const StaticStrings::IsBuilding("isBuilding");
 std::string const StaticStrings::RebootId("rebootId");
 
 std::string const StaticStrings::New("new");

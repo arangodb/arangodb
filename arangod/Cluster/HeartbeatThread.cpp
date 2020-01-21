@@ -25,6 +25,7 @@
 
 #include <map>
 
+#include <Agency/AsyncAgencyComm.h>
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -189,7 +190,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
     : CriticalThread(server, "Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
-      _agency(),
+      _agency(server),
       _condition(),
       _myId(ServerState::instance()->getId()),
       _interval(interval),
@@ -340,10 +341,10 @@ void HeartbeatThread::runDBServer() {
   };
 
   auto planAgencyCallback =
-      std::make_shared<AgencyCallback>(_agency, "Plan/Version", updatePlan, true);
+      std::make_shared<AgencyCallback>(_server, "Plan/Version", updatePlan, true);
 
   auto currentAgencyCallback =
-      std::make_shared<AgencyCallback>(_agency, "Current/Version", updateCurrent, true);
+      std::make_shared<AgencyCallback>(_server, "Current/Version", updateCurrent, true);
 
   bool registered = false;
   while (!registered && !isStopping()) {
@@ -585,7 +586,8 @@ void HeartbeatThread::runSingleServer() {
         } else {
           if (++_failedVersionUpdates % _maxFailsBeforeWarning == 0) {
             LOG_TOPIC("700c7", WARN, Logger::HEARTBEAT)
-                << "could not increase version number in agency: " << res.errorMessage();
+                << "could not increase version number in agency: "
+                << res.errorMessage();
           }
         }
       }
@@ -771,8 +773,8 @@ void HeartbeatThread::runSingleServer() {
             << "start initial sync from leader";
         config._requireFromPresent = true;
         config._incremental = true;
-        config._idleMinWaitTime = 250 * 1000; // 250ms
-        config._idleMaxWaitTime = 3 * 1000 * 1000; // 3s
+        config._idleMinWaitTime = 250 * 1000;       // 250ms
+        config._idleMaxWaitTime = 3 * 1000 * 1000;  // 3s
         TRI_ASSERT(!config._skipCreateDrop);
         config._includeFoxxQueues = true; // sync _queues and _jobs
     
@@ -1011,7 +1013,6 @@ void HeartbeatThread::runCoordinator() {
             }
           }
 
-
         } else {
           LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";
@@ -1148,9 +1149,10 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       // when loading we allow system database names
       info.allowSystemDB(TRI_vocbase_t::IsSystemName(options.value.get("name").copyString()));
 
-      auto infoResult =  info.load(options.value, VPackSlice::emptyArraySlice());
+      auto infoResult = info.load(options.value, VPackSlice::emptyArraySlice());
       if (infoResult.fail()) {
-        LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT) << "In agency database plan" << infoResult.errorMessage();
+        LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT)
+            << "In agency database plan" << infoResult.errorMessage();
         TRI_ASSERT(false);
       }
 
@@ -1295,14 +1297,23 @@ bool HeartbeatThread::sendServerState() {
 }
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
-  if (agentPool.isObject() && agentPool.get("pool").isObject() &&
-      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
+  if (agentPool.isObject() && agentPool.get("pool").isObject() && agentPool.hasKey("size") &&
+      agentPool.get("size").getUInt() > 0 && agentPool.get("id").isString()) {
     try {
       std::vector<std::string> values;
-      for (auto pair : VPackObjectIterator(agentPool.get("pool"))) {
-        values.emplace_back(pair.value.copyString());
+      // we have to make sure that the leader is on the front
+      auto leaderId = agentPool.get("id").stringRef();
+      auto pool = agentPool.get("pool");
+      values.reserve(pool.length());
+      values.emplace_back(pool.get(leaderId).copyString());
+      // now add all non leaders
+      for (auto pair : VPackObjectIterator(pool)) {
+        if (!pair.key.isEqualString(leaderId)) {
+          values.emplace_back(pair.value.copyString());
+        }
       }
       AgencyCommManager::MANAGER->updateEndpoints(values);
+      AsyncAgencyCommManager::INSTANCE->updateEndpoints(values);
     } catch (basics::Exception const& e) {
       LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
           << "Error updating agency pool: " << e.message();

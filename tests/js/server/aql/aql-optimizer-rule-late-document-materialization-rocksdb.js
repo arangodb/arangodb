@@ -37,12 +37,12 @@ function lateDocumentMaterializationRuleTestSuite () {
   const projectionRuleName = "reduce-extraction-to-projection";
   const numOfCollectionIndexes = 2;
   const numOfExpCollections = 2;
+  const primaryIndexCollectionName = "UnitTestsPrimCollection";
+  const edgeIndexCollectionName = "UnitTestsEdgeCollection";
+  const severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
+  const projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
   let collectionNames = [];
   let expCollectionNames = [];
-  let primaryIndexCollectionName = "UnitTestsPrimCollection";
-  let edgeIndexCollectionName = "UnitTestsEdgeCollection";
-  let severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
-  let projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
   var i;
   var j;
   for (i = 0; i < numOfCollectionIndexes; ++i) {
@@ -140,6 +140,21 @@ function lateDocumentMaterializationRuleTestSuite () {
       try { db._drop(edgeIndexCollectionName); } catch(e) {}
       try { db._drop(severalIndexesCollectionName); } catch(e) {}
       try { db._drop(projectionsCoveredByIndexCollectionName); } catch(e) {}
+    },
+    testIssue10845() {
+      // this tests a regression described in https://github.com/arangodb/arangodb/issues/10845#issuecomment-575723029:
+      // when there is a collection with an index in a query, all LIMITs in the query may be inspected.
+      // however, each LIMIT was supposed to be present underneath a FOR loop, otherwise
+      // the query could crash. This test is here to just make sure there are no crashes.
+      for (i = 0; i < numOfCollectionIndexes; ++i) {
+        let query = "LET results = (FOR d IN " + collectionNames[i]  + " FILTER d.obj.a == 'a_val' SORT d.obj.c DESC RETURN d) FOR p IN results " +
+          "LET validFrom = (RETURN IS_NULL(p.valid_from) ? 0 : p.valid_from) " +
+          "LET validTo = (RETURN IS_NULL(p.valid_to) ? 253370764800000 : p.valid_to) " +
+          "LET inactive = (RETURN (validFrom[0] > 1579279781654 || validTo[0] < 1579279781654)) " +
+          "RETURN (inactive[0]) ? MERGE(p, {inactive: true}) : p";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      }
     },
     testNotAppliedDueToNoFilter() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
@@ -249,6 +264,30 @@ function lateDocumentMaterializationRuleTestSuite () {
         let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
                     "LET a = NOOPT(d.obj.b) " +
                     "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d.obj.a, c.obj.a) RETURN p) " +
+                    "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        if (!isCluster) {
+          assertNotEqual(-1, plan.rules.indexOf(ruleName));
+          let result = AQL_EXECUTE(query);
+          assertEqual(2, result.json.length);
+          let expectedKeys = new Set(['c0', 'c2']);
+          result.json.forEach(function(doc) {
+            assertTrue(expectedKeys.has(doc._key));
+            expectedKeys.delete(doc._key);
+          });
+          assertEqual(0, expectedKeys.size);
+        } else {
+          // on cluster this will not be applied as remote node placed before sort node
+          assertEqual(-1, plan.rules.indexOf(ruleName));
+        }
+      }
+    },
+    testQueryResultsWithInnerSubqueriesWithDocumentAccessByAttribute() {
+      for (i = 0; i < numOfCollectionIndexes; ++i) {
+        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
+                    "LET a = NOOPT(d.obj.b) " +
+                    "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d.obj.a, c.obj.a) " +
+                      "LET f = SUM(FOR k IN " + collectionNames[i] + " LET r = CONCAT(c.obj.a, k.obj.a) RETURN CONCAT(c.obj.c, r)) RETURN CONCAT(d.obj.c, p, f)) " +
                     "SORT CONCAT(a, e) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
         if (!isCluster) {
