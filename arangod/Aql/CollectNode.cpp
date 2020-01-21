@@ -569,13 +569,36 @@ auto isLoop(ExecutionNode const& node) -> bool {
 // Get all variables that should be collected "INTO" the group variable.
 // Returns whether we are at the top level.
 // Gets passed whether we did encounter a loop "on the way" from the collect node.
-auto getGroupVariables(ExecutionNode const& node, bool const encounteredLoop,
-                       std::vector<Variable const*>& groupVariables) -> bool {
-  // TODO skip subqueries
+auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& groupVariables,
+                       bool const encounteredLoop = false, int const subqueryDepth = 0) -> bool {
+  TRI_ASSERT(subqueryDepth >= 0);
+  auto const recSubqueryDepth = [&]() {
+    if (node.getType() == ExecutionNode::SUBQUERY_END) {
+      return subqueryDepth + 1;
+    } else if (node.getType() == ExecutionNode::SUBQUERY_START) {
+      return subqueryDepth - 1;
+    }
+    return subqueryDepth;
+  }();
+
+  auto const dep = node.getFirstDependency();
+
+  // Skip nodes inside a subquery, except for SUBQUERY_END!
+  if (subqueryDepth > 0) {
+    if (dep != nullptr) {
+      return getGroupVariables(*dep, groupVariables, encounteredLoop, recSubqueryDepth);
+    } else {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                     "Unexpected end of plan inside subquery");
+    }
+  }
+
   bool const depIsTopLevel = [&]() {
     // Abort recursion on invalidating nodes
-    if (auto const dep = node.getFirstDependency(); dep != nullptr && !isVariableInvalidatingNode(node)) {
-      return getGroupVariables(*dep, encounteredLoop || isLoop(node), groupVariables);
+    if (dep != nullptr && !isVariableInvalidatingNode(node)) {
+      return getGroupVariables(*dep, groupVariables,
+                               encounteredLoop || isLoop(node), recSubqueryDepth);
     } else {
       return isStartNode(node);
     }
@@ -621,7 +644,7 @@ void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable 
       auto const dep = getFirstDependency();
       TRI_ASSERT(dep != nullptr);
       std::vector<Variable const*> userVars;
-      getGroupVariables(*dep, false, userVars);
+      getGroupVariables(*dep, userVars);
 
       for (auto& x : userVars) {
         vars.emplace(x);
