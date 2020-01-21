@@ -124,37 +124,63 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
     _hasWaited = false;
   }
   size_t skipped = 0;
+  SharedAqlItemBlockPtr result = nullptr;
   while (!_data.empty()) {
+    TRI_ASSERT(_data.front()->size() >= _inflight);
     // Drop while skip
     if (myCall.getOffset() > 0) {
-      size_t canSkip = _data.front()->size();
-      // For simplicity we can only skip full blocks
-      TRI_ASSERT(canSkip <= myCall.getOffset());
-      _data.pop_front();
-      myCall.didSkip(canSkip);
-      skipped += canSkip;
-      continue;
-    }
-    if (myCall.getLimit() > 0) {
-      // For simplicity we can only request blocks of defined size.
-      TRI_ASSERT(myCall.getLimit() >= _data.front()->size());
-      auto result = std::move(_data.front());
-      _data.pop_front();
-      if (_data.empty()) {
-        return {ExecutionState::DONE, skipped, result};
+      size_t canSkip = _data.front()->size() - _inflight;
+      if (canSkip <= myCall.getOffset()) {
+        dropBlock();
+        myCall.didSkip(canSkip);
       } else {
-        return {ExecutionState::HASMORE, skipped, result};
+        _inflight += canSkip;
+      }
+
+      skipped += canSkip;
+    } else if (myCall.getLimit() > 0) {
+      size_t canReturn = _data.front()->size() - _inflight;
+
+      if (canReturn <= myCall.getLimit()) {
+        if (result != nullptr) {
+          // Sorry we can only return one block.
+          // This means we have prepared the first block.
+          // But still need more data.
+          return {ExecutionState::HASMORE, skipped, result};
+        }
+        // We can return the remainder of this block
+        if (_inflight == 0) {
+          // use full block
+          result = std::move(_data.front());
+        } else {
+          // Slice out the last part
+          result = _data.front()->slice(_inflight, _data.front()->size());
+        }
+        dropBlock();
+      } else {
+        // Slice out limit many rows starting at _inflight
+        result = _data.front()->slice(_inflight, _inflight + myCall.getLimit());
+        // adjust _inflight to the fist non-returned row.
+        _inflight += myCall.getLimit();
+      }
+    } else if (myCall.needsFullCount()) {
+      size_t counts = _data.front()->size() - _inflight;
+      dropBlock();
+      myCall.didSkip(counts);
+      skipped += counts;
+    } else {
+      if (_data.empty()) {
+        return {ExecutionState::DONE, skipped, nullptr};
+      } else {
+        return {ExecutionState::HASMORE, skipped, nullptr};
       }
     }
-    TRI_ASSERT(myCall.needsFullCount());
-    size_t counts = _data.front()->size();
-    _data.pop_front();
-    myCall.didSkip(counts);
-    skipped += counts;
   }
-  return {ExecutionState::DONE, skipped, nullptr};
+  return {ExecutionState::DONE, skipped, result};
+}
 
-  // TODO implement!
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void WaitingExecutionBlockMock::dropBlock() {
+  TRI_ASSERT(!_data.empty());
+  _data.pop_front();
+  _inflight = 0;
 }

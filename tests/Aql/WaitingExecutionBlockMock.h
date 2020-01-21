@@ -106,9 +106,11 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    */
   std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  // TODO: Document and implement me!
   std::tuple<arangodb::aql::ExecutionState, size_t, arangodb::aql::SharedAqlItemBlockPtr> execute(
       arangodb::aql::AqlCallStack stack) override;
+
+ private:
+  void dropBlock();
 
  private:
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
