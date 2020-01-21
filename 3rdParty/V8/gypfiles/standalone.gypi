@@ -1052,8 +1052,9 @@
       },
       'target_defaults': {
         'xcode_settings': {
+            'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++11',
           'ALWAYS_SEARCH_USER_PATHS': 'NO',
-          'GCC_C_LANGUAGE_STANDARD': 'c99',         # -std=c99
+            # 'GCC_C_LANGUAGE_STANDARD': 'c99',         # -std=c99
           'GCC_CW_ASM_SYNTAX': 'NO',                # No -fasm-blocks
           'GCC_DYNAMIC_NO_PIC': 'NO',               # No -mdynamic-no-pic
                                                     # (Equivalent to -fPIC)

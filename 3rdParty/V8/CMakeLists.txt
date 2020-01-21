@@ -186,7 +186,7 @@ if (WIN32)
     -Dv8_enable_embedded_builtins=1
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
-    -Dv8_use_snapshot=0
+    -Dv8_use_snapshot=1
     -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}"
     -Dnode_use_pch=false
     )
@@ -366,6 +366,10 @@ else ()
     set(V8_INTERNAL_INCLUDE_DIR "${V8_LIBRARY_DIR}/obj/gen/generate-bytecode-output-root;${V8_LIBRARY_DIR}/obj/gen/torque-output-root")
     set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/gypfiles")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
+  elseif (APPLE)
+    set(V8_INTERNAL_INCLUDE_DIR "${V8_LIBRARY_DIR}/obj/gen/generate-bytecode-output-root;${V8_LIBRARY_DIR}/obj/gen/torque-output-root")
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/")
+    set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}/")
   elseif (SOLARIS)
     set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/gypfiles")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.host/third_party/icu")
@@ -389,11 +393,6 @@ else ()
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=1 )
-
-  if (APPLE AND CMAKE_COMPILER_IS_CLANG)
-    set(V8_CXXFLAGS "${V8_CXXFLAGS} -stdlib=libc++")
-    set(V8_LDFLAGS  "${V8_LDFLAGS} -stdlib=libc++")
-  endif ()
 
   if (USE_DEBUG_V8)
     set(V8_BUILDTYPE Debug)
@@ -433,7 +432,7 @@ message(${V8_GYP_ARGS})
     CONFIGURE_COMMAND
       ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
     BUILD_COMMAND
-      $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
+      ${MAKE} ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
     STEP_TARGETS
       v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot mksnapshot v8_snapshot
     INSTALL_COMMAND
@@ -442,7 +441,7 @@ message(${V8_GYP_ARGS})
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS
-    "v8_compiler;v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_snapshot"
+    "v8_libplatform;v8_base_without_compiler;v8_libbase;v8_libsampler;torque_base;v8_compiler;v8_initializers;v8_snapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
