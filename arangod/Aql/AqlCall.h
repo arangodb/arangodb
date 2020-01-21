@@ -116,6 +116,18 @@ struct AqlCall {
   }
 
   bool needsFullCount() const { return fullCount; }
+
+  bool shouldSkip() const {
+    if (getOffset() > 0) {
+      // Still need to skip.
+      return true;
+    }
+    if (getLimit() > 0) {
+      // Still need to produce.
+      return false;
+    }
+    return needsFullCount();
+  }
 };
 
 constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {

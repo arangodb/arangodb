@@ -1335,8 +1335,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
           if (_upstreamState == ExecutionState::WAITING) {
             // We do not return anything in WAITING state, also NOT skipped.
+
+            // TODO we can get into the situation that we have skipped data
+            // locally end then end up WAITING
             // TODO: Check if we need to leverage this restriction.
-            TRI_ASSERT(skipped == 0);
+            // TRI_ASSERT(skipped == 0);
             return {_upstreamState, 0, nullptr};
           }
           // We have a new range, passthrough can use this range.
