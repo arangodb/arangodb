@@ -98,6 +98,9 @@ struct AqlCall {
       offset -= n;
     } else {
       TRI_ASSERT(fullCount);
+      // We might have skip,(produce?),fullCount
+      // in a single call here.
+      offset = 0;
     }
   }
 
