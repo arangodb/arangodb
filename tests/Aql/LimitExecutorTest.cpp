@@ -1177,6 +1177,25 @@ TEST_F(LimitExecutorExecuteApiTest, test1) {
 
   // TODO Build Infos, (dummy)Fetcher, OutputRow; and, of course, LimitExecutor.
   // TODO Run LimitExecutor over input
+  auto infos = LimitExecutorInfos{1, 1, {}, {0}, 0, 1, true};
+  auto fetcher = SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable>{itemBlockManager, nullptr, false};
+  auto testee = LimitExecutor{fetcher, infos};
+  auto stats = LimitStats{};
+
+  auto result = OutputAqlItemRow{nullptr, outputRegisters, registersToKeep,
+                                 infos.registersToClear()};
+
+  AqlCall call = clientCall;
+
+  if (call.getOffset() > 0) {
+    // Start with an empty input
+    auto input = AqlItemBlockInputRange(ExecutorState::HASMORE);
+    auto const originalCall = call;
+    auto [state, skipped, upstreamCall] = testee.skipRowsRange(input, call);
+    EXPECT_EQ(originalCall.getOffset() + offset, upstreamCall.getOffset());
+    EXPECT_EQ(0, skipped);
+    EXPECT_EQ(state, ExecutorState::HASMORE);
+  }
 }
 
 }  // namespace aql
