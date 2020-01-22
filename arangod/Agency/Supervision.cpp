@@ -294,7 +294,6 @@ void Supervision::upgradeAgency() {
     upgradeBackupKey(builder);
   }
   
-  LOG_DEVEL << builder.toJson();
   LOG_TOPIC("f7315", DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
@@ -1193,10 +1192,33 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
   }
 }
 
+
+void Supervision::unlockHotBackup() {
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(HOTBACKUP_KEY)) {
+    Node tmp = _snapshot(HOTBACKUP_KEY);
+    if (tmp.isString()) {
+      if (std::chrono::system_clock::now() > stringToTimepoint(tmp.getString())) {
+        VPackBuilder unlock;
+        { VPackArrayBuilder trxs(&unlock);
+          { VPackObjectBuilder u(&unlock);
+            unlock.add(VPackValue(HOTBACKUP_KEY));
+            { VPackObjectBuilder o(&unlock);
+              unlock.add("op", VPackValue("delete")); }}}
+        write_ret_t res = singleWriteTransaction(_agent, unlock, false);
+      }
+    }
+  }
+}
+
+
 // Guarded by caller
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
+  LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
+  unlockHotBackup();
+  
   LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
   shrinkCluster();
 
