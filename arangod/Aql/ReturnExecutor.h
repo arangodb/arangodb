@@ -104,7 +104,7 @@ class ReturnExecutor {
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  auto expectedNumberOfRows(size_t atMost) const
+  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
       -> std::pair<ExecutionState, size_t>;
 
  private:

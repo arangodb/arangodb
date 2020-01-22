@@ -103,7 +103,9 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
     }
     output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
     output.advanceRow();
+  if (_infos.doCount()) {
     stats.incrCounted();
+  }
   }
 
   return {inputRange.upstreamState(), stats, output.getClientCall()};
