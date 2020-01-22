@@ -1,9 +1,41 @@
 devel
 -----
 
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behaviour sometimes leads to failed requests because of parse errors
+	which occured in the internal used JavaScript joi library.
+
+* Support trailing commas in AQL object and array definitions as follows:
+
+      [ 1, 2, 3, ]
+      { a: 1, b: 2, }
+
+  In previous versions of ArangoDB, such trailing commas resulted in a query
+  parse error.
+
+* React dev mode now supports hot reload combined with proxy for development.
+
+* Added read-write-locks for parallel move shard operations.
+
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows.
+
+* Fix string comparison bug that lead to traversal queries accepting prefixes of
+  "edges" and "vertices" to be used as object accessors for the path object.
+
+* Fixed internal traversal edge collection cache being filled up correctly.
+  Edges are able to point to other edges, but those we're not applied to the
+  cache.
+
 * Fix string comparison bug that lead to traversal queries accepting
   prefixes of "edges" and "vertices" to be used as object accessors
   for the path object.
+
+* Fix #10852. Nested spliced subqueries could return wrong results in some cases
+  when some of the concerned subqueries did not return any values.
+
+* Fix string comparison bug that lead to traversal queries accepting prefixes of
+  "edges" and "vertices" to be used as object accessors for the path object.
 
 * Add ability to choose logging to file in Windows installer of ArangoDB server
   (enabled by default).

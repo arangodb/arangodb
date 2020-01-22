@@ -37,7 +37,45 @@
 using namespace arangodb::velocypack;
 
 namespace {
-  
+
+// checks whether a memmove operation is allowed to get rid of the padding
+bool isAllowedToMemmove(Options const* options, uint8_t const* start, 
+                        std::vector<ValueLength> const& index, ValueLength offsetSize) {
+  VELOCYPACK_ASSERT(offsetSize == 1 || offsetSize == 2);
+
+  if (options->paddingBehavior == Options::PaddingBehavior::NoPadding || 
+      (offsetSize == 1 && options->paddingBehavior == Options::PaddingBehavior::Flexible)) {
+    std::size_t const n = (std::min)(std::size_t(8 - 2 * offsetSize), index.size());
+    for (std::size_t i = 0; i < n; i++) {
+      if (start[index[i]] == 0x00) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return false;
+}
+
+uint8_t determineArrayType(bool needIndexTable, ValueLength offsetSize) {
+  uint8_t type;
+  // Now build the table:
+  if (needIndexTable) {
+    type = 0x06;
+  } else {  // no index table
+    type = 0x02;
+  }
+  // Finally fix the byte width in the type byte:
+  if (offsetSize == 2) {
+    type += 1;
+  } else if (offsetSize == 4) {
+    type += 2;
+  } else if (offsetSize == 8) {
+    type += 3;
+  }
+  return type;
+}
+
 constexpr ValueLength LinearAttributeUniquenessCutoff = 4;
   
 // struct used when sorting index tables for objects:
@@ -113,7 +151,7 @@ bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
 
 bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
 #ifndef VELOCYPACK_NO_THREADLOCALS
-  std::unique_ptr<std::unordered_set<StringRef>>& duplicateKeys = ::duplicateKeys;
+  std::unique_ptr<std::unordered_set<StringRef>>& tmp = ::duplicateKeys;
 
   if (::duplicateKeys == nullptr) {
     ::duplicateKeys.reset(new std::unordered_set<StringRef>());
@@ -121,14 +159,14 @@ bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
     ::duplicateKeys->clear();
   }
 #else
-  std::unique_ptr<std::unordered_set<StringRef>> duplicateKeys(new std::unordered_set<StringRef>());
+  std::unique_ptr<std::unordered_set<StringRef>> tmp(new std::unordered_set<StringRef>());
 #endif
 
   do {
     Slice const key = it.key(true);
     // key(true) guarantees a String as returned type
     VELOCYPACK_ASSERT(key.isString());
-    if (VELOCYPACK_UNLIKELY(!duplicateKeys->emplace(key).second)) {
+    if (VELOCYPACK_UNLIKELY(!tmp->emplace(key).second)) {
       // identical key
       return false;
     }
@@ -287,12 +325,12 @@ Builder& Builder::operator=(Builder&& that) noexcept {
 }
 
 std::string Builder::toString() const {
-  Options options;
-  options.prettyPrint = true;
+  Options opts;
+  opts.prettyPrint = true;
 
   std::string buffer;
   StringSink sink(&buffer);
-  Dumper::dump(slice(), &sink, &options);
+  Dumper::dump(slice(), &sink, &opts);
   return buffer;
 }
 
@@ -329,7 +367,7 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
 void Builder::sortObjectIndexLong(uint8_t* objBase,
                                   std::vector<ValueLength>& offsets) {
 #ifndef VELOCYPACK_NO_THREADLOCALS
-  std::unique_ptr<std::vector<SortEntry>>& sortEntries = ::sortEntries;
+  std::unique_ptr<std::vector<SortEntry>>& tmp = ::sortEntries;
 
   // start with clean sheet in case the previous run left something
   // in the vector (e.g. when bailing out with an exception)
@@ -339,21 +377,21 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
     ::sortEntries->clear();
   }
 #else
-  std::unique_ptr<std::vector<SortEntry>> sortEntries(new std::vector<SortEntry>());
+  std::unique_ptr<std::vector<SortEntry>> tmp(new std::vector<SortEntry>());
 #endif
 
   std::size_t const n = offsets.size();
   VELOCYPACK_ASSERT(n > 1);
-  sortEntries->reserve(std::max(::minSortEntriesAllocation, n));
+  tmp->reserve(std::max(::minSortEntriesAllocation, n));
   for (std::size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
     e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
-    sortEntries->push_back(e);
+    tmp->push_back(e);
   }
-  VELOCYPACK_ASSERT(sortEntries->size() == n);
-  std::sort(sortEntries->begin(), sortEntries->end(), [](SortEntry const& a,
-                                                         SortEntry const& b)
+  VELOCYPACK_ASSERT(tmp->size() == n);
+  std::sort(tmp->begin(), tmp->end(), [](SortEntry const& a,
+                                         SortEntry const& b)
 #ifdef VELOCYPACK_64BIT
     noexcept
 #endif
@@ -369,7 +407,7 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
 
   // copy back the sorted offsets
   for (std::size_t i = 0; i < n; i++) {
-    offsets[i] = (*sortEntries)[i].offset;
+    offsets[i] = (*tmp)[i].offset;
   }
 }
 
@@ -433,9 +471,6 @@ bool Builder::closeCompactArrayOrObject(ValueLength tos, bool isArray,
 Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
   VELOCYPACK_ASSERT(!index.empty());
 
-  // fix head byte in case a compact Array was originally requested:
-  _start[tos] = 0x06;
-
   bool needIndexTable = true;
   bool needNrSubs = true;
 
@@ -466,25 +501,40 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
     }
   }
 
+  VELOCYPACK_ASSERT(needIndexTable == needNrSubs);
+  
   // First determine byte length and its format:
   unsigned int offsetSize;
   // can be 1, 2, 4 or 8 for the byte width of the offsets,
   // the byte length and the number of subvalues:
-  if (_pos - tos + (needIndexTable ? index.size() : 0) - (needNrSubs ? 6 : 7) <=
-      0xff) {
+  bool allowMemmove = ::isAllowedToMemmove(options, _start + tos, index, 1);
+  if (_pos - tos + 
+      (needIndexTable ? index.size() : 0) - 
+      (allowMemmove ? (needNrSubs ? 6 : 7) : 0) <= 0xff) {
     // We have so far used _pos - tos bytes, including the reserved 8
     // bytes for byte length and number of subvalues. In the 1-byte number
     // case we would win back 6 bytes but would need one byte per subvalue
     // for the index table
     offsetSize = 1;
-  } else if (_pos - tos + (needIndexTable ? 2 * index.size() : 0) <= 0xffff) {
-    offsetSize = 2;
-  } else if (_pos - tos + (needIndexTable ? 4 * index.size() : 0) <=
-             0xffffffffu) {
-    offsetSize = 4;
   } else {
-    offsetSize = 8;
+    allowMemmove = ::isAllowedToMemmove(options, _start + tos, index, 2);
+    if (_pos - tos + 
+        (needIndexTable ? 2 * index.size() : 0) - 
+        (allowMemmove ? (needNrSubs ? 4 : 6) : 0) <= 0xffff) {
+      offsetSize = 2;
+    } else {
+      allowMemmove = false;
+      if (_pos - tos + 
+          (needIndexTable ? 4 * index.size() : 0) <= 0xffffffffu) {
+        offsetSize = 4;
+      } else {
+        offsetSize = 8;
+      }
+    }
   }
+
+  VELOCYPACK_ASSERT(offsetSize == 1 || offsetSize == 2 || offsetSize == 4 || offsetSize == 8); 
+  VELOCYPACK_ASSERT(!allowMemmove || offsetSize == 1 || offsetSize == 2);
 
   if (offsetSize < 8 &&
       !needIndexTable && 
@@ -493,49 +543,39 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
     // using an index table, we can also use type 0x05 for all Arrays without making
     // things worse space-wise
     offsetSize = 8;
+    allowMemmove = false;
   }
 
+  // fix head byte
+  _start[tos] = ::determineArrayType(needIndexTable, offsetSize);
+  
   // Maybe we need to move down data:
-  if (offsetSize == 1 || offsetSize == 2) {
+  if (allowMemmove) {
     // check if one of the first entries in the array is ValueType::None 
     // (0x00). in this case, we could not distinguish between a None (0x00) 
     // and the optional padding. so we must prevent the memmove here
-    bool allowMemMove = options->paddingBehavior == Options::PaddingBehavior::NoPadding ||
-                        (offsetSize == 1 && options->paddingBehavior == Options::PaddingBehavior::Flexible);
-    if (allowMemMove) {
-      std::size_t const n = (std::min)(std::size_t(8 - 2 * offsetSize), index.size());
-      for (std::size_t i = 0; i < n; i++) {
-        if (_start[tos + index[i]] == 0x00) {
-          allowMemMove = false;
-          break;
-        }
-      }
-      if (allowMemMove) {
-        ValueLength targetPos = 1 + 2 * offsetSize;
-        if (!needIndexTable) {
-          targetPos -= offsetSize;
-        }
-        if (_pos > (tos + 9)) {
-          ValueLength len = _pos - (tos + 9);
-          memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
-        }
-        ValueLength const diff = 9 - targetPos;
-        rollback(diff);
-        if (needIndexTable) {
-          std::size_t const n = index.size();
-          for (std::size_t i = 0; i < n; i++) {
-            index[i] -= diff;
-          }
-        }  // Note: if !needIndexTable the index array is now wrong!
-      }
+    ValueLength targetPos = 1 + 2 * offsetSize;
+    if (!needIndexTable) {
+      targetPos -= offsetSize;
     }
+    if (_pos > (tos + 9)) {
+      ValueLength len = _pos - (tos + 9);
+      memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
+    }
+    ValueLength const diff = 9 - targetPos;
+    rollback(diff);
+    if (needIndexTable) {
+      std::size_t const n = index.size();
+      for (std::size_t i = 0; i < n; i++) {
+        index[i] -= diff;
+      }
+    }  // Note: if !needIndexTable the index array is now wrong!
   }
 
   // Now build the table:
   if (needIndexTable) {
-    ValueLength tableBase;
     reserve(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
-    tableBase = _pos;
+    ValueLength tableBase = _pos;
     advance(offsetSize * index.size());
     for (std::size_t i = 0; i < index.size(); i++) {
       uint64_t x = index[i];
@@ -544,22 +584,12 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
         x >>= 8;
       }
     }
-  } else {  // no index table
-    _start[tos] = 0x02;
   }
-  // Finally fix the byte width in the type byte:
-  if (offsetSize > 1) {
-    if (offsetSize == 2) {
-      _start[tos] += 1;
-    } else if (offsetSize == 4) {
-      _start[tos] += 2;
-    } else {  // offsetSize == 8
-      _start[tos] += 3;
-      if (needNrSubs) {
-        reserve(8);
-        appendLengthUnchecked<8>(index.size());
-      }
-    }
+
+  // Finally fix the byte width at tthe end:
+  if (offsetSize == 8 && needNrSubs) {
+    reserve(8);
+    appendLengthUnchecked<8>(index.size());
   }
 
   // Fix the byte length in the beginning:
@@ -723,6 +753,7 @@ Builder& Builder::close() {
   // off the _stack:
   _stack.pop_back();
   // Intentionally leave _index[depth] intact to avoid future allocs!
+      
   return *this;
 }
 
