@@ -36,6 +36,7 @@
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
 #include "search/wildcard_filter.hpp"
+#include "search/ngram_similarity_filter.hpp"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
@@ -2067,6 +2068,130 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
   return processPhraseArgs(phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
 }
 
+// NGRAM_SIMILAR (attribute, target, threshold)
+arangodb::Result fromFuncNgramSimilar(irs::boolean_filter* filter, QueryContext const& ctx,
+  FilterContext const& filterCtx,
+  arangodb::aql::AstNode const& args) {
+
+  if (!args.isDeterministic()) {
+    auto message = "Unable to handle non-deterministic arguments for 'NGRAM_SIMILAR' function";
+    LOG_TOPIC("f2851", WARN, arangodb::iresearch::TOPIC) << message;
+    return { TRI_ERROR_BAD_PARAMETER, message };
+  }
+
+  auto const argc = args.numMembers();
+
+  if (argc != 3) {
+    auto message = "'NGRAM_SIMILAR' AQL function: Invalid number of arguments passed (should be 3)";
+    LOG_TOPIC("b157e", WARN, arangodb::iresearch::TOPIC) << message;
+    return { TRI_ERROR_BAD_PARAMETER, message };
+  }
+
+  // 1st argument defines a field
+  auto const* field =
+    arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+  double threshold{};
+  std::vector<std::string> values;
+
+  if (!field) {
+    auto message = "'NGRAM_SIMILAR' AQL function: Unable to parse 1st argument as an attribute identifier";
+    LOG_TOPIC("4d7a8", WARN, arangodb::iresearch::TOPIC) << message;
+    return { TRI_ERROR_BAD_PARAMETER, message };
+  }
+
+  // 2nd argument defines a value
+  auto const* targetArg = args.getMemberUnchecked(1);
+
+  if (!targetArg) {
+    auto message = "'NGRAM_SIMILAR' AQL function: 2nd argument is invalid";
+    LOG_TOPIC("6f500", WARN, arangodb::iresearch::TOPIC) << message;
+    return { TRI_ERROR_BAD_PARAMETER, message };
+  }
+
+  ScopedAqlValue targetValue(*targetArg);
+
+  if (filter || targetValue.isConstant()) {
+    if (!targetValue.execute(ctx)) {
+      auto message = "'NGRAM_SIMILAR' AQL function: Failed to evaluate 2nd argument";
+      LOG_TOPIC("e196d", WARN, arangodb::iresearch::TOPIC) << message;
+      return { TRI_ERROR_BAD_PARAMETER, message };
+    }
+
+    if (arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY != targetValue.type()) {
+      auto message = "'NGRAM_SIMILAR' AQL function: 2nd argument has invalid type '"s + ScopedAqlValue::typeString(targetValue.type()).c_str() + "' (array expected)";
+      LOG_TOPIC("bd9c9", WARN, arangodb::iresearch::TOPIC) << message;
+      return { TRI_ERROR_BAD_PARAMETER, message };
+    }
+    size_t const n = targetValue.size();
+    for (size_t i = 0; i < n; ++i) {
+      auto val = targetValue.at(i);
+      if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING == val.type()) {
+        irs::string_ref tmp;
+        if (!val.getString(tmp)) {
+          auto message = "'NGRAM_SIMILAR' AQL function: failed to read as string value element at pos "s + std::to_string(i);
+          LOG_TOPIC("bd9c9", WARN, arangodb::iresearch::TOPIC) << message;
+          return { TRI_ERROR_BAD_PARAMETER, message };
+        }
+        values.emplace_back(tmp);
+      } else {
+        auto message = "'NGRAM_SIMILAR' AQL function: value element at pos "s + std::to_string(i) + " has invalid type '"s + ScopedAqlValue::typeString(val.type()).c_str() + "' (string expected)";
+        LOG_TOPIC("bd9c9", WARN, arangodb::iresearch::TOPIC) << message;
+        return { TRI_ERROR_BAD_PARAMETER, message };
+      }
+    }
+  }
+
+  // 3rd argument defines a threshold
+  auto const* thresholdArg = args.getMemberUnchecked(2);
+
+  if (!thresholdArg) {
+    auto message = "'NGRAM_SIMILAR' AQL function: 3rd argument is invalid";
+    LOG_TOPIC("f67b7", WARN, arangodb::iresearch::TOPIC) << message;
+    return { TRI_ERROR_BAD_PARAMETER, message };
+  }
+
+  ScopedAqlValue thresholdValue(*thresholdArg);
+
+  if (filter || thresholdValue.isConstant()) {
+    if (!thresholdValue.execute(ctx)) {
+      auto message = "'NGRAM_SIMILAR' AQL function: Failed to evaluate 3rd argument";
+      LOG_TOPIC("1c334", WARN, arangodb::iresearch::TOPIC) << message;
+      return { TRI_ERROR_BAD_PARAMETER, message };
+    }
+
+    if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != thresholdValue.type()) {
+      auto message = "'NGRAM_SIMILAR' AQL function: 3rd argument has invalid type '"s + ScopedAqlValue::typeString(thresholdValue.type()).c_str() + "' (numeric expected)";
+      LOG_TOPIC("40130", WARN, arangodb::iresearch::TOPIC) << message;
+      return { TRI_ERROR_BAD_PARAMETER, message };
+    }
+
+    if (!thresholdValue.getDouble(threshold)) {
+      auto message = "'NGRAM_SIMILAR' AQL function: 3rd argument failed to read value '"s;
+      LOG_TOPIC("40130", WARN, arangodb::iresearch::TOPIC) << message;
+      return { TRI_ERROR_BAD_PARAMETER, message };
+    }
+  }
+  if (filter) {
+    std::string name;
+
+    if (!nameFromAttributeAccess(name, *field, ctx)) {
+      auto message = "'NGRAM_SIMILAR' AQL function: Failed to generate field name from the 1st argument";
+      LOG_TOPIC("91862", WARN, arangodb::iresearch::TOPIC) << message;
+      return { TRI_ERROR_BAD_PARAMETER, message };
+    }
+
+    TRI_ASSERT(filterCtx.analyzer);
+    kludge::mangleStringField(name, filterCtx.analyzer);
+
+    auto& ngramFilter = filter->add<irs::by_ngram_similarity>();
+    ngramFilter.field(std::move(name)).threshold(threshold);
+    for (auto const& s : values) {
+      ngramFilter.push_back(s);
+    }
+  }
+  return {};
+}
+
 // STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])
 arangodb::Result fromFuncStartsWith(irs::boolean_filter* filter, QueryContext const& ctx,
                         FilterContext const& filterCtx,
@@ -2409,7 +2534,8 @@ std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
     {"PHRASE", fromFuncPhrase},     {"STARTS_WITH", fromFuncStartsWith},
     {"EXISTS", fromFuncExists},     {"BOOST", fromFuncBoost},
     {"ANALYZER", fromFuncAnalyzer}, {"MIN_MATCH", fromFuncMinMatch},
-    {"IN_RANGE", fromFuncInRange},  {"LIKE", fromFuncLike }
+    {"IN_RANGE", fromFuncInRange},  {"LIKE", fromFuncLike },
+    {"NGRAM_SIMILAR", fromFuncNgramSimilar}
 };
 
 arangodb::Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,

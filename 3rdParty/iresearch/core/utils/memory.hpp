@@ -301,6 +301,10 @@ struct managed_deleter {
     delete ptr_;
   }
 
+  T* get() const noexcept {
+    return ptr_;
+  }
+
  private:
   T* ptr_;
 }; // managed_deleter
@@ -323,6 +327,14 @@ inline typename std::enable_if<
 >::type make_managed(std::unique_ptr<T>&& ptr) noexcept {
   auto* p = ptr.release();
   return managed_ptr<T>(p, p);
+}
+
+
+template <typename T>
+std::shared_ptr<T> make_shared(managed_ptr<T>&& ptr) {
+  auto tmp = std::shared_ptr<T>(ptr.get(), memory::managed_deleter<T>(ptr.get_deleter().get()));
+  ptr.release();
+  return tmp;
 }
 
 #define DECLARE_MANAGED_PTR(class_name) typedef irs::memory::managed_ptr<class_name> ptr
