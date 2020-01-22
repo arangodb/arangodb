@@ -23,10 +23,13 @@
 #ifndef ARANGOD_REST_HANDLER_REST_ADMIN_CLUSTER_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_ADMIN_CLUSTER_HANDLER_H 1
 
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Slice.h>
 
+#include <map>
 #include <utility>
 
 namespace arangodb {

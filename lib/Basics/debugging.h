@@ -227,8 +227,8 @@ operator<< (std::ostream& o, T const& t) {
   do {                   \
   } while (0)
 
-#endif
+#endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#endif
+#endif  // #ifndef TRI_ASSERT
 
 #endif

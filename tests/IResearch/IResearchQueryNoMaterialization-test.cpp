@@ -52,8 +52,8 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     auto updateJson = VPackParser::fromJson(
       std::string("{") +
         "\"links\": {"
-        "\"" + collectionName1 + "\": {\"includeAllFields\": true},"
-        "\"" + collectionName2 + "\": {\"includeAllFields\": true}"
+        "\"" + collectionName1 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"},"
+        "\"" + collectionName2 + "\": {\"includeAllFields\": true, \"storeValues\": \"id\"}"
       "}}");
     EXPECT_TRUE(view->properties(updateJson->slice(), true).ok());
 
@@ -98,7 +98,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
           "\"name\": \"" + viewName + "\", \
            \"type\": \"arangosearch\", \
            \"primarySort\": [{\"field\": \"value\", \"direction\": \"asc\"}, {\"field\": \"foo\", \"direction\": \"desc\"}], \
-           \"storedValues\": [\"str\", \"value\", \"_id\", [\"str\", \"value\"]] \
+           \"storedValues\": [\"str\", \"value\", \"_id\", [\"str\", \"value\"], \"exist\"] \
         }");
       view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
           vocbase().createView(createJson->slice()));
@@ -121,9 +121,9 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
       {
         auto builder = VPackParser::fromJson(
             "["
-              "{\"_key\": \"c0\", \"str\": \"cat\", \"foo\": \"foo0\", \"value\": 0},"
+              "{\"_key\": \"c0\", \"str\": \"cat\", \"foo\": \"foo0\", \"value\": 0, \"exist\": \"ex0\"},"
               "{\"_key\": \"c1\", \"str\": \"cat\", \"foo\": \"foo1\", \"value\": 1},"
-              "{\"_key\": \"c2\", \"str\": \"cat\", \"foo\": \"foo2\", \"value\": 2},"
+              "{\"_key\": \"c2\", \"str\": \"cat\", \"foo\": \"foo2\", \"value\": 2, \"exist\": \"ex2\"},"
               "{\"_key\": \"c3\", \"str\": \"cat\", \"foo\": \"foo3\", \"value\": 3}"
             "]");
 
@@ -142,9 +142,9 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
       {
         auto builder = VPackParser::fromJson(
             "["
-              "{\"_key\": \"c_0\", \"str\": \"cat\", \"foo\": \"foo_0\", \"value\": 10},"
+              "{\"_key\": \"c_0\", \"str\": \"cat\", \"foo\": \"foo_0\", \"value\": 10, \"exist\": \"ex_10\"},"
               "{\"_key\": \"c_1\", \"str\": \"cat\", \"foo\": \"foo_1\", \"value\": 11},"
-              "{\"_key\": \"c_2\", \"str\": \"cat\", \"foo\": \"foo_2\", \"value\": 12},"
+              "{\"_key\": \"c_2\", \"str\": \"cat\", \"foo\": \"foo_2\", \"value\": 12, \"exist\": \"ex_12\"},"
               "{\"_key\": \"c_3\", \"str\": \"cat\", \"foo\": \"foo_3\", \"value\": 13}"
             "]");
 
@@ -303,6 +303,34 @@ TEST_F(IResearchQueryNoMaterializationTest, sortAndStoredValues) {
   executeAndCheck(queryString, expectedValues, 2, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 1}, {2, 0}});
 }
 
+TEST_F(IResearchQueryNoMaterializationTest, fieldExistence) {
+  auto const queryString = std::string("FOR d IN ") + viewName +
+      " SEARCH EXISTS(d.exist) SORT d.value RETURN d.value";
+
+  std::vector<VPackValue> expectedValues{
+    VPackValue(0),
+    VPackValue(2),
+    VPackValue(10),
+    VPackValue(12)
+  };
+
+  executeAndCheck(queryString, expectedValues, 1, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}});
+}
+
+TEST_F(IResearchQueryNoMaterializationTest, storedFieldExistence) {
+  auto const queryString = std::string("FOR d IN ") + viewName +
+      " SEARCH EXISTS(d.exist) SORT d.value RETURN d.exist";
+
+  std::vector<VPackValue> expectedValues{
+    VPackValue("ex0"),
+    VPackValue("ex2"),
+    VPackValue("ex_10"),
+    VPackValue("ex_12")
+  };
+
+  executeAndCheck(queryString, expectedValues, 2, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}, {4, 0}});
+}
+
 TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   static std::vector<std::string> const EMPTY;
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"str\": \"abc\", \"value\": 10 }");
@@ -365,10 +393,14 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection, *view);
     ASSERT_TRUE(link);
     irs::directory_reader const snapshotReader = link->snapshot();
-    std::string const columns[] = {"@_PK", "_id", "foo", std::string("foo") +
+    std::string const columns[] = {arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("_id"),
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("foo"),
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("foo") +
                                    arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "str" +
                                    arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "value",
-                                   "str", "value"};
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("str"),
+                                   arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + std::string("value"),
+                                   "@_PK"};
     for (auto const& segment : snapshotReader) {
       auto col = segment.columns();
       auto doc = segment.docs_iterator();
@@ -379,7 +411,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
         auto const& val = col->value();
         ASSERT_TRUE(counter < columnsCount);
         EXPECT_EQ(columns[counter], val.name);
-        if (0 == counter) { // skip PK
+        if (5 == counter) { // skip PK
           ++counter;
           continue;
         }
@@ -389,7 +421,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
         ASSERT_TRUE(valReader);
         irs::bytes_ref value; // column value
         ASSERT_TRUE(valReader(doc->value(), value));
-        if (2 == counter) { // foo
+        if (1 == counter) { // foo
           EXPECT_TRUE(value.null());
           ++counter;
           continue;
@@ -397,7 +429,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
         size_t valueSize = value.size();
         auto slice = VPackSlice(value.c_str());
         switch (counter) {
-        case 1: {
+        case 0: {
           ASSERT_TRUE(slice.isString());
           arangodb::velocypack::ValueLength length = 0;
           auto str = slice.getString(length);
@@ -406,7 +438,7 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
           EXPECT_EQ(collectionName + "/", strVal.substr(0, collectionName.size() + 1));
           break;
         }
-        case 3: {
+        case 2: {
           arangodb::velocypack::ValueLength size = slice.byteSize();
           ASSERT_TRUE(slice.isString());
           arangodb::velocypack::ValueLength length = 0;
@@ -422,14 +454,14 @@ TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
           EXPECT_EQ(valueSize, size);
           break;
         }
-        case 4: {
+        case 3: {
           ASSERT_TRUE(slice.isString());
           arangodb::velocypack::ValueLength length = 0;
           auto str = slice.getString(length);
           EXPECT_EQ("abc", std::string(str, length));
           break;
         }
-        case 5:
+        case 4:
           ASSERT_TRUE(slice.isNumber());
           EXPECT_EQ(10, slice.getNumber<int>());
           break;
