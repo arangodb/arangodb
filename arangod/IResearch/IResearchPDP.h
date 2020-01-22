@@ -36,7 +36,7 @@ namespace iresearch {
 constexpr irs::byte_type MAX_LEVENSHTEIN_DISTANCE = 4;
 constexpr irs::byte_type MAX_DAMERAU_LEVENSHTEIN_DISTANCE = 3;
 
-const irs::parametric_description& compiled_pdp(
+const irs::parametric_description& getParametricDescription(
   irs::byte_type max_distance,
   bool with_transpositions);
 

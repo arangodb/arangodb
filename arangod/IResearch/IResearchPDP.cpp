@@ -36,7 +36,7 @@
 
 namespace {
 
-irs::parametric_description read_parametric_description(
+irs::parametric_description readParametricDescription(
     std::pair<std::initializer_list<irs::byte_type>, size_t> args) {
   auto const rawSize = args.second;
   const auto& data = args.first;
@@ -68,9 +68,18 @@ irs::parametric_description const DESCRIPTIONS[] = {
   irs::make_parametric_description(1, true),
   irs::make_parametric_description(2, false),
   irs::make_parametric_description(2, true),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  readParametricDescription(
+    #include "PD30"
+  ),
+  readParametricDescription(
+    #include "PD31"
+  ),
+#else
   irs::make_parametric_description(3, false),
   irs::make_parametric_description(3, true),
-  read_parametric_description(
+#endif
+  readParametricDescription(
     #include "PD40"
   ),
 };
@@ -85,7 +94,7 @@ size_t args2index(irs::byte_type distance,
 namespace arangodb {
 namespace iresearch {
 
-const irs::parametric_description& compiled_pdp(
+const irs::parametric_description& getParametricDescription(
     irs::byte_type distance,
     bool with_transpositions) {
   const size_t idx = args2index(distance, with_transpositions);

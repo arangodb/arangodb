@@ -2513,7 +2513,7 @@ arangodb::Result fromFuncLevenshteinMatch(
     levenshtein_filter.boost(filterCtx.boost);
     levenshtein_filter.max_distance(irs::byte_type(maxDistance));
     levenshtein_filter.with_transpositions(withTranspositions);
-    levenshtein_filter.provider(&arangodb::iresearch::compiled_pdp);
+    levenshtein_filter.provider(&arangodb::iresearch::getParametricDescription);
   }
 
   return {};

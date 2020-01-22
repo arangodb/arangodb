@@ -1574,9 +1574,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
                                      VPackFunctionParameters const& args) {
   static char const* AFN = "LEVENSHTEIN_MATCH";
 
-  TRI_ASSERT(args.size() >= 3 && args.size() <= 4); // ensured by function signature
-
-  auto& maxDistance = args[2];
+  auto const& maxDistance = extractFunctionParameterValue(args, 2);
 
   if (ADB_UNLIKELY(!maxDistance.isNumber())) {
     arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
@@ -1587,7 +1585,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
   int64_t maxDistanceValue = maxDistance.toInt64();
 
   if (args.size() > 3) {
-    auto& withTranspositions = args[3];
+    auto const& withTranspositions = extractFunctionParameterValue(args, 3);
 
     if (ADB_UNLIKELY(!withTranspositions.isBoolean())) {
       registerInvalidArgumentWarning(ctx, AFN);
@@ -1608,12 +1606,12 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
     auto const dist = Functions::LevenshteinDistance(ctx, trx, args);
     TRI_ASSERT(dist.isNumber());
 
-    return AqlValue{AqlValueHintBool{maxDistanceValue <= dist.toInt64()}};
+    return AqlValue{AqlValueHintBool{dist.toInt64() <= maxDistanceValue}};
   }
 
   size_t const unsignedMaxDistanceValue = static_cast<size_t>(maxDistanceValue);
 
-  auto& description = arangodb::iresearch::compiled_pdp(
+  auto& description = arangodb::iresearch::getParametricDescription(
     static_cast<irs::byte_type>(unsignedMaxDistanceValue),
     withTranspositionsValue);
 
@@ -1622,10 +1620,10 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Method
     return AqlValue{AqlValueHintNull{}};
   }
 
-  auto const lhs = args[0].slice();
-  auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs) : irs::bytes_ref::EMPTY;
-  auto const rhs = args[1].slice();
-  auto const rhsValue = lhs.isString() ? iresearch::getBytesRef(rhs) : irs::bytes_ref::EMPTY;
+  auto const& lhs = extractFunctionParameterValue(args, 0);
+  auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs.slice()) : irs::bytes_ref::EMPTY;
+  auto const& rhs = extractFunctionParameterValue(args, 1);
+  auto const rhsValue = rhs.isString() ? iresearch::getBytesRef(rhs.slice()) : irs::bytes_ref::EMPTY;
 
   size_t const dist = irs::edit_distance(description, lhsValue, rhsValue);
 

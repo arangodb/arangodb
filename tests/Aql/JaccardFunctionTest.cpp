@@ -42,37 +42,48 @@ using namespace arangodb::containers;
 
 namespace {
 
-AqlValue evaluate(char const* lhs, char const* rhs) {
+AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([](int, char const*){ });
+  fakeit::When(Method(expressionContextMock, registerWarning)).AlwaysDo([](int, char const*){ });
 
   fakeit::Mock<transaction::Context> trxCtxMock;
-  fakeit::When(Method(trxCtxMock, getVPackOptions)).Do([](){
+  fakeit::When(Method(trxCtxMock, getVPackOptions)).AlwaysDo([](){
     static VPackOptions options;
     return &options;
   });
   transaction::Context& trxCtx = trxCtxMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
-  fakeit::When(Method(trxMock, transactionContextPtr)).Return(&trxCtx);
+  fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&trxCtx);
   transaction::Methods& trx = trxMock.get();
-
-  auto const lhsJson = arangodb::velocypack::Parser::fromJson(lhs);
-  auto const rhsJson = arangodb::velocypack::Parser::fromJson(rhs);
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params{arena};
-  params.emplace_back(lhsJson->slice());
-  params.emplace_back(rhsJson->slice());
+  params.emplace_back(lhs);
+  params.emplace_back(rhs);
   params.emplace_back(VPackSlice::nullSlice()); // redundant argument
 
   return Functions::Jaccard(&expressionContext, &trx, params);
 }
 
+AqlValue evaluate(char const* lhs, char const* rhs) {
+  auto const lhsJson = arangodb::velocypack::Parser::fromJson(lhs);
+  auto const rhsJson = arangodb::velocypack::Parser::fromJson(rhs);
+
+  return evaluate(AqlValue(lhsJson->slice()), AqlValue(rhsJson->slice()));
+}
+
 void assertJaccardFail(char const* lhs, char const* rhs) {
   ASSERT_TRUE(evaluate(lhs, rhs).isNull(false));
   ASSERT_TRUE(evaluate(rhs, lhs).isNull(false));
+}
+
+void assertJaccardFail(char const* lhs, AqlValue const& rhs) {
+  auto const lhsJson = arangodb::velocypack::Parser::fromJson(lhs);
+
+  ASSERT_TRUE(evaluate(AqlValue(lhsJson->slice()), rhs).isNull(false));
+  ASSERT_TRUE(evaluate(rhs, AqlValue(lhsJson->slice())).isNull(false));
 }
 
 void assertJaccard(double_t expectedValue, char const* lhs, char const* rhs) {
@@ -110,4 +121,10 @@ TEST(JaccardFunctionTest, test) {
   assertJaccardFail("1", "[]");
   assertJaccardFail("null", "[]");
   assertJaccardFail("false", "[]");
+  assertJaccardFail("[]", AqlValue(AqlValueHintNull{}));
+  assertJaccardFail("[]", AqlValue(AqlValueHintInt{1}));
+  assertJaccardFail("[]", AqlValue(AqlValueHintUInt{1}));
+  assertJaccardFail("[]", AqlValue(AqlValueHintDouble{1.}));
+  assertJaccardFail("[]", AqlValue(AqlValueHintBool(false)));
+  assertJaccardFail("[]", AqlValue("foo"));
 }
