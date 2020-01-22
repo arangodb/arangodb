@@ -27,10 +27,15 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringBuffer.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #if defined(TRI_HAVE_POSIX_THREADS)
 #include <unistd.h>
@@ -60,6 +65,16 @@ RestStatus RestStatusHandler::execute() {
     return RestStatus::DONE;
   }
 
+  bool found;
+  std::string const& overviewStr = _request->value("overview", found);
+  if (found && StringUtils::boolean(overviewStr)) {
+    return executeOverview();
+  } else {
+    return executeStandard(security);
+  }
+}
+
+RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
   result.add("server", VPackValue("arango"));
@@ -156,6 +171,69 @@ RestStatus RestStatusHandler::execute() {
       }
 
       result.close();
+    }
+  }
+
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
+  return RestStatus::DONE;
+}
+
+RestStatus RestStatusHandler::executeOverview() {
+  VPackBuilder result;
+
+  result.add(VPackValue(VPackValueType::Object));
+  result.add("version", VPackValue(ARANGODB_VERSION));
+  result.add("platform", VPackValue(TRI_PLATFORM));
+
+#ifdef USE_ENTERPRISE
+  result.add("license", VPackValue("enterprise"));
+#else
+  result.add("license", VPackValue("community"));
+#endif
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  result.add("engine", VPackValue(engine->typeName()));
+
+  auto serverState = ServerState::instance();
+
+  if (serverState != nullptr) {
+    auto role = serverState->getRole();
+    result.add("role", VPackValue(ServerState::roleToString(role)));
+
+    if (role == ServerState::ROLE_COORDINATOR) {
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      auto plan = ci.getPlan();
+
+      if (plan != nullptr) {
+        auto dbservers = plan->slice().get("DBServers");
+        uint64_t d = VPackObjectIterator(dbservers).size();
+    
+        auto coordinators = plan->slice().get("Coordinators");
+        uint64_t c = VPackObjectIterator(coordinators).size();
+
+        result.add("hash", VPackValue(uint16_t(0xdead) ^ uint16_t(c << 8 | d)));
+      }
+    }
+  }
+
+  {
+    bool found;
+    std::string const& browserStr = _request->value("browser", found);
+
+    if (found && !browserStr.empty()) {
+      StringBuffer buffer;
+
+      buffer.appendText(browserStr);
+      int res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        result.add("browser", VPackValue(browserStr));
+      } else {
+        std::string deflated(buffer.c_str(), buffer.size());
+        auto encoded = StringUtils::encodeBase64(deflated);
+        result.add("browser", VPackValue(encoded));
+      }
     }
   }
 
