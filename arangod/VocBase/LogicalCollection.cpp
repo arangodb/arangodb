@@ -157,11 +157,20 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _minRevision(Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision, 0)),
       _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
+      _syncByRevision(false),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
 #endif
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
+
+  if (!system() && version() >= LogicalCollection::Version::v37) {
+    auto& server = vocbase().server();
+    auto& engine = server.getFeature<EngineSelectorFeature>();
+    auto& replication = server.getFeature<ReplicationFeature>();
+    _syncByRevision = engine.isRocksDB() && replication.syncByRevision();
+  }
+
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -444,15 +453,7 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-bool LogicalCollection::syncByRevision() const {
-  if (!system() && version() >= LogicalCollection::Version::v37) {
-    auto& server = vocbase().server();
-    auto& engine = server.getFeature<EngineSelectorFeature>();
-    auto& replication = server.getFeature<ReplicationFeature>();
-    return engine.isRocksDB() && replication.syncByRevision();
-  }
-  return false;
-}
+bool LogicalCollection::syncByRevision() const { return _syncByRevision; }
 
 IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid) {
   return getPhysical()->clusterIndexEstimates(allowUpdating, tid);

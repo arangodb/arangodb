@@ -390,6 +390,8 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _allowUserKeys;
 
+  bool _syncByRevision;
+
   std::string _smartJoinAttribute;
 
   // SECTION: Key Options
