@@ -249,24 +249,6 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
     EXPECT_EQ(i, expected.size());
   }
 
-  // test invalid input type (empty-array)
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH PHRASE(d.value, [ ]) SORT BM25(d) ASC, "
-        "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  // test invalid input type (empty-array) via []
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH PHRASE(d['value'], [ ]) SORT BM25(d) ASC, "
-        "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
-  }
-
   // test invalid input type (array)
   {
     auto result = arangodb::tests::executeQuery(
@@ -1191,24 +1173,6 @@ TEST_F(IResearchQueryPhraseTest, test) {
     }
 
     EXPECT_EQ(i, expected.size());
-  }
-
-  // test invalid input type (empty-array)
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH PHRASE(d.value, [ ]) SORT BM25(d) ASC, "
-        "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  // test invalid input type (empty-array) via []
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        "FOR d IN testView SEARCH PHRASE(d['value'], [ ]) SORT BM25(d) ASC, "
-        "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (array)
@@ -2153,6 +2117,70 @@ TEST_F(IResearchQueryPhraseTest, test) {
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, ['a', 1, 'c', 'd']), "
+      "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+  // test empty array at first arg
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, []), "
+      "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_EQ(0, slice.length());
+  }
+  // test array with empty string
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, ['']), "
+      "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_EQ(0, slice.length());
+  }
+  // test with empty string
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, ''), "
+      "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_EQ(0, slice.length());
+  }
+  // test custom analyzer with multiple mixed offsets with empty array
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[6].slice(),  insertedDocs[10].slice(),
+        insertedDocs[16].slice(), insertedDocs[26].slice(),
+        insertedDocs[32].slice(), insertedDocs[36].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, 'a', 0, 'b', 0, 'c', 0, [], 0, 'd', "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
