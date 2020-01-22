@@ -151,18 +151,14 @@ class TestLambdaSkipExecutor;
 
 template <class Executor>
 static bool constexpr isNewStyleExecutor() {
-<<<<<<< HEAD
-  return std::is_same<Executor, FilterExecutor>::value ||
-         std::is_same<Executor, ShortestPathExecutor>::value;
-=======
   return
 #ifdef ARANGODB_USE_GOOGLE_TESTS
       std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Enable>> ||
       std::is_same_v<Executor, TestLambdaExecutor<BlockPassthrough::Disable>> ||
       std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
-      std::is_same_v<Executor, FilterExecutor>;
->>>>>>> feature/AqlSubqueryExecutionBlockImplExecuteImplementation-ExecBlockImplTests
+      std::is_same_v<Executor, FilterExecutor> ||
+      std::is_same_v<Executor, ShortestPathExecutor>;
 }
 
 template <class Executor>
@@ -1101,10 +1097,10 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 
   static_assert(
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      useExecutor == std::is_same_v<Executor, TestLambdaSkipExecutor> ||
+      (useExecutor == std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
 #endif
-          useExecutor == std::is_same_v<Executor, FilterExecutor>::value > ||
-          useExecutor == std::is_same_v<Executor, ShortestPathExecutor>,
+          (useExecutor == std::is_same_v<Executor, FilterExecutor>) ||
+          (useExecutor == std::is_same_v<Executor, ShortestPathExecutor>),
       "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!

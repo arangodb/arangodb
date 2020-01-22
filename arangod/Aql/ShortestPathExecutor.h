@@ -188,16 +188,19 @@ class ShortestPathExecutor {
 
  private:
   /**
-   *  @brief fetches a path given the current row in input. Returns a pair consisting of
-   *  a flag indicating whether we produced a path, and the upstream state
+   *  @brief fetches a path given the current row in input.
+   *  a flag indicating whether we found a path, put it into the
+   *  internal state.
    */
-  [[nodiscard]] auto fetchPath(AqlItemBlockInputRange& input)
-      -> std::pair<bool, ExecutorState>;
+  [[nodiscard]] auto fetchPath(AqlItemBlockInputRange& input) -> bool;
+  [[nodiscard]] auto pathLengthAvailable() -> size_t;
+
   /**
    *  @brief produce the output from the currently stored path until either
    *  the path is exhausted or there is no output space left.
    */
   auto doOutputPath(OutputAqlItemRow& output) -> void;
+  auto doSkipPath(AqlCall& call) -> size_t;
   /**
    * @brief get the id of a input vertex
    * Result will be written into the given Slice.

@@ -142,7 +142,7 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
       _inputRow{CreateInvalidInputRowHint{}},
       _finder{infos.finder()},
       _path{new arangodb::graph::ShortestPathResult{}},
-      _posInPath(1),
+      _posInPath(0),
       _sourceBuilder{},
       _targetBuilder{} {
   if (!_infos.useRegisterForInput(false)) {
@@ -176,37 +176,64 @@ auto ShortestPathExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
   }
 }
 
-auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input)
-    -> std::pair<bool, ExecutorState> {
-  if (_posInPath < _path->length()) {
-    return {true, ExecutorState::HASMORE};
+auto ShortestPathExecutor::doSkipPath(AqlCall& call) -> size_t {
+  auto skipped = size_t{0};
+
+  if (call.getOffset() >= pathLengthAvailable()) {
+    // we have *fewer* path rows than required offset
+    // so we skip all the rows we have
+    call.didSkip(pathLengthAvailable());
+    skipped += pathLengthAvailable();
+    _posInPath = _path->length();
+    // Now we better not have any path available
+    TRI_ASSERT(pathLengthAvailable() == 0);
+
+    return skipped;
+
   } else {
-    while (true) {
-      // We don't want any old path muck lying around
-      _path->clear();
-      _posInPath = 0;
+    // we can cover all of the required offset by
+    // skipping through our available path
+    _posInPath += call.getOffset();
+    skipped += call.getOffset();
+    call.didSkip(call.getOffset());
 
-      if (input.hasDataRow()) {
-        auto source = VPackSlice{};
-        auto target = VPackSlice{};
-        std::tie(std::ignore, _inputRow) = input.nextDataRow();
-        TRI_ASSERT(_inputRow.isInitialized());
+    // We skipped as much as was requested, but we have
+    // some path left, so we have more!
+    TRI_ASSERT(pathLengthAvailable() > 0);
 
-        // Ordering important here.
-        // Read source and target vertex, then try to find a shortest path (if both worked).
-        if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
-            getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target) &&
-            _finder.shortestPath(source, target, *_path)) {
-          return {true, input.upstreamState()};
-        }
-      } else {
-        // input.state() can be DONE in which case we are done too,
-        // or HASMORE, in which case we wait for ExecutionBlockImpl
-        // to produce us some inputs to process
-        return {false, input.upstreamState()};
-      }
+    return skipped;
+  }
+}
+
+auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
+  // We only want to call fetchPath if we don't have a path currently available
+  TRI_ASSERT(pathLengthAvailable() == 0);
+  _path->clear();
+  _posInPath = 0;
+
+  while (input.hasDataRow()) {
+    auto source = VPackSlice{};
+    auto target = VPackSlice{};
+    std::tie(std::ignore, _inputRow) = input.nextDataRow();
+    TRI_ASSERT(_inputRow.isInitialized());
+
+    // Ordering important here.
+    // Read source and target vertex, then try to find a shortest path (if both worked).
+    if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
+        getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target) &&
+        _finder.shortestPath(source, target, *_path)) {
+      return true;
     }
   }
+  // Note that we only return false if
+  // the input does not have a data row, so if we return false
+  // here, we are DONE (we cannot produce any output anymore).
+  return false;
+}
+auto ShortestPathExecutor::pathLengthAvailable() -> size_t {
+  // Subtraction must not undeflow
+  TRI_ASSERT(_posInPath <= _path->length());
+  return _path->length() - _posInPath;
 }
 
 std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
@@ -217,16 +244,28 @@ std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlIt
 auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (true) {
-    auto [havePath, upstreamState] = fetchPath(input);
-    if (havePath) {
+    if (pathLengthAvailable() > 0) {
+      // TODO maybe have doOutput report whether output is full?
       doOutputPath(output);
       if (output.isFull()) {
-        return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
+        if (pathLengthAvailable() > 0) {
+          return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
+        } else {
+          // We don't have rows available for output. If
+          // upstream is DONE, we will not be able to produce more
+          // if upstream HASMORE, we do not know, so we say HASMORE.
+          return {input.upstreamState(), NoStats{}, AqlCall{}};
+        }
       }
-      // only if output is full do we return here, namely
-      // HAS_MORE
     } else {
-      return {upstreamState, NoStats{}, AqlCall{}};
+      // If fetchPath fails, this means that input has not given us a dataRow
+      // that yielded a path.
+      // If upstream is DONE, we are done too, and if upstream
+      // HASMORE, we can potentially make more.
+      if (!fetchPath(input)) {
+        TRI_ASSERT(!input.hasDataRow());
+        return {input.upstreamState(), NoStats{}, AqlCall{}};
+      }
     }
   }
 }
@@ -234,21 +273,20 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
 auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, size_t, AqlCall> {
   auto skipped = size_t{0};
+
   while (true) {
-    auto [havePath, upstreamState] = fetchPath(input);
-    if (havePath) {
-      if (call.getOffset() >= _path->length()) {
-        call.didSkip(_path->length());
-        skipped += _path->length();
-        _posInPath = _path->length();
-      } else {
-        _posInPath += call.getOffset();
-        skipped += call.getOffset();
-        call.didSkip(call.getOffset());
-        return {ExecutorState::HASMORE, skipped, AqlCall{}};
+    skipped += doSkipPath(call);
+
+    if (pathLengthAvailable() == 0) {
+      if (!fetchPath(input)) {
+        TRI_ASSERT(!input.hasDataRow());
+        return {input.upstreamState(), skipped, AqlCall{}};
       }
     } else {
-      return {upstreamState, skipped, AqlCall{}};
+      // if we end up here there is path available, but
+      // we have skipped as much as we were asked to.
+      TRI_ASSERT(call.getOffset() == 0);
+      return {ExecutorState::HASMORE, skipped, AqlCall{}};
     }
   }
 }
