@@ -2196,6 +2196,27 @@ TEST_F(IResearchQueryPhraseTest, test) {
 
     EXPECT_EQ(i, expected.size());
   }
+  // test custom analyzer with multiple mixed offsets with empty array check accumulating offset
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[29].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.prefix, 'b', 1, [], 2, 'r', " // bateradsfsfasdf
+      "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+    EXPECT_EQ(i, expected.size());
+  }
   // testarray at first arg with analyzer
   {
     std::vector<arangodb::velocypack::Slice> expected = {
