@@ -1,6 +1,10 @@
 devel
 -----
 
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behaviour sometimes leads to failed requests because of parse errors
+	which occured in the internal used JavaScript joi library.
+
 * Support trailing commas in AQL object and array definitions as follows:
 
       [ 1, 2, 3, ]
