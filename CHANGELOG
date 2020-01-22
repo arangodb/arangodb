@@ -1,4 +1,67 @@
-v3.6.0 (XXXX-XX-XX)
+v3.6.1 (2020-XX-XX)
+-------------------
+
+* Fix potential nullptr dereference in view optimizer rule, when there were was
+  a LIMIT outside of a FOR loop.
+
+* Added missing "global" parameter in Swagger REST API documentation for some
+  replication endpoints.
+
+* Fixed an edge case in VelocyPack when the padding of a 1-byte offsetSize array
+  is removed but the first few entries of the array contain a Slice of type
+  None.
+
+* Fix Foxxmaster failover retry loop to not spin forever and give up after a
+  while.
+
+* Fix "random" Valgrind "invalid free/delete" errors caused by usage of
+  `alignas(64)` for shared_ptrs in the SupervisedScheduler.
+
+* MoveShard to check, if target is in sync follower before promotion to leader.
+
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows
+
+* Fixed internal traversal edge collection cache being filled up correctly.
+  Edges are able to point to other edges, but those we're not applied to the
+	cache.
+
+* Fixed issue #10852: Nested spliced subqueries could return wrong results in
+  some cases when some of the concerned subqueries did not return any values.
+
+* Fix string comparison bug that lead to traversal queries accepting prefixes of
+  "edges" and "vertices" to be used as object accessors for the path object.
+
+* Fix bug affecting spliced subqueries when memory blocks are reused.
+
+* Now clearing an internal map inside the traverser engine correctly.
+
+* Add ability to choose logging to file in Windows installer of ArangoDB server
+  (enabled by default).
+
+  ArangoDB-logs folder with arangod.log should be stored in %PROGRAMDATA% and
+  %LOCALAPPDATA% for all users and single user installation respectively.
+
+* Fix installation of arangoinspect and libraries in Windows client installer.
+
+* Disable cluster AQL parallelization for queries that contain traversal,
+  shortest path or k_shortest_path nodes.
+  This avoids potential undefined behavior in case a parallel GatherNode is used
+  in graph queries.
+
+* Fixed internal issue #656: While executing large amount of concurrent
+  insert/removes iresearch seems to leak open file handles. This results in
+  error 32 in cleanup (observed only on Windows as Linux doesn`t have file
+  sharing locks).
+
+* Updated arangosync to 0.7.2.
+
+* Fix Windows client package JS installation paths.
+
+* Added option that makes ArangoDB write logfiles in the Windows installer.
+
+
+v3.6.0 (2020-01-08)
 -------------------
 
 * Supervision maintenance mode from "on" and TTL to expiry string.
