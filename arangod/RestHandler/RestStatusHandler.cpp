@@ -26,6 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -36,7 +37,6 @@
 #include <unistd.h>
 #endif
 
-#include <Agency/AsyncAgencyComm.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -148,7 +148,7 @@ RestStatus RestStatusHandler::execute() {
         result.add("agencyComm", VPackValue(VPackValueType::Object));
         result.add("endpoints", VPackValue(VPackValueType::Array));
 
-        for (const auto& ep : manager->endpoints()) {
+        for (auto const& ep : manager->endpoints()) {
           result.add(VPackValue(ep));
         }
 

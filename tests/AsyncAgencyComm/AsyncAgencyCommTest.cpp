@@ -112,7 +112,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
   };
 
   struct Connection final : public fuerte::Connection {
-    Connection(AsyncAgencyCommPoolMock* mock, std::string  endpoint)
+    Connection(AsyncAgencyCommPoolMock* mock, std::string endpoint)
         : fuerte::Connection(fuerte::detail::ConnectionConfiguration()),
           _mock(mock),
           _endpoint(std::move(endpoint)) {}
@@ -142,7 +142,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
     }
 
     fuerte::MessageID sendRequest(std::unique_ptr<fuerte::Request> req,
-                     fuerte::RequestCallback cb) override {
+                                  fuerte::RequestCallback cb) override {
       validateRequest(req);
 
       // send response

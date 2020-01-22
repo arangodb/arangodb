@@ -536,23 +536,22 @@ ostream& operator<<(ostream& out, AgencyCommResult const& a) {
 // -----------------------------------------------------------------------------
 
 AgencyConnectionOptions AgencyCommHelper::CONNECTION_OPTIONS(15.0, 120.0, 120.0, 100);
-std::string AgencyCommHelper::_prefix;
-
+std::string AgencyCommHelper::PREFIX;
 
 void AgencyCommHelper::initialize(std::string const& prefix) {
-  _prefix = prefix;
+  PREFIX = prefix;
 }
 
 void AgencyCommHelper::shutdown() {}
 
-std::string AgencyCommHelper::path() { return _prefix; }
+std::string AgencyCommHelper::path() { return PREFIX; }
 
 std::string AgencyCommHelper::path(std::string const& p1) {
-  return _prefix + "/" + basics::StringUtils::trim(p1, "/");
+  return PREFIX + "/" + basics::StringUtils::trim(p1, "/");
 }
 
 std::string AgencyCommHelper::path(std::string const& p1, std::string const& p2) {
-  return _prefix + "/" + basics::StringUtils::trim(p1, "/") + "/" +
+  return PREFIX + "/" + basics::StringUtils::trim(p1, "/") + "/" +
          basics::StringUtils::trim(p2, "/");
 }
 
@@ -1138,15 +1137,16 @@ AgencyCommResult toAgencyCommResult(AsyncAgencyCommResult const& result) {
 
       if (!found) {
         oldResult._message = "invalid agency response (header missing)";
+        return oldResult;
       }
-    } else {
-      oldResult._message = "no error";
-      oldResult._statusCode = result.statusCode();
-      if (result.response->isContentTypeJSON()) {
-        oldResult._body = result.response->payloadAsString();
-      } else if (result.response->isContentTypeVPack()) {
-        oldResult._body = result.slice().toJson();  // old result expects this to be a json string
-      }
+    }
+
+    oldResult._message = "no error";
+    oldResult._statusCode = result.statusCode();
+    if (result.response->isContentTypeJSON()) {
+      oldResult._body = result.response->payloadAsString();
+    } else if (result.response->isContentTypeVPack()) {
+      oldResult._body = result.slice().toJson();  // old result expects this to be a json string
     }
   } else {
     oldResult._connected = false;

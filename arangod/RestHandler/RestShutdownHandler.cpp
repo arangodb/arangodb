@@ -23,11 +23,11 @@
 
 #include "RestShutdownHandler.h"
 
-#include <Agency/AsyncAgencyComm.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Scheduler/Scheduler.h"

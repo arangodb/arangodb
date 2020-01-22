@@ -63,8 +63,7 @@ namespace {
 // whenever the format of the generated UUIDs changes, please make sure to
 // adjust this regex too!
 std::regex const uuidRegex(
-    "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-"
-    "f0-9]{12}$");
+    "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$");
 }  // namespace
 
 static constexpr char const* currentServersRegisteredPref =

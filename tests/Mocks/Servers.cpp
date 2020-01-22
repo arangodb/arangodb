@@ -22,6 +22,7 @@
 
 #include <algorithm>
 
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -85,7 +86,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <Agency/AsyncAgencyComm.h>
 #include <boost/core/demangle.hpp>
 using namespace arangodb;
 using namespace arangodb::tests;

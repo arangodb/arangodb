@@ -24,6 +24,7 @@
 #include "RestClusterHandler.h"
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
@@ -33,7 +34,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 
-#include <Agency/AsyncAgencyComm.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -63,8 +63,8 @@ RestStatus RestClusterHandler::execute() {
     }
   }
 
-  generateError(
-    Result(TRI_ERROR_HTTP_NOT_FOUND, "expecting /_api/cluster/[endpoints,agency-dump]"));
+  generateError(Result(TRI_ERROR_HTTP_NOT_FOUND,
+                       "expecting /_api/cluster/[endpoints,agency-dump]"));
 
   return RestStatus::DONE;
 }
@@ -107,8 +107,8 @@ void RestClusterHandler::handleCommandEndpoints() {
   } else if (ServerState::instance()->isSingleServer()) {
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
     if (!replication->isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
-      generateError(
-          Result(TRI_ERROR_NOT_IMPLEMENTED, "automatic failover is not enabled"));
+      generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
+                           "automatic failover is not enabled"));
       return;
     }
 
@@ -164,7 +164,8 @@ void RestClusterHandler::handleCommandEndpoints() {
     endpoints.insert(endpoints.begin(), leaderId);
 
   } else {
-    generateError(Result(TRI_ERROR_NOT_IMPLEMENTED, "cannot serve this request for this deployment type"));
+    generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
+                         "cannot serve this request for this deployment type"));
     return;
   }
 

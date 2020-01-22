@@ -23,11 +23,11 @@
 
 #include "v8-cluster.h"
 
-#include <Agency/AsyncAgencyComm.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
@@ -488,7 +488,7 @@ static void JS_EndpointsAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("endpoints()");
   }
 
-  std::deque<std::string> endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
+  auto endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
   // make the list of endpoints unique
   std::sort(endpoints.begin(), endpoints.end());
   endpoints.assign(endpoints.begin(), std::unique(endpoints.begin(), endpoints.end()));

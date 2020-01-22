@@ -122,7 +122,7 @@ class AsyncAgencyCommManager final {
 
   application_features::ApplicationServer& server();
 
-  uint64_t nextRequestId() { return _nextRequestId++; }
+  uint64_t nextRequestId() { return _nextRequestId.fetch_add(1, std::memory_order_relaxed); }
 
  private:
   bool _skipScheduler = true;

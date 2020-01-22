@@ -179,7 +179,7 @@ class AgencyOperationType {
 class AgencyCommHelper {
  public:
   static AgencyConnectionOptions CONNECTION_OPTIONS;
-  static std::string _prefix;
+  static std::string PREFIX;
 
  public:
   static void initialize(std::string const& prefix);
@@ -640,9 +640,6 @@ class AgencyComm {
   bool lock(std::string const&, double, double, arangodb::velocypack::Slice const&);
 
   bool unlock(std::string const&, arangodb::velocypack::Slice const&, double);
-
-  // AgencyCommResult send(httpclient::GeneralClientConnection*, rest::RequestType,
-  //                      double, std::string const&, std::string const&);
 
   bool tryInitializeStructure();
 

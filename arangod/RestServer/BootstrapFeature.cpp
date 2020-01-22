@@ -21,9 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestServer/BootstrapFeature.h"
-#include <Agency/AsyncAgencyComm.h>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
 #include "Cluster/ClusterFeature.h"
