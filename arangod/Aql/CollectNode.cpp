@@ -36,10 +36,6 @@
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
 
-#include "Logger/LogLevel.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
@@ -534,7 +530,6 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::K_SHORTEST_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::COLLECT:
-      // TODO must there be more? e.g. FILTER?
       return true;
     case ExecutionNode::SINGLETON:
     case ExecutionNode::SUBQUERY_START:
