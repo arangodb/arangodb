@@ -351,16 +351,7 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Unexpected input while skipping");
   }
 
-  auto skippedLocal = size_t{0};
+  // TODO How to count what's skipped above? Is it correct to return 0 here?
 
-  while (upstreamCall.getOffset() > 0) {
-    TRI_ASSERT(false);
-    inputRange.nextDataRow();
-    ++_counter;
-    --upstreamCall.offset;
-    ++skippedLocal;
-  }
-  call.didSkip(skippedLocal);
-
-  return {inputRange.upstreamState(), skippedLocal, upstreamCall};
+  return {inputRange.upstreamState(), 0, upstreamCall};
 }
