@@ -151,7 +151,7 @@ bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
 
 bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
 #ifndef VELOCYPACK_NO_THREADLOCALS
-  std::unique_ptr<std::unordered_set<StringRef>>& duplicateKeys = ::duplicateKeys;
+  std::unique_ptr<std::unordered_set<StringRef>>& tmp = ::duplicateKeys;
 
   if (::duplicateKeys == nullptr) {
     ::duplicateKeys.reset(new std::unordered_set<StringRef>());
@@ -159,14 +159,14 @@ bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
     ::duplicateKeys->clear();
   }
 #else
-  std::unique_ptr<std::unordered_set<StringRef>> duplicateKeys(new std::unordered_set<StringRef>());
+  std::unique_ptr<std::unordered_set<StringRef>> tmp(new std::unordered_set<StringRef>());
 #endif
 
   do {
     Slice const key = it.key(true);
     // key(true) guarantees a String as returned type
     VELOCYPACK_ASSERT(key.isString());
-    if (VELOCYPACK_UNLIKELY(!duplicateKeys->emplace(key).second)) {
+    if (VELOCYPACK_UNLIKELY(!tmp->emplace(key).second)) {
       // identical key
       return false;
     }
@@ -325,12 +325,12 @@ Builder& Builder::operator=(Builder&& that) noexcept {
 }
 
 std::string Builder::toString() const {
-  Options options;
-  options.prettyPrint = true;
+  Options opts;
+  opts.prettyPrint = true;
 
   std::string buffer;
   StringSink sink(&buffer);
-  Dumper::dump(slice(), &sink, &options);
+  Dumper::dump(slice(), &sink, &opts);
   return buffer;
 }
 
@@ -367,7 +367,7 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
 void Builder::sortObjectIndexLong(uint8_t* objBase,
                                   std::vector<ValueLength>& offsets) {
 #ifndef VELOCYPACK_NO_THREADLOCALS
-  std::unique_ptr<std::vector<SortEntry>>& sortEntries = ::sortEntries;
+  std::unique_ptr<std::vector<SortEntry>>& tmp = ::sortEntries;
 
   // start with clean sheet in case the previous run left something
   // in the vector (e.g. when bailing out with an exception)
@@ -377,21 +377,21 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
     ::sortEntries->clear();
   }
 #else
-  std::unique_ptr<std::vector<SortEntry>> sortEntries(new std::vector<SortEntry>());
+  std::unique_ptr<std::vector<SortEntry>> tmp(new std::vector<SortEntry>());
 #endif
 
   std::size_t const n = offsets.size();
   VELOCYPACK_ASSERT(n > 1);
-  sortEntries->reserve(std::max(::minSortEntriesAllocation, n));
+  tmp->reserve(std::max(::minSortEntriesAllocation, n));
   for (std::size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
     e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
-    sortEntries->push_back(e);
+    tmp->push_back(e);
   }
-  VELOCYPACK_ASSERT(sortEntries->size() == n);
-  std::sort(sortEntries->begin(), sortEntries->end(), [](SortEntry const& a,
-                                                         SortEntry const& b)
+  VELOCYPACK_ASSERT(tmp->size() == n);
+  std::sort(tmp->begin(), tmp->end(), [](SortEntry const& a,
+                                         SortEntry const& b)
 #ifdef VELOCYPACK_64BIT
     noexcept
 #endif
@@ -407,7 +407,7 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
 
   // copy back the sorted offsets
   for (std::size_t i = 0; i < n; i++) {
-    offsets[i] = (*sortEntries)[i].offset;
+    offsets[i] = (*tmp)[i].offset;
   }
 }
 
