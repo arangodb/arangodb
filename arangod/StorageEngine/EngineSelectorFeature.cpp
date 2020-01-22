@@ -139,33 +139,33 @@ void EngineSelectorFeature::prepare() {
 
   TRI_ASSERT(_engine != "auto");
 
-  {
-    auto selected = engines.find(_engine);
-    if (selected == engines.end()) {
-      // should not happen
-      LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
-          << "unable to determine storage engine";
-      FATAL_ERROR_EXIT();
-    }
+  auto selected = engines.find(_engine);
+  if (selected == engines.end()) {
+    // should not happen
+    LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
+        << "unable to determine storage engine";
+    FATAL_ERROR_EXIT();
+  }
 
-    if (selected->second.deprecated) {
+  if (selected->second.deprecated) {
+    if (!selected->second.allowNewDeployments) {
+      LOG_TOPIC("23562", ERR, arangodb::Logger::STARTUP)
+          << "The " << _engine << " storage engine is deprecated and unsupported and will be removed in a future version. "
+          << "Please plan for a migration to a different ArangoDB storage engine.";
+
+      if (!ServerState::instance()->isCoordinator() &&
+          !basics::FileUtils::isRegularFile(_engineFilePath) &&
+          !_allowDeprecated) {
+        LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
+            << "The " << _engine << " storage engine cannot be used for new deployments.";
+         FATAL_ERROR_EXIT();
+      }
+    } else {
       LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
           << "The " << _engine << " storage engine is deprecated and will be removed in a future version. "
           << "Please plan for a migration to a different ArangoDB storage engine.";
     }
-    
-    if (!selected->second.allowNewDeployments) {
-      TRI_ASSERT(selected->second.deprecated);
-      if (!ServerState::instance()->isCoordinator() &&
-          !basics::FileUtils::isRegularFile(_engineFilePath) &&
-          !_allowDeprecated) { 
-        LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
-            << "the " << _engine << " storage engine cannot be used for new deployments.";
-        FATAL_ERROR_EXIT();
-      }
-    }
   }
-
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterEngine& ce = server().getFeature<ClusterEngine>();
