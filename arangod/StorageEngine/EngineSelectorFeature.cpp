@@ -44,15 +44,20 @@ using namespace arangodb::options;
 namespace {
 struct EngineInfo {
   std::type_index type;
+  // whether or not the engine is deprecated
   bool deprecated;
+  // whether or not new deployments with this engine are allowed
+  bool allowNewDeployments;
 };
 
 std::unordered_map<std::string, EngineInfo> createEngineMap() {
   std::unordered_map<std::string, EngineInfo> map;
+  // mmfiles is deprecated since v3.6.0
   map.try_emplace(arangodb::MMFilesEngine::EngineName,
-                  EngineInfo{ std::type_index(typeid(arangodb::MMFilesEngine)), true });
+                  EngineInfo{ std::type_index(typeid(arangodb::MMFilesEngine)), true, false });
+  // rocksdb is not deprecated and the engine of choice
   map.try_emplace(arangodb::RocksDBEngine::EngineName,
-                  EngineInfo{ std::type_index(typeid(arangodb::RocksDBEngine)), false });
+                  EngineInfo{ std::type_index(typeid(arangodb::RocksDBEngine)), false, true });
   return map;
 }
 }
@@ -76,8 +81,11 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addOption("--server.storage-engine", "storage engine type "
                      "(the mmfiles engine is deprecated and can only be used for existing deployments)",
                      new DiscreteValuesParameter<StringParameter>(&_engine, availableEngineNames()));
-  
-  options->addOption("--server.allow-deprecated-storage-engine", "allow deprecated storage engines (only useful for testing)",
+ 
+  // whether or not we want to allow deprecated storage engines for _new_ deployments
+  // this is a hidden option that is there only for running tests for deprecated engines
+  options->addOption("--server.allow-deprecated-storage-engine", "allow deprecated storage engines for new deployments "
+                     "(only useful for testing - do not use in production)",
                      new BooleanParameter(&_allowDeprecated),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
@@ -130,26 +138,31 @@ void EngineSelectorFeature::prepare() {
   }
 
   TRI_ASSERT(_engine != "auto");
- 
-  auto selected = engines.find(_engine);
-  if (selected == engines.end()) {
-    // should not happen
-    LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
-        << "unable to determine storage engine";
-    FATAL_ERROR_EXIT();
-  }
 
-  if (selected->second.deprecated) {
-    LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
-        << "The " << _engine << " storage engine is deprecated and will be removed in a future version. "
-        << "Please plan for a migration to a different ArangoDB storage engine.";
-
-    if (!ServerState::instance()->isCoordinator() &&
-        !basics::FileUtils::isRegularFile(_engineFilePath) &&
-        !_allowDeprecated) { 
-      LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
-          << "the " << _engine << " storage engine cannot be used for new deployments.";
+  {
+    auto selected = engines.find(_engine);
+    if (selected == engines.end()) {
+      // should not happen
+      LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
+          << "unable to determine storage engine";
       FATAL_ERROR_EXIT();
+    }
+
+    if (selected->second.deprecated) {
+      LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
+          << "The " << _engine << " storage engine is deprecated and will be removed in a future version. "
+          << "Please plan for a migration to a different ArangoDB storage engine.";
+    }
+    
+    if (!selected->second.allowNewDeployments) {
+      TRI_ASSERT(selected->second.deprecated);
+      if (!ServerState::instance()->isCoordinator() &&
+          !basics::FileUtils::isRegularFile(_engineFilePath) &&
+          !_allowDeprecated) { 
+        LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
+            << "the " << _engine << " storage engine cannot be used for new deployments.";
+        FATAL_ERROR_EXIT();
+      }
     }
   }
 
