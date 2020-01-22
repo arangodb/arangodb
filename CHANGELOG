@@ -1,6 +1,9 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
+  confusing error messages
+
 * Fix potential nullptr dereference in view optimizer rule, when there were was
   a LIMIT outside of a FOR loop.
 
