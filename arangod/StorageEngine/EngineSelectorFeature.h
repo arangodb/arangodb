@@ -42,9 +42,6 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   // return the names of all available storage engines
   static std::unordered_set<std::string> availableEngineNames();
 
-  // return all available storage engines
-  static std::unordered_map<std::string, std::type_index> availableEngines();
-
   // whether the engine has been selected yet
   bool selected() const { return _selected.load(); }
 
@@ -69,6 +66,7 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   std::string _engine;
   std::string _engineFilePath;
   std::atomic<bool> _selected;
+  bool _allowDeprecated;
 };
 
 }  // namespace arangodb
