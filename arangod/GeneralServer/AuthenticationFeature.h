@@ -48,12 +48,8 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
-  std::string jwtSecret() const { return _authCache->jwtSecret(); }
   bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
 
-  double authenticationTimeout() const noexcept {
-    return _authenticationTimeout;
-  }
   /// Enable or disable standalone authentication
   bool localAuthentication() const noexcept { return _localAuthentication; }
 

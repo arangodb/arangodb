@@ -8,7 +8,7 @@
 
 @RESTQUERYPARAM{global,boolean,optional}
 If set to *true*, starts the global replication applier for all
-database. If set to *false*, starts the replication applier in the
+databases. If set to *false*, starts the replication applier in the
 selected database.
 
 @RESTQUERYPARAM{from,string,optional}
