@@ -107,7 +107,10 @@ void assertLevenshteinMatch(bool expectedValue,
 TEST(LevenshteinMatchFunctionTest, test) {
   AqlValue const Damerau{AqlValueHintBool{true}};
   AqlValue const Levenshtein{AqlValueHintBool{false}};
-  AqlValue const Invalid{AqlValueHintNull{}};
+  AqlValue const InvalidNull{AqlValueHintNull{}};
+  AqlValue const InvalidInt{AqlValueHintInt{1}};
+  AqlValue const InvalidArray{AqlValueHintEmptyArray{}};
+  AqlValue const InvalidObject{AqlValueHintEmptyObject{}};
 
   assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{0}), &Levenshtein);
   assertLevenshteinMatch(false, AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{0}));
@@ -144,7 +147,10 @@ TEST(LevenshteinMatchFunctionTest, test) {
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintEmptyArray{}), &Levenshtein);
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintEmptyObject{}), &Levenshtein);
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintBool{false}), &Levenshtein);
-  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &Invalid);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidNull);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidInt);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidArray);
+  assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{5}), &InvalidObject);
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}));
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Damerau);
   assertLevenshteinMatchFail(AqlValue("aa"), AqlValue("aaaa"), AqlValue(AqlValueHintInt{-1}), &Levenshtein);
