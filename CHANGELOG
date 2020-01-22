@@ -5,6 +5,20 @@ devel
 
 * Removed old AgencyComm.
 
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behaviour sometimes leads to failed requests because of parse errors
+	which occured in the internal used JavaScript joi library.
+
+* Support trailing commas in AQL object and array definitions as follows:
+
+      [ 1, 2, 3, ]
+      { a: 1, b: 2, }
+
+  In previous versions of ArangoDB, such trailing commas resulted in a query
+  parse error.
+
+* React dev mode now supports hot reload combined with proxy for development.
+
 * Added read-write-locks for parallel move shard operations.
 
 * Fixed issue #10867: arangod based binaries lack product version info and icon

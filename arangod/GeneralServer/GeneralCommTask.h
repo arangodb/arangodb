@@ -41,7 +41,6 @@ class GeneralCommTask : public CommTask {
 
   virtual ~GeneralCommTask() = default;
 
-  void start() override;
   void stop() override;
   
   void close(asio_ns::error_code const& err = asio_ns::error_code());

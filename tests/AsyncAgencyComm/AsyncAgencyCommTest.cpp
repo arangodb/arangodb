@@ -142,7 +142,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
     }
 
     fuerte::MessageID sendRequest(std::unique_ptr<fuerte::Request> req,
-                                  fuerte::RequestCallback cb) override {
+                     fuerte::RequestCallback cb) override {
       validateRequest(req);
 
       // send response
@@ -153,7 +153,6 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
       } else {
         cb(fuerte::Error::Canceled, std::move(req), nullptr);
       }
-
       return 0;
     }
   };
