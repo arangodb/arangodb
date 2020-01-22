@@ -165,7 +165,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _physical(EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)) {
 
   if (!system() && version() >= LogicalCollection::Version::v37) {
-    auto& server = vocbase().server();
+    auto& server = vocbase.server();
     auto& engine = server.getFeature<EngineSelectorFeature>();
     auto& replication = server.getFeature<ReplicationFeature>();
     _syncByRevision = engine.isRocksDB() && replication.syncByRevision();
