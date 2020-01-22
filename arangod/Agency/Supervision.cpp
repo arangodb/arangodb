@@ -291,6 +291,7 @@ void Supervision::upgradeAgency() {
     upgradeOne(builder);
     upgradeHealthRecords(builder);
     upgradeMaintenance(builder);
+    upgradeBackupKey(builder);
   }
 
   LOG_TOPIC("f7315", DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
@@ -334,6 +335,37 @@ void Supervision::upgradeMaintenance(VPackBuilder& builder) {
     }
   }
 }
+
+
+void Supervision::upgradeBackupKey(VPackBuilder& builder) {
+
+  // Upgrade /arango/Target/HotBackup/Create from 0 to time out
+  
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(HOTBACKUP_KEY)) {
+
+    Node const& tmp  = _snapshot(HOTBACKUP_KEY);
+    if (tmp.isNumber()) {
+      if (tmp.getInt() == 0) {
+        
+        VPackArrayBuilder trx(&builder);
+        {
+          VPackObjectBuilder o(&builder);
+          builder.add(
+            HOTBACKUP_KEY,
+            VPackValue(
+              timepointToString(
+                std::chrono::system_clock::now() + std::chrono::hours(1))));
+        }
+        {
+          VPackObjectBuilder o(&builder);
+          builder.add(HOTBACKUP_KEY, VPackValue(0));
+        }
+      }
+    }
+  }
+}
+
 
 void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
                             HealthRecord& persisted, HealthRecord& transisted,

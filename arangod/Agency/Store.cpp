@@ -528,32 +528,8 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-
-          
-          
           if (!op.value.isString() || !node->isWriteLockable(op.value.stringRef())) {
             ret.push_back(precond.key);
-            if (mode == FIRST_FAIL) {
-              break;
-            }
-          }
-        } else if (oper == PREC_CMP) {
-          if (op.value.isNumber() && node.isNumber()) {
-            double v = 0.0, n = 0.0;
-            try {
-              v = 
-            } catch(std::exception const& e) {
-              if (mode == FIRST_FAIL) {
-                break;
-              }
-              LOG_TOPIC("aa6fe", DEBUG, Logger::AGENCY) << "Comparing " << e.what();
-            }
-            return 
-          } else if (op.value.isString() && node.isString()) {
-            
-          } else if (op.value.isArray() && node.isArray()) {
-            
-          } else {
             if (mode == FIRST_FAIL) {
               break;
             }

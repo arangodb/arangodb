@@ -35,6 +35,7 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
@@ -513,16 +514,11 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
 }
 
 void RestHandler::compressResponse() {
-
-  using std::chrono;
-  
   if (_response->isCompressionAllowed()) {
 
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
-        auto start = high_resolution_clock::now();
         _response->deflate();
-        LOG_DEVEL << "deflate " << duration<double>(high_resolution_clock::now() - start).count();
         _response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
         break;
 
