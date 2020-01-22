@@ -137,19 +137,21 @@ void GeneralServer::stopConnections() {
 }
 
 void GeneralServer::stopWorking() {
-  _acceptors.clear();
-  std::unique_lock<std::recursive_mutex> guard(_tasksLock);
   auto now = std::chrono::system_clock::now();
-  while (!_commTasks.empty()) {  // CommTasks should deregister themselves
+  do {
+    std::unique_lock<std::recursive_mutex> guard(_tasksLock);
+    bool done = _commTasks.empty();
     guard.unlock();
-    std::this_thread::yield();
-    if ((std::chrono::system_clock::now() - now) > std::chrono::seconds(5)) {
-      guard.lock();
+    if (done) {
       break;
     }
-    guard.lock();
+    std::this_thread::yield();
+  } while((std::chrono::system_clock::now() - now) < std::chrono::seconds(5));
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    _commTasks.clear();
   }
-  _commTasks.clear();
+  _acceptors.clear();
   _contexts.clear();  // stops threads
 }
 
@@ -169,11 +171,11 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
 }
 
 IoContext& GeneralServer::selectIoContext() {
-  uint64_t low = _contexts[0].clients();
+  unsigned low = _contexts[0].clients();
   size_t lowpos = 0;
 
   for (size_t i = 1; i < _contexts.size(); ++i) {
-    uint64_t x = _contexts[i].clients();
+    unsigned x = _contexts[i].clients();
     if (x < low) {
       low = x;
       lowpos = i;

@@ -512,10 +512,16 @@ void epoll_reactor::run(long usec, op_queue<operation>& ops)
     void* ptr = events[i].data.ptr;
     if (ptr == &interrupter_)
     {
+      // Currently obsolete:
       // No need to reset the interrupter since we're leaving the descriptor
       // in a ready-to-read state and relying on edge-triggered notifications
       // to make it so that we only get woken up when the descriptor's epoll
       // registration is updated.
+      //
+      // The above is the original comment. We have to work around a bug in
+      // Linux 5.3 and thus are using the actual interrupt() call of the
+      // interrupter. Therefore, we have to reset it here:
+      interrupter_.reset();
 
 #if defined(BOOST_ASIO_HAS_TIMERFD)
       if (timer_fd_ == -1)
@@ -567,10 +573,19 @@ void epoll_reactor::run(long usec, op_queue<operation>& ops)
 
 void epoll_reactor::interrupt()
 {
+  // The following code does not work correctly on Linux 5.3, since sometimes
+  // wakeup events are lost, when the event comes in at exactly the same time
+  // as the epoll_wait call happens. Therefore we are using the official
+  // interrupt() method here, and correspondingly reset() the interrupt when
+  // we have been woken up in epoll_reactor::run.
+#if 0
   epoll_event ev = { 0, { 0 } };
   ev.events = EPOLLIN | EPOLLERR | EPOLLET;
   ev.data.ptr = &interrupter_;
   epoll_ctl(epoll_fd_, EPOLL_CTL_MOD, interrupter_.read_descriptor(), &ev);
+#else
+  interrupter_.interrupt();
+#endif
 }
 
 int epoll_reactor::do_epoll_create()
