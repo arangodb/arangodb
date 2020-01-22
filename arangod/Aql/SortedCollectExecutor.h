@@ -183,14 +183,23 @@ class SortedCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  auto produceRows(OutputAqlItemRow& output) -> std::pair<ExecutionState, Stats>;
+
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * This executor has no chance to estimate how many rows
    * it will produce exactly. It can however only
    * overestimate never underestimate.
    */
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
+      -> std::pair<ExecutionState, size_t>;
 
  private:
   Infos const& infos() const noexcept { return _infos; };
@@ -204,6 +213,7 @@ class SortedCollectExecutor {
   CollectGroup _currentGroup;
 
   bool _fetcherDone;  // Flag if fetcher is done
+  bool _haveSeenData = false;
 };
 
 }  // namespace aql

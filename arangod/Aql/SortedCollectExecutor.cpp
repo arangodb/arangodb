@@ -17,6 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lars Maier
 /// @author Tobias Goedderz
 /// @author Michael Hackstein
 /// @author Heiko Kernbach
@@ -35,6 +36,7 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Logger/LogMacros.h>
 #include <utility>
 
 using namespace arangodb;
@@ -284,9 +286,12 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
       output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
     }
   }
+
+  output.advanceRow();
 }
 
 std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_ASSERT(false);
   TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -298,8 +303,8 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlI
     if (_fetcherDone) {
       if (_currentGroup.isValid()) {
         _currentGroup.writeToOutput(output, input);
-        InputAqlItemRow input{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(input);
+        InputAqlItemRow inputDummy{CreateInvalidInputRowHint{}};
+        _currentGroup.reset(inputDummy);
         TRI_ASSERT(!_currentGroup.isValid());
         return {ExecutionState::DONE, {}};
       }
@@ -335,37 +340,36 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlI
         _currentGroup.reset(input);
         return {ExecutionState::DONE, {}};
       }
+    } else if (_currentGroup.isValid()) {
+      // Write the current group.
+      // Start a new group from input
+      _currentGroup.writeToOutput(output, input);
+      TRI_ASSERT(output.produced());
+      _currentGroup.reset(input);  // reset and recreate new group
+      if (input.isInitialized()) {
+        return {ExecutionState::HASMORE, {}};
+      }
+      TRI_ASSERT(state == ExecutionState::DONE);
+      return {ExecutionState::DONE, {}};
     } else {
-      if (_currentGroup.isValid()) {
-        // Write the current group.
-        // Start a new group from input
-        _currentGroup.writeToOutput(output, input);
-        TRI_ASSERT(output.produced());
-        _currentGroup.reset(input);  // reset and recreate new group
-        if (input.isInitialized()) {
-          return {ExecutionState::HASMORE, {}};
+      if (!input.isInitialized()) {
+        if (_infos.getGroupRegisters().empty()) {
+          // we got exactly 0 rows as input.
+          // by definition we need to emit one collect row
+          _currentGroup.writeToOutput(output, input);
+          TRI_ASSERT(output.produced());
         }
         TRI_ASSERT(state == ExecutionState::DONE);
         return {ExecutionState::DONE, {}};
-      } else {
-        if (!input.isInitialized()) {
-          if (_infos.getGroupRegisters().empty()) {
-            // we got exactly 0 rows as input.
-            // by definition we need to emit one collect row
-            _currentGroup.writeToOutput(output, input);
-            TRI_ASSERT(output.produced());
-          }
-          TRI_ASSERT(state == ExecutionState::DONE);
-          return {ExecutionState::DONE, {}};
-        }
-        // old group was not valid, do not write it
-        _currentGroup.reset(input);  // reset and recreate new group
       }
+      // old group was not valid, do not write it
+      _currentGroup.reset(input);  // reset and recreate new group
     }
   }
 }
 
 std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
+  TRI_ASSERT(false);
   if (!_fetcherDone) {
     ExecutionState state;
     size_t expectedRows;
@@ -377,9 +381,106 @@ std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(si
     return {ExecutionState::HASMORE, expectedRows + 1};
   }
   // The fetcher will NOT send anything any more
-  // We will at most return the current oepn group
+  // We will at most return the current open group
   if (_currentGroup.isValid()) {
     return {ExecutionState::HASMORE, 1};
   }
   return {ExecutionState::DONE, 0};
+}
+
+auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                        OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  AqlCall clientCall = output.getClientCall();
+  TRI_ASSERT(clientCall.offset == 0);
+
+  /*
+   * While the output is not full, read more input ranges and put them into
+   *  the groups.
+   *  If a row does not belong to a group generate a output row.
+   * If the state is DONE generate the last group.
+   * If nothing was generated and we have to write at least one row, write that row.
+   */
+
+  size_t rowsProduces = 0;
+
+  while (!output.isFull()) {
+    auto [state, input] = inputRange.nextDataRow();
+
+    LOG_DEVEL << "SortedCollectExecutor::produceRows " << state << " "
+              << input.isInitialized();
+
+    // TODO store in member if we have not been called with data before
+    if (state == ExecutorState::DONE && !_haveSeenData) {
+      // we have never been called with data
+      LOG_DEVEL << "never called with data";
+      if (_infos.getGroupRegisters().empty()) {
+        // by definition we need to emit one collect row
+        InputAqlItemRow invalidInput{CreateInvalidInputRowHint{}};
+        _currentGroup.writeToOutput(output, invalidInput);
+        rowsProduces += 1;
+      }
+      break;
+    }
+
+    // either state != DONE or we have an input row
+    TRI_ASSERT(state == ExecutorState::HASMORE || state == ExecutorState::DONE);
+    if (!input.isInitialized()) {
+      LOG_DEVEL << "need more input rows";
+      break;
+    }
+
+    _haveSeenData = true;
+
+    // if we are in the same group, we need to add lines to the current group
+    if (_currentGroup.isSameGroup(input)) {
+      LOG_DEVEL << "input is same group";
+      _currentGroup.addLine(input);
+
+    } else if (_currentGroup.isValid()) {
+      LOG_DEVEL << "input is new group, writing old group";
+      // Write the current group.
+      // Start a new group from input
+      rowsProduces += 1;
+      _currentGroup.writeToOutput(output, input);
+      _currentGroup.reset(input);  // reset and recreate new group
+
+    } else {
+      LOG_DEVEL << "generating new group";
+      // old group was not valid, do not write it
+      _currentGroup.reset(input);  // reset and recreate new group
+    }
+
+    if (state == ExecutorState::DONE) {
+      rowsProduces += 1;
+      _currentGroup.writeToOutput(output, input);
+
+      input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      _currentGroup.reset(input);
+      break;
+    }
+  }
+
+  AqlCall upstreamCall;
+  upstreamCall.fullCount = clientCall.fullCount;
+
+  LOG_DEVEL << "client hardlimit: " << clientCall.hardLimit;
+
+  bool jobIsDone = std::visit(overload{[&](std::size_t hardlimit) {
+                                         return rowsProduces == hardlimit;
+                                       },
+                                       [](auto) { return false; }},
+                              clientCall.hardLimit);
+  if (jobIsDone) {
+    LOG_DEVEL << "hard limit reached";
+    upstreamCall.hardLimit = 0;
+  }
+
+  LOG_DEVEL << "reporting state: " << inputRange.upstreamState();
+
+  return {inputRange.upstreamState(), Stats{}, upstreamCall};
 }

@@ -50,14 +50,14 @@ OutputAqlItemRow::OutputAqlItemRow(
     std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
     std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-    AqlCall&& clientCall, CopyRowBehavior copyRowBehavior)
+    AqlCall clientCall, CopyRowBehavior copyRowBehavior)
     : _block(std::move(block)),
       _baseIndex(0),
       _lastBaseIndex(0),
       _inputRowCopied(false),
       _lastSourceRow{CreateInvalidInputRowHint{}},
       _numValuesWritten(0),
-      _call(std::move(clientCall)),
+      _call(clientCall),
       _doNotCopyInputRow(copyRowBehavior == CopyRowBehavior::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
       _registersToKeep(std::move(registersToKeep)),
@@ -67,6 +67,19 @@ OutputAqlItemRow::OutputAqlItemRow(
 #endif
       _allowSourceRowUninitialized(false) {
   TRI_ASSERT(_block != nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_block != nullptr) {
+    for (auto const& reg : *_outputRegisters) {
+      TRI_ASSERT(reg < _block->getNrRegs());
+    }
+    for (auto const& reg : *_registersToKeep) {
+      TRI_ASSERT(reg < _block->getNrRegs());
+    }
+    for (auto const& reg : *_registersToClear) {
+      TRI_ASSERT(reg < _block->getNrRegs());
+    }
+  }
+#endif
 }
 
 template <class ItemRowType>

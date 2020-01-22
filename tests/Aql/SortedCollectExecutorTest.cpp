@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 /// @author Heiko Kernbach
 /// @author Jan Christoph Uhde
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
@@ -37,6 +38,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include "AqlItemBlockHelper.h"
 #include "Mocks/Servers.h"
 
 #include <velocypack/Builder.h>
@@ -104,29 +106,39 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
 };
 
 TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_doesnt_wait) {
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
+  auto input = VPackParser::fromJson("[ [1], [2] ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-}
+  AqlCall clientCall;
 
-TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_waits) {
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
-  SortedCollectExecutor testee(fetcher, infos);
+  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE);
 
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
+  SharedAqlItemBlockPtr outputBlock =
+      itemBlockManager.requestBlock(1, infos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear(), {});
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+  {
+    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    ASSERT_EQ(ExecutorState::HASMORE, state);
+    ASSERT_FALSE(upstreamCall.hasHardLimit());
+    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_EQ(0, upstreamCall.offset);
+    ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
+    ASSERT_EQ(0, result.numRowsWritten());
+    ASSERT_FALSE(result.produced());
+  }
+
+  {
+    auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
+    ASSERT_EQ(ExecutorState::DONE, state);
+    ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
+    ASSERT_EQ(0, result.numRowsWritten());
+    ASSERT_FALSE(result.produced());
+  }
 }
 
 class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
@@ -187,87 +199,106 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
+  AqlCall clientCall;
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  result.advanceRow();
+  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
+                                    inputBlock->size());
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(result.produced());
-  result.advanceRow();
+  SharedAqlItemBlockPtr outputBlock =
+      itemBlockManager.requestBlock(2, infos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear(), {});
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+  {
+    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    ASSERT_EQ(ExecutorState::HASMORE, state);
+    ASSERT_FALSE(upstreamCall.hasHardLimit());
+    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_EQ(0, upstreamCall.offset);
+    ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
+    ASSERT_EQ(0, result.numRowsWritten());
+    ASSERT_FALSE(result.produced());
+  }
 
-  auto block = result.stealBlock();
+  {
+    auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
+    ASSERT_EQ(ExecutorState::DONE, state);
+    ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
+    ASSERT_EQ(2, result.numRowsWritten());
+    ASSERT_FALSE(result.produced());
+  }
 
-  // check for groups in this executor they are guaranteed to be ordered
-
-  // First group
-  AqlValue x = block->getValue(0, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.slice().getInt(), 1);
-  // check for collect
-  x = block->getValue(1, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.slice().getInt(), 2);
+  {
+    AqlValue x = outputBlock->getValue(0, 1);
+    ASSERT_TRUE(x.isNumber());
+    ASSERT_EQ(x.slice().getInt(), 1);
+    x = outputBlock->getValue(1, 1);
+    ASSERT_TRUE(x.isNumber());
+    ASSERT_EQ(x.slice().getInt(), 2);
+  }
 }
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_2) {
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
-  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}, {3}});
+  AqlCall clientCall;
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  result.advanceRow();
+  AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
+                                    inputBlock->size());
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  result.advanceRow();
+  SharedAqlItemBlockPtr outputBlock =
+      itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
+  OutputAqlItemRow result(outputBlock, infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear(), {});
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(result.produced());
-  result.advanceRow();
+  {
+    auto [state, stats, upstreamCall] = testee.produceRows(emptyInputRange, result);
+    ASSERT_EQ(ExecutorState::HASMORE, state);
+    ASSERT_FALSE(upstreamCall.hasHardLimit());
+    ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
+    ASSERT_EQ(0, upstreamCall.offset);
+    ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
+    ASSERT_EQ(0, result.numRowsWritten());
+    ASSERT_FALSE(result.produced());
+  }
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+  {
+    auto [state, stats, upstreamCall] = testee.produceRows(inputRange, result);
+    ASSERT_EQ(ExecutorState::DONE, state);
+    ASSERT_EQ(clientCall.fullCount, upstreamCall.fullCount);
+    ASSERT_EQ(inputBlock->size(), result.numRowsWritten());
+    ASSERT_FALSE(result.produced());
+  }
 
-  auto block = result.stealBlock();
-
-  // check for collects
-  AqlValue x = block->getValue(0, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.slice().getInt(), 1);
-
-  x = block->getValue(1, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.slice().getInt(), 2);
-
-  x = block->getValue(2, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.slice().getInt(), 3);
+  {
+    AqlValue x = outputBlock->getValue(0, 1);
+    ASSERT_TRUE(x.isNumber());
+    ASSERT_EQ(x.slice().getInt(), 1);
+    x = outputBlock->getValue(1, 1);
+    ASSERT_TRUE(x.isNumber());
+    ASSERT_EQ(x.slice().getInt(), 2);
+    x = outputBlock->getValue(2, 1);
+    ASSERT_TRUE(x.isNumber());
+    ASSERT_EQ(x.slice().getInt(), 3);
+  }
 }
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_3) {
   // Input order needs to be guaranteed
   auto input = VPackParser::fromJson("[ [1], [1], [2], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -311,7 +342,8 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_3) {
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_4) {
   auto input = VPackParser::fromJson("[ [1], [1], [2], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -346,7 +378,8 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_doesnt_wait_4) {
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_waits) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), true);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -434,7 +467,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -525,7 +559,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountNumbers, test) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -631,7 +666,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   SortedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),

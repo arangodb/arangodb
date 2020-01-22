@@ -55,7 +55,7 @@ class OutputAqlItemRow {
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-                            AqlCall&& clientCall = AqlCall{},
+                            AqlCall clientCall = AqlCall{},
                             CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   ~OutputAqlItemRow() = default;

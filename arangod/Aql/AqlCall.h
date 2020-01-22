@@ -136,6 +136,13 @@ constexpr AqlCall::Limit operator+(size_t n, AqlCall::Limit const& a) {
   return a + n;
 }
 
+static inline std::ostream& operator<<(std::ostream& os, AqlCall::Limit const& limit) {
+  std::visit(overload{[&](std::size_t s) { os << s; },
+                      [&](AqlCall::Infinity) { os << "<infinity>"; }},
+             limit);
+  return os;
+}
+
 }  // namespace aql
 }  // namespace arangodb
 
