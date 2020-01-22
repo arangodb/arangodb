@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
+#include "Aql/AqlCall.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -112,8 +113,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Used in execute implmentation
   // Defines the internal state this executor is in.
   enum class ExecState {
-    // Resetted state, we have fully produced an output last time and wait for a fresh call
-    INITIAL,
+    // We need to check the client call to define the next state (inital state)
+    CHECKCALL,
     // We are skipping rows in offset
     SKIP,
     // We are producing rows
@@ -317,6 +318,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   DataRange _lastRange;
 
   ExecState _execState;
+
+  AqlCall _upstreamRequest;
+
+  AqlCall _clientRequest;
 
   // Only used in passthrough variant.
   bool _hasUsedDataRangeBlock;
