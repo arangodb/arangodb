@@ -34,6 +34,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -441,6 +442,16 @@ TRI_voc_rid_t LogicalCollection::minRevision() const {
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
+}
+
+bool LogicalCollection::syncByRevision() const {
+  if (!system() && version() >= LogicalCollection::Version::v37) {
+    auto& server = vocbase().server();
+    auto& engine = server.getFeature<EngineSelectorFeature>();
+    auto& replication = server.getFeature<ReplicationFeature>();
+    return engine.isRocksDB() && replication.syncByRevision();
+  }
+  return false;
 }
 
 IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid) {

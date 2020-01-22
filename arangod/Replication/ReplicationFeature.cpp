@@ -56,6 +56,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _forceRequestTimeout(false),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false),
+      _syncByRevision(true),
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0) {
   setOptional(true);
@@ -101,6 +102,13 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      "Default timeout value for replication requests (in seconds)",
                      new DoubleParameter(&_requestTimeout))
                      .setIntroducedIn(30409).setIntroducedIn(30504);
+
+  options
+      ->addOption(
+          "--replication.sync-by-revision",
+          "Whether to use the newer revision-based replication protocol",
+          new BooleanParameter(&_syncByRevision))
+      .setIntroducedIn(30700);
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -216,6 +224,12 @@ double ReplicationFeature::checkRequestTimeout(double value) const {
   return value;
 }
 
+bool ReplicationFeature::isActiveFailoverEnabled() const {
+  return _enableActiveFailover;
+}
+
+bool ReplicationFeature::syncByRevision() const { return _syncByRevision; }
+
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
@@ -242,6 +256,15 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   }
 }
 
+GlobalReplicationApplier* ReplicationFeature::globalReplicationApplier() const {
+  TRI_ASSERT(_globalReplicationApplier != nullptr);
+  return _globalReplicationApplier.get();
+}
+
+void ReplicationFeature::disableReplicationApplier() {
+  _replicationApplierAutoStart = false;
+}
+
 // stop the replication applier for a single database
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
@@ -250,6 +273,12 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
     vocbase->replicationApplier()->stopAndJoin();
   }
 }
+
+/// @brief returns the connect timeout for replication requests
+double ReplicationFeature::connectTimeout() const { return _connectTimeout; }
+
+/// @brief returns the request timeout for replication requests
+double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
 
 // replace tcp:// with http://, and ssl:// with https://
 static std::string FixEndpointProto(std::string const& endpoint) {

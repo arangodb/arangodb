@@ -46,13 +46,10 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   void unprepare() override final;
 
   /// @brief return a pointer to the global replication applier
-  GlobalReplicationApplier* globalReplicationApplier() const {
-    TRI_ASSERT(_globalReplicationApplier != nullptr);
-    return _globalReplicationApplier.get();
-  }
+  GlobalReplicationApplier* globalReplicationApplier() const;
 
   /// @brief disable replication appliers
-  void disableReplicationApplier() { _replicationApplierAutoStart = false; }
+  void disableReplicationApplier();
 
   /// @brief start the replication applier for a single database
   void startApplier(TRI_vocbase_t* vocbase);
@@ -61,11 +58,11 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   void stopApplier(TRI_vocbase_t* vocbase);
 
   /// @brief returns the connect timeout for replication requests
-  double connectTimeout() const { return _connectTimeout; }
-  
+  double connectTimeout() const;
+
   /// @brief returns the request timeout for replication requests
-  double requestTimeout() const { return _requestTimeout; }
-  
+  double requestTimeout() const;
+
   /// @brief returns the connect timeout for replication requests
   /// this will return the provided value if the user has not adjusted the
   /// timeout via configuration. otherwise it will return the configured
@@ -79,7 +76,9 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   double checkRequestTimeout(double value) const;
 
   /// @brief automatic failover of replication using the agency
-  bool isActiveFailoverEnabled() const { return _enableActiveFailover; }
+  bool isActiveFailoverEnabled() const;
+
+  bool syncByRevision() const;
 
   /// @brief track the number of (parallel) tailing operations
   /// will throw an exception if the number of concurrently running operations
@@ -117,7 +116,10 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
   /// Enable the active failover
   bool _enableActiveFailover;
-  
+
+  /// Use the revision-based replication protocol
+  bool _syncByRevision;
+
   /// @brief number of currently operating tailing operations
   std::atomic<uint64_t> _parallelTailingInvocations;
 

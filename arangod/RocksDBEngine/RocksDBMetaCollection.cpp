@@ -49,8 +49,7 @@ using namespace arangodb;
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
     : PhysicalCollection(collection, info),
-      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
-      _revisionTree(6, collection.minRevision()) {
+      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -61,15 +60,24 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
   rocksutils::globalRocksEngine()->addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                                                         _logicalCollection.id());
+
+  if (collection.syncByRevision()) {
+    _revisionTree =
+        std::make_unique<containers::RevisionTree>(6, collection.minRevision());
+  }
 }
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              PhysicalCollection const* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId),
-      _revisionTree(6, collection.minRevision()) {
+      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(_objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
+
+  if (collection.syncByRevision()) {
+    _revisionTree =
+        std::make_unique<containers::RevisionTree>(6, collection.minRevision());
+  }
 }
 
 std::string const& RocksDBMetaCollection::path() const {
@@ -325,15 +333,23 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
 
 void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree,
                                             uint64_t seq) {
+  TRI_ASSERT(_logicalCollection.syncByRevision());
   _revisionTree = std::move(tree);
   _revisionTreeApplied = seq;
 }
 
 containers::RevisionTree& RocksDBMetaCollection::revisionTree() {
-  return _revisionTree;
+  TRI_ASSERT(_logicalCollection.syncByRevision());
+  TRI_ASSERT(_revisionTree);
+  return *_revisionTree;
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(transaction::Methods& trx) {
+  if (!_logicalCollection.syncByRevision()) {
+    return nullptr;
+  }
+  TRI_ASSERT(_revisionTree);
+
   // first apply any updates that can be safely applied
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
   rocksdb::DB* db = engine->db()->GetRootDB();
@@ -342,7 +358,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   std::shared_lock<std::shared_mutex> guard(_revisionBufferLock);
-  auto tree = _revisionTree.clone();
+  auto tree = _revisionTree->clone();
   if (!tree) {
     return nullptr;
   }
@@ -369,6 +385,11 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(tr
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(uint64_t batchId) {
+  if (!_logicalCollection.syncByRevision()) {
+    return nullptr;
+  }
+  TRI_ASSERT(_revisionTree);
+
   EngineSelectorFeature& selector =
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
   // first apply any updates that can be safely applied
@@ -379,7 +400,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
 
   // now clone the tree so we can apply all updates consistent with our ongoing trx
   std::shared_lock<std::shared_mutex> guard(_revisionBufferLock);
-  auto tree = _revisionTree.clone();
+  auto tree = _revisionTree->clone();
   if (!tree) {
     return nullptr;
   }
@@ -405,10 +426,15 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
 }
 
 void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {
+  if (!_logicalCollection.syncByRevision()) {
+    return;
+  }
+  TRI_ASSERT(_revisionTree);
+
   std::unique_lock guard(_revisionBufferLock);
   VPackObjectBuilder obj(&builder);
-  obj->add("count", VPackValue(_revisionTree.count()));
-  obj->add("hash", VPackValue(_revisionTree.rootValue()));
+  obj->add("count", VPackValue(_revisionTree->count()));
+  obj->add("hash", VPackValue(_revisionTree->rootValue()));
 }
 
 void RocksDBMetaCollection::placeRevisionTreeBlocker(TRI_voc_tid_t transactionId) {
@@ -424,6 +450,10 @@ void RocksDBMetaCollection::removeRevisionTreeBlocker(TRI_voc_tid_t transactionI
 void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
                                           std::vector<std::size_t>&& inserts,
                                           std::vector<std::size_t>&& removals) {
+  if (!_logicalCollection.syncByRevision()) {
+    return;
+  }
+
   TRI_ASSERT(!inserts.empty() || !removals.empty());
   std::unique_lock guard(_revisionBufferLock);
   if (_revisionTreeApplied > seq) {
@@ -438,6 +468,10 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
 }
 
 Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
+  if (!_logicalCollection.syncByRevision()) {
+    return Result();
+  }
+
   Result res = basics::catchVoidToResult([&]() -> void {
     std::unique_lock guard(_revisionBufferLock);
     if (_revisionTreeApplied > seq) {
@@ -449,6 +483,11 @@ Result RocksDBMetaCollection::bufferTruncate(rocksdb::SequenceNumber seq) {
 }
 
 rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNumber commitSeq) {
+  if (!_logicalCollection.syncByRevision()) {
+    return 0;
+  }
+  TRI_ASSERT(_revisionTree);
+
   rocksdb::SequenceNumber appliedSeq = 0;
   std::unique_lock guard(_revisionBufferLock);
   Result res = basics::catchVoidToResult([&]() -> void {
@@ -475,7 +514,7 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
         while (removeIt != _revisionRemovalBuffers.end() && removeIt->first <= ignoreSeq) {
           removeIt = _revisionRemovalBuffers.erase(removeIt);
         }
-        _revisionTree.clear();  // clear estimates
+        _revisionTree->clear();  // clear estimates
       }
     }
 
@@ -514,13 +553,13 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
 
       // apply inserts
       if (!inserts.empty()) {
-        _revisionTree.insert(inserts);
+        _revisionTree->insert(inserts);
         inserts.clear();
       }
 
       // apply removals
       if (!removals.empty()) {
-        _revisionTree.remove(removals);
+        _revisionTree->remove(removals);
         removals.clear();
       }
     }  // </while(true)>
@@ -531,6 +570,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::applyUpdates(rocksdb::SequenceNum
 
 Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTree& tree,
                                                          rocksdb::SequenceNumber commitSeq) const {
+  if (!_logicalCollection.syncByRevision()) {
+    return Result();
+  }
+
   Result res = basics::catchVoidToResult([&]() -> void {
     auto insertIt = _revisionInsertBuffers.begin();
     auto removeIt = _revisionRemovalBuffers.begin();

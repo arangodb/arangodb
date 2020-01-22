@@ -1036,19 +1036,14 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* coll,
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
-  if (!coll->system() && coll->version() >= LogicalCollection::Version::v37 &&
+  if (coll->syncByRevision() &&
       (_config.master.majorVersion > 3 ||
        (_config.master.majorVersion = 3 && _config.master.minorVersion >= 6))) {
     // local collection should support revisions, and master is at least aware
     // of the revision-based protocol, so we can query it to find out if we
     // can use the new protocol; will fall back to old one if master collection
     // is an old variant
-    auto& server = coll->vocbase().server();
-    auto& feature = server.getFeature<EngineSelectorFeature>();
-    if (feature.isRocksDB()) {
-      // only supported with RocksDB engine, at least for now
-      return fetchCollectionSyncByRevisions(coll, leaderColl, maxTick);
-    }
+    return fetchCollectionSyncByRevisions(coll, leaderColl, maxTick);
   }
   return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
 }

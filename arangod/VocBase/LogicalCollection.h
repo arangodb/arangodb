@@ -338,6 +338,8 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 
+  bool syncByRevision() const;
+
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;

@@ -324,7 +324,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 4. store the revision tree
-  {
+  if (coll.syncByRevision()) {
     rcoll->applyUpdates(maxCommitSeq);
     auto& tree = rcoll->revisionTree();
     output = tree.serialize();
@@ -337,6 +337,14 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
     if (!s.ok()) {
       LOG_TOPIC("ff234", WARN, Logger::ENGINES)
           << "writing revision tree failed";
+      return res.reset(rocksutils::convertStatus(s));
+    }
+  } else {
+    key.constructRevisionTreeValue(rcoll->objectId());
+    rocksdb::Status s = batch.Delete(cf, key.string());
+    if (!s.ok() && !s.IsNotFound()) {
+      LOG_TOPIC("ff235", WARN, Logger::ENGINES)
+          << "deleting revision tree failed";
       return res.reset(rocksutils::convertStatus(s));
     }
   }
@@ -431,14 +439,21 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   }
 
   // Step 4. load the revision tree
-  {
+  if (coll.syncByRevision()) {
     key.constructRevisionTreeValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
     if (!s.ok() && !s.IsNotFound()) {
       return rocksutils::convertStatus(s);
-    } else if (s.IsNotFound()) {  // expected with nosync recovery tests
-      LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
-          << "no revision tree found for collection with id '" << coll.id() << "'";
+    } else if (s.IsNotFound()) {
+      if (coll.syncByRevision()) {
+        LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
+            << "no revision tree found for collection with id '" << coll.id()
+            << "', rebuilding";
+        // TODO rebuild tree
+      }
+      LOG_TOPIC("ecdbd", DEBUG, Logger::ENGINES)
+          << "no revision tree found for collection with id '" << coll.id()
+          << "', as expected";
     } else {
       auto tree = containers::RevisionTree::fromBuffer(
           std::string_view(value.data(), value.size() - sizeof(uint64_t)));
@@ -449,7 +464,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
       } else {
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "
-            << "with id '" << coll.id() << "'";
+            << "with id '" << coll.id() << "', rebuilding";
+        // TODO rebuild tree
       }
     }
   }

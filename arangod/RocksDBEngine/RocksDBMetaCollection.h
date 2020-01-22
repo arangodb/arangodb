@@ -127,7 +127,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   mutable basics::ReadWriteLock _exclusiveLock;
 
   /// @revision tree management for replication
-  containers::RevisionTree _revisionTree;
+  std::unique_ptr<containers::RevisionTree> _revisionTree;
   rocksdb::SequenceNumber _revisionTreeApplied;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionInsertBuffers;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionRemovalBuffers;
