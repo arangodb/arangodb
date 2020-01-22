@@ -173,6 +173,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _query(*engine->getQuery()),
       _state(InternalState::FETCH_DATA),
       _lastRange{ExecutorState::HASMORE},
+      _execState(ExecState::INITIAL),
       _hasUsedDataRangeBlock{false} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
@@ -1042,36 +1043,12 @@ void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
     _outputItemRow = allocateOutputBlock(std::move(call));
   } else {
     _outputItemRow->setCall(std::move(call));
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-// We only inject a new call into the output row.
-// In the passhrough variant we need to ensure that inputBlock and outputBlock stay identical
-// TODO add an external assertion for this.
-#endif
   }
 }
 
-/// @brief request an AqlItemBlock from the memory manager
-template <class Executor>
-SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
-                                                                 RegisterId nrRegs) {
-  return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
-}
-
-// TODO move me up
-enum ExecState {
-  SKIP,
-  PRODUCE,
-  FASTFORWARD,
-  FULLCOUNT,
-  UPSTREAM,
-  SHADOWROWS,
-  DONE
-};
-
-// TODO clean me up
-namespace {
 // This cannot return upstream call or shadowrows.
-ExecState NextState(AqlCall const& call) {
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::nextState(AqlCall const& call) const -> ExecState {
   if (call.getOffset() > 0) {
     // First skip
     return ExecState::SKIP;
@@ -1092,7 +1069,12 @@ ExecState NextState(AqlCall const& call) {
   return ExecState::DONE;
 }
 
-}  // namespace
+/// @brief request an AqlItemBlock from the memory manager
+template <class Executor>
+SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
+                                                                 RegisterId nrRegs) {
+  return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
+}
 
 //
 // FETCHER:  if we have one output row per input row, we can skip
@@ -1233,7 +1215,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 
     auto skipped = size_t{0};
 
-    auto execState = ::NextState(clientCall);
+    auto execState = nextState(clientCall);
 
     if (_lastRange.hasShadowRow()) {
       // We have not been able to move all shadowRows into the output last
@@ -1258,7 +1240,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             execState = ExecState::UPSTREAM;
           } else {
             // We are done with skipping. Skip is not allowed to request more
-            execState = ::NextState(clientCall);
+            execState = nextState(clientCall);
           }
           break;
         }
@@ -1288,7 +1270,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             execState = ExecState::UPSTREAM;
           } else {
             // We are done with producing. Produce is not allowed to request more
-            execState = ::NextState(clientCall);
+            execState = nextState(clientCall);
           }
           break;
         }
@@ -1347,7 +1329,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           skipped += skippedLocal;
           // We skipped through passthroug, so count that a skip was solved.
           clientCall.didSkip(skippedLocal);
-          execState = ::NextState(clientCall);
+          execState = nextState(clientCall);
           break;
         }
         case ExecState::SHADOWROWS: {

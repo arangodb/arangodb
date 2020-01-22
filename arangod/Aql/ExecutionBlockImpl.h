@@ -106,7 +106,29 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       "allowsBlockPassthrough must imply preservesOrder, but does not!");
 
  private:
+  // Used in getSome/skipSome implementation. deprecated
   enum class InternalState { FETCH_DATA, FETCH_SHADOWROWS, DONE };
+
+  // Used in execute implmentation
+  // Defines the internal state this executor is in.
+  enum class ExecState {
+    // Resetted state, we have fully produced an output last time and wait for a fresh call
+    INITIAL,
+    // We are skipping rows in offset
+    SKIP,
+    // We are producing rows
+    PRODUCE,
+    // We are done producing (limit reached) and drop all rows that are unneeded
+    FASTFORWARD,
+    // We are done producing (limit reached), but we count all rows that could be used on higher limit
+    FULLCOUNT,
+    // We need more information from dependency
+    UPSTREAM,
+    // We are done with a subquery, we need to pass forward ShadowRows
+    SHADOWROWS,
+    // Locally done, ready to return, will set state to resetted
+    DONE
+  };
 
  public:
   /**
@@ -258,6 +280,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Will as a side effect modify _outputItemRow
   void ensureOutputBlock(AqlCall&& call);
 
+  // Compute the next state based on the given call.
+  // Can only be one of Skip/Produce/FullCount/FastForward/Done
+  [[nodiscard]] auto nextState(AqlCall const& call) const -> ExecState;
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
@@ -289,6 +315,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   size_t _skipped{};
 
   DataRange _lastRange;
+
+  ExecState _execState;
 
   // Only used in passthrough variant.
   bool _hasUsedDataRangeBlock;
