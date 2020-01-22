@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
-var db = require("@arangodb").db, indexId;
+var db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -41,31 +41,17 @@ function subqueryCollectScopeSuite() {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUpAll : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDownAll : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test regression with incorrect scoping of collect variable
-//         inside subquery
+///        inside subquery
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryCollectScopeOk : function () {
       const query = `LET t = (COLLECT foo = undefined RETURN true) RETURN true`;
       try {
-      var actual = db._query(query);
+        var actual = db._query(query);
+        fail();
       } catch(e) {
-        assertEqual(e.errorNum, 1203);
-	assertEqual(e.errorMessage, "AQL: collection or view not found: undefined (while parsing)");
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
       }
     },
 
