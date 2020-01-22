@@ -90,7 +90,7 @@ struct Socket<SocketType::Tcp> {
   void shutdown(F&& cb) {
     asio_ns::error_code ec;  // prevents exceptions
     try {
-#ifndef _WIN33
+#ifndef _WIN32
       socket.cancel(ec);
 #endif
       if (socket.is_open()) {

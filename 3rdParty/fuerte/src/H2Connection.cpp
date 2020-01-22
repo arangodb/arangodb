@@ -214,12 +214,13 @@ void submitConnectionPreface(nghttp2_session* session) {
 
   nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
   // increase connection window size up to window_size
-  nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 0, 1 << 30);
+  nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 0,
+                                        window_size);
 }
 
 std::string makeAuthHeader(fu::detail::ConnectionConfiguration const& config) {
   std::string auth;
-  // preemtively cache authentication
+  // preemptively cache authentication
   if (config._authenticationType == AuthenticationType::Basic) {
     auth.append("Basic ");
     auth.append(fu::encodeBase64(config._user + ":" + config._password));
@@ -384,10 +385,10 @@ void H2Connection<T>::finishConnect() {
 
   std::cout << "sending request '" << *req << "'\n";
 
-  auto self = Connection::shared_from_this();
   asio_ns::async_write(
       this->_proto.socket, asio_ns::buffer(req->data(), req->size()),
-      [self](asio_ns::error_code const& ec, std::size_t nsend) {
+      [self(Connection::shared_from_this())](auto const& ec,
+                                             std::size_t nsend) {
         auto& me = static_cast<H2Connection<T>&>(*self);
         if (ec) {
           me.shutdownConnection(Error::WriteError, ec.message());
@@ -468,7 +469,6 @@ void H2Connection<T>::startWriting() {
       // we have been in a race with shutdownConnection()
       Connection::State state = this->_state.load();
       if (state != Connection::State::Connected) {
-        //        this->_writing.store(false);
         if (state == Connection::State::Disconnected) {
           this->startConnection();
         }
@@ -618,9 +618,12 @@ void H2Connection<T>::doWrite() {
 
   queueHttp2Requests();
 
-  std::array<asio_ns::const_buffer, 2> outBuffers;
+  static constexpr size_t kMaxOutBufferLen = 32 * 1024 * 1024;
+  _outbuffer.resetTo(0);
+  _outbuffer.reserve(16 * 1024);
 
   size_t len = 0;
+  std::array<asio_ns::const_buffer, 2> outBuffers;
   while (true) {
     const uint8_t* data;
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
@@ -634,15 +637,17 @@ void H2Connection<T>::doWrite() {
 
     const size_t nread = static_cast<size_t>(rv);
     // if the data is long we just pass it to async_write
-    if (len + nread > _outbuffer.size()) {
+    if (len + nread > kMaxOutBufferLen) {
       outBuffers[1] = asio_ns::buffer(data, nread);
       break;
     }
 
-    std::copy_n(data, nread, std::begin(_outbuffer) + len);
+    _outbuffer.reserve(nread);  // reserves extra bytes
+    std::copy_n(data, nread, _outbuffer.data() + len);
     len += nread;
+    _outbuffer.advance(nread);
   }
-  outBuffers[0] = asio_ns::buffer(_outbuffer, len);
+  outBuffers[0] = asio_ns::buffer(_outbuffer.data(), len);
 
   if (asio_ns::buffer_size(outBuffers) == 0) {
     if (shouldStop()) {

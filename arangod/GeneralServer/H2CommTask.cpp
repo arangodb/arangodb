@@ -593,15 +593,14 @@ void H2CommTask<T>::doWrite() {
   }
   _writing = true;
   
-  static constexpr size_t kMaxOutBufferLen = 32 * 1024 * 1024;
-
   queueHttp2Responses();
   
+  static constexpr size_t kMaxOutBufferLen = 32 * 1024 * 1024;
   _outbuffer.resetTo(0);
   _outbuffer.reserve(16 * 1024);
 
-  std::array<asio_ns::const_buffer, 2> outBuffers;
   size_t len = 0;
+  std::array<asio_ns::const_buffer, 2> outBuffers;
   while (true) {
     const uint8_t* data;
     ssize_t rv = nghttp2_session_mem_send(_session, &data);

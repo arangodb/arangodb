@@ -110,7 +110,7 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
   };
 
   void initNgHttp2Session();
-  
+
   void readSwitchingProtocolsResponse();
 
   // adjust the timeouts (only call from IO-Thread)
@@ -128,8 +128,8 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
   Stream* findStream(int32_t sid) const;
 
  private:
-  static constexpr size_t kOutBufferLen = 32 * 1024 * 1024;
-  std::array<uint8_t, kOutBufferLen> _outbuffer;
+  velocypack::Buffer<uint8_t> _outbuffer;
+
   /// elements to send out
   boost::lockfree::queue<Stream*, boost::lockfree::capacity<512>> _queue;
 
