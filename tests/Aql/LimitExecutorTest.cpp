@@ -37,6 +37,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <numeric>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1098,6 +1099,85 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_1_read_1_limit_12) {
 }
 
 INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, LimitExecutorWaitingTest, testing::Bool());
+
+// New test class for the new "execute" API.
+// TODO Can be renamed when the old tests are removed.
+class LimitExecutorExecuteApiTest : public ::testing::Test {
+ protected:
+  ExecutionState state;
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager;
+  SharedAqlItemBlockPtr block;
+  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
+  std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep;
+
+  // Should never be called, and can be removed as soon as the LimitExecutor's
+  // Fetcher argument&member are removed.
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> dummyFetcher;
+
+  // Special parameters:
+  // 4th offset
+  // 5th limit
+  // 6th fullCount
+  // 7th queryDepth
+
+  LimitExecutorExecuteApiTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
+        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{})),
+        registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{0})),
+        dummyFetcher(itemBlockManager, 0, false, nullptr) {}
+
+
+  auto buildBlockRange(size_t const begin, size_t const end) -> SharedAqlItemBlockPtr {
+    auto builder = MatrixBuilder<1>{};
+    builder.reserve(end - begin);
+    for (size_t i = begin; i < end; ++i) {
+      builder.emplace_back(RowBuilder<1>{i});
+    }
+    return buildBlock<1>(itemBlockManager, std::move(builder));
+  }
+};
+// TODO Prepare LimitExecutorExecuteApiTest and write some tests
+
+
+TEST_F(LimitExecutorExecuteApiTest, test1) {
+  // Input. TODO use GetParam()
+  AqlCall const clientCall{};
+  size_t const offset{};
+  size_t const limit{};
+  bool const fullCount{};
+  size_t const inputSkipped{};
+  std::vector<size_t> const inputLengths{};
+  // TODO Does it make sense to specify clientCall, inputSkipped and inputLengths;
+  //      or should I only specify inputLengths, allow using the same input with
+  //      several clientCalls, and calculate inputSkipped and the "actual" inputLengths
+  //      from it?
+
+  // Validation of the test case:
+  TRI_ASSERT(inputSkipped <= offset + clientCall.getOffset());
+  TRI_ASSERT(inputSkipped < offset + clientCall.getOffset() || inputLengths.empty());
+  auto const numInputRows =
+      std::accumulate(inputLengths.begin(), inputLengths.end(), size_t{0});
+  TRI_ASSERT(numInputRows <= limit);
+  TRI_ASSERT(numInputRows <= clientCall.getLimit());
+
+  // input after "offset" is skipped
+  auto const inputBlocks = std::invoke([&]() {
+    std::vector<SharedAqlItemBlockPtr> blocks;
+    auto i = size_t{1};
+    for (auto const l : inputLengths) {
+      blocks.emplace_back(buildBlockRange(i, i + l));
+      i += l;
+    }
+    return blocks;
+  });
+
+  // TODO Build Infos, (dummy)Fetcher, OutputRow; and, of course, LimitExecutor.
+  // TODO Run LimitExecutor over input
+}
 
 }  // namespace aql
 }  // namespace tests
