@@ -293,7 +293,8 @@ void Supervision::upgradeAgency() {
     upgradeMaintenance(builder);
     upgradeBackupKey(builder);
   }
-
+  
+  LOG_DEVEL << builder.toJson();
   LOG_TOPIC("f7315", DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
