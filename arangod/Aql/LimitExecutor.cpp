@@ -343,19 +343,24 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
   // TODO Stats! Count fullCount!
   auto upstreamCall = calculateUpstreamCall(call);
 
-  auto skippedLocal = size_t{0};
-  {
-    // Skip available rows from input range. I think this case can not occur in
-    // Limit, but makes correctness more obvious.
-    while (upstreamCall.getOffset() > 0 && inputRange.hasDataRow()) {
-      TRI_ASSERT(false);
-      inputRange.nextDataRow();
-      ++_counter;
-      --upstreamCall.offset;
-      ++skippedLocal;
-    }
-    call.didSkip(skippedLocal);
+  if (ADB_UNLIKELY(inputRange.hasDataRow())) {
+    static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
+        "For LIMIT with passthrough to work, there must not be input rows when skipping. "
+        "The following code also assumes this.");
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Unexpected input while skipping");
   }
+
+  auto skippedLocal = size_t{0};
+
+  while (upstreamCall.getOffset() > 0) {
+    TRI_ASSERT(false);
+    inputRange.nextDataRow();
+    ++_counter;
+    --upstreamCall.offset;
+    ++skippedLocal;
+  }
+  call.didSkip(skippedLocal);
 
   return {inputRange.upstreamState(), skippedLocal, upstreamCall};
 }
