@@ -293,7 +293,7 @@ void Supervision::upgradeAgency() {
     upgradeMaintenance(builder);
     upgradeBackupKey(builder);
   }
-  
+
   LOG_TOPIC("f7315", DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
@@ -340,14 +340,14 @@ void Supervision::upgradeMaintenance(VPackBuilder& builder) {
 void Supervision::upgradeBackupKey(VPackBuilder& builder) {
 
   // Upgrade /arango/Target/HotBackup/Create from 0 to time out
-  
+
   _lock.assertLockedByCurrentThread();
   if (_snapshot.has(HOTBACKUP_KEY)) {
 
     Node const& tmp  = _snapshot(HOTBACKUP_KEY);
     if (tmp.isNumber()) {
       if (tmp.getInt() == 0) {
-        
+
         VPackArrayBuilder trx(&builder);
         {
           VPackObjectBuilder o(&builder);
@@ -1193,6 +1193,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
 }
 
 
+// Remove expired hot backup lock if exists
 void Supervision::unlockHotBackup() {
   _lock.assertLockedByCurrentThread();
   if (_snapshot.has(HOTBACKUP_KEY)) {
@@ -1218,7 +1219,7 @@ bool Supervision::handleJobs() {
   // Do supervision
   LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
   unlockHotBackup();
-  
+
   LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
   shrinkCluster();
 
