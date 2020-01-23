@@ -21,9 +21,17 @@ devel
   In previous versions of ArangoDB, such trailing commas resulted in a query
   parse error.
 
+* Make sure heartbeats are actually sent out and received every second.
+
 * React dev mode now supports hot reload combined with proxy for development.
 
 * Added read-write-locks for parallel move shard operations.
+
+* Fixed issue #10896: Variables defined inside spliced subqueries would leak
+  into following COLLECT ... INTO var operations.
+
+* Fixed COLLECT not invalidating variables for following COLLECT ... INTO var
+  operations.
 
 * Fixed issue #10867: arangod based binaries lack product version info and icon
   on Windows.
