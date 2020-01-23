@@ -1,3 +1,10 @@
+v3.5.5 (XXXX-XX-XX)
+-------------------
+
+* Fixed COLLECT not invalidating variables for following COLLECT ... INTO var
+  operations.
+
+
 v3.5.4 (2020-01-22)
 -------------------
 
