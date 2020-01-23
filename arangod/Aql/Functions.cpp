@@ -4796,7 +4796,7 @@ AqlValue Functions::Jaccard(ExpressionContext* ctx,
 
   AqlValue const& lhs = extractFunctionParameterValue(args, 0);
 
-  if (!lhs.isArray()) {
+  if (ADB_UNLIKELY(!lhs.isArray())) {
     // not an array
     registerWarning(ctx, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
@@ -4804,7 +4804,7 @@ AqlValue Functions::Jaccard(ExpressionContext* ctx,
 
   AqlValue const& rhs = extractFunctionParameterValue(args, 1);
 
-  if (!rhs.isArray()) {
+  if (ADB_UNLIKELY(!rhs.isArray())) {
     // not an array
     registerWarning(ctx, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
