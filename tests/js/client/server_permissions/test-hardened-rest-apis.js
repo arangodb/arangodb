@@ -127,6 +127,18 @@ function testSuite() {
       assertEqual(403, result.code);
     },
     
+    testCanAccessAdminSystemReportRw : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      let result = arango.GET("/_admin/system-report");
+    },
+
+    testCanAccessAdminSystemReportRo : function() {
+      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      let result = arango.GET("/_admin/system-report");
+      assertTrue(result.error);
+      assertEqual(403, result.code);
+    },
+    
     testCanAccessAdminLogRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log");

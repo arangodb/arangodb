@@ -57,6 +57,11 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
+  if (_request->requestType() != RequestType::GET) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
   MetricsFeature& metrics = server.getFeature<MetricsFeature>();
   if (!metrics.exportAPI()) {
     // dont export metrics, if so desired
