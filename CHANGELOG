@@ -7,6 +7,15 @@ v3.6.1 (2020-XX-XX)
 * Fixed COLLECT not invalidating variables for following COLLECT ... INTO var
   operations.
 
+* Removed an unnecessary and wrong request from within the Web UI to the
+  `/_admin/cluster/health` API. This lead to unauthorized network calls.
+
+* Allowed PHRASE function to process empty arrays without generating error.
+
+* Add acquisition of system report to arangod instances.
+
+* React dev mode now supports hot reload combined with proxy for development.
+
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
   confusing error messages
 
