@@ -3,7 +3,7 @@ v3.6.1 (2020-XX-XX)
 
 * Internal statistics API now uses integer timestamps instead of doubles. The
   old behavior sometimes leads to failed requests because of parse errors
-	which occurred in the internally used JavaScript joi library.
+  which occurred in the internally used JavaScript joi library.
 
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
   confusing error messages
