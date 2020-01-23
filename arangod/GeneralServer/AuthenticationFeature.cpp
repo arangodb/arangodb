@@ -125,7 +125,8 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       "authentication. Files are sorted alphabetical: First secret "
       "is used for signining + verifying of jwt tokens. "
       "(Enterprise only) The latter secrets are only used for verifying.",
-      new StringParameter(&_jwtSecretFolderProgramOption));
+      new StringParameter(&_jwtSecretFolderProgramOption))
+      .setIntroducedIn(30700);
 }
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
