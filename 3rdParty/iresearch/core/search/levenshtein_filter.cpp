@@ -50,7 +50,6 @@ filter::prepared::ptr by_edit_distance::prepare(
   const auto& d = (*provider_)(max_distance_, with_transpositions_);
 
   if (!d) {
-    assert(false);
     return prepared::empty();
   }
 
