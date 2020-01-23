@@ -349,6 +349,8 @@ class LogicalCollection : public LogicalDataSource {
 
   void increaseV8Version();
 
+  bool determineSyncByRevision() const;
+
   transaction::CountCache _countCache;
 
  protected:

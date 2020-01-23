@@ -449,7 +449,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
             << "no revision tree found for collection with id '" << coll.id()
             << "', rebuilding";
-        // TODO rebuild tree
+        int res = rcoll->rebuildRevisionTree();
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC("ecdbd", WARN, Logger::ENGINES)
+              << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+        }
       }
       LOG_TOPIC("ecdbd", DEBUG, Logger::ENGINES)
           << "no revision tree found for collection with id '" << coll.id()
@@ -465,7 +469,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "
             << "with id '" << coll.id() << "', rebuilding";
-        // TODO rebuild tree
+        int res = rcoll->rebuildRevisionTree();
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC("ecdbe", WARN, Logger::ENGINES)
+              << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+        }
       }
     }
   }

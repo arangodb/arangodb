@@ -40,7 +40,9 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -64,6 +66,8 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   if (collection.syncByRevision()) {
     _revisionTree =
         std::make_unique<containers::RevisionTree>(6, collection.minRevision());
+  } else {
+    LOG_DEVEL << "CONSTRUCTOR FOR '" << _logicalCollection.name() << "' false";
   }
 }
 
@@ -77,6 +81,8 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   if (collection.syncByRevision()) {
     _revisionTree =
         std::make_unique<containers::RevisionTree>(6, collection.minRevision());
+  } else {
+    LOG_DEVEL << "CONSTRUCTOR FOR '" << _logicalCollection.name() << "' false";
   }
 }
 
@@ -334,6 +340,7 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
 void RocksDBMetaCollection::setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree,
                                             uint64_t seq) {
   TRI_ASSERT(_logicalCollection.syncByRevision());
+  TRI_ASSERT(tree);
   _revisionTree = std::move(tree);
   _revisionTreeApplied = seq;
 }
@@ -423,6 +430,38 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   }
 
   return tree;
+}
+
+int RocksDBMetaCollection::rebuildRevisionTree() {
+  std::unique_lock<std::shared_mutex> guard(_revisionBufferLock);
+  _revisionTree =
+      std::make_unique<containers::RevisionTree>(6, _logicalCollection.minRevision());
+
+  auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
+  SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
+
+  std::vector<std::size_t> revisions;
+  auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
+  if (!iter) {
+    LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
+        << "failed to retrieve replication iterator to rebuild revision tree "
+           "for collection '"
+        << _logicalCollection.id() << "'";
+    return TRI_ERROR_INTERNAL;
+  }
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(iter.get());
+  while (it.hasMore()) {
+    revisions.emplace_back(it.revision());
+    if (revisions.size() >= 5000) {  // arbitrary batch size
+      _revisionTree->insert(revisions);
+      revisions.clear();
+    }
+  }
+  if (!revisions.empty()) {
+    _revisionTree->insert(revisions);
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {

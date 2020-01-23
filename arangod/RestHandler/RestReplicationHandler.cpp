@@ -2970,7 +2970,7 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return false;
   }
-  if (ctx.collection->version() < LogicalCollection::Version::v37) {
+  if (!ctx.collection->syncByRevision()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                   "this collection doesn't support revision-based replication");
     return false;
