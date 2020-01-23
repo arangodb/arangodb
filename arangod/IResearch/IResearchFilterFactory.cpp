@@ -1916,6 +1916,11 @@ arangodb::Result processPhraseArgs(
       return { TRI_ERROR_BAD_PARAMETER, message };
     }
     if (currentArg->isArray() && (!expectingOffset || allowDefaultOffset)) {
+      if (0 == currentArg->numMembers()) {
+        expectingOffset = true;
+        // do not reset offset here as we should accumulate it
+        continue; // just skip empty arrays. This is not error anymore as this case may arise while working with autocomplete
+      }
       // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
       // No array recursion allowed. This could be allowed, but just looks tangled.
       // Anyone interested coud use FLATTEN  to explicitly require processing all recurring arrays as one array
@@ -1941,7 +1946,7 @@ arangodb::Result processPhraseArgs(
         return { TRI_ERROR_BAD_PARAMETER, message };
       }
       if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE == currentValue.type() && expectingOffset) {
-        offset = static_cast<uint64_t>(currentValue.getInt64());
+        offset += static_cast<uint64_t>(currentValue.getInt64());
         expectingOffset = false;
         continue; // got offset let`s go search for value
       } else if ( (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != currentValue.type() || !currentValue.getString(value)) || // value is not a string at all
@@ -1971,7 +1976,7 @@ arangodb::Result processPhraseArgs(
     expectingOffset = true;
   }
   if (!expectingOffset) { // that means last arg is numeric - this is error as no term to apply offset to
-    auto message = "'PHRASE' AQL function : Unable to parse argument on position " + std::to_string(valueArgsEnd - 1) +  "as a value"s;
+    auto message = "'PHRASE' AQL function : Unable to parse argument on position " + std::to_string(valueArgsEnd - 1) +  " as a value"s;
     LOG_TOPIC("5fafe", WARN, arangodb::iresearch::TOPIC) << message;
     return { TRI_ERROR_BAD_PARAMETER, message };
   }
