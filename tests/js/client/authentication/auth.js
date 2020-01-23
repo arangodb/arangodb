@@ -572,6 +572,91 @@ function AuthSuite() {
       } finally {
         db._dropDatabase("other");
       }
+    },
+
+    testChangeJWTSecret: function() {
+      let jwtOld = crypto.jwtEncode(jwtSecret, {
+        "server_id": "ABCD",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
+      let jwtNew = crypto.jwtEncode("banana", {
+        "server_id": "ABCD",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
+      // add new JWT secret
+
+      let res = request.post({
+        url: baseUrl() + "/_admin/server/jwtsecret",
+        auth: {
+          bearer: jwtOld,
+        },
+        body: JSON.stringify({ "jwt-secret": "banana" })
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+      print("hjesus");
+
+      // new secret works 
+      res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwtNew,
+        }
+      });
+      print(res);
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+
+      // old secret still needs to work
+      res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwtOld,
+        }
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+
+      // remove old secret
+      res = request.delete({
+        url: baseUrl() + "/_admin/server/jwtsecret",
+        auth: {
+          bearer: jwtNew,
+        }
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+
+      // old secret not allowed to work anymore
+      res = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: {
+          bearer: jwtOld,
+        }
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 401);
+
+      // change back to old secret
+      res = request.post({
+        url: baseUrl() + "/_admin/server/jwtsecret",
+        auth: {
+          bearer: jwtNew,
+        },
+        body: JSON.stringify({ "jwt-secret": jwtSecret })
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+
+      // delete old
+      res = request.delete({
+        url: baseUrl() + "/_admin/server/jwtsecret",
+        auth: {
+          bearer: jwtOld,
+        }
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
     }
   };
 }

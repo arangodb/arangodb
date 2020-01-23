@@ -27,8 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
@@ -54,8 +52,10 @@ RestStatus RestAdminServerHandler::execute() {
     handleAvailability();
   } else if (suffixes.size() == 1 && suffixes[0] == "databaseDefaults") {
     handleDatabaseDefaults();
+  } else if (suffixes.size() == 1 && suffixes[0] == "jwtsecret") {
+    return handleJWTSecrets();
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND, 404);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
   return RestStatus::DONE;
 }
@@ -210,7 +210,6 @@ void RestAdminServerHandler::handleMode() {
   }
 }
 
-
 void RestAdminServerHandler::handleDatabaseDefaults() {
   auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
   VPackBuilder builder;
@@ -219,3 +218,10 @@ void RestAdminServerHandler::handleDatabaseDefaults() {
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
+
+#ifndef USE_ENTERPRISE
+RestStatus RestAdminServerHandler::handleJWTSecrets() {
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+  return RestStatus::DONE;
+}
+#endif

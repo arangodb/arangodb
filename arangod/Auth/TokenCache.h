@@ -85,19 +85,21 @@ class TokenCache {
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
 
-  /// set new jwt secret, regenerate _jetToken
-  void setJwtSecret(std::string const&);
-  std::string jwtSecret() const;
+  /// set new jwt secret, regenerate _jwtToken
+  void addJwtSecret(std::string const&);
   
+#ifdef USE_ENTERPRISE
+  /// removes an old JWT secret from the validation procedure
+  void removeOldJwtSecret();
+#endif
   
   /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept {
     TRI_ASSERT(!_jwtSuperToken.empty());
     return _jwtSuperToken;
   }
-
-  std::string generateRawJwt(velocypack::Slice const&) const;
-  std::string generateJwt(velocypack::Slice const&) const;
+  
+  std::string jwtSecret() const;
 
  private:
   /// Check basic HTTP Authentication header
@@ -110,24 +112,31 @@ class TokenCache {
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
   std::shared_ptr<velocypack::Builder> parseJson(std::string const& str, char const* hint);
-
+  
   /// generate new superuser jwtToken
   void generateSuperToken();
 
  private:
   auth::UserManager* const _userManager;
-  /// Timeout in seconds
-  double const _authTimeout;
 
   mutable arangodb::basics::ReadWriteLock _basicLock;
-  std::atomic<uint64_t> _basicCacheVersion;
   std::unordered_map<std::string, TokenCache::Entry> _basicCache;
+  std::atomic<uint64_t> _basicCacheVersion{0};
 
+  mutable arangodb::basics::ReadWriteLock _jwtSecretLock;
   std::string _jwtSecret;
-  std::string _jwtSuperToken;
+  
+#ifdef USE_ENTERPRISE
+  std::string _oldJwtSecret;
+#endif
+  
+  std::string _jwtSuperToken;  /// token for internal use
 
-  mutable arangodb::basics::ReadWriteLock _jwtLock;
+  mutable std::mutex _jwtCacheMutex;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
+  
+  /// Timeout in seconds
+  double const _authTimeout;
 };
 }  // namespace auth
 }  // namespace arangodb

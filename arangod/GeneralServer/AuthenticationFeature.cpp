@@ -121,24 +121,13 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (!_jwtSecretKeyfileProgramOption.empty()) {
-    try {
-      // Note that the secret is trimmed for whitespace, because whitespace
-      // at the end of a file can easily happen. We do not base64-encode,
-      // though, so the bytes count as given. Zero bytes might be a problem
-      // here.
-      _jwtSecretProgramOption =
-          basics::StringUtils::trim(basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption),
-                                    " \t\n\r");
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("d3617", FATAL, Logger::STARTUP)
-          << "unable to read content of jwt-secret file '"
-          << _jwtSecretKeyfileProgramOption << "': " << ex.what()
-          << ". please make sure the file/directory is readable for the "
-             "arangod process and user";
+    auto res = loadJwtSecretKeyfile(_jwtSecretKeyfileProgramOption);
+    if (res.fail()) {
+      LOG_TOPIC("d3617", FATAL, Logger::STARTUP) << res.errorMessage();
       FATAL_ERROR_EXIT();
     }
-
-  } else if (!_jwtSecretProgramOption.empty()) {
+  }
+  if (!_jwtSecretProgramOption.empty()) {
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
       LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
@@ -178,10 +167,10 @@ void AuthenticationFeature::prepare() {
         << "Jwt secret not specified, generating...";
     uint16_t m = 254;
     for (size_t i = 0; i < _maxSecretLength; i++) {
-      jwtSecret += (1 + RandomGenerator::interval(m));
+      jwtSecret += static_cast<char>(1 + RandomGenerator::interval(m));
     }
   }
-  _authCache->setJwtSecret(jwtSecret);
+  _authCache->addJwtSecret(jwtSecret);
 
   INSTANCE = this;
 }
@@ -219,5 +208,41 @@ void AuthenticationFeature::start() {
 }
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
+
+Result AuthenticationFeature::setJwtSecretProgramOption(std::string const& secret) {
+  if (!secret.empty()) {
+    if (secret.length() > _maxSecretLength) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    std::string("Given JWT secret too long. Max length is ") +
+                    std::to_string(_maxSecretLength));
+    }
+  }
+  _jwtSecretProgramOption = secret;
+  return Result();
+}
+
+Result AuthenticationFeature::loadJwtSecretKeyfile() {
+  return loadJwtSecretKeyfile(_jwtSecretKeyfileProgramOption);
+}
+
+Result AuthenticationFeature::loadJwtSecretKeyfile(std::string const& keyfile) {
+  try {
+    // Note that the secret is trimmed for whitespace, because whitespace
+    // at the end of a file can easily happen. We do not base64-encode,
+    // though, so the bytes count as given. Zero bytes might be a problem
+    // here.
+    std::string contents = basics::FileUtils::slurp(keyfile);
+    _jwtSecretProgramOption =
+        basics::StringUtils::trim(contents, " \t\n\r");
+  } catch (std::exception const& ex) {
+    std::string msg("unable to read content of jwt-secret file '");
+    msg.append(keyfile).append("': ")
+        .append(ex.what())
+        .append(". please make sure the file/directory is readable for the ")
+        .append("arangod process and user");
+    return Result(TRI_ERROR_CANNOT_READ_FILE, std::move(msg));
+  }
+  return Result();
+}
 
 }  // namespace arangodb

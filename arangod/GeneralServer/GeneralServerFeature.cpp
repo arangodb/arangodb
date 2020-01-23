@@ -467,10 +467,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_admin/aql/reload",
                               RestHandlerCreator<RestAqlReloadHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_admin/auth/reload",
-                              RestHandlerCreator<RestAuthReloadHandler>::createNoData);
-
   if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+    _handlerFactory->addHandler("/_admin/auth/reload",
+                                RestHandlerCreator<RestAuthReloadHandler>::createNoData);
     _handlerFactory->addHandler("/_admin/execute",
                                 RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
   }

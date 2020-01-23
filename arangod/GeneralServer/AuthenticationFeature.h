@@ -48,6 +48,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
 
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
+  std::string jwtSecretProgramOption() const { return _jwtSecretProgramOption; }
   bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
 
   /// Enable or disable standalone authentication
@@ -64,8 +65,14 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   inline auth::UserManager* userManager() const noexcept {
     return _userManager.get();
   }
-
- private:
+  
+  // set secret
+  [[nodiscard]] Result setJwtSecretProgramOption(std::string const& secret);
+  /// load JWT secret from file specified at startup
+  [[nodiscard]] Result loadJwtSecretKeyfile();
+  [[nodiscard]] Result loadJwtSecretKeyfile(std::string const& keyfile);
+  
+private:
   std::unique_ptr<auth::UserManager> _userManager;
   std::unique_ptr<auth::TokenCache> _authCache;
   bool _authenticationUnixSockets;
@@ -73,7 +80,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   bool _localAuthentication;
   bool _active;
   double _authenticationTimeout;
-
+  
   std::string _jwtSecretProgramOption;
   std::string _jwtSecretKeyfileProgramOption;
 

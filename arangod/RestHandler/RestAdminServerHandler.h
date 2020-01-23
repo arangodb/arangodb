@@ -51,6 +51,8 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleAvailability();
   void handleDatabaseDefaults();
   void writeModeResult(bool);
+  
+  RestStatus handleJWTSecrets();
 };
 }  // namespace arangodb
 
