@@ -3,7 +3,7 @@ v3.5.5 (XXXX-XX-XX)
 
 * Make sure heartbeats are actually sent out and received every second.
 
-v3.5.4 (XXXX-XX-XX)
+v3.5.4 (2020-01-22)
 -------------------
 
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
