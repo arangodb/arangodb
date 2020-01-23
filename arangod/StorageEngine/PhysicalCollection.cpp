@@ -537,6 +537,10 @@ std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(uint6
   return nullptr;
 }
 
+Result PhysicalCollection::rebuildRevisionTree() {
+  return Result(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 void PhysicalCollection::placeRevisionTreeBlocker(TRI_voc_tid_t) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

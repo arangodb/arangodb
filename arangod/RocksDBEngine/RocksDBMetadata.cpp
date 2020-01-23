@@ -445,19 +445,14 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     if (!s.ok() && !s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {
-      if (coll.syncByRevision()) {
-        LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
-            << "no revision tree found for collection with id '" << coll.id()
-            << "', rebuilding";
-        int res = rcoll->rebuildRevisionTree();
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC("ecdbd", WARN, Logger::ENGINES)
-              << "failed to rebuild revision tree for collection '" << coll.id() << "'";
-        }
-      }
-      LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
+      LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
           << "no revision tree found for collection with id '" << coll.id()
-          << "', as expected";
+          << "', rebuilding";
+      Result res = rcoll->rebuildRevisionTree();
+      if (res.fail()) {
+        LOG_TOPIC("ecdbd", WARN, Logger::ENGINES)
+            << "failed to rebuild revision tree for collection '" << coll.id() << "'";
+      }
     } else {
       auto tree = containers::RevisionTree::fromBuffer(
           std::string_view(value.data(), value.size() - sizeof(uint64_t)));
@@ -469,8 +464,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
         LOG_TOPIC("dcd99", ERR, Logger::ENGINES)
             << "unsupported revision tree format in collection "
             << "with id '" << coll.id() << "', rebuilding";
-        int res = rcoll->rebuildRevisionTree();
-        if (res != TRI_ERROR_NO_ERROR) {
+        Result res = rcoll->rebuildRevisionTree();
+        if (res.fail()) {
           LOG_TOPIC("ecdbf", WARN, Logger::ENGINES)
               << "failed to rebuild revision tree for collection '" << coll.id() << "'";
         }

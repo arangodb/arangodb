@@ -428,36 +428,69 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
   return tree;
 }
 
-int RocksDBMetaCollection::rebuildRevisionTree() {
+Result RocksDBMetaCollection::rebuildRevisionTree() {
   std::unique_lock<std::shared_mutex> guard(_revisionBufferLock);
   _revisionTree =
       std::make_unique<containers::RevisionTree>(6, _logicalCollection.minRevision());
 
-  auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
-  SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
+  Result res = basics::catchToResult([this]() -> Result {
+    auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
+    SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
 
-  std::vector<std::size_t> revisions;
-  auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
-  if (!iter) {
-    LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
-        << "failed to retrieve replication iterator to rebuild revision tree "
-           "for collection '"
-        << _logicalCollection.id() << "'";
-    return TRI_ERROR_INTERNAL;
-  }
-  RevisionReplicationIterator& it =
-      *static_cast<RevisionReplicationIterator*>(iter.get());
-  while (it.hasMore()) {
-    revisions.emplace_back(it.revision());
-    if (revisions.size() >= 5000) {  // arbitrary batch size
+    std::vector<std::size_t> revisions;
+    auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
+    if (!iter) {
+      LOG_TOPIC("d1e54", WARN, arangodb::Logger::ENGINES)
+          << "failed to retrieve replication iterator to rebuild revision tree "
+             "for collection '"
+          << _logicalCollection.id() << "'";
+      return Result(TRI_ERROR_INTERNAL);
+    }
+    RevisionReplicationIterator& it =
+        *static_cast<RevisionReplicationIterator*>(iter.get());
+    while (it.hasMore()) {
+      revisions.emplace_back(it.revision());
+      if (revisions.size() >= 5000) {  // arbitrary batch size
+        _revisionTree->insert(revisions);
+        revisions.clear();
+      }
+    }
+    if (!revisions.empty()) {
       _revisionTree->insert(revisions);
-      revisions.clear();
+    }
+    return Result();
+  });
+
+  if (res.fail() && res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    // okay, we are in recovery and can't open a transaction, so we need to
+    // read the raw RocksDB data; on the plus side, we are in recovery, so we
+    // are single-threaded and don't need to worry about transactions anyway
+
+    RocksDBKeyBounds documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+    rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+    rocksdb::ReadOptions ro;
+    rocksdb::Slice const end = documentBounds.end();
+    ro.iterate_upper_bound = &end;
+    ro.fill_cache = false;
+
+    std::vector<std::size_t> revisions;
+    auto* db = rocksutils::globalRocksDB();
+    auto iter = db->NewIterator(ro, documentBounds.columnFamily());
+    for (iter->Seek(documentBounds.start());
+         iter->Valid() && cmp->Compare(iter->key(), end) < 0; iter->Next()) {
+      LocalDocumentId const docId = RocksDBKey::documentId(iter->key());
+      revisions.emplace_back(docId.id());
+      if (revisions.size() >= 5000) {  // arbitrary batch size
+        _revisionTree->insert(revisions);
+        revisions.clear();
+      }
+    }
+    if (!revisions.empty()) {
+      _revisionTree->insert(revisions);
     }
   }
-  if (!revisions.empty()) {
-    _revisionTree->insert(revisions);
-  }
-  return TRI_ERROR_NO_ERROR;
+
+  return res;
 }
 
 void RocksDBMetaCollection::revisionTreeSummary(VPackBuilder& builder) {

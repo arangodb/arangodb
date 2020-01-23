@@ -299,6 +299,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandRevisionTree();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief rebuild the revision tree for a given collection, if allowed
+  /// @response 204 No Content if all goes well
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandRebuildRevisionTree();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the requested revision ranges for a given collection, if
   ///        available
   /// @response VPackObject, containing

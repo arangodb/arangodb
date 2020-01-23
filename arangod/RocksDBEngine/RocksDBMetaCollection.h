@@ -84,7 +84,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
 
-  int rebuildRevisionTree();
+  Result rebuildRevisionTree() override;
 
   void revisionTreeSummary(VPackBuilder& builder);
 

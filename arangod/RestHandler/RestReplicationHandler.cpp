@@ -431,6 +431,8 @@ RestStatus RestReplicationHandler::execute() {
         std::string subCommand = suffixes[1];
         if (type == rest::RequestType::GET && subCommand == Tree) {
           handleCommandRevisionTree();
+        } else if (type == rest::RequestType::POST && subCommand == Tree) {
+          handleCommandRebuildRevisionTree();
         } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
         } else if (type == rest::RequestType::PUT && subCommand == Documents) {
@@ -3018,6 +3020,27 @@ void RestReplicationHandler::handleCommandRevisionTree() {
   resetResponse(rest::ResponseCode::OK);
   _response->setContentType("application/octet-stream");
   _response->addRawPayload(VPackStringRef(result.data(), result.size()));
+}
+
+void RestReplicationHandler::handleCommandRebuildRevisionTree() {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
+    return;
+  }
+
+  if (!ctx.collection->syncByRevision()) {
+    generateError(Result(TRI_ERROR_BAD_PARAMETER,
+                         "collection does not support revision tree commands"));
+    return;
+  }
+
+  Result res = ctx.collection->getPhysical()->rebuildRevisionTree();
+  if (res.fail()) {
+    generateError(res);
+    return;
+  }
+
+  generateResult(rest::ResponseCode::NO_CONTENT, VPackSlice::nullSlice());
 }
 
 //////////////////////////////////////////////////////////////////////////////
