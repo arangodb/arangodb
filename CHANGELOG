@@ -5,6 +5,12 @@ v3.6.1 (2020-XX-XX)
   old behavior sometimes leads to failed requests because of parse errors
 	which occurred in the internally used JavaScript joi library.
 
+* Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
+  confusing error messages
+
+* Fix potential nullptr dereference in view optimizer rule, when there were was
+  a LIMIT outside of a FOR loop.
+
 * Added missing "global" parameter in Swagger REST API documentation for some
   replication endpoints.
 
