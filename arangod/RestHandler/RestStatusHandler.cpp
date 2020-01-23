@@ -23,6 +23,13 @@
 
 #include "RestStatusHandler.h"
 
+#if defined(TRI_HAVE_POSIX_THREADS)
+#include <unistd.h>
+#endif
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
@@ -36,13 +43,6 @@
 #include "RestServer/ServerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-
-#if defined(TRI_HAVE_POSIX_THREADS)
-#include <unistd.h>
-#endif
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -195,6 +195,10 @@ RestStatus RestStatusHandler::executeOverview() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   result.add("engine", VPackValue(engine->typeName()));
 
+  StringBuffer buffer;
+
+  buffer.appendText("1-");
+
   auto serverState = ServerState::instance();
 
   if (serverState != nullptr) {
@@ -207,34 +211,37 @@ RestStatus RestStatusHandler::executeOverview() {
 
       if (plan != nullptr) {
         auto dbservers = plan->slice().get("DBServers");
-        uint64_t d = VPackObjectIterator(dbservers).size();
+        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
     
         auto coordinators = plan->slice().get("Coordinators");
-        uint64_t c = VPackObjectIterator(coordinators).size();
-
-        result.add("hash", VPackValue(uint16_t(0xdead) ^ uint16_t(c << 8 | d)));
+        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
       }
+    } else {
+      buffer.appendHex(static_cast<uint32_t>(0));
+      buffer.appendHex(static_cast<uint32_t>(0));
     }
   }
 
+  buffer.appendText("-");
+
   {
-    bool found;
-    std::string const& browserStr = _request->value("browser", found);
+    std::string const& browserStr = _request->header("user-agent");
 
-    if (found && !browserStr.empty()) {
-      StringBuffer buffer;
-
+    if (!browserStr.empty()) {
       buffer.appendText(browserStr);
-      int res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        result.add("browser", VPackValue(browserStr));
-      } else {
-        std::string deflated(buffer.c_str(), buffer.size());
-        auto encoded = StringUtils::encodeBase64(deflated);
-        result.add("browser", VPackValue(encoded));
-      }
+    } else {
+      buffer.appendText("unknown browser");
     }
+  }
+
+  int res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    result.add("hash", VPackValue(buffer.c_str()));
+  } else {
+    std::string deflated(buffer.c_str(), buffer.size());
+    auto encoded = StringUtils::encodeBase64(deflated);
+    result.add("hash", VPackValue(encoded));
   }
 
   result.close();
