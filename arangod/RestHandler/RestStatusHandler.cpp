@@ -65,9 +65,7 @@ RestStatus RestStatusHandler::execute() {
     return RestStatus::DONE;
   }
 
-  bool found;
-  std::string const& overviewStr = _request->value("overview", found);
-  if (found && StringUtils::boolean(overviewStr)) {
+  if (_request->parsedValue("overview", false)) {
     return executeOverview();
   } else {
     return executeStandard(security);
