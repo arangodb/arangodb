@@ -189,8 +189,8 @@ using Vertex = ShortestPathExecutorInfos::InputVertex;
 using RegisterSet = std::unordered_set<RegisterId>;
 using RegisterMapping =
     std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash>;
-using PathSequence = std::vector<std::vector<std::string>>;
-using EdgeSequence = std::vector<std::pair<std::string, std::string>>;
+using Path = std::vector<std::string>;
+using PathSequence = std::vector<Path>;
 
 enum class ShortestPathOutput { VERTEX_ONLY, VERTEX_AND_EDGE };
 
@@ -217,14 +217,16 @@ struct ShortestPathTestParameters {
     return RegisterMapping{};
   }
 
-  ShortestPathTestParameters(std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, ShortestPathOutput> params)
+  ShortestPathTestParameters(
+      std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, ShortestPathOutput, size_t> params)
       : _source(std::get<0>(params)),
         _target(std::get<1>(params)),
         _outputRegisters(_makeOutputRegisters(std::get<5>(params))),
         _registerMapping(_makeRegisterMapping(std::get<5>(params))),
         _inputMatrix{std::get<2>(params)},
         _paths(std::get<3>(params)),
-        _call(std::get<4>(params)) {}
+        _call(std::get<4>(params)),
+        _blockSize(std::get<6>(params)) {}
 
   Vertex _source;
   Vertex _target;
@@ -234,25 +236,25 @@ struct ShortestPathTestParameters {
   MatrixBuilder<2> _inputMatrix;
   PathSequence _paths;
   AqlCall _call;
+  size_t _blockSize{1000};
 };
 
 class ShortestPathExecutorTest
     : public ::testing::Test,
-      public ::testing::WithParamInterface<std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, ShortestPathOutput>> {
+      public ::testing::WithParamInterface<std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, ShortestPathOutput, size_t>> {
  protected:
+  ShortestPathTestParameters parameters;
+
   MockAqlServer server;
   ExecutionState state;
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
-  SharedAqlItemBlockPtr block;
-
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   TestShortestPathOptions options;
   TokenTranslator& translator;
 
   // parameters are copied because they are const otherwise
   // and that doesn't mix with std::move
-  ShortestPathTestParameters parameters;
   ShortestPathExecutorInfos infos;
 
   FakePathFinder& finder;
@@ -264,17 +266,14 @@ class ShortestPathExecutorTest
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
   ShortestPathExecutor testee;
-  OutputAqlItemRow output;
 
   ShortestPathExecutorTest()
-      : server{},
+      : parameters(GetParam()),
+        server{},
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        // 1000 rows, 4 registers
-        block(new AqlItemBlock(itemBlockManager, 1000, 4)),
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
-        parameters(GetParam()),
         infos(std::make_shared<RegisterSet>(parameters._inputRegisters),
               std::make_shared<RegisterSet>(parameters._outputRegisters), 2, 4,
               {}, {0, 1}, std::make_unique<FakePathFinder>(options, translator),
@@ -286,16 +285,10 @@ class ShortestPathExecutorTest
                                      inputBlock->size())),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
-        testee(fetcher, infos),
-        output(std::move(block), infos.getOutputRegisters(),
-               infos.registersToKeep(), infos.registersToClear()) {
+        testee(fetcher, infos) {
     for (auto&& p : parameters._paths) {
       finder.addPath(std::move(p));
     }
-
-    // We need the limits to verify the outputs later
-    AqlCall passCall{parameters._call};
-    output.setCall(std::move(passCall));
   }
 
   size_t ExpectedNumberOfRowsProduced(size_t expectedFound) {
@@ -304,19 +297,16 @@ class ShortestPathExecutorTest
     } else {
       expectedFound -= parameters._call.getOffset();
     }
-    if (parameters._call.getLimit() >= expectedFound) {
-      return expectedFound;
-    } else {
-      return parameters._call.getLimit();
-    }
+    return parameters._call.clampToLimit(expectedFound);
   }
 
-  void ValidateResult(OutputAqlItemRow& result, size_t skipped) {
+  // TODO: check fullcount correctness.
+  void ValidateResult(std::vector<SharedAqlItemBlockPtr>& results,
+                      size_t skippedInitial, size_t skippedFullCount) {
     auto pathsQueriedBetween = finder.getCalledWith();
 
     FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
     TokenTranslator& translator = *(static_cast<TokenTranslator*>(infos.cache()));
-    auto block = result.stealBlock();
 
     auto expectedRowsFound = std::vector<std::string>{};
     auto expectedPathStarts = std::set<size_t>{};
@@ -326,79 +316,121 @@ class ShortestPathExecutorTest
       expectedRowsFound.insert(expectedRowsFound.end(), f.begin(), f.end());
     }
 
-    auto expectedNrRowsSkipped =
+    auto expectedNrRowsSkippedInitial =
         std::min(parameters._call.getOffset(), expectedRowsFound.size());
+    EXPECT_EQ(skippedInitial, expectedNrRowsSkippedInitial);
 
+    // TODO: Really we're relying on the fact here that the executor
+    //       calls the path finder with the correct inputs, where we should
+    //       assert/compute the paths that could be produced if the
+    //       finder is called with the input parameters given in the test
     auto expectedNrRowsProduced = ExpectedNumberOfRowsProduced(expectedRowsFound.size());
 
-    EXPECT_EQ(skipped, expectedNrRowsSkipped);
+    auto expectedRowsIndex = size_t{skippedInitial};
+    for (auto const& block : results) {
+      if (block != nullptr) {
+        ASSERT_NE(block, nullptr);
+        for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
+          if (infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
+            AqlValue value =
+                block->getValue(blockIndex,
+                                infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
+            EXPECT_TRUE(value.isObject());
+            EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
+                            value.slice(),
+                            translator.translateVertex(arangodb::velocypack::StringRef(
+                                expectedRowsFound[expectedRowsIndex])),
+                            false) == 0);
+          }
+          if (infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
+            AqlValue value =
+                block->getValue(blockIndex,
+                                infos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
 
-    // No outputs, this means either we were limited to 0, or we got only
-    // inputs that did not yield any paths, otherwise we need to fail.
-    if (block == nullptr) {
-      EXPECT_EQ(expectedNrRowsProduced, 0);
-      return;
-    }
-
-    ASSERT_NE(block, nullptr);
-
-    for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex) {
-      if (infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
-        AqlValue value =
-            block->getValue(blockIndex,
-                            infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX));
-        EXPECT_TRUE(value.isObject());
-        EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(
-                        value.slice(),
-                        translator.translateVertex(arangodb::velocypack::StringRef(
-                            expectedRowsFound[blockIndex + skipped])),
-                        false) == 0);
-      }
-      if (infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
-        AqlValue value =
-            block->getValue(blockIndex,
-                            infos.getOutputRegister(ShortestPathExecutorInfos::EDGE));
-
-        if (expectedPathStarts.find(blockIndex + skipped) != expectedPathStarts.end()) {
-          EXPECT_TRUE(value.isNull(false));
-        } else {
-          EXPECT_TRUE(value.isObject());
-          VPackSlice edge = value.slice();
-          // FROM and TO checks are enough here.
-          EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::FromString))
-                          .compare(expectedRowsFound[blockIndex + skipped - 1]) == 0);
-          EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::ToString))
-                          .compare(expectedRowsFound[blockIndex + skipped]) == 0);
+            if (expectedPathStarts.find(expectedRowsIndex) != expectedPathStarts.end()) {
+              EXPECT_TRUE(value.isNull(false));
+            } else {
+              EXPECT_TRUE(value.isObject());
+              VPackSlice edge = value.slice();
+              // FROM and TO checks are enough here.
+              EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::FromString))
+                              .compare(expectedRowsFound[expectedRowsIndex - 1]) == 0);
+              EXPECT_TRUE(arangodb::velocypack::StringRef(edge.get(StaticStrings::ToString))
+                              .compare(expectedRowsFound[expectedRowsIndex]) == 0);
+            }
+          }
         }
       }
     }
+    ASSERT_EQ(expectedRowsIndex - skippedInitial, expectedNrRowsProduced);
+
+    // If a fullCount was requested, the sum (skippedInitial + produced +
+    // skippedFullCount) should be exactly the number of rows we produced.
+    if (parameters._call.fullCount) {
+      ASSERT_EQ(skippedInitial + (expectedRowsIndex - skippedInitial) + skippedFullCount,
+                expectedRowsFound.size());
+    }
   }
 
-  void TestExecutor(ShortestPathExecutorInfos& infos, AqlItemBlockInputRange& input) {
-    // This fetcher will not be called!
-    // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-    // This will fetch everything now, unless we give a small enough atMost
+  void TestExecutor() {
+    // We use a copy here because we modify the call and want to keep track
+    // of whether things happen the correct way.
+    auto ourCall = AqlCall{parameters._call};
+    auto skippedInitial = size_t{0};
+    auto skippedFullCount = size_t{0};
+    auto state = ExecutorState{ExecutorState::HASMORE};
+    auto outputs = std::vector<SharedAqlItemBlockPtr>{};
 
-    // We use a copy here because skipRowsRange modifies the the call
-    auto skipCall = AqlCall{parameters._call};
+    // TODO: Do we have to emulate pauses because
+    //       upstream needs to produce more?
+    //       that would require breaking up the input
+    //       matrix into chunks and feeding those into
+    //       the executor.
 
-    auto const [skipState, skipped, resultSkipCall] = testee.skipRowsRange(input, skipCall);
+    // If an offset is requested, skip
+    if (ourCall.getOffset() > 0) {
+      std::tie(state, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
+    }
 
-    // TODO: Do we want to assert more here?
-    EXPECT_TRUE(skipState == ExecutorState::HASMORE || skipState == ExecutorState::DONE);
+    while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
+      SharedAqlItemBlockPtr block =
+          itemBlockManager.requestBlock(parameters._blockSize, 4);
 
-    // TODO: What (is supposed to) happen(s) if skip already returned DONE?
-    auto const [produceState, stats, resultProduceCall] =
-        testee.produceRows(input, output);
+      OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                              infos.registersToKeep(), infos.registersToClear());
+      output.setCall(std::move(ourCall));
 
-    // TODO: should we make a way to assert the state?
-    EXPECT_TRUE(produceState == ExecutorState::HASMORE || produceState == ExecutorState::DONE);
+      std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);
 
-    ValidateResult(output, skipped);
+      outputs.emplace_back(output.stealBlock());
+      ourCall = output.stealClientCall();
+    }
+
+    // FullCount
+    if (ourCall.needsFullCount()) {
+      LOG_DEVEL << "needs full count";
+      std::tie(state, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
+      LOG_DEVEL << " full count skip" << skippedFullCount;
+    }
+
+    ValidateResult(outputs, skippedInitial, skippedFullCount);
   }
+
+  // Tests that the executor calls the shortest path finder with appropriate inputs
+  void TestInput() {}
 };
 
-TEST_P(ShortestPathExecutorTest, the_test) { TestExecutor(infos, input); }
+/*
+ * We currently only have one test, but it's heavily parameterised; we call
+ * the test with all combinations of parameters defined below, and compare the
+ * produced output of the executor with the expected output.
+ *
+ * We never actually perform a shortest path search, since that is the
+ * responsibility of the shortest path finder.
+ *
+ */
+
+TEST_P(ShortestPathExecutorTest, the_test) { TestExecutor(); }
 
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
     regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
@@ -410,40 +442,55 @@ MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}
 MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
                                  {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
                                  {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/b")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/e")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
 
-std::vector<std::vector<std::string>> const noPath = {};
-std::vector<std::vector<std::string>> const onePath = {
-    {"vertex/source", "vertex/intermed", "vertex/target"}};
-std::vector<std::vector<std::string>> const threePaths = {
-    {"vertex/source", "vertex/intermed", "vertex/target"},
-    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
-    {"vertex/source", "vertex/b", "vertex/c", "vertex/d"},
-    {"vertex/a", "vertex/b", "vertex/target"}};
-
-auto generateALongerPath(size_t n) -> std::vector<std::vector<std::string>> {
+auto pathBetween(std::string const& start, std::string const& end, size_t n) -> Path {
   auto path = std::vector<std::string>{};
-  path.push_back("vertex/source");
+  path.push_back(start);
   for (size_t i = 0; i < n; ++i) {
     path.push_back(std::to_string(i));
   }
-  path.push_back("vertex/target");
+  path.push_back(end);
   return {path};
 }
 
+PathSequence const noPath = {};
+PathSequence const onePath = {pathBetween("vertex/source", "vertex/target", 10)};
+PathSequence const threePaths = {pathBetween("vertex/source", "vertex/target", 10),
+                                 pathBetween("vertex/source", "vertex/b", 100),
+                                 pathBetween("vertex/a", "vertex/b", 1000)};
+PathSequence const somePaths = {pathBetween("vertex/source", "vertex/target", 10),
+                                pathBetween("vertex/source", "vertex/b", 100),
+                                pathBetween("vertex/a", "vertex/b", 1000),
+                                pathBetween("vertex/c", "vertex/d", 2001)};
+PathSequence const someOtherPaths = {pathBetween("vertex/a", "vertex/target", 10),
+                                     pathBetween("vertex/b", "vertex/target", 999),
+                                     pathBetween("vertex/c", "vertex/target", 1001),
+                                     pathBetween("vertex/d", "vertex/target", 2000),
+                                     pathBetween("vertex/e", "vertex/target", 200),
+                                     pathBetween("vertex/f", "vertex/target", 15),
+                                     pathBetween("vertex/g", "vertex/target", 10)};
+
 auto sources = testing::Values(constSource, regSource, brokenSource);
 auto targets = testing::Values(constTarget, regTarget, brokenTarget);
-auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows);
-auto paths = testing::Values(noPath, onePath, threePaths,
-                             generateALongerPath(999), generateALongerPath(1000),
-                             generateALongerPath(1001), generateALongerPath(2000));
-auto calls = testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
-                             AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false},
-                             AqlCall{1, 1, 1}, AqlCall{100, 1, 1}, AqlCall{1000});
+auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
+auto paths = testing::Values(noPath, onePath, threePaths, somePaths);
+auto calls =
+    testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
+                    AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false}, AqlCall{1, 1, 1},
+                    AqlCall{100, 1, 1}, AqlCall{1000}, AqlCall{0, 0, 0, true},
+                    AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
+
 auto variants = testing::Values(ShortestPathOutput::VERTEX_ONLY,
                                 ShortestPathOutput::VERTEX_AND_EDGE);
+auto blockSizes = testing::Values(size_t{5}, 100);
 
-INSTANTIATE_TEST_CASE_P(ShortestPathExecutorTestInstance, ShortestPathExecutorTest,
-                        testing::Combine(sources, targets, inputs, paths, calls, variants));
+INSTANTIATE_TEST_CASE_P(ShortestPathExecutorTestInstance1, ShortestPathExecutorTest,
+                        testing::Combine(sources, targets, inputs, paths, calls,
+                                         variants, blockSizes));
 
 }  // namespace aql
 }  // namespace tests

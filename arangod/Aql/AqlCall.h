@@ -73,18 +73,21 @@ struct AqlCall {
 
   std::size_t getOffset() const { return offset; }
 
-  std::size_t getLimit() const {
-    // By default we use batchsize
-    std::size_t limit = ExecutionBlock::DefaultBatchSize();
+  std::size_t clampToLimit(size_t n) const {
     // We are not allowed to go above softLimit
     if (std::holds_alternative<std::size_t>(softLimit)) {
-      limit = (std::min)(std::get<std::size_t>(softLimit), limit);
+      n = (std::min)(std::get<std::size_t>(softLimit), n);
     }
     // We are not allowed to go above hardLimit
     if (std::holds_alternative<std::size_t>(hardLimit)) {
-      limit = (std::min)(std::get<std::size_t>(hardLimit), limit);
+      n = (std::min)(std::get<std::size_t>(hardLimit), n);
     }
-    return limit;
+    return n;
+  }
+
+  std::size_t getLimit() const {
+    // By default we use batchsize
+    return clampToLimit(ExecutionBlock::DefaultBatchSize());
   }
 
   void didSkip(std::size_t n) {
