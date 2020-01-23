@@ -314,7 +314,7 @@ void Supervision::upgradeMaintenance(VPackBuilder& builder) {
       maintenanceState = _snapshot.get(supervisionMaintenance).getString();
     } catch (std::exception const& e) {
       LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
-        << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups.";
+        << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups. " + e.what();
       return;
     }
 
@@ -908,7 +908,7 @@ void Supervision::run() {
             } catch (std::exception const& e) {
               if (!maintenanceKeyErrorReported) {
                 LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
-                  << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups.";
+                  << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups. " + e.what();
                 maintenanceKeyErrorReported = true;
               }
               return;
