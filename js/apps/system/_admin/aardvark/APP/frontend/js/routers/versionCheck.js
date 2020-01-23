@@ -49,8 +49,7 @@
     $.ajax({
       type: 'GET',
       cache: false,
-      url: arangoHelper.databaseUrl('/_admin/status?overview=true&browser='
-             + encodeURIComponent(window.navigator.appName + " " + window.navigator.appVersion)),
+      url: arangoHelper.databaseUrl('/_admin/status?overview=true'),
       contentType: 'application/json',
       processData: false,
       async: true,
@@ -83,8 +82,13 @@
           timeout: 3000,
           dataType: 'jsonp',
           url: 'https://www.arangodb.com/versions.php' +
-            '?jsonp=parseVersions&version=' + encodeURIComponent(currentVersion.toString())
-            + '&hash=' + encodeURIComponent(data.hash + '-' + data.browser),
+            '?jsonp=parseVersions'
+            + '&version=' + encodeURIComponent(data.version)
+            + '&platform=' + encodeURIComponent(data.platform)
+            + '&engine=' + encodeURIComponent(data.engine)
+            + '&license=' + encodeURIComponent(data.license)
+            + '&source=ui'
+            + '&hash=' + encodeURIComponent(data.hash),
           error: function (e) {
             if (e.status === 200) {
               window.activeInternetConnection = true;
