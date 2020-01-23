@@ -2,7 +2,14 @@ v3.6.1 (2020-XX-XX)
 -------------------
 
 * Allowed PHRASE function to process empty arrays without generating error.
-  
+
+* Add acquisition of system report to arangod instances.
+
+* React dev mode now supports hot reload combined with proxy for development.
+
+* Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
+  confusing error messages
+
 * Fix potential nullptr dereference in view optimizer rule, when there were was
   a LIMIT outside of a FOR loop.
 

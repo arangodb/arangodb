@@ -102,15 +102,74 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
     }
   }
 
-  // Take (shadow row-) state from dependency.
-  return {_upstreamState, NoStats{}};
+  if (_internalState == State::READ_DATA_ROW || _internalState == State::PASS_SHADOW_ROW) {
+    TRI_ASSERT(!_input.isInitialized());
+    return {_upstreamState, NoStats{}};
+  }
+  // PRODUCE_DATA_ROW should always immediately be processed without leaving the
+  // loop
+  TRI_ASSERT(_internalState == State::PRODUCE_SHADOW_ROW);
+  TRI_ASSERT(_input.isInitialized());
+  return {ExecutionState::HASMORE, NoStats{}};
 }
 
 std::pair<ExecutionState, size_t> SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const {
-  ExecutionState state{ExecutionState::HASMORE};
-  size_t expected = 0;
-  std::tie(state, expected) = _fetcher.preFetchNumberOfRows(atMost);
+  auto const [state, upstreamRows] = _fetcher.preFetchNumberOfRows(atMost);
   // We will write one shadow row per input data row.
   // We might write less on all shadow rows in input, right now we do not figure this out yes.
-  return {state, expected * 2};
+  TRI_ASSERT( _input.isInitialized() == (_internalState == State::PRODUCE_SHADOW_ROW));
+  TRI_ASSERT(_internalState != State::PRODUCE_DATA_ROW);
+
+  // Return 1 if _input.isInitialized(), and 0 otherwise. Looks more complicated
+  // than it is.
+  auto const localRows = [this]() {
+    if (_input.isInitialized()) {
+      switch (_internalState) {
+        case State::PRODUCE_SHADOW_ROW:
+          return 1;
+        case State::PRODUCE_DATA_ROW:
+        case State::READ_DATA_ROW:
+        case State::PASS_SHADOW_ROW: {
+          TRI_ASSERT(false);
+          using namespace std::string_literals;
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL_AQL,
+              "Unexpected state "s + stateToString(_internalState) +
+                  " in SubqueryStartExecutor with local row");
+        }
+      }
+    } else {
+      switch (_internalState) {
+        case State::READ_DATA_ROW:
+        case State::PASS_SHADOW_ROW:
+          return 0;
+        case State::PRODUCE_DATA_ROW:
+        case State::PRODUCE_SHADOW_ROW:
+          TRI_ASSERT(false);
+          using namespace std::string_literals;
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL_AQL,
+              "Unexpected state "s + stateToString(_internalState) +
+                  " in SubqueryStartExecutor with no local row");
+      }
+    }
+    TRI_ASSERT(false);
+    return 0;
+  }();
+
+  return {state, upstreamRows * 2 + localRows};
+}
+
+auto SubqueryStartExecutor::stateToString(SubqueryStartExecutor::State state) -> std::string {
+  switch (state) {
+    case State::READ_DATA_ROW:
+      return "READ_DATA_ROW";
+    case State::PRODUCE_DATA_ROW:
+      return "PRODUCE_DATA_ROW";
+    case State::PRODUCE_SHADOW_ROW:
+      return "PRODUCE_SHADOW_ROW";
+    case State::PASS_SHADOW_ROW:
+      return "PASS_SHADOW_ROW";
+  }
+  return "unhandled state";
 }
