@@ -3742,7 +3742,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump: ") + result.errorMessage());
       LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
-      events::CreateHotbackup(backupId, TRI_ERROR_HOT_BACKUP_INTERNAL);
+      events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_HOT_BACKUP_INTERNAL);
       return result;
     }
 
@@ -3914,7 +3914,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       }
     }
 
-    events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
+    events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_NO_ERROR);
     return arangodb::Result();
 
   } catch (std::exception const& e) {
