@@ -1,4 +1,4 @@
-v3.4.9 (XXXX-XX-XX)
+v3.4.9 (2020-01-23)
 -------------------
 
 * Fix spurios "substr index out of bounds" VelocyPack errors when accessing a
