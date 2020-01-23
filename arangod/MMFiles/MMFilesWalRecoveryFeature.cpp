@@ -23,6 +23,7 @@
 
 #include "MMFilesWalRecoveryFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/application-exit.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"

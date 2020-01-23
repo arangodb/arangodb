@@ -24,6 +24,7 @@
 #include "RestAdminServerHandler.h"
 
 #include "Actions/RestActionHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -39,9 +40,7 @@ using namespace arangodb::rest;
 RestAdminServerHandler::RestAdminServerHandler(application_features::ApplicationServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -123,11 +122,10 @@ void RestAdminServerHandler::handleAvailability() {
     return;
   }
 
-  auto& server = application_features::ApplicationServer::server();
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
-      available = !server.isStopping();
+      available = !server().isStopping();
       break;
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:

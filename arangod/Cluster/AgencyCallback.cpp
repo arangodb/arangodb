@@ -39,11 +39,11 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
+AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
     : key(key), 
-      _agency(agency), 
+      _agency(server), 
       _cb(cb), 
       _needsValue(needsValue),
       _wasSignaled(false) {
@@ -67,8 +67,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
   AgencyCommResult result = _agency.getValues(key);
 
   if (!result.successful()) {
-    auto& server = ApplicationServer::server();
-    if (!server.isStopping()) {
+    if (!_agency.server().isStopping()) {
       // only log errors if we are not already shutting down...
       // in case of shutdown this error is somewhat expected
       LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
@@ -136,8 +135,7 @@ bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
 bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  auto& server = ApplicationServer::server();
-  if (!server.isStopping()) {
+  if (!_agency.server().isStopping()) {
     if (_wasSignaled) {
       // ok, we have been signaled already, so there is no need to wait at all
       // directly refetch the values

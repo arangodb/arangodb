@@ -105,7 +105,7 @@ class SimpleModifier {
         _completion(infos),
         _accumulator(nullptr),
         _resultsIterator(VPackSlice::emptyArraySlice()),
-        _batchSize(ExecutionBlock::DefaultBatchSize()) {}
+        _batchSize(ExecutionBlock::DefaultBatchSize) {}
   ~SimpleModifier() = default;
 
   void reset();

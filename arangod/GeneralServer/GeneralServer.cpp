@@ -61,8 +61,7 @@ GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThread
 GeneralServer::~GeneralServer() = default;
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
-  auto& server = application_features::ApplicationServer::server();
-  if (server.isStopping()) {
+  if (_feature.server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   auto* t = task.get();
@@ -120,18 +119,38 @@ void GeneralServer::startListening() {
   }
 }
 
+/// stop accepting new connections
 void GeneralServer::stopListening() {
   for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
     acceptor->close();
   }
+}
 
+/// stop connections
+void GeneralServer::stopConnections() {
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
   std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-  _commTasks.clear();
+  for (auto const& pair : _commTasks) {
+    pair.second->stop();
+  }
 }
 
 void GeneralServer::stopWorking() {
+  auto now = std::chrono::system_clock::now();
+  do {
+    std::unique_lock<std::recursive_mutex> guard(_tasksLock);
+    bool done = _commTasks.empty();
+    guard.unlock();
+    if (done) {
+      break;
+    }
+    std::this_thread::yield();
+  } while((std::chrono::system_clock::now() - now) < std::chrono::seconds(5));
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    _commTasks.clear();
+  }
   _acceptors.clear();
   _contexts.clear();  // stops threads
 }
@@ -152,11 +171,11 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
 }
 
 IoContext& GeneralServer::selectIoContext() {
-  uint64_t low = _contexts[0].clients();
+  unsigned low = _contexts[0].clients();
   size_t lowpos = 0;
 
   for (size_t i = 1; i < _contexts.size(); ++i) {
-    uint64_t x = _contexts[i].clients();
+    unsigned x = _contexts[i].clients();
     if (x < low) {
       low = x;
       lowpos = i;

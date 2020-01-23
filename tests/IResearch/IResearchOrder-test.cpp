@@ -33,6 +33,7 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/StorageEngineMock.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -78,7 +79,7 @@ void assertOrder(arangodb::application_features::ApplicationServer& server, bool
                  arangodb::aql::ExpressionContext* exprCtx = nullptr,
                  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
                  std::string const& refName = "d") {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString), bindVars,
                              std::make_shared<arangodb::velocypack::Builder>(),

@@ -741,7 +741,7 @@ void IResearchViewExecutorBase<Impl, Traits>::getStoredValue(irs::document const
   TRI_ASSERT(reader);
   auto ok = reader(doc.value, storedValue[index]);
   TRI_ASSERT(ok);
-  if (storedValue[index].null()) {
+  if (storedValue[index].empty()) {
     storedValue[index] = ref<irs::byte_type>(VPackSlice::nullSlice());
   }
 }

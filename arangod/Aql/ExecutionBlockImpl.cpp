@@ -74,6 +74,8 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/core/demangle.hpp>
+
 #include <type_traits>
 
 using namespace arangodb;
@@ -179,7 +181,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
-  TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize());
+  TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -489,7 +491,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWith
   constexpr SkipVariants customSkipType = skipType<Executor>();
 
   if (customSkipType == SkipVariants::GET_SOME) {
-    atMost = std::min(atMost, DefaultBatchSize());
+    atMost = std::min(atMost, DefaultBatchSize);
     auto res = getSomeWithoutTrace(atMost);
 
     size_t skipped = 0;
@@ -924,6 +926,12 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);
+      if (state != ExecutionState::DONE) {
+        auto const executorName = boost::core::demangle(typeid(Executor).name()).c_str();
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_INTERNAL_AQL,
+            "Unexpected result of expectedNumberOfRows in %s", executorName);
+      }
       return {state, nullptr};
     }
     block = engine.itemBlockManager().requestBlock(nrItems, nrRegs);
@@ -980,7 +988,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
     -> std::unique_ptr<OutputAqlItemRow> {
-  size_t blockSize = ExecutionBlock::DefaultBatchSize();
+  size_t blockSize = ExecutionBlock::DefaultBatchSize;
   SharedAqlItemBlockPtr newBlock =
       _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
   return createOutputRow(newBlock, std::move(call));
@@ -1100,7 +1108,7 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       // In all other cases, we skip by letting the executor produce rows, and
       // then throw them away.
 
-      size_t toSkip = std::min(call.getOffset(), DefaultBatchSize());
+      size_t toSkip = std::min(call.getOffset(), DefaultBatchSize);
       AqlCall skipCall{};
       skipCall.softLimit = toSkip;
       skipCall.hardLimit = toSkip;

@@ -55,7 +55,7 @@ SimpleHttpResult::SimpleHttpResult()
   _resultBody.ensureNullTerminated();
 }
 
-SimpleHttpResult::~SimpleHttpResult() {}
+SimpleHttpResult::~SimpleHttpResult() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// public methods
