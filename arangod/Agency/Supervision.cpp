@@ -1217,7 +1217,7 @@ void Supervision::unlockHotBackup() {
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
-  LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
+  LOG_TOPIC("67eef", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
   unlockHotBackup();
 
   LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
