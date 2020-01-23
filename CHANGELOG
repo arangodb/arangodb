@@ -1,3 +1,10 @@
+v3.4.10 (XXXX-XX-XX)
+--------------------
+
+* Fix spurious "substr index out of bounds" VelocyPack errors when accessing a
+  full substring.
+
+
 v3.4.9 (2020-01-23)
 -------------------
 
