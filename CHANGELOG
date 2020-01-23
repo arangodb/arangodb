@@ -39,7 +39,7 @@ v3.5.4 (2020-01-22)
 * Fixed issue #10725: Wrong document count shown inside an empty collection in
   the web UI.
 
-* Fixed issue #10371: AQL Error when using a custom ArangoSearch analyzer on a
+* Fixed issue #10601: AQL Error when using a custom ArangoSearch analyzer on a
   cluster deployment.
 
 * Fixed internal issue #656: While executing large amount of concurrent
