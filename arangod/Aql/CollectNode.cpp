@@ -436,7 +436,6 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 auto isStartNode(ExecutionNode const& node) -> bool {
   switch (node.getType()) {
     case ExecutionNode::SINGLETON:
-    case ExecutionNode::SUBQUERY_START:
       return true;
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
@@ -463,9 +462,6 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::K_SHORTEST_PATHS:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-    case ExecutionNode::DISTRIBUTE_CONSUMER:
-    case ExecutionNode::SUBQUERY_END:
-    case ExecutionNode::MATERIALIZE:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -477,7 +473,6 @@ auto isStartNode(ExecutionNode const& node) -> bool {
 auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
   switch (node.getType()) {
     case ExecutionNode::SINGLETON:
-    case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::COLLECT:
       return true;
     case ExecutionNode::ENUMERATE_COLLECTION:
@@ -504,9 +499,6 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::K_SHORTEST_PATHS:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
-    case ExecutionNode::DISTRIBUTE_CONSUMER:
-    case ExecutionNode::SUBQUERY_END:
-    case ExecutionNode::MATERIALIZE:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -527,7 +519,6 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::COLLECT:
       return true;
     case ExecutionNode::SINGLETON:
-    case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::CALCULATION:
@@ -545,9 +536,6 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::UPSERT:
     case ExecutionNode::REMOTESINGLE:
-    case ExecutionNode::DISTRIBUTE_CONSUMER:
-    case ExecutionNode::SUBQUERY_END:
-    case ExecutionNode::MATERIALIZE:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
@@ -560,35 +548,13 @@ auto isLoop(ExecutionNode const& node) -> bool {
 // Returns whether we are at the top level.
 // Gets passed whether we did encounter a loop "on the way" from the collect node.
 auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& groupVariables,
-                       bool const encounteredLoop = false, int const subqueryDepth = 0) -> bool {
-  TRI_ASSERT(subqueryDepth >= 0);
-  auto const recSubqueryDepth = [&]() {
-    if (node.getType() == ExecutionNode::SUBQUERY_END) {
-      return subqueryDepth + 1;
-    } else if (node.getType() == ExecutionNode::SUBQUERY_START) {
-      return subqueryDepth - 1;
-    }
-    return subqueryDepth;
-  }();
-
+                       bool const encounteredLoop = false) -> bool {
   auto const dep = node.getFirstDependency();
-
-  // Skip nodes inside a subquery, except for SUBQUERY_END!
-  if (subqueryDepth > 0) {
-    if (dep != nullptr) {
-      return getGroupVariables(*dep, groupVariables, encounteredLoop, recSubqueryDepth);
-    } else {
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
-                                     "Unexpected end of plan inside subquery");
-    }
-  }
 
   bool const depIsTopLevel = [&]() {
     // Abort recursion on invalidating nodes
     if (dep != nullptr && !isVariableInvalidatingNode(node)) {
-      return getGroupVariables(*dep, groupVariables,
-                               encounteredLoop || isLoop(node), recSubqueryDepth);
+      return getGroupVariables(*dep, groupVariables, encounteredLoop || isLoop(node));
     } else {
       return isStartNode(node);
     }
