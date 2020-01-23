@@ -1,10 +1,10 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
-* Make sure heartbeats are actually sent out and received every second.
-
 * Fix spurious "substr index out of bounds" VelocyPack errors that were thrown
   unintentionally when a full substr was requested.
+
+* Make sure heartbeats are actually sent out and received every second.
 
 
 v3.5.4 (2020-01-22)
