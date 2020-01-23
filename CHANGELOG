@@ -1,6 +1,8 @@
 v3.6.1 (2020-XX-XX)
 -------------------
 
+* Added HotBackup events into auditing.
+
 * Internal statistics API now uses integer timestamps instead of doubles. The
   old behavior sometimes leads to failed requests because of parse errors
   which occurred in the internally used JavaScript joi library.
