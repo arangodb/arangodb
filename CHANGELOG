@@ -1,8 +1,10 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
+
 * Supervision maintenance mode from "on" and TTL to expiry string.
 
 * Make sure heartbeats are actually sent out and received every second.
+
 
 v3.5.4 (2020-01-22)
 -------------------
