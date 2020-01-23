@@ -855,6 +855,8 @@ void Supervision::run() {
                                              "initialize its data.";
   }
 
+  bool maintenanceKeyErrorReported = false;
+
   bool shutdown = false;
   {
     CONDITION_LOCKER(guard, _cv);
@@ -894,10 +896,22 @@ void Supervision::run() {
           bool maintenanceMode = false;
           if (_snapshot.has(supervisionMaintenance)) {
             TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
-            auto const maintenanceExpires =
-              stringToTimepoint(_snapshot.get(supervisionMaintenance).getString());
-            if (maintenanceExpires >= std::chrono::system_clock::now()) {
-              maintenanceMode = true;
+            try {
+              auto const maintenanceExpires =
+                stringToTimepoint(_snapshot.get(supervisionMaintenance).getString());
+              if (maintenanceExpires >= std::chrono::system_clock::now()) {
+                maintenanceMode = true;
+              }
+              if (maintenanceKeyErrorReported) {
+                maintenanceKeyErrorReported = true;
+              }
+            } catch (std::exception const& e) {
+              if (!maintenanceKeyErrorReported) {
+                LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
+                  << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups.";
+                maintenanceKeyErrorReported = true;
+              }
+              return;
             }
           }
 
