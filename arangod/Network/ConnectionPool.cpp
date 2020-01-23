@@ -208,6 +208,8 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     if (state == fuerte::Connection::State::Failed) {
       continue;
     }
+    
+    TRI_ASSERT(_config.protocol != fuerte::ProtocolType::Undefined);
 
     size_t num = c.fuerte->requestsLeft();
     if (_config.protocol == fuerte::ProtocolType::Http && num == 0) {
@@ -218,9 +220,12 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
         c.leased = now;
         return c.fuerte;
       }
-    } else if (_config.protocol == fuerte::ProtocolType::Vst && num <= 3) {
+    } else if (_config.protocol == fuerte::ProtocolType::Vst && num <= 4) {
       c.leased = std::chrono::steady_clock::now();
-      return c.fuerte; // TODO: make (num <= 3) configurable ?
+      return c.fuerte; // TODO: make (num <= 4) configurable ?
+    } else if (_config.protocol == fuerte::ProtocolType::Http2 && num <= 4) {
+      c.leased = std::chrono::steady_clock::now();
+      return c.fuerte; // TODO: make (num <= 4) configurable ?
     }
   }
 
