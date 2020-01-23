@@ -26,7 +26,7 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
-#include "Agency/Node.h"
+#include "Agency/Store.h"
 #include "Agency/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
@@ -36,7 +36,6 @@ namespace arangodb {
 namespace consensus {
 
 class Agent;
-class Store;
 
 struct check_t {
   bool good;
@@ -234,6 +233,8 @@ class Supervision : public arangodb::CriticalThread {
   double _okThreshold;
   uint64_t _jobId;
   uint64_t _jobIdMax;
+  uint64_t _lastUpdateIndex;
+
   bool _haveAborts;        /**< @brief We have accumulated pending aborts in a round */
 
   // mop: this feels very hacky...we have a hen and egg problem here
@@ -247,6 +248,8 @@ class Supervision : public arangodb::CriticalThread {
   bool _selfShutdown;
 
   std::atomic<bool> _upgraded;
+
+  Store _spearhead;
 
   std::string serverHealth(std::string const&);
 

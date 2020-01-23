@@ -172,9 +172,11 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _okThreshold(5.),
       _jobId(0),
       _jobIdMax(0),
+      _lastUpdateIndex(0),
       _haveAborts(false),
       _selfShutdown(false),
-      _upgraded(false) {}
+      _upgraded(false),
+      _spearhead(server, _agent){}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -695,11 +697,18 @@ bool Supervision::updateSnapshot() {
     return false;
   }
 
-  _agent->executeLockedRead([&]() {
+  if (_lastUpdateIndex == 0) {
+    _agent->executeLockedRead([&]() {
       if (_agent->spearhead().has(_agencyPrefix)) {
+        _spearhead = _agent->spearhead();
         _snapshot = _agent->spearhead().get(_agencyPrefix);
+        _lastUpdateIndex = _agent->confirmed();
       }
-  });
+    });
+  } else {
+    auto const logs = _agent->logs(_lastUpdateIndex + 1);
+    _lastUpdateIndex = _spearhead.applyTransactions(logs);
+  }
   _agent->executeTransientLocked([&]() {
       if (_agent->transient().has(_agencyPrefix)) {
         _transient = _agent->transient().get(_agencyPrefix);

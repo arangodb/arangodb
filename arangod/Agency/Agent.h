@@ -104,6 +104,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Pick up leadership tasks
   void lead();
 
+  /// @brief 
+
   /// @brief Prepare leadership
   bool prepareLead();
 
@@ -162,7 +164,12 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void advanceCommitIndex();
 
  public:
-  /// @brief Invoked by leader to replicate log entries ($5.3);
+
+  /// @brief Get last confirmed index of an agent. Default my own.
+  ///   Safe ONLY IF via executeLock() (see example Supervision.cpp)
+  index_t confirmed(std::string const& serverId = std::string()) const;
+  
+  /// @brief Invoked by leader to replicate log entries ($5.3);w
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
@@ -259,6 +266,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief All there is in the state machine
   query_t allLogs() const;
+
+  /// @brief Get copy of log entries starting with begin ending on end
+  std::vector<log_t> logs(index_t begin = 0, index_t end = (std::numeric_limits<uint64_t>::max)()) const;
 
   /// @brief Last contact with followers
   void lastAckedAgo(Builder&) const;
