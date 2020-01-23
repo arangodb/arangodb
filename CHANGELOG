@@ -1,6 +1,9 @@
 v3.5.4 (2020-01-22)
 -------------------
 
+* Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
+  confusing error messages
+
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
   while.
 
