@@ -200,6 +200,14 @@ class Supervision : public arangodb::CriticalThread {
   static void cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
                                      uint64_t& jobId);
 
+  void setOkThreshold(double d) {
+    _okThreshold = d;
+  }
+
+  void setGracePeriod(double d) {
+    _gracePeriod = d;
+  }
+
  private:
   /**
    * @brief Report status of supervision in agency
