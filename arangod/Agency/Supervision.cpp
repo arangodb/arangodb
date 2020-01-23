@@ -313,7 +313,7 @@ void Supervision::upgradeMaintenance(VPackBuilder& builder) {
     try {
       maintenanceState = _snapshot.get(supervisionMaintenance).getString();
     } catch (std::exception const& e) {
-      LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
+      LOG_TOPIC("cf235", ERR, Logger::SUPERVISION)
         << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups. " + e.what();
       return;
     }
