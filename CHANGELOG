@@ -1,6 +1,10 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* include collections "_queues" and "_jobs" in dumps created by arangodump
+  in case the option `--include-system-collections` was set to true. Previously
+  these collections were always excluded from dumps.
+
 * Supervision maintenance mode from "on" and TTL to expiry string.
 
 * Fix spurious "substr index out of bounds" VelocyPack errors that were thrown
