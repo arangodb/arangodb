@@ -45,25 +45,7 @@ struct OperationOptions {
         overwriteModeUpdate(false)
         {}
 
-  friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
-    // clang-format off
-    os << "OperationOptions : " << std::boolalpha
-       << "{ recoveryData : " << ops.recoveryData
-       << ", indexOperationMode : " << ops.indexOperationMode
-       << ", waitForSync : " << ops.waitForSync
-       << ", keepNull : " << ops.keepNull
-       << ", mergeObjects : " << ops.mergeObjects
-       << ", silent : " << ops.silent
-       << ", ignoreRevs : " << ops.ignoreRevs
-       << ", returnOld :" << ops.returnOld
-       << ", returnNew : "  << ops.returnNew
-       << ", isRestore : " << ops.isRestore
-       << ", overwrite : " << ops.overwrite
-       << ", overwriteModeUpdate : " << ops.overwriteModeUpdate
-       << " }" << std::endl;
-    // clang-format on
-    return os;
-  }
+  friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops);
 
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
@@ -109,6 +91,26 @@ struct OperationOptions {
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
 };
+
+inline std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
+  // clang-format off
+  os << "OperationOptions : " << std::boolalpha
+     << "{ recoveryData : " << ops.recoveryData
+     << ", indexOperationMode : " << ops.indexOperationMode
+     << ", waitForSync : " << ops.waitForSync
+     << ", keepNull : " << ops.keepNull
+     << ", mergeObjects : " << ops.mergeObjects
+     << ", silent : " << ops.silent
+     << ", ignoreRevs : " << ops.ignoreRevs
+     << ", returnOld :" << ops.returnOld
+     << ", returnNew : "  << ops.returnNew
+     << ", isRestore : " << ops.isRestore
+     << ", overwrite : " << ops.overwrite
+     << ", overwriteModeUpdate : " << ops.overwriteModeUpdate
+     << " }" << std::endl;
+  // clang-format on
+  return os;
+}
 
 }  // namespace arangodb
 
