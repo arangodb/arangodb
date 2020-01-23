@@ -83,49 +83,62 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       try { db._drop(cn); } catch(e) {}
       try { db._drop(cn1); } catch(e) {}
     }, 
+    testIssue10845() {
+      // this tests a regression described in https://github.com/arangodb/arangodb/issues/10845#issuecomment-575723029:
+      // when there is a view in a query, all LIMITs in the query may be inspected.
+      // however, each LIMIT was supposed to be present underneath a FOR loop, otherwise
+      // the query could crash. This test is here to just make sure there are no crashes.
+      let query = "LET results = (FOR d IN " + vn  + " SORT BM25(d) DESC RETURN d) FOR p IN results " +
+        "LET validFrom = (RETURN IS_NULL(p.valid_from) ? 0 : p.valid_from) " +
+        "LET validTo = (RETURN IS_NULL(p.valid_to) ? 253370764800000 : p.valid_to) " + 
+        "LET inactive = (RETURN (validFrom[0] > 1579279781654 || validTo[0] < 1579279781654)) " +
+        "RETURN (inactive[0]) ? MERGE(p, {inactive: true}) : p";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
     testNotAppliedDueToFilter() {
-      let query = "FOR d IN " + vn  + " FILTER d.value IN [1,2] SORT BM25(d) LIMIT 10 RETURN d ";
+      let query = "FOR d IN " + vn  + " FILTER d.value IN [1,2] SORT BM25(d) LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testNotAppliedDueToSort() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT d.value LIMIT 10 RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2] SORT d.value LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testNotAppliedDueToCalculation() {
-      let query = "FOR d IN " + vn  + " LET c = d.value + RAND()  SORT BM25(d) LIMIT 10 RETURN c ";
+      let query = "FOR d IN " + vn  + " LET c = d.value + RAND()  SORT BM25(d) LIMIT 10 RETURN c";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testNotAppliedDueToNoSort() {
-      let query = "FOR d IN " + vn  + " LIMIT 10 RETURN d ";
+      let query = "FOR d IN " + vn  + " LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testNotAppliedDueToUsedInInnerSort() {
-      let query = "FOR d IN " + vn  + " SORT d.value ASC SORT BM25(d) LIMIT 10 RETURN d ";
+      let query = "FOR d IN " + vn  + " SORT d.value ASC SORT BM25(d) LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testNotAppliedDueToNoLimit() {
-      let query = "FOR d IN " + vn  + " SORT BM25(d)  RETURN d ";
+      let query = "FOR d IN " + vn  + " SORT BM25(d)  RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testNotAppliedDueToLimitOnWrongNode() {
       let query = "FOR d IN " + vn  + " SEARCH d.value IN [1, 2, 11, 12] " + 
-                  " SORT BM25(d) LET c = BM25(d) * 2 SORT d.str + c LIMIT 10 RETURN { doc: d, sc: c} ";
+                  " SORT BM25(d) LET c = BM25(d) * 2 SORT d.str + c LIMIT 10 RETURN { doc: d, sc: c}";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testNotAppliedInSortedView() {
-      let query = "FOR d IN " + svn  + " SORT d.str ASC LIMIT 1,10  RETURN d ";
+      let query = "FOR d IN " + svn  + " SORT d.str ASC LIMIT 1,10  RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testQueryResultsWithRandomSort() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT RAND() LIMIT 10 RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT RAND() LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -138,7 +151,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       assertEqual(0, expectedKeys.size);
     },
     testQueryResultsWithMultipleCollections() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -151,7 +164,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       assertEqual(0, expectedKeys.size);
     },
     testQueryResultsWithMultipleCollectionsWithAfterSort() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT BM25(d) LIMIT 10 SORT NOOPT(d.value) ASC RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11,12] SORT BM25(d) LIMIT 10 SORT NOOPT(d.value) ASC RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -169,7 +182,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
     },
     testQueryResultsWithMultipleCollectionsWithMultiSort() {
       let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en') " +
-                  "SORT BM25(d) LIMIT 10 SORT TFIDF(d) DESC LIMIT 4 RETURN d ";
+                  "SORT BM25(d) LIMIT 10 SORT TFIDF(d) DESC LIMIT 4 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
@@ -199,7 +212,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       assertEqual(0, expectedKeys.length);
     },
     testQueryResultsWithMultipleCollectionsAfterCalc() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c ";
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -212,7 +225,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       assertEqual(0, expected.size);
     },
     testQueryResultsWithBetweenCalc() {
-      let query = "FOR d IN " + svn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LET c = NOOPT(CONCAT(d._key, '-C')) LIMIT 10  RETURN c ";
+      let query = "FOR d IN " + svn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LET c = NOOPT(CONCAT(d._key, '-C')) LIMIT 10  RETURN c";
       let plan = AQL_EXPLAIN(query).plan;
       if (!isCluster) {
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -230,7 +243,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       }
     },
     testQueryResultsSkipSome() {
-      let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en')  SORT TFIDF(d) DESC LIMIT 4, 1 RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en')  SORT TFIDF(d) DESC LIMIT 4, 1 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -238,7 +251,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       assertEqual(result.json[0]._key, 'c2');
     },
     testQueryResultsSkipAll() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 5,10 RETURN d ";
+      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 5,10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -246,7 +259,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
     },
     testQueryResultsInSubquery() {
       let query = "FOR c IN " + svn + " SEARCH c.value == 1 " +
-                    " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] SORT BM25(d) LIMIT 10 RETURN d ";
+                    " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] SORT BM25(d) LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -260,7 +273,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
     },
     testQueryResultsInOuterSubquery() {
       let query = "FOR c IN " + svn + " SEARCH c.value == 1 SORT BM25(c) LIMIT 10 " +
-                    " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] RETURN d ";
+                    " FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -275,7 +288,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
     testQueryResultsMultipleLimits() {
       let query = " FOR d IN " + vn  + " SEARCH d.value > 5 SORT BM25(d) " +
                   " LIMIT 1, 5 SORT TFIDF(d) LIMIT 1, 3 SORT NOOPT(d.value) DESC  " +
-                  " LIMIT 1, 1 RETURN d ";
+                  " LIMIT 1, 1 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
@@ -301,7 +314,7 @@ function lateDocumentMaterializationArangoSearchRuleTestSuite () {
       // value but it should not affect results especially on cluster!
       let query = " FOR d IN " + vn  + " SEARCH d.value > 5 SORT BM25(d) " +
                   " LIMIT 1, 5 SORT TFIDF(d) LIMIT 1, 3 " +
-                  " RETURN d ";
+                  " RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;

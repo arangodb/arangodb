@@ -76,6 +76,8 @@ class SubqueryStartExecutor {
     PASS_SHADOW_ROW
   };
 
+  auto static stateToString(State state) -> std::string;
+
  private:
   // Fetcher to get data.
   Fetcher& _fetcher;
