@@ -1,5 +1,8 @@
 devel
 -----
+
+* Allowed PHRASE function to process empty arrays without generating error.
+
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
   confusing error messages
 
