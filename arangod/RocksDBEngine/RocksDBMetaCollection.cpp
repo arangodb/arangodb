@@ -66,8 +66,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   if (collection.syncByRevision()) {
     _revisionTree =
         std::make_unique<containers::RevisionTree>(6, collection.minRevision());
-  } else {
-    LOG_DEVEL << "CONSTRUCTOR FOR '" << _logicalCollection.name() << "' false";
   }
 }
 
@@ -81,8 +79,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   if (collection.syncByRevision()) {
     _revisionTree =
         std::make_unique<containers::RevisionTree>(6, collection.minRevision());
-  } else {
-    LOG_DEVEL << "CONSTRUCTOR FOR '" << _logicalCollection.name() << "' false";
   }
 }
 
