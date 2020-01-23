@@ -19,6 +19,12 @@ devel
 
 * Added read-write-locks for parallel move shard operations.
 
+* Fixed issue #10896: Variables defined inside spliced subqueries would leak
+  into following COLLECT ... INTO var operations.
+
+* Fixed COLLECT not invalidating variables for following COLLECT ... INTO var
+  operations.
+
 * Fixed issue #10867: arangod based binaries lack product version info and icon
   on Windows.
 
