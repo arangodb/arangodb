@@ -52,7 +52,7 @@ RestStatus RestAdminServerHandler::execute() {
     handleAvailability();
   } else if (suffixes.size() == 1 && suffixes[0] == "databaseDefaults") {
     handleDatabaseDefaults();
-  } else if (suffixes.size() == 1 && suffixes[0] == "jwtsecret") {
+  } else if (suffixes.size() == 1 && suffixes[0] == "reloadjwt") {
     return handleJWTSecrets();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);

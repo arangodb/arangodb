@@ -73,21 +73,20 @@ auth::TokenCache::~TokenCache() {
 
 #ifndef USE_ENTERPRISE
 
-void auth::TokenCache::addJwtSecret(std::string const& jwtSecret) {
+void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _jwtSecretLock);
   LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
       << "Setting jwt secret of size " << jwtSecret.size();
-  _jwtSecret = jwtSecret;
-  _jwtCache.clear();
+  _jwtActiveSecret = jwtSecret;
   generateSuperToken();
 }
 
+#endif
+
 std::string auth::TokenCache::jwtSecret() const {
   READ_LOCKER(writeLocker, _jwtSecretLock);
-  return _jwtSecret;  // intentional copy
+  return _jwtActiveSecret;  // intentional copy
 }
-
-#endif
 
 // public called from {H2,Http,Vst}CommTask.cpp
 // should only lock if required, otherwise we will serialize all

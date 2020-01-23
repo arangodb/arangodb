@@ -56,8 +56,7 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
       _authenticationSystemOnly(true),
       _localAuthentication(true),
       _active(true),
-      _authenticationTimeout(0.0),
-      _jwtSecretProgramOption("") {
+      _authenticationTimeout(0.0) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
@@ -108,20 +107,37 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 #endif
 
   // Maybe deprecate this option in devel
-  options->addOption("--server.jwt-secret",
-                     "secret to use when doing jwt authentication",
-                     new StringParameter(&_jwtSecretProgramOption))
-                     .setDeprecatedIn(30322).setDeprecatedIn(30402);
+  options
+      ->addOption("--server.jwt-secret",
+                  "secret to use when doing jwt authentication",
+                  new StringParameter(&_jwtSecretProgramOption))
+      .setDeprecatedIn(30322)
+      .setDeprecatedIn(30402);
 
   options->addOption(
       "--server.jwt-secret-keyfile",
       "file containing jwt secret to use when doing jwt authentication.",
       new StringParameter(&_jwtSecretKeyfileProgramOption));
+
+  options->addOption(
+      "--server.jwt-secret-folder",
+      "folder containing one or more jwt secret files to use for jwt "
+      "authentication. Files are sorted alphabetical: First secret "
+      "is used for signining + verifying of jwt tokens. "
+      "(Enterprise only) The latter secrets are only used for verifying.",
+      new StringParameter(&_jwtSecretFolderProgramOption));
 }
 
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-  if (!_jwtSecretKeyfileProgramOption.empty()) {
-    auto res = loadJwtSecretKeyfile(_jwtSecretKeyfileProgramOption);
+  if (!_jwtSecretKeyfileProgramOption.empty() && !_jwtSecretKeyfileProgramOption.empty()) {
+    LOG_TOPIC("d3515", FATAL, Logger::STARTUP)
+        << "specifiy either '--server.jwt-"
+           "secret-keyfile' or '--server.jwt-secret-folder' but not both.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (!_jwtSecretKeyfileProgramOption.empty() || !_jwtSecretFolderProgramOption.empty()) {
+    Result res = loadJwtSecretsFromFile();
     if (res.fail()) {
       LOG_TOPIC("d3617", FATAL, Logger::STARTUP) << res.errorMessage();
       FATAL_ERROR_EXIT();
@@ -155,22 +171,27 @@ void AuthenticationFeature::prepare() {
     _userManager.reset(new auth::UserManager(server()));
 #endif
   } else {
-    LOG_TOPIC("713c0", DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
+    LOG_TOPIC("713c0", DEBUG, Logger::AUTHENTICATION)
+        << "Not creating user manager";
   }
 
   TRI_ASSERT(_authCache == nullptr);
   _authCache.reset(new auth::TokenCache(_userManager.get(), _authenticationTimeout));
 
-  std::string jwtSecret = _jwtSecretProgramOption;
-  if (jwtSecret.empty()) {
+  if (_jwtSecretProgramOption.empty()) {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
     uint16_t m = 254;
     for (size_t i = 0; i < _maxSecretLength; i++) {
-      jwtSecret += static_cast<char>(1 + RandomGenerator::interval(m));
+      _jwtSecretProgramOption += static_cast<char>(1 + RandomGenerator::interval(m));
     }
   }
-  _authCache->addJwtSecret(jwtSecret);
+
+#if USE_ENTERPRISE
+  _authCache->setJwtSecrets(_jwtSecretProgramOption, _jwtPassiveSecrets);
+#else
+  _authCache->setJwtSecret(_jwtSecretProgramOption);
+#endif
 
   INSTANCE = this;
 }
@@ -179,8 +200,8 @@ void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
 
   // If this is empty here, --server.jwt-secret was used
-  if (!_jwtSecretProgramOption.empty() &&
-      _jwtSecretKeyfileProgramOption.empty()) {
+  if (!_jwtSecretProgramOption.empty() && _jwtSecretKeyfileProgramOption.empty() &&
+      _jwtSecretFolderProgramOption.empty()) {
     LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
         << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
            "instead.";
@@ -209,40 +230,111 @@ void AuthenticationFeature::start() {
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
 
-Result AuthenticationFeature::setJwtSecretProgramOption(std::string const& secret) {
-  if (!secret.empty()) {
-    if (secret.length() > _maxSecretLength) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    std::string("Given JWT secret too long. Max length is ") +
-                    std::to_string(_maxSecretLength));
-    }
+bool AuthenticationFeature::hasUserdefinedJwt() const {
+  std::lock_guard<std::mutex> guard(_jwtSecretsLock);
+  return !_jwtSecretProgramOption.empty();
+}
+
+/// secret used for signing & verification secrets
+std::string AuthenticationFeature::jwtActiveSecret() const {
+  std::lock_guard<std::mutex> guard(_jwtSecretsLock);
+  return _jwtSecretProgramOption;
+}
+
+/// verification only secrets
+std::vector<std::string> const& AuthenticationFeature::jwtPassiveSecrets() const {
+  std::lock_guard<std::mutex> guard(_jwtSecretsLock);
+  return _jwtPassiveSecrets;
+}
+
+Result AuthenticationFeature::loadJwtSecretsFromFile() {
+  std::lock_guard<std::mutex> guard(_jwtSecretsLock);
+  if (!_jwtSecretFolderProgramOption.empty()) {
+    return loadJwtSecretFolder();
+  } else if (!_jwtSecretKeyfileProgramOption.empty()) {
+    return loadJwtSecretKeyfile();
   }
-  _jwtSecretProgramOption = secret;
-  return Result();
+  return Result(TRI_ERROR_BAD_PARAMETER, "no JWT secret file was specified");
 }
 
+/// load JWT secret from file specified at startup
 Result AuthenticationFeature::loadJwtSecretKeyfile() {
-  return loadJwtSecretKeyfile(_jwtSecretKeyfileProgramOption);
-}
-
-Result AuthenticationFeature::loadJwtSecretKeyfile(std::string const& keyfile) {
   try {
     // Note that the secret is trimmed for whitespace, because whitespace
     // at the end of a file can easily happen. We do not base64-encode,
     // though, so the bytes count as given. Zero bytes might be a problem
     // here.
-    std::string contents = basics::FileUtils::slurp(keyfile);
-    _jwtSecretProgramOption =
-        basics::StringUtils::trim(contents, " \t\n\r");
+    std::string contents = basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption);
+    _jwtSecretProgramOption = basics::StringUtils::trim(contents, " \t\n\r");
   } catch (std::exception const& ex) {
     std::string msg("unable to read content of jwt-secret file '");
-    msg.append(keyfile).append("': ")
+    msg.append(_jwtSecretKeyfileProgramOption)
+        .append("': ")
         .append(ex.what())
         .append(". please make sure the file/directory is readable for the ")
         .append("arangod process and user");
     return Result(TRI_ERROR_CANNOT_READ_FILE, std::move(msg));
   }
   return Result();
+}
+
+/// load JWT secrets from folder
+Result AuthenticationFeature::loadJwtSecretFolder() try {
+  TRI_ASSERT(!_jwtSecretFolderProgramOption.empty());
+
+  LOG_TOPIC("4922f", INFO, arangodb::Logger::AUTHENTICATION)
+      << "loading JWT secrets from folder " << _jwtSecretFolderProgramOption;
+
+  auto list = basics::FileUtils::listFiles(_jwtSecretFolderProgramOption);
+  if (list.empty()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "empty JWT secrets directory");
+  }
+
+  auto slurpy = [&](std::string const& file) {
+    auto p = basics::FileUtils::buildFilename(_jwtSecretFolderProgramOption, file);
+    std::string contents = basics::FileUtils::slurp(p);
+    return basics::StringUtils::trim(contents, " \t\n\r");
+  };
+
+  std::sort(std::begin(list), std::end(list));
+  std::string activeSecret = slurpy(list[0]);
+
+  const std::string msg = "Given JWT secret too long. Max length is 64";
+  if (activeSecret.length() > _maxSecretLength) {
+    ;
+    return Result(TRI_ERROR_BAD_PARAMETER, msg);
+  }
+
+#ifdef USE_ENTERPRISE
+  std::vector<std::string> passiveSecrets;
+  if (list.size() > 1) {
+    list.erase(list.begin());
+    for (auto const& file : list) {
+      std::string secret = slurpy(file);
+      if (secret.length() > _maxSecretLength) {
+        ;
+        return Result(TRI_ERROR_BAD_PARAMETER, msg);
+      }
+      passiveSecrets.push_back(std::move(secret));
+    }
+  }
+  _jwtPassiveSecrets = std::move(passiveSecrets);
+
+  LOG_TOPIC("4a34f", INFO, arangodb::Logger::AUTHENTICATION)
+      << "have " << _jwtPassiveSecrets.size() << " passive JWT secrets";
+#endif
+
+  _jwtSecretProgramOption = std::move(activeSecret);
+
+  return Result();
+} catch (basics::Exception const& ex) {
+  std::string msg("unable to read content of jwt-secret-folder '");
+  msg.append(_jwtSecretFolderProgramOption)
+      .append("': ")
+      .append(ex.what())
+      .append(". please make sure the file/directory is readable for the ")
+      .append("arangod process and user");
+  return Result(TRI_ERROR_CANNOT_READ_FILE, std::move(msg));
 }
 
 }  // namespace arangodb

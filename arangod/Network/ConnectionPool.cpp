@@ -181,6 +181,10 @@ size_t ConnectionPool::numOpenConnections() const {
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
   auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
   builder.idleTimeout(idle);
+  builder.verifyHost(_config.verifyHosts);
+  builder.protocolType(_config.protocol); // always overwrite protocol
+  TRI_ASSERT(builder.socketType() != SocketType::Undefined);
+  
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();
@@ -224,9 +228,6 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
 
   fuerte::ConnectionBuilder builder;
   builder.endpoint(endpoint); // picks the socket type
-  builder.verifyHost(_config.verifyHosts);
-  builder.protocolType(_config.protocol); // always overwrite protocol
-  TRI_ASSERT(builder.socketType() != SocketType::Undefined);
 
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   bucket.list.push_back(Context{fuerte, std::chrono::steady_clock::now()});

@@ -79,20 +79,22 @@ class TokenCache {
   };
 
  public:
+  
   TokenCache::Entry checkAuthentication(arangodb::rest::AuthenticationMethod authType,
                                         std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
-
-  /// set new jwt secret, regenerate _jwtToken
-  void addJwtSecret(std::string const&);
   
 #ifdef USE_ENTERPRISE
-  /// removes an old JWT secret from the validation procedure
-  void removeOldJwtSecret();
+  /// set new jwt secret, regenerate _jwtToken
+  void setJwtSecrets(std::string const& active,
+                     std::vector<std::string> const& passive);
+#else
+  /// set new jwt secret, regenerate _jwtToken
+  void setJwtSecret(std::string const& active);
 #endif
-  
+
   /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept {
     TRI_ASSERT(!_jwtSuperToken.empty());
@@ -124,12 +126,11 @@ class TokenCache {
   std::atomic<uint64_t> _basicCacheVersion{0};
 
   mutable arangodb::basics::ReadWriteLock _jwtSecretLock;
-  std::string _jwtSecret;
-  
+    
 #ifdef USE_ENTERPRISE
-  std::string _oldJwtSecret;
+  std::vector<std::string> _jwtPassiveSecrets;
 #endif
-  
+  std::string _jwtActiveSecret;
   std::string _jwtSuperToken;  /// token for internal use
 
   mutable std::mutex _jwtCacheMutex;

@@ -572,9 +572,9 @@ function AuthSuite() {
       } finally {
         db._dropDatabase("other");
       }
-    },
+    }
 
-    testChangeJWTSecret: function() {
+    /*testChangeJWTSecret: function() {
       let jwtOld = crypto.jwtEncode(jwtSecret, {
         "server_id": "ABCD",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
@@ -657,7 +657,7 @@ function AuthSuite() {
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
-    }
+    }*/
   };
 }
 
