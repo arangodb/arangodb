@@ -45,21 +45,23 @@ using namespace arangodb::basics;
 
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
-HttpResponse::HttpResponse(ResponseCode code, std::unique_ptr<basics::StringBuffer> buffer)
-: GeneralResponse(code), _isHeadResponse(false), _body(std::move(buffer)), _bodySize(0) {
+HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
+                           std::unique_ptr<basics::StringBuffer> buffer)
+: GeneralResponse(code, mid),
+  _body(std::move(buffer)),
+  _bodySize(0), _isHeadResponse(false) {
   _generateBody = false;
   _contentType = ContentType::TEXT;
-
+    
   if (!_body) {
     _body = std::make_unique<basics::StringBuffer>(false);
   }
+
   if (_body->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
-
-HttpResponse::~HttpResponse() { }
 
 void HttpResponse::reset(ResponseCode code) {
   _responseCode = code;

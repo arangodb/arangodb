@@ -24,6 +24,7 @@
 #define ARANGODB_REST_SERVER_SERVER_ID_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/debugging.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "VocBase/voc-types.h"
 

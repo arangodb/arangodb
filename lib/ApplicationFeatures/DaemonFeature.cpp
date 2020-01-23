@@ -106,8 +106,7 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  auto& server = ApplicationServer::server();
-  LoggerFeature& logger = server.getFeature<LoggerFeature>();
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
   logger.setBackgrounded(true);
 
   // make the pid filename absolute

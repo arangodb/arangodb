@@ -40,12 +40,23 @@ class SharedAqlItemBlockPtr;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
+/**
+ * @brief This is a shorthand for the produceRows signature
+ */
 using ProduceCall =
     std::function<std::tuple<ExecutorState, NoStats, AqlCall>(AqlItemBlockInputRange& input, OutputAqlItemRow& output)>;
 
+/**
+ * @brief This is a shorthand for the skipRowsInRange signature
+ */
 using SkipCall =
     std::function<std::tuple<ExecutorState, size_t, AqlCall>(AqlItemBlockInputRange& input, AqlCall& call)>;
 
+/**
+ * @brief Executorinfos for the lambda executors.
+ *        Contains basice RegisterPlanning information, and a ProduceCall.
+ *        This produceCall will be executed whenever the LambdaExecutor is called with produceRows
+ */
 class LambdaExecutorInfos : public ExecutorInfos {
  public:
   LambdaExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
@@ -65,6 +76,12 @@ class LambdaExecutorInfos : public ExecutorInfos {
   ProduceCall _produceLambda;
 };
 
+/**
+ * @brief Executorinfos for the lambda executors.
+ *        Contains basice RegisterPlanning information, a ProduceCall, and a SkipCall
+ *        The produceCall will be executed whenever the LambdaExecutor is called with produceRows
+ *        The skipCall will be executed whenever the LambdaExecutor is called with skipRowsInRange
+ */
 class LambdaSkipExecutorInfos : public ExecutorInfos {
  public:
   LambdaSkipExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
@@ -87,12 +104,17 @@ class LambdaSkipExecutorInfos : public ExecutorInfos {
   SkipCall _skipLambda;
 };
 
-template <BlockPassthrough allowPass>
+/**
+ * @brief A passthrough test executor.
+ *        Does only implement produceRows, also the implementation just calls
+ * the ProduceCall given in the Infos.
+ *
+ */
 class TestLambdaExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough = allowPass;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -105,11 +127,31 @@ class TestLambdaExecutor {
   TestLambdaExecutor(Fetcher&, Infos&);
   ~TestLambdaExecutor();
 
+  /**
+   * @brief NOT IMPLEMENTED. JUST FOR COMPILER
+   * TODO: REMOVE ME after we have switch everything over to produceRow.
+   *
+   * @param atMost
+   * @return std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>
+   */
   auto fetchBlockForPassthrough(size_t atMost)
       -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>;
-
+  /**
+   * @brief NOT IMPLEMENTED. JUST FOR COMPILER
+   * TODO: REMOVE ME after we have switch everything over to produceRow.
+   *
+   * @param output
+   * @return std::tuple<ExecutionState, Stats>
+   */
   auto produceRows(OutputAqlItemRow& output) -> std::tuple<ExecutionState, Stats>;
 
+  /**
+   * @brief produceRows API. Just calls the ProduceCall in the Infos.
+   *
+   * @param input The input data range (might be empty)
+   * @param output The output rows (might be full)
+   * @return std::tuple<ExecutorState, Stats, AqlCall>
+   */
   auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
@@ -117,6 +159,14 @@ class TestLambdaExecutor {
   Infos& _infos;
 };
 
+/**
+ * @brief A non-passthrough test executor.
+ *        Does implement produceRows, also the implementation just calls
+ *        the ProduceCall given in the Infos.
+ *        Does implement skipRowsRange, also the implementation just calls
+ *        the SkipCall given in the Infos.
+ *
+ */
 class TestLambdaSkipExecutor {
  public:
   struct Properties {
@@ -134,14 +184,42 @@ class TestLambdaSkipExecutor {
   TestLambdaSkipExecutor(Fetcher&, Infos&);
   ~TestLambdaSkipExecutor();
 
+  /**
+   * @brief NOT IMPLEMENTED. JUST FOR COMPILER
+   * TODO: REMOVE ME after we have switch everything over to produceRow.
+   *
+   * @param atMost
+   * @return std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>
+   */
   auto fetchBlockForPassthrough(size_t atMost)
       -> std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr>;
 
+  /**
+   * @brief NOT IMPLEMENTED. JUST FOR COMPILER
+   * TODO: REMOVE ME after we have switch everything over to produceRow.
+   *
+   * @param output
+   * @return std::tuple<ExecutionState, Stats>
+   */
   auto produceRows(OutputAqlItemRow& output) -> std::tuple<ExecutionState, Stats>;
 
+  /**
+   * @brief skipRows API. Just calls the SkipCall in the infos
+   *
+   * @param inputRange The input data range (might be empty)
+   * @param call The call forwarded by the client.
+   * @return std::tuple<ExecutorState, size_t, AqlCall>
+   */
   auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
       -> std::tuple<ExecutorState, size_t, AqlCall>;
 
+  /**
+   * @brief produceRows API. Just calls the ProduceCall in the Infos.
+   *
+   * @param input The input data range (might be empty)
+   * @param output The output rows (might be full)
+   * @return std::tuple<ExecutorState, Stats, AqlCall>
+   */
   auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 

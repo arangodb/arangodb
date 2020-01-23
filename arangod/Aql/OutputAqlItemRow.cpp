@@ -66,7 +66,10 @@ OutputAqlItemRow::OutputAqlItemRow(
       _setBaseIndexNotUsed(true),
 #endif
       _allowSourceRowUninitialized(false) {
-  TRI_ASSERT(_block != nullptr);
+}
+
+bool OutputAqlItemRow::isInitialized() const noexcept {
+  return _block != nullptr;
 }
 
 template <class ItemRowType>
@@ -126,7 +129,7 @@ void OutputAqlItemRow::copyRow(ItemRowType const& sourceRow, bool ignoreMissing)
   // implementation as planned should only copy a row after all values have
   // been set, and copyRow should only be called once.
   TRI_ASSERT(!_inputRowCopied);
-  // We either have a shadowRow, or we need to ahve all values written
+  // We either have a shadowRow, or we need to have all values written
   TRI_ASSERT((std::is_same<ItemRowType, ShadowAqlItemRow>::value) || allValuesWritten());
   if (_inputRowCopied) {
     _lastBaseIndex = _baseIndex;
