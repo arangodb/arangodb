@@ -90,7 +90,7 @@ class HttpRequest final : public GeneralRequest {
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
   
-  /// @brief parse an existing url
+  /// @brief parse an existing path
   void parseUrl(char const* start, size_t len);
   void setHeaderV2(std::string&& key, std::string&& value);
   
