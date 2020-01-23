@@ -455,7 +455,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
               << "failed to rebuild revision tree for collection '" << coll.id() << "'";
         }
       }
-      LOG_TOPIC("ecdbd", DEBUG, Logger::ENGINES)
+      LOG_TOPIC("ecdbe", DEBUG, Logger::ENGINES)
           << "no revision tree found for collection with id '" << coll.id()
           << "', as expected";
     } else {
@@ -471,7 +471,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
             << "with id '" << coll.id() << "', rebuilding";
         int res = rcoll->rebuildRevisionTree();
         if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC("ecdbe", WARN, Logger::ENGINES)
+          LOG_TOPIC("ecdbf", WARN, Logger::ENGINES)
               << "failed to rebuild revision tree for collection '" << coll.id() << "'";
         }
       }
