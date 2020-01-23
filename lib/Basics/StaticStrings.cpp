@@ -82,7 +82,8 @@ std::string const StaticStrings::SystemDatabase("_system");
 
 // collection names
 std::string const StaticStrings::AnalyzersCollection("_analyzers");
-std::string const StaticStrings::LegacyAnalyzersCollection("_iresearch_analyzers");
+std::string const StaticStrings::LegacyAnalyzersCollection(
+    "_iresearch_analyzers");
 std::string const StaticStrings::UsersCollection("_users");
 std::string const StaticStrings::GraphsCollection("_graphs");
 std::string const StaticStrings::AqlFunctionsCollection("_aqlfunctions");
@@ -102,7 +103,8 @@ std::string const StaticStrings::DatabaseId("id");
 std::string const StaticStrings::DatabaseName("name");
 std::string const StaticStrings::DatabaseOptions("options");
 std::string const StaticStrings::DatabaseCoordinator("coordinator");
-std::string const StaticStrings::DatabaseCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::DatabaseCoordinatorRebootId(
+    "coordinatorRebootId");
 std::string const StaticStrings::DatabaseIsBuilding("isBuilding");
 
 // LogicalDataSource definition fields
@@ -250,6 +252,17 @@ std::string const StaticStrings::GraphDropCollections("dropCollections");
 std::string const StaticStrings::GraphDropCollection("dropCollection");
 std::string const StaticStrings::GraphCreateCollections("createCollections");
 std::string const StaticStrings::GraphCreateCollection("createCollection");
+
+// Query Strings
+std::string const StaticStrings::QuerySortASC("ASC");
+std::string const StaticStrings::QuerySortDESC("DESC");
+
+// Graph Query Strings
+std::string const StaticStrings::GraphQueryEdges("edges");
+std::string const StaticStrings::GraphQueryVertices("vertices");
+std::string const StaticStrings::GraphQueryPath("path");
+std::string const StaticStrings::GraphQueryGlobal("global");
+std::string const StaticStrings::GraphQueryNone("none");
 
 // Replication
 std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");

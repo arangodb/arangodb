@@ -66,6 +66,7 @@ set(SSL_EAY_RELEASE_DLL "@SSL_EAY_RELEASE_DLL@")
 set(ICU_DT "@ICU_DT@")
 set(ICU_DT_DEST "@ICU_DT_DEST@")
 set(INSTALL_ICU_DT_DEST "@INSTALL_ICU_DT_DEST@")
+set(ARANGODB_JS_VERSION "@ARANGODB_JS_VERSION@")
 
 ################################################################################
 # Get the final values for cpack:
@@ -115,8 +116,8 @@ set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/ara
 set(INSTALL_MACROS_NO_TARGET_INSTALL TRUE)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallMacros.cmake)
 
-
 # install the visual studio runtime:
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION "${CMAKE_INSTALL_BINDIR}")
 set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
 include(InstallRequiredSystemLibraries)
 INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Libraries)
