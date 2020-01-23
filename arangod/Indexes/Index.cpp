@@ -33,7 +33,6 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
-#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -180,7 +179,7 @@ std::string defaultIndexName(VPackSlice const& slice) {
 }
 
 }  // namespace
-
+    
 Index::FilterCosts Index::FilterCosts::zeroCosts() {
   Index::FilterCosts costs;
   costs.supportsCondition = true;
@@ -189,7 +188,7 @@ Index::FilterCosts Index::FilterCosts::zeroCosts() {
   costs.estimatedCosts = 0;
   return costs;
 }
-
+    
 Index::FilterCosts Index::FilterCosts::defaultCosts(size_t itemsInIndex) {
   Index::FilterCosts costs;
   costs.supportsCondition = false;
@@ -206,7 +205,7 @@ Index::SortCosts Index::SortCosts::zeroCosts(size_t coveredAttributes) {
   costs.estimatedCosts = 0;
   return costs;
 }
-
+    
 Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex, bool isPersistent) {
   Index::SortCosts costs;
   TRI_ASSERT(!costs.supportsCondition);
@@ -501,8 +500,7 @@ std::string Index::context() const {
       result << ", ";
     }
 
-    std::vector<basics::AttributeName> const& vec = _fields[i];
-    ::operator<<(result, vec);
+    result << _fields[i];
   }
 
   result << "] }";
@@ -672,7 +670,7 @@ Result Index::drop() {
 /// @brief default implementation for supportsFilterCondition
 Index::FilterCosts Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
                                                  arangodb::aql::AstNode const* /* node */,
-                                                 arangodb::aql::Variable const* /* reference */,
+                                                 arangodb::aql::Variable const* /* reference */, 
                                                  size_t itemsInIndex) const {
   // by default no filter conditions are supported
   return Index::FilterCosts::defaultCosts(itemsInIndex);
@@ -680,16 +678,16 @@ Index::FilterCosts Index::supportsFilterCondition(std::vector<std::shared_ptr<ar
 
 /// @brief default implementation for supportsSortCondition
 Index::SortCosts Index::supportsSortCondition(arangodb::aql::SortCondition const* /* sortCondition */,
-                                              arangodb::aql::Variable const* /* node */,
+                                              arangodb::aql::Variable const* /* node */, 
                                               size_t itemsInIndex) const {
   // by default no sort conditions are supported
   return Index::SortCosts::defaultCosts(itemsInIndex, this->isPersistent());
 }
-
+  
 arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* node */,
                                                    arangodb::aql::Variable const* /* reference */) const {
   // the default implementation should never be called
-  TRI_ASSERT(false);
+  TRI_ASSERT(false); 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for specializeCondition. index type: ") + typeName());
 }
 
@@ -698,7 +696,7 @@ std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods*
                                                            aql::Variable const* /* reference */,
                                                            IndexIteratorOptions const& /* opts */) {
   // the default implementation should never be called
-  TRI_ASSERT(false);
+  TRI_ASSERT(false); 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());
 }
 
@@ -1053,7 +1051,7 @@ std::string const& Index::getAttribute() const {
   TRI_ASSERT(!field.shouldExpand);
   return field.name;
 }
-
+  
 AttributeAccessParts::AttributeAccessParts(arangodb::aql::AstNode const* comparison,
                                            arangodb::aql::Variable const* variable)
    : comparison(comparison),
@@ -1065,7 +1063,7 @@ AttributeAccessParts::AttributeAccessParts(arangodb::aql::AstNode const* compari
   attribute = comparison->getMember(0);
   value = comparison->getMember(1);
   opType = comparison->type;
-
+  
   if (attribute->type != arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
     // got value == a.b  ->  flip the two sides
     attribute = comparison->getMember(1);

@@ -33,8 +33,6 @@
 #include "Logger/Logger.h"
 
 namespace arangodb {
-namespace basics { }
-
 class LoggerStream {
  public:
   LoggerStream(LoggerStream const&) = delete;
@@ -85,15 +83,13 @@ class LoggerStream {
   }
 
   template <typename T>
-  friend LoggerStream& operator<<(LoggerStream& stream, T const& obj) {
+  LoggerStream& operator<<(T const& obj) {
     try {
-      using namespace::arangodb;
-      using namespace::arangodb::basics;
-      stream._out << obj;
+      _out << obj;
     } catch (...) {
       // ignore any errors here. logging should not have side effects
     }
-    return stream;
+    return *this;
   }
 
  private:
