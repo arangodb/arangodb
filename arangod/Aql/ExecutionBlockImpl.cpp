@@ -1136,12 +1136,12 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(
+  static_assert(useExecutor == (
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      useExecutor == (std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
+                                   std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
-          useExecutor == (std::is_same_v<Executor, FilterExecutor>),
-      "Unexpected executor for SkipVariants::EXECUTOR");
+                                   std::is_same_v<Executor, FilterExecutor>),
+                "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
@@ -1167,9 +1167,8 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   if constexpr (isNewStyleExecutor<Executor>()) {
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      // If the executor has a method skipRowsRange, to skip outputs more
-      // efficiently than just producing them to subsequently discard them,
-      // then we use it
+      // If the executor has a method skipRowsRange, to skip outputs.
+      // Every non-passthrough executor needs to implement this.
       return _executor.skipRowsRange(inputRange, call);
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
       // If we know that every input row produces exactly one output row (this
@@ -1208,7 +1207,8 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
  * UPSTREAM   fetches rows from the upstream executor(s) to be processed by
  *            our executor.
  * SHADOWROWS process any shadow rows
- * DONE       processing is done, we return
+ * DONE       processing of one output is done. We did handle offset / limit / fullCount without crossing BatchSize limits.
+ *            This state does not indicate that we are DONE with all input, we are just done with one walk through this statemachine.
  *
  * We progress within the states in the following way:
  *   There is a nextState method that determines the next state based on the call, it can only lead to:
