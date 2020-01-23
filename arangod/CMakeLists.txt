@@ -602,6 +602,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
   GeneralServer/RestHandler.cpp
@@ -788,7 +789,6 @@ add_library(arango_agency STATIC
 add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
-  ${ProductVersionFiles}
 )
 
 add_library(arango_network STATIC
@@ -881,6 +881,7 @@ target_link_libraries(arango_mmfiles llhttp)
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
+target_link_libraries(arango_network nghttp2)
 
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
@@ -978,6 +979,7 @@ endif()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
+  ${ProductVersionFiles}
 )
 
 target_link_libraries(${BIN_ARANGOD}

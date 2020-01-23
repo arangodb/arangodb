@@ -1,6 +1,52 @@
 devel
 -----
 
+* Removed an unnecessary and wrong request from within the Web UI to the
+  `/_admin/cluster/health` API. This lead to unauthorized network calls.
+
+* Allowed PHRASE function to process empty arrays without generating error.
+
+* Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
+  confusing error messages
+
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behaviour sometimes leads to failed requests because of parse errors
+	which occured in the internal used JavaScript joi library.
+
+* Support trailing commas in AQL object and array definitions as follows:
+
+      [ 1, 2, 3, ]
+      { a: 1, b: 2, }
+
+  In previous versions of ArangoDB, such trailing commas resulted in a query
+  parse error.
+
+* Make sure heartbeats are actually sent out and received every second.
+
+* React dev mode now supports hot reload combined with proxy for development.
+
+* Added read-write-locks for parallel move shard operations.
+
+* Fixed issue #10896: Variables defined inside spliced subqueries would leak
+  into following COLLECT ... INTO var operations.
+
+* Fixed COLLECT not invalidating variables for following COLLECT ... INTO var
+  operations.
+
+* Fixed issue #10867: arangod based binaries lack product version info and icon
+  on Windows.
+
+* Fix string comparison bug that lead to traversal queries accepting prefixes of
+  "edges" and "vertices" to be used as object accessors for the path object.
+
+* Fixed internal traversal edge collection cache being filled up correctly.
+  Edges are able to point to other edges, but those we're not applied to the
+  cache.
+
+* Fix string comparison bug that lead to traversal queries accepting
+  prefixes of "edges" and "vertices" to be used as object accessors
+  for the path object.
+
 * Fix #10852. Nested spliced subqueries could return wrong results in some cases
   when some of the concerned subqueries did not return any values.
 

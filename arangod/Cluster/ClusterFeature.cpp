@@ -384,8 +384,7 @@ void ClusterFeature::prepare() {
     if (af->isActive() && !af->hasUserdefinedJwt()) {
       LOG_TOPIC("6e615", FATAL, arangodb::Logger::CLUSTER)
           << "Cluster authentication enabled but JWT not set via command line. "
-             "Please"
-          << " provide --server.jwt-secret which is used throughout the "
+          << " Please provide --server.jwt-secret which is used throughout the "
              "cluster.";
       FATAL_ERROR_EXIT();
     }
@@ -505,7 +504,7 @@ void ClusterFeature::start() {
 
   // the agency about our state
   AgencyComm comm(server());
-  comm.sendServerState(0.0);
+  comm.sendServerState();
 
   std::string const version = comm.version();
 
@@ -578,7 +577,7 @@ void ClusterFeature::unprepare() {
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
   AgencyComm comm(server());
-  comm.sendServerState(0.0);
+  comm.sendServerState();
 
   if (_heartbeatThread != nullptr) {
     int counter = 0;
@@ -596,7 +595,7 @@ void ClusterFeature::unprepare() {
     ServerState::instance()->unregister();
   }
 
-  comm.sendServerState(0.0);
+  comm.sendServerState();
 
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...

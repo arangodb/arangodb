@@ -245,6 +245,14 @@ exception from the GPL license:
 * License Name: MIT License
 * License Id: MIT
 
+###  nghttp2 
+
+* Name:  nghttp2 
+* Version: 1.40.0
+* GitHub: https://github.com/nghttp2/nghttp2
+* License: https://github.com/nghttp2/nghttp2/blob/master/COPYING
+* License Name: MIT License
+* License Id: MIT
 
 ## Programs
 
