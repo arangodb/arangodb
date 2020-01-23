@@ -448,7 +448,11 @@ class SharedExecutionBlockImplTest {
                                 RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       EXPECT_LE(inputRegisters, outputRegisters);
+      // We cannot have no output registers here.
+      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
     } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      // Special case: we do not have input registers, but need an output register.
+      // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
       EXPECT_EQ(outputRegisters, 0);
     }
 
@@ -492,7 +496,11 @@ class SharedExecutionBlockImplTest {
       ResetCall reset = []() -> void {}) {
     if (inputRegisters != RegisterPlan::MaxRegisterId) {
       EXPECT_LE(inputRegisters, outputRegisters);
+      // We cannot have no output registers here.
+      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
     } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      // Special case: we do not have input registers, but need an output register.
+      // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
       EXPECT_EQ(outputRegisters, 0);
     }
 
@@ -523,7 +531,7 @@ class SharedExecutionBlockImplTest {
 
   /**
    * @brief Generate a generic produce call with the following behaviour:
-   *        1. For every input row, create a new ouput row 1:1 using copy.
+   *        1. It does not produce any output, it just validates that it gets expected input
    *        2. Return the input state, along with an unlimited produce call.
    *
    *        In addition we have the following assertions:
@@ -652,7 +660,7 @@ class SharedExecutionBlockImplTest {
 /**
  * @brief Test the internal statemachine of the ExecutionBlockImpl.
  *        These test-cases focus on a single executor and assert that this Executor is called
- *        correctly given an input.
+ *        correctly given an input. None of the test is focussed on the generated output. That is done in the IntegrationTest part
  *        This is a parameterized test and tests passthrough (true) and non-passthrough variants (false)
  */
 class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTest,
@@ -1013,7 +1021,7 @@ TEST_P(ExecutionBlockImplExecuteSpecificTest, set_of_shadowrows_does_not_fit_ful
 INSTANTIATE_TEST_CASE_P(ExecutionBlockImplExecuteTest,
                         ExecutionBlockImplExecuteSpecificTest, ::testing::Bool());
 
-enum CallAsserterState { INITIAL, SKIP, GET, COUNT, DONE };
+enum class CallAsserterState { INITIAL, SKIP, GET, COUNT, DONE };
 
 /**
  * @brief Base class for call assertions.
@@ -1080,7 +1088,9 @@ struct BaseCallAsserter {
   auto gotCalled(AqlCall const& got) -> void {
     call++;
     SCOPED_TRACE("In call " + std::to_string(call) + " of " +
-                 std::to_string(maxCall) + " state " + std::to_string(state));
+                 std::to_string(maxCall) + " state " +
+                 std::to_string(
+                     static_cast<typename std::underlying_type<CallAsserterState>::type>(state)));
     gotCalledWithoutTrace(got);
     EXPECT_LE(call, maxCall);
     if (call > maxCall) {
@@ -1100,8 +1110,6 @@ struct BaseCallAsserter {
  *        Does expect to not be called if skip and/or fullCount are ommited.
  */
 struct SkipCallAsserter : public BaseCallAsserter {
-  bool firstCall = false;
-
   explicit SkipCallAsserter(AqlCall const& expectedCall)
       : BaseCallAsserter{expectedCall} {
     // Calculate number of calls
@@ -1121,17 +1129,11 @@ struct SkipCallAsserter : public BaseCallAsserter {
     state = initialState;
   }
 
-  auto reset() -> void override {
-    BaseCallAsserter::reset();
-    firstCall = false;
-  }
-
   auto gotCalledWithoutTrace(AqlCall const& got) -> void override {
     switch (state) {
       case CallAsserterState::SKIP: {
         EXPECT_EQ(got.getOffset(), expected.getOffset());
-        firstCall = !firstCall;
-        if (!firstCall) {
+        if (call % 2 == 0) {
           if (needsFullCount()) {
             state = CallAsserterState::COUNT;
           } else {
@@ -1144,8 +1146,7 @@ struct SkipCallAsserter : public BaseCallAsserter {
         EXPECT_EQ(got.getLimit(), 0);
         EXPECT_EQ(got.getOffset(), 0);
         EXPECT_TRUE(got.needsFullCount());
-        firstCall = !firstCall;
-        if (!firstCall) {
+        if (call % 2 == 0) {
           state = CallAsserterState::DONE;
         }
         break;
@@ -1210,8 +1211,6 @@ struct CallAsserter : public BaseCallAsserter {
  * input). Expect up to three situations: SKIP, GET and FULLCOUNT.
  */
 struct GetOnlyCallAsserter : public BaseCallAsserter {
-  bool firstCall = false;
-
   explicit GetOnlyCallAsserter(AqlCall const& expectedCall)
       : BaseCallAsserter{expectedCall} {
     // Calculate number of calls
@@ -1236,11 +1235,6 @@ struct GetOnlyCallAsserter : public BaseCallAsserter {
     EXPECT_NE(state, CallAsserterState::DONE);
   }
 
-  auto reset() -> void override {
-    BaseCallAsserter::reset();
-    firstCall = false;
-  }
-
   auto gotCalledWithoutTrace(AqlCall const& got) -> void override {
     EXPECT_EQ(got.getOffset(), 0);
     EXPECT_FALSE(got.needsFullCount());
@@ -1248,8 +1242,7 @@ struct GetOnlyCallAsserter : public BaseCallAsserter {
     switch (state) {
       case CallAsserterState::SKIP: {
         EXPECT_EQ(got.getLimit(), expected.getOffset());
-        firstCall = !firstCall;
-        if (!firstCall) {
+        if (call % 2 == 0) {
           // We only switch to next state every second call.
           // The first call is "empty" and only forwards to upwards
           if (hasLimit()) {
@@ -1264,8 +1257,7 @@ struct GetOnlyCallAsserter : public BaseCallAsserter {
       }
       case CallAsserterState::GET: {
         EXPECT_EQ(got.getLimit(), expected.getLimit());
-        firstCall = !firstCall;
-        if (!firstCall) {
+        if (call % 2 == 0) {
           // We only switch to next state every second call.
           // The first call is "empty" and only forwards to upwards
           if (needsFullCount()) {
@@ -1282,8 +1274,7 @@ struct GetOnlyCallAsserter : public BaseCallAsserter {
         EXPECT_TRUE(needsFullCount());
         EXPECT_EQ(got.softLimit, AqlCall::Infinity{});
         EXPECT_EQ(got.hardLimit, AqlCall::Infinity{});
-        firstCall = !firstCall;
-        if (!firstCall) {
+        if (call % 2 == 0) {
           // We only switch to next state every second call.
           // The first call is "empty" and only forwards to upwards
           state = CallAsserterState::DONE;
@@ -1659,7 +1650,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
 
 // Test two consecutive produce blocks.
 // The first writes 10 lines
-// The second another 100 per input (1000 in total)
+// The second another 10 per input (100 in total)
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_using_two) {
   auto singleton = createSingleton();
 

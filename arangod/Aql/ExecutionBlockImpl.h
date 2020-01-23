@@ -324,6 +324,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   AqlCall _clientRequest;
 
   // Only used in passthrough variant.
+  // We track if we have reference the range's block
+  // into an output block.
+  // If so we are not allowed to reuse it.
   bool _hasUsedDataRangeBlock;
 };
 
