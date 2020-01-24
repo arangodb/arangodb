@@ -194,10 +194,10 @@ void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   _inputArrayPosition++;
 }
 
-void EnumerateListExecutor::skipArrayElement() {
+size_t EnumerateListExecutor::skipArrayElement() {
   // set position to +1 for next iteration after new fetchRow
   _inputArrayPosition++;
-  _skipped++;
+  return 1;
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
@@ -220,36 +220,56 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
     // auto const& [state, input] = inputRange.peekDataRow();
 
     TRI_ASSERT(_inputArrayPosition <= _inputArrayLength);
-    //TRI_ASSERT(_inputArrayLength < _inputArrayPosition);
     processArrayElement(output);
   }
 
   return {ExecutorState::DONE, NoStats{}, upstreamCall};
 }
 
-/*
-// TODO Remove me, we are using the getSome skip variant here.
 std::tuple<ExecutorState, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  ExecutorState state = ExecutorState::HASMORE;
+  // ExecutorState state = ExecutorState::HASMORE;
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   size_t skipped = 0;
-  while (inputRange.hasDataRow() && skipped < call.getOffset()) {
-    std::tie(state, input) = inputRange.nextDataRow();
-    if (!input) {
-      TRI_ASSERT(!inputRange.hasDataRow());
-      break;
+  bool offsetPhase = (call.getOffset() > 0);
+
+  while (inputRange.hasDataRow() && call.shouldSkip()) {
+    if (_inputArrayLength == _inputArrayPosition) {
+      // we reached either the end of an array
+      // or are in our first loop iteration
+      // auto [state, _currentRow] = inputRange.nextDataRow();
+      initializeNewRow(inputRange);
+      continue;
     }
-    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
-      skipped++;
+    // auto const& [state, input] = inputRange.peekDataRow();
+
+    TRI_ASSERT(_inputArrayPosition <= _inputArrayLength);
+    // if offset is > 0, we're in offset skip phase
+    if (offsetPhase) {
+      if (skipped < call.getOffset()) {
+        // we still need to skip offset entries
+        skipped += skipArrayElement();
+      } else {
+        // we skipped enough in our offset phase
+        break;
+      }
+    } else {
+      // fullCount phase - skippen bis zum ende
+      skipped += skipArrayElement();
     }
   }
   call.didSkip(skipped);
 
   AqlCall upstreamCall{};
   upstreamCall.softLimit = call.getOffset();
-  return {state, skipped, upstreamCall};
-}*/
+  if (offsetPhase) {
+    if (skipped < call.getOffset()) {
+      return {inputRange.upstreamState(), skipped, upstreamCall};
+    }
+    return {_currentRowState, skipped, upstreamCall};
+  }
+  return {ExecutorState::DONE, skipped, upstreamCall};
+}
 
 void EnumerateListExecutor::initialize() {
   _skipped = 0;

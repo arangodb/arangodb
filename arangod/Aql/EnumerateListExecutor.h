@@ -110,9 +110,9 @@ class EnumerateListExecutor {
   void processArrayElement(OutputAqlItemRow& output);
 
   /**
-   * @brief Will skip a found array element
+   * @brief Will process an found array element
    */
-  void skipArrayElement();
+  size_t skipArrayElement();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -127,8 +127,8 @@ class EnumerateListExecutor {
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  //[[nodiscard]] std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(
-  //  AqlItemBlockInputRange& inputRange, AqlCall& call);
+  [[nodiscard]] std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
