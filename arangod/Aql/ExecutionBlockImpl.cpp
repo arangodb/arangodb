@@ -146,6 +146,8 @@ static bool constexpr isNewStyleExecutor() {
   //return std::is_same<Executor, FilterExecutor>::value || std::is_same<Executor, SortedCollectExecutor>::value;
   return is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor>;
 }
+template<typename T>
+constexpr bool isNewStyleExecutor = is_one_of_v;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,

@@ -415,7 +415,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
               << input.isInitialized();
 
     // TODO store in member if we have not been called with data before
-    if (state == ExecutorState::DONE && !_haveSeenData) {
+    if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
       // we have never been called with data
       LOG_DEVEL << "never called with data";
       if (_infos.getGroupRegisters().empty()) {
@@ -431,6 +431,14 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     if (!input.isInitialized()) {
       LOG_DEVEL << "need more input rows";
       break;
+    }
+
+    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
     _haveSeenData = true;
@@ -462,24 +470,8 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     }
   }
 
-  AqlCall upstreamCall;
-  upstreamCall.fullCount = clientCall.fullCount;
-
-  LOG_DEVEL << "client hardlimit: " << clientCall.hardLimit;
-
-  bool jobIsDone = std::visit(overload{[&](std::size_t hardlimit) {
-                                         return rowsProduces == hardlimit;
-                                       },
-                                       [](auto) { return false; }},
-                              clientCall.hardLimit);
-  if (jobIsDone) {
-    LOG_DEVEL << "hard limit reached";
-    upstreamCall.hardLimit = 0;
-  }
-
   LOG_DEVEL << "reporting state: " << inputRange.upstreamState();
-
-  return {inputRange.upstreamState(), Stats{}, upstreamCall};
+  return {inputRange.upstreamState(), Stats{}, AqlCall{}};
 }
 
 auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
@@ -498,14 +490,15 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
    * If nothing was generated and we have to write at least one row, write that row.
    */
   size_t rowsSkipped = 0;
-  while (rowsSkipped < clientCall.offset) {
+  while ((rowsSkipped < clientCall.getOffset()) ||
+         (clientCall.getLimit() == 0 && clientCall.needsFullCount())) {
     auto [state, input] = inputRange.nextDataRow();
 
     LOG_DEVEL << "SortedCollectExecutor::skipRowsRange " << state << " "
               << input.isInitialized();
 
     // TODO store in member if we have not been called with data before
-    if (state == ExecutorState::DONE && !_haveSeenData) {
+    if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
       // we have never been called with data
       LOG_DEVEL << "never called with data";
       if (_infos.getGroupRegisters().empty()) {
@@ -553,6 +546,7 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
   AqlCall upstreamCall;
   upstreamCall.fullCount = clientCall.fullCount;
 
-  LOG_DEVEL << "reporting state: " << inputRange.upstreamState();
+  LOG_DEVEL << "reporting state: " << inputRange.upstreamState()
+            << " skipped rows: " << rowsSkipped;
   return {inputRange.upstreamState(), rowsSkipped, upstreamCall};
 }
