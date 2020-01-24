@@ -57,7 +57,7 @@ class GeneralConnection : public fuerte::Connection {
                           bool mayRestart = false);
 
   // Connect with a given number of retries
-  void tryConnect(unsigned retries);
+  void tryConnect(unsigned retries, std::chrono::steady_clock::time_point start);
 
   void restartConnection(const Error error);
 

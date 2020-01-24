@@ -58,7 +58,7 @@ void GeneralConnection<ST>::startConnection() {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
     auto cb = [self = Connection::shared_from_this()] {
       auto* me = static_cast<GeneralConnection<ST>*>(self.get());
-      me->tryConnect(me->_config._maxConnectRetries);
+      me->tryConnect(me->_config._maxConnectRetries, std::chrono::steady_clock::now());
     };
     asio_ns::post(*this->_io_context, std::move(cb));
   }
@@ -96,7 +96,7 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
 
 // Connect with a given number of retries
 template <SocketType ST>
-void GeneralConnection<ST>::tryConnect(unsigned retries) {
+void GeneralConnection<ST>::tryConnect(unsigned retries, std::chrono::steady_clock::time_point start) {
   FUERTE_ASSERT(_state.load() == Connection::State::Connecting);
   FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
 
@@ -110,11 +110,10 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
       }
     });
   } else {
-    asio_ns::error_code ec;
-    _proto.timer.cancel(ec);
+    _proto.timer.cancel();
   }
   
-  _proto.connect(_config, [self, this, retries](auto const& ec) {
+  _proto.connect(_config, [self, this, retries, start](auto const& ec) {
     _proto.timer.cancel();
     if (!ec) {
       finishConnect();
@@ -122,18 +121,24 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
     }
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-      _proto.timer.expires_after(std::chrono::seconds(3));
-      _proto.timer.async_wait([self, this, retries](auto ec) {
-        if (!ec) {
-          tryConnect(retries - 1);
-        }
-      });
-    } else {
-      _state.store(Connection::State::Failed, std::memory_order_release);
-      drainQueue(Error::CouldNotConnect);
-      shutdownConnection(Error::CouldNotConnect,
-                         "connecting failed: " + ec.message());
+      auto const now = std::chrono::steady_clock::now();
+      if ((now - start) < _config._connectTimeout) {
+        _proto.timer.expires_after(std::min(
+              std::chrono::duration_cast<std::chrono::milliseconds>(_config._connectRetryPause), 
+              std::chrono::duration_cast<std::chrono::milliseconds>(_config._connectTimeout - (now - start))));
+        _proto.timer.async_wait([self, this, retries, start](auto ec) {
+          if (!ec) {
+            tryConnect(retries - 1, start);
+          }
+        });
+        return;
+      }
     }
+    // error
+    _state.store(Connection::State::Failed, std::memory_order_release);
+    drainQueue(Error::CouldNotConnect);
+    shutdownConnection(Error::CouldNotConnect,
+                       "connecting failed: " + ec.message());
   });
 }
 
