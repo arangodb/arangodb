@@ -57,6 +57,7 @@
 #include "IResearchLink.h"
 #include "IResearchCommon.h"
 #include "Logger/LogMacros.h"
+#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"

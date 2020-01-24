@@ -88,10 +88,12 @@ class TokenCache {
   /// set new jwt secret, regenerate _jetToken
   void setJwtSecret(std::string const&);
   std::string jwtSecret() const;
+  
+  
   /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept {
-    TRI_ASSERT(!_jwtToken.empty());
-    return _jwtToken;
+    TRI_ASSERT(!_jwtSuperToken.empty());
+    return _jwtSuperToken;
   }
 
   std::string generateRawJwt(velocypack::Slice const&) const;
@@ -109,8 +111,8 @@ class TokenCache {
 
   std::shared_ptr<velocypack::Builder> parseJson(std::string const& str, char const* hint);
 
-  /// generate new _jwtToken
-  void generateJwtToken();
+  /// generate new superuser jwtToken
+  void generateSuperToken();
 
  private:
   auth::UserManager* const _userManager;
@@ -122,7 +124,7 @@ class TokenCache {
   std::unordered_map<std::string, TokenCache::Entry> _basicCache;
 
   std::string _jwtSecret;
-  std::string _jwtToken;
+  std::string _jwtSuperToken;
 
   mutable arangodb::basics::ReadWriteLock _jwtLock;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;

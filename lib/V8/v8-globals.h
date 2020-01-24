@@ -625,6 +625,9 @@ struct TRI_v8_global_t {
   /// @brief "overwrite" key
   v8::Persistent<v8::String> OverwriteKey;
 
+  /// @brief "overwriteMode" key
+  v8::Persistent<v8::String> OverwriteModeKey;
+
   /// @brief "parameters" key name
   v8::Persistent<v8::String> ParametersKey;
 

@@ -88,6 +88,7 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
       NameKey(),
       OperationIDKey(),
       OverwriteKey(),
+      OverwriteModeKey(),
       ParametersKey(),
       PathKey(),
       PrefixKey(),
@@ -186,6 +187,7 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
   NameKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "name"));
   OperationIDKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "operationID"));
   OverwriteKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwrite"));
+  OverwriteModeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwriteMode"));
   ParametersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "parameters"));
   PathKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "path"));
   PrefixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "prefix"));

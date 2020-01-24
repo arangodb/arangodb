@@ -27,39 +27,40 @@
 
 namespace arangodb {
 namespace rest {
-  
+
 enum class SocketType { Tcp = 1, Ssl = 2, Unix = 3 };
 
 /// Wrapper class that contains sockets / ssl-stream
 /// and the corrsponding peer endpoint
-template<SocketType T>
+template <SocketType T>
 struct AsioSocket {};
 
-template<>
+template <>
 struct AsioSocket<SocketType::Tcp> {
   explicit AsioSocket(arangodb::rest::IoContext& ctx)
-    : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
-      context.incClients();
-    }
-  
+      : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
+    context.incClients();
+  }
+
   ~AsioSocket() {
     timer.cancel();
     try {
-      if (socket.is_open()) { // non-graceful shutdown
+      if (socket.is_open()) {  // non-graceful shutdown
         asio_ns::error_code ec;
         socket.close(ec);
       }
-    } catch(...) {}
+    } catch (...) {
+    }
     context.decClients();
   }
-  
+
   void setNonBlocking(bool v) { socket.non_blocking(v); }
   static constexpr bool supportsMixedIO() { return true; }
   std::size_t available(asio_ns::error_code& ec) const {
     return socket.lowest_layer().available(ec);
   }
-  
-  template<typename F>
+
+  template <typename F>
   void shutdown(F&& cb) {
     asio_ns::error_code ec;
     if (socket.is_open()) {
@@ -76,7 +77,7 @@ struct AsioSocket<SocketType::Tcp> {
     }
     std::forward<F>(cb)(ec);
   }
-  
+
   arangodb::rest::IoContext& context;
   asio_ns::ip::tcp::socket socket;
   asio_ns::ip::tcp::acceptor::endpoint_type peer;
@@ -84,43 +85,50 @@ struct AsioSocket<SocketType::Tcp> {
   asio_ns::streambuf buffer;
 };
 
-template<>
+template <>
 struct AsioSocket<SocketType::Ssl> {
-  AsioSocket(arangodb::rest::IoContext& ctx,
-             asio_ns::ssl::context& sslContext)
-  : context(ctx), socket(ctx.io_context, sslContext), timer(ctx.io_context) {
+  AsioSocket(arangodb::rest::IoContext& ctx, asio_ns::ssl::context& sslContext)
+      : context(ctx), socket(ctx.io_context, sslContext), timer(ctx.io_context) {
     context.incClients();
   }
-  
+
   ~AsioSocket() {
     try {
       timer.cancel();
-      if (socket.lowest_layer().is_open()) { // non-graceful shutdown
+      if (socket.lowest_layer().is_open()) {  // non-graceful shutdown
         asio_ns::error_code ec;
         socket.lowest_layer().close(ec);
       }
-    } catch(...) {}
+    } catch (...) {
+    }
     context.decClients();
   }
-  
+
   void setNonBlocking(bool v) { socket.lowest_layer().non_blocking(v); }
   static constexpr bool supportsMixedIO() { return false; }
   std::size_t available(asio_ns::error_code& ec) const {
-    return 0; // always disable
+    return 0;  // always disable
   }
-  
-  template<typename F>
+
+  template <typename F>
   void handshake(F&& cb) {
     // Perform SSL handshake and verify the remote host's certificate.
     socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
     socket.async_handshake(asio_ns::ssl::stream_base::server, std::forward<F>(cb));
   }
-  
-  template<typename F>
+
+  template <typename F>
   void shutdown(F&& cb) {
     if (socket.lowest_layer().is_open()) {
-      socket.async_shutdown([this, cb(std::forward<F>(cb))]
-                            (asio_ns::error_code const& ec) {
+      // a graceful SSL shutdown performs a write & read
+      timer.expires_after(std::chrono::seconds(3));
+      timer.async_wait([this](asio_ns::error_code ec) {
+        if (!ec) {
+          socket.lowest_layer().close(ec);
+        }
+      });
+      socket.async_shutdown([cb(std::forward<F>(cb)), this](auto const& ec) {
+        timer.cancel();
 #ifndef _WIN32
         if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
           asio_ns::error_code ec2;
@@ -133,7 +141,7 @@ struct AsioSocket<SocketType::Ssl> {
       std::forward<F>(cb)(asio_ns::error_code{});
     }
   }
-  
+
   arangodb::rest::IoContext& context;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::ip::tcp::acceptor::endpoint_type peer;
@@ -142,31 +150,31 @@ struct AsioSocket<SocketType::Ssl> {
 };
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(ASIO_HAS_LOCAL_SOCKETS)
-template<>
+template <>
 struct AsioSocket<SocketType::Unix> {
-  
   AsioSocket(arangodb::rest::IoContext& ctx)
-  : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
+      : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
     context.incClients();
   }
   ~AsioSocket() {
     try {
       timer.cancel();
-      if (socket.is_open()) { // non-graceful shutdown
+      if (socket.is_open()) {  // non-graceful shutdown
         asio_ns::error_code ec;
         socket.close(ec);
       }
-    } catch(...) {}
+    } catch (...) {
+    }
     context.decClients();
   }
-  
+
   void setNonBlocking(bool v) { socket.non_blocking(v); }
   static constexpr bool supportsMixedIO() { return true; }
   std::size_t available(asio_ns::error_code& ec) const {
     return socket.lowest_layer().available(ec);
   }
-  
-  template<typename F>
+
+  template <typename F>
   void shutdown(F&& cb) {
     asio_ns::error_code ec;
     if (socket.is_open()) {
@@ -180,15 +188,15 @@ struct AsioSocket<SocketType::Unix> {
     }
     std::forward<F>(cb)(ec);
   }
-  
+
   arangodb::rest::IoContext& context;
   asio_ns::local::stream_protocol::socket socket;
   asio_ns::local::stream_protocol::acceptor::endpoint_type peer;
   asio_ns::steady_timer timer;
   asio_ns::streambuf buffer;
 };
-#endif // ASIO_HAS_LOCAL_SOCKETS
+#endif  // ASIO_HAS_LOCAL_SOCKETS
 
-} // namespace rest
-} // namespace arangodb
+}  // namespace rest
+}  // namespace arangodb
 #endif

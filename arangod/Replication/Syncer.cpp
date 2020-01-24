@@ -971,8 +971,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
                                                /*nullMeansRemove*/ true);
 
   try {
-    LogicalView::ptr view;  // ignore result
-    return LogicalView::create(view, vocbase, merged.slice());
+    LogicalView::ptr empty;  // ignore result
+    return LogicalView::create(empty, vocbase, merged.slice());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

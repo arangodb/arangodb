@@ -94,6 +94,7 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
 V8ClientConnection::~V8ClientConnection() {
   _builder.onFailure(nullptr);  // reset callback
   shutdownConnection();
+  _loop.stop();
 }
 
 std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
