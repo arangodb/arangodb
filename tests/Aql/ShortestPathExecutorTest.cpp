@@ -119,6 +119,10 @@ class TokenTranslator : public TraverserCache {
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual> _edges;
 };
 
+// FakePathFinder only stores a lump of pairs (source and targets) by which
+// sequences of outputs can be found. It also stores which paths it has been
+// asked for to verify later whether the outputs produced by the
+// ShortestPathExecutor are the ones we expected.
 class FakePathFinder : public ShortestPathFinder {
  public:
   FakePathFinder(ShortestPathOptions& opts, TokenTranslator& translator)
@@ -308,15 +312,32 @@ class ShortestPathExecutorTest
     auto pathsQueriedBetween = finder.getCalledWith();
     auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
 
-    LOG_DEVEL << pathsQueriedBetween;
-    for (auto index = size_t{0}; index < block->size(); ++index) {
-      if (infos.useRegisterForInput(true)) {
-        LOG_DEVEL << block->getValue(blockIndex, infos.getInputRegister(true));
+    // We should always only call the finder at most for all input rows
+    ASSERT_LE(pathsQueriedBetween.size(), block->size());
+
+    auto blockIndex = size_t{0};
+    for (auto const& input : pathsQueriedBetween) {
+      auto source = std::string{};
+      auto target = std::string{};
+
+      if (infos.useRegisterForSourceInput()) {
+        AqlValue value = block->getValue(blockIndex, infos.getSourceInputRegister());
+        ASSERT_TRUE(value.isString());
+        source = value.slice().copyString();
+      } else {
+        source = infos.getSourceInputValue();
       }
 
-      if (infos.useRegisterForInput(false)) {
-        LOG_DEVEL << block->getValue(blockIndex, infos.getInputRegister(true));
+      if (infos.useRegisterForTargetInput()) {
+        AqlValue value = block->getValue(blockIndex, infos.getTargetInputRegister());
+        ASSERT_TRUE(value.isString());
+        target = value.slice().copyString();
+      } else {
+        target = infos.getTargetInputValue();
       }
+      ASSERT_EQ(source, input.first);
+      ASSERT_EQ(target, input.second);
+      blockIndex++;
     }
   }
 
@@ -412,6 +433,7 @@ class ShortestPathExecutorTest
       std::tie(state, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
     }
 
+    // Produce rows
     while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
       SharedAqlItemBlockPtr block =
           itemBlockManager.requestBlock(parameters._blockSize, 4);
@@ -437,16 +459,28 @@ class ShortestPathExecutorTest
     ValidateCalledWith();
     ValidateResult(outputs, skippedInitial, skippedFullCount);
   }
-};
+};  // namespace aql
 
 /*
- * We currently only have one test, but it's heavily parameterised; we call
+ * We currently only have one test, but it's heavily parameterised.
+ * We emulate the call sequence of ExecutionBlockImpl, so, we skip, produce, and
+ * fullcount (depending on what the AqlCall parameter prescribes).
+ *
  * the test with all combinations of parameters defined below, and compare the
- * produced output of the executor with the expected output.
+ * produced output of the executor with the expected output (which in turn is
+ * computed from the parameters).
  *
- * We never actually perform a shortest path search, since that is the
- * responsibility of the shortest path finder.
+ * The parameters are
+ *  - sources:    constant or register source (then drawn from input)
+ *  - targets:    constant or register source (then drawn from input)
+ *  - inputs:     a matrix of input rows
+ *  - paths:      paths present in the fakePathFinder
+ *  - calls:      AqlCalls giving the offset, limits, and fullCount
+ *  - variants:   whether to output vertices only or vertices and edges
+ *  - blockSizes: which outputBlock sizes to test with
  *
+ * We never actually perform a shortest path search: testing this is the
+ * responsibility of the test for the shortest path finder.
  */
 
 TEST_P(ShortestPathExecutorTest, the_test) { TestExecutor(); }
@@ -505,9 +539,9 @@ auto calls =
 
 auto variants = testing::Values(ShortestPathOutput::VERTEX_ONLY,
                                 ShortestPathOutput::VERTEX_AND_EDGE);
-auto blockSizes = testing::Values(size_t{5}, 100);
+auto blockSizes = testing::Values(size_t{5}, 1000);
 
-INSTANTIATE_TEST_CASE_P(ShortestPathExecutorTestInstance1, ShortestPathExecutorTest,
+INSTANTIATE_TEST_CASE_P(ShortestPathExecutorTestInstance, ShortestPathExecutorTest,
                         testing::Combine(sources, targets, inputs, paths, calls,
                                          variants, blockSizes));
 

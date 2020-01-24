@@ -72,27 +72,32 @@ arangodb::graph::ShortestPathFinder& ShortestPathExecutorInfos::finder() const {
   return *_finder.get();
 }
 
-bool ShortestPathExecutorInfos::useRegisterForInput(bool isTarget) const {
-  if (isTarget) {
-    return _target.type == InputVertex::Type::REGISTER;
-  }
+bool ShortestPathExecutorInfos::useRegisterForSourceInput() const {
   return _source.type == InputVertex::Type::REGISTER;
 }
 
-RegisterId ShortestPathExecutorInfos::getInputRegister(bool isTarget) const {
-  TRI_ASSERT(useRegisterForInput(isTarget));
-  if (isTarget) {
-    return _target.reg;
-  }
+bool ShortestPathExecutorInfos::useRegisterForTargetInput() const {
+  return _target.type == InputVertex::Type::REGISTER;
+}
+
+RegisterId ShortestPathExecutorInfos::getSourceInputRegister() const {
+  TRI_ASSERT(useRegisterForSourceInput());
   return _source.reg;
 }
 
-std::string const& ShortestPathExecutorInfos::getInputValue(bool isTarget) const {
-  TRI_ASSERT(!useRegisterForInput(isTarget));
-  if (isTarget) {
-    return _target.value;
-  }
+RegisterId ShortestPathExecutorInfos::getTargetInputRegister() const {
+  TRI_ASSERT(useRegisterForTargetInput());
+  return _target.reg;
+}
+
+std::string const& ShortestPathExecutorInfos::getSourceInputValue() const {
+  TRI_ASSERT(!useRegisterForSourceInput());
   return _source.value;
+}
+
+std::string const& ShortestPathExecutorInfos::getTargetInputValue() const {
+  TRI_ASSERT(!useRegisterForTargetInput());
+  return _target.value;
 }
 
 bool ShortestPathExecutorInfos::usesOutputRegister(OutputName type) const {
@@ -145,11 +150,11 @@ ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
       _posInPath(0),
       _sourceBuilder{},
       _targetBuilder{} {
-  if (!_infos.useRegisterForInput(false)) {
-    _sourceBuilder.add(VPackValue(_infos.getInputValue(false)));
+  if (!_infos.useRegisterForSourceInput()) {
+    _sourceBuilder.add(VPackValue(_infos.getSourceInputValue()));
   }
-  if (!_infos.useRegisterForInput(true)) {
-    _targetBuilder.add(VPackValue(_infos.getInputValue(true)));
+  if (!_infos.useRegisterForTargetInput()) {
+    _targetBuilder.add(VPackValue(_infos.getTargetInputValue()));
   }
 }
 

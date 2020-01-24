@@ -99,21 +99,24 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  [[nodiscard]] bool useRegisterForInput(bool isTarget) const;
+  [[nodiscard]] bool useRegisterForSourceInput() const;
+  [[nodiscard]] bool useRegisterForTargetInput() const;
 
   /**
    * @brief get the register used for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  [[nodiscard]] RegisterId getInputRegister(bool isTarget) const;
+  [[nodiscard]] RegisterId getSourceInputRegister() const;
+  [[nodiscard]] RegisterId getTargetInputRegister() const;
 
   /**
    * @brief get the const value for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  [[nodiscard]] std::string const& getInputValue(bool isTarget) const;
+  [[nodiscard]] std::string const& getSourceInputValue() const;
+  [[nodiscard]] std::string const& getTargetInputValue() const;
 
   /**
    * @brief test if we have an output register for this type
