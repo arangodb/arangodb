@@ -73,57 +73,64 @@ struct AqlCall {
 
   std::size_t getOffset() const { return offset; }
 
-  std::size_t clampToLimit(size_t n) const {
-
-      std::size_t getLimit() const {// By default we use batchsize
-                                    std::size_t limit = ExecutionBlock::DefaultBatchSize;
-  // We are not allowed to go above softLimit
-  if (std::holds_alternative<std::size_t>(softLimit)) {
-    n = (std::min)(std::get<std::size_t>(softLimit), n);
+  std::size_t getLimit() const {
+    return clampToLimit(ExecutionBlock::DefaultBatchSize);
   }
-  // We are not allowed to go above hardLimit
-  if (std::holds_alternative<std::size_t>(hardLimit)) {
-    n = (std::min)(std::get<std::size_t>(hardLimit), n);
+
+  std::size_t clampToLimit(size_t limit) const {  // By default we use batchsize
+    // We are not allowed to go above softLimit
+    if (std::holds_alternative<std::size_t>(softLimit)) {
+      limit = (std::min)(std::get<std::size_t>(softLimit), limit);
+    }
+    // We are not allowed to go above hardLimit
+    if (std::holds_alternative<std::size_t>(hardLimit)) {
+      limit = (std::min)(std::get<std::size_t>(hardLimit), limit);
+    }
+    return limit;
   }
-  return n;
-}
 
-std::size_t
-getLimit() const {
-  // By default we use batchsize
-  return clampToLimit(ExecutionBlock::DefaultBatchSize());
-}
-
-void didSkip(std::size_t n) {
-  if (n <= offset) {
-    // TRI_ASSERT(n <= offset);
-    offset -= n;
-  } else {
-    TRI_ASSERT(fullCount);
-    // We might have skip,(produce?),fullCount
-    // in a single call here.
-    offset = 0;
+  void didSkip(std::size_t n) {
+    if (n <= offset) {
+      // TRI_ASSERT(n <= offset);
+      offset -= n;
+    } else {
+      TRI_ASSERT(fullCount);
+      // We might have skip,(produce?),fullCount
+      // in a single call here.
+      offset = 0;
+    }
   }
-}
 
-void didProduce(std::size_t n) {
-  auto minus = overload{
-      [n](size_t& i) {
-        TRI_ASSERT(n <= i);
-        i -= n;
-      },
-      [](auto) {},
-  };
-  std::visit(minus, softLimit);
-  std::visit(minus, hardLimit);
-}
+  void didProduce(std::size_t n) {
+    auto minus = overload{
+        [n](size_t& i) {
+          TRI_ASSERT(n <= i);
+          i -= n;
+        },
+        [](auto) {},
+    };
+    std::visit(minus, softLimit);
+    std::visit(minus, hardLimit);
+  }
 
-bool hasHardLimit() const {
-  return !std::holds_alternative<AqlCall::Infinity>(hardLimit);
-}
+  bool hasHardLimit() const {
+    return !std::holds_alternative<AqlCall::Infinity>(hardLimit);
+  }
 
-bool needsFullCount() const { return fullCount; }
-};  // namespace aql
+  bool needsFullCount() const { return fullCount; }
+
+  bool shouldSkip() const {
+    if (getOffset() > 0) {
+      // Still need to skip.
+      return true;
+    }
+    if (getLimit() > 0) {
+      // Still need to produce.
+      return false;
+    }
+    return needsFullCount();
+  }
+};
 
 constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
   if (std::holds_alternative<AqlCall::Infinity>(a)) {
@@ -193,7 +200,7 @@ inline std::ostream& operator<<(std::ostream& out, const arangodb::aql::AqlCall&
              << " fullCount: " << std::boolalpha << call.fullCount;
 }
 
-}  // namespace arangodb
+}  // namespace aql
 }  // namespace arangodb
 
 #endif

@@ -1139,11 +1139,11 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 
   static_assert(useExecutor == (
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      (useExecutor == std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
+                                   (std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
 #endif
-          (useExecutor == std::is_same_v<Executor, FilterExecutor>) ||
-          (useExecutor == std::is_same_v<Executor, ShortestPathExecutor>),
-      "Unexpected executor for SkipVariants::EXECUTOR");
+                                   std::is_same_v<Executor, FilterExecutor> ||
+                                   std::is_same_v<Executor, ShortestPathExecutor>),
+                "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(

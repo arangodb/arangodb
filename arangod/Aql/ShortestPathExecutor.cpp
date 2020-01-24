@@ -177,32 +177,26 @@ auto ShortestPathExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
 }
 
 auto ShortestPathExecutor::doSkipPath(AqlCall& call) -> size_t {
-  auto skipped = size_t{0};
+  auto skip = size_t{0};
 
-  if (call.getOffset() >= pathLengthAvailable()) {
-    // we have *fewer* path rows than required offset
-    // so we skip all the rows we have
-    call.didSkip(pathLengthAvailable());
-    skipped += pathLengthAvailable();
-    _posInPath = _path->length();
-    // Now we better not have any path available
-    TRI_ASSERT(pathLengthAvailable() == 0);
-
-    return skipped;
-
+  // call.getOffset() > 0 means we're in SKIP mode
+  if (call.getOffset() > 0) {
+    if (call.getOffset() < pathLengthAvailable()) {
+      skip = call.getOffset();
+    } else {
+      skip = pathLengthAvailable();
+    }
   } else {
-    // we can cover all of the required offset by
-    // skipping through our available path
-    _posInPath += call.getOffset();
-    skipped += call.getOffset();
-    call.didSkip(call.getOffset());
-
-    // We skipped as much as was requested, but we have
-    // some path left, so we have more!
-    TRI_ASSERT(pathLengthAvailable() > 0);
-
-    return skipped;
+    // call.getOffset() == 0, we might be in SKIP, PRODUCE, or
+    // FASTFORWARD/FULLCOUNT, but we only FASTFORWARD/FULLCOUNT if
+    // call.getLimit() == 0 as well.
+    if (call.needsFullCount() && call.getLimit() == 0) {
+      skip = pathLengthAvailable();
+    }
   }
+  _posInPath += skip;
+  call.didSkip(skip);
+  return skip;
 }
 
 auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {

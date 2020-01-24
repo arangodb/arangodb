@@ -408,9 +408,10 @@ class ShortestPathExecutorTest
 
     // FullCount
     if (ourCall.needsFullCount()) {
-      LOG_DEVEL << "needs full count";
+      // Emulate being called with a full count
+      ourCall.hardLimit = 0;
+      ourCall.softLimit = 0;
       std::tie(state, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
-      LOG_DEVEL << " full count skip" << skippedFullCount;
     }
 
     ValidateResult(outputs, skippedInitial, skippedFullCount);
