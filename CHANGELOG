@@ -6,6 +6,8 @@ devel
   Like for the existing variant the `overwrite` flag has to be set to true.
   Then the update version can be selected by setting the `overwriteMode` to `"update"`.
 
+* Updated ArangoDB Starter to 0.14.13.
+
 * Added HotBackup events into auditing.
 
 * Removed an unnecessary and wrong request from within the Web UI to the
