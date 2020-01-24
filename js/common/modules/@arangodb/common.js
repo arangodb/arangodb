@@ -525,7 +525,8 @@ exports.checkParameter = function(usage, descs, vars) {
 // / @brief generate info message for newer version(s) available
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.checkAvailableVersions = function(version) {
+exports.checkAvailableVersions = function() {
+  var version = internal.version;
   var isServer = require('@arangodb').isServer;
   var console = require('console');
   var log;
@@ -536,16 +537,14 @@ exports.checkAvailableVersions = function(version) {
     log = internal.print;
   }
 
-  if (version === undefined) {
-    version = internal.version;
-  }
-
   if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
-    log(
-      "You are using a milestone/alpha/beta/preview version ('" +
-        version +
-        "') of ArangoDB"
-    );
+    if (internal.quiet !== true) {
+      log(
+        "You are using a milestone/alpha/beta/preview version ('" +
+          version +
+          "') of ArangoDB"
+      );
+    }
   } else if (internal.isEnterprise()) {
     // don't check for version updates in the enterprise version
     return;
@@ -562,7 +561,13 @@ exports.checkAvailableVersions = function(version) {
       var role = global.ArangoServerState.role();
 
       if (role === "COORDINATOR") {
-        hash = "1-FFFF-0001-" + global.ArangoServerState.id();
+        try {
+          var c = ArangoClusterInfo.getCoordinators().length.toString(16).toUpperCase();
+          var d = ArangoClusterInfo.getDBServers().length.toString(16).toUpperCase();
+        } catch (err) {
+          hash = "1-FFFF-0001-arangod";
+        }
+        hash = "1-" + c + "-" + d + "-" + global.ArangoServerState.id();
       } else if (role === "PRIMARY") {
         hash = "1-FFFF-0002-arangod";
       } else if (role === "AGENT") {
@@ -572,6 +577,8 @@ exports.checkAvailableVersions = function(version) {
       } else {
         hash = "1-FFFF-0005-arangod";
       }
+
+      hash = internal.base64Encode(hash);
     } else {
       try {
         var result = arango.GET('/_admin/status?overview=true');
@@ -589,16 +596,16 @@ exports.checkAvailableVersions = function(version) {
 
     var u =
       'https://www.arangodb.com/versions.php?'
-        + 'version=' + version
-        + '&plattform=' + platform
-        + '&engine=' + engine
+        + 'version=' + encodeURIComponent(version)
+        + '&platform=' + encodeURIComponent(platform)
+        + '&engine=' + encodeURIComponent(engine)
+        + '&license=' + encodeURIComponent(license)
         + '&source=' + (isServer ? "arangod" : "arangosh")
-        + '&license=' + license
-        + '&hash=' + hash;
+        + '&hash=' + encodeURIComponent(hash);
     var d = internal.download(u, '', {timeout: 5});
     var v = JSON.parse(d.body);
 
-    if (!isServer) {
+    if (!isServer && internal.quiet !== true) {
       if (v.hasOwnProperty('bugfix')) {
         log(
           "Please note that a new bugfix version '" +

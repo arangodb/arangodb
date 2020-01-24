@@ -67,9 +67,7 @@
     }
 
     // check available versions
-    if (internal.quiet !== true) {
-      require('@arangodb').checkAvailableVersions();
-    }
+    require('@arangodb').checkAvailableVersions();
   }
 
   return true;
