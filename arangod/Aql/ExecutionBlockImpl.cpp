@@ -131,13 +131,18 @@ CREATE_HAS_MEMBER_CHECK(fetchBlockForPassthrough, hasFetchBlockForPassthrough);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
 CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 
+
+template<typename T, typename... Es>
+constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
+
 /*
  * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
  * TODO: This should be removed once all executors and fetchers are ported to the new style.
  */
 template <class Executor>
 static bool constexpr isNewStyleExecutor() {
-  return std::is_same<Executor, FilterExecutor>::value || std::is_same<Executor, SortedCollectExecutor>::value;
+  //return std::is_same<Executor, FilterExecutor>::value || std::is_same<Executor, SortedCollectExecutor>::value;
+  return is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor>;
 }
 
 template <class Executor>
@@ -315,13 +320,13 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
-                                              infos().registersToClear(), std::move(call),
+                                              infos().registersToClear(), call,
                                               OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   } else {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
                                               infos().registersToClear(),
-                                              std::move(call));
+                                              call);
   }
 }
 
@@ -1053,15 +1058,15 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
   // it may not be done for modification subqueries.
   static_assert(useFetcher ==
-                    (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
-                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>>::value &&
+                    (std::is_same_v<typename Executor::Fetcher, ConstFetcher> ||
+                     (std::is_same_v<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>> &&
                       !std::is_same<Executor, SubqueryExecutor<true>>::value)),
                 "Unexpected fetcher for SkipVariants::FETCHER");
 
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor == (std::is_same<Executor, FilterExecutor>::value),
+  static_assert(useExecutor == (is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!

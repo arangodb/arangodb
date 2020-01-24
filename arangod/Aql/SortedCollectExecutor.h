@@ -153,14 +153,14 @@ class SortedCollectExecutor {
     ~CollectGroup();
 
     void initialize(size_t capacity);
-    void reset(InputAqlItemRow& input);
+    void reset(InputAqlItemRow const& input);
 
     bool isValid() const { return _lastInputRow.isInitialized(); }
 
-    void addLine(InputAqlItemRow& input);
-    bool isSameGroup(InputAqlItemRow& input);
+    void addLine(InputAqlItemRow const& input);
+    bool isSameGroup(InputAqlItemRow const& input) const;
     void groupValuesToArray(velocypack::Builder& builder);
-    void writeToOutput(OutputAqlItemRow& output, InputAqlItemRow& input);
+    void writeToOutput(OutputAqlItemRow& output, InputAqlItemRow const& input);
   };
 
  public:
@@ -192,6 +192,14 @@ class SortedCollectExecutor {
    */
   [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   /**
    * This executor has no chance to estimate how many rows
