@@ -117,6 +117,7 @@ enum class category_t {
   Wildcard,
   Or4High,
   Or6High4Med2Low,
+  MinMatch2High2Med,
   UNKNOWN
 };
 
@@ -137,6 +138,7 @@ category_t parseCategory(const irs::string_ref& value) {
   if (value == "Wildcard") return category_t::Wildcard;
   if (value == "Or4High") return category_t::Or4High;
   if (value == "Or6High4Med2Low") return category_t::Or6High4Med2Low;
+  if (value == "MinMatch2High2Med") return category_t::MinMatch2High2Med;
   return category_t::UNKNOWN;
 }
 
@@ -158,6 +160,7 @@ irs::string_ref stringCategory(category_t category) {
    case category_t::Wildcard: return "Wildcard";
    case category_t::Or4High: return "Or4High";
    case category_t::Or6High4Med2Low: return "Or6High4Med2Low";
+   case category_t::MinMatch2High2Med: return "MinMatch2High2Med";
    default: return "<unknown>";
   }
 }
@@ -291,7 +294,31 @@ irs::filter::prepared::ptr prepareFilter(
     terms = irs::string_ref(text, text.size());
     query.field("body").term(terms);
 
+    for (auto& b : const_cast<irs::bstring&>(query.term())) {
+      switch (b) {
+        case '*': b = '%'; break; // '*' => '%'
+        case '?': b = '_'; break; // '?' => '_'
+      }
+    }
+
     return query.prepare(reader, order);
+   }
+   case category_t::MinMatch2High2Med: {
+     if ((terms = splitFreq(text)).null()) {
+       return nullptr;
+     }
+     irs::Or query;
+     // the first 'term' should be number of minimum matched
+     bool reading_min_match = true;
+     for (std::istringstream in(terms); std::getline(in, tmpBuf, ' ');) {
+       if (reading_min_match) {
+         reading_min_match = false;
+         query.min_match_count(std::stoll(tmpBuf));
+       } else {
+         query.add<irs::by_term>().field("body").term(tmpBuf);
+       }
+     }
+     return query.prepare(reader, order);
    }
    default:
     return nullptr;
