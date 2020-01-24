@@ -140,7 +140,7 @@ std::string to_string(SocketType type);
 // --SECTION--                                                     ProtocolType
 // -----------------------------------------------------------------------------
 
-enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Vst = 2 };
+enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Http2 = 2, Vst = 3 };
 std::string to_string(ProtocolType type);
 
 // -----------------------------------------------------------------------------
@@ -180,7 +180,7 @@ struct ConnectionConfiguration {
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-        _connectTimeout(10000),
+        _connectTimeout(15000),
         _idleTimeout(300000),
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),
