@@ -25,26 +25,36 @@
 #ifndef ARANGOD_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SCHEDULER_SCHEDULER_H 1
 
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <queue>
 
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
+#include "Futures/Utilities.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
-
+namespace application_features {
+class ApplicationServer;
+}
 namespace velocypack {
 class Builder;
 }
 
-class Scheduler;
+class LogTopic;
 class SchedulerThread;
 class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler();
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -56,19 +66,21 @@ class Scheduler {
   typedef std::shared_ptr<WorkItem> WorkHandle;
 
   // Enqueues a task - this is implemented on the specific scheduler
-  virtual bool queue(RequestLane lane, std::function<void()>) = 0;
+  // May throw.
+  virtual bool queue(RequestLane lane, fu2::unique_function<void()>) ADB_WARN_UNUSED_RESULT = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
-  // are dropped, the task is canceled.
-  virtual WorkHandle queueDelay(RequestLane lane, clock::duration delay,
-                                std::function<void(bool canceled)> handler);
+  // are dropped, the task is canceled. It will return true if queued, false
+  // otherwise
+  virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
+                                                 fu2::unique_function<void(bool canceled)> handler);
 
-  class WorkItem {
+  class WorkItem final {
    public:
-    virtual ~WorkItem() { 
+    ~WorkItem() {
       try {
-        cancel(); 
+        cancel();
       } catch (...) {
         // destructor... no exceptions allowed here
       }
@@ -80,9 +92,9 @@ class Scheduler {
     // Runs the WorkItem immediately
     void run() { executeWithCancel(false); }
 
-    explicit WorkItem(std::function<void(bool canceled)>&& handler,
+    explicit WorkItem(fu2::unique_function<void(bool canceled)>&& handler,
                       RequestLane lane, Scheduler* scheduler)
-        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler){};
+        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler) {}
 
    private:
     // This is not copyable or movable
@@ -98,22 +110,52 @@ class Scheduler {
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
-        _scheduler->queue(_lane, [handler = std::move(_handler), arg]() {
-          handler(arg);
-        });
+        bool queued = _scheduler->queue(_lane, [handler = std::move(_handler),
+                                                arg]() mutable  {
+                                                  handler(arg);
+                                                });
+        if (!queued) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+        }
       }
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool isDisabled() { return _disable.load(); }
+    bool isDisabled() const { return _disable.load(); }
     friend class Scheduler;
 #endif
 
    private:
-    std::function<void(bool)> _handler;
+    fu2::unique_function<void(bool)> _handler;
     RequestLane _lane;
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
   };
+
+ protected:
+  application_features::ApplicationServer& _server;
+
+ public:
+    // delay Future returns a future that will be fulfilled after the given duration
+    // requires scheduler
+    // If d is zero, the future is fulfilled immediately. Throws a logic error
+    // if delay was cancelled.
+    futures::Future<futures::Unit> delay(clock::duration d) {
+      if (d == clock::duration::zero()) {
+        return futures::makeFuture();
+      }
+
+      futures::Promise<bool> p;
+      futures::Future<bool> f = p.getFuture();
+
+      auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
+        [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
+
+      return std::move(f).thenValue([item = std::move(item)](bool cancelled) {
+        if (cancelled) {
+          throw std::logic_error("delay was cancelled");
+        }
+      });
+    }
 
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks
@@ -137,7 +179,7 @@ class Scheduler {
   typedef std::pair<clock::time_point, std::weak_ptr<WorkItem>> CronWorkItem;
 
   struct CronWorkItemCompare {
-    bool operator()(CronWorkItem const& left, CronWorkItem const& right) {
+    bool operator()(CronWorkItem const& left, CronWorkItem const& right) const {
       // Reverse order, because std::priority_queue is a max heap.
       return right.first < left.first;
     }
@@ -154,17 +196,15 @@ class Scheduler {
   // ---------------------------------------------------------------------------
  public:
   struct QueueStatistics {
-    uint64_t _running;
-    uint64_t _working;
+    uint64_t _running; // numWorkers
+    uint64_t _blocked; // obsolete, always 0 now
     uint64_t _queued;
-    uint64_t _fifo1;
-    uint64_t _fifo2;
-    uint64_t _fifo3;
+    uint64_t _working;
+    uint64_t _directExec;
   };
 
-  virtual void addQueueStatistics(velocypack::Builder&) const = 0;
+  virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
-  virtual std::string infoStatus() const = 0;
 
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff

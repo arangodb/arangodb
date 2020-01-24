@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -26,7 +25,6 @@
 #include "data_output.hpp"
 
 #include "utils/std.hpp"
-#include "utils/unicode_utils.hpp"
 #include "utils/bytes_utils.hpp"
 
 #include <memory>

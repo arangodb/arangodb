@@ -2,7 +2,7 @@
 @startDocuBlock job_cancel
 @brief cancels an async job
 
-@RESTHEADER{PUT /_api/job/{job-id}/cancel, Cancel async job}
+@RESTHEADER{PUT /_api/job/{job-id}/cancel, Cancel async job, putJobMethod:cancel}
 
 @RESTURLPARAMETERS
 
@@ -56,4 +56,3 @@ be returned.
   logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

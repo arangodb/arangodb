@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_synchronize
 @brief start a replication
 
-@RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint}
+@RESTHEADER{PUT /_api/replication/sync, Synchronize data from a remote endpoint, handleCommandSync}
 
 @RESTBODYPARAM{endpoint,string,required,string}
 the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").
@@ -90,9 +90,8 @@ is returned if the configuration is incomplete or malformed.
 is returned when an invalid HTTP method is used.
 
 @RESTRETURNCODE{500}
-is returned if an error occurred during sychronization.
+is returned if an error occurred during synchronization.
 
 @RESTRETURNCODE{501}
 is returned when this operation is called on a coordinator in a cluster.
 @endDocuBlock
-

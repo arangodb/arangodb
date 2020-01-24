@@ -39,29 +39,27 @@ NS_LOCAL
 
 class all_iterator final : public irs::doc_iterator {
  public:
-  explicit all_iterator(irs::doc_id_t docs_count) NOEXCEPT
-    : max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
+  explicit all_iterator(irs::doc_id_t docs_count) noexcept
+    : max_doc_(irs::doc_id_t(irs::doc_limits::min() + docs_count - 1)) {
   }
 
-  virtual bool next() NOEXCEPT override {
-    return !irs::type_limits<irs::type_t::doc_id_t>::eof(
-      seek(doc_.value + 1)
-    );
+  virtual bool next() noexcept override {
+    return !irs::doc_limits::eof(seek(doc_.value + 1));
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t target) NOEXCEPT override {
+  virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
     doc_.value = target <= max_doc_
       ? target
-      : irs::type_limits<irs::type_t::doc_id_t>::eof();
+      : irs::doc_limits::eof();
 
     return doc_.value;
   }
 
-  virtual irs::doc_id_t value() const NOEXCEPT override {
+  virtual irs::doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return irs::attribute_view::empty_instance();
   }
 
@@ -74,7 +72,7 @@ class mask_doc_iterator final : public irs::doc_iterator {
  public:
   explicit mask_doc_iterator(
       irs::doc_iterator::ptr&& it,
-      const irs::document_mask& mask) NOEXCEPT
+      const irs::document_mask& mask) noexcept
     : mask_(mask), it_(std::move(it))  {
   }
 
@@ -104,7 +102,7 @@ class mask_doc_iterator final : public irs::doc_iterator {
     return it_->value();
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return it_->attributes();
   }
 
@@ -122,7 +120,7 @@ class masked_docs_iterator
     irs::doc_id_t end,
     const irs::document_mask& docs_mask
   ) :
-    current_(irs::type_limits<irs::type_t::doc_id_t>::invalid()),
+    current_(irs::doc_limits::invalid()),
     docs_mask_(docs_mask),
     end_(end),
     next_(begin) {
@@ -139,7 +137,7 @@ class masked_docs_iterator
       }
     }
 
-    current_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+    current_ = irs::doc_limits::eof();
 
     return false;
   }
@@ -151,7 +149,7 @@ class masked_docs_iterator
     return value();
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return irs::attribute_view::empty_instance();
   }
 
@@ -214,7 +212,7 @@ bool read_columns_meta(
   auto less = [] (
       const irs::column_meta& lhs,
       const irs::column_meta& rhs
-  ) NOEXCEPT {
+  ) noexcept {
     return lhs.name < rhs.name;
   };
 
@@ -248,7 +246,7 @@ class segment_reader_impl : public sub_reader {
     const segment_meta& meta
   );
 
-  const directory& dir() const NOEXCEPT { 
+  const directory& dir() const noexcept { 
     return dir_;
   }
 
@@ -264,6 +262,10 @@ class segment_reader_impl : public sub_reader {
   virtual doc_iterator::ptr docs_iterator() const override;
 
   virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
+    if (!it) {
+      return nullptr;
+    }
+
     if (docs_mask_.empty()) {
       return std::move(it);
     }
@@ -281,21 +283,25 @@ class segment_reader_impl : public sub_reader {
     return field_reader_->iterator();
   }
 
-  virtual uint64_t live_docs_count() const NOEXCEPT override {
+  virtual uint64_t live_docs_count() const noexcept override {
     return docs_count_ - docs_mask_.size();
   }
 
-  uint64_t meta_version() const NOEXCEPT {
+  uint64_t meta_version() const noexcept {
     return meta_version_;
   }
 
-  virtual const sub_reader& operator[](size_t i) const NOEXCEPT override {
+  virtual const sub_reader& operator[](size_t i) const noexcept override {
     assert(!i);
     return *this;
   }
 
-  virtual size_t size() const NOEXCEPT override {
+  virtual size_t size() const noexcept override {
     return 1; // only 1 segment
+  }
+
+  virtual const columnstore_reader::column_reader* sort() const noexcept override {
+    return sort_;
   }
 
   virtual const columnstore_reader::column_reader* column_reader(
@@ -306,6 +312,7 @@ class segment_reader_impl : public sub_reader {
   DECLARE_SHARED_PTR(segment_reader_impl); // required for NAMED_PTR(...)
   std::vector<column_meta> columns_;
   columnstore_reader::ptr columnstore_reader_;
+  const columnstore_reader::column_reader* sort_{};
   const directory& dir_;
   uint64_t docs_count_;
   document_mask docs_mask_;
@@ -321,16 +328,16 @@ class segment_reader_impl : public sub_reader {
   );
 };
 
-segment_reader::segment_reader(impl_ptr&& impl) NOEXCEPT
+segment_reader::segment_reader(impl_ptr&& impl) noexcept
   : impl_(std::move(impl)) {
 }
 
-segment_reader::segment_reader(const segment_reader& other) NOEXCEPT {
+segment_reader::segment_reader(const segment_reader& other) noexcept {
   *this = other;
 }
 
 segment_reader& segment_reader::operator=(
-    const segment_reader& other) NOEXCEPT {
+    const segment_reader& other) noexcept {
   if (this != &other) {
     // make a copy
     impl_ptr impl = atomic_utils::atomic_load(&other.impl_);
@@ -343,13 +350,13 @@ segment_reader& segment_reader::operator=(
 
 template<>
 /*static*/ bool segment_reader::has<columnstore_reader>(
-    const segment_meta& meta) NOEXCEPT {
+    const segment_meta& meta) noexcept {
   return meta.column_store; // a separate flag to track presence of column store
 }
 
 template<>
 /*static*/ bool segment_reader::has<document_mask_reader>(
-    const segment_meta& meta) NOEXCEPT {
+    const segment_meta& meta) noexcept {
 //  return meta.version > 0; // all version > 0 have document mask
   return meta.live_docs_count != meta.docs_count;
 }
@@ -399,7 +406,7 @@ column_iterator::ptr segment_reader_impl::columns() const {
   struct less {
     bool operator()(
         const irs::column_meta& lhs,
-        const string_ref& rhs) const NOEXCEPT {
+        const string_ref& rhs) const noexcept {
       return lhs.name < rhs;
     }
   }; // less
@@ -422,8 +429,8 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
 
   // the implementation generates doc_ids sequentially
   return memory::make_shared<masked_docs_iterator>(
-    type_limits<type_t::doc_id_t>::min(),
-    doc_id_t(type_limits<type_t::doc_id_t>::min() + docs_count_),
+    doc_limits::min(),
+    doc_id_t(doc_limits::min() + docs_count_),
     docs_mask_
   );
 }
@@ -452,6 +459,17 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
         "failed to find existing (according to meta) columnstore in segment '%s'",
         meta.name.c_str()
       ));
+    }
+
+    if (field_limits::valid(meta.sort)) {
+      reader->sort_ = columnstore_reader->column(meta.sort);
+
+      if (!reader->sort_) {
+        throw index_error(string_utils::to_string(
+          "failed to find sort column '" IR_UINT64_T_SPECIFIER "' (according to meta) in columnstore in segment '%s'",
+          meta.sort, meta.name.c_str()
+        ));
+      }
     }
   }
 

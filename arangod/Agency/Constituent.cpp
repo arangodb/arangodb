@@ -31,11 +31,14 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
-#include "Cluster/ClusterComm.h"
-#include "Logger/Logger.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -68,8 +71,8 @@ void Constituent::configure(Agent* agent) {
 }
 
 // Default ctor
-Constituent::Constituent()
-    : Thread("Constituent"),
+Constituent::Constituent(application_features::ApplicationServer& server)
+    : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _queryRegistry(nullptr),
       _term(0),
@@ -180,7 +183,7 @@ bool Constituent::logMatches(arangodb::consensus::index_t prevLogIndex,
                   // entry, then we know that this or a later entry was
                   // already committed by a majority and is therefore
                   // set in stone. Therefore the check must return true
-                  // here and this is correct behaviour.
+                  // here and this is correct behavior.
                   // The other case in which we do not have the log entry
                   // is if it is so new that we have never heard about it
                   // in this case we can safely return true here as well,
@@ -391,6 +394,10 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
   if (_votedFor != NO_LEADER) {  // already voted in this term
     if (_votedFor == id) {
       LOG_TOPIC("41c49", DEBUG, Logger::AGENCY) << "repeating vote for " << id;
+      // Set the last heart beat seen to now, to grant the other guy some time
+      // to establish itself as a leader, before we call for another election:
+      _lastHeartbeatSeen = TRI_microtime();
+      LOG_TOPIC("658ba", TRACE, Logger::AGENCY) << "setting last heartbeat time to now, since we repeated a vote grant: " << _lastHeartbeatSeen;
       return true;
     }
     LOG_TOPIC("df508", DEBUG, Logger::AGENCY)
@@ -406,6 +413,10 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
   if (prevLogTerm > myLastLogEntry.term ||
       (prevLogTerm == myLastLogEntry.term && prevLogIndex >= myLastLogEntry.index)) {
     LOG_TOPIC("8d8da", DEBUG, Logger::AGENCY) << "voting for " << id << " in term " << _term;
+    // Set the last heart beat seen to now, to grant the other guy some time
+    // to establish itself as a leader, before we call for another election:
+    _lastHeartbeatSeen = TRI_microtime();
+    LOG_TOPIC("ffaac", TRACE, Logger::AGENCY) << "setting last heartbeat time to now, since we granted a vote: " << _lastHeartbeatSeen;
     termNoLock(_term, id);
     return true;
   }
@@ -419,12 +430,14 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
 /// @brief Call to election
 void Constituent::callElection() {
   using namespace std::chrono;
-  auto timeout =
+  
+  // simon: whats the minimum timeout here ?
+  network::Timeout timeout(0.9 * _agent->config().minPing() * _agent->config().timeoutMult());
+  auto endTime =
       steady_clock::now() +
       duration<double>(_agent->config().minPing() * _agent->config().timeoutMult());
 
   std::vector<std::string> active = _agent->config().active();
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
 
   term_t savedTerm;
   {
@@ -439,7 +452,6 @@ void Constituent::callElection() {
     _leaderID = NO_LEADER;
   }
 
-  std::string body;
   std::stringstream path;
 
   int64_t electionEventCount = countRecentElectionEvents(3600);
@@ -460,26 +472,49 @@ void Constituent::callElection() {
        << "&prevLogTerm=" << _agent->lastLog().term
        << "&timeoutMult=" << electionEventCount;
 
-  auto cc = ClusterComm::instance();
-
+  auto const& nf = _agent->server().getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* cp = nf.pool();
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = timeout;
+  
   // Ask everyone for their vote
-  std::unordered_map<std::string, std::string> headerFields;
-  for (auto const& i : active) {
-    if (i != _id) {
-      if (!isStopping() && cc != nullptr) {
-        cc->asyncRequest(coordinatorTransactionID, _agent->config().poolAt(i),
-                         rest::RequestType::GET, path.str(),
-                         std::make_shared<std::string>(body), headerFields, nullptr,
-                         0.9 * _agent->config().minPing() * _agent->config().timeoutMult(),
-                         /*single*/ true);
-      }
-    }
-  }
-
   // Collect ballots. I vote for myself.
-  size_t yea = 1;
-  size_t nay = 0;
-  size_t majority = size() / 2 + 1;
+  auto yea = std::make_shared<std::atomic<size_t>>(1);
+  auto nay = std::make_shared<std::atomic<size_t>>(0);
+  auto maxTermReceived = std::make_shared<std::atomic<term_t>>(savedTerm);
+  const size_t majority = size() / 2 + 1;
+  
+  for (auto const& i : active) {
+    if (i == _id) {
+      continue;
+    }
+    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, path.str(),
+                         VPackBuffer<uint8_t>(), reqOpts).thenValue([=](network::Response r) {
+      if (r.ok() && r.response->statusCode() == 200) {
+        VPackSlice slc = r.slice();
+
+        // Got ballot
+        if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
+          // Follow right away?
+          term_t receivedT = slc.get("term").getUInt();
+          if (receivedT > savedTerm) { // only count vote if term is equal or smaller
+            term_t expectedT = maxTermReceived->load();
+            maxTermReceived->compare_exchange_strong(expectedT, receivedT);
+          } else {
+            // Check result and counts
+            if (slc.get("voteGranted").getBool()) {  // majority in favour?
+              yea->fetch_add(1);
+              // Vote is counted as yea
+              return;
+            }
+          }
+        }
+      }
+      // Count the vote as a nay
+      nay->fetch_add(1);
+    });
+  }
 
   // We collect votes, we leave the following loop when one of the following
   // conditions is met:
@@ -487,60 +522,38 @@ void Constituent::callElection() {
   //   (2) A majority of yea votes (including ourselves) have been received
   //   (3) At least yyy time has passed, in this case we give up without
   //       a conclusive vote.
-  while (true) {
-    if (steady_clock::now() >= timeout) {  // Timeout.
+  while (!isStopping()) {
+    if (steady_clock::now() >= endTime) {  // Timeout.
       MUTEX_LOCKER(locker, _termVoteLock);
       followNoLock(0);  // do not adjust _term or _votedFor
       break;
     }
-
-    if (!isStopping() && cc != nullptr) {
-      auto res = cc->wait(coordinatorTransactionID, 0, "",
-                          duration<double>(timeout - steady_clock::now()).count());
-
-      if (res.status == CL_COMM_SENT) {
-        auto body = res.result->getBodyVelocyPack();
-        VPackSlice slc = body->slice();
-
-        // Got ballot
-        if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
-          // Follow right away?
-          term_t t = slc.get("term").getUInt();
-          {
-            MUTEX_LOCKER(locker, _termVoteLock);
-            if (t > _term) {
-              followNoLock(t, NO_LEADER);
-              break;
-            }
-          }
-
-          // Check result and counts
-          if (slc.get("voteGranted").getBool()) {  // majority in favour?
-            if (++yea >= majority) {
-              lead(savedTerm);
-              break;
-            }
-            // Vote is counted as yea, continue loop
-            continue;
-          }
-        }
+    
+    term_t t = maxTermReceived->load();
+    {
+      MUTEX_LOCKER(locker, _termVoteLock);
+      if (t > _term) {
+        followNoLock(t, NO_LEADER);
+        break;
       }
     }
-    // Count the vote as a nay
-    if (++nay > size() - majority) {  // Network: majority against?
-      follow(0);                      // do not adjust _term or _votedFor
+    
+    if (yea->load() >= majority) {
+      lead(savedTerm);
       break;
     }
+    
+    if (nay->load() > size() - majority) {  // Network: majority against?
+      follow(0);                            // do not adjust _term or _votedFor
+      break;
+    }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   LOG_TOPIC("b5061", DEBUG, Logger::AGENCY)
-      << "Election: Have received " << yea << " yeas and " << nay
-      << " nays, the " << (yea >= majority ? "yeas" : "nays") << " have it.";
-
-  // Clean up
-  if (!isStopping() && cc != nullptr) {
-    cc->drop(coordinatorTransactionID, 0, "");
-  }
+      << "Election: Have received " << yea->load() << " yeas and " << nay->load()
+      << " nays, the " << (yea->load() >= majority ? "yeas" : "nays") << " have it.";
 }
 
 void Constituent::update(std::string const& leaderID, term_t t) {
@@ -698,6 +711,12 @@ void Constituent::run() {
 
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
+        // Now we take this point of time as the next base point for a
+        // potential next random timeout, since we have just cast a vote for
+        // ourselves:
+        _lastHeartbeatSeen = TRI_microtime();
+        LOG_TOPIC("aeaef", TRACE, Logger::AGENCY) << "setting last heartbeat because we voted for us: " << _lastHeartbeatSeen;
+
       } else {
         double interval =
             0.25 * _agent->config().minPing() * _agent->config().timeoutMult();
@@ -767,7 +786,8 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
 }
 
 // Notify about heartbeat being sent out:
-void Constituent::notifyHeartbeatSent(std::string followerId) {
+void Constituent::notifyHeartbeatSent(std::string const& followerId) {
+  double now = TRI_microtime();
   MUTEX_LOCKER(guard, _heartBeatMutex);
-  _lastHeartbeatSent[followerId] = TRI_microtime();
+  _lastHeartbeatSent[followerId] = now;
 }

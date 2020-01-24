@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_SCORE_DOC_ITERATORS_H
@@ -36,13 +35,11 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API doc_iterator_base : public doc_iterator {
  public:
-  virtual const attribute_view& attributes() const NOEXCEPT override final {
+  virtual const attribute_view& attributes() const noexcept final {
     return attrs_;
   }
 
  protected:
-  explicit doc_iterator_base(const order::prepared& ord);
-
   void estimate(cost::cost_f&& func) {
     cost_.rule(std::move(func));
     attrs_.emplace(cost_);
@@ -53,8 +50,19 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
     attrs_.emplace(cost_);
   }
 
-  void prepare_score(score::score_f&& func) {
-    if (scr_.prepare(*ord_, std::move(func))) {
+  void prepare_score(
+      const order::prepared& order,
+      const score_ctx* ctx,
+      score_f func) {
+    if (scr_.prepare(order, ctx, func)) {
+      attrs_.emplace(scr_);
+    }
+  }
+
+  void prepare_score(
+      const order::prepared& order,
+      order::prepared::scorers&& scorers) {
+    if (scr_.prepare(order, std::move(scorers))) {
       attrs_.emplace(scr_);
     }
   }
@@ -62,40 +70,7 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
   attribute_view attrs_;
   irs::cost cost_;
   irs::score scr_;
-  const order::prepared* ord_;
 }; // doc_iterator_base
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class basic_doc_iterator
-/// @brief basic implementation of scoring iterator for single term queries
-////////////////////////////////////////////////////////////////////////////////
-class basic_doc_iterator final : public doc_iterator_base {
- public:
-   basic_doc_iterator(
-     const sub_reader& segment,
-     const term_reader& field,
-     const attribute_store& stats,
-     doc_iterator::ptr&& it,
-     const order::prepared& ord,
-     cost::cost_t estimation) NOEXCEPT;
-
-  virtual doc_id_t value() const override {
-    return it_->value();
-  }
-
-  virtual bool next() override {
-    return it_->next();
-  }
-
-  virtual doc_id_t seek(doc_id_t target) override {
-    return it_->seek(target);
-  }
-
- private:
-  order::prepared::scorers scorers_;
-  doc_iterator::ptr it_;
-  const attribute_store* stats_;
-}; // basic_doc_iterator
 
 NS_END // ROOT
 

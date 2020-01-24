@@ -24,9 +24,7 @@
 #ifndef ARANGODB_BASICS_SYSTEM__COMPILER_H
 #define ARANGODB_BASICS_SYSTEM__COMPILER_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
+#include "Basics/operating-system.h"
 
 // warn if return value is unused
 #if defined(__GNUC__) || defined(__GNUG__)

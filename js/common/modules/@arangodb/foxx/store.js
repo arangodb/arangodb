@@ -55,12 +55,7 @@ function getFishbowlUrl () {
 // //////////////////////////////////////////////////////////////////////////////
 
 var getFishbowlStorage = function () {
-  var c = db._collection('_fishbowl');
-  if (c === null) {
-    c = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_graphs' });
-  }
-
-  return c;
+  return db._collection('_fishbowl');
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -91,85 +86,75 @@ var updateFishbowlFromZip = function (filename) {
   var tempPath = fs.getTempPath();
   var toSave = [];
 
-  try {
-    fs.makeDirectoryRecursive(tempPath);
-    var root = fs.join(tempPath, 'foxx-apps-master/applications');
+  fs.makeDirectoryRecursive(tempPath);
+  var root = fs.join(tempPath, 'foxx-apps-master/applications');
 
-    // remove any previous files in the directory
-    fs.listTree(root).forEach(function (file) {
-      if (file.match(/\.json$/)) {
-        try {
-          fs.remove(fs.join(root, file));
-        } catch (ignore) {}
+  // remove any previous files in the directory
+  fs.listTree(root).forEach(function (file) {
+    if (file.match(/\.json$/)) {
+      try {
+        fs.remove(fs.join(root, file));
+      } catch (ignore) {}
+    }
+  });
+
+  fs.unzipFile(filename, tempPath, false, true);
+
+  if (!fs.exists(root)) {
+    throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
+  }
+
+  var m = fs.listTree(root);
+  var reSub = /(.*)\.json$/;
+  var f, match, service, desc;
+
+  for (i = 0; i < m.length; ++i) {
+    f = m[i];
+    match = reSub.exec(f);
+    if (match === null) {
+      continue;
+    }
+
+    service = fs.join(root, f);
+
+    try {
+      desc = JSON.parse(fs.read(service));
+    } catch (err1) {
+      arangodb.printf("Cannot parse description for service '" + f + "': %s\n", String(err1));
+      continue;
+    }
+
+    desc._key = match[1];
+
+    if (!desc.hasOwnProperty('name')) {
+      desc.name = match[1];
+    }
+
+    toSave.push(desc);
+  }
+
+  if (toSave.length > 0) {
+    var fishbowl = getFishbowlStorage();
+
+    db._executeTransaction({
+      collections: {
+        exclusive: fishbowl.name()
+      },
+      action: function (params) {
+        var c = require('internal').db._collection(params.collection);
+        c.truncate();
+
+        params.services.forEach(function (service) {
+          c.save(service);
+        });
+      },
+      params: {
+        services: toSave,
+        collection: fishbowl.name()
       }
     });
 
-    fs.unzipFile(filename, tempPath, false, true);
-
-    if (!fs.exists(root)) {
-      throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
-    }
-
-    var m = fs.listTree(root);
-    var reSub = /(.*)\.json$/;
-    var f, match, service, desc;
-
-    for (i = 0; i < m.length; ++i) {
-      f = m[i];
-      match = reSub.exec(f);
-      if (match === null) {
-        continue;
-      }
-
-      service = fs.join(root, f);
-
-      try {
-        desc = JSON.parse(fs.read(service));
-      } catch (err1) {
-        arangodb.printf("Cannot parse description for service '" + f + "': %s\n", String(err1));
-        continue;
-      }
-
-      desc._key = match[1];
-
-      if (!desc.hasOwnProperty('name')) {
-        desc.name = match[1];
-      }
-
-      toSave.push(desc);
-    }
-
-    if (toSave.length > 0) {
-      var fishbowl = getFishbowlStorage();
-
-      db._executeTransaction({
-        collections: {
-          exclusive: fishbowl.name()
-        },
-        action: function (params) {
-          var c = require('internal').db._collection(params.collection);
-          c.truncate();
-
-          params.services.forEach(function (service) {
-            c.save(service);
-          });
-        },
-        params: {
-          services: toSave,
-          collection: fishbowl.name()
-        }
-      });
-
-      require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
-    }
-  } catch (err) {
-    if (tempPath !== undefined && tempPath !== '') {
-      try {
-        fs.removeDirectoryRecursive(tempPath);
-      } catch (ignore) {}
-    }
-
-    throw err;
+    require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
   }
 };
 
@@ -321,8 +306,13 @@ function availableJson (matchEngine) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var update = function () {
-  var url = utils.buildGithubUrl(getFishbowlUrl());
-  var filename = fs.getTempFile('bundles', false);
+  let url = utils.buildGithubUrl(getFishbowlUrl());
+  let filename = fs.getTempFile('bundles', false);
+  let internal = require('internal');
+    
+  if (internal.isFoxxStoreDisabled && internal.isFoxxStoreDisabled()) {
+    throw new Error('Foxx store is disabled in configuration');
+  }
 
   try {
     var result = download(url, '', {

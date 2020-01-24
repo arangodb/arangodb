@@ -26,6 +26,7 @@
 #define ARANGODB_BASICS_READ_UNLOCKER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Locking.h"
 #include "Basics/ReadWriteLock.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +36,7 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
 #define READ_UNLOCKER(obj, lock) \
   arangodb::basics::ReadUnlocker obj(&lock, __FILE__, __LINE__)
@@ -67,7 +68,7 @@ class ReadUnlocker {
   /// The constructor unlocks the lock, the destructors acquires a read-lock.
   //////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
   ReadUnlocker(ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
@@ -103,7 +104,7 @@ class ReadUnlocker {
 
   ReadWriteLock* _readWriteLock;
 
-#ifdef TRI_SHOW_LOCK_TIME
+#ifdef ARANGODB_SHOW_LOCK_TIME
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief file

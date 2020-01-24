@@ -24,6 +24,7 @@
 #define ARANGODB_TRANSACTION_MANAGER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/debugging.h"
 #include "Scheduler/Scheduler.h"
 
 #include <mutex>
@@ -51,7 +52,6 @@ class ManagerFeature final : public application_features::ApplicationFeature {
  private:
   static std::unique_ptr<transaction::Manager> MANAGER;
   
- private:
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
 

@@ -27,6 +27,7 @@
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearchLink.h"
+#include "Indexes/IndexFactory.h"
 
 namespace arangodb {
 
@@ -44,6 +45,12 @@ class IResearchViewCoordinator;
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IResearchLink {
  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief construct an uninitialized IResearch link, must call init(...)
+  /// after
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchLinkCoordinator(TRI_idx_iid_t id, arangodb::LogicalCollection& collection);
+
   virtual void batchInsert(
       transaction::Methods& trx,
       std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
@@ -57,11 +64,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
 
   virtual arangodb::Result drop() override { return IResearchLink::drop(); }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the factory for this type of index
-  //////////////////////////////////////////////////////////////////////////////
-  static arangodb::IndexTypeFactory const& factory();
-
   virtual bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
   }
@@ -73,21 +75,16 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   // IResearch does not provide a fixed default sort order
   virtual bool isSorted() const override { return IResearchLink::isSorted(); }
 
-  virtual arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx, 
-      arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
-      arangodb::IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(false);  // should not be called
-    return nullptr;
-  }
-
   virtual void load() override { IResearchLink::load(); }
 
   virtual bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
     return IResearchLink::matchesDefinition(slice);
   }
 
-  virtual size_t memory() const override { return IResearchLink::memory(); }
+  virtual size_t memory() const override {
+    // FIXME return in memory size
+    return stats().indexSize;
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
@@ -96,6 +93,10 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
   virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
                             std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
+
+  void toVelocyPackFigures(velocypack::Builder& builder) const override {
+    IResearchLink::toVelocyPackStats(builder);
+  }
 
   virtual IndexType type() const override { return IResearchLink::type(); }
 
@@ -111,14 +112,35 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
     }
   }
 
- private:
-  struct IndexFactory;  // forward declaration
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief IResearchLinkCoordinator-specific implementation of an
+  ///        IndexTypeFactory
+  ////////////////////////////////////////////////////////////////////////////////
+  struct IndexFactory : public arangodb::IndexTypeFactory {
+    friend class IResearchLinkCoordinator;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief construct an uninitialized IResearch link, must call init(...)
-  /// after
-  ////////////////////////////////////////////////////////////////////////////////
-  IResearchLinkCoordinator(TRI_idx_iid_t id, arangodb::LogicalCollection& collection);
+   private:
+    IndexFactory(arangodb::application_features::ApplicationServer& server);
+
+   public:
+    bool equal(arangodb::velocypack::Slice const& lhs,
+               arangodb::velocypack::Slice const& rhs) const override;
+
+    std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
+                                                 arangodb::velocypack::Slice const& definition,
+                                                 TRI_idx_iid_t id,
+                                                 bool isClusterConstructor) const override;
+
+    virtual arangodb::Result normalize(             // normalize definition
+        arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+        arangodb::velocypack::Slice definition,  // source definition
+        bool isCreation,              // definition for index creation
+        TRI_vocbase_t const& vocbase  // index vocbase
+        ) const override;
+  };
+
+  static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
+
 };  // IResearchLinkCoordinator
 
 }  // namespace iresearch

@@ -23,14 +23,26 @@
 
 #include "AgencyFeature.h"
 
+#include "Actions/ActionFeature.h"
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "FeaturePhases/FoxxFeaturePhase.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/EndpointFeature.h"
+#include "RestServer/FrontendFeature.h"
+#include "RestServer/ScriptFeature.h"
+#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -56,12 +68,13 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
       _compactionKeepSize(50000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
+      _supervisionOkThreshold(5.0),
       _cmdLineTimings(false) {
   setOptional(true);
-  startsAfter("FoxxPhase");
+  startsAfter<FoxxFeaturePhase>();
 }
 
-AgencyFeature::~AgencyFeature() {}
+AgencyFeature::~AgencyFeature() = default;
 
 void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "Configure the agency");
@@ -76,12 +89,12 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--agency.election-timeout-min",
-      "minimum timeout before an agent calls for new election [s]",
+      "minimum timeout before an agent calls for new election (in seconds)",
       new DoubleParameter(&_minElectionTimeout));
 
   options->addOption(
       "--agency.election-timeout-max",
-      "maximum timeout before an agent calls for new election [s]",
+      "maximum timeout before an agent calls for new election (in seconds)",
       new DoubleParameter(&_maxElectionTimeout));
 
   options->addOption("--agency.endpoint", "agency endpoints",
@@ -96,13 +109,18 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_supervision));
 
   options->addOption("--agency.supervision-frequency",
-                     "arangodb cluster supervision frequency [s]",
+                     "arangodb cluster supervision frequency (in seconds)",
                      new DoubleParameter(&_supervisionFrequency));
 
   options->addOption(
       "--agency.supervision-grace-period",
-      "supervision time, after which a server is considered to have failed [s]",
+      "supervision time, after which a server is considered to have failed (in seconds)",
       new DoubleParameter(&_supervisionGracePeriod));
+
+  options->addOption(
+      "--agency.supervision-ok-threshold",
+      "supervision time, after which a server is considered to be bad [s]",
+      new DoubleParameter(&_supervisionOkThreshold));
 
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",
@@ -233,36 +251,40 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   //   the selected storage engine
   // - ArangoSearch: not needed by agency even if MMFiles is the selected
   //   storage engine
+  // - IResearchAnalyzer: analyzers are not needed by agency
   // - Statistics: turn off statistics gathering for agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
-  std::vector<std::string> disabledFeatures(
-      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action",
-       "Script", "FoxxQueues", "Frontend"});
+  std::vector<std::type_index> disabledFeatures(
+      {std::type_index(typeid(MMFilesPersistentIndexFeature)),
+       std::type_index(typeid(iresearch::IResearchFeature)),
+       std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
+       std::type_index(typeid(ActionFeature)),
+       std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxQueuesFeature)),
+       std::type_index(typeid(FrontendFeature))});
+
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
     // specifiying --console requires JavaScript, so we can only turn it off
     // if not specified
 
     // console mode inactive. so we can turn off V8
-    disabledFeatures.emplace_back("V8Platform");
-    disabledFeatures.emplace_back("V8Dealer");
+    disabledFeatures.emplace_back(std::type_index(typeid(V8PlatformFeature)));
+    disabledFeatures.emplace_back(std::type_index(typeid(V8DealerFeature)));
   }
 
-  application_features::ApplicationServer::disableFeatures(disabledFeatures);
+  server().disableFeatures(disabledFeatures);
 }
 
 void AgencyFeature::prepare() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   // Available after validateOptions of ClusterFeature
   // Find the agency prefix:
-  auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (!feature->agencyPrefix().empty()) {
+  auto& feature = server().getFeature<ClusterFeature>();
+  if (!feature.agencyPrefix().empty()) {
     arangodb::consensus::Supervision::setAgencyPrefix(std::string("/") +
-                                                      feature->agencyPrefix());
-    arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();
+                                                      feature.agencyPrefix());
+    arangodb::consensus::Job::agencyPrefix = feature.agencyPrefix();
   }
 
   std::string endpoint;
@@ -271,9 +293,8 @@ void AgencyFeature::prepare() {
     std::string port = "8529";
 
     // Available after prepare of EndpointFeature
-    EndpointFeature* endpointFeature =
-        ApplicationServer::getFeature<EndpointFeature>("Endpoint");
-    auto endpoints = endpointFeature->httpEndpoints();
+    HttpEndpointProvider& endpointFeature = server().getFeature<HttpEndpointProvider>();
+    auto endpoints = endpointFeature.httpEndpoints();
 
     if (!endpoints.empty()) {
       std::string const& tmp = endpoints.front();
@@ -294,19 +315,19 @@ void AgencyFeature::prepare() {
     _maxAppendSize /= 10;
   }
 
-  _agent.reset(new consensus::Agent(consensus::config_t(
-      _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
-      endpoint, _agencyEndpoints, _supervision, _supervisionTouched, _waitForSync,
-      _supervisionFrequency, _compactionStepSize, _compactionKeepSize,
-      _supervisionGracePeriod, _cmdLineTimings, _maxAppendSize)));
+  _agent.reset(new consensus::Agent(
+      server(), consensus::config_t(_recoveryId, _size, _poolSize, _minElectionTimeout,
+                                    _maxElectionTimeout, endpoint, _agencyEndpoints,
+                                    _supervision, _supervisionTouched, _waitForSync,
+                                    _supervisionFrequency, _compactionStepSize,
+                                    _compactionKeepSize, _supervisionGracePeriod,
+                                    _supervisionOkThreshold,_cmdLineTimings, _maxAppendSize)));
 
   AGENT = _agent.get();
 }
 
 void AgencyFeature::start() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   LOG_TOPIC("a77c8", DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
@@ -316,23 +337,19 @@ void AgencyFeature::start() {
 }
 
 void AgencyFeature::beginShutdown() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   // pass shutdown event to _agent so it can notify all its sub-threads
   _agent->beginShutdown();
 }
 
 void AgencyFeature::stop() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   if (_agent->inception() != nullptr) {  // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC("bf6a6", WARN, Logger::AGENCY)
@@ -344,7 +361,7 @@ void AgencyFeature::stop() {
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(100000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC("5d3a5", WARN, Logger::AGENCY) << "waiting for agent thread to finish";
@@ -361,9 +378,7 @@ void AgencyFeature::stop() {
 }
 
 void AgencyFeature::unprepare() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
   // delete the Agent object here ensures it shuts down all of its threads
   // this is a precondition that it must fulfill before we can go on with the
   // shutdown

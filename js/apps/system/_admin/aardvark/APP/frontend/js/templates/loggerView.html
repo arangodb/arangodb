@@ -1,0 +1,29 @@
+<div id="loggerContent" class="logger-content-id innerContent">
+
+  <div class="arangoToolbar arangoToolbarTop">
+
+    <div class="pull-left">
+    </div>
+
+    <div class="pull-right">
+      <button id="logTopicSelection" class="button-default filterSelect">Topic <i class="fa fa-caret-down"></i></button>
+      <button id="logLevelSelection" class="button-default filterSelect">Level <i class="fa fa-caret-down"></i></button>
+      <button style="display: none" class="button-default filterSelect" id="logFilters">
+        <i class="fa fa-close"></i>Clear current <a id="filterDesc"></a> filter
+      </button>
+    </div>
+
+  </div>
+
+  <div id="noLogEntries" style="display: none">
+    <span>No suitable log entries found </span>
+  </div>
+
+  <div id="logEntries">
+  </div>
+
+  <div class="actions">
+    <button id="loadMoreEntries" class="button-success">Load older entries</button>
+  </div>
+
+</div>

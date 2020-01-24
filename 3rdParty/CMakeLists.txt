@@ -8,12 +8,46 @@ include(ExternalProject)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
+# Disable IPO for 3rdParty libs. This is because they currently all use old
+# cmake versions, missing policy CMP0069.
+# Hopefully this can be removed later - just try it out and look for warnings in
+# cmake's output. Also, you can use the compile_commands.json optionally emitted
+# by cmake (see CMAKE_EXPORT_COMPILE_COMMANDS) and jq to get a list of files we
+# do not compile with IPO (assuming gcc or clang) with this command:
+#   < compile_commands.json jq '.[] | select(.command | test("-flto") | not) | .file' -r
+if (${IPO_ENABLED})
+    message ("Disabling IPO for 3rdParty libraries")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+endif ()
+
 ################################################################################
 ## ZLIB
 ################################################################################
 
 set(SKIP_INSTALL_ALL ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
+
+################################################################################
+## SNAPPY
+################################################################################
+
+set(SNAPPY_VERSION "1.1.7")
+set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_LIB "snappy")
+set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
+add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
+
+################################################################################
+## JEMALLOC
+################################################################################
+
+if (USE_JEMALLOC)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
+  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
+  link_directories("${JEMALLOC_HOME}/lib")
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
+endif ()
 
 ################################################################################
 ## V8 and ICU
@@ -104,6 +138,13 @@ add_subdirectory(s2geometry)
 set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
+## Googletest
+################################################################################
+
+#add_subdirectory(googletest)
+#set(ARANGO_GOOGLETEST_VERSION "${ARANGO_GOOGLETEST_VERSION}" PARENT_SCOPE)
+
+################################################################################
 ## BOOST
 ################################################################################
 
@@ -164,6 +205,7 @@ if(NOT PERL_FOUND)
   endif()
 endif()
 
+set(USE_IPO ${IPO_ENABLED})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
@@ -200,17 +242,17 @@ endif()
 ################################################################################
 add_definitions(-DCURL_STATICLIB=1)
 
-set(ENABLE_MANUAL OFF CACHE type BOOL)
-set(BUILD_CURL_EXE OFF CACHE type BOOL)
-set(BUILD_SHARED_LIBS OFF CACHE type BOOL)
-set(BUILD_TESTING OFF CACHE type BOOL)
-set(CURL_STATICLIB ON CACHE type BOOL)
-set(HTTP_ONLY ON CACHE type BOOL)
-set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
-set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
+set(ENABLE_MANUAL OFF CACHE BOOL "Enable manual")
+set(BUILD_CURL_EXE OFF CACHE BOOL "Build curl.exe")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
+set(BUILD_TESTING OFF CACHE BOOL "Build testing")
+set(CURL_STATICLIB ON CACHE BOOL "Curl static library")
+set(HTTP_ONLY ON CACHE BOOL "HTTP only")
+set(CMAKE_USE_LIBSSH2 OFF CACHE BOOL "Use libssh2")
+set(CMAKE_USE_OPENSSL ON CACHE BOOL "Use OpenSSL")
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
-set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-set(CURL_VERSION "7.63.0")
+set(ENABLE_THREADED_RESOLVER ON CACHE BOOL "Enable threaded resolver")
+set(CURL_VERSION "7.66.0")
 set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
 add_subdirectory(${CURL_SRC_DIR})
 
@@ -221,34 +263,18 @@ set(CURL_SRC_DIR "${CURL_SRC_DIR}" PARENT_SCOPE)
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
-## SNAPPY
-################################################################################
-
-set(SNAPPY_VERSION "1.1.7")
-set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
-set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
-set(SNAPPY_LIB "snappy")
-set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
-add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
-
-################################################################################
-## JEMALLOC
-################################################################################
-
-if (USE_JEMALLOC)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
-  link_directories("${JEMALLOC_HOME}/lib")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
-endif ()
-
-################################################################################
 ## ROCKSDB
 ################################################################################
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 include_directories(${ROCKSDB_INCLUDE_DIR})
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
+
+################################################################################
+## NGHTTP2
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
 
 ################################################################################
 ## LINK_DIRECTORIES
@@ -284,3 +310,37 @@ if (EXISTS ${STARTER_SOURCE})
     MESSAGE(WARNING "arangodb starter source present, but no go command to build it found.")
   endif()
 endif()
+
+add_library(fuerte STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/GeneralConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H1Connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H2Connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/jwt.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/message.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/requests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/types.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/vst.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/VstConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
+  )
+
+target_link_libraries(fuerte nghttp2)
+
+check_type_size("ssize_t" SIZEOF_SSIZE_T)
+if(SIZEOF_SSIZE_T STREQUAL "")
+  # ssize_t is a signed type in POSIX storing at least -1.
+  # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
+  target_compile_definitions(fuerte PRIVATE ssize_t=int)
+endif()
+
+target_include_directories(fuerte SYSTEM PRIVATE
+  "${Boost_INCLUDE_DIRS}/"
+  "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
+

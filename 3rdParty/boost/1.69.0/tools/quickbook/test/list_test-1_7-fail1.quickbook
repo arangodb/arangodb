@@ -1,9 +1,0 @@
-[article List Fail Test 1
-[quickbook 1.7]
-]
-
-[section List immediately following markup]
-* One
-* Two
-* Three
-[endsect]

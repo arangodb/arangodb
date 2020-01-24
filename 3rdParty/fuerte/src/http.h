@@ -28,45 +28,36 @@
 #include <fuerte/types.h>
 #include <string>
 
-#include "CallOnceRequestCallback.h"
-
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
-// in-flight request data
-struct RequestItem {
-  /// ID of this message
-  MessageID _messageID;
-  /// Reference to the request we're processing
-  std::unique_ptr<arangodb::fuerte::v1::Request> _request;
-  /// response data, may be null before response header is received
-  std::unique_ptr<arangodb::fuerte::v1::Response> _response;
-  /// Callback for when request is done (in error or succeeded)
-  RequestCallback _callback;
+/// url-decodes [src, src+len) into out
+void urlDecode(std::string& out, char const* src, size_t len);
 
-  // buffer for the request header, reset after request was send
-  std::string _requestHeader;
-  /// response buffer, moved after writing
-  velocypack::Buffer<uint8_t> _responseBuffer;
+/// url-decodes str into out - convenience function
+inline void urlDecode(std::string& out, std::string const& str) {
+  return urlDecode(out, str.data(), str.size());
+}
 
-  // parser state
-  bool message_complete = false;
-  bool should_keep_alive = false;
-  bool last_header_was_a_value = false;
-  std::string lastHeaderField;
-  std::string lastHeaderValue;
+/// url-decodes str and returns it - convenience function
+inline std::string urlDecode(std::string const& str) {
+  std::string result;
+  urlDecode(result, str.c_str(), str.size());
+  return result;
+}
 
-  inline MessageID messageID() { return _messageID; }
-  inline void invokeOnError(Error e) {
-    _callback(e, std::move(_request), nullptr);
-  }
-};
+/// url-encodes [src, src+len) into out
+void urlEncode(std::string& out, char const* src, size_t len);
 
-std::string urlDecode(std::string const& str);
-std::string urlEncode(char const* src, size_t const len);
-std::string urlEncode(char const* src);
+/// url-encodes str into out - convenience function
+inline void urlEncode(std::string& out, std::string const& str) {
+  return urlEncode(out, str.data(), str.size());
+}
 
+/// url-encodes str and returns it - convenience function
 inline std::string urlEncode(std::string const& str) {
-  return urlEncode(str.c_str(), str.size());
+  std::string result;
+  urlEncode(result, str.c_str(), str.size());
+  return result;
 }
 }}}}  // namespace arangodb::fuerte::v1::http
 #endif

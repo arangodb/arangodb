@@ -21,9 +21,17 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <algorithm>
+#include <memory>
+#include <ostream>
+
 #include "AttributeNameParser.h"
+
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
+#include "Basics/debugging.h"
+#include "Basics/fasthash.h"
+#include "Basics/voc-errors.h"
 
 #include <velocypack/StringRef.h>
 
@@ -34,6 +42,10 @@ arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef c
 
 arangodb::basics::AttributeName::AttributeName(arangodb::velocypack::StringRef const& name, bool expand)
     : name(name.toString()), shouldExpand(expand) {}
+
+uint64_t arangodb::basics::AttributeName::hash(uint64_t seed) const {
+  return fasthash64(name.data(), name.size(), seed) ^ (shouldExpand ? 0xec59a4d : 0x4040ec59a4d40);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two attribute name vectors
@@ -155,7 +167,7 @@ void arangodb::basics::TRI_AttributeNamesToString(std::vector<AttributeName> con
   TRI_ASSERT(result.empty());
 
   bool isFirst = true;
-  for (auto& it : input) {
+  for (auto const& it : input) {
     if (!isFirst) {
       result += ".";
     }
@@ -167,39 +179,10 @@ void arangodb::basics::TRI_AttributeNamesToString(std::vector<AttributeName> con
   }
 }
 
-void arangodb::basics::TRI_AttributeNamesJoinNested(std::vector<AttributeName> const& input,
-                                                    std::vector<std::string>& result,
-                                                    bool onlyFirst) {
-  TRI_ASSERT(result.empty());
-  std::string tmp;
-  bool isFirst = true;
-
-  for (size_t i = 0; i < input.size(); ++i) {
-    if (!isFirst) {
-      tmp += ".";
-    }
-    isFirst = false;
-    tmp += input[i].name;
-    if (input[i].shouldExpand) {
-      if (onlyFirst) {
-        // If we only need the first pid we can stop here
-        break;
-      }
-      result.emplace_back(tmp);
-      tmp.clear();
-      isFirst = true;
-    }
-  }
-  result.emplace_back(tmp);
-}
-
 bool arangodb::basics::TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input) {
-  for (auto& it : input) {
-    if (it.shouldExpand) {
-      return true;
-    }
-  }
-  return false;
+  return std::any_of(input.begin(), input.end(), [](AttributeName const& value) {
+    return value.shouldExpand; 
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

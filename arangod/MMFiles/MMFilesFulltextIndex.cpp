@@ -27,7 +27,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
 #include "StorageEngine/TransactionState.h"
@@ -51,7 +53,7 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
-    for (auto const& v : VPackArrayIterator(value)) {
+    for (VPackSlice v : VPackArrayIterator(value)) {
       extractWords(words, v, level + 1);
     }
   } else if (value.isObject() && level == 0) {
@@ -205,7 +207,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods& trx,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice const& doc,
                                     Index::OperationMode mode) {
-  Result res;
+  Result res{TRI_ERROR_NO_ERROR};
   int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
   if (!words.empty()) {
@@ -214,6 +216,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods& trx,
   if (r != TRI_ERROR_NO_ERROR) {
     addErrorMsg(res, r);
   }
+  //cppcheck-suppress uninitvar; false positive
   return res;
 }
 
@@ -221,7 +224,7 @@ Result MMFilesFulltextIndex::remove(transaction::Methods& trx,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice const& doc,
                                     Index::OperationMode mode) {
-  Result res;
+  Result res{TRI_ERROR_NO_ERROR};
   int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
@@ -231,6 +234,7 @@ Result MMFilesFulltextIndex::remove(transaction::Methods& trx,
   if (r != TRI_ERROR_NO_ERROR) {
     addErrorMsg(res, r);
   }
+  //cppcheck-suppress uninitvar; false positive
   return res;
 }
 
@@ -238,7 +242,7 @@ void MMFilesFulltextIndex::unload() {
   TRI_TruncateMMFilesFulltextIndex(_fulltextIndex);
 }
 
-IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> MMFilesFulltextIndex::iteratorForCondition(
     transaction::Methods* trx, aql::AstNode const* condNode,
     aql::Variable const* var, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -274,7 +278,7 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
   // note: the following call will free "ft"!
   std::set<TRI_voc_rid_t> results = TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
 
-  return new MMFilesFulltextIndexIterator(&_collection, trx, std::move(results));
+  return std::make_unique<MMFilesFulltextIndexIterator>(&_collection, trx, std::move(results));
 }
 
 /// @brief callback function called by the fulltext index to determine the

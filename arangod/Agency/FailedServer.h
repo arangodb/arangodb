@@ -44,7 +44,7 @@ struct FailedServer : public Job {
   virtual bool create(std::shared_ptr<VPackBuilder> b = nullptr) override final;
   virtual JOB_STATUS status() override final;
   virtual void run(bool&) override final;
-  virtual Result abort() override final;
+  virtual Result abort(std::string const& reason) override final;
 
   std::string _server;
 };

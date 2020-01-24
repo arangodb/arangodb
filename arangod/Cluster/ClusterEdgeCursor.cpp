@@ -51,8 +51,8 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, u
   transaction::BuilderLeaser b(trx);
 
   b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
-  fetchEdgesFromEngines(trx->vocbase().name(), _cache->engines(), b->slice(), depth,
-                        _cache->cache(), _edgeList, _cache->datalake(), *(leased.get()),
+  fetchEdgesFromEngines(*trx, _cache->engines(), b->slice(), depth,
+                        _cache->cache(), _edgeList, _cache->datalake(),
                         _cache->filteredDocuments(), _cache->insertedDocuments());
   _httpRequests += _cache->engines()->size();
 }
@@ -70,9 +70,8 @@ ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, b
   transaction::BuilderLeaser b(trx);
 
   b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
-  fetchEdgesFromEngines(trx->vocbase().name(), _cache->engines(), b->slice(),
-                        backward, _cache->cache(), _edgeList, _cache->datalake(),
-                        *(leased.get()), _cache->insertedDocuments());
+  fetchEdgesFromEngines(*trx, _cache->engines(), b->slice(), backward, _cache->cache(),
+                        _edgeList, _cache->datalake(), _cache->insertedDocuments());
   _httpRequests += _cache->engines()->size();
 }
 

@@ -104,62 +104,79 @@ TEST_F(token_masking_stream_tests, test_load) {
   {
     irs::string_ref data0("abc");
     irs::string_ref data1("ghi");
-    auto stream = irs::analysis::analyzers::get("token-mask", irs::text_format::json, "[ \"abc\", \"646566\", \"6D6e6F\" ]");
 
-    ASSERT_NE(nullptr, stream);
-    ASSERT_TRUE(stream->reset(data0));
-    ASSERT_FALSE(stream->next());
-    ASSERT_TRUE(stream->reset(data1));
+    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer::ptr stream) {
+      ASSERT_NE(nullptr, stream);
+      ASSERT_TRUE(stream->reset(data0));
+      ASSERT_FALSE(stream->next());
+      ASSERT_TRUE(stream->reset(data1));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
+      auto& offset = stream->attributes().get<irs::offset>();
+      auto& payload = stream->attributes().get<irs::payload>();
+      auto& term = stream->attributes().get<irs::term_attribute>();
 
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
-    ASSERT_FALSE(stream->next());
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(3, offset->end);
+      ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
+      ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+      ASSERT_FALSE(stream->next());
+    };
+    auto stream = irs::analysis::analyzers::get("mask", irs::text_format::json, "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+    testFunc(data0, data1, stream);
+
+    auto streamFromJsonObjest = irs::analysis::analyzers::get("mask", irs::text_format::json, "{\"mask\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
+    testFunc(data0, data1, streamFromJsonObjest);
+
   }
 
   // load jSON object (mask string hex)
   {
     irs::string_ref data0("abc");
     irs::string_ref data1("646566");
-    auto stream = irs::analysis::analyzers::get("token-mask", irs::text_format::json, "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+ 
 
-    ASSERT_NE(nullptr, stream);
-    ASSERT_TRUE(stream->reset(data0));
-    ASSERT_FALSE(stream->next());
-    ASSERT_TRUE(stream->reset(data1));
+    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer::ptr stream) {
+      ASSERT_NE(nullptr, stream);
+      ASSERT_TRUE(stream->reset(data0));
+      ASSERT_FALSE(stream->next());
+      ASSERT_TRUE(stream->reset(data1));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
+      auto& offset = stream->attributes().get<irs::offset>();
+      auto& payload = stream->attributes().get<irs::payload>();
+      auto& term = stream->attributes().get<irs::term_attribute>();
 
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(6, offset->end);
-    ASSERT_EQ("646566", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("646566", irs::ref_cast<char>(term->value()));
-    ASSERT_FALSE(stream->next());
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(6, offset->end);
+      ASSERT_EQ("646566", irs::ref_cast<char>(payload->value));
+      ASSERT_EQ("646566", irs::ref_cast<char>(term->value()));
+      ASSERT_FALSE(stream->next());
+    };
+
+    auto stream = irs::analysis::analyzers::get("mask", irs::text_format::json, "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+    testFunc(data0, data1, stream);
+
+
+    auto streamFromJsonObjest = irs::analysis::analyzers::get("mask", irs::text_format::json, "{\"mask\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
+    testFunc(data0, data1, streamFromJsonObjest);
+
   }
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("token-mask", irs::text_format::json, irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("token-mask", irs::text_format::json, "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("token-mask", irs::text_format::json, "\"abc\""));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("token-mask", irs::text_format::json, "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("token-mask", irs::text_format::json, "{\"mask\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::text_format::json, irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::text_format::json, "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::text_format::json, "\"abc\""));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::text_format::json, "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::text_format::json, "{\"mask\":1}"));
   }
 
   // load text (mask hex)
   {
     irs::string_ref data0("ghi");
     irs::string_ref data1("mno");
-    auto stream = irs::analysis::analyzers::get("token-mask", irs::text_format::text, "abc \n646566\t6D6e6F");
+    auto stream = irs::analysis::analyzers::get("mask", irs::text_format::text, "abc \n646566\t6D6e6F");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data0));
@@ -183,7 +200,7 @@ TEST_F(token_masking_stream_tests, test_load) {
   {
     irs::string_ref data0("ghi");
     irs::string_ref data1("mno");
-    auto stream = irs::analysis::analyzers::get("token-mask", irs::text_format::text, irs::string_ref::NIL);
+    auto stream = irs::analysis::analyzers::get("mask", irs::text_format::text, irs::string_ref::NIL);
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data0));
@@ -208,6 +225,52 @@ TEST_F(token_masking_stream_tests, test_load) {
     ASSERT_FALSE(stream->next());
   }
 }
+
+// commented out due to lack
+//TEST_F(token_masking_stream_tests, test_make_config_json) {
+//
+//  //with unknown parameter
+//  {
+//    std::string config = "{\"mask\":[\"abc\",\"646566\",\"6D6e6F\"],\"invalid_parameter\":true}";
+//    auto stream = irs::analysis::analyzers::get("mask", irs::text_format::json, config.c_str());
+//    ASSERT_NE(nullptr, stream);
+//
+//    std::string actual;
+//    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+//    ASSERT_EQ("{\"mask\":[\"abc\",\"646566\",\"6D6e6F\"]}", actual);
+//  }
+//  //with dublicates  removed
+//  {
+//    std::string config = "{\"mask\":[\"abc\",\"646566\",\"6D6e6F\",\"abc\"],\"invalid_parameter\":true}";
+//    auto stream = irs::analysis::analyzers::get("mask", irs::text_format::json, config.c_str());
+//    ASSERT_NE(nullptr, stream);
+//
+//    std::string actual;
+//    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+//    ASSERT_EQ("{\"mask\":[\"abc\",\"646566\",\"6D6e6F\"]}", actual);
+//  }
+//
+//
+//}
+//
+//TEST_F(token_masking_stream_tests, test_make_config_text) {
+//  std::string config = "abc \n646566\t6D6e6F";
+//  auto stream = irs::analysis::analyzers::get("mask", irs::text_format::text, config.c_str());
+//  ASSERT_NE(nullptr, stream);
+//
+//  std::string actual;
+//  ASSERT_TRUE(stream->to_string(::irs::text_format::text, actual));
+//  ASSERT_EQ(config, actual);
+//}
+//
+//TEST_F(token_masking_stream_tests, test_make_config_invalid_format) {
+//  std::string config = "abc \n646566\t6D6e6F";
+//  auto stream = irs::analysis::analyzers::get("mask", irs::text_format::text, config.c_str());
+//  ASSERT_NE(nullptr, stream);
+//
+//  std::string actual;
+//  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
+//}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -28,10 +28,9 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-
-#include <lib/Logger/LogMacros.h>
+#include "Aql/Stats.h"
 
 #include <utility>
 
@@ -49,12 +48,15 @@ FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nr
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}
 
+RegisterId FilterExecutorInfos::getInputRegister() const noexcept { return _inputRegister; }
+
 FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher) {}
+
 FilterExecutor::~FilterExecutor() = default;
 
-std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("FilterExecutor::produceRow") {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+std::pair<ExecutionState, FilterStats> FilterExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("FilterExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state;
   FilterStats stats{};
@@ -86,7 +88,6 @@ std::pair<ExecutionState, FilterStats> FilterExecutor::produceRow(OutputAqlItemR
     TRI_ASSERT(state == ExecutionState::HASMORE);
   }
 }
-
 
 std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t atMost) const {
   // This block cannot know how many elements will be returned exactly.

@@ -27,15 +27,16 @@
 #include "Basics/Common.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 #include <functional>
 #include <memory>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// class AgencyCallback
@@ -71,7 +72,7 @@ namespace arangodb {
 /// pseudocode does not miss events:
 ///
 /// create AgencyCallback object with a callback function and register it
-/// TRI_defer(unregister callback)
+/// TRI_DEFER(unregister callback)
 /// {
 ///   acquire mutex of condition variable
 ///   while true:
@@ -92,8 +93,8 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  AgencyCallback(AgencyComm&, std::string const&,
-                 std::function<bool(VPackSlice const&)> const&, bool needsValue,
+  AgencyCallback(application_features::ApplicationServer& server, std::string const&,
+                 std::function<bool(velocypack::Slice const&)> const&, bool needsValue,
                  bool needsInitialValue = true);
 
   std::string const key;
@@ -112,28 +113,41 @@ class AgencyCallback {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait until a callback is received or a timeout has happened
+  /// 
+  /// @return true => if we got woken up after maxTimeout
+  ///         false => if someone else ringed the condition variable
   //////////////////////////////////////////////////////////////////////////////
 
-  void executeByCallbackOrTimeout(double);
+  bool executeByCallbackOrTimeout(double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief private members
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  AgencyComm& _agency;
-  std::function<bool(VPackSlice const&)> const _cb;
-  std::shared_ptr<VPackBuilder> _lastData;
+  AgencyComm _agency;
+  std::function<bool(velocypack::Slice const&)> const _cb;
+  std::shared_ptr<velocypack::Builder> _lastData;
   bool const _needsValue;
 
+  /// @brief this flag is set if there was an attempt to signal the callback's
+  /// condition variable - this is necessary to catch all signals that happen
+  /// before the caller is going into the wait state, i.e. to prevent this
+  ///  1) register callback
+  ///  2a) execute callback
+  ///  2b) execute callback signaling
+  ///  3) caller going into condition.wait() (and not woken up)
+  /// this variable is protected by the condition variable! 
+  bool _wasSignaled;
+
   // execute callback with current value data:
-  bool execute(std::shared_ptr<VPackBuilder>);
+  bool execute(std::shared_ptr<velocypack::Builder>);
   // execute callback without any data:
   bool executeEmpty();
 
   // Compare last value and newly read one and call execute if the are
   // different:
-  void checkValue(std::shared_ptr<VPackBuilder>, bool forceCheck);
+  void checkValue(std::shared_ptr<velocypack::Builder>, bool forceCheck);
 };
 
 }  // namespace arangodb

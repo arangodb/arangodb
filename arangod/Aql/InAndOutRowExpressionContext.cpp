@@ -21,12 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InAndOutRowExpressionContext.h"
-#include "Aql/AqlItemBlock.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
-#include <limits.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -58,24 +58,6 @@ void InAndOutRowExpressionContext::setInputRow(InputAqlItemRow input) {
 
 void InAndOutRowExpressionContext::invalidateInputRow() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-}
-
-AqlValue const& InAndOutRowExpressionContext::getRegisterValue(size_t i) const {
-  TRI_ASSERT(_input.isInitialized());
-  TRI_ASSERT(i < _regs.size());
-  if (i == _vertexVarIdx) {
-    return _vertexValue;
-  }
-  if (i == _edgeVarIdx) {
-    return _edgeValue;
-  }
-  if (i == _pathVarIdx) {
-    return _pathValue;
-  }
-  // Search InputRow
-  RegisterId const& regId = _regs[i];
-  TRI_ASSERT(regId < _input.getNrRegisters());
-  return _input.getValue(regId);
 }
 
 AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
@@ -124,4 +106,32 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
   // NOTE: PRUNE is the only feature using this context.
   msg.append("' in PRUNE statement");
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
+}
+
+size_t InAndOutRowExpressionContext::numRegisters() const {
+  return _regs.size();
+}
+
+bool InAndOutRowExpressionContext::needsVertexValue() const {
+  return _vertexVarIdx < _regs.size();
+}
+
+bool InAndOutRowExpressionContext::needsEdgeValue() const {
+  return _edgeVarIdx < _regs.size();
+}
+
+bool InAndOutRowExpressionContext::needsPathValue() const {
+  return _pathVarIdx < _regs.size();
+}
+
+void InAndOutRowExpressionContext::setVertexValue(velocypack::Slice v) {
+  _vertexValue = AqlValue(AqlValueHintDocumentNoCopy(v.begin()));
+}
+
+void InAndOutRowExpressionContext::setEdgeValue(velocypack::Slice e) {
+  _edgeValue = AqlValue(AqlValueHintDocumentNoCopy(e.begin()));
+}
+
+void InAndOutRowExpressionContext::setPathValue(velocypack::Slice p) {
+  _pathValue = AqlValue(AqlValueHintDocumentNoCopy(p.begin()));
 }

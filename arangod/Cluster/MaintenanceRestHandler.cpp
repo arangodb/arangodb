@@ -26,18 +26,26 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/DBServerAgencySync.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
+#include "velocypack/Iterator.h"
+#include "velocypack/velocypack-aliases.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MaintenanceRestHandler::MaintenanceRestHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+MaintenanceRestHandler::MaintenanceRestHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus MaintenanceRestHandler::execute() {
   // extract the sub-request type
@@ -47,6 +55,11 @@ RestStatus MaintenanceRestHandler::execute() {
     // retrieve list of all actions
     case rest::RequestType::GET:
       getAction();
+      break;
+
+    // administrative commands for hot restore 
+    case rest::RequestType::POST:
+      return postAction();
       break;
 
     // add an action to the list (or execute it directly)
@@ -66,6 +79,70 @@ RestStatus MaintenanceRestHandler::execute() {
   }  // switch
 
   return RestStatus::DONE;
+}
+
+RestStatus MaintenanceRestHandler::postAction() {
+  std::stringstream es;
+
+  std::shared_ptr<VPackBuilder> bptr;
+  try {
+
+    bptr = _request->toVelocyPackBuilderPtr();
+    LOG_TOPIC("a0212", DEBUG, Logger::MAINTENANCE) << "parsed post action " << bptr->toJson();
+  } catch (std::exception const& e) {
+    es << "failed parsing post action "  << bptr->toJson() << " " << e.what();
+    return RestStatus::DONE;
+  }
+
+  VPackSlice body = bptr->slice();
+  
+  if (body.isObject()) {
+    std::chrono::seconds dur(0);
+    if (body.hasKey("execute") && body.get("execute").isString()) {
+      // {"execute": "pause", "duration": 60} / {"execute": "proceed"}
+      auto const ex = body.get("execute").copyString();
+      if (ex == "pause") {
+        if (body.hasKey("duration") && body.get("duration").isNumber()) {
+          dur = std::chrono::seconds(body.get("duration").getNumber<int64_t>());
+          if (dur.count() <= 0 || dur.count() > 300) {
+            es << "invalid mainenance pause duration: " << dur.count()
+                  << " seconds";
+          }
+          // Pause maintenance
+          LOG_TOPIC("1ee7a", DEBUG, Logger::MAINTENANCE)
+            << "Maintenance is paused for " << dur.count() << " seconds";
+          server().getFeature<MaintenanceFeature>().pause(dur);
+        }
+      } else if (ex == "proceed") {
+        LOG_TOPIC("6c38a", DEBUG, Logger::MAINTENANCE)
+          << "Maintenance is prceeded "  << dur.count() << " seconds";
+        server().getFeature<MaintenanceFeature>().proceed();
+      } else {
+        es << "invalid POST command";
+          }
+    } else {
+      es << "invalid POST object";
+    }
+  } else {
+    es << "invalid POST body";
+  }
+
+  if (es.str().empty()) {
+    VPackBuilder ok;
+    {
+      VPackObjectBuilder o(&ok);
+      ok.add(StaticStrings::Error, VPackValue(false));
+      ok.add(StaticStrings::Code, VPackValue(200));
+      ok.add("result", VPackValue(true));
+    }
+    generateResult(rest::ResponseCode::OK, ok.slice());
+  } else {
+    LOG_TOPIC("9faa1", ERR, Logger::MAINTENANCE) << es.str(); 
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, es.str());
+  }
+
+  return RestStatus::DONE;
+
 }
 
 void MaintenanceRestHandler::putAction() {
@@ -103,9 +180,8 @@ void MaintenanceRestHandler::putAction() {
     Result result;
 
     // build the action
-    auto maintenance =
-        ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
-    result = maintenance->addAction(_actionDesc);
+    auto& maintenance = server().getFeature<MaintenanceFeature>();
+    result = maintenance.addAction(_actionDesc);
 
     if (!result.ok()) {
       // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID
@@ -152,8 +228,7 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const& parameters) {
 
 void MaintenanceRestHandler::getAction() {
   // build the action
-  auto maintenance =
-      ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+  auto& maintenance = server().getFeature<MaintenanceFeature>();
 
   bool found;
   std::string const& detailsStr = _request->value("details", found);
@@ -161,11 +236,17 @@ void MaintenanceRestHandler::getAction() {
   VPackBuilder builder;
   {
     VPackObjectBuilder o(&builder);
+    builder.add("status", VPackValue(maintenance.isPaused() ? "paused" : "running"));
     builder.add(VPackValue("registry"));
-    maintenance->toVelocyPack(builder);
+    maintenance.toVelocyPack(builder);
     if (found && StringUtils::boolean(detailsStr)) {
       builder.add(VPackValue("state"));
-      DBServerAgencySync::getLocalCollections(builder);
+
+      auto& cluster = server().getFeature<ClusterFeature>();
+      auto thread = cluster.heartbeatThread();
+      if (thread) {
+        thread->agencySync().getLocalCollections(builder);
+      }
     }
   }
 
@@ -174,8 +255,7 @@ void MaintenanceRestHandler::getAction() {
 }  // MaintenanceRestHandler::getAction
 
 void MaintenanceRestHandler::deleteAction() {
-  auto maintenance =
-      ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+  auto& maintenance = server().getFeature<MaintenanceFeature>();
 
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -190,7 +270,7 @@ void MaintenanceRestHandler::deleteAction() {
                     result.errorMessage());
     } else {
       uint64_t action_id = StringUtils::uint64(param);
-      result = maintenance->deleteAction(action_id);
+      result = maintenance.deleteAction(action_id);
 
       // can fail on bad id or if action already succeeded.
       if (!result.ok()) {

@@ -20,19 +20,19 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/ConstFetcher.h"
-
-#include "Aql/AqlItemBlock.h"
-#include "Aql/BlockFetcher.h"
-#include "Aql/FilterExecutor.h"
 #include "ConstFetcher.h"
+
+#include "Aql/DependencyProxy.h"
+#include "Aql/ShadowAqlItemRow.h"
+#include "Basics/Exceptions.h"
+#include "Basics/voc-errors.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 
-ConstFetcher::ConstFetcher(BlockFetcher& executionBlock)
+ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
 
 void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
@@ -41,7 +41,8 @@ void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
   _rowIndex = 0;
 }
 
-std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
+std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow(size_t) {
+  // This fetcher does not use atMost
   // This fetcher never waits because it can return only its
   // injected block and does not have the ability to pull.
   if (!indexIsValid()) {
@@ -49,13 +50,31 @@ std::pair<ExecutionState, InputAqlItemRow> ConstFetcher::fetchRow() {
   }
   TRI_ASSERT(_currentBlock != nullptr);
 
-  //set state
+  // set state
   ExecutionState rowState = ExecutionState::HASMORE;
   if (isLastRowInBlock()) {
     rowState = ExecutionState::DONE;
   }
 
   return {rowState, InputAqlItemRow{_currentBlock, _rowIndex++}};
+}
+
+std::pair<ExecutionState, size_t> ConstFetcher::skipRows(size_t) {
+  // This fetcher never waits because it can return only its
+  // injected block and does not have the ability to pull.
+  if (!indexIsValid()) {
+    return {ExecutionState::DONE, 0};
+  }
+  TRI_ASSERT(_currentBlock != nullptr);
+
+  // set state
+  ExecutionState rowState = ExecutionState::HASMORE;
+  if (isLastRowInBlock()) {
+    rowState = ExecutionState::DONE;
+  }
+  _rowIndex++;
+
+  return {rowState, 1};
 }
 
 bool ConstFetcher::indexIsValid() {
@@ -74,4 +93,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ConstFetcher::fetchBlockForPass
   // time to track them down. Thus the following assert is commented out.
   // TRI_ASSERT(_blockForPassThrough != nullptr);
   return {ExecutionState::DONE, std::move(_blockForPassThrough)};
+}
+
+std::pair<ExecutionState, ShadowAqlItemRow> ConstFetcher::fetchShadowRow(size_t) const {
+  return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
 }

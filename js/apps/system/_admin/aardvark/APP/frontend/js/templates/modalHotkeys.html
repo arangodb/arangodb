@@ -1,0 +1,14 @@
+
+  <ul class="hotkeysList">
+  <% _.each(content, function(categories) { %>
+
+    <li class="hotkeysLabel"><%=categories.name%></li>
+
+    <% _.each(categories.content, function(values) { %>
+      <li class="hotkeysContent"><div class="hotkeysContentLabel"><%=values.label%></div><div class="hotkeysicons">&nbsp;&nbsp;<%=values.letter%>&nbsp;&nbsp;</div></li>
+    <% }); %>
+
+
+  <% }); %>
+  <ul>
+

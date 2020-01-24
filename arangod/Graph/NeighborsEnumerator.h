@@ -53,7 +53,7 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
                       arangodb::velocypack::Slice const& startVertex,
                       arangodb::traverser::TraverserOptions* opts);
 
-  ~NeighborsEnumerator() {}
+  ~NeighborsEnumerator() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.

@@ -24,28 +24,30 @@
 #define ARANGOD_SCHEDULER_ACCEPTORTCP_H 1
 
 #include "GeneralServer/Acceptor.h"
+#include "GeneralServer/AsioSocket.h"
 
 namespace arangodb {
+namespace rest {
+
+template <SocketType T>
 class AcceptorTcp final : public Acceptor {
  public:
-  AcceptorTcp(rest::GeneralServer& server,
-              rest::GeneralServer::IoContext& context, Endpoint* endpoint)
-      : Acceptor(server, context, endpoint), _acceptor(context.newAcceptor()) {}
+  AcceptorTcp(rest::GeneralServer& server, rest::IoContext& ctx, Endpoint* endpoint)
+      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
 
  public:
   void open() override;
-  void close() override {
-    _acceptor->close();
-    if (_peer) {
-      asio_ns::error_code ec;
-      _peer->close(ec);
-    }
-  };
-  void asyncAccept(Acceptor::AcceptHandler const& handler) override;
+  void close() override;
+  void asyncAccept() override;
 
  private:
-  std::unique_ptr<asio_ns::ip::tcp::acceptor> _acceptor;
+  void performHandshake(std::unique_ptr<AsioSocket<T>>);
+
+ private:
+  asio_ns::ip::tcp::acceptor _acceptor;
+  std::unique_ptr<AsioSocket<T>> _asioSocket;
 };
+}  // namespace rest
 }  // namespace arangodb
 
 #endif

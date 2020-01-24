@@ -29,7 +29,9 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-
+namespace application_features {
+class ApplicationServer;
+}
 class Index;
 class LogicalCollection;
 
@@ -41,6 +43,7 @@ class Slice;
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
 struct IndexTypeFactory {
+  explicit IndexTypeFactory(application_features::ApplicationServer& server);
   virtual ~IndexTypeFactory() = default;  // define to silence warning
 
   /// @brief determine if the two Index definitions will result in the same
@@ -51,7 +54,7 @@ struct IndexTypeFactory {
   virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs) const = 0;
 
   /// @brief instantiate an Index definition
-  virtual Result instantiate(std::shared_ptr<Index>& index, LogicalCollection& collection,
+  virtual std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                              velocypack::Slice const& definition, TRI_idx_iid_t id,
                              bool isClusterConstructor) const = 0;
 
@@ -68,13 +71,17 @@ struct IndexTypeFactory {
     // can be overridden by specific indexes
     return true;
   }
+
+ protected:
+  application_features::ApplicationServer& _server;
 };
 
 class IndexFactory {
  public:
+  IndexFactory(application_features::ApplicationServer&);
   virtual ~IndexFactory() = default;
 
-  /// @return 'factory' for 'type' was added successfully
+  /// @brief returns if 'factory' for 'type' was added successfully
   Result emplace(std::string const& type, IndexTypeFactory const& factory);
 
   virtual Result enhanceIndexDefinition( // normalizze definition
@@ -84,10 +91,12 @@ class IndexFactory {
     TRI_vocbase_t const& vocbase // index vocbase
   ) const;
 
-  /// @return factory for the specified type or a failing placeholder if no such
+  /// @brief returns factory for the specified type or a failing placeholder if no such
   /// type
   IndexTypeFactory const& factory(std::string const& type) const noexcept;
 
+  /// @brief returns the index created from the definition
+  /// will throw if an error occurs
   std::shared_ptr<Index> prepareIndexFromSlice(velocypack::Slice definition, bool generateKey,
                                                LogicalCollection& collection,
                                                bool isClusterConstructor) const;
@@ -108,11 +117,15 @@ class IndexFactory {
                               arangodb::velocypack::Slice const& indexesSlice,
                               std::vector<std::shared_ptr<arangodb::Index>>& indexes) const = 0;
 
+  static Result validateFieldsDefinition(arangodb::velocypack::Slice definition, 
+                                         size_t minFields, size_t maxFields,
+                                         bool allowSubAttributes = true);
+
   /// @brief process the fields list, deduplicate it, and add it to the json
   static Result processIndexFields(arangodb::velocypack::Slice definition, 
                                    arangodb::velocypack::Builder& builder,
-                                   size_t minFields, size_t maxField, bool create,
-                                   bool allowExpansion);
+                                   size_t minFields, size_t maxFields, bool create,
+                                   bool allowExpansion, bool allowSubAttributes = true);
 
   /// @brief process the unique flag and add it to the json
   static void processIndexUniqueFlag(arangodb::velocypack::Slice definition,
@@ -155,7 +168,9 @@ class IndexFactory {
                                      bool generateKey, bool isClusterConstructor);
 
  private:
+  application_features::ApplicationServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
+  std::unique_ptr<IndexTypeFactory> _invalid;
 };
 
 }  // namespace arangodb

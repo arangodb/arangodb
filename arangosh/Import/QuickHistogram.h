@@ -23,6 +23,7 @@
 #ifndef ARANGODB_IMPORT_QUICK_HIST_H
 #define ARANGODB_IMPORT_QUICK_HIST_H 1
 
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <future>
@@ -34,7 +35,9 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 namespace import {
@@ -47,8 +50,8 @@ class QuickHistogram : public arangodb::Thread {
   QuickHistogram& operator=(QuickHistogram const&) = delete;
 
  public:
-  QuickHistogram()
-      : Thread("QuickHistogram"),
+  explicit QuickHistogram(application_features::ApplicationServer& server)
+      : Thread(server, "QuickHistogram"),
         _writingLatencies(nullptr),
         _readingLatencies(nullptr),
         _threadRunning(false) {}

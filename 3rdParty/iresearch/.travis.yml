@@ -29,94 +29,6 @@ env:
 matrix:
   include:
     ############################################################################
-    # GCC 4.8
-    ############################################################################
-
-    ############################################################################
-    # Debug build, static library
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Release build, static library (filesystem tests)
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Release build, static library (remaining tests)
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Debug build, shared library
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Release build, shared library (filesystem tests)
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Release build, shared library (remaining tests)
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
     # GCC 4.9
     ############################################################################
 
@@ -145,7 +57,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -159,7 +71,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -187,7 +99,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -201,7 +113,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -232,7 +144,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -245,7 +157,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -271,7 +183,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -284,7 +196,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # GCC 6
@@ -314,7 +226,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -327,7 +239,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -353,7 +265,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -366,7 +278,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # GCC 7
@@ -400,7 +312,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -415,7 +327,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -445,7 +357,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -460,7 +372,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # GCC 8
@@ -494,7 +406,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -509,7 +421,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -539,7 +451,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -554,7 +466,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # OSX
@@ -588,7 +500,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -603,7 +515,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -633,7 +545,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -648,7 +560,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
 before_install:
   - eval "${SET_ENV}"
@@ -695,7 +607,7 @@ install:
   - |
     ICU_DIR=${DEPS_DIR}/icu
     if [[ -z "$(ls -A ${ICU_DIR})" ]]; then
-      ICU_URL="https://kent.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-src.tgz"
+      ICU_URL="https://netix.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-src.tgz"
       cd ${DEPS_DIR}
       wget -P icu ${ICU_URL}
       cd ${ICU_DIR}
@@ -721,7 +633,8 @@ install:
           travis_retry git clone --depth 1 --recursive --quiet ${BOOST_URL} ${BOOST_DIR} || exit 1
         else
           #BOOST_URL="https://mirrors.netix.net/sourceforge/b/bo/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
-          BOOST_URL="https://kent.dl.sourceforge.net/project/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
+          #BOOST_URL="https://kent.dl.sourceforge.net/project/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
+          BOOST_URL="https://netix.dl.sourceforge.net/project/boost/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi
@@ -814,7 +727,7 @@ script:
       # execute tests
       ulimit -n 5120 # required for MacOS (max-open-files = 16 threads * (100000/10000) commits * 8 segments-per-commit * 4 open-files-per-segment)
       ulimit -a
-      if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
+      if ! travis_wait 90 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1
       fi
       # archive artifacts

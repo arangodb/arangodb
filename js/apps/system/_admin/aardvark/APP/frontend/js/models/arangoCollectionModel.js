@@ -247,7 +247,7 @@
       });
     },
 
-    changeCollection: function (wfs, journalSize, indexBuckets, replicationFactor, callback) {
+    changeCollection: function (wfs, journalSize, indexBuckets, replicationFactor, writeConcern, callback) {
       var result = false;
       if (wfs === 'true') {
         wfs = true;
@@ -262,6 +262,10 @@
 
       if (replicationFactor) {
         data.replicationFactor = parseInt(replicationFactor, 10);
+      }
+      if (writeConcern) {
+        // not an error. writeConcern is stored in minReplicationFactor for historical reasons
+        data.minReplicationFactor = parseInt(writeConcern, 10);
       }
 
       $.ajax({

@@ -24,16 +24,22 @@
 #ifndef ARANGODB_V8_V8__GLOBALS_H
 #define ARANGODB_V8_V8__GLOBALS_H 1
 
-#include "Basics/Common.h"
+#include <string.h>
+#include <cstdint>
+#include <memory>
+#include <unordered_map>
+#include <utility>
 
+#include <v8.h>
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+#include "V8/JavaScriptSecurityContext.h"
 
+struct TRI_v8_global_t;
 struct TRI_vocbase_t;
-
-namespace arangodb {
-
-class LogicalDataSource;  // forward declaration
-}
 
 /// @brief shortcut for fetching the isolate from the thread context
 #define ISOLATE v8::Isolate* isolate = v8::Isolate::GetCurrent()
@@ -111,10 +117,6 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
   v8::HandleScope scope(isolate);                                   \
   do {                                                              \
   } while (0)
-
-#define TRI_CONTEXT                                                 \
-  auto context = isolate->GetCurrentContext();
-
 
 /// @brief shortcut for throwing an exception with an error code
 #define TRI_V8_SET_EXCEPTION(code)        \
@@ -320,15 +322,6 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
           .FromMaybe(v8::Local<v8::String>()));                                  \
   return
 
-/// @brief return a string which you know the length of
-///   implicitly requires 'args and 'isolate' to be available
-/// @param WHAT the name of the char* variable
-/// @param WHATLEn the name of the int variable containing the length of WHAT
-#define TRI_V8_RETURN_PAIR_STRING(WHAT, WHATLEN)                                         \
-  args.GetReturnValue().Set(                                                             \
-      v8::String::NewFromUtf8(isolate, WHAT, v8::NewStringType::kNormal, (int)WHATLEN)); \
-  return
-
 #define TRI_IGETC isolate->GetCurrentContext()
 
 #define TRI_GET_INT32(VAL) VAL->Int32Value(TRI_IGETC).FromMaybe(0)
@@ -354,13 +347,6 @@ inline bool TRI_HasProperty(v8::Local<v8::Context> &context, v8::Isolate* isolat
   return obj->Has(context, key).FromMaybe(false);
 }
 
-inline bool TRI_HasOwnProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> &obj, char const *key) {
-  return obj->HasOwnProperty(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(false);
-}
-inline bool TRI_HasOwnProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> &obj, v8::Local<v8::String> &key) {
-  return obj->HasOwnProperty(context, key).FromMaybe(false);
-}
-
 inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, char const *key) {
   return obj->Get(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(v8::Local<v8::Value>());
 }
@@ -384,7 +370,7 @@ inline v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> &context,
   return val->ToString(context).FromMaybe(v8::Local<v8::String>());
 }
 
-/// @brief retrieve the instance of the TRI_v8_global of the current thread
+/// @brief retrieve the instance of the TRI_v8_global_t of the current thread
 ///   implicitly creates a variable 'v8g' with a pointer to it.
 ///   implicitly requires 'isolate' to be available
 #define TRI_GET_GLOBALS()                               \
@@ -437,7 +423,8 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  explicit TRI_v8_global_t(v8::Isolate*);
+  explicit TRI_v8_global_t(arangodb::application_features::ApplicationServer&,
+                           v8::Isolate*, size_t id);
 
   ~TRI_v8_global_t();
 
@@ -649,6 +636,9 @@ struct TRI_v8_global_t {
   /// @brief "requestBody" key name
   v8::Persistent<v8::String> RequestBodyKey;
 
+  /// @brief "rawRequestBody" key name
+  v8::Persistent<v8::String> RawRequestBodyKey;
+
   /// @brief "requestType" key name
   v8::Persistent<v8::String> RequestTypeKey;
 
@@ -728,12 +718,6 @@ struct TRI_v8_global_t {
   /// @brief information about the currently running transaction
   void* _transactionContext;
 
-  /// @brief query registry - note: this shouldn't be changed once set
-  void* _queryRegistry;
-
-  /// @brief current AQL query
-  void* _query;
-
   /// @brief pointer to the vocbase (TRI_vocbase_t*)
   TRI_vocbase_t* _vocbase;
 
@@ -743,8 +727,24 @@ struct TRI_v8_global_t {
   /// @brief cancel has been caught
   bool _canceled;
 
-  /// @brief whether or not useDatabase() is allowed
-  bool _allowUseDatabase;
+  /// @brief the current security context
+  arangodb::JavaScriptSecurityContext _securityContext;
+
+  /// @brief true if the arango infrastructure is garbage collecting
+  bool _inForcedCollect;
+
+  /// @brief the ID that identifies this v8 context
+  size_t const _id;
+
+  std::atomic<double> _lastMaxTime;
+
+  std::atomic<size_t> _countOfTimes;
+
+  std::atomic<size_t> _heapMax;
+
+  std::atomic<size_t> _heapLow;
+
+  arangodb::application_features::ApplicationServer& _server;
 
  private:
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
@@ -754,7 +754,8 @@ struct TRI_v8_global_t {
 };
 
 /// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*);
+TRI_v8_global_t* TRI_CreateV8Globals(arangodb::application_features::ApplicationServer&,
+                                     v8::Isolate*, size_t id);
 
 /// @brief gets the global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);

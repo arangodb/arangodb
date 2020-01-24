@@ -26,6 +26,8 @@
 #include "Basics/Common.h"
 #include "ProgramOptions/Option.h"
 
+#include <map>
+
 namespace arangodb {
 namespace options {
 
@@ -41,9 +43,6 @@ struct Section {
         hidden(hidden),
         obsolete(obsolete),
         enterpriseOnly(false) {}
-
-  // adds a program option to the section
-  void addOption(Option const& option);
 
   // get display name for the section
   std::string displayName() const { return alias.empty() ? name : alias; }

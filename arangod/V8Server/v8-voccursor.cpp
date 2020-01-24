@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "Basics/ScopeGuard.h"
 #include "Transaction/Context.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -538,7 +539,7 @@ struct V8Cursor final {
     if (self == nullptr) {
       TRI_V8_RETURN(v8::Undefined(isolate));
     }
-    TRI_V8_RETURN(v8::Integer::New(isolate, self->_cursorId));
+    TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_tick_t>(isolate, self->_cursorId));
   }
 
  private:

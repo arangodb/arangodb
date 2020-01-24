@@ -22,14 +22,21 @@
 
 #include "RocksDBBackgroundErrorListener.h"
 
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 
-RocksDBBackgroundErrorListener::~RocksDBBackgroundErrorListener() {}
+RocksDBBackgroundErrorListener::~RocksDBBackgroundErrorListener() = default;
 
 void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorReason reason,
-                                                       rocksdb::Status*) {
+                                                       rocksdb::Status* status) {
+  if (status != nullptr && status->IsShutdownInProgress()) {
+    // this is not a relevant error, so let's ignore it
+    return;
+  }
+
   if (!_called) {
     _called = true;
 
@@ -55,8 +62,8 @@ void RocksDBBackgroundErrorListener::OnBackgroundError(rocksdb::BackgroundErrorR
 
     LOG_TOPIC("fae2c", ERR, Logger::ROCKSDB)
         << "RocksDB encountered a background error during a " << operation
-        << " operation; The database will be put in read-only "
-           "mode, and subsequent write errors are likely";
+        << " operation: " << (status != nullptr ? status->ToString() : "unknown error") 
+        << "; The database will be put in read-only mode, and subsequent write errors are likely";
   }
 }
 

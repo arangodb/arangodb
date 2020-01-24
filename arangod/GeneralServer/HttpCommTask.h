@@ -1,82 +1,97 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Simon Grätzer
+////////////////////////////////////////////////////////////////////////////////
+
 #ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
-#include "Basics/Common.h"
 #include "GeneralServer/GeneralCommTask.h"
-#include "Rest/HttpResponse.h"
+
+#include <llhttp.h>
+#include <velocypack/StringRef.h>
+#include <memory>
 
 namespace arangodb {
 class HttpRequest;
 
+namespace basics {
+class StringBuffer;
+}
+
 namespace rest {
-class HttpCommTask final : public GeneralCommTask {
+
+template <SocketType T>
+class HttpCommTask final : public GeneralCommTask<T> {
  public:
-  static size_t const MaximalHeaderSize;
-  static size_t const MaximalBodySize;
-  static size_t const MaximalPipelineSize;
-  static size_t const RunCompactEvery;
+  HttpCommTask(GeneralServer& server, ConnectionInfo, std::unique_ptr<AsioSocket<T>> so);
+  ~HttpCommTask() noexcept;
 
- public:
-  HttpCommTask(GeneralServer& server, GeneralServer::IoContext& context,
-               std::unique_ptr<Socket> socket, ConnectionInfo&&, double timeout);
+  void start() override;
 
-  arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::HTTP;
-  }
+ protected:
+  // set a read timeout in asyncReadSome
+  bool enableReadTimeout() const override { return false; }
 
-  // whether or not this task can mix sync and async I/O
-  bool canUseMixedIO() const override;
+  bool readCallback(asio_ns::error_code ec) override;
 
- private:
-  bool processRead(double startTime) override;
-  void compactify() override;
+  void sendResponse(std::unique_ptr<GeneralResponse> response, RequestStatistics* stat) override;
 
-  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
-                                                  uint64_t messageId) override final;
-
-  void addResponse(GeneralResponse& response, RequestStatistics* stat) override;
-
-  /// @brief send error response including response body
-  void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
-                         velocypack::Buffer<uint8_t>&&) override;
+  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
 
  private:
-  void processRequest(std::unique_ptr<HttpRequest>);
-  void processCorsOptions(std::unique_ptr<HttpRequest>);
-
-  void resetState();
-
-  // check the content-length header of a request and fail it is broken
-  bool checkContentLength(HttpRequest*, bool expectContentLength);
-
-  std::string authenticationRealm() const;
-  ResponseCode authenticateRequest(HttpRequest*);
-  ResponseCode handleAuthHeader(HttpRequest* request);
+  static int on_message_began(llhttp_t* p);
+  static int on_url(llhttp_t* p, const char* at, size_t len);
+  static int on_status(llhttp_t* p, const char* at, size_t len);
+  static int on_header_field(llhttp_t* p, const char* at, size_t len);
+  static int on_header_value(llhttp_t* p, const char* at, size_t len);
+  static int on_header_complete(llhttp_t* p);
+  static int on_body(llhttp_t* p, const char* at, size_t len);
+  static int on_message_complete(llhttp_t* p);
 
  private:
-  size_t _readPosition;       // current read position
-  size_t _startPosition;      // start position of current request
-  size_t _bodyPosition;       // start of the body position
-  size_t _bodyLength;         // body length
-  bool _readRequestBody;      // true if reading the request body
-  bool _allowMethodOverride;  // allow method override
-  bool _denyCredentials;  // whether or not to allow credentialed requests (only
-                          // CORS)
-  bool _newRequest;       // new request started
-  rest::RequestType _requestType;  // type of request (GET, POST, ...)
-  std::string _fullUrl;            // value of requested URL
-  std::string _origin;  // value of the HTTP origin header the client sent (if
-                        // any, CORS only)
-  /// number of requests since last compactification
-  size_t _sinceCompactification;
-  size_t _originalBodyLength;
+  void checkVSTPrefix();
 
-  std::string const _authenticationRealm;
+  void processRequest();
 
-  // true if request is complete but not handled
-  bool _requestPending = false;
+  // called on IO context thread
+  void writeResponse(RequestStatistics* stat);
 
-  std::unique_ptr<HttpRequest> _incompleteRequest;
+ private:
+  /// the node http-parser
+  llhttp_t _parser;
+  llhttp_settings_t _parserSettings;
+
+  velocypack::Buffer<uint8_t> _header;
+
+  // ==== parser state ====
+  std::string _lastHeaderField;
+  std::string _lastHeaderValue;
+  std::string _origin;  // value of the HTTP origin header the client sent
+  std::unique_ptr<HttpRequest> _request;
+  std::unique_ptr<basics::StringBuffer> _response;
+  bool _lastHeaderWasValue;
+  bool _shouldKeepAlive;  /// keep connection open
+  bool _messageDone;
+
+  bool const _allowMethodOverride;  /// allow method override
 };
 }  // namespace rest
 }  // namespace arangodb

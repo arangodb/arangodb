@@ -25,6 +25,8 @@
 #include <string.h>
 #include <limits.h>
 
+static uint32_t max_header_size = HTTP_MAX_HEADER_SIZE;
+
 #ifndef ULLONG_MAX
 # define ULLONG_MAX ((uint64_t) -1) /* 2^64-1 */
 #endif
@@ -139,20 +141,20 @@ do {                                                                 \
 } while (0)
 
 /* Don't allow the total size of the HTTP headers (including the status
- * line) to exceed HTTP_MAX_HEADER_SIZE.  This check is here to protect
+ * line) to exceed max_header_size.  This check is here to protect
  * embedders against denial-of-service attacks where the attacker feeds
  * us a never-ending header that the embedder keeps buffering.
  *
  * This check is arguably the responsibility of embedders but we're doing
  * it on the embedder's behalf because most won't bother and this way we
- * make the web a little safer.  HTTP_MAX_HEADER_SIZE is still far bigger
+ * make the web a little safer.  max_header_size is still far bigger
  * than any reasonable request or response so this should never affect
  * day-to-day operation.
  */
 #define COUNT_HEADER_SIZE(V)                                         \
 do {                                                                 \
-  nread += (V);                                                      \
-  if (UNLIKELY(nread > (HTTP_MAX_HEADER_SIZE))) {                    \
+  nread += (uint32_t)(V);                                            \
+  if (UNLIKELY(nread > max_header_size)) {                           \
     SET_ERRNO(HPE_HEADER_OVERFLOW);                                  \
     goto error;                                                      \
   }                                                                  \
@@ -314,6 +316,8 @@ enum state
   , s_req_http_HT
   , s_req_http_HTT
   , s_req_http_HTTP
+  , s_req_http_I
+  , s_req_http_IC
   , s_req_http_major
   , s_req_http_dot
   , s_req_http_minor
@@ -758,21 +762,16 @@ reexecute:
 
       case s_start_res:
       {
+        if (ch == CR || ch == LF)
+          break;
         parser->flags = 0;
         parser->content_length = ULLONG_MAX;
 
-        switch (ch) {
-          case 'H':
-            UPDATE_STATE(s_res_H);
-            break;
-
-          case CR:
-          case LF:
-            break;
-
-          default:
-            SET_ERRNO(HPE_INVALID_CONSTANT);
-            goto error;
+        if (ch == 'H') {
+          UPDATE_STATE(s_res_H);
+        } else {
+          SET_ERRNO(HPE_INVALID_CONSTANT);
+          goto error;
         }
 
         CALLBACK_NOTIFY(message_begin);
@@ -1089,11 +1088,17 @@ reexecute:
 
       case s_req_http_start:
         switch (ch) {
+          case ' ':
+            break;
           case 'H':
             UPDATE_STATE(s_req_http_H);
             break;
-          case ' ':
-            break;
+          case 'I':
+            if (parser->method == HTTP_SOURCE) {
+              UPDATE_STATE(s_req_http_I);
+              break;
+            }
+            /* fall through */
           default:
             SET_ERRNO(HPE_INVALID_CONSTANT);
             goto error;
@@ -1113,6 +1118,16 @@ reexecute:
       case s_req_http_HTT:
         STRICT_CHECK(ch != 'P');
         UPDATE_STATE(s_req_http_HTTP);
+        break;
+
+      case s_req_http_I:
+        STRICT_CHECK(ch != 'C');
+        UPDATE_STATE(s_req_http_IC);
+        break;
+
+      case s_req_http_IC:
+        STRICT_CHECK(ch != 'E');
+        UPDATE_STATE(s_req_http_HTTP);  /* Treat "ICE" as "HTTP". */
         break;
 
       case s_req_http_HTTP:
@@ -1242,9 +1257,9 @@ reexecute:
 
           switch (parser->header_state) {
             case h_general: {
-              size_t limit = data + len - p;
-              limit = MIN(limit, HTTP_MAX_HEADER_SIZE);
-              while (p+1 < data + limit && TOKEN(p[1])) {
+              size_t left = data + len - p;
+              const char* pe = p + MIN(left, max_header_size);
+              while (p+1 < pe && TOKEN(p[1])) {
                 p++;
               }
               break;
@@ -1421,6 +1436,11 @@ reexecute:
             parser->header_state = h_content_length_num;
             break;
 
+          /* when obsolete line folding is encountered for content length
+           * continue to the s_header_value state */
+          case h_content_length_ws:
+            break;
+
           case h_connection:
             /* looking for 'Connection: keep-alive' */
             if (c == 'k') {
@@ -1476,28 +1496,25 @@ reexecute:
 
           switch (h_state) {
             case h_general:
-            {
-              const char* p_cr;
-              const char* p_lf;
-              size_t limit = data + len - p;
+              {
+                size_t left = data + len - p;
+                const char* pe = p + MIN(left, max_header_size);
 
-              limit = MIN(limit, HTTP_MAX_HEADER_SIZE);
-
-              p_cr = (const char*) memchr(p, CR, limit);
-              p_lf = (const char*) memchr(p, LF, limit);
-              if (p_cr != NULL) {
-                if (p_lf != NULL && p_cr >= p_lf)
-                  p = p_lf;
-                else
-                  p = p_cr;
-              } else if (UNLIKELY(p_lf != NULL)) {
-                p = p_lf;
-              } else {
-                p = data + len;
+                for (; p != pe; p++) {
+                  ch = *p;
+                  if (ch == CR || ch == LF) {
+                    --p;
+                    break;
+                  }
+                  if (!lenient && !IS_HEADER_CHAR(ch)) {
+                    SET_ERRNO(HPE_INVALID_HEADER_TOKEN);
+                    goto error;
+                  }
+                }
+                if (p == data + len)
+                  --p;
+                break;
               }
-              --p;
-              break;
-            }
 
             case h_connection:
             case h_transfer_encoding:
@@ -1664,6 +1681,10 @@ reexecute:
       case s_header_value_lws:
       {
         if (ch == ' ' || ch == '\t') {
+          if (parser->header_state == h_content_length_num) {
+              /* treat obsolete line folding as space */
+              parser->header_state = h_content_length_ws;
+          }
           UPDATE_STATE(s_header_value_start);
           REEXECUTE();
         }
@@ -1715,6 +1736,11 @@ reexecute:
               break;
             case h_transfer_encoding_chunked:
               parser->flags |= F_CHUNKED;
+              break;
+            case h_content_length:
+              /* do not allow empty content length */
+              SET_ERRNO(HPE_INVALID_CONTENT_LENGTH);
+              goto error;
               break;
             default:
               break;
@@ -2025,7 +2051,7 @@ reexecute:
     }
   }
 
-  /* Run callbacks for any marks that we have leftover after we ran our of
+  /* Run callbacks for any marks that we have leftover after we ran out of
    * bytes. There should be at most one of these set, so it's OK to invoke
    * them in series (unset marks will not result in callbacks).
    *
@@ -2252,14 +2278,14 @@ http_parse_host(const char * buf, struct http_parser_url *u, int found_at) {
     switch(new_s) {
       case s_http_host:
         if (s != s_http_host) {
-          u->field_data[UF_HOST].off = p - buf;
+          u->field_data[UF_HOST].off = (uint16_t)(p - buf);
         }
         u->field_data[UF_HOST].len++;
         break;
 
       case s_http_host_v6:
         if (s != s_http_host_v6) {
-          u->field_data[UF_HOST].off = p - buf;
+          u->field_data[UF_HOST].off = (uint16_t)(p - buf);
         }
         u->field_data[UF_HOST].len++;
         break;
@@ -2271,7 +2297,7 @@ http_parse_host(const char * buf, struct http_parser_url *u, int found_at) {
 
       case s_http_host_port:
         if (s != s_http_host_port) {
-          u->field_data[UF_PORT].off = p - buf;
+          u->field_data[UF_PORT].off = (uint16_t)(p - buf);
           u->field_data[UF_PORT].len = 0;
           u->field_set |= (1 << UF_PORT);
         }
@@ -2280,7 +2306,7 @@ http_parse_host(const char * buf, struct http_parser_url *u, int found_at) {
 
       case s_http_userinfo:
         if (s != s_http_userinfo) {
-          u->field_data[UF_USERINFO].off = p - buf ;
+          u->field_data[UF_USERINFO].off = (uint16_t)(p - buf);
           u->field_data[UF_USERINFO].len = 0;
           u->field_set |= (1 << UF_USERINFO);
         }
@@ -2384,7 +2410,7 @@ http_parser_parse_url(const char *buf, size_t buflen, int is_connect,
       continue;
     }
 
-    u->field_data[uf].off = p - buf;
+    u->field_data[uf].off = (uint16_t)(p - buf);
     u->field_data[uf].len = 1;
 
     u->field_set |= (1 << uf);
@@ -2464,4 +2490,9 @@ http_parser_version(void) {
   return HTTP_PARSER_VERSION_MAJOR * 0x10000 |
          HTTP_PARSER_VERSION_MINOR * 0x00100 |
          HTTP_PARSER_VERSION_PATCH * 0x00001;
+}
+
+void
+http_parser_set_max_header_size(uint32_t size) {
+  max_header_size = size;
 }

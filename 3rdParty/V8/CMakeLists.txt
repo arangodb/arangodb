@@ -123,6 +123,12 @@ if (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
   set(GYP_MAIN gypfiles/gyp_v8)
 
+  if (USE_CLCACHE_MODE)
+    list(APPEND V8_GYP_ARGS "-Duse_clcache_mode=true")
+  else ()
+    list(APPEND V8_GYP_ARGS "-Duse_clcache_mode=false")
+  endif()
+
   if (${CMAKE_GENERATOR} MATCHES "2013")
     # try to find 2013 in 'Visual Studio 12 2013 Win64'
     set(GYP_MSVS_VERSION "2013")
@@ -179,7 +185,7 @@ if (WIN32)
     -Dembedded_builtins_snapshot_src=
     -Dv8_enable_handle_zapping=0
     -Dv8_use_snapshot=0
-    -DPYTHON_EXECUTABLE=${PYTHON_EXECUTABLE}
+    -DPYTHON_EXECUTABLE="${PYTHON_EXECUTABLE}"
     -Dnode_use_pch=false
     )
 
@@ -203,7 +209,7 @@ if (WIN32)
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
-        env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
+         ${CMAKE_COMMAND} -E env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} "${PYTHON_EXECUTABLE}" ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
       BUILD_COMMAND
         ""
       INSTALL_COMMAND

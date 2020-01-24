@@ -27,8 +27,7 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
-
-#include "lib/Basics/Result.h"
+#include "Basics/Result.h"
 
 #include <chrono>
 

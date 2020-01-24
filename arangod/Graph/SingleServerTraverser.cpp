@@ -38,7 +38,7 @@ using namespace arangodb::graph;
 SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts, transaction::Methods* trx)
     : Traverser(opts, trx) {}
 
-SingleServerTraverser::~SingleServerTraverser() {}
+SingleServerTraverser::~SingleServerTraverser() = default;
 
 void SingleServerTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& result) {
   _opts->cache()->insertVertexIntoResult(vid, result);
@@ -49,7 +49,6 @@ aql::AqlValue SingleServerTraverser::fetchVertexData(arangodb::velocypack::Strin
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {
-  _startIdBuilder.clear();
   _startIdBuilder.add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder.slice();
 
@@ -72,6 +71,11 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
     _enumerator.reset(new DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
+}
+
+void SingleServerTraverser::clear() {
+  _startIdBuilder.clear();
+  traverserCache()->clear();
 }
 
 bool SingleServerTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {

@@ -21,7 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include "IResearchLinkHelper.h"
+
+#include <velocypack/Iterator.h>
+
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
@@ -29,10 +34,13 @@
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
 #include "VelocyPackHelper.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -40,7 +48,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
-#include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -55,13 +62,13 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+  auto& server = defaultVocbase.server();
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
-  for (auto& entry: meta._analyzers) {
-    if (!entry._pool) {
+  for (auto& pool: meta._analyzerDefinitions) {
+    if (!pool) {
       continue; // skip invalid entries
     }
 
@@ -70,51 +77,77 @@ arangodb::Result canUseAnalyzers( // validate
     if (sysVocbase) {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
         arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          entry._pool->name(), defaultVocbase, *sysVocbase // args
+          pool->name(), defaultVocbase, *sysVocbase // args
         ), // analyzer
         arangodb::auth::Level::RO // auth level
       );
     } else {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        entry._pool->name(), arangodb::auth::Level::RO // args
+        pool->name(), arangodb::auth::Level::RO // args
       );
     }
 
     if (!result) {
-      return arangodb::Result( // result
-        TRI_ERROR_FORBIDDEN, // code
-        std::string("read access is forbidden to arangosearch analyzer '") + entry._pool->name() + "'"
-      );
+      return {
+        TRI_ERROR_FORBIDDEN,
+        std::string("read access is forbidden to arangosearch analyzer '") + pool->name() + "'"
+      };
     }
   }
 
-  for (auto& field: meta._fields) {
-    TRI_ASSERT(field.value().get()); // ensured by UniqueHeapInstance constructor
-    auto& entry = field.value();
-    auto res = canUseAnalyzers(*entry, defaultVocbase);
+//  for (auto& field: meta._fields) {
+//    TRI_ASSERT(field.value().get()); // ensured by UniqueHeapInstance constructor
+//    auto& entry = field.value();
+//    auto res = canUseAnalyzers(*entry, defaultVocbase);
+//
+//    if (!res.ok()) {
+//      return res;
+//    }
+//  }
 
-    if (!res.ok()) {
-      return res;
+  return {};
+}
+
+arangodb::Result createLink( // create link
+    arangodb::LogicalCollection& collection, // link collection
+    arangodb::LogicalView const& view, // link view
+    arangodb::velocypack::Slice definition // link definition
+) {
+  try {
+    bool isNew = false;
+    auto link = collection.createIndex(definition, isNew);
+
+    if (!(link && isNew)) {
+      return arangodb::Result( // result
+        TRI_ERROR_INTERNAL, // code
+        std::string("failed to create link between arangosearch view '") + view.name() + "' and collection '" + collection.name() + "'"
+      );
     }
+
+    // ensure link is synchronized after upgrade in single-server
+    if (arangodb::ServerState::instance()->isSingleServer()) {
+      auto* db = arangodb::DatabaseFeature::DATABASE;
+
+      if (db && (db->checkVersion() || db->upgrade())) {
+        // FIXME find a better way to retrieve an IResearch Link
+        // cannot use static_cast/reinterpret_cast since Index is not related to
+        // IResearchLink
+        auto impl = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(link);
+
+        if (impl) {
+          return impl->commit();
+        }
+      }
+    }
+
+  } catch (arangodb::basics::Exception const& e) {
+    return arangodb::Result(e.code(), e.what());
   }
 
   return arangodb::Result();
 }
 
-bool createLink( // create link
-    arangodb::LogicalCollection& collection, // link collection
-    arangodb::LogicalView const& view, // link view
-    arangodb::velocypack::Slice definition // link definition
-) {
-  bool isNew = false;
-  auto link = collection.createIndex(definition, isNew);
-  LOG_TOPIC_IF("2c861", DEBUG, arangodb::iresearch::TOPIC, link)
-      << "added link '" << link->id() << "'";
-
-  return link && isNew;
-}
-
-bool createLink( // create link
+arangodb::Result createLink( // create link
     arangodb::LogicalCollection& collection, // link collection
     arangodb::iresearch::IResearchViewCoordinator const& view, // link view
     arangodb::velocypack::Slice definition // link definition
@@ -139,7 +172,10 @@ bool createLink( // create link
   );
 
   if (!arangodb::iresearch::mergeSliceSkipKeys(builder, definition, acceptor)) {
-    return false;
+    return arangodb::Result( // result
+      TRI_ERROR_INTERNAL, // code
+      std::string("failed to generate definition while creating link between arangosearch view '") + view.name() + "' and collection '" + collection.name() + "'"
+    );
   }
 
   builder.close();
@@ -148,20 +184,27 @@ bool createLink( // create link
 
   return arangodb::methods::Indexes::ensureIndex( // ensure index
     &collection, builder.slice(), true, tmp // args
-  ).ok();
+  );
 }
 
 template<typename ViewType>
-bool dropLink( // drop link
+arangodb::Result dropLink( // drop link
     arangodb::LogicalCollection& collection, // link collection
     arangodb::iresearch::IResearchLink const& link // link to drop
 ) {
   // don't need to create an extra transaction inside arangodb::methods::Indexes::drop(...)
-  return collection.dropIndex(link.id());
+  if (!collection.dropIndex(link.id())) {
+    return arangodb::Result( // result
+      TRI_ERROR_INTERNAL, // code
+      std::string("failed to drop link '") + std::to_string(link.id()) + "' from collection '" + collection.name() + "'"
+    );
+  }
+
+  return arangodb::Result();
 }
 
 template<>
-bool dropLink<arangodb::iresearch::IResearchViewCoordinator>( // drop link
+arangodb::Result dropLink<arangodb::iresearch::IResearchViewCoordinator>( // drop link
     arangodb::LogicalCollection& collection, // link collection
     arangodb::iresearch::IResearchLink const& link // link to drop
 ) {
@@ -174,7 +217,7 @@ bool dropLink<arangodb::iresearch::IResearchViewCoordinator>( // drop link
   );
   builder.close();
 
-  return arangodb::methods::Indexes::drop(&collection, builder.slice()).ok();
+  return arangodb::methods::Indexes::drop(&collection, builder.slice());
 }
 
 template <typename ViewType>
@@ -184,6 +227,9 @@ arangodb::Result modifyLinks( // modify links
     arangodb::velocypack::Slice const& links, // modified link definitions
     std::unordered_set<TRI_voc_cid_t> const& stale = {} // stale links
 ) {
+  LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
+      << "link modification request for view '" << view.name() << "', original definition:" << links.toString();
+
   if (!links.isObject()) {
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
@@ -193,17 +239,15 @@ arangodb::Result modifyLinks( // modify links
 
   struct State {
     std::shared_ptr<arangodb::LogicalCollection> _collection;
-    size_t _collectionsToLockOffset;  // std::numeric_limits<size_t>::max() ==
-                                      // removal only
+    size_t _collectionsToLockOffset; // std::numeric_limits<size_t>::max() == removal only
     std::shared_ptr<arangodb::iresearch::IResearchLink> _link;
     size_t _linkDefinitionsOffset;
-    bool _stale = false;  // request came from the stale list
-    bool _valid = true;
+    arangodb::Result _result; // operation result
+    bool _stale = false; // request came from the stale list
     explicit State(size_t collectionsToLockOffset)
-        : State(collectionsToLockOffset, std::numeric_limits<size_t>::max()) {}
+      : State(collectionsToLockOffset, std::numeric_limits<size_t>::max()) {}
     State(size_t collectionsToLockOffset, size_t linkDefinitionsOffset)
-        : _collectionsToLockOffset(collectionsToLockOffset),
-          _linkDefinitionsOffset(linkDefinitionsOffset) {}
+      : _collectionsToLockOffset(collectionsToLockOffset), _linkDefinitionsOffset(linkDefinitionsOffset) {}
   };
   std::vector<std::string> collectionsToLock;
   std::vector<std::pair<arangodb::velocypack::Builder, arangodb::iresearch::IResearchLinkMeta>> linkDefinitions;
@@ -213,12 +257,10 @@ arangodb::Result modifyLinks( // modify links
     auto collection = linksItr.key();
 
     if (!collection.isString()) {
-      return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                              std::string(
-                                  "error parsing link parameters from json for "
-                                  "arangosearch view '") +
-                                  view.name() + "' offset '" +
-                                  arangodb::basics::StringUtils::itoa(linksItr.index()) + '"');
+      return arangodb::Result( // result
+        TRI_ERROR_BAD_PARAMETER, // code
+        std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' offset '" + arangodb::basics::StringUtils::itoa(linksItr.index()) + '"'
+      );
     }
 
     auto link = linksItr.value();
@@ -236,12 +278,12 @@ arangodb::Result modifyLinks( // modify links
     normalized.openObject();
 
     // @note: DBServerAgencySync::getLocalCollections(...) generates
-    //        'not-forPersistence' definitions that are then compared in
+    //        'forPersistence' definitions that are then compared in
     //        Maintenance.cpp:compareIndexes(...) via
     //        arangodb::Index::Compare(...)
-    //        hence must use 'isCreation=false' for normalize(...) to match
+    //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, false, view.vocbase() // args
+      normalized, link, true, view.vocbase(), &view.primarySort(), &view.storedValues(), link.get(arangodb::StaticStrings::IndexId)
     );
 
     if (!res.ok()) {
@@ -250,6 +292,9 @@ arangodb::Result modifyLinks( // modify links
 
     normalized.close();
     link = normalized.slice(); // use normalized definition for index creation
+
+    LOG_TOPIC("4bdd1", DEBUG, arangodb::iresearch::TOPIC)
+        << "link modification request for view '" << view.name() << "', normalized definition:" << link.toString();
 
     static const std::function<bool(irs::string_ref const& key)> acceptor = [](
         irs::string_ref const& key // json key
@@ -282,7 +327,8 @@ arangodb::Result modifyLinks( // modify links
     std::string error;
     arangodb::iresearch::IResearchLinkMeta linkMeta;
 
-    if (!linkMeta.init(namedJson.slice(), error)) { // normalized and validated above via normalize(...)
+    if (!linkMeta.init(view.vocbase().server(),
+                       namedJson.slice(), true, error, &view.vocbase())) {  // validated and normalized with 'isCreation=true' above via normalize(...)
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
@@ -315,7 +361,7 @@ arangodb::Result modifyLinks( // modify links
     return arangodb::Result(); // nothing to update
   }
 
-  arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
+  arangodb::ExecContextSuperuserScope scope; // required to remove links from non-RW collections
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
@@ -463,19 +509,20 @@ arangodb::Result modifyLinks( // modify links
   // execute removals
   for (auto& state : linkModifications) {
     if (state._link) {  // link removal or recreate request
-      LOG_TOPIC("9da74", DEBUG, arangodb::iresearch::TOPIC)
-          << "removed link '" << state._link->id() << "'";
-      state._valid = dropLink<ViewType>(*(state._collection), *(state._link));
+      state._result = dropLink<ViewType>(*(state._collection), *(state._link));
       modified.emplace(state._collection->id());
     }
   }
 
   // execute additions
-  for (auto& state : linkModifications) {
-    if (state._valid && state._linkDefinitionsOffset < linkDefinitions.size()) {
-      state._valid =
-          createLink(*(state._collection), view,
-                     linkDefinitions[state._linkDefinitionsOffset].first.slice());
+  for (auto& state: linkModifications) {
+    if (state._result.ok() // valid state (unmodified or after removal)
+        && state._linkDefinitionsOffset < linkDefinitions.size()) {
+      state._result = createLink( // create link
+        *(state._collection), // collection
+        view, // view
+        linkDefinitions[state._linkDefinitionsOffset].first.slice() // definition
+      );
       modified.emplace(state._collection->id());
     }
   }
@@ -483,9 +530,12 @@ arangodb::Result modifyLinks( // modify links
   std::string error;
 
   // validate success
-  for (auto& state : linkModifications) {
-    if (!state._valid) {
-      error.append(error.empty() ? "" : ", ").append(collectionsToLock[state._collectionsToLockOffset]);
+  for (auto& state: linkModifications) {
+    if (!state._result.ok()) {
+      error.append(error.empty() ? "" : ", ") // separator
+        .append(collectionsToLock[state._collectionsToLockOffset]) // collection name
+        .append(": ").append(std::to_string(state._result.errorNumber())) // error code
+        .append(" ").append(state._result.errorMessage()); // error message
     }
   }
 
@@ -493,11 +543,10 @@ arangodb::Result modifyLinks( // modify links
     return arangodb::Result();
   }
 
-  return arangodb::Result(
-      TRI_ERROR_ARANGO_ILLEGAL_STATE,
-      std::string("failed to update links while updating arangosearch view '") +
-          view.name() +
-          "', retry same request or examine errors for collections: " + error);
+  return arangodb::Result( // result
+    TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
+    std::string("failed to update links while updating arangosearch view '") + view.name() + "', retry same request or examine errors for collections: " + error
+  );
 }
 
 }  // namespace
@@ -525,12 +574,14 @@ namespace iresearch {
     }
   } emptySlice;
 
+  // cppcheck-suppress returnReference
   return emptySlice._slice;
 }
 
-/*static*/ bool IResearchLinkHelper::equal( // are link definitions equal
-    arangodb::velocypack::Slice const& lhs, // left hand side
-    arangodb::velocypack::Slice const& rhs // right hand side
+/*static*/ bool IResearchLinkHelper::equal(  // are link definitions equal
+    arangodb::application_features::ApplicationServer& server,
+    arangodb::velocypack::Slice const& lhs,  // left hand side
+    arangodb::velocypack::Slice const& rhs   // right hand side
 ) {
   if (!lhs.isObject() || !rhs.isObject()) {
     return false;
@@ -539,7 +590,7 @@ namespace iresearch {
   auto lhsViewSlice = lhs.get(StaticStrings::ViewIdField);
   auto rhsViewSlice = rhs.get(StaticStrings::ViewIdField);
 
-  if (!lhsViewSlice.equals(rhsViewSlice)) {
+  if (!lhsViewSlice.binaryEquals(rhsViewSlice)) {
     if (!lhsViewSlice.isString() || !rhsViewSlice.isString()) {
       return false;
     }
@@ -563,9 +614,9 @@ namespace iresearch {
   IResearchLinkMeta lhsMeta;
   IResearchLinkMeta rhsMeta;
 
-  return lhsMeta.init(lhs, errorField) // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && rhsMeta.init(rhs, errorField) // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
-         && lhsMeta == rhsMeta; // left meta equal right meta
+  return lhsMeta.init(server, lhs, true, errorField)  // left side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+         && rhsMeta.init(server, rhs, true, errorField)  // right side meta valid (for db-server analyzer validation should have already apssed on coordinator)
+         && lhsMeta == rhsMeta;  // left meta equal right meta
 }
 
 /*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find( // find link
@@ -611,10 +662,13 @@ namespace iresearch {
 }
 
 /*static*/ arangodb::Result IResearchLinkHelper::normalize( // normalize definition
-  arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
-  arangodb::velocypack::Slice definition, // source definition
-  bool isCreation, // definition for index creation
-  TRI_vocbase_t const& vocbase // index vocbase
+    arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+    arangodb::velocypack::Slice definition, // source definition
+    bool isCreation, // definition for index creation
+    TRI_vocbase_t const& vocbase, // index vocbase
+    IResearchViewSort const* primarySort, /* = nullptr */
+    IResearchViewStoredValues const* storedValues, /* = nullptr */
+    arangodb::velocypack::Slice idSlice /* = arangodb::velocypack::Slice()*/ // id for normalized
 ) {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
@@ -630,7 +684,7 @@ namespace iresearch {
   //        IResearchLinkHelper::normalize(...) if creating via collection API
   //        ::modifyLinks(...) (via call to normalize(...) prior to getting
   //        superuser) if creating via IResearchLinkHelper API
-  if (!meta.init(definition, error, &vocbase)) {
+  if (!meta.init(vocbase.server(), definition, true, error, &vocbase)) {
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error parsing arangosearch link parameters from json: ") + error
@@ -648,11 +702,18 @@ namespace iresearch {
   );
 
   // copy over IResearch Link identifier
-  if (definition.hasKey(arangodb::StaticStrings::IndexId)) {
-    normalized.add( // preserve field
-      arangodb::StaticStrings::IndexId, // key
-      definition.get(arangodb::StaticStrings::IndexId) // value
-    );
+  if (!idSlice.isNone()) {
+    if (idSlice.isNumber()) {
+      normalized.add(
+        arangodb::StaticStrings::IndexId,
+        arangodb::velocypack::Value(std::to_string(idSlice.getNumericValue<uint64_t>()))
+      );
+    } else {
+      normalized.add(
+        arangodb::StaticStrings::IndexId,
+        idSlice
+      );
+    }
   }
 
   // copy over IResearch View identifier
@@ -669,7 +730,17 @@ namespace iresearch {
     );
   }
 
-  if (!meta.json(normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
+  if (primarySort) {
+    // normalize sort if specified
+    meta._sort = *primarySort;
+  }
+
+  if (storedValues) {
+    // normalize stored values if specified
+    meta._storedValues = *storedValues;
+  }
+
+  if (!meta.json(vocbase.server(), normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
       "error generating arangosearch link normalized definition" // message
@@ -721,8 +792,7 @@ namespace iresearch {
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT // have context
-        && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+    if (!arangodb::ExecContext::current().canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
         std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"
@@ -732,33 +802,60 @@ namespace iresearch {
     IResearchLinkMeta meta;
     std::string errorField;
 
-    if (!linkDefinition.isNull() && !meta.init(linkDefinition, errorField, &vocbase)) { // for db-server analyzer validation should have already apssed on coordinator
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        errorField.empty()
-         ? (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "': " + linkDefinition.toString())
-         : (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "' error in attribute: " + errorField)
-      );
+    if (!linkDefinition.isNull()) { // have link definition
+      if (!meta.init(vocbase.server(), linkDefinition, true, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
+        return arangodb::Result( // result
+          TRI_ERROR_BAD_PARAMETER, // code
+          errorField.empty()
+          ? (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "': " + linkDefinition.toString())
+          : (std::string("while validating arangosearch link definition, error: invalid link definition for collection '") + collectionName.copyString() + "' error in attribute: " + errorField)
+        );
+      }
+      // validate analyzers origin
+      // analyzer should be either from same database as view (and collection) or from system database
+      {
+        const auto& currentVocbase = vocbase.name();
+        for (const auto& analyzer : meta._analyzerDefinitions) {
+          TRI_ASSERT(analyzer); // should be checked in meta init
+          if (ADB_UNLIKELY(!analyzer)) {
+            continue; 
+          }
+          auto* pool = analyzer.get();
+          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(pool->name());
+
+          if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {
+            return {
+              TRI_ERROR_BAD_PARAMETER,
+              std::string("Analyzer '")
+                  .append(pool->name())
+                  .append("' is not accessible from database '")
+                  .append(currentVocbase).append("'")
+            };
+          }
+        }
+      }
     }
   }
 
   return arangodb::Result();
 }
 
-/*static*/ bool IResearchLinkHelper::visit(arangodb::LogicalCollection const& collection,
-                                           std::function<bool(IResearchLink& link)> const& visitor) {
-  for (auto& index : collection.getIndexes()) {
-    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
-      continue;  // not an IResearchLink
+/*static*/ bool IResearchLinkHelper::visit( // visit
+    arangodb::LogicalCollection const& collection, // collection to visit
+    std::function<bool(IResearchLink& link)> const& visitor // visitor to apply
+) {
+  for (auto& index: collection.getIndexes()) {
+    if (!index // not a valid index
+        || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an IResearchLink
     }
 
     // TODO FIXME find a better way to retrieve an iResearch Link
-    // cannot use static_cast/reinterpret_cast since Index is not related to
-    // IResearchLink
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
     auto link = std::dynamic_pointer_cast<IResearchLink>(index);
 
     if (link && !visitor(*link)) {
-      return false;  // abort requested
+      return false; // abort requested
     }
   }
 

@@ -29,8 +29,10 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
-#include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
@@ -73,7 +75,7 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
   }
 }
 
-ResignShardLeadership::~ResignShardLeadership(){};
+ResignShardLeadership::~ResignShardLeadership() = default;
 
 bool ResignShardLeadership::first() {
   std::string const& database = _description.get(DATABASE);
@@ -120,13 +122,10 @@ bool ResignShardLeadership::first() {
     // for now but we will not accept any replication operation from any
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
-    col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
+    col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
     trx.abort(); // unlock
-    
-    auto* mgr = transaction::ManagerFeature::manager();
-    if (mgr) {  // abort ongoing leader transactions
-      mgr->abortAllManagedTrx(col->id(), /*leader*/true);
-    }
+
+    transaction::cluster::abortLeaderTransactionsOnShard(col->id());
 
   } catch (std::exception const& e) {
     std::stringstream error;
@@ -139,3 +138,5 @@ bool ResignShardLeadership::first() {
   notify();
   return false;
 }
+
+std::string const ResignShardLeadership::LeaderNotYetKnownString = "LEADER_NOT_YET_KNOWN";

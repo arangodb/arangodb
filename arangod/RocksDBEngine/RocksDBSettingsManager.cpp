@@ -43,6 +43,7 @@
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -144,6 +145,11 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto guard =
       scopeGuard([this]() { _syncing.store(false, std::memory_order_release); });
 
+  // need superuser scope to ensure we can sync all collections and keep seq
+  // numbers in sync; background index creation will call this function as user,
+  // and can lead to seq numbers getting out of sync
+  ExecContextSuperuserScope superuser;
+
   // fetch the seq number prior to any writes; this guarantees that we save
   // any subsequent updates in the WAL to replay if we crash in the middle
   auto const maxSeqNr = _db->GetLatestSequenceNumber();
@@ -179,6 +185,8 @@ Result RocksDBSettingsManager::sync(bool force) {
       continue;
     }
     TRI_DEFER(vocbase->releaseCollection(coll.get()));
+    
+    LOG_TOPIC("afb17", TRACE, Logger::ENGINES) << "syncing metadata for collection '" << coll->name() << "'";    
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
@@ -202,14 +210,20 @@ Result RocksDBSettingsManager::sync(bool force) {
     batch.Clear();
   }
 
-  TRI_ASSERT(_lastSync <= minSeqNr);
+  auto const lastSync = _lastSync.load();
+  if (minSeqNr < lastSync) {
+    LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
+    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
+    return Result(); // do not move backwards in time
+  }
+  TRI_ASSERT(lastSync <= minSeqNr);
   if (!didWork) {
-    _lastSync = minSeqNr;
+    _lastSync.store(minSeqNr);
     return Result();  // nothing was written
   }
 
   _tmpBuilder.clear();
-  Result res = writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
+  Result res = ::writeSettings(batch, _tmpBuilder, std::max(_lastSync.load(), minSeqNr));
   if (res.fail()) {
     LOG_TOPIC("8a5e6", WARN, Logger::ENGINES)
         << "could not store metadata settings " << res.errorMessage();
@@ -219,7 +233,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   // we have to commit all counters in one batch
   auto s = _db->Write(wo, &batch);
   if (s.ok()) {
-    _lastSync = std::max(_lastSync.load(), minSeqNr);
+    _lastSync.store(std::max(_lastSync.load(), minSeqNr));
   }
 
   return rocksutils::convertStatus(s);
@@ -235,7 +249,7 @@ void RocksDBSettingsManager::loadSettings() {
                key.string(), &result);
   if (status.ok()) {
     // key may not be there, so don't fail when not found
-    VPackSlice slice = VPackSlice(result.data());
+    VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(result.data()));
     TRI_ASSERT(slice.isObject());
     LOG_TOPIC("7458b", TRACE, Logger::ENGINES) << "read initial settings: " << slice.toJson();
 
@@ -277,7 +291,7 @@ void RocksDBSettingsManager::loadSettings() {
 
 /// earliest safe sequence number to throw away from wal
 rocksdb::SequenceNumber RocksDBSettingsManager::earliestSeqNeeded() const {
-  return _lastSync;
+  return _lastSync.load();
 }
 
 }  // namespace arangodb

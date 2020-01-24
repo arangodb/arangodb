@@ -21,8 +21,18 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdio.h>
+#include <cstdarg>
+#include <type_traits>
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <cstring>
+#endif
+
 #include "Exceptions.h"
-#include "Logger/Logger.h"
+
+#include "Basics/debugging.h"
+#include "Basics/error.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -77,8 +87,6 @@ Exception::Exception(int code, char const* errorMessage, char const* file, int l
   appendLocation();
 }
 
-Exception::~Exception() {}
-
 /// @brief returns the error message
 std::string const& Exception::message() const noexcept { return _errorMessage; }
 
@@ -92,30 +100,28 @@ void Exception::addToMessage(std::string const& more) { _errorMessage += more; }
 char const* Exception::what() const noexcept { return _errorMessage.c_str(); }
 
 /// @brief append original error location to message
-void Exception::appendLocation() noexcept {
-  try {
-    if (_code == TRI_ERROR_INTERNAL) {
-      _errorMessage += std::string(" (exception location: ") + _file + ":" +
-                       std::to_string(_line) +
-                       "). Please report this error to arangodb.com";
-    } else if (_code == TRI_ERROR_OUT_OF_MEMORY || _code == TRI_ERROR_NOT_IMPLEMENTED) {
-      _errorMessage += std::string(" (exception location: ") + _file + ":" +
-                       std::to_string(_line) + ")";
-    }
+void Exception::appendLocation() noexcept try {
+  if (_code == TRI_ERROR_INTERNAL) {
+    _errorMessage += std::string(" (exception location: ") + _file + ":" +
+                     std::to_string(_line) +
+                     "). Please report this error to arangodb.com";
+  } else if (_code == TRI_ERROR_OUT_OF_MEMORY || _code == TRI_ERROR_NOT_IMPLEMENTED) {
+    _errorMessage += std::string(" (exception location: ") + _file + ":" +
+                     std::to_string(_line) + ")";
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
-    if (WithBackTrace) {
-      _errorMessage += std::string("\n\n");
-      TRI_GetBacktrace(_errorMessage);
-      _errorMessage += std::string("\n\n");
-    }
-#endif
-#endif
-  } catch (...) {
-    // this function is called from the exception constructor, so it should
-    // not itself throw another exception
+  if (WithBackTrace) {
+    _errorMessage += std::string("\n\n");
+    TRI_GetBacktrace(_errorMessage);
+    _errorMessage += std::string("\n\n");
   }
+#endif
+#endif
+} catch (...) {
+  // this function is called from the exception constructor, so it should
+  // not itself throw another exception
 }
 
 /// @brief construct an error message from a template string

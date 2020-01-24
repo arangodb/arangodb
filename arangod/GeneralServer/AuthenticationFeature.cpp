@@ -27,8 +27,12 @@
 #include "Auth/Handler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -55,10 +59,10 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
       _authenticationTimeout(0.0),
       _jwtSecretProgramOption("") {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 
 #ifdef USE_ENTERPRISE
-  startsAfter("Ldap");
+  startsAfter<LdapFeature>();
 #endif
 }
 
@@ -151,14 +155,15 @@ void AuthenticationFeature::prepare() {
   TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
-    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
+    if (server().getFeature<LdapFeature>().isEnabled()) {
       _userManager.reset(
-          new auth::UserManager(std::make_unique<LdapAuthenticationHandler>()));
+          new auth::UserManager(server(), std::make_unique<LdapAuthenticationHandler>(
+                                              server().getFeature<LdapFeature>())));
     } else {
-      _userManager.reset(new auth::UserManager());
+      _userManager.reset(new auth::UserManager(server()));
     }
 #else
-    _userManager.reset(new auth::UserManager());
+    _userManager.reset(new auth::UserManager(server()));
 #endif
   } else {
     LOG_TOPIC("713c0", DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
@@ -197,10 +202,8 @@ void AuthenticationFeature::start() {
   out << "Authentication is turned " << (_active ? "on" : "off");
 
   if (_userManager != nullptr) {
-    auto queryRegistryFeature =
-        application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-            "QueryRegistry");
-    _userManager->setQueryRegistry(queryRegistryFeature->queryRegistry());
+    auto& queryRegistryFeature = server().getFeature<QueryRegistryFeature>();
+    _userManager->setQueryRegistry(queryRegistryFeature.queryRegistry());
   }
 
   if (_active && _authenticationSystemOnly) {

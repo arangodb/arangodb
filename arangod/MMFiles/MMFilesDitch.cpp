@@ -23,7 +23,9 @@
 
 #include "MMFilesDitch.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesDatafile.h"
 
 using namespace arangodb;
@@ -31,7 +33,7 @@ using namespace arangodb;
 MMFilesDitch::MMFilesDitch(MMFilesDitches* ditches, char const* filename, int line)
     : _ditches(ditches), _prev(nullptr), _next(nullptr), _filename(filename), _line(line) {}
 
-MMFilesDitch::~MMFilesDitch() {}
+MMFilesDitch::~MMFilesDitch() = default;
 
 /// @brief return the associated collection
 LogicalCollection* MMFilesDitch::collection() const {
@@ -42,19 +44,19 @@ MMFilesDocumentDitch::MMFilesDocumentDitch(MMFilesDitches* ditches, bool usedByT
                                            char const* filename, int line)
     : MMFilesDitch(ditches, filename, line), _usedByTransaction(usedByTransaction) {}
 
-MMFilesDocumentDitch::~MMFilesDocumentDitch() {}
+MMFilesDocumentDitch::~MMFilesDocumentDitch() = default;
 
 MMFilesReplicationDitch::MMFilesReplicationDitch(MMFilesDitches* ditches,
                                                  char const* filename, int line)
     : MMFilesDitch(ditches, filename, line) {}
 
-MMFilesReplicationDitch::~MMFilesReplicationDitch() {}
+MMFilesReplicationDitch::~MMFilesReplicationDitch() = default;
 
 MMFilesCompactionDitch::MMFilesCompactionDitch(MMFilesDitches* ditches,
                                                char const* filename, int line)
     : MMFilesDitch(ditches, filename, line) {}
 
-MMFilesCompactionDitch::~MMFilesCompactionDitch() {}
+MMFilesCompactionDitch::~MMFilesCompactionDitch() = default;
 
 MMFilesDropDatafileDitch::MMFilesDropDatafileDitch(
     MMFilesDitches* ditches, MMFilesDatafile* datafile, LogicalCollection* collection,
@@ -78,14 +80,14 @@ MMFilesRenameDatafileDitch::MMFilesRenameDatafileDitch(
       _collection(collection),
       _callback(callback) {}
 
-MMFilesRenameDatafileDitch::~MMFilesRenameDatafileDitch() {}
+MMFilesRenameDatafileDitch::~MMFilesRenameDatafileDitch() = default;
 
 MMFilesUnloadCollectionDitch::MMFilesUnloadCollectionDitch(
     MMFilesDitches* ditches, LogicalCollection* collection,
     std::function<bool(LogicalCollection*)> const& callback, char const* filename, int line)
     : MMFilesDitch(ditches, filename, line), _collection(collection), _callback(callback) {}
 
-MMFilesUnloadCollectionDitch::~MMFilesUnloadCollectionDitch() {}
+MMFilesUnloadCollectionDitch::~MMFilesUnloadCollectionDitch() = default;
 
 MMFilesDropCollectionDitch::MMFilesDropCollectionDitch(
     MMFilesDitches* ditches, arangodb::LogicalCollection& collection,
@@ -93,7 +95,7 @@ MMFilesDropCollectionDitch::MMFilesDropCollectionDitch(
     char const* filename, int line)
     : MMFilesDitch(ditches, filename, line), _collection(collection), _callback(callback) {}
 
-MMFilesDropCollectionDitch::~MMFilesDropCollectionDitch() {}
+MMFilesDropCollectionDitch::~MMFilesDropCollectionDitch() = default;
 
 MMFilesDitches::MMFilesDitches(LogicalCollection* collection)
     : _collection(collection),
@@ -345,6 +347,11 @@ MMFilesRenameDatafileDitch* MMFilesDitches::createMMFilesRenameDatafileDitch(
   try {
     auto ditch = new MMFilesRenameDatafileDitch(this, datafile, compactor, collection,
                                                 callback, filename, line);
+    TRI_IF_FAILURE("no-rename-datafile") {
+      // exit prematurely
+      return ditch;
+    }
+
     link(ditch);
 
     return ditch;

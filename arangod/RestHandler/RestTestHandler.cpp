@@ -26,8 +26,9 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
 
@@ -35,10 +36,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTestHandler::RestTestHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestTestHandler::RestTestHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
-RestTestHandler::~RestTestHandler() {}
+RestTestHandler::~RestTestHandler() = default;
 
 namespace {
 #define LANE_ENTRY(s) {#s, RequestLane::s},
@@ -140,7 +142,7 @@ RestStatus RestTestHandler::execute() {
 
     resetResponse(rest::ResponseCode::OK);
     _response->setPayload(std::move(buffer), true);
-    continueHandlerExecution();
+    wakeupHandler();
   });
 
   if (ok) {

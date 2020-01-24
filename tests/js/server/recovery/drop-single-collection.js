@@ -49,7 +49,7 @@ function runSetup () {
   c.drop();
   internal.wait(3);
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

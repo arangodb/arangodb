@@ -28,10 +28,10 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-
-#include <lib/Logger/LogMacros.h>
+#include "Aql/Stats.h"
+#include "Logger/LogMacros.h"
 
 #include <utility>
 
@@ -55,6 +55,14 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
+std::vector<std::pair<RegisterId, RegisterId>> DistinctCollectExecutorInfos::getGroupRegisters() const {
+  return _groupRegisters;
+}
+
+transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
+  return _trxPtr;
+}
+
 DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
@@ -63,17 +71,12 @@ DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
                               _infos.getGroupRegisters().size()),
             AqlValueGroupEqual(_infos.getTransaction())) {}
 
-DistinctCollectExecutor::~DistinctCollectExecutor() {
-  // destroy all AqlValues captured
-  for (auto& it : _seen) {
-    for (auto& it2 : it) {
-      const_cast<AqlValue*>(&it2)->destroy();
-    }
-  }
-}
+DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
-std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("DistinctCollectExecutor::produceRow") {
+void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
+
+std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   NoStats stats{};
@@ -137,4 +140,18 @@ std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(
   // This block cannot know how many elements will be returned exactly.
   // but it is upper bounded by the input.
   return _fetcher.preFetchNumberOfRows(atMost);
+}
+
+void DistinctCollectExecutor::destroyValues() {
+  // destroy all AqlValues captured
+  for (auto& it : _seen) {
+    for (auto& it2 : it) {
+      const_cast<AqlValue*>(&it2)->destroy();
+    }
+  }
+  _seen.clear();
+}
+
+const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {
+  return _infos;
 }

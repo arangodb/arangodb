@@ -24,8 +24,8 @@
 #ifndef ARANGOD_MMFILES_PRIMARY_INDEX_H
 #define ARANGOD_MMFILES_PRIMARY_INDEX_H 1
 
-#include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
+#include "Containers/AssocUnique.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -39,7 +39,10 @@
 
 namespace arangodb {
 
-class MMFilesPrimaryIndex;
+class MMFilesPrimaryIndexEqIterator;
+class MMFilesPrimaryIndexInIterator;
+class MMFilesAllIndexIterator;
+class MMFilesAnyIndexIterator;
 struct MMFilesSimpleIndexElement;
 namespace transaction {
 class Methods;
@@ -63,7 +66,7 @@ struct MMFilesPrimaryIndexHelper {
     try {
       VPackSlice tmp = right.slice(context);
       TRI_ASSERT(tmp.isString());
-      return VPackSlice(key).equals(tmp);
+      return VPackSlice(key).binaryEquals(tmp);
     } catch (...) {
       return false;
     }
@@ -89,11 +92,132 @@ struct MMFilesPrimaryIndexHelper {
     VPackSlice r = right.slice(context);
     TRI_ASSERT(l.isString());
     TRI_ASSERT(r.isString());
-    return l.equals(r);
+    return l.binaryEquals(r);
   }
 };
 
-typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper> MMFilesPrimaryIndexImpl;
+class MMFilesPrimaryIndex final : public MMFilesIndex {
+  friend class MMFilesPrimaryIndexIterator;
+
+ public:
+  using ImplType =
+      ::arangodb::containers::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper>;
+
+  MMFilesPrimaryIndex() = delete;
+
+  explicit MMFilesPrimaryIndex(arangodb::LogicalCollection& collection);
+
+  IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
+
+  char const* typeName() const override { return "primary"; }
+
+  bool canBeDropped() const override { return false; }
+
+  bool isSorted() const override { return false; }
+
+  bool hasSelectivityEstimate() const override { return true; }
+
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override {
+    return 1.0;
+  }
+
+  size_t size() const;
+
+  size_t memory() const override;
+
+  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
+  void toVelocyPackFigures(VPackBuilder&) const override;
+
+  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
+
+  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const& doc, Index::OperationMode mode) override;
+
+  void load() override {}
+  void unload() override;
+
+  MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&) const;
+  MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&,
+                                      ManagedDocumentResult&) const;
+  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&) const;
+
+  /// @brief a method to iterate over all elements in the index in
+  ///        a sequential order.
+  ///        Returns nullptr if all documents have been returned.
+  ///        Convention: position === 0 indicates a new start.
+  ///        DEPRECATED
+  MMFilesSimpleIndexElement lookupSequential(transaction::Methods*,
+                                             arangodb::containers::BucketPosition& position,
+                                             uint64_t& total);
+
+  /// @brief request an iterator over all elements in the index in
+  ///        a sequential order.
+  IndexIterator* allIterator(transaction::Methods*) const;
+
+  /// @brief request an iterator over all elements in the index in
+  ///        a random order. It is guaranteed that each element is found
+  ///        exactly once unless the collection is modified.
+  IndexIterator* anyIterator(transaction::Methods*) const;
+
+  /// @brief a method to iterate over all elements in the index in
+  ///        reversed sequential order.
+  ///        Returns nullptr if all documents have been returned.
+  ///        Convention: position === UINT64_MAX indicates a new start.
+  ///        DEPRECATED
+  MMFilesSimpleIndexElement lookupSequentialReverse(transaction::Methods*,
+                                                    arangodb::containers::BucketPosition& position);
+
+  Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
+                   arangodb::velocypack::Slice const&, OperationMode mode);
+  Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
+                   arangodb::velocypack::Slice const&, ManagedDocumentResult&,
+                   OperationMode mode);
+
+  Result removeKey(transaction::Methods*, LocalDocumentId const& documentId,
+                   arangodb::velocypack::Slice const&, OperationMode mode);
+  Result removeKey(transaction::Methods*, LocalDocumentId const& documentId,
+                   arangodb::velocypack::Slice const&, ManagedDocumentResult&,
+                   OperationMode mode);
+
+  int resize(transaction::Methods*, size_t);
+
+  void invokeOnAllElements(std::function<bool(LocalDocumentId const&)>);
+  void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement const&)>);
+
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
+
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
+
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
+
+ private:
+  /// @brief create the iterator, for a single attribute, IN operator
+  std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
+                                                  arangodb::aql::AstNode const*) const;
+
+  /// @brief create the iterator, for a single attribute, EQ operator
+  std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
+                                                  arangodb::aql::AstNode const*) const;
+
+  /// @brief add a single value node to the iterator's keys
+  void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
+                     arangodb::aql::AstNode const* valNode, bool isId) const;
+
+  MMFilesSimpleIndexElement buildKeyElement(LocalDocumentId const& documentId,
+                                            arangodb::velocypack::Slice const&) const;
+
+ private:
+  /// @brief the actual index
+  std::unique_ptr<ImplType> _primaryIndex;
+};
 
 class MMFilesPrimaryIndexEqIterator final : public IndexIterator {
  public:
@@ -141,9 +265,9 @@ class MMFilesAllIndexIterator final : public IndexIterator {
  public:
   MMFilesAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                           MMFilesPrimaryIndex const* index,
-                          MMFilesPrimaryIndexImpl const* indexImpl);
+                          MMFilesPrimaryIndex::ImplType const* indexImpl);
 
-  ~MMFilesAllIndexIterator() {}
+  ~MMFilesAllIndexIterator() = default;
 
   char const* typeName() const override { return "all-index-iterator"; }
 
@@ -155,8 +279,8 @@ class MMFilesAllIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  MMFilesPrimaryIndexImpl const* _index;
-  arangodb::basics::BucketPosition _position;
+  MMFilesPrimaryIndex::ImplType const* _index;
+  arangodb::containers::BucketPosition _position;
   std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
   uint64_t _total;
 };
@@ -165,9 +289,9 @@ class MMFilesAnyIndexIterator final : public IndexIterator {
  public:
   MMFilesAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                           MMFilesPrimaryIndex const* index,
-                          MMFilesPrimaryIndexImpl const* indexImpl);
+                          MMFilesPrimaryIndex::ImplType const* indexImpl);
 
-  ~MMFilesAnyIndexIterator() {}
+  ~MMFilesAnyIndexIterator() = default;
 
   char const* typeName() const override { return "any-index-iterator"; }
 
@@ -176,132 +300,13 @@ class MMFilesAnyIndexIterator final : public IndexIterator {
   void reset() override;
 
  private:
-  MMFilesPrimaryIndexImpl const* _index;
-  arangodb::basics::BucketPosition _initial;
-  arangodb::basics::BucketPosition _position;
+  MMFilesPrimaryIndex::ImplType const* _index;
+  arangodb::containers::BucketPosition _initial;
+  arangodb::containers::BucketPosition _position;
   uint64_t _step;
   uint64_t _total;
 };
 
-class MMFilesPrimaryIndex final : public MMFilesIndex {
-  friend class MMFilesPrimaryIndexIterator;
-
- public:
-  MMFilesPrimaryIndex() = delete;
-
-  explicit MMFilesPrimaryIndex(arangodb::LogicalCollection& collection);
-
-  IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
-
-  char const* typeName() const override { return "primary"; }
-
-  bool canBeDropped() const override { return false; }
-
-  bool isSorted() const override { return false; }
-
-  bool hasSelectivityEstimate() const override { return true; }
-
-  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override {
-    return 1.0;
-  }
-
-  size_t size() const;
-
-  size_t memory() const override;
-
-  void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
-  void toVelocyPackFigures(VPackBuilder&) const override;
-
-  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
-
-  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const& doc, Index::OperationMode mode) override;
-
-  void load() override {}
-  void unload() override;
-
-  MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&) const;
-  MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&,
-                                      ManagedDocumentResult&) const;
-  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&) const;
-
-  /// @brief a method to iterate over all elements in the index in
-  ///        a sequential order.
-  ///        Returns nullptr if all documents have been returned.
-  ///        Convention: position === 0 indicates a new start.
-  ///        DEPRECATED
-  MMFilesSimpleIndexElement lookupSequential(transaction::Methods*,
-                                             arangodb::basics::BucketPosition& position,
-                                             uint64_t& total);
-
-  /// @brief request an iterator over all elements in the index in
-  ///        a sequential order.
-  IndexIterator* allIterator(transaction::Methods*) const;
-
-  /// @brief request an iterator over all elements in the index in
-  ///        a random order. It is guaranteed that each element is found
-  ///        exactly once unless the collection is modified.
-  IndexIterator* anyIterator(transaction::Methods*) const;
-
-  /// @brief a method to iterate over all elements in the index in
-  ///        reversed sequential order.
-  ///        Returns nullptr if all documents have been returned.
-  ///        Convention: position === UINT64_MAX indicates a new start.
-  ///        DEPRECATED
-  MMFilesSimpleIndexElement lookupSequentialReverse(transaction::Methods*,
-                                                    arangodb::basics::BucketPosition& position);
-
-  Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&, OperationMode mode);
-  Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&, ManagedDocumentResult&,
-                   OperationMode mode);
-
-  Result removeKey(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&, OperationMode mode);
-  Result removeKey(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&, ManagedDocumentResult&,
-                   OperationMode mode);
-
-  int resize(transaction::Methods*, size_t);
-
-  void invokeOnAllElements(std::function<bool(LocalDocumentId const&)>);
-  void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement const&)>);
-
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
-
-  IndexIterator* iteratorForCondition(transaction::Methods*, 
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
-
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
-
- private:
-  /// @brief create the iterator, for a single attribute, IN operator
-  IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
-
-  /// @brief create the iterator, for a single attribute, EQ operator
-  IndexIterator* createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
-
-  /// @brief add a single value node to the iterator's keys
-  void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
-                     arangodb::aql::AstNode const* valNode, bool isId) const;
-
-  MMFilesSimpleIndexElement buildKeyElement(LocalDocumentId const& documentId,
-                                            arangodb::velocypack::Slice const&) const;
-
- private:
-  /// @brief the actual index
-  std::unique_ptr<MMFilesPrimaryIndexImpl> _primaryIndex;
-};
 }  // namespace arangodb
 
 #endif

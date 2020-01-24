@@ -35,13 +35,20 @@
 #include <limits>
 #include <numeric>
 #include <type_traits>
+#include <unordered_set>
 
 namespace arangodb {
 namespace options {
 
+// helper functions to strip-non-numeric data from a string
+std::string removeCommentsFromNumber(std::string const& value);
+
 // convert a string into a number, base version for signed or unsigned integer types
 template <typename T>
 inline T toNumber(std::string value, T base) {
+  // replace leading spaces, replace trailing spaces & comments
+  value = removeCommentsFromNumber(value);
+
   auto n = value.size();
   int64_t m = 1;
   int64_t d = 1;
@@ -51,15 +58,15 @@ inline T toNumber(std::string value, T base) {
 
     if (suffix == "kib" || suffix == "KiB") {
       m = 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "mib" || suffix == "MiB") {
       m = 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "gib" || suffix == "GiB") {
       m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     }
   }
@@ -98,7 +105,7 @@ inline T toNumber(std::string value, T base) {
       value = value.substr(0, n - 1);
     }
   }
-  
+
   char const* p = value.data();
   char const* e = p + value.size();
   // skip leading whitespace
@@ -117,7 +124,8 @@ inline T toNumber(std::string value, T base) {
 // convert a string into a number, version for double values
 template <>
 inline double toNumber<double>(std::string value, double /*base*/) {
-  return std::stod(value);
+  // replace leading spaces, replace trailing spaces & comments
+  return std::stod(removeCommentsFromNumber(value));
 }
 
 // convert a string into another type, specialized version for numbers
@@ -161,7 +169,9 @@ inline std::string stringifyValue<std::string>(std::string const& value) {
 // abstract base parameter type struct
 struct Parameter {
   Parameter() = default;
-  virtual ~Parameter() {}
+  virtual ~Parameter() = default;
+
+  virtual void flushValue() {}
 
   virtual bool requiresValue() const { return true; }
   virtual std::string name() const = 0;
@@ -436,6 +446,8 @@ struct DiscreteValuesParameter : public T {
     return T::set(value);
   }
 
+  
+  // cppcheck-suppress virtualCallInConstructor ; bogus warning
   std::string description() const override {
     std::string msg("Possible values: ");
     std::vector<std::string> values;
@@ -464,7 +476,6 @@ template <typename T>
 struct VectorParameter : public Parameter {
   explicit VectorParameter(std::vector<typename T::ValueType>* ptr)
       : ptr(ptr) {}
-
   std::string name() const override {
     typename T::ValueType dummy;
     T param(&dummy);
@@ -492,6 +503,10 @@ struct VectorParameter : public Parameter {
     return result;
   }
 
+  void flushValue() override {
+    ptr->clear();
+  }
+
   void toVPack(VPackBuilder& builder) const override {
     builder.openArray();
     for (size_t i = 0; i < ptr->size(); ++i) {
@@ -502,6 +517,100 @@ struct VectorParameter : public Parameter {
 
   std::vector<typename T::ValueType>* ptr;
 };
+
+// specialized type for a vector of discrete values (defined in the unordered_set)
+// this templated type needs a concrete value type
+template <typename T>
+struct DiscreteValuesVectorParameter : public Parameter {
+  explicit DiscreteValuesVectorParameter(std::vector<typename T::ValueType>* ptr,
+                                         std::unordered_set<typename T::ValueType> const& allowed)
+      : ptr(ptr),
+        allowed(allowed) {
+    for (size_t i = 0; i < ptr->size(); ++i) {
+      if (allowed.find(ptr->at(i)) == allowed.end()) {
+        // default value is not in list of allowed values
+        std::string msg("invalid default value for DiscreteValues parameter: '");
+        msg.append(stringifyValue(ptr->at(i)));
+        msg.append("'. ");
+        msg.append(description());
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+      }
+    }
+  }
+
+  std::string name() const override {
+    typename T::ValueType dummy;
+    T param(&dummy);
+    return std::string(param.name()) + "...";
+  }
+
+  void flushValue() override {
+    ptr->clear();
+  }
+
+  std::string valueString() const override {
+    std::string value;
+    for (size_t i = 0; i < ptr->size(); ++i) {
+      if (i > 0) {
+        value.append(", ");
+      }
+      value.append(stringifyValue(ptr->at(i)));
+    }
+    return value;
+  }
+
+  std::string set(std::string const& value) override {
+    auto it = allowed.find(fromString<typename T::ValueType>(value));
+
+    if (it == allowed.end()) {
+      std::string msg("invalid value '");
+      msg.append(value);
+      msg.append("'. ");
+      msg.append(description());
+      return msg;
+    }
+
+    typename T::ValueType dummy;
+    T param(&dummy);
+    std::string result = param.set(value);
+
+    if (result.empty()) {
+      ptr->push_back(*(param.ptr));
+    }
+    return result;
+  }
+
+  void toVPack(VPackBuilder& builder) const override {
+    builder.openArray();
+    for (size_t i = 0; i < ptr->size(); ++i) {
+      builder.add(VPackValue(ptr->at(i)));
+    }
+    builder.close();
+  }
+
+  std::string description() const override {
+    std::string msg("Possible values: ");
+    std::vector<std::string> values;
+    for (auto const& it : allowed) {
+      values.emplace_back(stringifyValue(it));
+    }
+    std::sort(values.begin(), values.end());
+
+    size_t i = 0;
+    for (auto const& it : values) {
+      if (i > 0) {
+        msg.append(", ");
+      }
+      msg.append(it);
+      ++i;
+    }
+    return msg;
+  }
+
+  std::vector<typename T::ValueType>* ptr;
+  std::unordered_set<typename T::ValueType> allowed;
+};
+
 
 // a type that's useful for obsolete parameters that do nothing
 struct ObsoleteParameter : public Parameter {

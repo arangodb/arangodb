@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_VALUETYPE_H
-#define VELOCYPACK_VALUETYPE_H
+#define VELOCYPACK_VALUETYPE_H 1
 
 #include <iosfwd>
 
@@ -52,7 +52,8 @@ enum class ValueType : uint8_t {
   String,
   Binary,
   BCD,
-  Custom
+  Custom,
+  Tagged
 };
 
 char const* valueTypeName(ValueType);

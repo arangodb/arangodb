@@ -24,14 +24,21 @@
 #ifndef ARANGODB_LOGGER_LOG_APPENDER_H
 #define ARANGODB_LOGGER_LOG_APPENDER_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <functional>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "Basics/Mutex.h"
+#include "Basics/Common.h"
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
 class LogTopic;
 struct LogMessage;
+class Mutex;
 
 class LogAppender {
  public:
@@ -50,7 +57,7 @@ class LogAppender {
 
  public:
   explicit LogAppender(std::string const& filter) : _filter(filter) {}
-  virtual ~LogAppender() {}
+  virtual ~LogAppender() = default;
 
  public:
   virtual void logMessage(LogLevel, std::string const& message, size_t offset) = 0;

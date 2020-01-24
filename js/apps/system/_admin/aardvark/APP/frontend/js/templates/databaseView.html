@@ -1,0 +1,72 @@
+  <div class="headerBar">
+    <div class="search-field">
+      <input type="text" value="<%=searchString%>" id="databaseSearchInput" class="search-input" placeholder="Search..."/>
+      <!-- <img id="databaseSearchSubmit" class="search-submit-icon">-->
+      <i id="databaseSearchSubmit" class="fa fa-search"></i>
+    </div>
+    <div class="headerButtonBar">
+        <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="databaseToggle" class="headerButton">
+              <span class="icon_arangodb_settings2" title="Settings"></span>
+            </a>
+          </li>
+        </ul>
+      </div>
+
+  </div>
+
+
+  <div id="databaseDropdown2" class="headerDropdown">
+
+    <div id="databaseDropdown" class="dropdownInner">
+      <ul>
+        <li class="nav-header">Sorting</li>
+        <li><a>
+          <label class="checkbox checkboxLabel">
+            <input class="css-checkbox" type="checkbox" id="dbSortDesc">
+            <i class="fa"></i>
+            Sort descending
+          </label>
+        </a></li>
+      </ul>
+    </div>
+
+  </div>
+
+
+  <div class="contentDiv" id="userManagementView">
+    <div class="tileList pure-u">
+      <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6">
+        <div class="fullBorderBox">
+          <a href="#" id="createDatabase" class="add">
+            <span id="newDatabase" class="pull-left add-Icon"><i class="fa fa-plus-circle"></i></span>
+            Add Database
+          </a>
+        </div>
+      </div>
+      <% collection.forEach(function(db) {
+          var name = db.get("name");
+      %>
+
+      <% if (name !== '_system') { %>
+        <div class="tile pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3 pure-u-lg-1-4 pure-u-xl-1-6 defaultCursor">
+          <div class="fullBorderBox" style="border: 0;">
+            <div class="borderBox"></div>
+            <div class="iconSet">
+              <% if (!readOnly) { %>
+                <span class="icon_arangodb_settings2 editDatabase" id="<%=name %>_edit-database" alt="Edit database" title="Edit database"></span>
+              <% } %>
+            </div>
+            <i class="collection-type-icon fa fa-database defaultCursor"></i>
+            <div class="tileBadge">
+            </div>
+            <h5 class="collectionName" style="margin-left: 0; margin-right: 0;"><%=name %></h5>
+          </div>
+        </div>
+      <%};%>
+
+      <%});%>
+     </div>
+  </div>
+

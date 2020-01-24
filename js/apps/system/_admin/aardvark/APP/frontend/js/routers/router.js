@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document, d3 */
+/* global window, $, Backbone, document, d3, ReactDOM */
 /* global $, arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
@@ -9,6 +9,7 @@
     toUpdate: [],
     dbServers: [],
     isCluster: undefined,
+    foxxApiEnabled: undefined,
     lastRoute: undefined,
 
     routes: {
@@ -100,6 +101,9 @@
             this.loggerView.logTopicView.remove();
           }
         }
+
+        // react unmounting
+        ReactDOM.unmountComponentAtNode(document.getElementById("content"));
       }
 
       this.lastRoute = window.location.hash;
@@ -213,6 +217,9 @@
       if (frontendConfig.isCluster === true) {
         this.isCluster = true;
       }
+      if (typeof frontendConfig.foxxApiEnabled === "boolean") {
+        this.foxxApiEnabled = frontendConfig.foxxApiEnabled;
+      }
 
       document.addEventListener('keyup', this.listener, false);
 
@@ -221,9 +228,6 @@
 
       // foxxes
       this.foxxList = new window.FoxxCollection();
-      window.foxxInstallView = new window.FoxxInstallView({
-        collection: this.foxxList
-      });
 
       // foxx repository
       this.foxxRepo = new window.FoxxRepository();
@@ -297,7 +301,8 @@
               currentDB: self.currentDB,
               notificationCollection: self.notificationList,
               userCollection: self.userCollection,
-              isCluster: self.isCluster
+              isCluster: self.isCluster,
+              foxxApiEnabled: self.foxxApiEnabled
             });
             self.naviView.render();
           }
@@ -351,7 +356,7 @@
         this.waitForInit(this.cluster.bind(this));
         return;
       }
-      if (this.isCluster === false || this.isCluster === undefined) {
+      if (!this.isCluster) {
         if (this.currentDB.get('name') === '_system') {
           this.routes[''] = 'dashboard';
           this.navigate('#dashboard', {trigger: true});
@@ -405,6 +410,9 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
+      // TODO re-enable React View, for now use old view:
+      // window.ShardsReactView.render();
+      // Below code needs to be removed then again.
       if (this.shardsView) {
         this.shardsView.remove();
       }
@@ -412,6 +420,7 @@
         dbServers: this.dbServers
       });
       this.shardsView.render();
+
     },
 
     nodes: function (initialized) {
@@ -516,14 +525,18 @@
         this.waitForInit(this.logger.bind(this));
         return;
       }
-      if (!this.loggerView) {
-        var co = new window.ArangoLogs(
-          {upto: true, loglevel: 4}
-        );
-        this.loggerView = new window.LoggerView({
-          collection: co
-        });
+
+      if (this.loggerView) {
+        this.loggerView.remove();
       }
+
+      var co = new window.ArangoLogs({
+        upto: true,
+        loglevel: 4
+      });
+      this.loggerView = new window.LoggerView({
+        collection: co
+      });
       this.loggerView.render();
     },
 
@@ -531,6 +544,10 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.applicationDetail.bind(this), mount);
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       var callback = function () {
@@ -561,6 +578,10 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.storeDetail.bind(this), mount);
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       var callback = function () {
@@ -595,7 +616,7 @@
             collection: this.userCollection
           });
         }
-        if (error || user === null) {
+        if (error || user === null || user === undefined) {
           this.loginView.render();
         } else {
           this.loginView.render(true);
@@ -973,6 +994,10 @@
         this.waitForInit(this.applications.bind(this));
         return;
       }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
       if (this.applicationsView === undefined) {
         this.applicationsView = new window.ApplicationsView({
           collection: this.foxxList
@@ -985,6 +1010,14 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.installService.bind(this));
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
+      if (!frontendConfig.foxxStoreEnabled) {
+        this.navigate('#services/install/upload', {trigger: true});
         return;
       }
       window.modalView.clearValidators();
@@ -1004,6 +1037,10 @@
         this.waitForInit(this.installNewService.bind(this));
         return;
       }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
       window.modalView.clearValidators();
       if (this.serviceNewView) {
         this.serviceNewView.remove();
@@ -1018,6 +1055,10 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.installGitHubService.bind(this));
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       window.modalView.clearValidators();
@@ -1036,6 +1077,10 @@
         this.waitForInit(this.installUrlService.bind(this));
         return;
       }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
       window.modalView.clearValidators();
       if (this.serviceUrlView) {
         this.serviceUrlView.remove();
@@ -1050,6 +1095,10 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.installUploadService.bind(this));
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       window.modalView.clearValidators();

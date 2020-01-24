@@ -32,6 +32,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/ExecContext.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -107,15 +108,18 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
 
     ManagedDocumentResult mdr;
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
-
-    trx.invokeOnAllElements(_collection->name(), [this, &trx, &maxTick, &mdr,
-                                                  &mmColl](LocalDocumentId const& token) {
+    
+    TRI_ASSERT(trx.isLocked(_collection, AccessMode::Type::READ));
+    trx.transactionContextPtr()->pinData(_collection);
+    
+    ManagedDocumentResult mmdr;
+    mmColl->invokeOnAllElements(&trx, [this, &trx, &maxTick, &mdr, &mmColl](LocalDocumentId const& token) {
       if (mmColl->readDocumentConditional(&trx, token, maxTick, mdr)) {
         _vpack.emplace_back(mdr.vpack());
       }
       return true;
     });
-
+    
     trx.finish(res);
   }
 
@@ -142,7 +146,7 @@ std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(
   TRI_ASSERT(first.isObject());
   TRI_ASSERT(last.isObject());
 
-  uint64_t hash = 0x012345678;
+  uint64_t hashval = 0x012345678;
 
   for (size_t i = from; i < to; ++i) {
     VPackSlice current(_vpack.at(i));
@@ -150,13 +154,13 @@ std::tuple<std::string, std::string, uint64_t> MMFilesCollectionKeys::hashChunk(
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
-    hash ^= transaction::helpers::extractKeyFromDocument(current).hashString();
-    hash ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
+    hashval ^= transaction::helpers::extractKeyFromDocument(current).hashString();
+    hashval ^= transaction::helpers::extractRevSliceFromDocument(current).hash();
   }
 
   return std::make_tuple(transaction::helpers::extractKeyFromDocument(first).copyString(),
                          transaction::helpers::extractKeyFromDocument(last).copyString(),
-                         hash);
+                         hashval);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,10 +201,10 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 
-  auto buffer = result.buffer();
+  auto& buffer = result.bufferRef();
   size_t offset = 0;
 
-  for (auto const& it : VPackArrayIterator(ids)) {
+  for (VPackSlice it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
@@ -219,7 +223,7 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result,
       TRI_ASSERT(current.isObject());
       result.add(current);
 
-      if (buffer->byteSize() > maxChunkSize) {
+      if (buffer.byteSize() > maxChunkSize) {
         // buffer is full
         break;
       }

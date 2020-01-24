@@ -22,16 +22,48 @@
 
 #include "DaemonFeature.h"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <sys/stat.h>
 #include <chrono>
+#include <stdexcept>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileResult.h"
+#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/files.h"
+#include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
+#include "Basics/threads.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -42,7 +74,7 @@ namespace arangodb {
 DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Daemon") {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<GreetingsFeaturePhase>();
 
 #ifndef _WIN32
   _workingDirectory = "/var/tmp";
@@ -74,18 +106,15 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  LoggerFeature* logger =
-      ApplicationServer::getFeature<LoggerFeature>("Logger");
-  logger->setBackgrounded(true);
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
+  logger.setBackgrounded(true);
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
+  std::string absoluteFile = TRI_GetAbsolutePath(_pidFile, currentDir);
 
-  char* absoluteFile = TRI_GetAbsolutePath(_pidFile.c_str(), currentDir.c_str());
-
-  if (absoluteFile != nullptr) {
-    _pidFile = std::string(absoluteFile);
-    TRI_Free(absoluteFile);
+  if (!absoluteFile.empty()) {
+    _pidFile = absoluteFile;
     LOG_TOPIC("79662", DEBUG, arangodb::Logger::FIXME)
         << "using absolute pid file '" << _pidFile << "'";
   } else {
@@ -376,7 +405,7 @@ int DaemonFeature::waitForChildProcess(int pid) {
     }
 
     // sleep a while and retry
-    std::this_thread::sleep_for(std::chrono::microseconds(500 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
   // enough time has elapsed... we now abort our loop

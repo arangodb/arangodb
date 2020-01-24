@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BITSET_DOC_ITERATOR_H
@@ -33,27 +32,24 @@ NS_ROOT
 
 class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
  public:
-  explicit bitset_doc_iterator(
-    const bitset& set,
-    const order::prepared& order = order::prepared::unordered()
-  );
+  explicit bitset_doc_iterator(const bitset& set);
 
   bitset_doc_iterator(
     const sub_reader& reader,
-    const attribute_store& prepared_filter_attrs,
+    const byte_type* stats,
     const bitset& set,
-    const order::prepared& order
+    const order::prepared& order,
+    boost_t boost
   );
 
-  virtual bool next() NOEXCEPT override;
-  virtual doc_id_t seek(doc_id_t target) NOEXCEPT override;
-  virtual doc_id_t value() const NOEXCEPT override { return doc_.value; }
+  virtual bool next() noexcept override;
+  virtual doc_id_t seek(doc_id_t target) noexcept override;
+  virtual doc_id_t value() const noexcept override { return doc_.value; }
 
  private:
   document doc_;
   const bitset::word_t* begin_;
   const bitset::word_t* end_;
-  order::prepared::scorers scorers_;
   size_t size_;
 }; // bitset_doc_iterator
 

@@ -162,21 +162,10 @@ describe('Foxx arangoUser', function () {
     expect(result.body).to.eql(JSON.stringify({user: null}));
   });
 
-  it('should not set the arangoUser object if not authenticated correctly - str array', function () {
+  it('should not set the arangoUser object if not authenticated correctly - str empty', function () {
     const opts = { headers: {
       authorization: (
         'Basic ' + new Buffer([]).toString('base64')
-      )
-    }};
-    const result = internal.download(url + mount, '', opts);
-    expect(result.code).to.equal(200);
-    expect(result.body).to.eql(JSON.stringify({user: null}));
-  });
-
-  it('should not set the arangoUser object if not authenticated correctly - str obj', function () {
-    const opts = { headers: {
-      authorization: (
-        'Basic ' + new Buffer({}).toString('base64')
       )
     }};
     const result = internal.download(url + mount, '', opts);

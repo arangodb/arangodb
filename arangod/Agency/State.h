@@ -28,8 +28,6 @@
 #include "AgencyCommon.h"
 #include "Utils/OperationOptions.h"
 
-#include <velocypack/vpack.h>
-
 #include <cstdint>
 #include <deque>
 #include <functional>
@@ -41,6 +39,11 @@ namespace arangodb {
 
 namespace aql {
 class QueryRegistry;
+}
+
+namespace velocypack {
+class Builder;
+class Slice;
 }
 
 namespace consensus {
@@ -89,6 +92,19 @@ class State {
 
   /// @brief non-locking version of at
   log_t atNoLock(index_t) const;
+
+  /**
+   * @brief Erase element range from _log
+   * @param rbegin Start of range
+   * @param end    End of range
+   */
+  void logEraseNoLock(std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend);
+
+  /**
+   * @brief Emplace log entry at back
+   * @param l       log entry
+   */
+  void logEmplaceBackNoLock(log_t&& l);
 
  public:
   /// @brief Check for a log entry, returns 0, if the log does not

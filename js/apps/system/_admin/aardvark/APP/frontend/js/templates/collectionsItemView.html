@@ -1,0 +1,38 @@
+<div class="paddingBox">
+  <div class="borderBox"></div>
+  <i class="collection-type-icon fa <%= model.get('picture') %>"></i>
+  <div class="tileBadge">
+    <span>
+    <% if(model.get('desc')) { %>
+      <div class="corneredBadge inProgress">
+        <%= model.get('desc') %>
+      </div>
+    <% } else if (model.get('status') === 'corrupted') { %>
+      <div class="corneredBadge <%= model.get('status') %>">
+        <%= model.get('status') %>
+      </div>
+    <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded' || model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
+      <% if (!model.get('locked') && model.get("status") !== "loading" && model.get("status") !== "unloading") { %>
+        <div class="corneredBadge <%= model.get('status') %>">
+          <%= model.get('status') %>
+        </div>
+      <% } else if (model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
+        <div class="corneredBadge inProgress">
+          <%= model.get('status') %>
+        </div>
+      <% } else { %>
+        <div class="corneredBadge inProgress">
+          <%= model.get('status') %>
+        </div>
+      <% } %>
+    <% } %>
+    </span>
+  </div>
+
+  <% if(model.get('lockType') === "index") { %>
+    <!-- <progress max="100" value="80"></progress>-->
+    <h5 class="collectionName"><%= model.get('name') %></h5>
+  <% } else { %>
+    <h5 class="collectionName"><%= model.get('name') %></h5>
+  <% } %>
+</div>

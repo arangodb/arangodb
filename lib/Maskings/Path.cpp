@@ -49,7 +49,7 @@ ParseResult<Path> Path::parse(std::string const& def) {
 
   uint8_t const* p = reinterpret_cast<uint8_t const*>(def.c_str());
   int32_t off = 0;
-  int32_t len = def.size();
+  int32_t len = static_cast<int32_t>(def.size());
   UChar32 ch;
 
   if (wildcard) {

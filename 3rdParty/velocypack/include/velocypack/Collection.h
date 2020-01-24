@@ -54,6 +54,8 @@ class Collection {
   Collection(Collection const&) = delete;
   Collection& operator=(Collection const&) = delete;
 
+  static Builder& appendArray(Builder& builder, Slice const& left);
+
   static void forEach(Slice const& slice, Predicate const& predicate);
 
   static void forEach(Slice const* slice, Predicate const& predicate) {
@@ -224,7 +226,7 @@ class Collection {
 struct IsEqualPredicate {
   IsEqualPredicate(Slice const& value) : value(value) {}
   bool operator()(Slice const& current, ValueLength) {
-    return value.equals(current);
+    return value.binaryEquals(current);
   }
   // compare value
   Slice const value;

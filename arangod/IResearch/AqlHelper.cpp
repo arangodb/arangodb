@@ -20,6 +20,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
 #include "AqlHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -57,10 +58,11 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     return true;
   }
 
-  if ((!lhs && rhs) || (lhs && !rhs)) {
+  if ((lhs == nullptr && rhs != nullptr) || (lhs != nullptr && rhs == nullptr)) {
     return false;
   }
 
+  // cppcheck-suppress nullPointerRedundantCheck
   if (lhs->type != rhs->type) {
     return false;
   }
@@ -551,9 +553,11 @@ bool attributeAccessEqual(arangodb::aql::AstNode const* lhs,
     irs::string_ref strVal;
     int64_t iVal;
     Type type{Type::INVALID};
-    arangodb::aql::AstNode const* root;
+    arangodb::aql::AstNode const* root = nullptr;
   } lhsValue, rhsValue;
 
+  // TODO: is the "&" intionally. If yes: why?
+  //cppcheck-suppress uninitvar; false positive
   while (lhsValue.read(lhs, ctx) & rhsValue.read(rhs, ctx)) {
     if (lhsValue != rhsValue) {
       return false;

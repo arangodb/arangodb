@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_STORE_UTILS_H
@@ -327,22 +326,22 @@ IRESEARCH_API void skip(
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
 
-FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) {
+FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) noexcept {
   assert(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
-  return (val << 1) | (b ? 1 : 0);
+  return (val << 1) | uint64_t(b);
 }
 
-FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) {
+FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
   assert(val <= UINT32_C(0x7FFFFFFF));
-  return (val << 1) | (b ? 1 : 0);
+  return (val << 1) | uint32_t(b);
 }
 
-FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) {
+FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) noexcept {
   out = in >> 1;
   return in & 1;
 }
 
-FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) {
+FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) noexcept {
   out = in >> 1;
   return in & 1;
 }
@@ -356,36 +355,23 @@ FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API bytes_output final : public data_output {
  public:
-  bytes_output() = default;
-  explicit bytes_output(size_t capacity);
-  bytes_output(bytes_output&& rhs) NOEXCEPT;
-  bytes_output& operator=(bytes_output&& rhs) NOEXCEPT;
-
-  void reset(size_t size = 0) { 
-    buf_.resize(size);
+  explicit bytes_output(bstring& buf) noexcept
+    : buf_(&buf) {
   }
 
   virtual void write_byte(byte_type b) override {
-    buf_ += b;
+    (*buf_) += b;
   }
 
   virtual void write_bytes(const byte_type* b, size_t size) override {
-    buf_.append(b, size);
-  }
-
-  size_t size() const NOEXCEPT {
-    return buf_.size();
-  }
-
-  operator bytes_ref() const NOEXCEPT {
-    return buf_;
+    buf_->append(b, size);
   }
 
   virtual void close() override { }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring buf_;
+  bstring* buf_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // bytes_output
 
@@ -397,25 +383,25 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   bytes_ref_input() = default;
   explicit bytes_ref_input(const bytes_ref& data);
 
-  void skip(size_t size) NOEXCEPT {
+  void skip(size_t size) noexcept {
     assert(pos_ + size <= data_.end());
     pos_ += size;
   }
 
-  virtual void seek(size_t pos) NOEXCEPT override {
+  virtual void seek(size_t pos) noexcept override {
     assert(data_.begin() + pos <= data_.end());
     pos_ = data_.begin() + pos;
   }
 
-  virtual size_t file_pointer() const NOEXCEPT override {
+  virtual size_t file_pointer() const noexcept override {
     return std::distance(data_.begin(), pos_);
   }
 
-  virtual size_t length() const NOEXCEPT override {
+  virtual size_t length() const noexcept override {
     return data_.size();
   }
 
-  virtual bool eof() const NOEXCEPT override {
+  virtual bool eof() const noexcept override {
     return pos_ >= data_.end();
   }
 
@@ -429,12 +415,12 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   // append to buf
   void read_bytes(bstring& buf, size_t size);
 
-  void reset(const byte_type* data, size_t size) NOEXCEPT {
+  void reset(const byte_type* data, size_t size) noexcept {
     data_ = bytes_ref(data, size);
     pos_ = data;
   }
 
-  void reset(const bytes_ref& ref) NOEXCEPT {
+  void reset(const bytes_ref& ref) noexcept {
     reset(ref.c_str(), ref.size());
   }
 
@@ -476,8 +462,8 @@ class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
  public:
   bytes_input() = default;
   explicit bytes_input(const bytes_ref& data);
-  bytes_input(bytes_input&& rhs) NOEXCEPT;
-  bytes_input& operator=(bytes_input&& rhs) NOEXCEPT;
+  bytes_input(bytes_input&& rhs) noexcept;
+  bytes_input& operator=(bytes_input&& rhs) noexcept;
   bytes_input& operator=(const bytes_ref& data);
 
   void read_from(data_input& in, size_t size);
@@ -633,13 +619,11 @@ inline void decode(Iterator begin, Iterator end) {
   const auto second = begin+1;
 
   std::transform(second, end, begin, second, std::plus<value_type>());
-
-  assert(std::is_sorted(begin, end));
 }
 
 template<typename Iterator>
 inline void encode(Iterator begin, Iterator end) {
-  assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+  assert(std::distance(begin, end) > 0);
 
   typedef typename std::iterator_traits<Iterator>::value_type value_type;
   const auto rend = irstd::make_reverse_iterator(begin);

@@ -22,14 +22,22 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+#include <type_traits>
+
 #include "LogAppender.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/operating-system.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
+#include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -68,7 +76,7 @@ void LogAppender::addAppender(std::string const& definition, std::string const& 
 
 std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     std::string const& definition, std::string const& filter) {
-  std::vector<std::string> v = StringUtils::split(definition, '=', '\0');
+  std::vector<std::string> v = StringUtils::split(definition, '=');
   std::string topicName;
   std::string output;
   std::string contentFilter;
@@ -177,15 +185,8 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
 }
 
 void LogAppender::log(LogMessage* message) {
-  LogLevel level = message->_level;
-  size_t topicId = message->_topicId;
-  std::string const& m = message->_message;
-  size_t offset = message->_offset;
-
-  MUTEX_LOCKER(guard, _appendersLock);
-
   // output to appender
-  auto output = [&level, &m, &offset](size_t n) -> bool {
+  auto output = [message](size_t n) -> bool {
     auto const& it = _topics2appenders.find(n);
     bool shown = false;
 
@@ -193,8 +194,8 @@ void LogAppender::log(LogMessage* message) {
       auto const& appenders = it->second;
 
       for (auto const& appender : appenders) {
-        if (appender->checkContent(m)) {
-          appender->logMessage(level, m, offset);
+        if (appender->checkContent(message->_message)) {
+          appender->logMessage(message->_level, message->_message, message->_offset);
         }
 
         shown = true;
@@ -206,14 +207,17 @@ void LogAppender::log(LogMessage* message) {
 
   bool shown = false;
 
+  MUTEX_LOCKER(guard, _appendersLock);
+
   // try to find a specific topic
+  size_t topicId = message->_topicId;
   if (topicId < LogTopic::MAX_LOG_TOPICS) {
     shown = output(topicId);
   }
 
   // otherwise use the general topic
   if (!shown) {
-    shown = output(LogTopic::MAX_LOG_TOPICS);
+    output(LogTopic::MAX_LOG_TOPICS);
   }
 
   for (auto const& logger : _loggers) {

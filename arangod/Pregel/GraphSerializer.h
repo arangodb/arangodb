@@ -37,7 +37,7 @@ namespace pregel {
 
 template <typename V>
 struct VertexSerializer {
-  virtual ~VertexSerializer() {}
+  virtual ~VertexSerializer() = default;
 
   virtual void serialize(VPackBuilder const& builder, V const* targetPtr) const = 0;
 

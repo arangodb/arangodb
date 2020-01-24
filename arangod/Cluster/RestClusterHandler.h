@@ -28,7 +28,8 @@
 namespace arangodb {
 class RestClusterHandler : public arangodb::RestBaseHandler {
  public:
-  RestClusterHandler(GeneralRequest*, GeneralResponse*);
+  RestClusterHandler(application_features::ApplicationServer&, GeneralRequest*,
+                     GeneralResponse*);
 
  public:
   virtual char const* name() const override { return "RestClusterHandler"; }
@@ -38,9 +39,6 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
  private:
   /// _api/cluster/endpoints
   void handleCommandEndpoints();
-
-  /// _api/cluster/serverInfo
-  void handleCommandServerInfo();
 
   /// _api/cluster/agency-dump
   void handleAgencyDump();

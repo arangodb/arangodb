@@ -1,0 +1,89 @@
+
+
+  <div class="arangoToolbar arangoToolbarTop arangoFoxxToolbarTop">
+    <div class="pull-left">
+    </div>
+
+    <div class="pull-right">
+    </div>
+  </div>
+
+  <div class="contentDiv createModalDialog">
+    <div id="newFoxxes" class="foxxesInner modal-body">
+        <table id="new-app-information">
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Author*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="new-app-author" value="" placeholder="Your Name">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Name*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="new-app-name" value="" placeholder="Name of the Service">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Description*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="new-app-description" value="" placeholder="Please describe your Service here">
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              License*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="text" id="new-app-license" value="" placeholder="Apache 2"></input>
+            </th>
+          </tr>
+          <!--
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Authentication*:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="checkbox" id="new-app-authenticate" checked></input>
+            </th>
+          </tr>
+          -->
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Document Collections:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="hidden" id="new-app-document-collections" value="" placeholder="Document Collections"></input>
+            </th>
+            <th>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="A list of document collections that will be created specifically for this Service. A CRUD API for these will be generated.">
+              </span>
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionInfoTh">
+              Edge Collections:
+            </th>
+            <th class="collectionInfoTh">
+              <input type="hidden" id="new-app-edge-collections" value="" placeholder="Edge Collections"></input>
+            </th>
+            <th>
+              <span class="modalTooltips arangoicon icon_arangodb_info" title="A list of edge collections that will be created specifically for this Service. A CRUD API for these will be generated.">
+              </span>
+            </th>
+          </tr>
+        </table>
+    </div>
+    <div class="modal-footer">
+      <% if (upgrade) { %>
+        <button id="installNewService" class="button-success" style="float:right">Replace</button>
+      <% } else { %>
+        <button id="installNewService" class="button-success" style="float:right">Install</button>
+      <% } %>
+    </div>
+  </div>

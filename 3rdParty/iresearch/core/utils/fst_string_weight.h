@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FST_STRING_WEIGHT_H
@@ -72,7 +71,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
 
   friend bool operator==(
       const StringLeftWeight& lhs, 
-      const StringLeftWeight& rhs) NOEXCEPT {
+      const StringLeftWeight& rhs) noexcept {
     return lhs.str_ == rhs.str_;
   }
 
@@ -91,11 +90,15 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     : str_(rhs.str_) {
   }
 
-  StringLeftWeight(StringLeftWeight&& rhs) NOEXCEPT
+  StringLeftWeight(StringLeftWeight&& rhs) noexcept
     : str_(std::move(rhs.str_)) {
   }
 
-  StringLeftWeight& operator=(StringLeftWeight&& rhs) NOEXCEPT {
+  explicit StringLeftWeight(const irs::basic_string_ref<Label>& rhs)
+    : str_(rhs.c_str(), rhs.size()) {
+  }
+
+  StringLeftWeight& operator=(StringLeftWeight&& rhs) noexcept {
     if (this != &rhs) {
       str_ = std::move(rhs.str_);
     }
@@ -109,7 +112,12 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return *this;
   }
 
-  bool Member() const NOEXCEPT {
+  StringLeftWeight& operator=(const irs::basic_string_ref<Label>& rhs) {
+    str_.assign(rhs.c_str(), rhs.size());
+    return *this;
+  }
+
+  bool Member() const noexcept {
     return StringLeftWeightTraits<Label>::Member(*this);
   }
 
@@ -150,11 +158,11 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return strm;
   }
 
-  size_t Hash() const NOEXCEPT {
+  size_t Hash() const noexcept {
     return std::hash<str_t>()(str_);
   }
 
-  StringLeftWeight Quantize(float delta = kDelta) const NOEXCEPT { 
+  StringLeftWeight Quantize(float delta = kDelta) const noexcept { 
     return *this; 
   }
 
@@ -162,32 +170,32 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     return ReverseWeight(str_.rbegin(), str_.rend());
   }
 
-  static uint64 Properties() NOEXCEPT {
-    static CONSTEXPR auto props = kLeftSemiring | kIdempotent;
+  static uint64 Properties() noexcept {
+    static constexpr auto props = kLeftSemiring | kIdempotent;
     return props;
   }
 
-  Label& operator[](size_t i) NOEXCEPT {
+  Label& operator[](size_t i) noexcept {
     return str_[i];
   }
 
-  const Label& operator[](size_t i) const NOEXCEPT {
+  const Label& operator[](size_t i) const noexcept {
     return str_[i];
   }
 
-  const Label* c_str() const NOEXCEPT {
+  const Label* c_str() const noexcept {
     return str_.c_str();
   }
 
-  bool Empty() const NOEXCEPT {
+  bool Empty() const noexcept {
     return str_.empty();
   }
 
-  void Clear() NOEXCEPT {
+  void Clear() noexcept {
     str_.clear();
   }
 
-  size_t Size() const NOEXCEPT { 
+  size_t Size() const noexcept { 
     return str_.size(); 
   }
 
@@ -208,10 +216,11 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
     str_.reserve(capacity);
   }
 
-  iterator begin() const NOEXCEPT { return str_.begin(); }
-  iterator end() const NOEXCEPT { return str_.end(); }
+  iterator begin() const noexcept { return str_.begin(); }
+  iterator end() const noexcept { return str_.end(); }
 
-  explicit operator irs::basic_string_ref<Label>() const NOEXCEPT {
+  // intentionally implicit
+  operator irs::basic_string_ref<Label>() const noexcept {
     return str_;
   }
 
@@ -405,20 +414,20 @@ inline StringLeftWeight<Label> Divide(
 
 template <>
 struct StringLeftWeightTraits<irs::byte_type> {
-  static const StringLeftWeight<irs::byte_type>& Zero() NOEXCEPT {
+  static const StringLeftWeight<irs::byte_type>& Zero() noexcept {
     static const StringLeftWeight<irs::byte_type> zero;
     return zero;
   }
 
-  static const StringLeftWeight<irs::byte_type>& One() NOEXCEPT {
+  static const StringLeftWeight<irs::byte_type>& One() noexcept {
     return Zero();
   }
 
-  static const StringLeftWeight<irs::byte_type>& NoWeight() NOEXCEPT {
+  static const StringLeftWeight<irs::byte_type>& NoWeight() noexcept {
     return Zero();
   }
 
-  static bool Member(const StringLeftWeight<irs::byte_type>& weight) NOEXCEPT {
+  static bool Member(const StringLeftWeight<irs::byte_type>& weight) noexcept {
     // always member
     return true;
   }
@@ -471,10 +480,11 @@ inline std::istream& operator>>(
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline StringLeftWeight<irs::byte_type> Plus(
+inline irs::bytes_ref Plus(
     const StringLeftWeight<irs::byte_type>& lhs,
     const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef StringLeftWeight<irs::byte_type> Weight;
+  typedef irs::bytes_ref Weight;
+
   const auto* plhs = &lhs;
   const auto* prhs = &rhs;
 
@@ -488,8 +498,11 @@ inline StringLeftWeight<irs::byte_type> Plus(
   assert(prhs->Size() <= plhs->Size());
 
   return Weight(
-    prhs->begin(),
-    std::mismatch(prhs->begin(), prhs->end(), plhs->begin()).first
+    prhs->c_str(),
+    std::distance(
+      prhs->c_str(),
+      std::mismatch(prhs->c_str(), (prhs->c_str() + prhs->Size()), plhs->c_str()).first
+    )
   );
 }
 
@@ -508,14 +521,44 @@ inline StringLeftWeight<irs::byte_type> Times(
   return product;
 }
 
+// For binary strings that's impossible to use
+// Zero() or NoWeight() as they may interfere
+// with real values
+inline StringLeftWeight<irs::byte_type> Times(
+    const irs::bytes_ref& lhs,
+    const StringLeftWeight<irs::byte_type>& rhs) {
+  typedef StringLeftWeight<irs::byte_type> Weight;
+
+  Weight product;
+  product.Reserve(lhs.size() + rhs.Size());
+  product.PushBack(lhs.begin(), lhs.end());
+  product.PushBack(rhs.begin(), rhs.end());
+  return product;
+}
+
+// For binary strings that's impossible to use
+// Zero() or NoWeight() as they may interfere
+// with real values
+inline StringLeftWeight<irs::byte_type> Times(
+    const StringLeftWeight<irs::byte_type>& lhs,
+    const irs::bytes_ref& rhs) {
+  typedef StringLeftWeight<irs::byte_type> Weight;
+
+  Weight product;
+  product.Reserve(lhs.Size() + rhs.size());
+  product.PushBack(lhs.begin(), lhs.end());
+  product.PushBack(rhs.begin(), rhs.end());
+  return product;
+}
+
 // Left division in a left string semiring.
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline StringLeftWeight<irs::byte_type> DivideLeft(
+inline irs::bytes_ref DivideLeft(
     const StringLeftWeight<irs::byte_type>& lhs,
     const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef StringLeftWeight<irs::byte_type> Weight;
+  typedef irs::bytes_ref Weight;
 
   if (rhs.Size() > lhs.Size()) {
     return Weight();
@@ -526,7 +569,57 @@ inline StringLeftWeight<irs::byte_type> DivideLeft(
     irs::basic_string_ref<irs::byte_type>(rhs)
   ));
 
-  return Weight(lhs.begin() + rhs.Size(), lhs.end());
+  return Weight(lhs.c_str() + rhs.Size(), lhs.Size() - rhs.Size());
+}
+
+// Left division in a left string semiring.
+// For binary strings that's impossible to use
+// Zero() or NoWeight() as they may interfere
+// with real values
+inline irs::bytes_ref DivideLeft(
+    const irs::bytes_ref& lhs,
+    const StringLeftWeight<irs::byte_type>& rhs) {
+  typedef irs::bytes_ref Weight;
+
+  if (rhs.Size() > lhs.size()) {
+    return Weight();
+  }
+
+  assert(irs::starts_with(
+    irs::basic_string_ref<irs::byte_type>(lhs),
+    irs::basic_string_ref<irs::byte_type>(rhs)
+  ));
+
+  return Weight(lhs.c_str() + rhs.Size(), lhs.size() - rhs.Size());
+}
+
+// Left division in a left string semiring.
+// For binary strings that's impossible to use
+// Zero() or NoWeight() as they may interfere
+// with real values
+inline irs::bytes_ref DivideLeft(
+    const StringLeftWeight<irs::byte_type>& lhs,
+    const irs::bytes_ref& rhs) {
+  typedef irs::bytes_ref Weight;
+
+  if (rhs.size() > lhs.Size()) {
+    return Weight();
+  }
+
+  assert(irs::starts_with(
+    irs::basic_string_ref<irs::byte_type>(lhs),
+    irs::basic_string_ref<irs::byte_type>(rhs)
+  ));
+
+  return Weight(lhs.c_str() + rhs.size(), lhs.Size() - rhs.size());
+}
+
+inline StringLeftWeight<irs::byte_type> Divide(
+    const StringLeftWeight<irs::byte_type>& lhs,
+    const StringLeftWeight<irs::byte_type>& rhs,
+    DivideType typ) {
+  assert(DIVIDE_LEFT == typ);
+  return StringLeftWeight<irs::byte_type>(DivideLeft(lhs, rhs));
 }
 
 NS_END // fst

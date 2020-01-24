@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 7000 */
-/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXECUTE, AQL_PARSE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, PARSE function
@@ -34,16 +34,8 @@ var helper = require("@arangodb/aql-helper");
 var getParseResults = helper.getParseResults;
 var assertParseError = helper.assertParseError;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function ahuacatlParseTestSuite () {
   var errors = internal.errors;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the collection names from the result
-////////////////////////////////////////////////////////////////////////////////
 
   function getCollections (result) {
     var collections = result.collections;
@@ -53,10 +45,6 @@ function ahuacatlParseTestSuite () {
     collections.sort();
     return collections;
   }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the bind parameter names from the result
-////////////////////////////////////////////////////////////////////////////////
 
   function getParameters (result) {
     var parameters = result.parameters;
@@ -68,20 +56,6 @@ function ahuacatlParseTestSuite () {
   }
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test empty query
@@ -125,6 +99,11 @@ function ahuacatlParseTestSuite () {
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return -");
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return +");
       assertParseError(errors.ERROR_QUERY_PARSE.code, "return ."); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 /* "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 \" foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ' foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 `foo "); 
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ´foo "); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -351,8 +330,181 @@ function ahuacatlParseTestSuite () {
           assertEqual(query[1][1], column);
         }
       });
-    }
+    },
+    
+    testTrailingCommas : function() {
+      let queries = [
+        [ "RETURN [ ]", [ ] ],
+        [ "RETURN [ 1, 2, 3 ]", [ 1, 2, 3 ] ],
+        [ "RETURN [ 1, 2, 3, ]", [ 1, 2, 3 ] ],
+        [ "RETURN [ 1, ]", [ 1 ] ],
+        [ "RETURN [ 1, 2, ]", [ 1, 2 ] ],
+        
+        [ "RETURN { }", { } ],
+        [ "RETURN { a: 1, b: 2, c: 3 }", { a: 1, b: 2, c :3 } ],
+        [ "RETURN { a: 1, b: 2, c: 3, }", { a: 1, b: 2, c: 3 } ],
+        [ "RETURN { a: 1, }", { a: 1 } ],
+        [ "RETURN { a: 1, b: 2, }", { a: 1, b: 2 } ],
+      ];
 
+      queries.forEach(function(query) {
+        let results = AQL_EXECUTE(query[0]).json;
+        assertEqual(query[1], results[0]);
+      });
+    },
+    
+    testTrailingCommasInvalid : function() {
+      let queries = [
+        "RETURN [ , ]",
+        "RETURN [ , 1 ]",
+        "RETURN [ , 1, ]",
+        "RETURN [ 1, , ]",
+        "RETURN [ 1, , 2 ]",
+        "RETURN [ 1, , 2, ]",
+        "RETURN [ , 2, 3 ]",
+        "RETURN [ 1, , 2 ]",
+
+        "RETURN { , }",
+        "RETURN { , a: 1 }",
+        "RETURN { , a: 1, }",
+        "RETURN { a: 1, , }",
+        "RETURN { a: 1, , b: 2 }",
+        "RETURN { a: 1, , b: 2, }",
+        "RETURN { , a: 2, b: 3 }",
+        "RETURN { a: 1, , b. 2 }",
+      ];
+
+      queries.forEach(function(query) {
+        try {
+          AQL_EXECUTE(query);
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
+        }
+      });
+    },
+
+    testPrecedenceOfNotIn : function() {
+      let result = AQL_PARSE("RETURN 3..4 NOT IN 1..2").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("compare not in", result[0].type);
+      let sub = result[0].subNodes;
+      assertEqual("range", sub[0].type);
+      assertEqual("value", sub[0].subNodes[0].type);
+      assertEqual(3, sub[0].subNodes[0].value);
+      assertEqual("value", sub[0].subNodes[1].type);
+      assertEqual(4, sub[0].subNodes[1].value);
+      
+      assertEqual("range", sub[1].type);
+      assertEqual("value", sub[1].subNodes[0].type);
+      assertEqual(1, sub[1].subNodes[0].value);
+      assertEqual("value", sub[1].subNodes[1].type);
+      assertEqual(2, sub[1].subNodes[1].value);
+     
+
+      result = AQL_PARSE("RETURN 3..(4 NOT IN 1)..2").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("range", result[0].type);
+      sub = result[0].subNodes;
+
+      assertEqual("range", sub[0].type);
+      assertEqual("value", sub[0].subNodes[0].type);
+      assertEqual(3, sub[0].subNodes[0].value);
+      assertEqual("compare not in", sub[0].subNodes[1].type);
+      assertEqual("value", sub[0].subNodes[1].subNodes[0].type);
+      assertEqual(4, sub[0].subNodes[1].subNodes[0].value);
+      assertEqual("value", sub[0].subNodes[1].subNodes[1].type);
+      assertEqual(1, sub[0].subNodes[1].subNodes[1].value);
+      assertEqual("value", sub[1].type);
+      assertEqual(2, sub[1].value);
+    },
+    
+    testPrecedenceOfNestedNotIn : function() {
+      let result = AQL_PARSE("RETURN 3..4 NOT IN 1..2 NOT IN 7..8").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("compare not in", result[0].type);
+      let sub = result[0].subNodes;
+      assertEqual("compare not in", sub[0].type);
+      assertEqual("range", sub[0].subNodes[0].type);
+      assertEqual("value", sub[0].subNodes[0].subNodes[0].type);
+      assertEqual(3, sub[0].subNodes[0].subNodes[0].value);
+      assertEqual("value", sub[0].subNodes[0].subNodes[1].type);
+      assertEqual(4, sub[0].subNodes[0].subNodes[1].value);
+      assertEqual("range", sub[0].subNodes[1].type);
+      assertEqual("value", sub[0].subNodes[1].subNodes[0].type);
+      assertEqual(1, sub[0].subNodes[1].subNodes[0].value);
+      assertEqual("value", sub[0].subNodes[1].subNodes[1].type);
+      assertEqual(2, sub[0].subNodes[1].subNodes[1].value);
+      
+      assertEqual("range", sub[1].type);
+      assertEqual("value", sub[1].subNodes[0].type);
+      assertEqual(7, sub[1].subNodes[0].value);
+      assertEqual("value", sub[1].subNodes[1].type);
+      assertEqual(8, sub[1].subNodes[1].value);
+    },
+    
+    testNotLike : function() {
+      let result = AQL_PARSE("RETURN 'a' NOT LIKE 'b'").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("unary not", result[0].type);
+      let sub = result[0].subNodes[0];
+
+      assertEqual("function call", sub.type);
+      assertEqual("LIKE", sub.name);
+    },
+
+    testNotMatches : function() {
+      let result = AQL_PARSE("RETURN 'a' NOT =~ 'b'").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("unary not", result[0].type);
+      let sub = result[0].subNodes[0];
+
+      assertEqual("function call", sub.type);
+      assertEqual("REGEX_TEST", sub.name);
+    },
+
+    testNotNotMatches : function() {
+      let result = AQL_PARSE("RETURN 'a' NOT !~ 'b'").ast;
+
+      assertEqual("root", result[0].type);
+      result = result[0].subNodes;
+      
+      assertEqual("return", result[0].type);
+      result = result[0].subNodes;
+
+      assertEqual("function call", result[0].type);
+      assertEqual("REGEX_TEST", result[0].name);
+    }
   };
 }
 

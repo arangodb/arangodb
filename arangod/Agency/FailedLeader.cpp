@@ -79,7 +79,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-FailedLeader::~FailedLeader() {}
+FailedLeader::~FailedLeader() = default;
 
 void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 
@@ -115,13 +115,21 @@ void FailedLeader::rollback() {
     // Transactions
     payload = std::make_shared<Builder>();
     {
-      VPackObjectBuilder b(payload.get());
-      for (auto const c : cs) {
-        payload->add(planColPrefix + _database + "/" + c.collection +
-                         "/shards/" + c.shard,
-                     rb.slice());
+      VPackArrayBuilder a(payload.get());
+      { // opers
+        VPackObjectBuilder b(payload.get());
+        for (auto const c : cs) {
+          payload->add(planColPrefix + _database + "/" + c.collection +
+                           "/shards/" + c.shard,
+                       rb.slice());
+        }
+      }
+      {
+        VPackObjectBuilder p(payload.get());
+        addPreconditionCollectionStillThere(*payload.get(), _database, _collection);
       }
     }
+
   }
 
   finish("", _shard, false, "Timed out.", payload);
@@ -310,7 +318,7 @@ bool FailedLeader::start(bool& aborts) {
       return false;
     } else if (jobId.second) {
       aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed leader requests abort");
       return false;
     }
   }
@@ -393,11 +401,18 @@ JOB_STATUS FailedLeader::status() {
 
   // Timedout after 77 minutes
   if (std::chrono::system_clock::now() - _created > std::chrono::seconds(4620)) {
-    rollback();
+    finish("", (_status != PENDING) ? "" : _shard, false, "Timed out.");
+    return FAILED;
   }
 
   if (_status != PENDING) {
     return _status;
+  }
+
+  std::string toServerHealth = checkServerHealth(_snapshot, _to);
+  if (toServerHealth == "FAILED" || toServerHealth == "UNCLEAR") {
+    finish("", _shard, false, "_to server not health");
+    return FAILED;
   }
 
   std::string database, shard;
@@ -423,7 +438,7 @@ JOB_STATUS FailedLeader::status() {
     auto cur_slice = _snapshot.hasAsSlice(curColPrefix + sub + "/" +
                                           clone.shard + "/servers");
     if (plan_slice.second && cur_slice.second &&
-        plan_slice.first[0] != cur_slice.first[0]) {
+        !basics::VelocyPackHelper::equal(plan_slice.first[0], cur_slice.first[0], false)) {
       LOG_TOPIC("0d8ca", DEBUG, Logger::SUPERVISION)
           << "FailedLeader waiting for " << sub + "/" + shard;
       break;
@@ -442,13 +457,13 @@ JOB_STATUS FailedLeader::status() {
   return _status;
 }
 
-arangodb::Result FailedLeader::abort() {
+arangodb::Result FailedLeader::abort(std::string const& reason) {
   // job is only abortable when it is in ToDo
   if (_status != TODO) {
     return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
                   "Failed aborting failedFollower job beyond todo stage");
   } else {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted: " + reason);
     return Result();
   }
 }

@@ -26,6 +26,8 @@
 
 #include "AgencyCommManagerMock.h"
 
+#include "Basics/debugging.h"
+
 namespace arangodb {
 namespace consensus {
 
@@ -40,11 +42,10 @@ class Store;
 ////////////////////////////////////////////////////////////////////////////////
 class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
  public:
-  explicit GeneralClientConnectionAgencyMock(
-      arangodb::consensus::Store& store,
-      bool trace = false
-  ) noexcept: _store(&store), _trace(trace) {
-  }
+  explicit GeneralClientConnectionAgencyMock(arangodb::application_features::ApplicationServer& server,
+                                             arangodb::consensus::Store& store,
+                                             bool trace = false) noexcept
+      : GeneralClientConnectionMock(server), _store(&store), _trace(trace) {}
 
  protected:
   virtual void response(arangodb::basics::StringBuffer& buffer) override;

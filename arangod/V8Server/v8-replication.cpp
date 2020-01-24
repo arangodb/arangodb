@@ -25,7 +25,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/DatabaseTailingSyncer.h"
@@ -206,8 +208,9 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
             .FromMaybe(v8::Local<v8::Value>()));
   }
 
+  TRI_GET_GLOBALS();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), databaseName);
+      ReplicationApplierConfiguration::fromVelocyPack(v8g->_server, builder.slice(), databaseName);
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -234,7 +237,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     Result r = syncer->run(configuration._incremental);
 
     if (r.fail()) {
-      LOG_TOPIC("3d58b", ERR, Logger::REPLICATION)
+      LOG_TOPIC("3d58b", DEBUG, Logger::REPLICATION)
           << "initial sync failed for database '" << vocbase.name()
           << "': " << r.errorMessage();
       TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(),
@@ -357,8 +360,9 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
     TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
   }
 
+  TRI_GET_GLOBALS();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), database);
+      ReplicationApplierConfiguration::fromVelocyPack(v8g->_server, builder.slice(), database);
   // will throw if invalid
   configuration.validate();
 
@@ -421,10 +425,9 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate, ApplierTyp
     applier = vocbase.replicationApplier();
   } else {
     // applier type global
-    auto replicationFeature =
-        application_features::ApplicationServer::getFeature<ReplicationFeature>(
-            "Replication");
-    applier = replicationFeature->globalReplicationApplier();
+    TRI_GET_GLOBALS();
+    auto& replicationFeature = v8g->_server.getFeature<ReplicationFeature>();
+    applier = replicationFeature.globalReplicationApplier();
   }
 
   if (applier == nullptr) {
@@ -619,14 +622,13 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
     TRI_V8_THROW_EXCEPTION_USAGE("stateAll()");
   }
 
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  TRI_GET_GLOBALS();
+  DatabaseFeature& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
 
     if (vocbase == nullptr) {
       continue;

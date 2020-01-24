@@ -26,7 +26,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
 #include "Pregel/Utils.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 namespace pregel {
@@ -37,7 +39,7 @@ struct MessageStats {
   double superstepRuntimeSecs = 0;
 
   MessageStats() {}
-  MessageStats(VPackSlice statValues) { accumulate(statValues); }
+  explicit MessageStats(VPackSlice statValues) { accumulate(statValues); }
   MessageStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
 
   void accumulate(MessageStats const& other) {

@@ -25,7 +25,9 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesDatafile.h"
 
 using namespace arangodb;
@@ -73,7 +75,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
 
   LOG_TOPIC("e63cd", TRACE, arangodb::Logger::DATAFILES)
       << "creating statistics for datafile " << fid;
-  _stats.emplace(fid, stats.get());
+  _stats.try_emplace(fid, stats.get());
   stats.release();
 }
 
@@ -95,7 +97,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
   LOG_TOPIC("82801", TRACE, arangodb::Logger::DATAFILES)
       << "creating statistics for datafile " << fid << " from initial data";
 
-  _stats.emplace(fid, stats.get());
+  _stats.try_emplace(fid, stats.get());
   stats.release();
 }
 

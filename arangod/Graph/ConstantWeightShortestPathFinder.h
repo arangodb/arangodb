@@ -29,6 +29,7 @@
 #include "Graph/ShortestPathFinder.h"
 
 #include <velocypack/StringRef.h>
+#include <deque>
 
 namespace arangodb {
 

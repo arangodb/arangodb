@@ -28,34 +28,54 @@
 #include <cstddef>
 #include <type_traits>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
+#include "Cluster/ClusterFeature.h"
 #include "Pregel/Graph.h"
 
 struct TRI_vocbase_t;
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace pregel {
 
 template <typename V, typename E>
 struct GraphFormat {
-  virtual ~GraphFormat() {}
+  std::atomic<uint64_t> vertexIdRange;
+
+  GraphFormat(application_features::ApplicationServer& server)
+      : _server(server) {}
+  virtual ~GraphFormat() = default;
 
   virtual size_t estimatedVertexSize() const { return sizeof(V); };
   virtual size_t estimatedEdgeSize() const { return sizeof(E); };
 
   /// will load count number of vertex document, immidiately afterwards
   /// This must not be called again before not all docs were loaded
-  virtual void willLoadVertices(uint64_t count) {}
+  virtual void willLoadVertices(uint64_t count) {
+    // if we aren't running in a cluster it doesn't matter
+    if (arangodb::ServerState::instance()->isRunningInCluster()) {
+      if (_server.hasFeature<ClusterFeature>()) {
+        arangodb::ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+        vertexIdRange = ci.uniqid(count);
+      }
+    }
+  }
 
-  virtual size_t copyVertexData(std::string const& documentId,
-                                arangodb::velocypack::Slice document,
-                                V* targetPtr, size_t maxSize) = 0;
-  virtual size_t copyEdgeData(arangodb::velocypack::Slice edgeDocument,
-                              E* targetPtr, size_t maxSize) = 0;
+  virtual void copyVertexData(std::string const& documentId,
+                              arangodb::velocypack::Slice document,
+                              V& targetPtr) = 0;
+  virtual void copyEdgeData(arangodb::velocypack::Slice edgeDocument,
+                              E& targetPtr) = 0;
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
                                    const V* targetPtr, size_t size) const = 0;
   virtual bool buildEdgeDocument(arangodb::velocypack::Builder& b,
                                  const E* targetPtr, size_t size) const = 0;
+
+ private:
+  application_features::ApplicationServer& _server;
 };
 
 template <typename V, typename E>
@@ -69,40 +89,40 @@ class NumberGraphFormat : public GraphFormat<V, E> {
   const E _eDefault;
 
  public:
-  NumberGraphFormat(std::string const& source, std::string const& result,
+  NumberGraphFormat(application_features::ApplicationServer& server,
+                    std::string const& source, std::string const& result,
                     V vertexNull, E edgeNull)
-      : _sourceField(source),
+      : GraphFormat<V, E>(server),
+        _sourceField(source),
         _resultField(result),
         _vDefault(vertexNull),
         _eDefault(edgeNull) {}
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        V* targetPtr, size_t maxSize) override {
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                      V& targetPtr) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     if (std::is_integral<V>::value) {
       if (std::is_signed<V>::value) {
-        *targetPtr = val.isInteger() ? val.getInt() : _vDefault;
+        targetPtr = val.isInteger() ? val.getInt() : _vDefault;
       } else {
-        *targetPtr = val.isInteger() ? val.getUInt() : _vDefault;
+        targetPtr = val.isInteger() ? val.getUInt() : _vDefault;
       }
     } else {
-      *targetPtr = val.isNumber() ? val.getNumber<V>() : _vDefault;
+      targetPtr = val.isNumber() ? val.getNumber<V>() : _vDefault;
     }
-    return sizeof(V);
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, E* targetPtr, size_t maxSize) override {
+  void copyEdgeData(arangodb::velocypack::Slice document, E& targetPtr) override {
     arangodb::velocypack::Slice val = document.get(_sourceField);
     if (std::is_integral<E>::value) {
       if (std::is_signed<E>::value) {  // getNumber does range checks
-        *((E*)targetPtr) = val.isInteger() ? val.getInt() : _eDefault;
+        targetPtr = val.isInteger() ? val.getInt() : _eDefault;
       } else {
-        *targetPtr = val.isInteger() ? val.getUInt() : _eDefault;
+        targetPtr = val.isInteger() ? val.getUInt() : _eDefault;
       }
     } else {
-      *targetPtr = val.isNumber() ? val.getNumber<E>() : _eDefault;
+      targetPtr = val.isNumber() ? val.getNumber<E>() : _eDefault;
     }
-    return sizeof(E);
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const V* ptr,
@@ -126,20 +146,22 @@ class InitGraphFormat : public GraphFormat<V, E> {
   const E _eDefault;
 
  public:
-  InitGraphFormat(std::string const& result, V vertexNull, E edgeNull)
-      : _resultField(result), _vDefault(vertexNull), _eDefault(edgeNull) {}
+  InitGraphFormat(application_features::ApplicationServer& server,
+                  std::string const& result, V vertexNull, E edgeNull)
+      : GraphFormat<V, E>(server),
+        _resultField(result),
+        _vDefault(vertexNull),
+        _eDefault(edgeNull) {}
 
-  virtual size_t copyVertexData(std::string const& documentId,
-                                arangodb::velocypack::Slice document,
-                                V* targetPtr, size_t maxSize) override {
-    *(targetPtr) = _vDefault;
-    return sizeof(V);
+  virtual void copyVertexData(std::string const& documentId,
+                              arangodb::velocypack::Slice document,
+                              V& targetPtr) override {
+    targetPtr = _vDefault;
   }
 
-  virtual size_t copyEdgeData(arangodb::velocypack::Slice document,
-                              E* targetPtr, size_t maxSize) override {
-    *targetPtr = _eDefault;
-    return sizeof(E);
+  virtual void copyEdgeData(arangodb::velocypack::Slice document,
+                              E& targetPtr) override {
+    targetPtr = _eDefault;
   }
 
   virtual bool buildVertexDocument(arangodb::velocypack::Builder& b,
@@ -162,21 +184,19 @@ class VertexGraphFormat : public GraphFormat<V, E> {
   const V _vDefault;
 
  public:
-  VertexGraphFormat(std::string const& result, V vertexNull)
-      : _resultField(result), _vDefault(vertexNull) {}
+  VertexGraphFormat(application_features::ApplicationServer& server,
+                    std::string const& result, V vertexNull)
+      : GraphFormat<V, E>(server), _resultField(result), _vDefault(vertexNull) {}
 
   size_t estimatedVertexSize() const override { return sizeof(V); };
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        V* targetPtr, size_t maxSize) override {
-    *targetPtr = _vDefault;
-    return sizeof(V);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                      V& targetPtr) override {
+    targetPtr = _vDefault;
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, V* targetPtr, size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, E& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const V* ptr,
                            size_t size) const override {

@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_first_tick
 @brief Return the first available tick value from the server
 
-@RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first available tick value}
+@RESTHEADER{GET /_api/replication/logger-first-tick, Returns the first available tick value, handleCommandLoggerFirstTick}
 
 @RESTDESCRIPTION
 Returns the first available tick value that can be served from the server's
@@ -44,4 +44,3 @@ Returning the first available tick
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

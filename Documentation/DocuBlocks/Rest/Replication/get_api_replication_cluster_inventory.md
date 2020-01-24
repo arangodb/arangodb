@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_cluster_inventory
 @brief returs an overview of collections and indexes in a cluster
 
-@RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes}
+@RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes, handleCommandClusterInventory}
 
 @RESTQUERYPARAMETERS
 
@@ -30,4 +30,3 @@ is returned when an invalid HTTP method is used.
 @RESTRETURNCODE{500}
 is returned if an error occurred while assembling the response.
 @endDocuBlock
-

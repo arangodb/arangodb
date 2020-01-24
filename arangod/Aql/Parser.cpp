@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 #include "Aql/Parser.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -50,7 +52,7 @@ Parser::Parser(Query* query)
 }
 
 /// @brief destroy the parser
-Parser::~Parser() {}
+Parser::~Parser() = default;
 
 /// @brief set data for write queries
 bool Parser::configureWriteQuery(AstNode const* collectionNode, AstNode* optionNode) {

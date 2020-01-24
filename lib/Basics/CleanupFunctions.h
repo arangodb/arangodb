@@ -23,6 +23,10 @@
 #ifndef ARANGODB_BASICS_CLEANUPFUNCTIONS_H
 #define ARANGODB_BASICS_CLEANUPFUNCTIONS_H 1
 
+#include <functional>
+#include <memory>
+#include <vector>
+
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"

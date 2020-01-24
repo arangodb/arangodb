@@ -2,7 +2,7 @@
 @startDocuBlock job_getStatusById
 @brief Returns the status of a specific job
 
-@RESTHEADER{GET /_api/job/{job-id}, Returns async job}
+@RESTHEADER{GET /_api/job/{job-id}, Returns async job, getJobById}
 
 @RESTURLPARAMETERS
 
@@ -71,4 +71,3 @@ Querying the status of a pending job:
   logRawResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

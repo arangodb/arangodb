@@ -27,8 +27,11 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
 #include "Cluster/TraverserEngine.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Transaction/Context.h"
 #include "VocBase/ticks.h"
 
@@ -47,7 +50,7 @@ TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t& vocbase,
       _timeToLive(0),
       _expires(0) {}
 
-TraverserEngineRegistry::EngineInfo::~EngineInfo() {}
+TraverserEngineRegistry::EngineInfo::~EngineInfo() = default;
 
 TraverserEngineRegistry::~TraverserEngineRegistry() {
   WRITE_LOCKER(writeLocker, _lock);
@@ -69,8 +72,9 @@ TraverserEngineID TraverserEngineRegistry::createNew(
   info->_expires = TRI_microtime() + ttl;
 
   WRITE_LOCKER(writeLocker, _lock);
-  TRI_ASSERT(_engines.find(id) == _engines.end());
-  _engines.emplace(id, info.get());
+  auto [it, emplaced] = _engines.try_emplace(id, info.get());
+  TRI_ASSERT(emplaced);
+  TRI_ASSERT(it != _engines.end());
   info.release();
   return id;
 }

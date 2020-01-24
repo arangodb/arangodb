@@ -24,12 +24,18 @@
 #ifndef ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H
 #define ARANGODB_BASICS_ATTRIBUTE_NAME_PARSER_H 1
 
+#include <cstdint>
+#include <functional>
 #include <iosfwd>
-#include "Common.h"
-
-#include <velocypack/StringRef.h>
+#include <string>
+#include <system_error>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
+namespace velocypack {
+class StringRef;
+}
 
 namespace basics {
 
@@ -66,6 +72,8 @@ struct AttributeName {
   bool operator!=(AttributeName const& other) const {
     return name != other.name || shouldExpand != other.shouldExpand;
   }
+
+  uint64_t hash(uint64_t seed) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare two attribute name vectors
@@ -113,21 +121,44 @@ void TRI_AttributeNamesToString(std::vector<AttributeName> const& input,
                                 std::string& result, bool excludeExpansion = false);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Transform a vector of AttributeNames into joined nested strings
-///        The onlyFirst parameter is used to define if we only have to join the
-///        first attribute
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AttributeNamesJoinNested(std::vector<AttributeName> const& input,
-                                  std::vector<std::string>& result, bool onlyFirst);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Tests if this AttributeName uses an expansion operator
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
+
 }  // namespace basics
 }  // namespace arangodb
+
+namespace std {
+
+template <>
+struct hash<std::vector<arangodb::basics::AttributeName>> {
+  size_t operator()(std::vector<arangodb::basics::AttributeName> const& value) const {
+    size_t hash = 0xdeadbeef;
+    for (auto const& it : value) {
+      hash = it.hash(hash);
+    }
+    return static_cast<size_t>(hash);
+  }
+};
+
+template <>
+struct equal_to<std::vector<arangodb::basics::AttributeName>> {
+  bool operator()(std::vector<arangodb::basics::AttributeName> const& lhs, std::vector<arangodb::basics::AttributeName> const& rhs) const {
+    size_t const n = lhs.size();
+    if (n != rhs.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < n; ++i) {
+      if (lhs[i] != rhs[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
+} // namespace std
 
 std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
 std::ostream& operator<<(std::ostream&, std::vector<arangodb::basics::AttributeName> const&);

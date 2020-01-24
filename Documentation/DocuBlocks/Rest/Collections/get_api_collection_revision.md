@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_revision
 @brief Retrieve the collections revision id
 
-@RESTHEADER{GET /_api/collection/{collection-name}/revision, Return collection revision id}
+@RESTHEADER{GET /_api/collection/{collection-name}/revision, Return collection revision id, handleCommandGet:collectionRevision}
 
 @HINTS
 {% hint 'warning' %}
@@ -51,4 +51,3 @@ Retrieving the revision of a collection
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

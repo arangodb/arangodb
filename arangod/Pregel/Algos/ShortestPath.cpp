@@ -63,8 +63,9 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
       }
 
       RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (Edge<int64_t>* edge : edges) {
-        int64_t val = *edge->data() + current;
+      for (; edges.hasMore(); ++edges) {
+        Edge<int64_t>* edge = *edges;
+        int64_t val = edge->data() + current;
         if (val < *max) {
           sendMessage(edge, val);
         }
@@ -79,15 +80,15 @@ struct arangodb::pregel::algos::SPGraphFormat : public InitGraphFormat<int64_t, 
   std::string _sourceDocId, _targetDocId;
 
  public:
-  SPGraphFormat(std::string const& source, std::string const& target)
-      : InitGraphFormat<int64_t, int64_t>("length", 0, 1),
+  SPGraphFormat(application_features::ApplicationServer& server,
+                std::string const& source, std::string const& target)
+      : InitGraphFormat<int64_t, int64_t>(server, "length", 0, 1),
         _sourceDocId(source),
         _targetDocId(target) {}
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        int64_t* targetPtr, size_t maxSize) override {
-    *targetPtr = documentId == _sourceDocId ? 0 : INT64_MAX;
-    return sizeof(int64_t);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        int64_t& targetPtr) override {
+    targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,
@@ -96,8 +97,9 @@ struct arangodb::pregel::algos::SPGraphFormat : public InitGraphFormat<int64_t, 
   }
 };
 
-ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams)
-    : Algorithm("ShortestPath") {
+ShortestPathAlgorithm::ShortestPathAlgorithm(application_features::ApplicationServer& server,
+                                             VPackSlice userParams)
+    : Algorithm(server, "ShortestPath") {
   VPackSlice val1 = userParams.get("source");
   VPackSlice val2 = userParams.get("target");
   if (val1.isNone() || val2.isNone()) {
@@ -113,7 +115,7 @@ std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
 }
 
 GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
-  return new SPGraphFormat(_source, _target);
+  return new SPGraphFormat(_server, _source, _target);
 }
 
 VertexComputation<int64_t, int64_t, int64_t>* ShortestPathAlgorithm::createComputation(

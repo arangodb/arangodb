@@ -237,7 +237,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_non_encrypted) {
 
   ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
 
-  // write segment with format10
+  // write segment with format11
   {
     auto codec = irs::formats::get("1_1");
     ASSERT_NE(nullptr, codec);
@@ -269,7 +269,7 @@ TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
 
   ASSERT_TRUE(dir().attributes().remove<tests::rot13_encryption>());
 
-  // write segment with format10
+  // write segment with format11
   {
     auto codec = irs::formats::get("1_1");
     ASSERT_NE(nullptr, codec);

@@ -21,11 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShortestPathExecutor.h"
+
 #include "Aql/AqlValue.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/system-compiler.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
@@ -156,7 +158,7 @@ std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
   NoStats s;
 
   // Can be length 0 but never nullptr.
@@ -192,16 +194,15 @@ bool ShortestPathExecutor::fetchPath() {
   VPackSlice start;
   VPackSlice end;
   do {
-    std::tie(_rowState, _input) = _fetcher.fetchRow();
-    if (!_input.isInitialized()) {
-      // Either WAITING or DONE and nothing produced.
-      TRI_ASSERT(_rowState == ExecutionState::WAITING || _rowState == ExecutionState::DONE);
-      return false;
-    }
-    if (!getVertexId(false, start) || !getVertexId(true, end)) {
-      // Fetch another row
-      continue;
-    }
+    // Make sure we have a valid start *and* end vertex
+    do {
+      std::tie(_rowState, _input) = _fetcher.fetchRow();
+      if (!_input.isInitialized()) {
+        // Either WAITING or DONE and nothing produced.
+        TRI_ASSERT(_rowState == ExecutionState::WAITING || _rowState == ExecutionState::DONE);
+        return false;
+      }
+    } while (!getVertexId(false, start) || !getVertexId(true, end));
     TRI_ASSERT(start.isString());
     TRI_ASSERT(end.isString());
     _path->clear();

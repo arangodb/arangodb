@@ -25,12 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -45,9 +46,10 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestControlPregelHandler::RestControlPregelHandler(GeneralRequest* request,
+RestControlPregelHandler::RestControlPregelHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestControlPregelHandler::execute() {
   auto const type = _request->requestType();
@@ -73,22 +75,26 @@ RestStatus RestControlPregelHandler::execute() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestControlPregelHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestControlPregelHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::GET &&
       type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
 }
 
 void RestControlPregelHandler::startExecution() {
@@ -101,7 +107,7 @@ void RestControlPregelHandler::startExecution() {
 
   // algorithm
   std::string algorithm =
-      VelocyPackHelper::getStringValue(body, "algorithm", "");
+      VelocyPackHelper::getStringValue(body, "algorithm", StaticStrings::Empty);
   if ("" == algorithm) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "invalid algorithm");
@@ -218,7 +224,6 @@ void RestControlPregelHandler::cancelExecution() {
   }
 
   c->cancel();
-  pf->cleanupConductor(executionNumber);
 
   VPackBuilder builder;
   builder.add(VPackValue(""));

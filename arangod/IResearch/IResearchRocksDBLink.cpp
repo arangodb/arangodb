@@ -38,165 +38,8 @@
 #include "IResearchRocksDBLink.h"
 #include "utils/encryption.hpp"
 
-namespace {
-
-class RocksDBCipherStream final : public irs::encryption::stream {
- public:
-  typedef std::unique_ptr<rocksdb::BlockAccessCipherStream> StreamPtr;
-
-  explicit RocksDBCipherStream(StreamPtr&& stream) noexcept
-    : _stream(std::move(stream)) {
-    TRI_ASSERT(_stream);
-  }
-
-  virtual size_t block_size() const override {
-    return _stream->BlockSize();
-  }
-
-  virtual bool decrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
-    return _stream->Decrypt(offset, reinterpret_cast<char*>(data), size).ok();
-  }
-
-  virtual bool encrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
-    return _stream->Encrypt(offset, reinterpret_cast<char*>(data), size).ok();
-  }
-
- private:
-  StreamPtr _stream;
-}; // RocksDBCipherStream
-
-class RocksDBEncryptionProvider final : public irs::encryption {
- public:
-  static std::shared_ptr<RocksDBEncryptionProvider> make(
-      rocksdb::EncryptionProvider& encryption,
-      rocksdb::Options const& options) {
-    return std::make_shared<RocksDBEncryptionProvider>(encryption, options);
-  }
-
-  explicit RocksDBEncryptionProvider(
-      rocksdb::EncryptionProvider& encryption,
-      rocksdb::Options const& options)
-    : _encryption(&encryption),
-      _options(options) {
-  }
-
-  virtual size_t header_length() override {
-    return _encryption->GetPrefixLength();
-  }
-
-  virtual bool create_header(
-      std::string const& filename,
-      irs::byte_type* header) override {
-    return _encryption->CreateNewPrefix(
-      filename, reinterpret_cast<char*>(header), header_length()
-    ).ok();
-  }
-
-  virtual encryption::stream::ptr create_stream(
-      std::string const& filename,
-      irs::byte_type* header) override {
-    rocksdb::Slice headerSlice(
-      reinterpret_cast<char const*>(header),
-      header_length()
-    );
-
-    std::unique_ptr<rocksdb::BlockAccessCipherStream> stream;
-    if (!_encryption->CreateCipherStream(filename, _options, headerSlice, &stream).ok()) {
-      return nullptr;
-    }
-
-    return std::make_unique<RocksDBCipherStream>(std::move(stream));
-  }
-
- private:
-  rocksdb::EncryptionProvider* _encryption;
-  rocksdb::EnvOptions _options;
-}; // RocksDBEncryptionProvider
-
-std::function<void(irs::directory&)> const RocksDBLinkInitCallback = [](irs::directory& dir) {
-  TRI_ASSERT(arangodb::EngineSelectorFeature::isRocksDB());
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* engine = dynamic_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-#else
-  auto* engine = static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-#endif
-
-  auto* encryption = engine ? engine->encryptionProvider() : nullptr;
-
-  if (encryption) {
-    dir.attributes().emplace<RocksDBEncryptionProvider>(
-      *encryption, engine->rocksDBOptions()
-    );
-  }
-};
-
-}
-
 namespace arangodb {
 namespace iresearch {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
-////////////////////////////////////////////////////////////////////////////////
-struct IResearchRocksDBLink::IndexFactory : public arangodb::IndexTypeFactory {
-  virtual bool equal(arangodb::velocypack::Slice const& lhs,
-                     arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
-  }
-
-  virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                       arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool /*isClusterConstructor*/) const override {
-    try {
-      auto link =
-          std::shared_ptr<IResearchRocksDBLink>(new IResearchRocksDBLink(id, collection));
-      auto res = link->init(definition, RocksDBLinkInitCallback);
-
-      if (!res.ok()) {
-        return res;
-      }
-
-      index = link;
-    } catch (arangodb::basics::Exception const& e) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(e.code(),
-                              std::string("caught exception while creating "
-                                          "arangosearch view RocksDB link '") +
-                                  std::to_string(id) + "': " + e.what());
-    } catch (std::exception const& e) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("caught exception while creating "
-                                          "arangosearch view RocksDB link '") +
-                                  std::to_string(id) + "': " + e.what());
-    } catch (...) {
-      IR_LOG_EXCEPTION();
-
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("caught exception while creating "
-                                          "arangosearch view RocksDB link '") +
-                                  std::to_string(id) + "'");
-    }
-
-    return arangodb::Result();
-  }
-
-  virtual arangodb::Result normalize( // normalize definition
-      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
-      arangodb::velocypack::Slice definition, // source definition
-      bool isCreation, // definition for index creation
-      TRI_vocbase_t const& vocbase // index vocbase
-  ) const override {
-    return IResearchLinkHelper::normalize( // normalize
-      normalized, definition, isCreation, vocbase // args
-    );
-  }
-};
 
 IResearchRocksDBLink::IResearchRocksDBLink(TRI_idx_iid_t iid,
                                            arangodb::LogicalCollection& collection)
@@ -206,12 +49,6 @@ IResearchRocksDBLink::IResearchRocksDBLink(TRI_idx_iid_t iid,
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
-}
-
-/*static*/ arangodb::IndexTypeFactory const& IResearchRocksDBLink::factory() {
-  static const IndexFactory factory;
-
-  return factory;
 }
 
 void IResearchRocksDBLink::toVelocyPack( // generate definition
@@ -243,15 +80,133 @@ void IResearchRocksDBLink::toVelocyPack( // generate definition
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
-    VPackBuilder figuresBuilder;
-
-    figuresBuilder.openObject();
-    toVelocyPackFigures(figuresBuilder);
-    figuresBuilder.close();
-    builder.add("figures", figuresBuilder.slice());
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
   }
 
   builder.close();
+}
+
+class RocksDBCipherStream final : public irs::encryption::stream {
+ public:
+  typedef std::unique_ptr<rocksdb::BlockAccessCipherStream> StreamPtr;
+
+  explicit RocksDBCipherStream(StreamPtr&& stream) noexcept
+      : _stream(std::move(stream)) {
+    TRI_ASSERT(_stream);
+  }
+
+  virtual size_t block_size() const override { return _stream->BlockSize(); }
+
+  virtual bool decrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
+    return _stream->Decrypt(offset, reinterpret_cast<char*>(data), size).ok();
+  }
+
+  virtual bool encrypt(uint64_t offset, irs::byte_type* data, size_t size) override {
+    return _stream->Encrypt(offset, reinterpret_cast<char*>(data), size).ok();
+  }
+
+ private:
+  StreamPtr _stream;
+};  // RocksDBCipherStream
+
+class RocksDBEncryptionProvider final : public irs::encryption {
+ public:
+  static std::shared_ptr<RocksDBEncryptionProvider> make(rocksdb::EncryptionProvider& encryption,
+                                                         rocksdb::Options const& options) {
+    return std::make_shared<RocksDBEncryptionProvider>(encryption, options);
+  }
+
+  explicit RocksDBEncryptionProvider(rocksdb::EncryptionProvider& encryption,
+                                     rocksdb::Options const& options)
+      : _encryption(&encryption), _options(options) {}
+
+  virtual size_t header_length() override {
+    return _encryption->GetPrefixLength();
+  }
+
+  virtual bool create_header(std::string const& filename, irs::byte_type* header) override {
+    return _encryption
+        ->CreateNewPrefix(filename, reinterpret_cast<char*>(header), header_length())
+        .ok();
+  }
+
+  virtual encryption::stream::ptr create_stream(std::string const& filename,
+                                                irs::byte_type* header) override {
+    rocksdb::Slice headerSlice(reinterpret_cast<char const*>(header), header_length());
+
+    std::unique_ptr<rocksdb::BlockAccessCipherStream> stream;
+    if (!_encryption
+             ->CreateCipherStream(filename, _options, headerSlice, &stream)
+             .ok()) {
+      return nullptr;
+    }
+
+    return std::make_unique<RocksDBCipherStream>(std::move(stream));
+  }
+
+ private:
+  rocksdb::EncryptionProvider* _encryption;
+  rocksdb::EnvOptions _options;
+};  // RocksDBEncryptionProvider
+
+std::function<void(irs::directory&)> const RocksDBLinkInitCallback = [](irs::directory& dir) {
+  TRI_ASSERT(arangodb::EngineSelectorFeature::isRocksDB());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* engine =
+      dynamic_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
+#else
+  auto* engine =
+      static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE);
+#endif
+
+  auto* encryption = engine ? engine->encryptionProvider() : nullptr;
+
+  if (encryption) {
+    dir.attributes().emplace<RocksDBEncryptionProvider>(*encryption,
+                                                        engine->rocksDBOptions());
+  }
+};
+
+IResearchRocksDBLink::IndexFactory::IndexFactory(arangodb::application_features::ApplicationServer& server)
+    : IndexTypeFactory(server) {}
+
+bool IResearchRocksDBLink::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
+                                               arangodb::velocypack::Slice const& rhs) const {
+  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
+}
+
+std::shared_ptr<arangodb::Index> IResearchRocksDBLink::IndexFactory::instantiate(
+    arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id, bool /*isClusterConstructor*/) const {
+  auto link = std::shared_ptr<arangodb::iresearch::IResearchRocksDBLink>(
+      new arangodb::iresearch::IResearchRocksDBLink(id, collection));
+  auto res = link->init(definition, RocksDBLinkInitCallback);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return link;
+}
+
+arangodb::Result IResearchRocksDBLink::IndexFactory::normalize(  // normalize definition
+    arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+    arangodb::velocypack::Slice definition,  // source definition
+    bool isCreation,                         // definition for index creation
+    TRI_vocbase_t const& vocbase             // index vocbase
+    ) const {
+  return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
+      normalized, definition, isCreation, vocbase              // args
+  );
+}
+
+std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::createFactory(
+    application_features::ApplicationServer& server) {
+  return std::shared_ptr<IResearchRocksDBLink::IndexFactory>(
+      new IResearchRocksDBLink::IndexFactory(server));
 }
 
 }  // namespace iresearch

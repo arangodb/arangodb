@@ -21,8 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "json.h"
+
 #include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
@@ -251,7 +255,7 @@ static int StringifyJson(TRI_string_buffer_t* buffer, TRI_json_t const* object, 
 /// @brief initialize a null object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNull(TRI_json_t* result) {
+static void InitNull(TRI_json_t* result) {
   result->_type = TRI_JSON_NULL;
 }
 
@@ -259,7 +263,7 @@ static inline void InitNull(TRI_json_t* result) {
 /// @brief initialize a boolean object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitBoolean(TRI_json_t* result, bool value) {
+static void InitBoolean(TRI_json_t* result, bool value) {
   result->_type = TRI_JSON_BOOLEAN;
   result->_value._boolean = value;
 }
@@ -268,7 +272,7 @@ static inline void InitBoolean(TRI_json_t* result, bool value) {
 /// @brief initialize a number object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitNumber(TRI_json_t* result, double value) {
+static void InitNumber(TRI_json_t* result, double value) {
   // check if the number can be represented in JSON
   if (std::isnan(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     result->_type = TRI_JSON_NULL;
@@ -282,7 +286,7 @@ static inline void InitNumber(TRI_json_t* result, double value) {
 /// @brief initialize a string object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitString(TRI_json_t* result, char* value, size_t length) {
+static void InitString(TRI_json_t* result, char* value, size_t length) {
   TRI_ASSERT(value != nullptr);
 
   result->_type = TRI_JSON_STRING;
@@ -291,22 +295,10 @@ static inline void InitString(TRI_json_t* result, char* value, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize a string reference object in place
-////////////////////////////////////////////////////////////////////////////////
-
-static inline void InitStringReference(TRI_json_t* result, char const* value, size_t length) {
-  TRI_ASSERT(value != nullptr);
-
-  result->_type = TRI_JSON_STRING_REFERENCE;
-  result->_value._string.data = (char*)value;
-  result->_value._string.length = (uint32_t)length + 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize an array in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitArray(TRI_json_t* result, size_t initialSize) {
+static void InitArray(TRI_json_t* result, size_t initialSize) {
   result->_type = TRI_JSON_ARRAY;
 
   if (initialSize == 0) {
@@ -320,7 +312,7 @@ static inline void InitArray(TRI_json_t* result, size_t initialSize) {
 /// @brief initialize an object in place
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void InitObject(TRI_json_t* result, size_t initialSize) {
+static void InitObject(TRI_json_t* result, size_t initialSize) {
   result->_type = TRI_JSON_OBJECT;
 
   if (initialSize == 0) {
@@ -336,7 +328,7 @@ static inline void InitObject(TRI_json_t* result, size_t initialSize) {
 /// @brief determine whether a JSON value is of type string
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool IsString(TRI_json_t const* json) {
+static bool IsString(TRI_json_t const* json) {
   return (json != nullptr &&
           (json->_type == TRI_JSON_STRING || json->_type == TRI_JSON_STRING_REFERENCE) &&
           json->_value._string.data != nullptr);
@@ -407,20 +399,6 @@ void TRI_InitNumberJson(TRI_json_t* result, double value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a string object with given length
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_CreateStringJson(char* value, size_t length) {
-  TRI_json_t* result = static_cast<TRI_json_t*>(TRI_Allocate(sizeof(TRI_json_t)));
-
-  if (result != nullptr) {
-    InitString(result, value, length);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a string object with given length, copying the string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -451,35 +429,6 @@ TRI_json_t* TRI_CreateStringCopyJson(char const* value, size_t length) {
 
 void TRI_InitStringJson(TRI_json_t* result, char* value, size_t length) {
   InitString(result, value, length);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a string object
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_InitStringCopyJson(TRI_json_t* result, char const* value, size_t length) {
-  if (value == nullptr) {
-    // initial string should be valid...
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  char* copy = TRI_DuplicateString(value, length);
-
-  if (copy == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  InitString(result, copy, length);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a string reference object
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitStringReferenceJson(TRI_json_t* result, char const* value, size_t length) {
-  InitStringReference(result, value, length);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -630,26 +579,6 @@ int TRI_PushBack3ArrayJson(TRI_json_t* array, TRI_json_t* object) {
   TRI_Free(object);
 
   return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief looks up a value in a json array
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_json_t* TRI_LookupArrayJson(TRI_json_t const* array, size_t pos) {
-  if (array == nullptr) {
-    return nullptr;
-  }
-  TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
-
-  size_t const n = TRI_LengthVector(&array->_value._objects);
-
-  if (pos >= n) {
-    // out of bounds
-    return nullptr;
-  }
-
-  return static_cast<TRI_json_t*>(TRI_AtVector(&array->_value._objects, pos));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

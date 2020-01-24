@@ -45,7 +45,7 @@ class TraverserCache;
 
 namespace aql {
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
@@ -145,9 +145,9 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
 class ShortestPathExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ShortestPathExecutorInfos;
@@ -170,14 +170,7 @@ class ShortestPathExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
-  }
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  private:
   /**

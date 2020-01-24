@@ -24,6 +24,8 @@
 #ifndef ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H
 #define ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H 1
 
+#include <map>
+
 #include "Basics/Result.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
@@ -91,7 +93,7 @@ class WalAccess {
 
  protected:
   WalAccess() {}
-  virtual ~WalAccess() {}
+  virtual ~WalAccess() = default;
 
  public:
   struct Filter {
@@ -109,7 +111,7 @@ class WalAccess {
 
     /// In case collection is == 0,
     bool includeSystem = false;
-    
+
     /// export _queues and _jobs collection
     bool includeFoxxQueues = false;
 
@@ -158,7 +160,7 @@ struct WalAccessContext {
   WalAccessContext(WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
       : _filter(filter), _callback(c), _responseSize(0) {}
 
-  ~WalAccessContext() {}
+  ~WalAccessContext() = default;
 
   /// @brief check if db should be handled, might already be deleted
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;

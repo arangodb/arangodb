@@ -23,6 +23,8 @@
 
 #include "ReadWriteLock.h"
 
+#include "Basics/debugging.h"
+
 using namespace arangodb::basics;
 
 /// @brief locks for writing
@@ -48,6 +50,46 @@ void ReadWriteLock::writeLock() {
     }
     _writers_bell.wait(guard);
   }
+}
+
+/// @brief lock for writes with microsecond timeout
+bool ReadWriteLock::writeLock(std::chrono::microseconds timeout) {
+  if (tryWriteLock()) {
+    return true;
+  }
+
+  // the lock is either hold by another writer or we have active readers
+  // -> announce that we want to write
+  _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
+
+  std::chrono::time_point<std::chrono::steady_clock> end_time;
+  end_time = std::chrono::steady_clock::now() + timeout;
+
+  std::cv_status status(std::cv_status::no_timeout);
+  {
+    std::unique_lock<std::mutex> guard(_writer_mutex);
+    while (std::cv_status::no_timeout == status) {
+      auto state = _state.load(std::memory_order_relaxed);
+      // try to acquire write lock as long as no readers or writers are active,
+      while ((state & ~QUEUED_WRITER_MASK) == 0) {
+        // try to acquire lock and perform queued writer decrement in one step
+        if (_state.compare_exchange_weak(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK,
+                                         std::memory_order_acquire)) {
+          return true;
+        }
+      }
+      // TODO: it seems this may repeatedly wait for the timeout
+      // it is not guaranteed to finish within timeout
+      status = _writers_bell.wait_until(guard, end_time);
+    }
+  }
+
+  // Undo the counting of us as queued writer:
+  _state.fetch_sub(QUEUED_WRITER_INC, std::memory_order_relaxed);
+  std::unique_lock<std::mutex> guard(_reader_mutex);
+  _readers_bell.notify_all();
+
+  return false;
 }
 
 /// @brief locks for writing, but only tries
@@ -94,7 +136,7 @@ bool ReadWriteLock::tryReadLock() {
 }
 
 /// @brief releases the read-lock or write-lock
-void ReadWriteLock::unlock() {
+void ReadWriteLock::unlock() noexcept {
   if (_state.load(std::memory_order_relaxed) & WRITE_LOCK) {
     // we were holding the write-lock
     unlockWrite();
@@ -105,7 +147,9 @@ void ReadWriteLock::unlock() {
 }
 
 /// @brief releases the write-lock
-void ReadWriteLock::unlockWrite() {
+/// Note that, theoretically, locking a mutex may throw. But in this case, we'd
+/// be running into undefined behaviour, so we still want noexcept!
+void ReadWriteLock::unlockWrite() noexcept {
   TRI_ASSERT((_state.load() & WRITE_LOCK) != 0);
   // clear the WRITE_LOCK flag
   auto state = _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
@@ -121,7 +165,9 @@ void ReadWriteLock::unlockWrite() {
 }
 
 /// @brief releases the read-lock
-void ReadWriteLock::unlockRead() {
+/// Note that, theoretically, locking a mutex may throw. But in this case, we'd
+/// be running into undefined behaviour, so we still want noexcept!
+void ReadWriteLock::unlockRead() noexcept {
   TRI_ASSERT((_state.load() & READER_MASK) != 0);
   auto state = _state.fetch_sub(READER_INC, std::memory_order_release) - READER_INC;
   if (state != 0 && (state & ~QUEUED_WRITER_MASK) == 0) {

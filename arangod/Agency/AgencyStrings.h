@@ -21,6 +21,9 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_AGENCY_AGENCY_STRINGS_H
+#define ARANGOD_AGENCY_AGENCY_STRINGS_H
+
 #include <string>
 
 namespace arangodb {
@@ -41,5 +44,20 @@ constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 
+constexpr char const* TARGET_HOTBACKUP = "Target/HotBackup";
+
+constexpr char const* PREC_IS_READ_LOCKED = "is-read-locked";
+constexpr char const* PREC_IS_WRITE_LOCKED = "is-write-locked";
+constexpr char const* PREC_CAN_READ_LOCK = "can-read-lock";
+constexpr char const* PREC_CAN_WRITE_LOCK = "can-write-lock";
+
+
+constexpr char const* OP_READ_LOCK = "read-lock";
+constexpr char const* OP_WRITE_LOCK = "write-lock";
+constexpr char const* OP_READ_UNLOCK = "read-unlock";
+constexpr char const* OP_WRITE_UNLOCK = "write-unlock";
+
 }  // namespace consensus
 }  // namespace arangodb
+
+#endif

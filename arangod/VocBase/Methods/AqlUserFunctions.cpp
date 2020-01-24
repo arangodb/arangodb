@@ -34,6 +34,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
@@ -139,7 +140,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
   }
 
   std::string uc(functionFilterPrefix);
-  basics::StringUtils::toupperInPlace(&uc);
+  basics::StringUtils::toupperInPlace(uc);
 
   if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') || (uc[uc.length() - 2] != ':')) {
     uc += "::";
@@ -232,8 +233,9 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
   {
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
-    V8ContextDealerGuard dealerGuard(res, isolate, &vocbase, true /*allowModification*/
-    );
+   
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+    V8ConditionalContextGuard contextGuard(res, isolate, &vocbase, securityContext);
 
     if (res.fail()) {
       return res;
@@ -277,7 +279,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
     return res;
   }
   std::string _key(name);
-  basics::StringUtils::toupperInPlace(&_key);
+  basics::StringUtils::toupperInPlace(_key);
 
   VPackBuilder oneFunctionDocument;
   oneFunctionDocument.openObject();
@@ -334,7 +336,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
         "@ucName RETURN function";
 
     std::string uc(functionFilterPrefix);
-    basics::StringUtils::toupperInPlace(&uc);
+    basics::StringUtils::toupperInPlace(uc);
 
     if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') || (uc[uc.length() - 2] != ':')) {
       uc += "::";
@@ -373,7 +375,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
 
   result.openArray();
   std::string tmp;
-  for (auto const& it : VPackArrayIterator(usersFunctionsSlice)) {
+  for (VPackSlice it : VPackArrayIterator(usersFunctionsSlice)) {
     VPackSlice resolved;
     resolved = it.resolveExternal();
 

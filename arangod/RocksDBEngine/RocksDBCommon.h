@@ -42,11 +42,12 @@
 #include <rocksdb/utilities/transaction_db.h>
 
 namespace rocksdb {
-class TransactionDB;
-class DB;
-struct ReadOptions;
 class Comparator;
 class ColumnFamilyHandle;
+class DB;
+class Iterator;
+struct ReadOptions;
+class TransactionDB;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -70,6 +71,12 @@ arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
 
 uint64_t latestSequenceNumber();
 
+/// @brief throws an exception of appropriate type if the iterator's status is !ok().
+/// does nothing if the iterator's status is ok().
+/// this function can be used by IndexIterators to verify that an iterator is still
+/// in good shape
+void checkIteratorStatus(rocksdb::Iterator const* iterator);
+
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 RocksDBEngine::IndexTriple mapObjectToIndex(uint64_t);
 
@@ -87,7 +94,7 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 // optional switch to std::function to reduce amount of includes and
 // to avoid template
 // this helper is not meant for transactional usage!
-template <typename T>  // T is a invokeable that takes a rocksdb::Iterator*
+template <typename T>  // T is an invokeable that takes a rocksdb::Iterator*
 void iterateBounds(RocksDBKeyBounds const& bounds, T callback,
                    rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
   rocksdb::Slice const end = bounds.end();

@@ -2,7 +2,7 @@
 @startDocuBlock delete_batch_replication
 @brief handle a dump batch command
 
-@RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch}
+@RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch,handleCommandBatch:DELETE}
 
 **Note**: These calls are uninteresting to users.
 
@@ -30,4 +30,3 @@ is returned if the batch was not found.
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
 @endDocuBlock
-

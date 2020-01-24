@@ -23,9 +23,11 @@
 #include "RestIndexHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Rest/HttpRequest.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -36,12 +38,22 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+bool startsWith(std::string const& str, std::string const& prefix) {
+  if (str.size() < prefix.size()) {
+    return false;
+  }
+  return str.substr(0, prefix.size()) == prefix;
+}
+}  // namespace
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestIndexHandler::RestIndexHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestIndexHandler::RestIndexHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestIndexHandler::execute() {
   // extract the request type
@@ -65,7 +77,8 @@ RestStatus RestIndexHandler::execute() {
 std::shared_ptr<LogicalCollection> RestIndexHandler::collection(std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      return ClusterInfo::instance()->getCollectionNT(_vocbase.name(), cName);
+      return server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+          _vocbase.name(), cName);
     } else {
       return _vocbase.lookupCollection(cName);
     }
@@ -135,11 +148,11 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     std::string const& iid = suffixes[1];
-    VPackBuilder b;
-    b.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    VPackBuilder tmp;
+    tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(coll.get(), b.slice(), output);
+    Result res = methods::Indexes::getIndex(coll.get(), tmp.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -163,14 +176,30 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   // .............................................................................
   
   bool found = false;
-  std::string cName = _request->value("collection", found);
+  std::string const& cName = _request->value("collection", found);
   if (cName.empty()) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
-  // transaction protects acces onto selectivity estimates
-  auto trx = createTransaction(cName, AccessMode::Type::READ);
+  // transaction protects access onto selectivity estimates
+  std::unique_ptr<transaction::Methods> trx;
+
+  try {
+    trx = createTransaction(cName, AccessMode::Type::READ);
+  } catch (basics::Exception const& ex) {
+    if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
+      // this will happen if the tid of a managed transaction is passed in,
+      // but the transaction hasn't yet started on the DB server. in
+      // this case, we create an ad-hoc transaction on the underlying
+      // collection
+      trx = std::make_unique<SingleCollectionTransaction>(transaction::StandaloneContext::Create(_vocbase), cName, AccessMode::Type::READ);
+    } else {
+      throw;
+    }
+  }
+
+  TRI_ASSERT(trx != nullptr);
 
   Result res = trx->begin();
   if (res.fail()) {
@@ -178,7 +207,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     return RestStatus::DONE;
   }
   
-  LogicalCollection* coll = trx->documentCollection();
+  LogicalCollection* coll = trx->documentCollection(cName);
   auto idxs = coll->getIndexes();
   
   VPackBuffer<uint8_t> buffer;
@@ -188,6 +217,9 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   builder.add("indexes", VPackValue(VPackValueType::Object));
   for (std::shared_ptr<Index> idx : idxs) {
+    if (idx->inProgress() || idx->isHidden()) {
+      continue;
+    }
     std::string name = coll->name();
     name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
     name.append(std::to_string(idx->id()));
@@ -293,7 +325,11 @@ RestStatus RestIndexHandler::dropIndex() {
 
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
-  idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+  if (::startsWith(iid, cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
+    idBuilder.add(VPackValue(iid));
+  } else {
+    idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+  }
 
   Result res = methods::Indexes::drop(coll.get(), idBuilder.slice());
   if (res.ok()) {

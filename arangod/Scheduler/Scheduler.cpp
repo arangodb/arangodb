@@ -35,8 +35,9 @@
 #include "Basics/cpu-relax.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
-#include "GeneralServer/Task.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
@@ -48,9 +49,9 @@ namespace arangodb {
 
 class SchedulerThread : virtual public Thread {
  public:
-  explicit SchedulerThread(Scheduler& scheduler)
-      : Thread("Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() {} // shutdown is called by derived implementation!
+  explicit SchedulerThread(application_features::ApplicationServer& server, Scheduler& scheduler)
+      : Thread(server, "Scheduler"), _scheduler(scheduler) {}
+  ~SchedulerThread() = default; // shutdown is called by derived implementation!
 
  protected:
   Scheduler& _scheduler;
@@ -58,8 +59,9 @@ class SchedulerThread : virtual public Thread {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  explicit SchedulerCronThread(Scheduler& scheduler)
-      : Thread("SchedCron"), SchedulerThread(scheduler) {}
+  explicit SchedulerCronThread(application_features::ApplicationServer& server,
+                               Scheduler& scheduler)
+      : Thread(server, "SchedCron"), SchedulerThread(server, scheduler) {}
 
   ~SchedulerCronThread() { shutdown(); }
 
@@ -68,15 +70,16 @@ class SchedulerCronThread : public SchedulerThread {
 
 }  // namespace arangodb
 
-Scheduler::Scheduler() /*: _stopping(false)*/
+Scheduler::Scheduler(application_features::ApplicationServer& server)
+    : _server(server) /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where
 }
 
-Scheduler::~Scheduler() {}
+Scheduler::~Scheduler() = default;
 
 bool Scheduler::start() {
-  _cronThread.reset(new SchedulerCronThread(*this));
+  _cronThread.reset(new SchedulerCronThread(_server, *this));
   return _cronThread->start();
 }
 
@@ -113,20 +116,25 @@ void Scheduler::runCronThread() {
 
     while (!_cronQueue.empty()) {
       // top is a reference to a tuple containing the timepoint and a shared_ptr to the work item
-      auto const& top = _cronQueue.top();
-
+      auto top = _cronQueue.top();
       if (top.first < now) {
-        // It is time to scheduler this task, try to get the lock and obtain a shared_ptr
-        // If this fails a default WorkItem is constructed which has disabled == true
-        auto item = top.second.lock();
-        if (item) {
-          try {
-            item->run();
-          } catch (std::exception const& ex) {
-            LOG_TOPIC("6d997", WARN, Logger::THREADS) << "caught exception in runCronThread: " << ex.what();
-          }
-        }
         _cronQueue.pop();
+        guard.unlock();
+
+        // It is time to schedule this task, try to get the lock and obtain a shared_ptr
+        // If this fails a default WorkItem is constructed which has disabled == true
+        try {
+          auto item = top.second.lock();
+          if (item) {
+            item->run();
+          }
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("6d997", WARN, Logger::THREADS) << "caught exception in runCronThread: " << ex.what();
+        }
+
+        // always lock again, as we are going into the wait_for below
+        guard.lock();
+
       } else {
         auto then = (top.first - now);
 
@@ -139,27 +147,31 @@ void Scheduler::runCronThread() {
   }
 }
 
-Scheduler::WorkHandle Scheduler::queueDelay(RequestLane lane, clock::duration delay,
-                                            std::function<void(bool cancelled)> handler) {
+std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
+    RequestLane lane, clock::duration delay, fu2::unique_function<void(bool cancelled)> handler) {
   TRI_ASSERT(!isStopping());
 
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
-    queue(lane, [handler]() { handler(false); });
-    return nullptr;
+    bool queued =
+        queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
+    return std::make_pair(queued, nullptr);
   }
 
   auto item = std::make_shared<WorkItem>(std::move(handler), lane, this);
-  std::unique_lock<std::mutex> guard(_cronQueueMutex);
-  _cronQueue.emplace(clock::now() + delay, item);
+  {
+    std::unique_lock<std::mutex> guard(_cronQueueMutex);
+    _cronQueue.emplace(clock::now() + delay, item);
 
-  if (delay < std::chrono::milliseconds(50)) {
-    // wakeup thread
-    _croncv.notify_one();
+    if (delay < std::chrono::milliseconds(50)) {
+      // wakeup thread
+      _croncv.notify_one();
+    }
   }
 
-  return item;
+  return std::make_pair(true, item);
 }
+
 /*
 void Scheduler::cancelAllTasks() {
   //std::unique_lock<std::mutex> guard(_cronQueueMutex);

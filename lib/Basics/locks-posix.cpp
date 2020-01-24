@@ -21,12 +21,21 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <string.h>
 #include <chrono>
 #include <thread>
+
 #include "locks.h"
 
 #ifdef TRI_HAVE_POSIX_THREADS
 
+#ifdef TRI_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+#include "Basics/application-exit.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
 /// @brief initializes a new condition variable

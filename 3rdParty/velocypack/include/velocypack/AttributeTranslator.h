@@ -28,13 +28,11 @@
 #define VELOCYPACK_ATTRIBUTETRANSLATOR_H 1
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <memory>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Options.h"
-#include "velocypack/Slice.h"
 #include "velocypack/StringRef.h"
 
 namespace arangodb {
@@ -50,7 +48,7 @@ class AttributeTranslator {
 
   ~AttributeTranslator();
 
-  size_t count() const { return _count; }
+  std::size_t count() const { return _count; }
 
   void add(std::string const& key, uint64_t id);
 
@@ -94,7 +92,7 @@ class AttributeTranslator {
   std::unique_ptr<Builder> _builder;
   std::unordered_map<StringRef, uint8_t const*> _keyToId;
   std::unordered_map<uint64_t, uint8_t const*> _idToKey;
-  size_t _count;
+  std::size_t _count;
 };
 
 class AttributeTranslatorScope {
@@ -103,19 +101,10 @@ class AttributeTranslatorScope {
   AttributeTranslatorScope& operator= (AttributeTranslatorScope const&) = delete;
 
  public:
-  explicit AttributeTranslatorScope(AttributeTranslator* translator)
-      : _old(Options::Defaults.attributeTranslator) {
-    Options::Defaults.attributeTranslator = translator;
-  }
+  explicit AttributeTranslatorScope(AttributeTranslator* translator);
+  ~AttributeTranslatorScope();
 
-  ~AttributeTranslatorScope() {
-    revert();
-  }
-
-  // prematurely revert the change
-  void revert() {
-    Options::Defaults.attributeTranslator = _old;
-  }
+  void revert() noexcept;
 
  private:
   AttributeTranslator* _old;

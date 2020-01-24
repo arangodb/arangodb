@@ -22,21 +22,36 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesDatafile.h"
+
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/ticks.h"
 
 #include <iomanip>
 #include <sstream>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -1718,7 +1733,7 @@ DatafileScan MMFilesDatafile::scanHelper() {
 
     if (ok) {
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT || type == TRI_DF_MARKER_VPACK_REMOVE) {
-        VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) +
                                MMFilesDatafileHelper::VPackOffset(type));
         TRI_ASSERT(slice.isObject());
         try {

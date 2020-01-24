@@ -40,7 +40,7 @@ class EnumIterator {
   typedef typename std::underlying_type<T>::type ValueType;
 
  public:
-  EnumIterator(T const& current) noexcept
+  explicit EnumIterator(T const& current) noexcept
       : current(static_cast<ValueType>(current)) {}
 
   EnumIterator() : current(static_cast<ValueType>(beginValue)) {}

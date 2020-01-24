@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_name
 @brief returns a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}, Return information about a collection}
+@RESTHEADER{GET /_api/collection/{collection-name}, Return information about a collection, handleCommandGet:collectionGetProperties}
 
 @HINTS
 {% hint 'warning' %}
@@ -24,12 +24,12 @@ attributes:
 - *name*: The name of the collection.
 
 - *status*: The status of the collection as number.
- - 1: new born collection
- - 2: unloaded
- - 3: loaded
- - 4: in the process of being unloaded
- - 5: deleted
- - 6: loading
+  - 1: new born collection
+  - 2: unloaded
+  - 3: loaded
+  - 4: in the process of being unloaded
+  - 5: deleted
+  - 6: loading
 
 Every other status indicates a corrupted collection.
 
@@ -45,4 +45,3 @@ Every other status indicates a corrupted collection.
 If the *collection-name* is unknown, then a *HTTP 404* is
 returned.
 @endDocuBlock
-

@@ -24,7 +24,10 @@
 #ifndef ARANGOD_COLLECTION_EXPORT_H
 #define ARANGOD_COLLECTION_EXPORT_H 1
 
+#include <unordered_set>
+
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 

@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/memory.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -124,8 +125,6 @@ void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder,
                                         std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
   builder.add("minLength", VPackValue(_minWordLength));
   builder.close();
 }
@@ -472,8 +471,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
       return rocksutils::convertStatus(s);
     }
 
-    LocalDocumentId documentId =
-        RocksDBKey::indexDocumentId(RocksDBEntryType::FulltextIndexValue, iter->key());
+    LocalDocumentId documentId = RocksDBKey::indexDocumentId(iter->key());
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(documentId);
     } else if (token.operation == FulltextQueryToken::OR) {
@@ -495,7 +493,7 @@ Result RocksDBFulltextIndex::applyQueryToken(transaction::Methods* trx,
   return Result();
 }
 
-IndexIterator* RocksDBFulltextIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
     transaction::Methods* trx, aql::AstNode const* condNode,
     aql::Variable const* var, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -512,7 +510,8 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(
 
   aql::AstNode const* queryNode = args->getMember(2);
   if (queryNode->type != aql::NODE_TYPE_VALUE || queryNode->value.type != aql::VALUE_TYPE_STRING) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    std::string message = basics::Exception::FillExceptionString(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, message);
   }
 
   FulltextQuery parsedQuery;
@@ -527,5 +526,5 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return new RocksDBFulltextIndexIterator(&_collection, trx, std::move(results));
+  return std::make_unique<RocksDBFulltextIndexIterator>(&_collection, trx, std::move(results));
 }

@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aggregator.h"
+
+#include "Aql/AqlValue.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -171,8 +174,8 @@ struct AggregatorMin final : public Aggregator {
   void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
-    if (value.isEmpty() || (!cmpValue.isNull(true) &&
-                            AqlValue::Compare(trx, value, cmpValue, true) > 0)) {
+    if (!cmpValue.isNull(true) && (value.isEmpty() || 
+                                   AqlValue::Compare(trx, value, cmpValue, true) > 0)) {
       // the value `null` itself will not be used in MIN() to compare lower than
       // e.g. value `false`
       value.destroy();
@@ -607,8 +610,11 @@ struct AggregatorUnique : public Aggregator {
              basics::VelocyPackHelper::VPackEqual(
                  trx->transactionContext()->getVPackOptions())) {}
 
-  ~AggregatorUnique() { reset(); }
+  ~AggregatorUnique() {
+    reset();
+  }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     builder.clear();
@@ -626,12 +632,12 @@ struct AggregatorUnique : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
     if (builder.isClosed()) {
       builder.openArray();
     }
-    builder.add(VPackSlice(pos));
+    builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
   }
 
   AqlValue stealValue() override final {
@@ -666,19 +672,19 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(it) != seen.end()) {
         // already saw the same value
         return;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
       if (builder.isClosed()) {
         builder.openArray();
       }
-      builder.add(VPackSlice(pos));
+      builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
     }
   }
 };
@@ -692,6 +698,7 @@ struct AggregatorSortedUnique : public Aggregator {
 
   ~AggregatorSortedUnique() { reset(); }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     allocator.clear();
@@ -709,7 +716,7 @@ struct AggregatorSortedUnique : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
   AqlValue stealValue() override final {
@@ -744,14 +751,14 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(it) != seen.end()) {
         // already saw the same value
         return;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
   }
 };
@@ -766,6 +773,7 @@ struct AggregatorCountDistinct : public Aggregator {
 
   ~AggregatorCountDistinct() { reset(); }
 
+  // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
     allocator.clear();
@@ -783,7 +791,7 @@ struct AggregatorCountDistinct : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
   AqlValue stealValue() override final {
@@ -811,14 +819,14 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
       return;
     }
 
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(s) != seen.end()) {
         // already saw the same value
         return;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
   }
 };

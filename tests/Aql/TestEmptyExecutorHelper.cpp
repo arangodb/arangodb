@@ -23,7 +23,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <lib/Logger/LogMacros.h>
 #include "TestEmptyExecutorHelper.h"
 
 #include "Basics/Common.h"
@@ -32,6 +31,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Logger/LogMacros.h"
 
 #include <utility>
 
@@ -41,8 +41,8 @@ using namespace arangodb::aql;
 TestEmptyExecutorHelper::TestEmptyExecutorHelper(Fetcher&, Infos&){};
 TestEmptyExecutorHelper::~TestEmptyExecutorHelper() = default;
 
-std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRow") {
+std::pair<ExecutionState, FilterStats> TestEmptyExecutorHelper::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("TestEmptyExecutorHelper::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state = ExecutionState::DONE;

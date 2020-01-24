@@ -37,7 +37,7 @@
 
 #include "Basics/Common.h"
 #include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Utils.h"
 #include "Logger/Logger.h"
 
 namespace arangodb {
@@ -105,8 +105,6 @@ void NearUtils<CMP>::reset() {
 /// to the target coordinates
 template <typename CMP>
 void NearUtils<CMP>::estimateDensity(S2Point const& found) {
-  TRI_ASSERT(!_params.fullRange);  // don't call in this case
-
   S1ChordAngle minAngle = S1ChordAngle::Radians(250 / geo::kEarthRadiusInMeters);
   S1ChordAngle delta(_origin, found);
   if (minAngle < delta) {
@@ -145,9 +143,9 @@ static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
                     (j != cell_ids.begin() && (--j)->range_max() >= id);
     if (!contains) {
       S2CellId child = id.child_begin();
-      for (int i = 0;; ++i) {
+      for (int x = 0;; ++x) {
         GetDifference(cell_ids, child, result);
-        if (i == 3) break;  // Avoid unnecessary next() computation.
+        if (x == 3) break;  // Avoid unnecessary next() computation.
         child = child.next();
       }
     }
@@ -183,7 +181,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     // LOG_TOPIC("55f3b", INFO, Logger::FIXME) << "[Scan] 0 to something";
     S2Cap ob = S2Cap(_origin, _outerAngle);
     //_coverer.GetCovering(ob, &cover);
-    if (_scannedCells.empty() == 0) {
+    if (_scannedCells.empty()) {
       _coverer.GetFastCovering(ob, &cover);
     } else {
       std::vector<S2CellId> tmpCover;
@@ -195,7 +193,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   } else if (_innerAngle > _minAngle) {
     // create a search ring
 
-    if (_scannedCells.size() > 0) {
+    if (!_scannedCells.empty()) {
       S2Cap ob(_origin, _outerAngle);  // outer ring
       std::vector<S2CellId> tmpCover;
       _coverer.GetCovering(ob, &tmpCover);
@@ -206,6 +204,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     } else {
       // expensive exact cover
       std::vector<std::unique_ptr<S2Region>> regions;
+      regions.reserve(2);
       S2Cap ib(_origin, _innerAngle);  // inner ring
       regions.push_back(std::make_unique<S2Cap>(ib.Complement()));
       regions.push_back(std::make_unique<S2Cap>(_origin, _outerAngle));
@@ -236,7 +235,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
 
   std::vector<geo::Interval> intervals;
   if (!cover.empty()) {
-    geo::GeoUtils::scanIntervals(_params, cover, intervals);
+    geo::utils::scanIntervals(_params, cover, intervals);
     _scannedCells.insert(_scannedCells.end(), cover.begin(), cover.end());
     // needed for difference calculation, will sort the IDs replace
     // 4 child cells with one parent cell and remove duplicates
@@ -312,12 +311,6 @@ void NearUtils<CMP>::estimateDelta() {
 /// @brief estimate the scan bounds
 template <typename CMP>
 void NearUtils<CMP>::calculateBounds() {
-  if (_params.fullRange) {
-    _innerAngle = _minAngle;
-    _outerAngle = _maxAngle;
-    _allIntervalsCovered = true;
-    return;
-  }
   TRI_ASSERT(!_deltaAngle.is_zero() && _deltaAngle.is_valid());
   if (isAscending()) {
     _innerAngle = _outerAngle;  // initially _outerAngles == _innerAngles

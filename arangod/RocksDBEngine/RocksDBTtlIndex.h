@@ -47,6 +47,8 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
 
   char const* typeName() const override { return "rocksdb-ttl"; }
   
+  bool matchesDefinition(VPackSlice const&) const override;
+  
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type flags) const override;
   

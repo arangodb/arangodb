@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_follow
 @brief Fetch log lines from the server
 
-@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries}
+@RESTHEADER{GET /_api/replication/logger-follow, Returns log entries, handleCommandLoggerFollow}
 
 @HINTS
 {% hint 'warning' %}
@@ -84,7 +84,7 @@ are:
 - *data*: the original document data
 
 A more detailed description of the individual replication event types and their
-data structures can be found in [Operation Types](./WALAccess.md/#operation-types).
+data structures can be found in [Operation Types](../Replications/WALAccess.html#operation-types).
 
 The response will also contain the following HTTP headers:
 
@@ -204,4 +204,3 @@ More events than would fit into the response
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

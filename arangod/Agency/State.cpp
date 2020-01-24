@@ -37,8 +37,11 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -53,6 +56,7 @@ using namespace arangodb::aql;
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
+using namespace arangodb::basics;
 
 /// Constructor:
 State::State()
@@ -67,12 +71,12 @@ State::State()
       _cur(0) {}
 
 /// Default dtor
-State::~State() {}
+State::~State() = default;
 
 inline static std::string timestamp(uint64_t m) {
 
   using namespace std::chrono;
-  
+
   std::time_t t = (m == 0) ? std::time(nullptr) :
     system_clock::to_time_t(system_clock::time_point(milliseconds(m)));
   char mbstr[100];
@@ -284,43 +288,38 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     : persist(idx, term, millis, slice, clientId);
 
   if (!success) {  // log to disk or die
-    if (leading) {
-      LOG_TOPIC("f5adb", FATAL, Logger::AGENCY)
-          << "RAFT leader fails to persist log entries!";
+    LOG_TOPIC("f5adb", FATAL, Logger::AGENCY)
+      << "RAFT member fails to persist log entries!";
+    FATAL_ERROR_EXIT();
+  }
+
+  logEmplaceBackNoLock(log_t(idx, term, buf, clientId));
+
+  return _log.back().index;
+}
+
+
+void State::logEmplaceBackNoLock(log_t&& l) {
+
+  if (!l.clientId.empty()) {
+    try {
+      _clientIdLookupTable.emplace(  // keep track of client or die
+        std::pair<std::string, index_t>{l.clientId, l.index});
+    } catch (...) {
+      LOG_TOPIC("f5ade", FATAL, Logger::AGENCY)
+        << "RAFT member fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
-    } else {
-      LOG_TOPIC("50f4c", ERR, Logger::AGENCY)
-          << "RAFT follower fails to persist log entries!";
-      return 0;
     }
   }
 
   try {
-    _log.push_back(log_t(idx, term, buf, clientId));  // log to RAM or die
+    _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
   } catch (std::bad_alloc const&) {
-    if (leading) {
-      LOG_TOPIC("81502", FATAL, Logger::AGENCY)
-          << "RAFT leader fails to allocate volatile log entries!";
-      FATAL_ERROR_EXIT();
-    } else {
-      LOG_TOPIC("18c09", ERR, Logger::AGENCY)
-          << "RAFT follower fails to allocate volatile log entries!";
-      return 0;
-    }
+    LOG_TOPIC("f5adc", FATAL, Logger::AGENCY)
+      << "RAFT member fails to allocate volatile log entries!";
+    FATAL_ERROR_EXIT();
   }
 
-  if (leading) {
-    try {
-      _clientIdLookupTable.emplace(  // keep track of client or die
-          std::pair<std::string, index_t>(clientId, idx));
-    } catch (...) {
-      LOG_TOPIC("4ab75", FATAL, Logger::AGENCY)
-          << "RAFT leader fails to expand client lookup table!";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  return _log.back().index;
 }
 
 /// Log transactions (follower)
@@ -379,7 +378,7 @@ index_t State::logFollower(query_t const& transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent, "snapshot");
+      Store snapshot(_agent->server(), _agent, "snapshot");
       snapshot = slices[0];
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
@@ -397,7 +396,6 @@ index_t State::logFollower(query_t const& transactions) {
     VPackSlice slices = transactions->slice();
     TRI_ASSERT(slices.isArray());
     size_t nqs = slices.length();
-    std::string clientId;
 
     for (size_t i = ndups; i < nqs; ++i) {
       VPackSlice const& slice = slices[i];
@@ -498,7 +496,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
         // volatile logs, as mentioned above, this will never make _log
         // completely empty!
-        _log.erase(_log.begin() + pos, _log.end());
+        logEraseNoLock(_log.begin() + pos, _log.end());
 
         LOG_TOPIC("1321d", TRACE, Logger::AGENCY) << "removeConflicts done: ndups=" << ndups
                                          << " first log entry: " << _log.front().index
@@ -515,6 +513,29 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
   return ndups;
 }
+
+
+void State::logEraseNoLock(
+  std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
+
+  for (auto lit = rbegin; lit != rend; lit++) {
+    std::string const& clientId = lit->clientId;
+    if (!clientId.empty()) {
+      auto ret = _clientIdLookupTable.equal_range(clientId);
+      for (auto it = ret.first; it != ret.second;) {
+        if (it->second == lit->index) {
+          it = _clientIdLookupTable.erase(it);
+        } else {
+          it++;
+        }
+      }
+    }
+  }
+
+  _log.erase(rbegin, rend);
+
+}
+
 
 /// Get log entries from indices "start" to "end"
 std::vector<log_t> State::get(index_t start, index_t end) const {
@@ -748,7 +769,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
       VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
-      _log.push_back(log_t(index_t(0), term_t(0), buf, std::string()));
+      _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string()));
       persist(0, 0, 0, value, std::string());
     }
     _ready = true;
@@ -810,7 +831,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
       VPackSlice ii = i.resolveExternals();
       try {
         store = ii;
-        index = basics::StringUtils::uint64(ii.get("_key").copyString());
+        index = StringUtils::uint64(ii.get("_key").copyString());
         term = ii.get("term").getNumber<uint64_t>();
         return true;
       } catch (std::exception const& e) {
@@ -862,8 +883,9 @@ bool State::loadCompacted() {
     buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     _agent->setPersistedState(ii);
     try {
-      _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
+      _cur = StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();  // will be filled in loadRemaining
+      _clientIdLookupTable.clear();
       // Schedule next compaction:
       _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
@@ -1021,7 +1043,7 @@ bool State::loadRemaining() {
                                         : std::string();
 
       // Dummy fill missing entries (Not good at all.)
-      index_t index(basics::StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
+      index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
 
       // Ignore log entries, which are older than lastIndex:
       if (index >= lastIndex) {
@@ -1033,7 +1055,9 @@ bool State::loadRemaining() {
           term_t term(ii.get("term").getNumber<uint64_t>());
           for (index_t i = lastIndex + 1; i < index; ++i) {
             LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
-            _log.push_back(log_t(i, term, buf, std::string()));
+            _log.emplace_back(log_t(i, term, buf, std::string()));
+            // This has empty clientId, so we do not need to adjust
+            // _clientIdLookupTable.
             lastIndex = i;
           }
           // After this loop, index will be lastIndex + 1
@@ -1041,17 +1065,9 @@ bool State::loadRemaining() {
 
         if (index == lastIndex + 1 || (index == lastIndex && _log.empty())) {
           // Real entries
-          try {
-            _log.push_back(log_t(basics::StringUtils::uint64(
-                                     ii.get(StaticStrings::KeyString).copyString()),
-                                 ii.get("term").getNumber<uint64_t>(), tmp, clientId));
-          } catch (std::exception const& e) {
-            LOG_TOPIC("44208", ERR, Logger::AGENCY)
-                << "Failed to convert " + ii.get(StaticStrings::KeyString).copyString() +
-                       " to integer."
-                << e.what();
-          }
-
+          logEmplaceBackNoLock(
+            log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
+                  ii.get("term").getNumber<uint64_t>(), tmp, clientId));
           lastIndex = index;
         }
       }
@@ -1097,7 +1113,7 @@ bool State::compact(index_t cind, index_t keep) {
   _nextCompactionAfter = (std::max)(_nextCompactionAfter.load(),
                                     cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent, "snapshot");
+  Store snapshot(_agent->server(), _agent, "snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1156,7 +1172,7 @@ bool State::compactVolatile(index_t cind, index_t keep) {
   index_t cut = cind - keep;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (!_log.empty() && cut > _cur && cut - _cur < _log.size()) {
-    _log.erase(_log.begin(), _log.begin() + (cut - _cur));
+    logEraseNoLock(_log.begin(), _log.begin() + (cut - _cur));
     TRI_ASSERT(_log.begin()->index == cut);
     _cur = _log.begin()->index;
   }
@@ -1324,6 +1340,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
 
   // volatile logs
   _log.clear();
+  _clientIdLookupTable.clear();
   _cur = index;
   // This empty log should soon be rectified!
   return true;
@@ -1438,12 +1455,10 @@ std::vector<index_t> State::inquire(query_t const& query) const {
 
     auto ret = _clientIdLookupTable.equal_range(i.copyString());
     index_t index = 0;
+    // Look for the maximum index:
     for (auto it = ret.first; it != ret.second; ++it) {
-      if (it->second < _log[0].index) {
-        continue;
-      }
-      if (index < _log.at(it->second - _cur).index) {
-        index = _log.at(it->second - _cur).index;
+      if (it->second > index) {
+        index = it->second;
       }
     }
     result.push_back(index);
@@ -1487,7 +1502,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 
   VPackSlice result = queryResult.data->slice();
 
-  Store store(nullptr);
+  Store store(vocbase.server(), nullptr);
   index = 0;
   term = 0;
   if (result.isArray() && result.length() == 1) {
@@ -1495,7 +1510,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
     VPackSlice ii = result[0].resolveExternals();
     buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     store = ii;
-    index = arangodb::basics::StringUtils::uint64(ii.get("_key").copyString());
+    index = StringUtils::uint64(ii.get("_key").copyString());
     term = ii.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)
         << "Read snapshot at index " << index << " with term " << term;
@@ -1528,7 +1543,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         std::string clientId =
             req.hasKey("clientId") ? req.get("clientId").copyString() : std::string();
 
-        log_t entry(basics::StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
+        log_t entry(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
                     ii.get("term").getNumber<uint64_t>(), tmp, clientId);
 
         if (entry.index <= index) {
@@ -1562,7 +1577,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
 uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   TRI_ASSERT(builder.isOpenObject());
-  
+
   auto bindVars = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder b(bindVars.get()); }
 
@@ -1582,7 +1597,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
   VPackSlice result = logQueryResult.data->slice().resolveExternals();
   std::string firstIndex;
   uint64_t n = 0;
-  
+
   auto copyWithoutId = [&](VPackSlice slice, VPackBuilder& builder) {
     // Need to remove custom attribute in _id:
     { VPackObjectBuilder guard(&builder);
@@ -1619,7 +1634,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     std::string const compQueryStr =
       std::string("FOR c in compact FILTER c._key >= '") + firstIndex
       + std::string("' SORT c._key LIMIT 1 RETURN c");
-        
+
     arangodb::aql::Query compQuery(false, *_vocbase, aql::QueryString(compQueryStr),
                                bindVars, nullptr, arangodb::aql::PART_MAIN);
 
@@ -1628,7 +1643,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     if (compQueryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);
     }
-    
+
     result = compQueryResult.data->slice().resolveExternals();
 
     if (result.isArray()) {
@@ -1644,7 +1659,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       }
     }
   }
-  
+
   return n;
 }
 

@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 
@@ -46,7 +47,7 @@ class SameThreadAsserter {
 #else
 
   SameThreadAsserter() {}
-  ~SameThreadAsserter() {}
+  ~SameThreadAsserter() = default;
 
 #endif
 };

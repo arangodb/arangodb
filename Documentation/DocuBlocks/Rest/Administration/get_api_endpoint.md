@@ -2,7 +2,7 @@
 @startDocuBlock get_api_endpoint
 @brief This API call returns the list of all endpoints (single server).
 
-@RESTHEADER{GET /_api/endpoint, Return list of all endpoints}
+@RESTHEADER{GET /_api/endpoint, Return list of all endpoints, retrieveEndpoints}
 
 @HINTS
 {% hint 'warning' %}
@@ -44,4 +44,3 @@ The server will respond with *HTTP 405* if an unsupported HTTP method is used.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -28,10 +28,8 @@
 #define VELOCYPACK_OPTIONS_H 1
 
 #include <string>
-#include <cstdint>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -40,30 +38,37 @@ class Dumper;
 struct Options;
 class Slice;
 
-struct AttributeExcludeHandler {
-  virtual ~AttributeExcludeHandler() {}
-
-  virtual bool shouldExclude(Slice const& key, int nesting) = 0;
-};
-
 struct CustomTypeHandler {
-  virtual ~CustomTypeHandler() {}
-
-  virtual void dump(Slice const&, Dumper*, Slice const&) {
-    throw Exception(Exception::NotImplemented);
-  }
-
-  virtual std::string toString(Slice const&, Options const*, Slice const&) {
-    throw Exception(Exception::NotImplemented);
-  }
-                    
+  virtual ~CustomTypeHandler() = default;
+  virtual void dump(Slice const&, Dumper*, Slice const&);
+  virtual std::string toString(Slice const&, Options const*, Slice const&);
 };
 
 struct Options {
+  // Behavior to be applied when dumping VelocyPack values that cannot be
+  // expressed in JSON without data loss
   enum UnsupportedTypeBehavior {
+    // convert any non-JSON-representable value to null
     NullifyUnsupportedType,
+    // emit a JSON string "(non-representable type ...)"
     ConvertUnsupportedType,
+    // throw an exception for any non-JSON-representable value
     FailOnUnsupportedType
+  };
+
+  // Behavior to be applied when building VelocyPack Array/Object values
+  // with a Builder
+  enum PaddingBehavior {
+    // use padding - fill unused head bytes with zero-bytes (ASCII NUL) in
+    // order to avoid a later memmove
+    UsePadding,
+    // don't pad and do not fill any gaps with zero-bytes (ASCII NUL). 
+    // instead, memmove data down so there is no gap between the head bytes
+    // and the payload
+    NoPadding,
+    // pad in cases the Builder considers it useful, and don't pad in other
+    // cases when the Builder doesn't consider it useful
+    Flexible
   };
 
   Options() {}
@@ -71,10 +76,11 @@ struct Options {
   // Dumper behavior when a VPack value is serialized to JSON that
   // has no JSON equivalent
   UnsupportedTypeBehavior unsupportedTypeBehavior = FailOnUnsupportedType;
+ 
+  // Builder behavior w.r.t. padding or memmoving data
+  PaddingBehavior paddingBehavior = PaddingBehavior::Flexible;
 
-  // callback for excluding attributes from being built by the Parser
-  AttributeExcludeHandler* attributeExcludeHandler = nullptr;
-
+  // custom attribute translator for integer keys
   AttributeTranslator* attributeTranslator = nullptr;
 
   // custom type handler used for processing custom types by Dumper and Slicer
@@ -88,6 +94,9 @@ struct Options {
 
   // pretty-print JSON output when dumping with Dumper
   bool prettyPrint = false;
+
+  // pretty-print JSON output when dumping with Dumper, but don't add any newlines
+  bool singleLinePrettyPrint = false;
 
   // keep top-level object/array open when building objects with the Parser
   bool keepTopLevelOpen = false;
@@ -115,14 +124,32 @@ struct Options {
   // order (false). undefined order may be faster but not deterministic
   bool dumpAttributesInIndexOrder = true;
 
+  // dump NaN as "NaN", Infinity as "Infinity"
+  bool unsupportedDoublesAsString = false;
+
+  // dump binary values as hex-encoded strings
+  bool binaryAsHex = false;
+
+  // render dates as integers
+  bool datesAsIntegers = false;
+
   // disallow using type External (to prevent injection of arbitrary pointer
   // values as a security precaution), validated when object-building via
   // Builder and VelocyPack validation using Validator objects
   bool disallowExternals = false;
-
+  
   // disallow using type Custom (to prevent injection of arbitrary opaque
   // values as a security precaution)
   bool disallowCustom = false;
+  
+  // disallow tagged values
+  bool disallowTags = false;
+  
+  // disallow BCD values
+  bool disallowBCD = false;
+
+  // write tags to JSON output
+  bool debugTags = false;
 
   // default options with the above settings
   static Options Defaults;

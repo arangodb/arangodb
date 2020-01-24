@@ -2,7 +2,7 @@
 @startDocuBlock put_batch_replication
 @brief handle a dump batch command
 
-@RESTHEADER{PUT /_api/replication/batch/{id}, Prolong existing dump batch}
+@RESTHEADER{PUT /_api/replication/batch/{id}, Prolong existing dump batch, handleCommandBatch:Prolong}
 
 **Note**: These calls are uninteresting to users.
 
@@ -36,4 +36,3 @@ is returned if the ttl value is invalid or the batch was not found.
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
 @endDocuBlock
-

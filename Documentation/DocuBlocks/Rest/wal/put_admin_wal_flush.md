@@ -2,7 +2,7 @@
 @startDocuBlock put_admin_wal_flush
 @brief Sync the WAL to disk.
 
-@RESTHEADER{PUT /_admin/wal/flush, Flushes the write-ahead log}
+@RESTHEADER{PUT /_admin/wal/flush, Flushes the write-ahead log, RestWalHandler:flush}
 
 @RESTQUERYPARAMETERS
 
@@ -32,4 +32,3 @@ Is returned if the operation succeeds.
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
 @endDocuBlock
-

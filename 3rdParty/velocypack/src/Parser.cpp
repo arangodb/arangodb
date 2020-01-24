@@ -109,9 +109,9 @@ int Parser::skipWhiteSpace(char const* err) {
       return c;
     }
   }
-  size_t remaining = _size - _pos;
+  std::size_t remaining = _size - _pos;
   if (remaining >= 16) {
-    size_t count = JSONSkipWhiteSpace(_start + _pos, remaining - 15);
+    std::size_t count = JSONSkipWhiteSpace(_start + _pos, remaining - 15);
     _pos += count;
   }
   do {
@@ -125,7 +125,7 @@ int Parser::skipWhiteSpace(char const* err) {
 
 // parses a number value
 void Parser::parseNumber() {
-  size_t startPos = _pos;
+  std::size_t startPos = _pos;
   ParsedNumber numberValue;
   bool negative = false;
   int i = consume();
@@ -241,10 +241,10 @@ void Parser::parseString() {
   uint32_t highSurrogate = 0;  // non-zero if high-surrogate was seen
 
   while (true) {
-    size_t remainder = _size - _pos;
+    std::size_t remainder = _size - _pos;
     if (remainder >= 16) {
       _builderPtr->reserve(remainder);
-      size_t count;
+      std::size_t count;
       // Note that the SSE4.2 accelerated string copying functions might
       // peek up to 15 bytes over the given end, because they use 128bit
       // registers. Therefore, we have to subtract 15 from remainder
@@ -482,19 +482,10 @@ void Parser::parseObject() {
     ++_pos;
 
     _builderPtr->reportAdd();
-    bool excludeAttribute = false;
     auto const lastPos = _builderPtr->_pos;
-    if (options->attributeExcludeHandler == nullptr) {
-      parseString();
-    } else {
-      parseString();
-      if (options->attributeExcludeHandler->shouldExclude(
-              Slice(_builderPtr->_start + lastPos), _nesting)) {
-        excludeAttribute = true;
-      }
-    }
+    parseString();
 
-    if (!excludeAttribute && options->attributeTranslator != nullptr) {
+    if (options->attributeTranslator != nullptr) {
       // check if a translation for the attribute name exists
       Slice key(_builderPtr->_start + lastPos);
 
@@ -522,10 +513,6 @@ void Parser::parseObject() {
     ++_pos;  // skip over the colon
 
     parseJson();
-
-    if (excludeAttribute) {
-      _builderPtr->removeLast();
-    }
 
     i = skipWhiteSpace("Expecting ',' or '}'");
     if (i == '}') {

@@ -18,33 +18,34 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include "shared.hpp"
 #include "sort.hpp"
-#include "index/iterators.hpp"
 
 #include <unordered_map>
 #include <functional>
 
+#include "shared.hpp"
+#include "index/iterators.hpp"
+
+
 NS_ROOT
 
 template<typename State>
-class states_cache {
+class states_cache : private util::noncopyable {
 public:
   explicit states_cache(size_t size) {
     states_.reserve(size);
   }
 
-  states_cache(states_cache&& rhs) NOEXCEPT
+  states_cache(states_cache&& rhs) noexcept
     : states_(std::move(rhs.states_)) {
   }
 
-  states_cache& operator=(states_cache&& rhs) NOEXCEPT {
+  states_cache& operator=(states_cache&& rhs) noexcept {
     if (this != &rhs) {
       states_ = std::move(rhs.states_);
     }
@@ -56,12 +57,12 @@ public:
     return it->second;    
   }
 
-  const State* find(const sub_reader& rdr) const {
+  const State* find(const sub_reader& rdr) const noexcept {
     auto it = states_.find(&rdr);
     return states_.end() == it ? nullptr : &(it->second);
   }
 
-  bool empty() const { return states_.empty(); }
+  bool empty() const noexcept { return states_.empty(); }
 
 private:
   typedef std::unordered_map<
@@ -79,27 +80,21 @@ struct index_reader;
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API filter {
  public:
-  typedef iresearch::boost::boost_t boost_t;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @class query
   /// @brief base class for all prepared(compiled) queries
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API prepared: public util::attribute_store_provider {
+  class IRESEARCH_API prepared {
    public:
     DECLARE_SHARED_PTR(const prepared);
     DEFINE_FACTORY_INLINE(prepared)
 
     static prepared::ptr empty();
 
-    prepared() = default;
-    explicit prepared(attribute_store&& attrs) NOEXCEPT;
-    virtual ~prepared() = default;
-
-    using util::attribute_store_provider::attributes;
-    virtual attribute_store& attributes() NOEXCEPT override final {
-      return attrs_;
+    explicit prepared(boost_t boost = no_boost()) noexcept
+      : boost_(boost) {
     }
+    virtual ~prepared() = default;
 
     doc_iterator::ptr execute(
         const sub_reader& rdr) const {
@@ -118,33 +113,35 @@ class IRESEARCH_API filter {
       const attribute_view& ctx
     ) const = 0;
 
+    boost_t boost() const noexcept { return boost_; }
+
    protected:
-    friend class filter;
+    void boost(boost_t boost) noexcept { boost_ *= boost; }
 
    private:
-    attribute_store attrs_;
+    boost_t boost_;
   }; // prepared
 
   DECLARE_UNIQUE_PTR(filter);
   DEFINE_FACTORY_INLINE(filter)
 
-  filter(const type_id& type) NOEXCEPT;
+  explicit filter(const type_id& type) noexcept;
   virtual ~filter() = default;
 
-  virtual size_t hash() const NOEXCEPT {
+  virtual size_t hash() const noexcept {
     return std::hash<const type_id*>()(type_);
   }
 
-  bool operator==(const filter& rhs) const NOEXCEPT {
+  bool operator==(const filter& rhs) const noexcept {
     return equals(rhs);
   }
 
-  bool operator!=(const filter& rhs) const NOEXCEPT {
+  bool operator!=(const filter& rhs) const noexcept {
     return !(*this == rhs);
   }
 
   // boost::hash_combile support
-  friend size_t hash_value(const filter& q) NOEXCEPT {
+  friend size_t hash_value(const filter& q) noexcept {
     return q.hash();
   }
 
@@ -160,7 +157,7 @@ class IRESEARCH_API filter {
       const index_reader& rdr,
       const order::prepared& ord,
       const attribute_view& ctx) const {
-    return prepare(rdr, ord, irs::boost::no_boost(), ctx);
+    return prepare(rdr, ord, irs::no_boost(), ctx);
   }
 
   filter::prepared::ptr prepare(
@@ -173,24 +170,24 @@ class IRESEARCH_API filter {
   filter::prepared::ptr prepare(
       const index_reader& rdr,
       const order::prepared& ord) const {
-    return prepare(rdr, ord, boost::no_boost());
+    return prepare(rdr, ord, irs::no_boost());
   }
 
   filter::prepared::ptr prepare(const index_reader& rdr) const {
     return prepare(rdr, order::prepared::unordered());
   }
 
-  boost_t boost() const NOEXCEPT { return boost_; }
+  boost_t boost() const noexcept { return boost_; }
 
-  filter& boost(boost_t boost) NOEXCEPT {
+  filter& boost(boost_t boost) noexcept {
     boost_ = boost;
     return *this;
   }
 
-  const type_id& type() const NOEXCEPT { return *type_; }
+  const type_id& type() const noexcept { return *type_; }
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT {
+  virtual bool equals(const filter& rhs) const noexcept {
     return type_ == rhs.type_;
   }
 

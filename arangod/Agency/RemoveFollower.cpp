@@ -24,6 +24,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Random/RandomGenerator.h"
 
@@ -63,7 +64,7 @@ RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-RemoveFollower::~RemoveFollower() {}
+RemoveFollower::~RemoveFollower() = default;
 
 void RemoveFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
@@ -150,12 +151,12 @@ bool RemoveFollower::start(bool&) {
   // First check that we still have too many followers for the current
   // `replicationFactor`:
   size_t desiredReplFactor = 1;
-  auto replFact = collection.hasAsUInt("replicationFactor");
+  auto replFact = collection.hasAsUInt(StaticStrings::ReplicationFactor);
   if (replFact.second) {
     desiredReplFactor = replFact.first;
   } else {
-    auto replFact2 = collection.hasAsString("replicationFactor");
-    if (replFact2.second && replFact2.first == "satellite") {
+    auto replFact2 = collection.hasAsString(StaticStrings::ReplicationFactor);
+    if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
       // satellites => distribute to every server
       auto available = Job::availableServers(_snapshot);
       desiredReplFactor = Job::countGoodOrBadServersInList(_snapshot, available);
@@ -185,12 +186,12 @@ bool RemoveFollower::start(bool&) {
                                                   // -1 : not "GOOD", can be in sync, or leader, or not
                                                   // >=0: number of servers for which it is in sync or confirmed leader
   bool leaderBad = false;
-  for (auto const& srv : VPackArrayIterator(planned)) {
+  for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
     if (checkServerHealth(_snapshot, serverName) == "GOOD") {
-      overview.emplace(serverName, 0);
+      overview.try_emplace(serverName, 0);
     } else {
-      overview.emplace(serverName, -1);
+      overview.try_emplace(serverName, -1);
       if (serverName == planned[0].copyString()) {
         leaderBad = true;
       }
@@ -332,7 +333,7 @@ bool RemoveFollower::start(bool&) {
     }
   }
   std::vector<std::string> kept;
-  for (auto const& srv : VPackArrayIterator(planned)) {
+  for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
     if (chosenToRemove.find(serverName) == chosenToRemove.end()) {
       kept.push_back(serverName);
@@ -386,7 +387,7 @@ bool RemoveFollower::start(bool&) {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&trx);
-                         for (auto const& srv : VPackArrayIterator(plan)) {
+                         for (VPackSlice srv : VPackArrayIterator(plan)) {
                            if (chosenToRemove.find(srv.copyString()) ==
                                chosenToRemove.end()) {
                              trx.add(srv);
@@ -435,7 +436,7 @@ JOB_STATUS RemoveFollower::status() {
   return _status;
 }
 
-arangodb::Result RemoveFollower::abort() {
+arangodb::Result RemoveFollower::abort(std::string const& reason) {
   Result result;
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
@@ -445,7 +446,7 @@ arangodb::Result RemoveFollower::abort() {
   }
   // Can now only be TODO or PENDING
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted:" + reason);
     return result;
   }
 

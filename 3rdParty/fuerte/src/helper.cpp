@@ -20,7 +20,9 @@
 /// @author Jan Christoph Uhde
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <fuerte/helper.h>
+
 #include <string.h>
 #include <sstream>
 #include <stdexcept>
@@ -30,14 +32,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
-StringMap sliceToStringMap(VPackSlice const& slice) {
-  StringMap rv;
-  assert(slice.isObject());
-  for (auto const& it : ::arangodb::velocypack::ObjectIterator(slice)) {
-    rv.insert({it.key.copyString(), it.value.copyString()});
-  }
-  return rv;
-}
 
 std::string to_string(VPackSlice const& slice) {
   std::stringstream ss;
@@ -73,11 +67,6 @@ std::string to_string(Message& message) {
   ss << "Header:\n";
   if (message.type() == MessageType::Request) {
     Request const& req = static_cast<Request const&>(message);
-#ifndef NDEBUG
-    if (req.header.byteSize) {
-      ss << "byteSize: " << req.header.byteSize << std::endl;
-    }
-#endif
     
     if (req.header.version()) {
       ss << "version: " << req.header.version() << std::endl;
@@ -104,21 +93,18 @@ std::string to_string(Message& message) {
       }
       ss << std::endl;
     }
-    
-    if (!req.header.meta.empty()) {
+
+    if (!req.header.meta().empty()) {
       ss << "meta:\n";
-      for (auto const& item : req.header.meta) {
+      ss << "\t" << fu_content_type_key << " -:- " << to_string(req.header.contentType()) << "\n";
+      ss << "\t" << fu_accept_key << " -:- " << to_string(req.header.acceptType()) << "\n";
+      for (auto const& item : req.header.meta()) {
         ss << "\t" << item.first << " -:- " << item.second << "\n";
       }
       ss << std::endl;
     }
   } else if (message.type() == MessageType::Response) {
     Response const& res = static_cast<Response const&>(message);
-#ifndef NDEBUG
-    if (res.header.byteSize) {
-      ss << "byteSize: " << res.header.byteSize << std::endl;
-    }
-#endif
     
     if (res.header.version()) {
       ss << "version: " << res.header.version() << std::endl;
@@ -128,16 +114,17 @@ std::string to_string(Message& message) {
     if (res.header.responseCode != StatusUndefined) {
       ss << "responseCode: " << res.header.responseCode << std::endl;
     }
-    
-    if (!res.header.meta.empty()) {
+
+    if (!res.header.meta().empty()) {
       ss << "meta:\n";
-      for (auto const& item : res.header.meta) {
+      ss << "\t" << fu_content_type_key << " -:- " << to_string(res.header.contentType()) << "\n";
+      for (auto const& item : res.header.meta()) {
         ss << "\t" << item.first << " -:- " << item.second << "\n";
       }
       ss << std::endl;
     }
-    
-    ss << "contentType: " << res.header.contentTypeString() << std::endl;
+
+    ss << "contentType: " << to_string(res.header.contentType()) << std::endl;
   }
   /*  if (header.user) {
    ss << "user: " << header.user.get() << std::endl;
@@ -229,4 +216,52 @@ std::string encodeBase64U(std::string const& in) {
   std::replace(encoded.begin(), encoded.end(), '/', '_');
   return encoded;
 }
+
+void toLowerInPlace(std::string& str) {
+  // unrolled version of
+  // for (auto& c : str) {
+  //   c = StringUtils::tolower(c);
+  // }
+  auto tl = [](char c) -> char {
+    return c + ((static_cast<unsigned char>(c - 65) < 26U) << 5);
+  };
+  
+  auto pos = str.data();
+  auto end = pos + str.size();
+
+  while (pos != end) {
+    size_t len = end - pos;
+    if (len > 4) {
+      len = 4;
+    }
+
+    switch (len) {
+      case 4:
+        pos[3] = tl(pos[3]);
+        [[fallthrough]];
+      case 3:
+        pos[2] = tl(pos[2]);
+        [[fallthrough]];
+      case 2:
+        pos[1] = tl(pos[1]);
+        [[fallthrough]];
+      case 1:
+        pos[0] = tl(pos[0]);
+    }
+    pos += len;
+  }
+}
+  
+fuerte::Error translateError(asio_ns::error_code e, fuerte::Error c) {
+  
+  if (e == asio_ns::error::misc_errors::eof ||
+      e == asio_ns::error::connection_reset) {
+    return fuerte::Error::ConnectionClosed;
+  } else if (e == asio_ns::error::operation_aborted) {
+    return fuerte::Error::Canceled;
+  }
+  
+  return c;
+}
+  
 }}}  // namespace arangodb::fuerte::v1

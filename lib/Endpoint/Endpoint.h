@@ -24,14 +24,16 @@
 #ifndef ARANGODB_ENDPOINT_ENDPOINT_H
 #define ARANGODB_ENDPOINT_ENDPOINT_H 1
 
+#include <ostream>
+#include <string>
+
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WS2tcpip.h>
 #include <WinSock2.h>
 #endif
-
-#include <ostream>
 
 #include "Basics/socket-utils.h"
 
@@ -48,7 +50,7 @@ class Endpoint {
   Endpoint(DomainType, EndpointType, TransportType, EncryptionType, std::string const&, int);
 
  public:
-  virtual ~Endpoint() {}
+  virtual ~Endpoint() = default;
 
  public:
   static std::string uriForm(std::string const&);

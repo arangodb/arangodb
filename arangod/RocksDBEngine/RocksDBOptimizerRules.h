@@ -24,6 +24,8 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H
 #define ARANGOD_ROCKSDB_ROCKSDB_OPTIMIZER_RULES_H 1
 
+#include <memory>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
@@ -31,19 +33,21 @@ namespace aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
+class OptimizerRulesFeature;
 }  // namespace aql
 
 struct RocksDBOptimizerRules {
-  static void registerResources();
+  static void registerResources(aql::OptimizerRulesFeature& feature);
+
   // simplify an EnumerationCollectionNode that fetches an entire document to a
   // projection of this document
   static void reduceExtractionToProjectionRule(aql::Optimizer* opt,
                                                std::unique_ptr<aql::ExecutionPlan> plan,
-                                               aql::OptimizerRule const* rule);
+                                               aql::OptimizerRule const& rule);
   // remove SORT RAND() LIMIT 1 if appropriate
   static void removeSortRandRule(aql::Optimizer* opt,
                                  std::unique_ptr<aql::ExecutionPlan> plan,
-                                 aql::OptimizerRule const* rule);
+                                 aql::OptimizerRule const& rule);
 };
 
 }  // namespace arangodb

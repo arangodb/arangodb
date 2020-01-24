@@ -20,7 +20,17 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <string.h>
+
 #include "PrivilegeFeature.h"
+
+#include "Basics/application-exit.h"
+#include "Basics/error.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef ARANGODB_HAVE_GETGRGID
 #include <grp.h>
@@ -30,10 +40,16 @@
 #include <pwd.h>
 #endif
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/conversions.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -43,7 +59,7 @@ namespace arangodb {
 PrivilegeFeature::PrivilegeFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Privilege"), _numericUid(0), _numericGid(0) {
   setOptional(true);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

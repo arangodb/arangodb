@@ -29,15 +29,13 @@
 
 namespace arangodb {
 
-/// Globally defined column families. If you do change the number of column
-/// families
-/// consider if there is a need for an upgrade script. Added column families can
-/// be
-/// created automatically by rocksdb. Do check the RocksDB WAL tailing code and
-/// the
+/// Globally defined column families. If you do change the number of
+/// column-families consider if there
+/// is a need for an upgrade script. Added column families
+/// can be created automatically by rocksdb.
+/// Do check the RocksDB WAL tailing code and the
 /// counter manager. Maybe the the number of families in the shouldHandle method
-/// needs
-/// to be changed
+/// needs to be changed
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
 
@@ -58,7 +56,7 @@ struct RocksDBColumnFamily {
   static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
 
   static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
-
+  
   static rocksdb::ColumnFamilyHandle* invalid() {
     return rocksutils::defaultCF();
   }

@@ -2,7 +2,7 @@
 @startDocuBlock delete_api_collection
 @brief drops a collection
 
-@RESTHEADER{DELETE /_api/collection/{collection-name}, Drops a collection}
+@RESTHEADER{DELETE /_api/collection/{collection-name}, Drops a collection, handleCommandDelete:collection}
 
 @HINTS
 {% hint 'warning' %}
@@ -90,4 +90,3 @@ Dropping a system collection
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

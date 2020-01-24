@@ -26,6 +26,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -315,11 +316,9 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_REPLICATION_NO_START_TICK:
     case TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR:
     case TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE:
-    case TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING:
     case TRI_ERROR_ARANGO_INDEX_CREATION_FAILED:
     case TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH:
     case TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID:
-    case TRI_ERROR_ARANGO_VALIDATION_FAILED:
     case TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED:
     case TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST:
     case TRI_ERROR_ARANGO_ILLEGAL_NAME:
@@ -331,7 +330,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION:
     case TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION:
     case TRI_ERROR_USER_INVALID_NAME:
-    case TRI_ERROR_USER_INVALID_PASSWORD:
     case TRI_ERROR_TASK_INVALID_ID:
     case TRI_ERROR_GRAPH_INVALID_GRAPH:
     case TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH:
@@ -356,6 +354,16 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS:
     case TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST:
     case TRI_ERROR_ARANGO_NO_JOURNAL:
+    case TRI_ERROR_NO_SMART_COLLECTION:
+    case TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_CANNOT_DROP_SMART_COLLECTION:
+    case TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE:
+    case TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH:
+    case TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE:
       return ResponseCode::BAD;
 
     case TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE:
@@ -368,7 +376,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
     case TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED:
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-    case TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND:
     case TRI_ERROR_ARANGO_INDEX_NOT_FOUND:
     case TRI_ERROR_CURSOR_NOT_FOUND:
     case TRI_ERROR_QUERY_FUNCTION_NOT_FOUND:
@@ -376,11 +383,11 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING:
     case TRI_ERROR_QUERY_NOT_FOUND:
     case TRI_ERROR_USER_NOT_FOUND:
+    case TRI_ERROR_TRANSACTION_NOT_FOUND:
     case TRI_ERROR_TASK_NOT_FOUND:
     case TRI_ERROR_GRAPH_NOT_FOUND:
     case TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST:
     case TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION:
-    case TRI_ERROR_QUEUE_UNKNOWN:
     case TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED:
       return ResponseCode::NOT_FOUND;
 
@@ -425,6 +432,8 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_CLUSTER_UNSUPPORTED:
     case TRI_ERROR_NOT_IMPLEMENTED:
     case TRI_ERROR_ONLY_ENTERPRISE:
+    case TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR:
+    case TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER:
       return ResponseCode::NOT_IMPLEMENTED;
 
     default:
@@ -432,9 +441,10 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
   }
 }
 
-GeneralResponse::GeneralResponse(ResponseCode responseCode)
-    : _responseCode(responseCode),
+GeneralResponse::GeneralResponse(ResponseCode responseCode, uint64_t mid)
+    : _messageId(mid),
+      _responseCode(responseCode),
       _contentType(ContentType::UNSET),
-      _connectionType(ConnectionType::C_NONE),
+      _contentTypeRequested(ContentType::UNSET),
       _generateBody(false),
-      _contentTypeRequested(ContentType::UNSET) {}
+      _allowCompression(false) {}

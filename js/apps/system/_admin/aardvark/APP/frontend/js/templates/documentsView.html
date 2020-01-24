@@ -1,0 +1,142 @@
+<div id="transparentHeader" class="headerBar marginTop5">
+
+  <div id="documentsToolbar" class="headerButtonBar">
+
+  <!-- remove marker for docupdiv-->
+  <ul class="headerButtonList">
+    <!-- Mark: removed prev/next collection button
+    <li class="enabled">
+      <a id="collectionNext" class="headerButton">
+        <span class="icon_arangodb_arrowright" title="Next collection"></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="collectionPrev" class="headerButton collection-pagination">
+        <span class="icon_arangodb_arrowleft" title="Previous collection"></span>
+      </a>
+    </li>
+    -->
+    <li class="enabled">
+        <select id="documentSize" class="documents-size">
+          <option value="10" selected="">10 results</option>
+          <option value="20">20 results</option>
+          <option value="50">50 results</option>
+          <option value="100">100 results</option>
+          <option value="500">500 results</option>
+          <option value="1000">1000 results</option>
+          <option value="2500">2500 results</option>
+          <option value="5000">5000 results</option>
+          <option value="all">All results</option>
+        </select>
+      </a>
+    <li class="enabled">
+      <a id="markDocuments" class="headerButton">
+        <span title="Edit documents"><i class="fa fa-hand-pointer-o"></i></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="importCollection" class="headerButton">
+        <span title="Upload documents from JSON file"><i class="fa fa-upload"></i></span>
+      </a>
+    </li>
+    <li class="enabled">
+      <a id="exportCollection" class="headerButton">
+        <span title="Download documents as JSON file"><i class="fa fa-download" style="margin-top: 1px;"></i></span>
+      </a>
+    </li>
+    <li class="enabled" style="margin-right: 15px">
+      <a id="filterCollection" class="headerButton">
+        <span title="Filter collection"><i class="fa fa-filter"></i></span>
+      </a>
+    </li>
+  </ul>
+
+  </div>
+</div>
+
+<div class="arangoDropdown documentsDropdown">
+  <div id="filterHeader" class="headerDropdown">
+     <div style="float: right;">
+       <button id="resetView" class="button-warning btn-old-padding">Reset</button>
+       <button id="filterSend" class="button-success btn-old-padding">Filter</button>
+       <input type="text" id="docsSort" style="float: right" placeholder="Sort by attribute"></input>
+    </div>
+    <div class="queryline querylineAdd">
+       <input id="attribute_name0" type="text" placeholder="Attribute name"><select name="operator" id="operator0" class="filterSelect">
+           <option value="==">==</option>
+           <option value="!=">!=</option>
+           <option value="&lt;">&lt;</option>
+           <option value="&lt;=">&lt;=</option>
+           <option value="&gt;">&gt;</option>
+           <option value="&gt;=">&gt;=</option>
+           <option value="LIKE">LIKE</option>
+           <option value="IN">IN</option>
+           <option value="NOT IN">NOT IN</option>
+           <option value="=~">REGEX</option>
+       </select><input id="attribute_value0" type="text" placeholder="Attribute value" class="filterValue">
+       <a id="addFilterItem" class="add-filter-item"><i class="fa fa-plus-circle"></i></a>
+     </div>
+  </div>
+
+  <div id="importHeader" class="dropdownImport">
+    <div class="queryline">
+      <input id="importDocuments" name="importDocuments" type="file" accept="application/json" />
+      <button id="confirmDocImport" class="button-success btn-old-padding" style="float:right" disabled>
+        <span class="upload-indicator"><i id="uploadIndicator" class="fa fa-circle-o-notch fa-spin fa-fw"></i></span>Import JSON
+      </button>
+      <div title='Example input data:<br /><br /> I. Line-wise: <br /> { "_key": "key1", ... } <br /> { "_key": "key2", ... } <br /><br /> or <br /><br /> II. JSON documents embedded into a list: <br /> [ <br /> &nbsp; { "_key": "key1", ... }, <br /> &nbsp; { "_key": "key2", ... }, <br /> &nbsp; ... <br /> ]' class="upload-info" style="float:left; margin-top:7px; margin-right: 10px;"><i style="font-size: 13pt;" class="fa fa-info-circle"></i></div>
+    </div>
+  </div>
+
+  <div id="exportHeader" class="headerDropdown">
+    <div class="queryline">
+      <div style="float:left; margin-top:7px"><i class="fa fa-exclamation-circle"></i>Please be careful. If no filter is set, the whole collection will be downloaded.</div>
+      <button id="exportDocuments" class="button-success btn-old-padding" style="float:right">Download JSON</button>
+    </div>
+  </div>
+
+  <div id="editHeader" class="dropdownImport">
+    <div class="queryline">
+      <div style="float:left; margin-top:5px"><div style="float:left" class="selectedCount">0</div> &nbsp; document(s) selected</div>
+      <button id="deleteSelected" class="button-neutral btn-old-padding" style="float:right">Delete</button>
+      <button id="moveSelected" class="button-neutral btn-old-padding" style="float:right">Move</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="documentsDiv" class="innerContent">
+
+<div id="uploadMessages"></div>
+
+<div id="docPureTable">
+
+</div>
+
+<!--
+<div id="documentsTableID_wrapper" class="dataTables_wrapper" role="grid">
+  <table class="display arangoDataTable dataTable" id="documentsTableID">
+  </table>
+</div>
+-->
+
+    <div id="documentsToolbarFL">
+      <div id="documentsToolbarF" class="pagination-line">
+      </div>
+    </div>
+
+<!-- Delete Modal -->
+<div id="docDeleteModal" style="display:none" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Delete Document?</a>
+  </div>
+  <div class="modal-body" id="deleteDoc">
+    <p style="padding: 20px;">There is no way back…</p>
+  </div>
+  <div class="modal-footer">
+    <button class="button-close" data-dismiss="modal" aria-hidden="true">Close</button>
+    <button id="confirmDeleteBtn" class="button-danger" style="float:right" disabled="true">Delete</button>
+  </div>
+</div>
+

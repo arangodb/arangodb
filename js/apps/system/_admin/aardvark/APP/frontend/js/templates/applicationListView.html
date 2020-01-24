@@ -1,0 +1,13 @@
+  <tr class="foxx-store-row">
+    <td class="foxx-store-main">
+      <div class="foxx-name"><%=name%><%=legacy?' (legacy)':''%></div>
+      <div class="foxx-author"><%=author%></div>
+      <div class="foxx-description"><%=description%></div>
+    </td>
+    <td class="foxx-store-version">
+      <div class="foxx-version"><%=latestVersion%></div>
+    </td>
+    <td class="foxx-store-install">
+      <button class="button-success install-app" appId="<%=name %>" appVersion="<%=latestVersion %>">Install</button>
+    </td>
+  </tr>

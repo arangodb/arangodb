@@ -55,7 +55,27 @@ std::string to_string(RestVerb type) {
 
   return "undefined";
 }
-  
+
+RestVerb from_string(std::string const& type) {
+  if (type == "DELETE") {
+    return RestVerb::Delete;
+  } else if (type == "GET") {
+    return RestVerb::Get;
+  } else if (type == "POST") {
+    return RestVerb::Post;
+  } else if (type == "PUT") {
+    return RestVerb::Put;
+  } else if (type == "HEAD") {
+    return RestVerb::Head;
+  } else if (type == "PATCH") {
+    return RestVerb::Patch;
+  } else if (type == "OPTIONS") {
+    return RestVerb::Options;
+  }
+
+  return RestVerb::Illegal;
+}
+
 MessageType intToMessageType(int integral) {
   switch (integral) {
     case 1:
@@ -116,6 +136,7 @@ std::string to_string(ProtocolType type) {
       return "undefined";
 
     case ProtocolType::Http:
+    case ProtocolType::Http2:
       return "http";
 
     case ProtocolType::Vst:
@@ -131,23 +152,28 @@ const std::string fu_content_type_json("application/json");
 const std::string fu_content_type_html("text/html");
 const std::string fu_content_type_text("text/plain");
 const std::string fu_content_type_dump("application/x-arango-dump");
+const std::string fu_content_type_batchpart("application/x-arango-batchpart");
+const std::string fu_content_type_formdata("multipart/form-data");
 
 ContentType to_ContentType(std::string const& val) {
-
   if (val.empty()) {
     return ContentType::Unset;
-  } else if (val.find(fu_content_type_unset) != std::string::npos) {
+  } else if (val.compare(0, fu_content_type_unset.size(), fu_content_type_unset) == 0) {
     return ContentType::Unset;
-  } else if (val.find(fu_content_type_vpack) != std::string::npos) {
+  } else if (val.compare(0, fu_content_type_vpack.size(), fu_content_type_vpack) == 0) {
     return ContentType::VPack;
-  } else if (val.find(fu_content_type_json) != std::string::npos) {
+  } else if (val.compare(0, fu_content_type_json.size(), fu_content_type_json) == 0) {
     return ContentType::Json;
-  } else if (val.find(fu_content_type_html) != std::string::npos) {
+  } else if (val.compare(0, fu_content_type_html.size(), fu_content_type_html) == 0) {
     return ContentType::Html;
-  } else if (val.find(fu_content_type_text) != std::string::npos) {
+  } else if (val.compare(0, fu_content_type_text.size(), fu_content_type_text) == 0) {
     return ContentType::Text;
-  } else if (val.find(fu_content_type_dump) != std::string::npos) {
+  } else if (val.compare(0, fu_content_type_dump.size(), fu_content_type_dump) == 0) {
     return ContentType::Dump;
+  } else if (val.compare(0, fu_content_type_batchpart.size(), fu_content_type_batchpart) == 0) {
+    return ContentType::BatchPart;
+  } else if (val.compare(0, fu_content_type_formdata.size(), fu_content_type_formdata) == 0) {
+    return ContentType::FormData;
   }
 
   return ContentType::Custom;
@@ -172,11 +198,17 @@ std::string to_string(ContentType type) {
 
     case ContentType::Dump:
       return fu_content_type_dump;
+    
+    case ContentType::BatchPart:
+      return fu_content_type_batchpart;
+    
+    case ContentType::FormData:
+      return fu_content_type_formdata;
 
     case ContentType::Custom:
       throw std::logic_error(
           "custom content type could take different "
-          "values and is therefor not convertible to string");
+          "values and is therefore not convertible to string");
   }
 
   throw std::logic_error("unknown content type");
@@ -194,55 +226,31 @@ std::string to_string(AuthenticationType type) {
   return "unknown";
 }
 
-ErrorCondition intToError(Error integral) {
-  static const std::vector<Error> valid = {
-      0,  // NoError
-      // 1,  // ErrorCastError
-      1000,  // ConnectionError
-      1001,  // CouldNotConnect
-      1002,  // TimeOut
-      1003,  // queue capacity exceeded
-      1102,  // VstReadError
-      1103,  // VstWriteError
-      1104,  // CancelledDuringReset
-      3000,  // CurlError
-  };
-  auto pos = std::find(valid.begin(), valid.end(), integral);
-  if (pos != valid.end()) {
-    return static_cast<ErrorCondition>(integral);
-  }
-#ifdef FUERTE_DEVBUILD
-  throw std::logic_error(std::string("Error: casting int to ErrorCondition: ") +
-                         std::to_string(integral));
-#endif
-  return ErrorCondition::ErrorCastError;
-}
-
-std::string to_string(ErrorCondition error) {
+std::string to_string(Error error) {
   switch (error) {
-    case ErrorCondition::NoError:
+    case Error::NoError:
       return "No Error";
-    case ErrorCondition::ErrorCastError:
-      return "Error: casting int to ErrorCondition";
-
-    case ErrorCondition::CouldNotConnect:
+    case Error::CouldNotConnect:
       return "Unable to connect";
-    case ErrorCondition::CloseRequested:
-      return "peer requested connection close";
-    case ErrorCondition::ConnectionClosed:
+    case Error::CloseRequested:
+      return "Peer requested connection close";
+    case Error::ConnectionClosed:
       return "Connection reset by peer";
-    case ErrorCondition::Timeout:
+    case Error::Timeout:
       return "Request timeout";
-    case ErrorCondition::QueueCapacityExceeded:
+    case Error::QueueCapacityExceeded:
       return "Request queue capacity exceeded";
-    case ErrorCondition::ReadError:
+    case Error::ReadError:
       return "Error while reading";
-    case ErrorCondition::WriteError:
-      return "Error while writing ";
-    case ErrorCondition::Canceled:
+    case Error::WriteError:
+      return "Error while writing";
+    case Error::Canceled:
       return "Connection was locally canceled";
+      
+    case Error::VstUnauthorized:
+      return "Cannot authorize on VST connection";
 
-    case ErrorCondition::ProtocolError:
+    case Error::ProtocolError:
       return "Error: invalid server response";
   }
   return "unkown error";

@@ -28,14 +28,22 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/Version.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -45,19 +53,15 @@ using namespace arangodb::rest;
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
 Mutex ConsoleThread::serverConsoleMutex;
 
-ConsoleThread::ConsoleThread(ApplicationServer* applicationServer, TRI_vocbase_t* vocbase)
-    : Thread("Console"),
-      _applicationServer(applicationServer),
-      _context(nullptr),
-      _vocbase(vocbase),
-      _userAborted(false) {}
+ConsoleThread::ConsoleThread(ApplicationServer& applicationServer, TRI_vocbase_t* vocbase)
+    : Thread(applicationServer, "Console"), _vocbase(vocbase), _userAborted(false) {}
 
 ConsoleThread::~ConsoleThread() { shutdown(); }
 
 static char const* USER_ABORTED = "user aborted";
 
 void ConsoleThread::run() {
-  std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
   if (!v8Enabled) {
@@ -66,36 +70,30 @@ void ConsoleThread::run() {
   }
 
   // enter V8 context
-  _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
-
-  if (_context == nullptr) {
-    LOG_TOPIC("921b8", FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
-    FATAL_ERROR_EXIT();
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(_context));
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
+  V8ContextGuard guard(_vocbase, securityContext);
 
   // work
   try {
-    inner();
+    inner(guard);
   } catch (char const* error) {
     if (strcmp(error, USER_ABORTED) != 0) {
       LOG_TOPIC("6e7fd", ERR, arangodb::Logger::FIXME) << error;
     }
   } catch (...) {
-    _applicationServer->beginShutdown();
+    _server.beginShutdown();
     throw;
   }
 
   // exit context
-  _applicationServer->beginShutdown();
+  _server.beginShutdown();
 }
 
-void ConsoleThread::inner() {
+void ConsoleThread::inner(V8ContextGuard const& guard) {
   // flush all log output before we print the console prompt
   Logger::flush();
 
-  v8::Isolate* isolate = _context->_isolate;
+  v8::Isolate* isolate = guard.isolate();
   v8::HandleScope globalScope(isolate);
 
   // run the shell
@@ -105,7 +103,7 @@ void ConsoleThread::inner() {
 
   v8::Local<v8::String> name(TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
 
-  auto localContext = v8::Local<v8::Context>::New(isolate, _context->_context);
+  auto localContext = v8::Local<v8::Context>::New(isolate, guard.context()->_context);
   localContext->Enter();
   {
     v8::Context::Scope contextScope(localContext);
@@ -203,7 +201,6 @@ start_color_print('arangodb', true);
 
       {
         v8::TryCatch tryCatch(isolate);
-        ;
         v8::HandleScope scope(isolate);
 
         console.setExecutingCommand(true);

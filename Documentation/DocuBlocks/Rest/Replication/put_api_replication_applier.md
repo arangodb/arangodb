@@ -2,7 +2,14 @@
 @startDocuBlock put_api_replication_applier
 @brief fetch the current replication configuration
 
-@RESTHEADER{GET /_api/replication/applier-config, Return configuration of replication applier}
+@RESTHEADER{GET /_api/replication/applier-config, Return configuration of replication applier, handleCommandApplierGetConfig}
+
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, returns the configuration of the global replication applier for all
+databases. If set to *false*, returns the configuration of the replication applier in the
+selected database.
 
 @RESTDESCRIPTION
 Returns the configuration of the replication applier.
@@ -120,4 +127,3 @@ is returned if an error occurred while assembling the response.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

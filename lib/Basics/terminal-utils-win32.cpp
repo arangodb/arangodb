@@ -30,10 +30,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_TerminalSize TRI_DefaultTerminalSize() {
-  HANDLE hOut;
   CONSOLE_SCREEN_BUFFER_INFO SBInfo;
 
-  hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+  HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
   if (hOut == INVALID_HANDLE_VALUE) {
     return TRI_DEFAULT_TERMINAL_SIZE;

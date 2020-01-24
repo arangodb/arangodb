@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GlobalInitialSyncer.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -54,7 +56,7 @@ GlobalInitialSyncer::GlobalInitialSyncer(ReplicationApplierConfiguration const& 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
   try {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress);
+      _batch.finish(_state.connection, _progress, _state.syncerId);
     }
   } catch (...) {
   }
@@ -85,7 +87,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
 Result GlobalInitialSyncer::runInternal(bool incremental) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
-  } else if (application_features::ApplicationServer::isStopping()) {
+  } else if (_state.applier._server.isStopping()) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
@@ -120,7 +122,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
     LOG_TOPIC("0da14", DEBUG, Logger::REPLICATION) << "sending start batch";
-    r = _batch.start(_state.connection, _progress);
+    r = _batch.start(_state.connection, _progress, _state.syncerId);
     if (r.fail()) {
       return r;
     }
@@ -129,7 +131,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
   TRI_DEFER(if (!_state.isChildSyncer) {
     _batchPingTimer.reset();
-    _batch.finish(_state.connection, _progress);
+    _batch.finish(_state.connection, _progress, _state.syncerId);
   });
   LOG_TOPIC("62fb5", DEBUG, Logger::REPLICATION) << "sending start batch done";
 
@@ -152,7 +154,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
 
   if (!_state.applier._skipCreateDrop) {
     LOG_TOPIC("af241", DEBUG, Logger::REPLICATION) << "updating server inventory";
-    Result r = updateServerInventory(databases);
+    r = updateServerInventory(databases);
     if (r.fail()) {
       LOG_TOPIC("5fc1c", DEBUG, Logger::REPLICATION)
           << "updating server inventory failed";
@@ -165,7 +167,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   try {
     // actually sync the database
     for (auto const& dbEntry : VPackObjectIterator(databases)) {
-      if (application_features::ApplicationServer::isStopping()) {
+      if (_state.applier._server.isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
       } else if (isAborted()) {
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
@@ -198,11 +200,11 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       configurationCopy._database = nameSlice.copyString();
 
       auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
-      syncer->useAsChildSyncer(_state.master, _state.barrier.id,
+      syncer->useAsChildSyncer(_state.master, _state.syncerId, _state.barrier.id,
                                _state.barrier.updateTime, _batch.id, _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
-      Result r = syncer->runWithInventory(incremental, dbInventory);
+      r = syncer->runWithInventory(incremental, dbInventory);
       if (r.fail()) {
         return r;
       }
@@ -212,7 +214,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       _batch.updateTime = syncer->batchUpdateTime();
 
       if (!_state.isChildSyncer) {
-        _batch.extend(_state.connection, _progress);
+        _batch.extend(_state.connection, _progress, _state.syncerId);
         _state.barrier.extend(_state.connection);
       }
     }
@@ -251,7 +253,8 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
-      Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
+      Result r = methods::Databases::create(_state.applier._server, dbName,
+                                            VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
       if (r.fail()) {
         LOG_TOPIC("cf124", WARN, Logger::REPLICATION)
@@ -317,7 +320,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     existingDBs.erase(dbName);  // remove dbs that exists on the master
 
     if (!_state.isChildSyncer) {
-      _batch.extend(_state.connection, _progress);
+      _batch.extend(_state.connection, _progress, _state.syncerId);
       _state.barrier.extend(_state.connection);
     }
   }
@@ -326,10 +329,13 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
   for (std::string const& dbname : existingDBs) {
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
-    auto* sysDbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-    auto r = sysDbFeature ? methods::Databases::drop(sysDbFeature->use().get(), dbname)
-                          : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    auto r = _state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()
+                 ? methods::Databases::drop(_state.applier._server
+                                                .getFeature<arangodb::SystemDatabaseFeature>()
+                                                .use()
+                                                .get(),
+                                            dbname)
+                 : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (r.fail()) {
       LOG_TOPIC("0a282", WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
@@ -337,7 +343,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     }
 
     if (!_state.isChildSyncer) {
-      _batch.extend(_state.connection, _progress);
+      _batch.extend(_state.connection, _progress, _state.syncerId);
       _state.barrier.extend(_state.connection);
     }
   }
@@ -349,16 +355,16 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
-  } else if (application_features::ApplicationServer::isStopping()) {
+  } else if (_state.applier._server.isStopping()) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  auto r = _batch.start(_state.connection, _progress);
+  auto r = _batch.start(_state.connection, _progress, _state.syncerId);
   if (r.fail()) {
     return r;
   }
 
-  TRI_DEFER(_batch.finish(_state.connection, _progress));
+  TRI_DEFER(_batch.finish(_state.connection, _progress, _state.syncerId));
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);
@@ -383,7 +389,7 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   if (replutils::hasFailed(response.get())) {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress);
+      _batch.finish(_state.connection, _progress, _state.syncerId);
     }
     return replutils::buildHttpError(response.get(), url, _state.connection);
   }

@@ -74,10 +74,11 @@ function auditLog(onServer) {
       'server.authentication': 'true',
       'server.jwt-secret': 'haxxmann',
       'log.level': 'audit-authentication=info',
+      'log.force-direct': true
     };
 
     print(CYAN + 'Audit log server tests...' + RESET);
-    let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')]);
+    let testCases = tu.scanTestPaths(testPaths['audit_' + (onServer ? 'server' : 'client')], options);
 
     return tu.performTests(options, testCases, 'audit', onServer ? tu.runThere : tu.runInArangosh, serverOptions);
   };

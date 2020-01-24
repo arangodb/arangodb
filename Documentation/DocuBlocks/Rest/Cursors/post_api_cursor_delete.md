@@ -2,7 +2,7 @@
 @startDocuBlock post_api_cursor_delete
 @brief dispose an existing cursor
 
-@RESTHEADER{DELETE /_api/cursor/{cursor-identifier}, Delete cursor}
+@RESTHEADER{DELETE /_api/cursor/{cursor-identifier}, Delete cursor, deleteQueryCursor}
 
 @RESTURLPARAMETERS
 
@@ -59,4 +59,3 @@ returned if a cursor is used after it has been destroyed.
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

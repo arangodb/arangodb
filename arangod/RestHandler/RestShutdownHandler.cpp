@@ -29,7 +29,6 @@
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
@@ -38,8 +37,9 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::rest;
 
-RestShutdownHandler::RestShutdownHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestShutdownHandler::RestShutdownHandler(application_features::ApplicationServer& server,
+                                         GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_get_api_initiate
@@ -53,7 +53,7 @@ RestStatus RestShutdownHandler::execute() {
 
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
-    auth::Level lvl = auth::Level::NONE;
+    auth::Level lvl;
     if (af->userManager() != nullptr) {
       lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system",
                                                  /*configured*/ true);
@@ -75,7 +75,7 @@ RestStatus RestShutdownHandler::execute() {
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
   if (shutdownClusterFound && shutdownCluster == "1" && AgencyCommManager::isEnabled()) {
-    AgencyComm agency;
+    AgencyComm agency(server());
     VPackBuilder builder;
     builder.add(VPackValue(true));
     AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
@@ -86,28 +86,27 @@ RestStatus RestShutdownHandler::execute() {
     removeFromCluster = true;
   }
   if (removeFromCluster) {
-    ClusterFeature* clusterFeature =
-        ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    clusterFeature->setUnregisterOnShutdown(true);
+    ClusterFeature& clusterFeature = server().getFeature<ClusterFeature>();
+    clusterFeature.setUnregisterOnShutdown(true);
   }
 
-  try {
-    VPackBuilder result;
-    result.add(VPackValue("OK"));
-    generateResult(rest::ResponseCode::OK, result.slice());
-  } catch (...) {
-    // Ignore the error
-  }
   auto self = shared_from_this();
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
+  bool queued = scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
     // Give the server 2 seconds to send the reply:
     std::this_thread::sleep_for(std::chrono::seconds(2));
     // Go down:
-    ApplicationServer::server->beginShutdown();
+    self->server().beginShutdown();
   });
+  if (queued) {
+    VPackBuilder result;
+    result.add(VPackValue("OK"));
+    generateResult(rest::ResponseCode::OK, result.slice());
+  } else {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_QUEUE_FULL);
+  }
 
   return RestStatus::DONE;
 }

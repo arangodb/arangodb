@@ -2,7 +2,7 @@
 @startDocuBlock post_admin_echo
 @brief Send back what was sent in, headers, post body etc.
 
-@RESTHEADER{POST /_admin/echo, Return current request}
+@RESTHEADER{POST /_admin/echo, Return current request, adminEchoJs}
 
 @RESTALLBODYPARAM{body,object,required}
 The body can be any type and is simply forwarded.
@@ -33,7 +33,7 @@ the transport, one of ['http', 'https', 'velocystream']
 @RESTREPLYBODY{server,object,required,admin_echo_server_struct}
 
 @RESTSTRUCT{address,admin_echo_server_struct,string,required,}
-the bind address of the endpoint this request was sent to 
+the bind address of the endpoint this request was sent to
 
 @RESTSTRUCT{port,admin_echo_server_struct,integer,required,}
 the port this request was sent to
@@ -82,4 +82,3 @@ relative path of this request
 List of digits of the sent characters
 
 @endDocuBlock
-

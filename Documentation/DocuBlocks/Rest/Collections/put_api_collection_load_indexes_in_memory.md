@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_load_indexes_into_memory
 @brief Load Indexes into Memory
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/loadIndexesIntoMemory, Load Indexes into Memory}
+@RESTHEADER{PUT /_api/collection/{collection-name}/loadIndexesIntoMemory, Load Indexes into Memory, handleCommandPut:loadIndexes}
 
 @HINTS
 {% hint 'warning' %}
@@ -65,4 +65,3 @@ If the *collection-name* is unknown, then a *HTTP 404* is returned.
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

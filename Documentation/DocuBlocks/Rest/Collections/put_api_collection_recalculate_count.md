@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_recalculate_count
 @brief recalculates the document count of a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/recalculateCount, Recalculate count of a collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/recalculateCount, Recalculate count of a collection, handleCommandPut:recalculateCount}
 
 @RESTURLPARAMETERS
 
@@ -26,4 +26,3 @@ If the document count was recalculated successfully, *HTTP 200* is returned.
 @RESTRETURNCODE{404}
 If the *collection-name* is unknown, then a *HTTP 404* is returned.
 @endDocuBlock
-

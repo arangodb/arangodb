@@ -22,18 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OperationCursor.h"
-#include "Basics/Exceptions.h"
-#include "Transaction/Methods.h"
 
 using namespace arangodb;
       
 OperationCursor::OperationCursor(std::unique_ptr<IndexIterator> iterator)
     : _indexIterator(std::move(iterator)),
-      _hasMore(_indexIterator != nullptr) {
-  if (_indexIterator == nullptr) {
-    // cannot create a cursor without a valid iterator
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+      _hasMore(true) {
+  TRI_ASSERT(_indexIterator != nullptr);
 }
 
 LogicalCollection* OperationCursor::collection() const {
@@ -48,12 +43,9 @@ bool OperationCursor::hasCovering() const {
 }
 
 void OperationCursor::reset() {
-  if (_indexIterator != nullptr) {
-    _indexIterator->reset();
-    _hasMore = true;
-  } else {
-    _hasMore = false;
-  }
+  TRI_ASSERT(_indexIterator != nullptr);
+  _indexIterator->reset();
+  _hasMore = true;
 }
 
 /// @brief Calls cb for the next batchSize many elements
@@ -64,9 +56,7 @@ bool OperationCursor::next(IndexIterator::LocalDocumentIdCallback const& callbac
     return false;
   }
 
-  if (batchSize == UINT64_MAX) {
-    batchSize = transaction::Methods::defaultBatchSize();
-  }
+  TRI_ASSERT(batchSize != UINT64_MAX);
 
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->next(callback, atMost);
@@ -79,9 +69,7 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
     return false;
   }
 
-  if (batchSize == UINT64_MAX) {
-    batchSize = transaction::Methods::defaultBatchSize();
-  }
+  TRI_ASSERT(batchSize != UINT64_MAX);
 
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextDocument(callback, atMost);
@@ -103,9 +91,7 @@ bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback
     return false;
   }
 
-  if (batchSize == UINT64_MAX) {
-    batchSize = transaction::Methods::defaultBatchSize();
-  }
+  TRI_ASSERT(batchSize != UINT64_MAX);
 
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextExtra(callback, atMost);
@@ -120,9 +106,7 @@ bool OperationCursor::nextCovering(IndexIterator::DocumentCallback const& callba
     return false;
   }
 
-  if (batchSize == UINT64_MAX) {
-    batchSize = transaction::Methods::defaultBatchSize();
-  }
+  TRI_ASSERT(batchSize != UINT64_MAX);
 
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextCovering(callback, atMost);

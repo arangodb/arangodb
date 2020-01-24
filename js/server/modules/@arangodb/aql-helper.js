@@ -365,7 +365,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
 
 function removeAlwaysOnClusterRules (rules) {
   return rules.filter(function (rule) {
-    return ([ 'distribute-filtercalc-to-cluster', 'scatter-in-cluster', 'distribute-in-cluster', 'remove-unnecessary-remote-scatter' ].indexOf(rule) === -1);
+    return ([ 'distribute-filtercalc-to-cluster', 'scatter-in-cluster', 'distribute-in-cluster', 'remove-unnecessary-remote-scatter', 'parallelize-gather' ].indexOf(rule) === -1);
   });
 }
 
@@ -380,6 +380,28 @@ function removeClusterNodesFromPlan (nodes) {
     return ([ 'ScatterNode', 'GatherNode', 'DistributeNode', 'RemoteNode' ].indexOf(node.type) === -1);
   });
 }
+
+/// @brief recursively removes keys named "estimatedCost" or "selectivityEstimate" of a given object
+/// used in tests where we do not want to test those values because of floating-point values used in "AsserEqual"
+/// This method should only be used where we explicitly don't want to test those values. 
+function removeCost (obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(removeCost);
+  } else if (typeof obj === 'object') {
+    var result = {};
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (key !== "estimatedCost" || key !== "selectivityEstimate") {
+          result[key] = removeCost(obj[key]);
+        }
+      }
+    }
+    return result;
+  } else {
+    return obj;
+  }
+}
+
 
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
@@ -398,3 +420,4 @@ exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
+exports.removeCost = removeCost;

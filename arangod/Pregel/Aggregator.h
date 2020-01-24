@@ -42,7 +42,7 @@ class IAggregator {
 
  public:
   IAggregator() {}
-  virtual ~IAggregator() {}
+  virtual ~IAggregator() = default;
 
   /// @brief Used when updating aggregator value locally
   virtual void aggregate(void const* valuePtr) = 0;
@@ -98,7 +98,7 @@ struct NumberAggregator : public IAggregator {
 
 template <typename T>
 struct MaxAggregator : public NumberAggregator<T> {
-  MaxAggregator(T init, bool perm = false)
+  explicit MaxAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
   void aggregate(void const* valuePtr) override {
     T other = *((T*)valuePtr);
@@ -108,7 +108,7 @@ struct MaxAggregator : public NumberAggregator<T> {
 
 template <typename T>
 struct MinAggregator : public NumberAggregator<T> {
-  MinAggregator(T init, bool perm = false)
+  explicit MinAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
   void aggregate(void const* valuePtr) override {
     T other = *((T*)valuePtr);
@@ -118,7 +118,7 @@ struct MinAggregator : public NumberAggregator<T> {
 
 template <typename T>
 struct SumAggregator : public NumberAggregator<T> {
-  SumAggregator(T init, bool perm = false)
+  explicit SumAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
 
   void aggregate(void const* valuePtr) override {
@@ -137,7 +137,7 @@ struct SumAggregator : public NumberAggregator<T> {
 /// non-deterministic.
 template <typename T>
 struct OverwriteAggregator : public NumberAggregator<T> {
-  OverwriteAggregator(T val, bool perm = false)
+  explicit OverwriteAggregator(T val, bool perm = false)
       : NumberAggregator<T>(val, perm, true) {}
 
   void aggregate(void const* valuePtr) override {

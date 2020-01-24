@@ -87,8 +87,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   static constexpr uint32_t defaultIndexBuckets = 8;
 
-  static constexpr double defaultLockTimeout = 10.0 * 60.0;
-
   std::string const& path() const override { return _path; };
 
   void setPath(std::string const& path) override { _path = path; };
@@ -138,7 +136,7 @@ class MMFilesCollection final : public PhysicalCollection {
                           char*& resultPosition, MMFilesDatafile*& resultDatafile);
 
   /// @brief create compactor file
-  MMFilesDatafile* createCompactor(TRI_voc_fid_t fid, uint32_t maximalSize);
+  MMFilesDatafile* createCompactor(TRI_voc_fid_t fid, size_t maximalSize);
 
   /// @brief close an existing compactor
   int closeCompactor(MMFilesDatafile* datafile);
@@ -239,10 +237,11 @@ class MMFilesCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
   void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override;
+                           std::function<bool(LocalDocumentId const&)> callback);
 
   std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
-                                     bool restore, bool& created) override;
+                                     bool restore,
+                                     bool& created) override;
 
   std::shared_ptr<Index> createIndex(transaction::Methods& trx,
                                      velocypack::Slice const& info,
@@ -357,7 +356,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief Fill indexes used in recovery
   int fillIndexes(transaction::Methods& trx,
-                  std::vector<std::shared_ptr<Index>> const& indexes,
+                  PhysicalCollection::IndexContainerType const& indexes,
                   bool skipPersistent = true);
 
   int openWorker(bool ignoreErrors);
@@ -418,7 +417,7 @@ class MMFilesCollection final : public PhysicalCollection {
   bool removeIndex(TRI_idx_iid_t iid);
 
   /// @brief return engine-specific figures
-  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(arangodb::velocypack::Builder&) override;
 
   // SECTION: Index storage
 

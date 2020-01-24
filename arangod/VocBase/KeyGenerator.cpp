@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KeyGenerator.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Endian.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -29,6 +31,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-compiler.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/ticks.h"
@@ -325,20 +329,20 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
 class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
  public:
   /// @brief create the generator
-  explicit TraditionalKeyGeneratorCluster(bool allowUserKeys)
-      : TraditionalKeyGenerator(allowUserKeys) {
+  explicit TraditionalKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys)
+      : TraditionalKeyGenerator(allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
-  uint64_t generateValue() override {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->uniqid();
-  }
+  uint64_t generateValue() override { return _ci.uniqid(); }
 
   /// @brief track a key value (internal)
   void track(uint64_t /* value */) override {}
+
+ private:
+  ClusterInfo& _ci;
 };
 
 /// @brief base class for padded key generators
@@ -521,20 +525,20 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
 class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGeneratorCluster(bool allowUserKeys)
-      : PaddedKeyGenerator(allowUserKeys) {
+  explicit PaddedKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys)
+      : PaddedKeyGenerator(allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
-  uint64_t generateValue() override {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->uniqid();
-  }
+  uint64_t generateValue() override { return _ci.uniqid(); }
 
   /// @brief generate a key value (internal)
   void track(uint64_t /* value */) override {}
+
+ private:
+  ClusterInfo& _ci;
 };
 
 /// @brief auto-increment key generator - not usable in cluster
@@ -685,22 +689,25 @@ GeneratorType generatorType(VPackSlice const& parameters) {
   return GeneratorType::UNKNOWN;
 }
 
-std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlice)>> const factories = {
+std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(application_features::ApplicationServer&, bool, VPackSlice)>> const factories = {
     {static_cast<GeneratorMapType>(GeneratorType::UNKNOWN),
-     [](bool, VPackSlice) -> KeyGenerator* {
+     [](application_features::ApplicationServer&, bool, VPackSlice) -> KeyGenerator* {
        // unknown key generator type
        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
                                       "invalid key generator type");
      }},
     {static_cast<GeneratorMapType>(GeneratorType::TRADITIONAL),
-     [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+     [](application_features::ApplicationServer& server, bool allowUserKeys,
+        VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
-         return new TraditionalKeyGeneratorCluster(allowUserKeys);
+         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+         return new TraditionalKeyGeneratorCluster(ci, allowUserKeys);
        }
        return new TraditionalKeyGeneratorSingle(allowUserKeys);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT),
-     [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+     [](application_features::ApplicationServer&, bool allowUserKeys,
+        VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
                                         "the specified key generator is not "
@@ -752,13 +759,15 @@ std::unordered_map<GeneratorMapType, std::function<KeyGenerator*(bool, VPackSlic
        return new AutoIncrementKeyGenerator(allowUserKeys, offset, increment);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::UUID),
-     [](bool allowUserKeys, VPackSlice) -> KeyGenerator* {
+     [](application_features::ApplicationServer&, bool allowUserKeys, VPackSlice) -> KeyGenerator* {
        return new UuidKeyGenerator(allowUserKeys);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::PADDED),
-     [](bool allowUserKeys, VPackSlice options) -> KeyGenerator* {
+     [](application_features::ApplicationServer& server, bool allowUserKeys,
+        VPackSlice options) -> KeyGenerator* {
        if (ServerState::instance()->isCoordinator()) {
-         return new PaddedKeyGeneratorCluster(allowUserKeys);
+         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+         return new PaddedKeyGeneratorCluster(ci, allowUserKeys);
        }
        return new PaddedKeyGeneratorSingle(allowUserKeys);
      }}};
@@ -776,7 +785,8 @@ void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 }
 
 /// @brief create a key generator based on the options specified
-KeyGenerator* KeyGenerator::factory(VPackSlice options) {
+KeyGenerator* KeyGenerator::factory(application_features::ApplicationServer& server,
+                                    VPackSlice options) {
   if (!options.isObject()) {
     options = VPackSlice::emptyObjectSlice();
   }
@@ -795,7 +805,7 @@ KeyGenerator* KeyGenerator::factory(VPackSlice options) {
 
   TRI_ASSERT(it != ::factories.end());
 
-  return (*it).second(allowUserKeys, options);
+  return (*it).second(server, allowUserKeys, options);
 }
 
 /// @brief validate a key

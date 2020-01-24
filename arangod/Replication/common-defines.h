@@ -24,6 +24,9 @@
 #ifndef ARANGOD_REPLICATION_COMMON_DEFINES_H
 #define ARANGOD_REPLICATION_COMMON_DEFINES_H 1
 
+#include <cstdlib>
+#include <string>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
@@ -72,10 +75,6 @@ void TRI_GetTimeStampReplication(double, char*, size_t);
 bool TRI_ExcludeCollectionReplication(std::string const& name,
                                       bool includeSystem,
                                       bool includeFoxxQueues);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-char const* TRI_TranslateMarkerTypeReplication(TRI_replication_operation_e type);
-#endif
 
 }  // namespace arangodb
 

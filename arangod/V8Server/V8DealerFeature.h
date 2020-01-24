@@ -23,6 +23,8 @@
 #ifndef APPLICATION_FEATURES_V8_DEALER_FEATURE_H
 #define APPLICATION_FEATURES_V8_DEALER_FEATURE_H 1
 
+#include <atomic>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/ConditionVariable.h"
@@ -35,7 +37,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
+class JavaScriptSecurityContext;
 class Thread;
 class V8Context;
 
@@ -49,6 +51,13 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     size_t dirty;
     size_t free;
     size_t max;
+  };
+  struct MemoryStatistics {
+    size_t id;
+    double tMax;
+    size_t countOfTimes;
+    size_t heapMax;
+    size_t heapMin;
   };
 
   explicit V8DealerFeature(application_features::ApplicationServer& server);
@@ -87,15 +96,9 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
                                        VPackBuilder* builder);
 
-  /// @brief forceContext == -1 means that any free context may be
-  /// picked, or a new one will be created if we have not exceeded
-  /// the maximum number of contexts
-  /// forceContext == -2 means that any free context may be picked,
-  /// or a new one will be created if we have not exceeded or exactly
-  /// reached the maximum number of contexts. this can be used to
-  /// force the creation of another context for high priority tasks
-  /// forceContext >= 0 means picking the context with that exact id
-  V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase, ssize_t forceContext = -1);
+  /// @brief enter a V8 context
+  /// currently returns a nullptr if no context can be acquired in time
+  V8Context* enterContext(TRI_vocbase_t*, JavaScriptSecurityContext const& securityContext);
   void exitContext(V8Context*);
 
   void defineContextUpdate(std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
@@ -112,6 +115,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void setMaximumContexts(size_t nr) { _nrMaxContexts = nr; }
 
   Statistics getCurrentContextNumbers();
+  std::vector<MemoryStatistics> getCurrentMemoryNumbers();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -136,7 +140,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                                   VPackBuilder* builder);
   bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file,
                                    V8Context* context, VPackBuilder* builder);
-  void prepareLockedContext(TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
+  void prepareLockedContext(TRI_vocbase_t*, V8Context*, JavaScriptSecurityContext const&);
   void exitContextInternal(V8Context*);
   void cleanupLockedContext(V8Context*);
   void applyContextUpdate(V8Context* context);
@@ -164,14 +168,31 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::vector<std::pair<std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>, TRI_vocbase_t*>> _contextUpdates;
 };
 
+/// @brief enters and exits a context and provides an isolate
+/// throws an exception when no context can be provided
+class V8ContextGuard {
+ public:
+  explicit V8ContextGuard(TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  V8ContextGuard(V8ContextGuard const&) = delete;
+  V8ContextGuard& operator=(V8ContextGuard const&) = delete;
+  ~V8ContextGuard();
+
+  v8::Isolate* isolate() const { return _isolate; }
+  V8Context* context() const { return _context; }
+
+ private:
+  v8::Isolate* _isolate;
+  V8Context* _context;
+};
+
 // enters and exits a context and provides an isolate
 // in case the passed in isolate is a nullptr
-class V8ContextDealerGuard {
+class V8ConditionalContextGuard {
  public:
-  explicit V8ContextDealerGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, bool allowModification);
-  V8ContextDealerGuard(V8ContextDealerGuard const&) = delete;
-  V8ContextDealerGuard& operator=(V8ContextDealerGuard const&) = delete;
-  ~V8ContextDealerGuard();
+  explicit V8ConditionalContextGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, JavaScriptSecurityContext const&);
+  V8ConditionalContextGuard(V8ConditionalContextGuard const&) = delete;
+  V8ConditionalContextGuard& operator=(V8ConditionalContextGuard const&) = delete;
+  ~V8ConditionalContextGuard();
 
  private:
   v8::Isolate*& _isolate;

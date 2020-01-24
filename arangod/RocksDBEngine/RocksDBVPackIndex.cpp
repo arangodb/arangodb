@@ -157,7 +157,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override {
-    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
+    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX;
   }
 
  private:
@@ -168,6 +168,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 };
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
+template<bool reverse>
 class RocksDBVPackIndexIterator final : public IndexIterator {
  private:
   friend class RocksDBVPackIndex;
@@ -175,12 +176,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
  public:
   RocksDBVPackIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse, RocksDBKeyBounds&& bounds)
+                            RocksDBKeyBounds&& bounds)
       : IndexIterator(collection, trx),
         _index(index),
-        _cmp(index->comparator()),
-        _fullEnumerationObjectId(0),
-        _reverse(reverse),
+        _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _bounds(std::move(bounds)) {
     TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::vpack());
 
@@ -191,21 +190,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     if (reverse) {
       _rangeBound = _bounds.start();
       options.iterate_lower_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
-      if (s.isArray() && s.length() == 1 && s.at(0).isMinKey()) {
-        // lower bound is the min key. that means we can get away with a
-        // cheap outOfBounds comparator
-        _fullEnumerationObjectId = _index->objectId();
-      }
     } else {
       _rangeBound = _bounds.end();
       options.iterate_upper_bound = &_rangeBound;
-      VPackSlice s = VPackSlice(_rangeBound.data() + sizeof(uint64_t));
-      if (s.isArray() && s.length() == 1 && s.at(0).isMaxKey()) {
-        // upper bound is the max key. that means we can get away with a
-        // cheap outOfBounds comparator
-        _fullEnumerationObjectId = _index->objectId();
-      }
     }
 
     TRI_ASSERT(options.prefix_same_as_start);
@@ -228,6 +215,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
     }
 
@@ -235,10 +224,12 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
       cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
-                        : RocksDBKey::indexDocumentId(_bounds.type(), _iterator->key()));
+                         : RocksDBKey::indexDocumentId(_iterator->key()));
 
       --limit;
       if (!advance()) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
     }
@@ -253,6 +244,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
     }
 
@@ -262,11 +255,13 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       LocalDocumentId const documentId(
           _index->_unique ? RocksDBValue::documentId(_iterator->value())
-                          : RocksDBKey::indexDocumentId(_bounds.type(), key));
+                          : RocksDBKey::indexDocumentId(key));
       cb(documentId, RocksDBKey::indexedVPack(key));
 
       --limit;
       if (!advance()) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
     }
@@ -278,6 +273,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (!_iterator->Valid() || outOfRange()) {
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return;
     }
 
@@ -287,6 +284,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       --count;
       ++skipped;
       if (!advance()) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return;
       }
     }
@@ -296,32 +295,29 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   void reset() override {
     TRI_ASSERT(_trx->state()->isRunning());
 
-    if (_reverse) {
+    if (reverse) {
       _iterator->SeekForPrev(_bounds.end());
     } else {
       _iterator->Seek(_bounds.start());
     }
+
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
   }
 
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override {
-    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
+    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX;
   }
 
  private:
   inline bool outOfRange() const {
-    if (_fullEnumerationObjectId) {
-      // we are enumerating the entire index
-      // so we can use a cheap comparator that only checks the objectId
-      return (arangodb::rocksutils::uint64FromPersistent(_iterator->key().data()) != _fullEnumerationObjectId);
-    }
-
     // we are enumerating a subset of the index
     // so we really need to run the full-featured (read: expensive)
     // comparator
 
-    if (_reverse) {
+    if (reverse) {
       return (_cmp->Compare(_iterator->key(), _rangeBound) < 0);
     } else {
       return (_cmp->Compare(_iterator->key(), _rangeBound) > 0);
@@ -329,7 +325,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   inline bool advance() {
-    if (_reverse) {
+    if (reverse) {
       _iterator->Prev();
     } else {
       _iterator->Next();
@@ -339,10 +335,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   arangodb::RocksDBVPackIndex const* _index;
-  rocksdb::Comparator const* _cmp;
+  RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
-  uint64_t _fullEnumerationObjectId;
-  bool const _reverse;
   RocksDBKeyBounds _bounds;
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
@@ -384,7 +378,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid, arangodb::LogicalCollect
 }
 
 /// @brief destroy the index
-RocksDBVPackIndex::~RocksDBVPackIndex() {}
+RocksDBVPackIndex::~RocksDBVPackIndex() = default;
 
 double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -400,8 +394,6 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
                                      std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(_unique));
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(_sparse));
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }
@@ -410,8 +402,9 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
 /// Should result in an elements vector filled with the new index entries
 /// uses the _unique field to determine the kind of key structure
 int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& documentId,
-                                   VPackSlice const& doc, SmallVector<RocksDBKey>& elements,
-                                   SmallVector<uint64_t>& hashes) {
+                                   VPackSlice const& doc,
+                                   ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+                                   ::arangodb::containers::SmallVector<uint64_t>& hashes) {
   if (doc.isNone()) {
     LOG_TOPIC("51c6c", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
@@ -469,8 +462,8 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& 
   } else {
     // other path for handling array elements, too
 
-    SmallVector<VPackSlice>::allocator_type::arena_type sliceStackArena;
-    SmallVector<VPackSlice> sliceStack{sliceStackArena};
+    ::arangodb::containers::SmallVector<VPackSlice>::allocator_type::arena_type sliceStackArena;
+    ::arangodb::containers::SmallVector<VPackSlice> sliceStack{sliceStackArena};
 
     try {
       buildIndexValues(leased, documentId, doc, 0, elements, hashes, sliceStack);
@@ -487,11 +480,11 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& 
   return TRI_ERROR_NO_ERROR;
 }
 
-void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased, LocalDocumentId const& documentId,
-                                      VPackSlice const& document,
-                                      SmallVector<RocksDBKey>& elements,
-                                      SmallVector<uint64_t>& hashes,
-                                      SmallVector<VPackSlice>& sliceStack) {
+void RocksDBVPackIndex::addIndexValue(
+    VPackBuilder& leased, LocalDocumentId const& documentId, VPackSlice const& document,
+    ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+    ::arangodb::containers::SmallVector<uint64_t>& hashes,
+    ::arangodb::containers::SmallVector<VPackSlice>& sliceStack) {
   leased.clear();
   leased.openArray(true);  // unindexed
   for (VPackSlice const& s : sliceStack) {
@@ -519,12 +512,11 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased, LocalDocumentId cons
 }
 
 /// @brief helper function to create a set of index combinations to insert
-void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
-                                         LocalDocumentId const& documentId,
-                                         VPackSlice const doc, size_t level,
-                                         SmallVector<RocksDBKey>& elements,
-                                         SmallVector<uint64_t>& hashes,
-                                         SmallVector<VPackSlice>& sliceStack) {
+void RocksDBVPackIndex::buildIndexValues(
+    VPackBuilder& leased, LocalDocumentId const& documentId, VPackSlice const doc,
+    size_t level, ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+    ::arangodb::containers::SmallVector<uint64_t>& hashes,
+    ::arangodb::containers::SmallVector<VPackSlice>& sliceStack) {
   // Invariant: level == sliceStack.size()
 
   // Stop the recursion:
@@ -665,10 +657,10 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
                                  Index::OperationMode mode) {
   Result res;
   rocksdb::Status s;
-  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
-  SmallVector<RocksDBKey> elements{elementsArena};
-  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
-  SmallVector<uint64_t> hashes{hashesArena};
+  ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+  ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+  ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+  ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
 
   {
     // rethrow all types of exceptions from here...
@@ -680,62 +672,73 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
   }
 
-  IndexingDisabler guard(mthds, !_unique && trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-
   // now we are going to construct the value to insert into rocksdb
-  // unique indexes have a different key structure
-  RocksDBValue value = _unique ? RocksDBValue::UniqueVPackIndexValue(documentId)
-                               : RocksDBValue::VPackIndexValue();
+  if (_unique) {
+    // unique indexes have a different key structure
+    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(documentId);
 
-  size_t const count = elements.size();
-  rocksdb::PinnableSlice existing;
-  for (size_t i = 0; i < count; ++i) {
-    RocksDBKey& key = elements[i];
-    if (_unique) {
-      s = mthds->Get(_cf, key.string(), &existing);
+    transaction::StringLeaser leased(&trx);
+    rocksdb::PinnableSlice existing(leased.get());
+    for (RocksDBKey& key : elements) {
+      s = mthds->GetForUpdate(_cf, key.string(), &existing);
       if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         break;
+      } else if (!s.IsNotFound()) {
+        res.reset(rocksutils::convertStatus(s));
+        break;
       }
-      
-      s = mthds->Put(_cf, key, value.string());
-    } else {
+      s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/true);
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::index);
+        break;
+      }
+    }
+
+    if (res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+        // find conflicting document
+        LocalDocumentId docId = RocksDBValue::documentId(existing);
+        auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
+           [&](LocalDocumentId const&, VPackSlice doc) {
+             VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+             if (mode == OperationMode::internal) {
+               res.resetErrorMessage(key.copyString());
+             } else {
+               addErrorMsg(res, key.copyString());
+             }
+             return true; // return value does not matter here
+           });
+        TRI_ASSERT(success);
+      } else {
+        addErrorMsg(res);
+      }
+    }
+
+  } else {
+    // AQL queries never read from the same collection, after writing into it
+    IndexingDisabler guard(mthds, trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
+    RocksDBValue value = RocksDBValue::VPackIndexValue();
+    for (RocksDBKey& key : elements) {
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::index);
+        break;
+      }
     }
 
-    if (!s.ok()) {
-      res = rocksutils::convertStatus(s, rocksutils::index);
-      break;
-    }
-  }
-
-  if (res.ok() && !_unique) {
-    auto* state = RocksDBTransactionState::toState(&trx);
-    auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
-    TRI_ASSERT(trxc != nullptr);
-    for (uint64_t hash : hashes) {
-      // The estimator is only useful if we are in a non-unique indexes
-      TRI_ASSERT(!_unique);
-      trxc->trackIndexInsert(id(), hash);
-    }
-  } else if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-    // find conflicting document
-    LocalDocumentId docId = RocksDBValue::documentId(existing);
-    std::string existingKey;
-    auto success = _collection.getPhysical()->readDocumentWithCallback(
-        &trx, docId, [&](LocalDocumentId const&, VPackSlice doc) {
-          existingKey = transaction::helpers::extractKeyFromDocument(doc).copyString();
-        });
-    TRI_ASSERT(success);
-
-    if (mode == OperationMode::internal) {
-      res.resetErrorMessage(std::move(existingKey));
+    if (res.ok()) {
+      auto* state = RocksDBTransactionState::toState(&trx);
+      auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
+      TRI_ASSERT(trxc != nullptr);
+      for (uint64_t hash : hashes) {
+        trxc->trackIndexInsert(id(), hash);
+      }
     } else {
-      addErrorMsg(res, existingKey);
+      addErrorMsg(res);
     }
-  } else if (res.fail()) {
-    addErrorMsg(res);
   }
 
   return res;
@@ -755,7 +758,7 @@ namespace {
       if (second.isExternal()) {
         second = second.resolveExternal();
       }
-      
+
       if (begin->shouldExpand &&
           first.isArray() && second.isArray()) {
         auto next = begin + 1;
@@ -769,7 +772,7 @@ namespace {
         }
         return true;
       }
-      
+
       auto dist = std::distance(begin, end);
       bool notF1 = first.isNone() || (dist == 1 && !first.isObject());
       bool notF2 = second.isNone() || (dist == 1 && !second.isObject());
@@ -780,8 +783,8 @@ namespace {
         break;
       }
     }
-    
-    return (basics::VelocyPackHelper::compare(first, second, true) == 0);
+
+    return basics::VelocyPackHelper::equal(first, second, true);
   }
 } // namespace
 
@@ -797,7 +800,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
                                 newDocumentId, newDoc, mode);
   }
-  
+
   if (!std::all_of(_fields.cbegin(), _fields.cend(), [&](auto const& path) {
     return ::attributesEqual(oldDoc, newDoc, path.begin(), path.end());
   })) {
@@ -805,34 +808,34 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
                                 newDocumentId, newDoc, mode);
   }
-  
+
   Result res;
   // more expensive method to
-  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
-  SmallVector<RocksDBKey> elements{elementsArena};
-  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
-  SmallVector<uint64_t> hashes{hashesArena};
+  ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+  ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+  ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+  ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
     int r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
-    
+
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
     }
   }
-  
+
   RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
-    rocksdb::Status s = mthds->Put(_cf, key, value.string());
+    rocksdb::Status s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/false);
     if (!s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::index);
       break;
     }
   }
-  
+
   return res;
 }
 
@@ -841,12 +844,18 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
                                  LocalDocumentId const& documentId,
                                  velocypack::Slice const& doc,
                                  Index::OperationMode mode) {
+  TRI_IF_FAILURE("BreakHashIndexRemove") {
+    if (type() == arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX) {
+      // intentionally  break index removal
+      return Result(TRI_ERROR_INTERNAL, "BreakHashIndexRemove failure point triggered");
+    }
+  }
   Result res;
   rocksdb::Status s;
-  SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
-  SmallVector<RocksDBKey> elements{elementsArena};
-  SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
-  SmallVector<uint64_t> hashes{hashesArena};
+  ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+  ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+  ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+  ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
 
   {
     // rethrow all types of exceptions from here...
@@ -874,7 +883,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
     // non-unique index contain the unique objectID written exactly once
     for (size_t i = 0; i < count; ++i) {
       s = mthds->SingleDelete(_cf, elements[i]);
-      
+
       if (!s.ok()) {
         res.reset(rocksutils::convertStatus(s, rocksutils::index));
       }
@@ -900,8 +909,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
 /// @brief attempts to locate an entry in the index
 /// Warning: who ever calls this function is responsible for destroying
 /// the RocksDBVPackIndexIterator* results
-IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
-                                         VPackSlice const searchValues, bool reverse) const {
+std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* trx,
+                                                         VPackSlice const searchValues, bool reverse) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
 
@@ -909,7 +918,7 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
 
   VPackSlice lastNonEq;
   leftSearch.openArray();
-  for (auto const& it : VPackArrayIterator(searchValues)) {
+  for (VPackSlice it : VPackArrayIterator(searchValues)) {
     TRI_ASSERT(it.isObject());
     VPackSlice eq = it.get(StaticStrings::IndexEq);
     if (eq.isNone()) {
@@ -922,8 +931,7 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
   if (lastNonEq.isNone() && _unique && searchValues.length() == _fields.size()) {
     leftSearch.close();
 
-    return new RocksDBVPackUniqueIndexIterator(&_collection, trx, this,
-                                               leftSearch.slice());
+    return std::make_unique<RocksDBVPackUniqueIndexIterator>(&_collection, trx, this, leftSearch.slice());
   }
 
   VPackSlice leftBorder;
@@ -1004,26 +1012,25 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
       _unique ? RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftBorder, rightBorder)
               : RocksDBKeyBounds::VPackIndex(_objectId, leftBorder, rightBorder);
 
-  return new RocksDBVPackIndexIterator(&_collection, trx, this, reverse, std::move(bounds));
+  if (reverse) {
+    // reverse version
+    return std::make_unique<RocksDBVPackIndexIterator<true>>(&_collection, trx, this, std::move(bounds));
+  }
+  // forward version
+  return std::make_unique<RocksDBVPackIndexIterator<false>>(&_collection, trx, this, std::move(bounds));
 }
 
-bool RocksDBVPackIndex::supportsFilterCondition(
+Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
-  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
-                                                              node, reference,
-                                                              itemsInIndex, estimatedItems,
-                                                              estimatedCost);
+    size_t itemsInIndex) const {
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
 }
 
-bool RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                              arangodb::aql::Variable const* reference,
-                                              size_t itemsInIndex, double& estimatedCost,
-                                              size_t& coveredAttributes) const {
-  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                            itemsInIndex, estimatedCost,
-                                                            coveredAttributes);
+Index::SortCosts RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                          arangodb::aql::Variable const* reference,
+                                                          size_t itemsInIndex) const {
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 
 /// @brief specializes the condition for use with the index
@@ -1032,7 +1039,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
   return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
-IndexIterator* RocksDBVPackIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -1062,7 +1069,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     size_t unused = 0;
 
     SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                 unused, nonNullAttributes, true);
+                                                 unused, unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().
@@ -1196,7 +1203,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
               // unsupported right now. Should have been rejected by
               // supportsFilterCondition
               TRI_ASSERT(false);
-              return new EmptyIndexIterator(&_collection, trx);
+              return std::make_unique<EmptyIndexIterator>(&_collection, trx);
           }
 
           value->toVelocyPackValue(searchValues);
@@ -1220,32 +1227,17 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     transaction::BuilderLeaser expandedSearchValues(trx);
     expandInSearchValues(searchValues.slice(), *(expandedSearchValues.get()));
     VPackSlice expandedSlice = expandedSearchValues->slice();
-    std::vector<IndexIterator*> iterators;
+    std::vector<std::unique_ptr<IndexIterator>> iterators;
 
-    try {
-      for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, val, !opts.ascending);
-
-        try {
-          iterators.push_back(iterator);
-        } catch (...) {
-          // avoid leak
-          delete iterator;
-          throw;
-        }
-      }
-
-      if (!opts.ascending) {
-        std::reverse(iterators.begin(), iterators.end());
-      }
-    } catch (...) {
-      for (auto& it : iterators) {
-        delete it;
-      }
-      throw;
+    for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
+      iterators.push_back(lookup(trx, val, !opts.ascending));
     }
 
-    return new MultiIndexIterator(&_collection, trx, this, iterators);
+    if (!opts.ascending) {
+      std::reverse(iterators.begin(), iterators.end());
+    }
+
+    return std::make_unique<MultiIndexIterator>(&_collection, trx, this, std::move(iterators));
   }
 
   VPackSlice searchSlice = searchValues.slice();
@@ -1294,6 +1286,7 @@ void RocksDBVPackIndex::recalculateEstimates() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, _cf));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
+    //cppcheck-suppress uninitvar ; doesn't understand above call
     _estimator->insert(hash);
   }
   _estimator->setAppliedSeq(seq);

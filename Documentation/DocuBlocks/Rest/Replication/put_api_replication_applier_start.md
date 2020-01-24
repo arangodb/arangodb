@@ -2,9 +2,14 @@
 @startDocuBlock put_api_replication_applier_start
 @brief start the replication applier
 
-@RESTHEADER{PUT /_api/replication/applier-start, Start replication applier}
+@RESTHEADER{PUT /_api/replication/applier-start, Start replication applier,handleCommandApplierStart}
 
 @RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, starts the global replication applier for all
+databases. If set to *false*, starts the replication applier in the
+selected database.
 
 @RESTQUERYPARAM{from,string,optional}
 The remote *lastLogTick* value from which to start applying. If not specified,
@@ -61,4 +66,3 @@ is returned if an error occurred while assembling the response.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

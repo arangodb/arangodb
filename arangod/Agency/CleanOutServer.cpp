@@ -27,6 +27,7 @@
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
 #include "Agency/MoveShard.h"
+#include "Basics/StaticStrings.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
@@ -56,7 +57,7 @@ CleanOutServer::CleanOutServer(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-CleanOutServer::~CleanOutServer() {}
+CleanOutServer::~CleanOutServer() = default;
 
 void CleanOutServer::run(bool& aborts) { runHelper(_server, "", aborts); }
 
@@ -88,7 +89,7 @@ JOB_STATUS CleanOutServer::status() {
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(86400.0)) { // 1 day
-      abort();
+      abort("job timed out");
       return FAILED;
     }
     return PENDING;
@@ -103,7 +104,7 @@ JOB_STATUS CleanOutServer::status() {
   }
 
   if (failedFound > 0) {
-    abort();
+    abort("child job failed");
     return FAILED;
   }
 
@@ -235,7 +236,7 @@ bool CleanOutServer::start(bool& aborts) {
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
-    for (auto const& x : VPackArrayIterator(cleanedServers)) {
+    for (VPackSlice x : VPackArrayIterator(cleanedServers)) {
       if (x.isString() && x.copyString() == _server) {
         finish("", "", false, "server must not be in `Target/CleanedServers`");
         return false;
@@ -256,7 +257,11 @@ bool CleanOutServer::start(bool& aborts) {
       failedServersBuilder.clear();
       { VPackObjectBuilder guard(&failedServersBuilder); }
     }
-  }  // if
+  } else {
+    // ignore this check
+    failedServersBuilder.clear();
+    { VPackObjectBuilder guard(&failedServersBuilder); }
+  } // if
 
   VPackSlice failedServers = failedServersBuilder.slice();
   if (failedServers.isObject()) {
@@ -377,7 +382,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
-        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
           if (dbserver.copyString() == _server) {
             found = count;
             break;
@@ -388,11 +393,8 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           continue;
         }
 
-        auto replicationFactor = collection.hasAsString("replicationFactor");
-        bool isSatellite = replicationFactor.second && replicationFactor.first == "satellite";
-
-
-
+        auto replicationFactor = collection.hasAsString(StaticStrings::ReplicationFactor);
+        bool isSatellite = replicationFactor.second && replicationFactor.first == StaticStrings::Satellite;
         bool isLeader = (found == 0);
 
         if (isSatellite) {
@@ -403,7 +405,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false)
+                    toServer, isLeader, false).withParent(_jobId)
               .create(trx);
 
           } else {
@@ -416,7 +418,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           decltype(servers) serversCopy(servers);  // a copy
 
           // Only destinations, which are not already holding this shard
-          for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+          for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
             serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
                                           dbserver.copyString()),
                               serversCopy.end());
@@ -437,7 +439,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           // Schedule move into trx:
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                     _jobId, database.first, collptr.first, shard.first, _server,
-                    toServer, isLeader, false)
+                    toServer, isLeader, false).withParent(_jobId)
               .create(trx);
         }
       }
@@ -486,7 +488,7 @@ bool CleanOutServer::checkFeasibility() {
     std::stringstream collections;
     std::stringstream factors;
 
-    for (auto const collection : tooLargeCollections) {
+    for (auto const& collection : tooLargeCollections) {
       collections << collection << " ";
     }
     for (auto const factor : tooLargeFactors) {
@@ -502,7 +504,7 @@ bool CleanOutServer::checkFeasibility() {
   return true;
 }
 
-arangodb::Result CleanOutServer::abort() {
+arangodb::Result CleanOutServer::abort(std::string const& reason) {
   // We can assume that the job is either in ToDo or in Pending.
   Result result;
 
@@ -514,7 +516,7 @@ arangodb::Result CleanOutServer::abort() {
 
   // Can now only be TODO or PENDING
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted:" + reason);
     return result;
   }
 
@@ -522,14 +524,16 @@ arangodb::Result CleanOutServer::abort() {
   Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
   Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
 
+  std::string childAbortReason = "parent job aborted - reason: " + reason;
+
   for (auto const& subJob : todos) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(TODO, subJob.first, _snapshot, _agent).abort();
+      JobContext(TODO, subJob.first, _snapshot, _agent).abort(childAbortReason);
     }
   }
   for (auto const& subJob : pends) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(PENDING, subJob.first, _snapshot, _agent).abort();
+      JobContext(PENDING, subJob.first, _snapshot, _agent).abort(childAbortReason);
     }
   }
 
@@ -544,7 +548,7 @@ arangodb::Result CleanOutServer::abort() {
     }
   }
 
-  finish(_server, "", false, "job aborted", payload);
+  finish(_server, "", false, "job aborted: " + reason, payload);
 
   return result;
 }

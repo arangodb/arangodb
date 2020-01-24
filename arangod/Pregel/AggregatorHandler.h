@@ -43,7 +43,7 @@ class AggregatorHandler {
   mutable basics::ReadWriteLock _lock;
 
  public:
-  AggregatorHandler(IAlgorithm const* c) : _algorithm(c) {}
+  explicit AggregatorHandler(IAlgorithm const* c) : _algorithm(c) {}
   ~AggregatorHandler();
 
   IAggregator* getAggregator(std::string const& name);

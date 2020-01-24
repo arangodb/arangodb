@@ -22,8 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestWalHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "MMFiles/MMFilesLogfileManager.h"
@@ -31,8 +34,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-MMFilesRestWalHandler::MMFilesRestWalHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+MMFilesRestWalHandler::MMFilesRestWalHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus MMFilesRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -77,7 +82,7 @@ void MMFilesRestWalHandler::properties() {
   auto l = MMFilesLogfileManager::instance();
 
   if (_request->requestType() == rest::RequestType::PUT) {
-    if (ExecContext::CURRENT != nullptr && !ExecContext::CURRENT->isAdminUser()) {
+    if (!ExecContext::current().isAdminUser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to modify WAL properties");
       return;
@@ -207,7 +212,8 @@ void MMFilesRestWalHandler::flush() {
 
   int res;
   if (ServerState::instance()->isCoordinator()) {
-    res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
+    auto& feature = server().getFeature<ClusterFeature>();
+    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
   } else {
     res = MMFilesLogfileManager::instance()->flush(waitForSync, waitForCollector,
                                                    false, maxWaitTime, true);

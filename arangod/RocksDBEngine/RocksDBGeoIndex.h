@@ -55,10 +55,10 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, 
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
   bool canBeDropped() const override { return true; }
 

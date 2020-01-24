@@ -2,7 +2,7 @@
 @startDocuBlock put_admin_wal_properties
 @brief configure parameters of the wal
 
-@RESTHEADER{PUT /_admin/wal/properties, Configures the write-ahead log}
+@RESTHEADER{PUT /_admin/wal/properties, Configures the write-ahead log, RestWalHandler:properties}
 
 @RESTDESCRIPTION
 Configures the behavior of the write-ahead log. The body of the request
@@ -29,11 +29,10 @@ Is returned if the operation succeeds.
 
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
-@endDocuBlock
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestWalPropertiesPut}
+@EXAMPLE_ARANGOSH_RUN{RestWalPropertiesPut_mmfiles}
     var url = "/_admin/wal/properties";
     var body = {
       logfileSize: 32 * 1024 * 1024,
@@ -46,4 +45,3 @@ is returned when an invalid HTTP method is used.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

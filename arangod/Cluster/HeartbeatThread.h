@@ -29,14 +29,17 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
-#include "Logger/Logger.h"
 
 #include <velocypack/Slice.h>
 #include <chrono>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 struct AgencyVersions {
   uint64_t plan;
@@ -55,8 +58,8 @@ class HeartbeatBackgroundJobThread;
 class HeartbeatThread : public CriticalThread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(AgencyCallbackRegistry*, std::chrono::microseconds,
-                  uint64_t maxFailsBeforeWarning);
+  HeartbeatThread(application_features::ApplicationServer&, AgencyCallbackRegistry*,
+                  std::chrono::microseconds, uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -112,6 +115,9 @@ class HeartbeatThread : public CriticalThread,
 
   static void logThreadDeaths(bool force = false);
 
+  /// @brief Reference to agency sync job
+  DBServerAgencySync& agencySync();
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop
@@ -162,6 +168,22 @@ class HeartbeatThread : public CriticalThread,
   //////////////////////////////////////////////////////////////////////////////
 
   bool sendServerState();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get some regular news from the agency, a closure which calls this
+  /// method is regularly posted to the scheduler. This is for the
+  /// DBServer.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void getNewsFromAgencyForDBServer();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get some regular news from the agency, a closure which calls this
+  /// method is regularly posted to the scheduler. This is for the
+  /// Coordinator.
+  //////////////////////////////////////////////////////////////////////////////
+
+  void getNewsFromAgencyForCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
@@ -266,8 +288,6 @@ class HeartbeatThread : public CriticalThread,
   //////////////////////////////////////////////////////////////////////////////
   std::shared_ptr<AgencyVersions> _desiredVersions;
 
-  bool _wasNotified;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of background jobs that have been posted to the scheduler
   //////////////////////////////////////////////////////////////////////////////
@@ -282,6 +302,37 @@ class HeartbeatThread : public CriticalThread,
   /// code. Only created on dbservers.
   //////////////////////////////////////////////////////////////////////////////
   std::unique_ptr<HeartbeatBackgroundJobThread> _maintenanceThread;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief number of subsequent failed version updates
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t _failedVersionUpdates;
+  
+  // The following are only used in the coordinator case. This
+  // is the coordinator's way to learn of new Plan and Current
+  // Versions. The heartbeat thread schedules a closure which calls
+  // getNewsFromAgencyForCoordinator but makes sure that it only ever
+  // has one running at a time. Therefore, it is safe to have these atomics
+  // as members.
+
+  // invalidate coordinators every 2nd call
+  std::atomic<bool> _invalidateCoordinators;
+
+  // last value of plan which we have noticed:
+  std::atomic<uint64_t> _lastPlanVersionNoticed;
+  // last value of current which we have noticed:
+  std::atomic<uint64_t> _lastCurrentVersionNoticed;
+  // For periodic update of the current DBServer list:
+  std::atomic<int> _DBServerUpdateCounter;
+
+  // The following are used in the DBServer case to store the agency callback
+  // objects. We need to have them available as members since a scheduler thread
+  // might call refetchAndUpdate.
+  std::shared_ptr<AgencyCallback> _planAgencyCallback;
+  std::shared_ptr<AgencyCallback> _currentAgencyCallback;
+
+  /// @brief Sync job
+  DBServerAgencySync _agencySync;
 };
 }  // namespace arangodb
 

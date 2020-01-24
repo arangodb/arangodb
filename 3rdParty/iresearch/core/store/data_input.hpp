@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_DATAINPUT_H
@@ -81,8 +80,8 @@ struct IRESEARCH_API data_input
   }
 
   byte_type operator*() { return read_byte(); }
-  data_input& operator++() NOEXCEPT { return *this; }
-  data_input& operator++(int) NOEXCEPT { return *this; }
+  data_input& operator++() noexcept { return *this; }
+  data_input& operator++(int) noexcept { return *this; }
 }; // data_input
 
 //////////////////////////////////////////////////////////////////////////////
@@ -163,9 +162,9 @@ class IRESEARCH_API buffered_index_input : public index_input {
  protected:
   explicit buffered_index_input(
     size_t buf_size = DEFAULT_BUFFER_SIZE
-  ) NOEXCEPT;
+  ) noexcept;
 
-  buffered_index_input(const buffered_index_input& rhs) NOEXCEPT;
+  buffered_index_input(const buffered_index_input& rhs) noexcept;
 
   virtual void seek_internal(size_t pos) = 0;
 

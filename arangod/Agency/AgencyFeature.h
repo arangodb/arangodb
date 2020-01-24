@@ -32,7 +32,7 @@ namespace consensus {
 class Agent;
 }
 
-class AgencyFeature : virtual public application_features::ApplicationFeature {
+class AgencyFeature : public application_features::ApplicationFeature {
  public:
   static consensus::Agent* AGENT;
 
@@ -61,6 +61,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   uint64_t _compactionKeepSize;
   uint64_t _maxAppendSize;
   double _supervisionGracePeriod;
+  double _supervisionOkThreshold;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
   bool _cmdLineTimings;

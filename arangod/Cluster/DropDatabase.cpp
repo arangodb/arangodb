@@ -26,6 +26,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Databases.h"
@@ -53,7 +56,7 @@ DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const&
   }
 }
 
-DropDatabase::~DropDatabase(){};
+DropDatabase::~DropDatabase() = default;
 
 bool DropDatabase::first() {
   std::string const database = _description.get(DATABASE);

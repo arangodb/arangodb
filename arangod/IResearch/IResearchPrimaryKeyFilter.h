@@ -62,11 +62,12 @@ class PrimaryKeyFilter final : public irs::filter, public irs::filter::prepared 
   virtual size_t hash() const noexcept override;
 
   using irs::filter::prepare;
-  virtual filter::prepared::ptr prepare(irs::index_reader const& index,
-                                        irs::order::prepared const& /*ord*/,
-                                        irs::boost::boost_t /*boost*/,
-                                        irs::attribute_view const& /*ctx*/
-                                        ) const override;
+  virtual filter::prepared::ptr prepare(
+    irs::index_reader const& index,
+    irs::order::prepared const& /*ord*/,
+    irs::boost_t /*boost*/,
+    irs::attribute_view const& /*ctx*/
+  ) const override;
 
  protected:
   bool equals(filter const& rhs) const noexcept override;

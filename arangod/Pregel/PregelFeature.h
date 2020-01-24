@@ -24,6 +24,11 @@
 #define ARANGODB_PREGEL_FEATURE_H 1
 
 #include <cstdint>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -35,7 +40,7 @@ namespace pregel {
 
 class Conductor;
 class IWorker;
-//class RecoveryManager;
+class RecoveryManager;
 
 class PregelFeature final : public application_features::ApplicationFeature {
  public:
@@ -67,21 +72,21 @@ class PregelFeature final : public application_features::ApplicationFeature {
   void cleanupAll();
 
   // ThreadPool* threadPool() { return _threadPool.get(); }
-  /*RecoveryManager* recoveryManager() {
+  RecoveryManager* recoveryManager() {
     if (_recoveryManager) {
       return _recoveryManager.get();
     }
     return nullptr;
-  }*/
+  }
 
-  static void handleConductorRequest(std::string const& path, VPackSlice const& body,
-                                     VPackBuilder& outResponse);
+  static void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
+                                     VPackSlice const& body, VPackBuilder& outResponse);
   static void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                                   VPackSlice const& body, VPackBuilder& outBuilder);
 
  private:
   Mutex _mutex;
-//  std::unique_ptr<RecoveryManager> _recoveryManager;
+  std::unique_ptr<RecoveryManager> _recoveryManager;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<Conductor>>> _conductors;
   std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>> _workers;
 };

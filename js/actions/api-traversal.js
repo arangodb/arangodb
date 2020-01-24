@@ -251,6 +251,7 @@ function post_api_traversal (req, res) {
 
 actions.defineHttp({
   url: '_api/traversal',
+  isSystem: false,
 
   callback: function (req, res) {
     try {

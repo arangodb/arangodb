@@ -20,6 +20,7 @@
 - [External 3rd party dependencies](#external-3rd-party-dependencies)
 - [Query filter building blocks](#query-filter-building-blocks)
 - [Index Query Language](#index-query-language)
+- [Supported compilers](#supported-compilers)
 - [License](#license)
 
 ## Overview
@@ -147,7 +148,7 @@ point LZ4_ROOT at the source directory to build together with IResearch
 
 ```bash
 mkdir build && cd build
-cmake -DCMAKE_INSTALL_PREFIX=<install-path> -DBUILD_LIBS=on -g "Visual studio 12" -Ax64 ../cmake_unofficial
+cmake -DCMAKE_INSTALL_PREFIX=<install-path> -DBUILD_STATIC_LIBS=on -g "Visual studio 17" -Ax64 ../contrib/cmake_unofficial
 cmake --build .
 cmake --build . --target install
 ```
@@ -551,6 +552,12 @@ The following grammar is currently defined via Bison (the root is <query>):
 	               | <term> <sep> "ASC"
 	               | <term> <sep> "DESC"
 ```
+
+## Supported compilers
+
+- GCC: 4.9, 5, 6, 7, 8.3
+- MSVC: 17 (VS 2015), 19 (VS 2017)
+- Apple Clang: 9
 
 ## License
 Copyright (c) 2017-2019 ArangoDB GmbH

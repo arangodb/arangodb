@@ -24,20 +24,24 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8ShellPhase.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "FeaturePhases/V8ShellFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Shell/ClientFeature.h"
@@ -45,6 +49,10 @@
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
 #include "Ssl/SslFeature.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -63,25 +71,31 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
 
     try {
-      server.addFeature(new application_features::BasicFeaturePhase(server, true));
-      server.addFeature(new application_features::CommunicationFeaturePhase(server));
-      server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
-      server.addFeature(new application_features::V8ShellFeaturePhase(server));
+      server.addFeature<BasicFeaturePhaseClient>();
+      server.addFeature<CommunicationFeaturePhase>();
+      server.addFeature<GreetingsFeaturePhase>(true);
+      server.addFeature<V8ShellFeaturePhase>();
 
-      server.addFeature(new ClientFeature(server, true));
-      server.addFeature(new ConfigFeature(server, name));
-      server.addFeature(new ConsoleFeature(server));
-      server.addFeature(new LanguageFeature(server));
-      server.addFeature(new LoggerFeature(server, false));
-      server.addFeature(new RandomFeature(server));
-      server.addFeature(new ShellColorsFeature(server));
-      server.addFeature(new ShellFeature(server, &ret));
-      server.addFeature(new ShutdownFeature(server, {"Shell"}));
-      // server.addFeature(new SslFeature(server));
-      server.addFeature(new TempFeature(server, name));
-      server.addFeature(new V8PlatformFeature(server));
-      server.addFeature(new V8ShellFeature(server, name));
-      server.addFeature(new VersionFeature(server));
+      server.addFeature<ClientFeature, HttpEndpointProvider>(true);
+      server.addFeature<ConfigFeature>(name);
+      server.addFeature<ConsoleFeature>();
+      server.addFeature<LanguageFeature>();
+      server.addFeature<LoggerFeature>(false);
+      server.addFeature<RandomFeature>();
+      server.addFeature<ShellColorsFeature>();
+      server.addFeature<ShellFeature>(&ret);
+      server.addFeature<ShutdownFeature>(
+          std::vector<std::type_index>{std::type_index(typeid(ShellFeature))});
+      server.addFeature<SslFeature>();
+      server.addFeature<TempFeature>(name);
+      server.addFeature<V8PlatformFeature>();
+      server.addFeature<V8SecurityFeature>();
+      server.addFeature<V8ShellFeature>(name);
+      server.addFeature<VersionFeature>();
+
+#ifdef USE_ENTERPRISE
+      server.addFeature<EncryptionFeature>();
+#endif
 
       server.run(argc, argv);
       if (server.helpShown()) {

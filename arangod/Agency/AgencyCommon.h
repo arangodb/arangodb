@@ -56,9 +56,12 @@ struct read_ret_t {
   std::string redirect;       // If not accepted redirect id
   std::vector<bool> success;  // Query's precond OK
   query_t result;             // Query result
+
+  read_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
+
   read_ret_t(bool a, std::string const& id,
-             std::vector<bool> const& suc = std::vector<bool>(), query_t res = nullptr)
-      : accepted(a), redirect(id), success(suc), result(res) {}
+             std::vector<bool>&& suc, query_t&& res)
+      : accepted(a), redirect(id), success(std::move(suc)), result(std::move(res)) {}
 };
 
 struct write_ret_t {
@@ -99,16 +102,6 @@ struct trans_ret_t {
       : accepted(a), redirect(id), maxind(mi), failed(f), result(res) {}
 };
 
-struct inquire_ret_t {
-  bool accepted;         // Query accepted (i.e. we are leader)
-  std::string redirect;  // If not accepted redirect id
-  query_t result;
-  inquire_ret_t() : accepted(false), redirect("") {}
-  inquire_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
-  inquire_ret_t(bool a, std::string const& id, query_t const& res)
-      : accepted(a), redirect(id), result(res) {}
-};
-
 struct log_t {
   index_t index;                        // Log index
   term_t term;                          // Log term
@@ -120,10 +113,10 @@ struct log_t {
         std::string const& clientId = std::string())
       : index(idx),
         term(t),
+        entry(std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get())),
         clientId(clientId),
         timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch())) {
-    entry = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get());
   }
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {

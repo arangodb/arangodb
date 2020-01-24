@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_inventory
 @brief Returns an overview of collections and their indexes
 
-@RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes}
+@RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes, handleCommandInventory}
 
 @RESTQUERYPARAMETERS
 
@@ -10,7 +10,7 @@
 Include system collections in the result. The default value is *true*.
 
 @RESTQUERYPARAM{global,boolean,optional}
-Include alll databases in the response. Only works on `_system` The default value is *false*.
+Include all databases in the response. Only works on `_system` The default value is *false*.
 
 @RESTQUERYPARAM{batchId,number,required}
 The RocksDB engine requires a valid batchId for this API call
@@ -96,7 +96,7 @@ is returned if an error occurred while assembling the response.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationInventory}
+@EXAMPLE_ARANGOSH_RUN{RestReplicationInventory_mmfiles}
     var url = "/_api/replication/inventory";
     var response = logCurlRequest('GET', url);
 
@@ -107,7 +107,7 @@ is returned if an error occurred while assembling the response.
 
 With some additional indexes:
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes}
+@EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes_mmfiles}
     db._drop("IndexedCollection1");
     var c1 = db._create("IndexedCollection1");
     c1.ensureHashIndex("name");
@@ -129,4 +129,3 @@ With some additional indexes:
     db._drop("IndexedCollection2");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

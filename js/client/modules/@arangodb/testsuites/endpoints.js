@@ -80,6 +80,7 @@ function endpoints (options) {
 
   return Object.keys(endpoints).reduce((results, endpointName) => {
     results.failed = 0;
+    results.shutdown = true;
     let testName = 'endpoint-' + endpointName;
     results[testName] = (function () {
       let endpoint = endpoints[endpointName]();
@@ -107,11 +108,12 @@ function endpoints (options) {
 
         print(CYAN + 'Shutting down...' + RESET);
         // mop: mehhh...when launched with a socket we can't use download :S
-        pu.shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
+        oneTestResult['shutdown'] = pu.shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
         print(CYAN + 'done.' + RESET);
 
-        if (!oneTestResult.status) {
+        if (!oneTestResult.status || !oneTestResult.shutdown) {
           results.failed += 1;
+          results.shutdown = false;
         } else {
           pu.cleanupLastDirectory(options);
         }

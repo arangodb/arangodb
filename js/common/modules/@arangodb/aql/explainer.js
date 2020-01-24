@@ -162,17 +162,18 @@ function pad(n) {
 /* print functions */
 
 /* print query string */
-function printQuery(query) {
+function printQuery(query, cacheable) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
-  var maxLength = 4096;
+  var maxLength = 4096, headline = 'Query String (' + query.length + ' chars';
   if (query.length > maxLength) {
-    stringBuilder.appendLine(section('Query String (truncated):'));
+    headline += ' - truncated...';
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
-  } else {
-    stringBuilder.appendLine(section('Query String:'));
   }
+  headline += ', cacheable: ' + (cacheable ? 'true' : 'false');
+  headline += '):';
+  stringBuilder.appendLine(section(headline));
   stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));
   stringBuilder.appendLine();
 }
@@ -303,7 +304,7 @@ function printIndexes(indexes) {
       if (l > maxIdLen) {
         maxIdLen = l;
       }
-      l = index.name.length;
+      l = index.name ? index.name.length : 0;
       if (l > maxNameLen) {
         maxNameLen = l;
       }
@@ -344,10 +345,16 @@ function printIndexes(indexes) {
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
-      var selectivity = (indexes[i].hasOwnProperty('selectivityEstimate') ?
-        (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %' :
-        'n/a'
-      );
+      let estimate;
+      if (indexes[i].hasOwnProperty('selectivityEstimate')) {
+        estimate = (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %';
+      } else if (indexes[i].unique) {
+        // hard-code estimate to 100%
+        estimate = '100.00 %';
+      } else {
+        estimate = 'n/a';
+      }
+
       line = ' ' +
         pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
         collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
@@ -355,7 +362,7 @@ function printIndexes(indexes) {
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
         value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
-        pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + '   ' +
+        pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
         ranges;
 
@@ -694,7 +701,7 @@ function processQuery(query, explain, planIndex) {
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
-
+  
   /// mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
@@ -759,17 +766,22 @@ function processQuery(query, explain, planIndex) {
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id)) {
-        nodes[n.id].calls = n.calls;
-        nodes[n.id].items = n.items;
-        nodes[n.id].runtime = n.runtime;
+        nodes[n.id].calls = (n.calls === undefined ? "n/a" : n.calls);
+        nodes[n.id].items = (n.items === undefined ? "n/a" : n.items);
+        nodes[n.id].runtime = (n.runtime === undefined ? "n/a" : n.runtime);
 
-        if (String(n.calls).length > maxCallsLen) {
-          maxCallsLen = String(n.calls).length;
+        if (String(nodes[n.id].calls).length > maxCallsLen) {
+          maxCallsLen = String(nodes[n.id].calls).length;
         }
-        if (String(n.items).length > maxItemsLen) {
-          maxItemsLen = String(n.items).length;
+        if (String(nodes[n.id].items).length > maxItemsLen) {
+          maxItemsLen = String(nodes[n.id].items).length;
         }
-        let l = String(nodes[n.id].runtime.toFixed(3)).length;
+        let l;
+        if (typeof nodes[n.id].runtime === 'number') {
+          l = String(nodes[n.id].runtime.toFixed(3)).length;
+        } else {
+          l = nodes[n.id].runtime.length;
+        }
         if (l > maxRuntimeLen) {
           maxRuntimeLen = l;
         }
@@ -778,10 +790,14 @@ function processQuery(query, explain, planIndex) {
     // by design the runtime is cumulative right now.
     // by subtracting the dependencies from parent runtime we get the runtime per node
     stats.nodes.forEach(n => {
-      if (parents.hasOwnProperty(n.id)) {
-        parents[n.id].forEach(pid => {
-          nodes[pid].runtime -= n.runtime;
-        });
+      if (typeof n.runtime === 'number') {
+        if (parents.hasOwnProperty(n.id)) {
+          parents[n.id].forEach(pid => {
+            if (typeof nodes[pid].runtime === 'number') {
+              nodes[pid].runtime -= n.runtime;
+            }
+          });
+        }
       }
     });
   }
@@ -812,6 +828,11 @@ function processQuery(query, explain, planIndex) {
       usedVariables[node.name] = collectionVariables[node.id];
     }
     return variable(node.name);
+  };
+
+  var lateVariableCallback = function () {
+    require("internal").print("Called");
+    return (node) => variableName(node);
   };
 
   var buildExpression = function (node) {
@@ -1075,9 +1096,12 @@ function processQuery(query, explain, planIndex) {
   };
 
   var label = function (node) {
-    var rc, v, e, edgeCols;
+    var rc, v, e, edgeCols, i, d, directions, isLast;
     var parts = [];
     var types = [];
+    var filter = '';
+    // index in this array gives the traversal direction
+    const translate = ['ANY', 'INBOUND', 'OUTBOUND'];
     switch (node.type) {
       case 'SingletonNode':
         return keyword('ROOT');
@@ -1085,28 +1109,77 @@ function processQuery(query, explain, planIndex) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`);
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`) + filter;
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
-          condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
+          condition = keyword(' SEARCH ') + buildExpression(node.condition);
+        }
+
+        var sortCondition = '';
+        if (node.primarySort && Array.isArray(node.primarySort)) {
+          var primarySortBuckets = node.primarySort.length;
+          if (typeof node.primarySortBuckets === 'number') {
+            primarySortBuckets = Math.min(node.primarySortBuckets, primarySortBuckets);
+          }
+
+          sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
+            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.asc ? 'ASC' : 'DESC');
+          }).join(', ');
         }
 
         var scorers = '';
         if (node.scorers && node.scorers.length > 0) {
-          scorers = keyword(' LET ') + node.scorers.map(function (scorer) {
-            return variableName(scorer) + ' = ' + buildExpression(scorer.node);
-          }).join(', ');
+          scorers = node.scorers.map(function (scorer) {
+            return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
+          }).join('');
         }
-
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
+        let viewAnnotation = '/* view query';
+        if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+          viewAnnotation += ' with late materialization';
+        } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
+          viewAnnotation += ' without materialization';
+        }
+        viewAnnotation += ' */';
+        let viewVariables = '';
+        if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
+          viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
+            if (viewValuesColumn.hasOwnProperty('field')) {
+              return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+            } else {
+              return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
+                return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+              }).join('');
+            }
+          }).join('');
+        }
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
+               view(node.view) + condition + sortCondition + scorers + viewVariables +
+               '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
+        if (node.filter) {
+          filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        let indexAnnotation = '';
+        let indexVariables = '';
+        if (node.hasOwnProperty('outNmDocId')) {
+          indexAnnotation += '/* with late materialization */';
+          if (node.hasOwnProperty('indexValuesVars') && node.indexValuesVars.length > 0) {
+            indexVariables = node.indexValuesVars.map(function (indexValuesVar) {
+              return keyword(' LET ') + variableName(indexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(indexValuesVar.field);
+            }).join('');
+          }
+        }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
-        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */`;
-      //`
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
+          `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          '   ' + annotation(indexAnnotation);
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1131,10 +1204,9 @@ function processQuery(query, explain, planIndex) {
         rc += parts.join(', ') + ' ' + keyword('IN') + ' ' +
           value(node.minMaxDepth) + '  ' + annotation('/* min..maxPathDepth */') + ' ';
 
-        var translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var directions = [], d;
-        for (var i = 0; i < node.edgeCollections.length; ++i) {
-          var isLast = (i + 1 === node.edgeCollections.length);
+        directions = [];
+        for (i = 0; i < node.edgeCollections.length; ++i) {
+          isLast = (i + 1 === node.edgeCollections.length);
           d = node.directions[i];
           if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
             // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
@@ -1246,8 +1318,7 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('edgeOutVariable')) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
-        translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        let defaultDirection = node.directions[0];
+        let defaultDirection = node.defaultDirection;
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1264,13 +1335,25 @@ function processQuery(query, explain, planIndex) {
         rc += ` ${annotation("/* targetnode */")} `;
 
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function (g, index) {
+          directions = [];
+          for (i = 0; i < node.edgeCollections.length; ++i) {
+              isLast = (i + 1 === node.edgeCollections.length);
+              d = node.directions[i];
+              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+                  // on the same collection
+                  d = 0; // ANY
+                  ++i;
+              }
+              directions.push({ collection: node.edgeCollections[i], direction: d });
+          }
+          rc += directions.map(function (g, index) {
             var tmp = '';
-            if (node.directions[index] !== defaultDirection) {
-              tmp += keyword(translate[node.directions[index]]);
+            if (g.direction !== defaultDirection) {
+              tmp += keyword(translate[g.direction]);
               tmp += ' ';
             }
-            return tmp + collection(g);
+            return tmp + collection(g.collection);
           }).join(', ');
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
@@ -1306,8 +1389,7 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('pathOutVariable')) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }
-        translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        let defaultDirection = node.directions[0];
+        let defaultDirection = node.defaultDirection;
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1324,13 +1406,25 @@ function processQuery(query, explain, planIndex) {
         rc += ` ${annotation("/* targetnode */")} `;
 
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function (g, index) {
+          directions = [];
+          for (i = 0; i < node.edgeCollections.length; ++i) {
+              isLast = (i + 1 === node.edgeCollections.length);
+              d = node.directions[i];
+              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+                  // on the same collection
+                  d = 0; // ANY
+                  ++i;
+              }
+              directions.push({ collection: node.edgeCollections[i], direction: d });
+          }
+          rc += directions.map(function (g, index) {
             var tmp = '';
-            if (node.directions[index] !== defaultDirection) {
-              tmp += keyword(translate[node.directions[index]]);
+            if (g.direction !== defaultDirection) {
+              tmp += keyword(translate[g.direction]);
               tmp += ' ';
             }
-            return tmp + collection(g);
+            return tmp + collection(g.collection);
           }).join(', ');
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
@@ -1409,6 +1503,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
+      case 'SubqueryStartNode':
+        return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
+      case 'SubqueryEndNode':
+        return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1425,7 +1523,7 @@ function processQuery(query, explain, planIndex) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          indexRef = inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `${variableName(node.inDocVariable)}`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
@@ -1442,7 +1540,7 @@ function processQuery(query, explain, planIndex) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          indexRef = inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `${variableName(node.inDocVariable)}`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
@@ -1585,18 +1683,28 @@ function processQuery(query, explain, planIndex) {
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
+        let gatherAnnotations = [];
+        if (node.parallelism === 'parallel') {
+          gatherAnnotations.push('parallel');
+        }
+        if (node.sortmode !== 'unset') {
+          gatherAnnotations.push('sort mode: ' + node.sortmode);
+        } 
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
           if (node.path && node.path.length) {
             return variableName(node.inVariable) + node.path.map(function (n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+        }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
+
+      case 'MaterializeNode':
+      	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
     }
 
     return 'unhandled node type (' + node.type + ')';
   };
 
-  var level = 0, subqueries = [];
+  var level = 0, subqueries = [], subqueryCallbacks = [];
   var indent = function (level, isRoot) {
     return pad(1 + level + level) + (isRoot ? '* ' : '- ');
   };
@@ -1605,8 +1713,11 @@ function processQuery(query, explain, planIndex) {
     usedVariables = {};
     currentNode = node.id;
     isConst = true;
-    if (node.type === 'SubqueryNode') {
+    if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
+    }
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
     }
   };
 
@@ -1619,6 +1730,7 @@ function processQuery(query, explain, planIndex) {
       'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
+      'SubqueryStartNode',
       'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {
@@ -1650,7 +1762,6 @@ function processQuery(query, explain, planIndex) {
 
   var printNode = function (node) {
     preHandle(node);
-    node.runtime = Math.abs(node.runtime);
     var line = ' ' +
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + '   ' +
       keyword(node.type) + pad(1 + maxTypeLen - String(node.type).length) + '   ';
@@ -1660,9 +1771,22 @@ function processQuery(query, explain, planIndex) {
     }
 
     if (profileMode) {
+      if (node.calls === undefined) {
+        node.calls = 'n/a';
+      }
+      if (node.items === undefined) {
+        node.items = 'n/a';
+      }
+      let runtime = node.runtime;
+      if (runtime === undefined) {
+        runtime = 'n/a';
+      } else {
+        runtime = String(Math.abs(node.runtime).toFixed(5));
+      }
+  
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
         pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-        pad(1 + maxRuntimeLen - String(node.runtime.toFixed(5)).length) + value(node.runtime.toFixed(5)) + '   ' +
+        pad(1 + maxRuntimeLen - runtime.length) + value(runtime) + '   ' +
         indent(level, node.type === 'SingletonNode') + label(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
@@ -1677,7 +1801,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   if (planIndex === undefined) {
-    printQuery(query);
+    printQuery(query, explain.cacheable);
   }
 
   stringBuilder.appendLine(section('Execution plan:'));
@@ -1850,7 +1974,10 @@ function debug(query, bindVars, options) {
   let findGraphs = function (nodes) {
     nodes.forEach(function (node) {
       if (node.type === 'TraversalNode') {
-        if (node.graph) {
+        if (node.graph && node.graphDefinition) {
+          // named graphs have their name in "graph", but non-graph traversal queries too
+          // the distinction can thus be made only by peeking into graphDefinition, which
+          // is only populated for named graphs
           try {
             graphs[node.graph] = db._graphs.document(node.graph);
           } catch (err) { }
@@ -1881,9 +2008,8 @@ function debug(query, bindVars, options) {
   };
   // mangle with graphs used in query
   findGraphs(result.explain.plan.nodes);
-
-  // add collection information
-  collections.forEach(function (collection) {
+  
+  let handleCollection = function(collection) {
     let c = db._collection(collection.name);
     if (c === null) {
       // probably a view...
@@ -1898,6 +2024,10 @@ function debug(query, bindVars, options) {
       };
     } else {
       // a collection
+      if (c.type() === 3 && collection.name.match(/^_(local|from|to)_.+/)) {
+        // an internal smart-graph collection. let's skip this
+        return;
+      }
       let examples;
       if (input.options.examples) {
         // include example data from collections
@@ -1916,6 +2046,7 @@ function debug(query, bindVars, options) {
         }
       }
       result.collections[collection.name] = {
+        name: collection.name,
         type: c.type(),
         properties: c.properties(),
         indexes: c.getIndexes(true),
@@ -1924,6 +2055,46 @@ function debug(query, bindVars, options) {
         examples
       };
     }
+  };
+
+  // add collection information
+  collections.forEach(function (collection) {
+    handleCollection(collection);
+  });
+
+  // add prototypes used for distributeShardsLike
+  let sortedCollections = [];
+  Object.values(result.collections).forEach(function(collection) {
+    if (collection.properties.distributeShardsLike &&
+        !result.collections.hasOwnProperty(collection.distributeShardsLike)) {
+      handleCollection({ name: collection.name });
+    }
+    sortedCollections.push(collection);
+  });
+
+  sortedCollections.sort(function(l, r) {
+    if (l.properties.distributeShardsLike && !r.properties.distributeShardsLike) {
+      return 1;
+    } else if (!l.properties.distributeShardsLike && r.properties.distributeShardsLike) {
+      return -1;
+    }
+    if (l.type === 2 && r.type === 3) {
+      return -1;
+    } else if (r.type === 3 && l.type === 2) {
+      return 1;
+    }
+    if (l.name < r.name) {
+      return -1;
+    } else if (l.name > r.name) {
+      return 1;
+    }
+    // should not happen
+    return 0;
+  });
+
+  result.collections = {};
+  sortedCollections.forEach(function(c) {
+    result.collections[c.name] = c;
   });
 
   result.graphs = graphs;
@@ -1962,23 +2133,42 @@ function inspectDump(filename, outfile) {
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
-  Object.keys(data.collections).forEach(function (collection) {
-    let details = data.collections[collection];
-    print("db._drop(" + JSON.stringify(collection) + ");");
-    if (details.type === false || details.type === 3) {
-      print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
-    } else {
-      print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
-    }
-    details.indexes.forEach(function (index) {
-      delete index.figures;
-      delete index.selectivityEstimate;
-      if (index.type !== 'primary' && index.type !== 'edge') {
-        print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+  const keys = Object.keys(data.collections);
+  if (keys.length > 0) {
+    // drop in reverse order, because of distributeShardsLike
+    for (let i = keys.length; i > 0; --i) {
+      let collection = keys[i - 1];
+      let details = data.collections[collection];
+      let name = details.name || collection;
+      if (name[0] === '_') {
+        // system collection
+        print("try { db._drop(" + JSON.stringify(collection) + ", true); } catch (err) { print(String(err)); }");
+      } else {
+        print("try { db._drop(" + JSON.stringify(collection) + "); } catch (err) { print(String(err)); }");
       }
-    });
-    print();
-  });
+    }
+    // create in forward order because of distributeShardsLike
+    for (let i = 0; i < keys.length; ++i) {
+      let collection = keys[i];
+      let details = data.collections[collection];
+      if (details.type === false || details.type === 3) {
+        if (details.properties.isSmart) {
+          delete details.properties.numberOfShards;
+        }
+        print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+      } else {
+        print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+      }
+      details.indexes.forEach(function (index) {
+        delete index.figures;
+        delete index.selectivityEstimate;
+        if (index.type !== 'primary' && index.type !== 'edge') {
+          print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+        }
+      });
+      print();
+    }
+  }
   print();
 
   // insert example data

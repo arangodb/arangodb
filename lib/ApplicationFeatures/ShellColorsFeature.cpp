@@ -22,6 +22,9 @@
 
 #include "ShellColorsFeature.h"
 
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
@@ -109,8 +112,8 @@ bool ShellColorsFeature::useColors() {
 #endif
 }
 
-bool ShellColorsFeature::prepareConsole() {
 #ifdef _WIN32
+bool ShellColorsFeature::prepareConsole() {
   HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
   if (hStdout == INVALID_HANDLE_VALUE) {
     return false;
@@ -125,9 +128,7 @@ bool ShellColorsFeature::prepareConsole() {
     return false;
   }
   return true;
-#else
-  return true;
-#endif
 }
+#endif
 
 }  // namespace arangodb

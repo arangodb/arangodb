@@ -26,7 +26,9 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <velocypack/Dumper.h>
@@ -189,7 +191,7 @@ void VPackFeature::start() {
       return;
     }
 
-    slice = VPackSlice(s.data());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(s.data()));
   }
 
   VPackBuffer<char> buffer(4096);

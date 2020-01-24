@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,14 +30,19 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -45,6 +50,7 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ticks.h"
@@ -62,40 +68,41 @@ using namespace arangodb::application_features;
 
 namespace arangodb {
 
-RocksDBRecoveryManager* RocksDBRecoveryManager::instance() {
-  return ApplicationServer::getFeature<RocksDBRecoveryManager>(featureName());
-}
-
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, featureName()), _db(nullptr), _inRecovery(true) {
+    : ApplicationFeature(server, featureName()),
+      _db(nullptr),
+      _tick(0),
+      _recoveryState(RecoveryState::BEFORE) {
   setOptional(true);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("Database");
-  startsAfter("SystemDatabase");
-  startsAfter("RocksDBEngine");
-  startsAfter("ServerId");
-  startsAfter("StorageEngine");
+  startsAfter<DatabaseFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<ServerIdFeature>();
+  startsAfter<StorageEngineFeature>();
+  startsAfter<SystemDatabaseFeature>();
 
-  onlyEnabledWith("RocksDBEngine");
+  onlyEnabledWith<RocksDBEngine>();
 }
 
 void RocksDBRecoveryManager::start() {
-  if (!isEnabled()) {
-    return;
-  }
-
-  _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
-  runRecovery();
+  TRI_ASSERT(isEnabled());
+  
   // synchronizes with acquire inRecovery()
-  _inRecovery.store(false, std::memory_order_release);
+  _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
+
+  // start recovery
+  _db = server().getFeature<RocksDBEngine>().db();
+  runRecovery();
+
+  // synchronizes with acquire inRecovery()
+  _recoveryState.store(RecoveryState::DONE, std::memory_order_release);
 
   // notify everyone that recovery is now done
-  auto databaseFeature =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-  databaseFeature->recoveryDone();
+  auto& databaseFeature = server().getFeature<DatabaseFeature>();
+  databaseFeature.recoveryDone();
 }
 
 /// parse recent RocksDB WAL entries and notify the
@@ -112,38 +119,46 @@ void RocksDBRecoveryManager::runRecovery() {
 }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
-
  private:
+  WBReader(WBReader const&) = delete;
+  WBReader const& operator=(WBReader const&) = delete;
+
   // used to track used IDs for key-generators
   std::map<uint64_t, uint64_t> _generators;
 
   // max tick found
-  uint64_t _maxTick = 0;
-  uint64_t _maxHLC = 0;
+  uint64_t _maxTick;
+  uint64_t _maxHLC;
   /// @brief last document removed
   TRI_voc_rid_t _lastRemovedDocRid = 0;
 
   rocksdb::SequenceNumber _startSequence;    /// start of batch sequence nr
-  rocksdb::SequenceNumber _currentSequence;  /// current sequence nr
+  rocksdb::SequenceNumber& _currentSequence;  /// current sequence nr
   bool _startOfBatch = false;
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader()
-      : _startSequence(0), _currentSequence(0) {}
+  explicit WBReader(rocksdb::SequenceNumber& currentSequence)
+      : _maxTick(TRI_NewTickServer()),
+        _maxHLC(0),
+        _lastRemovedDocRid(0),
+        _startSequence(0),
+        _currentSequence(currentSequence) {
+  }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
     _startOfBatch = true;
+    TRI_ASSERT(_maxTick > 0);
   }
 
   Result shutdownWBReader() {
     Result rv = basics::catchVoidToResult([&]() -> void {
       // update ticks after parsing wal
-      LOG_TOPIC("a4ec8", TRACE, Logger::ENGINES) << "max tick found in WAL: " << _maxTick
-                                        << ", last HLC value: " << _maxHLC;
+      LOG_TOPIC("a4ec8", TRACE, Logger::ENGINES)
+          << "max tick found in WAL: " << _maxTick << ", last HLC value: " << _maxHLC;
 
       TRI_UpdateTickServer(_maxTick);
       TRI_HybridLogicalClock(_maxHLC);
@@ -152,7 +167,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
  private:
-
   void storeMaxHLC(uint64_t hlc) {
     if (hlc > _maxHLC) {
       _maxHLC = hlc;
@@ -180,7 +194,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
     TRI_DEFER(vocbase->release());
-    return static_cast<RocksDBCollection*>(vocbase->lookupCollection(dbColPair.second)->getPhysical());
+    return static_cast<RocksDBCollection*>(
+        vocbase->lookupCollection(dbColPair.second)->getPhysical());
   }
 
   RocksDBIndex* findIndex(uint64_t objectId) {
@@ -189,20 +204,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
       return nullptr;
     }
-    
+
     DatabaseFeature* df = DatabaseFeature::DATABASE;
     TRI_vocbase_t* vb = df->useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
     TRI_DEFER(vb->release());
-    
+
     auto coll = vb->lookupCollection(std::get<1>(triple));
-    
+
     if (coll == nullptr) {
       return nullptr;
     }
-    
+
     std::shared_ptr<Index> index = coll->lookupIndex(std::get<2>(triple));
     if (index == nullptr) {
       return nullptr;
@@ -233,25 +248,25 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         // numeric start byte. looks good
         bool valid;
         uint64_t tick =
-        NumberUtils::atoi<uint64_t>(ref.data(), ref.data() + ref.size(), valid);
+            NumberUtils::atoi<uint64_t>(ref.data(), ref.data() + ref.size(), valid);
         if (valid) {
           // if no previous _maxTick set or the numeric value found is
           // "near" our previous _maxTick, then we update it
-          if (tick > _maxTick && (_maxTick == 0 || tick - _maxTick < 2048)) {
+          if (tick > _maxTick && (tick - _maxTick) < 2048) {
             storeMaxTick(tick);
           }
         }
         // else we got a non-numeric key. simply ignore it
       }
-      
+
       RocksDBIndex* idx = findIndex(RocksDBKey::objectId(key));
       if (idx) {
         KeyGenerator* keyGen = idx->collection().keyGenerator();
         if (keyGen) {
-          keyGen->track(ref.begin(), ref.size());
+          keyGen->track(ref.data(), ref.size());
         }
       }
-      
+
     } else if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
       auto const type = RocksDBKey::type(key);
 
@@ -260,7 +275,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         auto slice = RocksDBValue::data(value);
         storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
         VPackSlice indexes = slice.get("indexes");
-        for (VPackSlice const& idx : VPackArrayIterator(indexes)) {
+        for (VPackSlice idx : VPackArrayIterator(indexes)) {
           storeMaxTick(
               std::max(basics::VelocyPackHelper::stringUInt64(idx, "objectId"),
                        basics::VelocyPackHelper::stringUInt64(idx, "id")));
@@ -285,39 +300,40 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
  public:
-  
-  rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
+  rocksdb::Status PutCF(uint32_t column_family_id,
+                        const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
     LOG_TOPIC("3e5c5", TRACE, Logger::ENGINES) << "recovering PUT " << RocksDBKey(key);
     incTick();
 
     updateMaxTick(column_family_id, key, value);
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      
       auto coll = findCollection(RocksDBKey::objectId(key));
       if (coll && coll->meta().countUnsafe()._committedSeq < _currentSequence) {
         auto& cc = coll->meta().countUnsafe();
         cc._committedSeq = _currentSequence;
         cc._added++;
-        cc._revisionId = transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
-      }
-      
-    } else {
-      // We have to adjust the estimate with an insert
-      uint64_t hash = 0;
-      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
-        hash = RocksDBVPackIndex::HashForKey(key);
-      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
-        hash = RocksDBEdgeIndex::HashForKey(key);
+        cc._revisionId =
+            transaction::helpers::extractRevFromDocument(RocksDBValue::data(value));
+        coll->meta().loadInitialNumberDocuments();
       }
 
-      if (hash != 0) {
+    } else {
+      // We have to adjust the estimate with an insert
+      uint64_t hashval = 0;
+      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
+        hashval = RocksDBVPackIndex::HashForKey(key);
+      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
+        hashval = RocksDBEdgeIndex::HashForKey(key);
+      }
+
+      if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
           RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
-            est->insert(hash);
+            est->insert(hashval);
           }
         }
       }
@@ -325,7 +341,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->PutCF(column_family_id, key, value);
+      helper->PutCF(column_family_id, key, value, _currentSequence);
     }
 
     return rocksdb::Status();
@@ -339,7 +355,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       storeMaxHLC(RocksDBKey::documentId(key).id());
       storeMaxTick(objectId);
-      
+
       auto coll = findCollection(RocksDBKey::objectId(key));
       if (coll && coll->meta().countUnsafe()._committedSeq < _currentSequence) {
         auto& cc = coll->meta().countUnsafe();
@@ -348,25 +364,26 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         if (_lastRemovedDocRid != 0) {
           cc._revisionId = _lastRemovedDocRid;
         }
+        coll->meta().loadInitialNumberDocuments();
       }
       _lastRemovedDocRid = 0;  // reset in any case
-      
+
     } else {
       // We have to adjust the estimate with an insert
-      uint64_t hash = 0;
+      uint64_t hashval = 0;
       if (cfId == RocksDBColumnFamily::vpack()->GetID()) {
-        hash = RocksDBVPackIndex::HashForKey(key);
+        hashval = RocksDBVPackIndex::HashForKey(key);
       } else if (cfId == RocksDBColumnFamily::edge()->GetID()) {
-        hash = RocksDBEdgeIndex::HashForKey(key);
+        hashval = RocksDBEdgeIndex::HashForKey(key);
       }
 
-      if (hash != 0) {
+      if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
           RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
-            est->remove(hash);
+            est->remove(hashval);
           }
         }
       }
@@ -378,19 +395,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     handleDeleteCF(column_family_id, key);
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->DeleteCF(column_family_id, key);
+      helper->DeleteCF(column_family_id, key, _currentSequence);
     }
 
     return rocksdb::Status();
   }
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
-    LOG_TOPIC("aa997", TRACE, Logger::ENGINES) << "recovering SINGLE DELETE " << RocksDBKey(key);
+    LOG_TOPIC("aa997", TRACE, Logger::ENGINES)
+        << "recovering SINGLE DELETE " << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
 
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->SingleDeleteCF(column_family_id, key);
+      helper->SingleDeleteCF(column_family_id, key, _currentSequence);
     }
 
     return rocksdb::Status();
@@ -405,25 +423,26 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     // drop and truncate can use this, truncate is handled via a Log marker
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->DeleteRangeCF(column_family_id, begin_key, end_key);
+      helper->DeleteRangeCF(column_family_id, begin_key, end_key, _currentSequence);
     }
-    
+
     // check for a range-delete of the primary index
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
       uint64_t objectId = RocksDBKey::objectId(begin_key);
       TRI_ASSERT(objectId == RocksDBKey::objectId(end_key));
-      
+
       auto coll = findCollection(objectId);
       if (!coll) {
         return rocksdb::Status();
       }
-      
+
       if (coll->meta().countUnsafe()._committedSeq <= _currentSequence) {
         auto& cc = coll->meta().countUnsafe();
         cc._committedSeq = _currentSequence;
         cc._added = 0;
         cc._removed = 0;
-        
+        coll->meta().loadInitialNumberDocuments();
+
         for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
           RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
           RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
@@ -444,7 +463,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     RocksDBLogType type = RocksDBLogValue::type(blob);
     switch (type) {
       case RocksDBLogType::DocumentRemoveV2:  // remove within a trx
-      case RocksDBLogType::SingleRemoveV2:  // single remove
+      case RocksDBLogType::SingleRemoveV2:    // single remove
         TRI_ASSERT(_lastRemovedDocRid == 0);
         _lastRemovedDocRid = RocksDBLogValue::revisionId(blob);
         break;
@@ -454,7 +473,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->LogData(blob);
+      helper->LogData(blob, _currentSequence);
     }
   }
 
@@ -473,12 +492,13 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler;
+    WBReader handler(_tick);
     rocksdb::SequenceNumber earliest = engine->settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine->releasedTick());
-  
+
     // prevent purging of WAL files while we are in here
-    RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
+    RocksDBFilePurgePreventer purgePreventer(
+        rocksutils::globalRocksEngine()->disallowPurging());
 
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
     rocksdb::Status s =

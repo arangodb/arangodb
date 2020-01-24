@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -300,28 +299,6 @@ NS_END // bitpack
 NS_END // encode
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                      I/O streams
-// ----------------------------------------------------------------------------
-
-/* bytes_output */
-
-bytes_output::bytes_output(size_t capacity) {
-  buf_.reserve(capacity);
-}
-
-bytes_output::bytes_output(bytes_output&& other) NOEXCEPT
-  : buf_(std::move(other.buf_)) {
-}
-
-bytes_output& bytes_output::operator=(bytes_output&& other) NOEXCEPT {
-  if (this != &other) {
-    buf_ = std::move(other.buf_);
-  }
-
-  return *this;
-}
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                   bytes_ref_input implementation
 // ----------------------------------------------------------------------------
 
@@ -371,7 +348,7 @@ bytes_input::bytes_input(const bytes_ref& data)
   this->size_ = data.size();
 }
 
-bytes_input::bytes_input(bytes_input&& other) NOEXCEPT
+bytes_input::bytes_input(bytes_input&& other) noexcept
   : buf_(std::move(other.buf_)),
     pos_(other.pos_) {
   this->data_ = buf_.data();
@@ -391,7 +368,7 @@ bytes_input& bytes_input::operator=(const bytes_ref& data) {
   return *this;
 }
 
-bytes_input& bytes_input::operator=(bytes_input&& other) NOEXCEPT {
+bytes_input& bytes_input::operator=(bytes_input&& other) noexcept {
   if (this != &other) {
     buf_ = std::move(other.buf_);
     pos_ = buf_.c_str();

@@ -76,7 +76,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   }
 }
 
-FailedFollower::~FailedFollower() {}
+FailedFollower::~FailedFollower() = default;
 
 void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
@@ -153,7 +153,7 @@ bool FailedFollower::start(bool& aborts) {
   // been removed by RemoveFollower already, in which case we simply stop:
   bool found = false;
   if (planned.isArray()) {
-    for (auto const& s : VPackArrayIterator(planned)) {
+    for (VPackSlice s : VPackArrayIterator(planned)) {
       if (s.isString() && _from == s.copyString()) {
         found = true;
         break;
@@ -169,7 +169,7 @@ bool FailedFollower::start(bool& aborts) {
   // Get proper replacement
   _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
-    // retry later
+    finish("", _shard, false, "No server available.");
     return false;
   }
 
@@ -273,7 +273,7 @@ bool FailedFollower::start(bool& aborts) {
       return false;
     } else if (jobId.second) {
       aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed follower requests abort");
       return false;
     }
   }
@@ -340,20 +340,19 @@ JOB_STATUS FailedFollower::status() {
   return TODO;
 }
 
-arangodb::Result FailedFollower::abort() {
+arangodb::Result FailedFollower::abort(std::string const& reason) {
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
     return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
                   "Failed aborting failedFollower job beyond pending stage");
   }
 
-  Result result;
   // Can now only be TODO
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
-    return result;
+    finish("", "", false, "job aborted: " + reason);
+    return Result{};
   }
 
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
-  return result;
+  return Result{};
 }

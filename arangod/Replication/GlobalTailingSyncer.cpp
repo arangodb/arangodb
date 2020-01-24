@@ -23,7 +23,9 @@
 
 #include "GlobalTailingSyncer.h"
 #include "Basics/Thread.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/ReplicationFeature.h"
 
@@ -106,7 +108,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
         return false;
       }
 
-      for (auto const& it : VPackObjectIterator(invSlice)) {
+      for (auto it : VPackObjectIterator(invSlice)) {
         VPackSlice dbObj = it.value;
         if (!dbObj.isObject()) {
           continue;
@@ -117,7 +119,7 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
           return false;
         }
 
-        for (auto const& it : VPackArrayIterator(dbObj)) {
+        for (VPackSlice it : VPackArrayIterator(dbObj)) {
           if (!it.isObject()) {
             continue;
           }

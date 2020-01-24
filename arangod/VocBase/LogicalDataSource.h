@@ -130,16 +130,29 @@ class LogicalDataSource {
   TRI_voc_cid_t planId() const noexcept { return _planId; }
   uint64_t planVersion() const noexcept { return _planVersion; }
 
+  enum class Serialization {
+    // object properties will be shown in a list
+    List = 0,
+    // object properties will be shown
+    Properties,
+    // object will be saved in storage engine
+    Persistence,
+    // object will be saved in storage engine
+    PersistenceWithInProgress,
+    // object will be replicated or dumped/restored
+    Inventory
+  };
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append a jSON definition of the data-source to the 'builder'
   /// @param the buffer to append to, must be an open object
   /// @param detailed make output more detailed, e.g.
   ///        for collections this will resolve CIDs for 'distributeShardsLike'
   ///        for views this will add view-specific properties
-  /// @param forPersistence this definition is meant to be persisted
+  /// @param Serialization defines which properties to serialize
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  Result properties(velocypack::Builder& builder, bool detailed, bool forPersistence) const;
+  Result properties(velocypack::Builder& builder, Serialization context) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
@@ -157,9 +170,8 @@ class LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append implementation-specific values to the data-source definition
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result appendVelocyPack(velocypack::Builder&, bool /*detailed*/, bool /*forPersistence*/
-                                  ) const {
-    return Result();  // NOOP by default
+  virtual Result appendVelocyPack(velocypack::Builder&, Serialization context) const {
+    return {}; // NOOP by default
   }
 
   void deleted(bool deleted) noexcept { _deleted = deleted; }

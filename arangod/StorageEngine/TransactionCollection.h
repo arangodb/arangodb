@@ -24,6 +24,8 @@
 #ifndef ARANGOD_STORAGE_ENGINE_TRANSACTION_COLLECTION_H
 #define ARANGOD_STORAGE_ENGINE_TRANSACTION_COLLECTION_H 1
 
+#include <memory>
+
 #include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/voc-types.h"
@@ -60,7 +62,7 @@ class TransactionCollection {
     return _collection;  // vocbase collection pointer
   }
 
-  std::string collectionName() const;
+  std::string const& collectionName() const;
 
   AccessMode::Type accessType() const { return _accessType; }
   

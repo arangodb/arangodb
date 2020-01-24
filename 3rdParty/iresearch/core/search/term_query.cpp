@@ -18,13 +18,12 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "term_query.hpp"
-#include "score_doc_iterators.hpp"
 
+#include "shared.hpp"
+#include "score_doc_iterators.hpp"
 #include "index/index_reader.hpp"
 
 NS_ROOT
@@ -36,11 +35,10 @@ NS_ROOT
 term_query::ptr term_query::make(
     const index_reader& index,
     const order::prepared& ord,
-    filter::boost_t boost,
+    boost_t boost,
     const string_ref& field,
     const bytes_ref& term) {
   term_query::states_t states(index.size());
-  attribute_store attrs;
   auto collectors = ord.prepare_collectors(1);
 
   // iterate over the segments
@@ -57,12 +55,9 @@ term_query::ptr term_query::make(
     // find term
     auto terms = reader->iterator();
 
-    if (!terms->seek(term)) {
+    if (IRS_UNLIKELY(!terms) || !terms->seek(term)) {
       continue;
     }
-
-    // get term metadata
-    auto& meta = terms->attributes().get<term_meta>();
 
     // read term attributes
     terms->read();
@@ -74,26 +69,27 @@ term_query::ptr term_query::make(
     state.reader = reader;
     state.cookie = terms->cookie();
 
-    // collect cost
-    if (meta) {
-      state.estimation = meta->docs_count;
-    }
-
     collectors.collect(segment, *reader, 0, terms->attributes()); // collect statistics, 0 because only 1 term
   }
 
-  collectors.finish(attrs, index);
+  bstring stats(ord.stats_size(), 0);
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
 
-  // apply boost
-  irs::boost::apply(attrs, boost);
+  ord.prepare_stats(stats_buf);
+  collectors.finish(stats_buf, index);
 
   return memory::make_shared<term_query>(
-    std::move(states), std::move(attrs)
+    std::move(states), std::move(stats), boost
   );
 }
 
-term_query::term_query(term_query::states_t&& states, attribute_store&& attrs)
-  : filter::prepared(std::move(attrs)), states_(std::move(states)) {
+term_query::term_query(
+    term_query::states_t&& states,
+    bstring&& stats,
+    boost_t boost)
+  : filter::prepared(boost),
+    states_(std::move(states)),
+    stats_(std::move(stats)) {
 }
 
 doc_iterator::ptr term_query::execute(
@@ -110,21 +106,27 @@ doc_iterator::ptr term_query::execute(
   // find term using cached state
   auto terms = state->reader->iterator();
 
+  if (IRS_UNLIKELY(!terms)) {
+    return doc_iterator::empty();
+  }
+
   // use bytes_ref::blank here since we need just to "jump" to the cached state,
   // and we are not interested in term value itself
   if (!terms->seek(bytes_ref::NIL, *state->cookie)) {
     return doc_iterator::empty();
   }
 
-  // return iterator
-  return doc_iterator::make<basic_doc_iterator>(
-    rdr, 
-    *state->reader,
-    this->attributes(), 
-    terms->postings(ord.features()), 
-    ord, 
-    state->estimation
-  );
+  auto docs = terms->postings(ord.features());
+  auto& attrs = docs->attributes();
+
+  // set score
+  auto& score = attrs.get<irs::score>();
+
+  if (score) {
+    score->prepare(ord, ord.prepare_scorers(rdr, *state->reader, stats_.c_str(), attrs, boost()));
+  }
+
+  return docs;
 }
 
 NS_END // ROOT

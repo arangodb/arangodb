@@ -36,6 +36,7 @@ db.ids.save({ "myId": 789 });
 db.ids.save({ "myId": 123 });  // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
 ~db._drop("ids");
 @END_EXAMPLE_ARANGOSH_OUTPUT
+
 @EXAMPLE_ARANGOSH_OUTPUT{ensureUniqueSkiplistMultiColmun}
 ~db._create("ids");
 db.ids.ensureIndex({ type: "skiplist", fields: [ "name.first", "name.last" ], unique: true });
@@ -46,5 +47,3 @@ db.ids.save({ "name" : { "first" : "hans", "last": "jensen" }});
 ~ // xpError(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)
 ~db._drop("ids");
 @END_EXAMPLE_ARANGOSH_OUTPUT
-
-

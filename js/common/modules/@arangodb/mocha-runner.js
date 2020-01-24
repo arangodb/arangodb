@@ -112,7 +112,9 @@ function buildJson (results) {
     duration: results.stats.duration,
     status: !results.stats.failures,
     failed: results.stats.failures,
-    total: results.stats.tests
+    total: results.stats.tests,
+    totalSetUp: 0, // we can't get setup time spent in mocha
+    totalTearDown: 0
   };
   for (const test of findTests(results)) {
     const name = test[0];

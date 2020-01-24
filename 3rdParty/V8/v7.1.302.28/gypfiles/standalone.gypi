@@ -88,6 +88,9 @@
         # Default sysroot if no sysroot can be provided.
         'sysroot%': '',
 
+        # Default clcache mode if no use_clcache_mode can be provided.
+        'use_clcache_mode%': 'false',
+
         'conditions': [
           # The system root for linux builds.
           ['OS=="linux" and use_sysroot==1', {
@@ -943,9 +946,13 @@
             'RuntimeTypeInfo': 'false',
             'WarningLevel': '3',
             'WarnAsError': 'true',
-            'DebugInformationFormat': '3',
             'Detect64BitPortabilityProblems': 'false',
             'conditions': [
+              ['use_clcache_mode=="true"', {
+                'DebugInformationFormat': '1',
+              }, {
+                'DebugInformationFormat': '3',
+              }],
               [ 'msvs_multi_core_compile', {
                 'AdditionalOptions': ['/MP'],
               }],

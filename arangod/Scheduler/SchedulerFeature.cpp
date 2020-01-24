@@ -21,28 +21,33 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+#include <thread>
+
 #include "SchedulerFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+#include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SupervisedScheduler.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-dispatcher.h"
 
 #ifdef _WIN32
 #include <stdio.h>
 #include <windows.h>
 #endif
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ArangoGlobalContext.h"
-#include "Logger/LogAppender.h"
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "RestServer/ServerFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-dispatcher.h"
-
-#include "Scheduler/SupervisedScheduler.h"
-
-#include <chrono>
-#include <thread>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -65,16 +70,18 @@ size_t defaultNumberOfThreads() {
 
 namespace arangodb {
 
-Scheduler* SchedulerFeature::SCHEDULER = nullptr;
+SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+    : ApplicationFeature(server, "Scheduler"), 
+      _scheduler(nullptr) {
   setOptional(false);
-  startsAfter("GreetingsPhase");
-  startsAfter("FileDescriptors");
+  startsAfter<GreetingsFeaturePhase>();
+
+  startsAfter<FileDescriptorsFeature>();
 }
 
-SchedulerFeature::~SchedulerFeature() {}
+SchedulerFeature::~SchedulerFeature() = default;
 
 void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   // Different implementations of the Scheduler may require different
@@ -161,10 +168,21 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>)
 void SchedulerFeature::prepare() {
   TRI_ASSERT(2 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
-  _scheduler =
-      std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                            _queueSize, _fifo1Size, _fifo2Size);
-  SCHEDULER = _scheduler.get();
+// wait for windows fix or implement operator new
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
+#endif
+  auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
+                                                     _nrMaximalThreads, _queueSize,
+                                                     _fifo1Size, _fifo2Size);
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
+
+  SCHEDULER = sched.get();
+
+  _scheduler = std::move(sched);
 }
 
 void SchedulerFeature::start() {
@@ -200,9 +218,9 @@ void SchedulerFeature::unprepare() {
 void SchedulerFeature::initV8Stuff() {
   // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
   try {
-    auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-    if (dealer->isEnabled()) {
-      dealer->defineContextUpdate(
+    auto& dealer = server().getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      dealer.defineContextUpdate(
           [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
             TRI_InitV8Dispatcher(isolate, context);
           },
@@ -319,9 +337,7 @@ bool CtrlHandler(DWORD eventType) {
     LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
         << shutdownMessage << ", beginning shut down sequence";
 
-    if (application_features::ApplicationServer::server != nullptr) {
-      application_features::ApplicationServer::server->beginShutdown();
-    }
+    application_features::ApplicationServer::CTRL_C.store(true);
 
     seen = true;
     return true;
@@ -346,9 +362,7 @@ extern "C" void c_exit_handler(int signal) {
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
           << "control-c received, beginning shut down sequence";
 
-      if (application_features::ApplicationServer::server != nullptr) {
-        application_features::ApplicationServer::server->beginShutdown();
-      }
+      application_features::ApplicationServer::CTRL_C.store(true);
 
       seen = true;
     } else {

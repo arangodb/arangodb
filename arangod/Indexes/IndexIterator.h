@@ -68,9 +68,9 @@ struct IndexIteratorOptions;
 /// at the index itself
 class IndexIterator {
  public:
-  typedef std::function<void(LocalDocumentId const& token)> LocalDocumentIdCallback;
-  typedef std::function<void(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
-  typedef std::function<void(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
+  typedef std::function<bool(LocalDocumentId const& token)> LocalDocumentIdCallback;
+  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
+  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
 
  public:
   IndexIterator(IndexIterator const&) = delete;
@@ -79,7 +79,7 @@ class IndexIterator {
 
   IndexIterator(LogicalCollection*, transaction::Methods*);
 
-  virtual ~IndexIterator() {}
+  virtual ~IndexIterator() = default;
 
   virtual char const* typeName() const = 0;
 
@@ -137,7 +137,7 @@ class EmptyIndexIterator final : public IndexIterator {
   EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx)
       : IndexIterator(collection, trx) {}
 
-  ~EmptyIndexIterator() {}
+  ~EmptyIndexIterator() = default;
 
   char const* typeName() const override { return "empty-index-iterator"; }
 
@@ -167,14 +167,14 @@ class EmptyIndexIterator final : public IndexIterator {
 class MultiIndexIterator final : public IndexIterator {
  public:
   MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                     arangodb::Index const* index, std::vector<IndexIterator*> const& iterators)
+                     arangodb::Index const* index, std::vector<std::unique_ptr<IndexIterator>>&& iterators)
       : IndexIterator(collection, trx),
-        _iterators(iterators),
+        _iterators(std::move(iterators)),
         _currentIdx(0),
         _current(nullptr),
         _hasCovering(true) {
     if (!_iterators.empty()) {
-      _current = _iterators[0];
+      _current = _iterators[0].get();
       for (auto const& it : _iterators) {
         // covering index support only present if all index
         // iterators in this MultiIndexIterator support it
@@ -186,12 +186,7 @@ class MultiIndexIterator final : public IndexIterator {
     }
   }
 
-  ~MultiIndexIterator() {
-    // Free all iterators
-    for (auto& it : _iterators) {
-      delete it;
-    }
-  }
+  ~MultiIndexIterator() = default;
 
   char const* typeName() const override { return "multi-index-iterator"; }
 
@@ -213,7 +208,7 @@ class MultiIndexIterator final : public IndexIterator {
   bool hasCovering() const override { return _hasCovering; }
 
  private:
-  std::vector<IndexIterator*> _iterators;
+  std::vector<std::unique_ptr<IndexIterator>> _iterators;
   size_t _currentIdx;
   IndexIterator* _current;
   bool _hasCovering;
@@ -221,6 +216,8 @@ class MultiIndexIterator final : public IndexIterator {
 
 /// Options for creating an index iterator
 struct IndexIteratorOptions {
+  /// @brief Limit used in a parent LIMIT node (if non-zero)
+  size_t limit = 0;
   /// @brief whether the index must sort its results
   bool sorted = true;
   /// @brief the index sort order - this is the same order for all indexes
@@ -228,12 +225,10 @@ struct IndexIteratorOptions {
   /// @brief Whether FCalls will be evaluated entirely or just it's arguments
   /// Used when creating the condition required to build an iterator
   bool evaluateFCalls = true;
-  /// @brief Whether to eagerly scan the full range of a condition
-  bool fullRange = false;
   /// @brief force covering index access in case this would otherwise be doubtful
   bool forceProjection = false;
-  /// @brief Limit used in a parent LIMIT node (if non-zero)
-  size_t limit = 0;
+  /// @brief enable caching
+  bool enableCache = true;
 };
   
 /// index estimate map, defined here because it was convenient

@@ -24,8 +24,11 @@
 #ifndef ARANGODB_BASICS_DATA_PROTECTOR_H
 #define ARANGODB_BASICS_DATA_PROTECTOR_H 1
 
+#include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <thread>
+
 #include "Basics/Common.h"
 
 namespace arangodb {

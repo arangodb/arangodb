@@ -42,7 +42,7 @@ struct ActiveFailoverJob final : public Job {
   virtual void run(bool&) override final;
   virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual bool start(bool&) override final;
-  virtual Result abort() override final;
+  virtual Result abort(std::string const& reason) override final;
 
  private:
   std::string findBestFollower();

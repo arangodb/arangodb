@@ -20,100 +20,79 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherHelper.h"
-#include "catch.hpp"
+#include "RowFetcherHelper.h"
+#include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ConstFetcher.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
+#include "Aql/Stats.h"
 
-#include "tests/Aql/BlockFetcherHelper.h"
-
-#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace tests {
-namespace aql {
+namespace arangodb::tests::aql {
 
-SCENARIO("IdExecutor", "[AQL][EXECUTOR][ID]") {
+class IdExecutorTest : public ::testing::Test {
+ protected:
   ExecutionState state;
 
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager(&monitor);
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
-  auto outputRegisters = make_shared_unordered_set();
-  auto registersToKeep = make_shared_unordered_set({0});  // this must be set correctly
+  AqlItemBlockManager itemBlockManager;
+  SharedAqlItemBlockPtr block;
+  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
+  std::shared_ptr<std::unordered_set<RegisterId>> registersToKeep;  // this must be set correctly
 
-  IdExecutorInfos infos(1 /*nrRegs*/, *registersToKeep /*toKeep*/, {} /*toClear*/);
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-  GIVEN("there are no rows upstream") {
-    WHEN("the producer does not wait") {
-      ConstFetcherHelper fetcher(itemBlockManager, nullptr);
-      IdExecutor<ConstFetcher> testee(fetcher, infos);
-      NoStats stats{};
+  IdExecutorInfos infos;
+  OutputAqlItemRow row;
 
-      THEN("the executor should return DONE with no block produced") {
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!row.produced());
-      }
-    }
+  IdExecutorTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
+        outputRegisters(make_shared_unordered_set()),
+        registersToKeep(make_shared_unordered_set({0})),
+        infos(1 /*nrRegs*/, *registersToKeep /*toKeep*/, {} /*toClear*/),
+        row(std::move(block), outputRegisters, registersToKeep, infos.registersToClear()) {}
+};
+
+TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
+  ConstFetcherHelper fetcher(itemBlockManager, nullptr);
+  IdExecutor<ConstFetcher> testee(fetcher, infos);
+  NoStats stats{};
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
+}
+
+TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
+  auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
+  ConstFetcherHelper fetcher(itemBlockManager, input->buffer());
+  IdExecutor<ConstFetcher> testee(fetcher, infos);
+  NoStats stats{};
+
+  // This block consumes all rows at once.
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(state, ExecutionState::DONE);
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
+
+  // verify result
+  AqlValue value;
+  auto block = row.stealBlock();
+  for (std::size_t index = 0; index < 3; index++) {
+    value = block->getValue(index, 0);
+    ASSERT_TRUE(value.isBoolean());
+    ASSERT_EQ(value.toBoolean(), input->slice().at(index).at(0).getBool());
   }
+}
 
-  GIVEN("there are rows in the upstream") {
-    auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-
-    WHEN("the producer does not wait") {
-      ConstFetcherHelper fetcher(itemBlockManager, input->buffer());
-      IdExecutor<ConstFetcher> testee(fetcher, infos);
-      NoStats stats{};
-
-      THEN("the executor should return the rows") {
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        std::tie(state, stats) = testee.produceRow(row);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRow(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row.produced());
-        }
-
-        // verify result
-        AqlValue value;
-        auto block = row.stealBlock();
-        for (std::size_t index = 0; index < 3; index++) {
-          value = block->getValue(index, 0);
-          REQUIRE(value.isBoolean());
-          REQUIRE(value.toBoolean() == input->slice().at(index).at(0).getBool());
-        }
-
-      }  // WHEN
-    }    // GIVEN
-
-  }  // GIVEN
-}  // SCENARIO
-
-}  // namespace aql
-}  // namespace tests
 }  // namespace arangodb

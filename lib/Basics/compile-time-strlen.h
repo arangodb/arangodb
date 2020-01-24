@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_COMPILE_TIME_STRLEN_H
 #define ARANGODB_BASICS_COMPILE_TIME_STRLEN_H 1
 
+#include <cstdlib>
+
 namespace arangodb {
 
 template<typename T>

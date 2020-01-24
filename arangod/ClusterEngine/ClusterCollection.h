@@ -49,8 +49,7 @@ class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class ClusterCollection final : public PhysicalCollection {
-  constexpr static double defaultLockTimeout = 10.0 * 60.0;
-
+  
  public:
   explicit ClusterCollection(LogicalCollection& collection, ClusterEngineType sengineType,
                              arangodb::velocypack::Slice const& info);
@@ -62,7 +61,7 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  IndexEstMap clusterIndexEstimates(bool allowUpdate, TRI_voc_tick_t tid) const override;
+  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) override;
 
   /// @brief sets the current index selectivity estimates
   void setClusterIndexEstimates(IndexEstMap&& estimates) override;
@@ -82,7 +81,7 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
-  std::shared_ptr<velocypack::Builder> figures() override;
+  futures::Future<OperationResult> figures() override;
 
   /// @brief closes an open collection
   int close() override;
@@ -111,9 +110,6 @@ class ClusterCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
-
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -162,12 +158,12 @@ class ClusterCollection final : public PhysicalCollection {
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine
-  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(arangodb::velocypack::Builder&) override;
 
  private:
   void addIndex(std::shared_ptr<arangodb::Index> idx);
 
-  // keep locks just to adhere to behaviour in other collections
+  // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;
   velocypack::Builder _info;

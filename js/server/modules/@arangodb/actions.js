@@ -1309,21 +1309,27 @@ function defineHttp (options) {
     return;
   }
 
-  var parameter = {
+  let parameters = {
     prefix: true,
-    allowUseDatabase: false
+    allowUseDatabase: false,
+    isSystem: false
   };
-
-  if (options.hasOwnProperty('prefix')) {
-    parameter.prefix = options.prefix;
+  
+  if (options.hasOwnProperty('isSystem')) {
+    parameters.isSystem = options.isSystem;
   }
 
+  if (options.hasOwnProperty('prefix')) {
+    parameters.prefix = options.prefix;
+  }
+
+  // currently only used by api-cluster.js
   if (options.hasOwnProperty('allowUseDatabase')) {
-    parameter.allowUseDatabase = options.allowUseDatabase;
+    parameters.allowUseDatabase = options.allowUseDatabase;
   }
 
   try {
-    internal.defineAction(url, callback, parameter);
+    internal.defineAction(url, callback, parameters);
   } catch (e) {
     console.errorLines("action '%s' encountered error:\n%s", url, e.stack || String(e));
   }
@@ -1788,7 +1794,6 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
     case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND:
     case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND:
-    case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND:
     case arangodb.ERROR_ARANGO_NO_INDEX:
     case arangodb.ERROR_ARANGO_INDEX_NOT_FOUND:
     case arangodb.ERROR_CURSOR_NOT_FOUND:

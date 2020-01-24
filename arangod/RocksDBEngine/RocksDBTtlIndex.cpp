@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTtlIndex.h"
+#include "Basics/FloatingPoint.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
@@ -47,17 +48,22 @@ RocksDBTtlIndex::RocksDBTtlIndex(
 #endif
 }
 
+/// @brief Test if this index matches the definition
+bool RocksDBTtlIndex::matchesDefinition(VPackSlice const& info) const {
+  // call compare method of parent first
+  if (!RocksDBSkiplistIndex::matchesDefinition(info)) {
+    return false;
+  }
+  // compare our own attribute, "expireAfter"
+  TRI_ASSERT(info.isObject());
+  double const expireAfter = info.get(StaticStrings::IndexExpireAfter).getNumber<double>();
+  return FloatingPoint<double>{expireAfter}.AlmostEquals(FloatingPoint<double>{_expireAfter});
+}
+
 void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
                                    std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  // always non-unique, always sparse
-  builder.add(
-    arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false)
-  );
-  builder.add(
-    arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true)
-  );
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
   builder.close();
 }

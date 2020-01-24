@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collections
 @brief returns all collections
 
-@RESTHEADER{GET /_api/collection,reads all collections}
+@RESTHEADER{GET /_api/collection,reads all collections, handleCommandGet}
 
 @HINTS
 {% hint 'warning' %}
@@ -43,4 +43,3 @@ Return information about all collections:
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

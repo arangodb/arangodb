@@ -2,7 +2,7 @@
 @startDocuBlock get_api_database_list
 @brief retrieves a list of all existing databases
 
-@RESTHEADER{GET /_api/database, List of databases}
+@RESTHEADER{GET /_api/database, List of databases, getDatabases:all}
 
 @RESTDESCRIPTION
 Retrieves the list of all existing databases
@@ -33,4 +33,3 @@ is returned if the request was not executed in the *_system* database.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

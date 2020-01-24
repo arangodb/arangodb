@@ -25,15 +25,16 @@
 #define ARANGOD_CONSENSUS_NODE_H 1
 
 #include "AgencyCommon.h"
+#include "Cluster/ResultT.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 enum NodeType { NODE, LEAF };
 enum Operation {
@@ -47,7 +48,11 @@ enum Operation {
   OBSERVE,
   UNOBSERVE,
   ERASE,
-  REPLACE
+  REPLACE,
+  READ_LOCK,
+  READ_UNLOCK,
+  WRITE_LOCK,
+  WRITE_UNLOCK,
 };
 
 using namespace arangodb::velocypack;
@@ -134,11 +139,9 @@ class Node {
   /// @brief Get node specified by path vector
   Node const& operator()(std::vector<std::string> const& pv) const;
 
-  /// @brief Remove child by name
-  bool removeChild(std::string const& key);
-
-  /// @brief Remove this node and below from tree
-  bool remove();
+  /// @brief  Remove child by name
+  /// @return shared pointer to removed child
+  arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
 
   /// @brief Get root node
   Node const& root() const;
@@ -153,14 +156,14 @@ class Node {
   std::string path();
 
   /// @brief Apply single operation as defined by "op"
-  bool applieOp(arangodb::velocypack::Slice const&);
+  ResultT<std::shared_ptr<Node>> applyOp(arangodb::velocypack::Slice const&);
 
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
 
   /// @brief handle "op" keys in write json
   template <Operation Oper>
-  bool handle(arangodb::velocypack::Slice const&);
+  arangodb::ResultT<std::shared_ptr<Node>> handle(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
@@ -180,20 +183,38 @@ class Node {
   /// @brief Get value type
   ValueType valueType() const;
 
-  /// @brief Add observer for this node
-  bool addObserver(std::string const&);
-
-  /// @brief Add observer for this node
-  void notifyObservers(std::string const& origin) const;
-
-  /// @brief Is this node being observed by url
-  bool observedBy(std::string const& url) const;
-
   /// @brief Get our container
   Store& store();
 
   /// @brief Get our container
   Store const& store() const;
+
+  /// @brief Normalize node URIs
+  static std::string normalize(std::string const& key);
+
+  /// @brief Split path to path vector
+  static std::vector<std::string> split(const std::string& str, char separator);
+
+private:
+
+  /// @brief Get store if it exists:
+  Store* getStore();
+
+  /// @brief Hand out sharep ptr to a child
+  std::shared_ptr<Node> child(std::string const& key);
+
+  /// @brief Remove me from tree, if not root node, clear else.
+  /// @return If not root node, shared pointer copy to this node is returned
+  ///         to control life time by caller; else nullptr.
+  arangodb::ResultT<std::shared_ptr<Node>> deleteMe();
+
+  /// @brief Access private methods
+  friend class Store;
+
+  // @brief check lifetime expiry
+  bool lifetimeExpired() const;
+
+public:
 
   /// @brief Create JSON representation of this node and below
   std::string toJson() const;
@@ -307,11 +328,6 @@ class Node {
   /// @brief Get insigned value (throws if type NODE or if conversion fails)
   uint64_t getUInt() const;
 
-  //
-  // The protected accessors are the "old" interface.  They throw.
-  //  Please use the hasAsXXX replacements.
-  //
- protected:
   /// @brief Get node specified by path string, always throw if not there
   Node const& get(std::string const& path) const;
 
@@ -324,7 +340,26 @@ class Node {
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
 
+  template<typename T>
+  auto getNumberUnlessExpiredWithDefault() -> T {
+    if (ADB_LIKELY(!lifetimeExpired())) {
+      try {
+        return this->slice().getNumber<T>();
+      } catch (...) {
+      }
+    }
+
+    return T{0};
+  }
+
+  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
+
  public:
+  bool isReadLockable(const VPackStringRef& by) const;
+  bool isReadUnlockable(const VPackStringRef& by) const;
+  bool isWriteLockable(const VPackStringRef& by) const;
+  bool isWriteUnlockable(const VPackStringRef& by) const;
+
   /// @brief Clear key value store
   void clear();
 
@@ -359,7 +394,7 @@ class Node {
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus
 
 #endif

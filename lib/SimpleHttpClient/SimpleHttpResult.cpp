@@ -26,6 +26,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
@@ -54,7 +55,7 @@ SimpleHttpResult::SimpleHttpResult()
   _resultBody.ensureNullTerminated();
 }
 
-SimpleHttpResult::~SimpleHttpResult() {}
+SimpleHttpResult::~SimpleHttpResult() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// public methods
@@ -87,9 +88,7 @@ std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack(VPackOptions c
 
 // Default case
 std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  return getBodyVelocyPack(options);
+  return getBodyVelocyPack(*VelocyPackHelper::optionsWithUniquenessCheck());
 }
 
 std::string SimpleHttpResult::getResultTypeMessage() const {
@@ -134,7 +133,7 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
 
   // lower-case key
   std::string keyString(key, keyLength);
-  StringUtils::tolowerInPlace(&keyString);
+  StringUtils::tolowerInPlace(keyString);
 
   // trim value
   {

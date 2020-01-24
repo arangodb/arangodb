@@ -38,7 +38,7 @@ enum class ErrorCode : uint8_t {
 };
 
 struct FutureException : public std::exception {
-  FutureException(ErrorCode code) : _code(code) {}
+  explicit FutureException(ErrorCode code) : _code(code) {}
 
   ErrorCode code() const noexcept { return _code; }
 

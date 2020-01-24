@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -64,6 +63,9 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reade
     throw std::out_of_range("index out of range");
   }
   virtual size_t size() const override { return 0; }
+  virtual const irs::columnstore_reader::column_reader* sort() const override {
+    return nullptr;
+  }
 }; // index_reader
 
 NS_END // LOCAL
@@ -74,7 +76,7 @@ NS_ROOT
 // --SECTION--                                         sub_reader implementation
 // -----------------------------------------------------------------------------
 
-/*static*/ const sub_reader& sub_reader::empty() NOEXCEPT {
+/*static*/ const sub_reader& sub_reader::empty() noexcept {
   return empty_sub_reader::instance();
 }
 

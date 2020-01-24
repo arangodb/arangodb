@@ -21,9 +21,23 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <fcntl.h>
+#include <string.h>
+
 #include "socket-utils.h"
 
+#ifdef TRI_HAVE_NETDB_H
+#include <netdb.h>
+#endif
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a socket
@@ -346,3 +360,36 @@ int TRI_InetPton6(char const* src, unsigned char* dst) {
 
   return TRI_ERROR_NO_ERROR;
 }
+
+#ifdef _WIN32
+bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
+  DWORD to = (DWORD)timeout * 1000;
+
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to, sizeof(to)) != 0) {
+    return false;
+  }
+
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to, sizeof(to)) != 0) {
+    return false;
+  }
+  return true;
+}
+#else
+bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
+  struct timeval tv;
+
+  // shut up Valgrind
+  memset(&tv, 0, sizeof(tv));
+  tv.tv_sec = (time_t)timeout;
+  tv.tv_usec = (suseconds_t)((timeout - (double)tv.tv_sec) * 1000000.0);
+
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
+    return false;
+  }
+
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != 0) {
+    return false;
+  }
+  return true;
+}
+#endif

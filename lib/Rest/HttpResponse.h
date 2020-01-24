@@ -28,26 +28,23 @@
 #include "Rest/GeneralResponse.h"
 
 #include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 class RestBatchHandler;
 
-namespace rest {
-class HttpCommTask;
-class GeneralCommTask;
-}  // namespace rest
+enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
 
 class HttpResponse : public GeneralResponse {
-  friend class rest::HttpCommTask;
-  friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
  public:
   static bool HIDE_PRODUCT_HEADER;
 
  public:
-  explicit HttpResponse(ResponseCode code, basics::StringBuffer* leased);
-  ~HttpResponse();
+  explicit HttpResponse(ResponseCode code, uint64_t mid,
+                        std::unique_ptr<basics::StringBuffer> = nullptr);
+  ~HttpResponse() = default;
 
  public:
   bool isHeadResponse() const { return _isHeadResponse; }
@@ -56,6 +53,7 @@ class HttpResponse : public GeneralResponse {
   void setCookie(std::string const& name, std::string const& value,
                  int lifeTimeSeconds, std::string const& path,
                  std::string const& domain, bool secure, bool httpOnly);
+  std::vector<std::string> const& cookies() const { return _cookies; }
 
   // In case of HEAD request, no body must be defined. However, the response
   // needs to know the size of body.
@@ -78,10 +76,17 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Slice const&,
+                  velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override;
-  void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Buffer<uint8_t>&&,
+                  velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override;
+  void addRawPayload(velocypack::StringRef payload) override;
+
+  bool isResponseEmpty() const override {
+    return _body->empty();
+  }
 
   /// used for head-responses
   bool setGenerateBody(bool generateBody) override final {
@@ -94,23 +99,24 @@ class HttpResponse : public GeneralResponse {
     return arangodb::Endpoint::TransportType::HTTP;
   }
 
+  std::unique_ptr<basics::StringBuffer> stealBody() {
+    std::unique_ptr<basics::StringBuffer> body(std::move(_body));
+    return body;
+  }
+  
  private:
   // the body must already be set. deflate is then run on the existing body
-  int deflate(size_t = 16384);
-
-  std::unique_ptr<basics::StringBuffer> stealBody() {
-    std::unique_ptr<basics::StringBuffer> bb(_body);
-    _body = nullptr;
-    return bb;
+  int deflate(size_t size = 16384) override {
+    return _body->deflate(size);
   }
 
- private:
-  bool _isHeadResponse;
-  std::vector<std::string> _cookies;
-  basics::StringBuffer* _body;
-  size_t _bodySize;
-
   void addPayloadInternal(velocypack::Slice, size_t, velocypack::Options const*, bool);
+  
+ private:
+  std::vector<std::string> _cookies;
+  std::unique_ptr<basics::StringBuffer> _body;
+  size_t _bodySize;
+  bool _isHeadResponse;
 };
 }  // namespace arangodb
 

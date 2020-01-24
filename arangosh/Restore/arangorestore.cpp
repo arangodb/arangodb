@@ -24,15 +24,16 @@
 #include "Basics/Common.h"
 #include "Basics/directories.h"
 
-#include "ApplicationFeatures/BasicPhase.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
@@ -59,22 +60,24 @@ int main(int argc, char* argv[]) {
     ApplicationServer server(options, BIN_DIRECTORY);
     int ret;
 
-    server.addFeature(new application_features::BasicFeaturePhase(server, true));
-    server.addFeature(new application_features::CommunicationFeaturePhase(server));
-    server.addFeature(new application_features::GreetingsFeaturePhase(server, true));
-    server.addFeature(new ClientFeature(server, false));
-    server.addFeature(new ConfigFeature(server, "arangorestore"));
-    server.addFeature(new LoggerFeature(server, false));
-    server.addFeature(new RandomFeature(server));
-    server.addFeature(new RestoreFeature(server, ret));
-    server.addFeature(new ShellColorsFeature(server));
-    server.addFeature(new ShutdownFeature(server, {"Restore"}));
-    server.addFeature(new SslFeature(server));
-    server.addFeature(new TempFeature(server, "arangorestore"));
-    server.addFeature(new VersionFeature(server));
+    server.addFeature<BasicFeaturePhaseClient>();
+    server.addFeature<CommunicationFeaturePhase>();
+    server.addFeature<GreetingsFeaturePhase>(true);
+
+    server.addFeature<ClientFeature, HttpEndpointProvider>(false);
+    server.addFeature<ConfigFeature>("arangorestore");
+    server.addFeature<LoggerFeature>(false);
+    server.addFeature<RandomFeature>();
+    server.addFeature<RestoreFeature>(ret);
+    server.addFeature<ShellColorsFeature>();
+    server.addFeature<ShutdownFeature>(
+        std::vector<std::type_index>{std::type_index(typeid(RestoreFeature))});
+    server.addFeature<SslFeature>();
+    server.addFeature<TempFeature>("arangorestore");
+    server.addFeature<VersionFeature>();
 
 #ifdef USE_ENTERPRISE
-    server.addFeature(new EncryptionFeature(server));
+    server.addFeature<EncryptionFeature>();
 #endif
 
     try {

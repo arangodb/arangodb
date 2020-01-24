@@ -30,8 +30,7 @@
 
 #include "Agency/Agent.h"
 #include "Basics/StaticStrings.h"
-#include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Logger/LogMacros.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -46,9 +45,10 @@ using namespace arangodb::consensus;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
+RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
-    : RestVocbaseBaseHandler(request, response), _agent(agent) {}
+    : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
@@ -157,21 +157,23 @@ RestStatus RestAgencyHandler::handleStores() {
       VPackObjectBuilder b(&body);
       {
         _agent->executeLockedRead([&]() {
-          body.add(VPackValue("spearhead"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->spearhead().dumpToBuilder(body);
-          }
-          body.add(VPackValue("read_db"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->readDB().dumpToBuilder(body);
-          }
-          body.add(VPackValue("transient"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->transient().dumpToBuilder(body);
-          }
+            body.add(VPackValue("spearhead"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->spearhead().dumpToBuilder(body);
+            }
+            body.add(VPackValue("read_db"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->readDB().dumpToBuilder(body);
+            }
+        });
+        _agent->executeTransientLocked([&]() {
+            body.add(VPackValue("transient"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->transient().dumpToBuilder(body);
+            }
         });
       }
     }
@@ -228,7 +230,7 @@ RestStatus RestAgencyHandler::handleWrite() {
 
   // Empty request array
   if (query->slice().length() == 0) {
-    return reportMessage(rest::ResponseCode::BAD, "Empty request.");
+    return reportMessage(rest::ResponseCode::BAD, "Empty request");
   }
 
   // Leadership established?
@@ -403,7 +405,7 @@ RestStatus RestAgencyHandler::handleInquire() {
   }
 
   // Leadership established?
-  if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
+  if (_agent->leaderID() == NO_LEADER) {
     return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 
@@ -541,6 +543,14 @@ RestStatus RestAgencyHandler::handleConfig() {
       return RestStatus::DONE;
     }
   }
+  else if (_request->requestType() == rest::RequestType::PUT) {
+    try {
+      _agent->updateSomeConfigValues(_request->toVelocyPackBuilderPtr()->slice());
+    } catch (std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      return RestStatus::DONE;
+    }
+  }
 
   // Respond with configuration
   auto last = _agent->lastCommitted();
@@ -568,7 +578,7 @@ RestStatus RestAgencyHandler::handleConfig() {
 RestStatus RestAgencyHandler::handleState() {
 
   VPackBuilder body;
-  { 
+  {
     VPackObjectBuilder o(&body);
     _agent->readDB(body);
   }
@@ -583,6 +593,7 @@ RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 }
 
 RestStatus RestAgencyHandler::execute() {
+  response()->setAllowCompression(true);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request
@@ -602,6 +613,7 @@ RestStatus RestAgencyHandler::execute() {
         return handleTransact();
       } else if (suffixes[0] == "config") {
         if (_request->requestType() != rest::RequestType::GET &&
+            _request->requestType() != rest::RequestType::PUT &&
             _request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }

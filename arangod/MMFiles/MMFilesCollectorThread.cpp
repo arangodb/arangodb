@@ -141,7 +141,7 @@ static bool ScanMarker(MMFilesMarker const* marker, void* data, MMFilesDatafile*
         break;
       }
 
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) + 
                        MMFilesDatafileHelper::VPackOffset(type));
       state->documentOperations[collectionId][transaction::helpers::extractKeyFromDocument(slice)
                                                   .copyString()] = marker;
@@ -227,8 +227,8 @@ static bool ScanMarker(MMFilesMarker const* marker, void* data, MMFilesDatafile*
 uint64_t const MMFilesCollectorThread::Interval = 1000000;
 
 /// @brief create the collector thread
-MMFilesCollectorThread::MMFilesCollectorThread(MMFilesLogfileManager* logfileManager)
-    : Thread("WalCollector"),
+MMFilesCollectorThread::MMFilesCollectorThread(MMFilesLogfileManager& logfileManager)
+    : Thread(logfileManager.server(), "WalCollector"),
       _logfileManager(logfileManager),
       _condition(),
       _forcedStopIterations(-1),
@@ -256,7 +256,7 @@ void MMFilesCollectorThread::beginShutdown() {
   Thread::beginShutdown();
 
   // deactivate write-throttling on shutdown
-  _logfileManager->throttleWhenPending(0);
+  _logfileManager.throttleWhenPending(0);
 
   CONDITION_LOCKER(guard, _condition);
   guard.signal();
@@ -383,14 +383,14 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
   TRI_IF_FAILURE("CollectorThreadCollect") { return TRI_ERROR_NO_ERROR; }
 
-  MMFilesWalLogfile* logfile = _logfileManager->getCollectableLogfile();
+  MMFilesWalLogfile* logfile = _logfileManager.getCollectableLogfile();
 
   if (logfile == nullptr) {
     return TRI_ERROR_NO_ERROR;
   }
 
   worked = true;
-  _logfileManager->setCollectionRequested(logfile);
+  _logfileManager.setCollectionRequested(logfile);
 
   try {
     int res = collect(logfile);
@@ -403,10 +403,10 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
       MMFilesPersistentIndexFeature::syncWal();
 
-      _logfileManager->setCollectionDone(logfile);
+      _logfileManager.setCollectionDone(logfile);
     } else {
       // return the logfile to the logfile manager in case of errors
-      _logfileManager->forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
+      _logfileManager.forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
 
       // set error in collector
       broadcastCollectorResult(res);
@@ -414,7 +414,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
     return res;
   } catch (arangodb::basics::Exception const& ex) {
-    _logfileManager->forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
+    _logfileManager.forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
 
     int res = ex.code();
 
@@ -423,7 +423,7 @@ int MMFilesCollectorThread::collectLogfiles(bool& worked) {
 
     return res;
   } catch (...) {
-    _logfileManager->forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
+    _logfileManager.forceStatus(logfile, MMFilesWalLogfile::StatusType::SEALED);
 
     LOG_TOPIC("56d6f", DEBUG, Logger::COLLECTOR) << "collecting logfile " << logfile->id() << " failed";
 
@@ -520,12 +520,12 @@ void MMFilesCollectorThread::processQueuedOperations(bool& worked) {
 
       if (res == TRI_ERROR_NO_ERROR) {
         uint64_t numOperations = (*it2)->operations->size();
-        uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();
+        uint64_t maxNumPendingOperations = _logfileManager.throttleWhenPending();
 
         if (maxNumPendingOperations > 0 && _numPendingOperations >= maxNumPendingOperations &&
             (_numPendingOperations - numOperations) < maxNumPendingOperations) {
           // write-throttling was active, but can be turned off now
-          _logfileManager->deactivateWriteThrottling();
+          _logfileManager.deactivateWriteThrottling();
           LOG_TOPIC("d1de7", INFO, Logger::COLLECTOR) << "deactivating write-throttling";
         }
 
@@ -534,7 +534,7 @@ void MMFilesCollectorThread::processQueuedOperations(bool& worked) {
         // delete the element from the vector while iterating over the vector
         it2 = operations.erase(it2);
 
-        _logfileManager->decreaseCollectQueueSize(logfile);
+        _logfileManager.decreaseCollectQueueSize(logfile);
       } else {
         // do not delete the object but advance in the operations vector
         ++it2;
@@ -556,7 +556,7 @@ void MMFilesCollectorThread::clearQueuedOperations() {
         break;
       }
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   TRI_ASSERT(_operationsQueueInUse);  // by us
@@ -582,7 +582,7 @@ void MMFilesCollectorThread::clearQueuedOperations() {
             physical->decreaseUncollectedLogfileEntries(cache->totalOperationsCount);
           }
           _numPendingOperations -= cache->operations->size();
-          _logfileManager->decreaseCollectQueueSize(cache->logfile);
+          _logfileManager.decreaseCollectQueueSize(cache->logfile);
 
           cache.reset();
         } catch (...) {
@@ -642,7 +642,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     auto& dfi = cache->createDfi(fid);
     dfi.numberUncollected--;
 
-    VPackSlice slice(reinterpret_cast<char const*>(walMarker) +
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(walMarker) +
                      MMFilesDatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
 
@@ -665,6 +665,7 @@ void MMFilesCollectorThread::processCollectionMarker(
               wasAdjusted = physical->updateLocalDocumentIdConditional(
                   element.localDocumentId(), walMarker, newPosition, fid, false);
             }
+            return true;
           });
     }
 
@@ -683,7 +684,7 @@ void MMFilesCollectorThread::processCollectionMarker(
     dfi.numberUncollected--;
     dfi.numberDeletions++;
 
-    VPackSlice slice(reinterpret_cast<char const*>(walMarker) +
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(walMarker) + 
                      MMFilesDatafileHelper::VPackOffset(type));
     TRI_ASSERT(slice.isObject());
 
@@ -703,6 +704,7 @@ void MMFilesCollectorThread::processCollectionMarker(
               dfi.numberDead++;
               dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
             }
+            return true;
           });
     }
   }
@@ -1022,7 +1024,7 @@ void MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfil
 
   TRI_voc_cid_t cid = cache->collectionId;
   uint64_t numOperations = cache->operations->size();
-  uint64_t maxNumPendingOperations = _logfileManager->throttleWhenPending();
+  uint64_t maxNumPendingOperations = _logfileManager.throttleWhenPending();
 
   TRI_ASSERT(!cache->operations->empty());
 
@@ -1034,7 +1036,7 @@ void MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfil
       if (!_operationsQueueInUse) {
         _operationsQueue[cid].emplace_back(std::move(cache));
         // now _operationsQueue is responsible for managing the cache entry
-        _logfileManager->increaseCollectQueueSize(logfile);
+        _logfileManager.increaseCollectQueueSize(logfile);
 
         // exit the loop
         break;
@@ -1042,14 +1044,14 @@ void MMFilesCollectorThread::queueOperations(arangodb::MMFilesWalLogfile* logfil
     }
 
     // wait outside the mutex for the flag to be cleared
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   if (maxNumPendingOperations > 0 && _numPendingOperations < maxNumPendingOperations &&
       (_numPendingOperations + numOperations) >= maxNumPendingOperations &&
       !isStopping()) {
     // activate write-throttling!
-    _logfileManager->activateWriteThrottling();
+    _logfileManager.activateWriteThrottling();
     LOG_TOPIC("f63d4", WARN, Logger::COLLECTOR)
         << "queued more than " << maxNumPendingOperations << " pending WAL collector operations."
         << " current queue size: " << (_numPendingOperations + numOperations)

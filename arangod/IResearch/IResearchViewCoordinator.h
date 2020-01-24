@@ -81,9 +81,23 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return primary sorting order of a view, empty -> use system order
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewSort const& primarySort() const noexcept {
+    return _meta._primarySort;
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return stored values from links collections
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewStoredValues const& storedValues() const noexcept {
+    return _meta._storedValues;
+  }
+
  protected:
   virtual Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                      bool detailed, bool forPersistence) const override;
+                                      Serialization context) const override;
 
   virtual arangodb::Result dropImpl() override;
 

@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_properties
 @brief reads the properties of the specified collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection}
+@RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection, handleCommandGet:collectionProperties}
 
 @HINTS
 {% hint 'warning' %}
@@ -30,7 +30,6 @@ is returned.
 @RESTREPLYBODY{,object,required,collection_info}
 
 @RESTDESCRIPTION
-
 
 @EXAMPLES
 
@@ -66,4 +65,3 @@ Using a name:
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -24,30 +24,32 @@
 #ifndef ARANGOD_AQL_AST_NODE_H
 #define ARANGOD_AQL_AST_NODE_H 1
 
-#include "Basics/AttributeNameParser.h"
-#include "Basics/Common.h"
-#include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-
-#include <iosfwd>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
+class StringRef;
 }  // namespace velocypack
 namespace basics {
+struct AttributeName;
 class StringBuffer;
-}
+}  // namespace basics
 
 namespace aql {
 class Ast;
 struct Variable;
 
 /// @brief type for node flags
-typedef uint32_t AstNodeFlagsType;
+using AstNodeFlagsType = uint32_t;
 
 /// @brief different flags for nodes
 /// the flags are used to prevent repeated calculations of node properties
@@ -75,6 +77,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_BIND_PARAMETER = 0x0020000,  // node was created from a bind parameter
   FLAG_FINALIZED = 0x0040000,  // node has been finalized and should not be modified; only
                                // set and checked in maintainer mode
+  FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
 };
 
 /// @brief enumeration of AST node value types
@@ -106,25 +109,21 @@ struct AstNodeValue {
     void* _data;
 
     // constructors for union values
-    explicit Value(int64_t value) : _int(value) {}
-    explicit Value(double value) : _double(value) {}
-    explicit Value(bool value) : _bool(value) {}
-    explicit Value(char const* value) : _string(value) {}
+    explicit Value(int64_t value);
+    explicit Value(double value);
+    explicit Value(bool value);
+    explicit Value(char const* value);
   };
 
   Value value;
   uint32_t length;  // only used for string values
   AstNodeValueType type;
 
-  AstNodeValue() : value(int64_t(0)), length(0), type(VALUE_TYPE_NULL) {}
-  explicit AstNodeValue(int64_t value)
-      : value(value), length(0), type(VALUE_TYPE_INT) {}
-  explicit AstNodeValue(double value)
-      : value(value), length(0), type(VALUE_TYPE_DOUBLE) {}
-  explicit AstNodeValue(bool value)
-      : value(value), length(0), type(VALUE_TYPE_BOOL) {}
-  explicit AstNodeValue(char const* value, uint32_t length)
-      : value(value), length(length), type(VALUE_TYPE_STRING) {}
+  AstNodeValue();
+  explicit AstNodeValue(int64_t value);
+  explicit AstNodeValue(double value);
+  explicit AstNodeValue(bool value);
+  explicit AstNodeValue(char const* value, uint32_t length);
 };
 
 /// @brief enumeration of AST node types
@@ -221,18 +220,6 @@ struct AstNode {
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;
 
-  /// @brief helper for building flags
-  template <typename... Args>
-  static inline std::underlying_type<AstNodeFlagType>::type makeFlags(AstNodeFlagType flag,
-                                                                      Args... args) {
-    return static_cast<std::underlying_type<AstNodeFlagType>::type>(flag) +
-           makeFlags(args...);
-  }
-
-  static inline std::underlying_type<AstNodeFlagType>::type makeFlags() {
-    return static_cast<std::underlying_type<AstNodeFlagType>::type>(0);
-  }
-
   /// @brief create the node
   explicit AstNode(AstNodeType);
 
@@ -255,7 +242,7 @@ struct AstNode {
 
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
-  
+
   /// @brief return the string value of a node, as a arangodb::velocypack::StringRef
   arangodb::velocypack::StringRef getStringRef() const noexcept;
 
@@ -322,26 +309,22 @@ struct AstNode {
   AstNode const* castToNumber(Ast*) const;
 
   /// @brief check a flag for the node
-  inline bool hasFlag(AstNodeFlagType flag) const {
-    return ((flags & static_cast<decltype(flags)>(flag)) != 0);
-  }
+  bool hasFlag(AstNodeFlagType flag) const;
 
   /// @brief reset flags in case a node is changed drastically
-  inline void clearFlags() { flags = 0; }
+  void clearFlags();
 
   /// @brief recursively clear flags
   void clearFlagsRecursive();
 
   /// @brief set a flag for the node
-  inline void setFlag(AstNodeFlagType flag) const { flags |= flag; }
+  void setFlag(AstNodeFlagType flag) const;
 
   /// @brief set two flags for the node
-  inline void setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const {
-    flags |= (typeFlag | valueFlag);
-  }
+  void setFlag(AstNodeFlagType typeFlag, AstNodeFlagType valueFlag) const;
 
   /// @brief remove a flag for the node
-  inline void removeFlag(AstNodeFlagType flag) const { flags &= ~flag; }
+  void removeFlag(AstNodeFlagType flag) const;
 
   /// @brief whether or not the node value is trueish
   bool isTrue() const;
@@ -350,103 +333,43 @@ struct AstNode {
   bool isFalse() const;
 
   /// @brief whether or not the members of a list node are sorted
-  inline bool isSorted() const {
-    return ((flags & (DETERMINED_SORTED | VALUE_SORTED)) == (DETERMINED_SORTED | VALUE_SORTED));
-  }
+  bool isSorted() const;
 
   /// @brief whether or not a value node is NULL
-  inline bool isNullValue() const {
-    return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_NULL);
-  }
+  bool isNullValue() const;
 
   /// @brief whether or not a value node is an integer
-  inline bool isIntValue() const {
-    return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_INT);
-  }
+  bool isIntValue() const;
 
   /// @brief whether or not a value node is a dobule
-  inline bool isDoubleValue() const {
-    return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_DOUBLE);
-  }
+  bool isDoubleValue() const;
 
   /// @brief whether or not a value node is of numeric type
-  inline bool isNumericValue() const {
-    return (type == NODE_TYPE_VALUE &&
-            (value.type == VALUE_TYPE_INT || value.type == VALUE_TYPE_DOUBLE));
-  }
+  bool isNumericValue() const;
 
   /// @brief whether or not a value node is of bool type
-  inline bool isBoolValue() const {
-    return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_BOOL);
-  }
+  bool isBoolValue() const;
 
   /// @brief whether or not a value node is of string type
-  inline bool isStringValue() const {
-    return (type == NODE_TYPE_VALUE && value.type == VALUE_TYPE_STRING);
-  }
+  bool isStringValue() const;
 
   /// @brief whether or not a value node is of list type
-  inline bool isArray() const { return (type == NODE_TYPE_ARRAY); }
+  bool isArray() const;
 
   /// @brief whether or not a value node is of array type
-  inline bool isObject() const { return (type == NODE_TYPE_OBJECT); }
+  bool isObject() const;
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
-  AstNode const* getAttributeAccessForVariable(bool allowIndexedAccess) const {
-    if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION &&
-        !(allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)) {
-      return nullptr;
-    }
-
-    auto node = this;
-
-    while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-           (allowIndexedAccess && node->type == NODE_TYPE_INDEXED_ACCESS) ||
-           node->type == NODE_TYPE_EXPANSION) {
-      if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS || node->type == NODE_TYPE_INDEXED_ACCESS) {
-        node = node->getMember(0);
-      } else {
-        // expansion, i.e. [*]
-        TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
-        TRI_ASSERT(node->numMembers() >= 2);
-
-        if (node->getMember(1)->type != NODE_TYPE_REFERENCE) {
-          if (node->getMember(1)->getAttributeAccessForVariable(allowIndexedAccess) == nullptr) {
-            return nullptr;
-          }
-        }
-
-        TRI_ASSERT(node->getMember(0)->type == NODE_TYPE_ITERATOR);
-
-        node = node->getMember(0)->getMember(1);
-      }
-    }
-
-    if (node->type == NODE_TYPE_REFERENCE) {
-      return node;
-    }
-
-    return nullptr;
-  }
+  AstNode const* getAttributeAccessForVariable(bool allowIndexedAccess) const;
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to any variable reference
-  bool isAttributeAccessForVariable() const {
-    return (getAttributeAccessForVariable(false) != nullptr);
-  }
+  bool isAttributeAccessForVariable() const;
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to the specified variable reference
-  bool isAttributeAccessForVariable(Variable const* variable, bool allowIndexedAccess) const {
-    auto node = getAttributeAccessForVariable(allowIndexedAccess);
-
-    if (node == nullptr) {
-      return false;
-    }
-
-    return (static_cast<Variable const*>(node->getData()) == variable);
-  }
+  bool isAttributeAccessForVariable(Variable const* variable, bool allowIndexedAccess) const;
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to any variable reference
@@ -518,122 +441,59 @@ struct AstNode {
   bool containsNodeType(AstNodeType searchType) const;
 
   /// @brief return the number of members
-  inline size_t numMembers() const noexcept { return members.size(); }
+  size_t numMembers() const noexcept;
 
   /// @brief reserve space for members
-  void reserve(size_t n) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    members.reserve(n);
-  }
+  void reserve(size_t n);
 
   /// @brief add a member to the node
-  void addMember(AstNode* node) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    if (node == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    try {
-      members.emplace_back(node);
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-  }
+  void addMember(AstNode* node);
 
   /// @brief add a member to the node
-  inline void addMember(AstNode const* node) {
-    addMember(const_cast<AstNode*>(node));
-  }
+  void addMember(AstNode const* node);
 
   /// @brief change a member of the node
-  void changeMember(size_t i, AstNode* node) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    if (i >= members.size()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
-    }
-    members[i] = node;
-  }
+  void changeMember(size_t i, AstNode* node);
 
   /// @brief remove a member from the node
-  inline void removeMemberUnchecked(size_t i) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    members.erase(members.begin() + i);
-  }
+  void removeMemberUnchecked(size_t i);
 
-  /// @brief remove all members from the node at once
-  void removeMembers() {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    members.clear();
-  }
+  /// @brief remove a member from the node while breaking members ordering. Faster than removeMemberUnchecked
+  void removeMemberUncheckedUnordered(size_t i);
 
   /// @brief return a member of the node
-  inline AstNode* getMember(size_t i) const {
-    if (i >= members.size()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
-    }
-    return getMemberUnchecked(i);
-  }
+  AstNode* getMember(size_t i) const;
 
   /// @brief return a member of the node
-  inline AstNode* getMemberUnchecked(size_t i) const noexcept {
-    return members[i];
-  }
+  AstNode* getMemberUnchecked(size_t i) const noexcept;
 
   /// @brief sort members with a custom comparison function
-  void sortMembers(std::function<bool(AstNode const*, AstNode const*)> const& func) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    std::sort(members.begin(), members.end(), func);
-  }
+  void sortMembers(std::function<bool(AstNode const*, AstNode const*)> const& func);
 
   /// @brief reduces the number of members of the node
-  void reduceMembers(size_t i) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    if (i > members.size()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
-    }
-    members.erase(members.begin() + i, members.end());
-  }
+  void reduceMembers(size_t i);
 
-  inline void clearMembers() {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    members.clear();
-  }
+  void clearMembers();
 
   /// @brief mark a < or <= operator to definitely exclude the "null" value
   /// this is only for optimization purposes
-  inline void setExcludesNull(bool v = true) {
-    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || type == NODE_TYPE_OPERATOR_BINARY_LE ||
-               type == NODE_TYPE_OPERATOR_BINARY_EQ);
-    value.value._bool = v;
-  }
+  void setExcludesNull(bool v = true);
 
   /// @brief check if an < or <= operator definitely excludes the "null" value
   /// this is only for optimization purposes
-  inline bool getExcludesNull() const noexcept {
-    TRI_ASSERT(type == NODE_TYPE_OPERATOR_BINARY_LT || type == NODE_TYPE_OPERATOR_BINARY_LE ||
-               type == NODE_TYPE_OPERATOR_BINARY_EQ);
-    return value.value._bool;
-  }
+  bool getExcludesNull() const noexcept;
 
   /// @brief set the node's value type
-  inline void setValueType(AstNodeValueType type) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    value.type = type;
-  }
+  void setValueType(AstNodeValueType type);
 
   /// @brief check whether this node value is of expectedType
-  inline bool isValueType(AstNodeValueType expectedType) const noexcept {
-    return value.type == expectedType;
-  }
+  bool isValueType(AstNodeValueType expectedType) const noexcept;
 
   /// @brief return the bool value of a node
-  inline bool getBoolValue() const noexcept { return value.value._bool; }
+  bool getBoolValue() const noexcept;
 
   /// @brief set the bool value of a node
-  inline void setBoolValue(bool v) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    value.value._bool = v;
-  }
+  void setBoolValue(bool v);
 
   /// @brief return the int value of a node
   /// this will return 0 for all non-value nodes and for all non-int value
@@ -641,69 +501,41 @@ struct AstNode {
   int64_t getIntValue() const;
 
   /// @brief return the int value stored for a node, regardless of the node type
-  inline int64_t getIntValue(bool) const noexcept { return value.value._int; }
+  int64_t getIntValue(bool) const noexcept;
 
   /// @brief set the int value of a node
-  inline void setIntValue(int64_t v) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    value.value._int = v;
-  }
+  void setIntValue(int64_t v);
 
   /// @brief return the double value of a node
   double getDoubleValue() const;
 
   /// @brief set the string value of a node
-  inline void setDoubleValue(double v) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    value.value._double = v;
-  }
+  void setDoubleValue(double v);
 
   /// @brief return the string value of a node
-  inline char const* getStringValue() const { return value.value._string; }
+  char const* getStringValue() const;
 
   /// @brief return the string value of a node
-  inline size_t getStringLength() const {
-    return static_cast<size_t>(value.length);
-  }
+  size_t getStringLength() const;
 
   /// @brief set the string value of a node
-  inline void setStringValue(char const* v, size_t length) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    // note: v may contain the NUL byte and is not necessarily
-    // null-terminated itself (if from VPack)
-    value.type = VALUE_TYPE_STRING;
-    value.value._string = v;
-    value.length = static_cast<uint32_t>(length);
-  }
+  void setStringValue(char const* v, size_t length);
+
+  /// @brief whether the string value of this node is equal to other
+  ///        ignoring case
+  bool stringEqualsCaseInsensitive(std::string const& other) const;
 
   /// @brief whether or not a string is equal to another
-  inline bool stringEquals(char const* other, bool caseInsensitive) const {
-    if (caseInsensitive) {
-      return (strncasecmp(getStringValue(), other, getStringLength()) == 0);
-    }
-    return (strncmp(getStringValue(), other, getStringLength()) == 0);
-  }
-
-  /// @brief whether or not a string is equal to another
-  inline bool stringEquals(std::string const& other) const {
-    return (other.size() == getStringLength() &&
-            memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
-  }
+  bool stringEquals(std::string const& other) const;
 
   /// @brief return the data value of a node
-  inline void* getData() const { return value.value._data; }
+  void* getData() const;
 
   /// @brief set the data value of a node
-  inline void setData(void* v) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    value.value._data = v;
-  }
+  void setData(void* v);
 
   /// @brief set the data value of a node
-  inline void setData(void const* v) {
-    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
-    value.value._data = const_cast<void*>(v);
-  }
+  void setData(void const* v);
 
   /// @brief clone a node, recursively
   AstNode* clone(Ast*) const;
@@ -731,12 +563,6 @@ struct AstNode {
   /// @brief Steals the computed value and frees it.
   void stealComputedValue();
 
-  /// @brief Removes all members from the current node that are also
-  ///        members of the other node (ignoring ordering)
-  ///        Can only be applied if this and other are of type
-  ///        n-ary-and
-  void removeMembersInOtherAndNode(AstNode const* other);
-
   /// @brief If the node has not been marked finalized, mark its subtree so.
   /// If it runs into a finalized node, it assumes the whole subtree beneath
   /// it is marked already and exits early; otherwise it will finalize the node
@@ -754,6 +580,14 @@ struct AstNode {
   AstNodeValue value;
 
  private:
+  /// @brief helper for building flags
+  template <typename... Args>
+  static std::underlying_type<AstNodeFlagType>::type makeFlags(AstNodeFlagType flag,
+                                                               Args... args);
+
+  static std::underlying_type<AstNodeFlagType>::type makeFlags();
+
+ private:
   /// @brief precomputed VPack value (used when executing expressions)
   uint8_t mutable* computedValue;
 
@@ -766,21 +600,15 @@ int CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool compareUtf8);
 /// @brief less comparator for Ast value nodes
 template <bool useUtf8>
 struct AstNodeValueLess {
-  inline bool operator()(AstNode const* lhs, AstNode const* rhs) const {
-    return CompareAstNodes(lhs, rhs, useUtf8) < 0;
-  }
+  bool operator()(AstNode const* lhs, AstNode const* rhs) const;
 };
 
 struct AstNodeValueHash {
-  inline size_t operator()(AstNode const* value) const noexcept {
-    return static_cast<size_t>(value->hashValue(0x12345678));
-  }
+  size_t operator()(AstNode const* value) const noexcept;
 };
 
 struct AstNodeValueEqual {
-  inline bool operator()(AstNode const* lhs, AstNode const* rhs) const {
-    return CompareAstNodes(lhs, rhs, false) == 0;
-  }
+  bool operator()(AstNode const* lhs, AstNode const* rhs) const;
 };
 }  // namespace aql
 }  // namespace arangodb

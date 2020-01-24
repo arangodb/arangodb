@@ -2,7 +2,14 @@
 @startDocuBlock put_api_replication_applier_stop
 @brief stop the replication
 
-@RESTHEADER{PUT /_api/replication/applier-stop, Stop replication applier}
+@RESTHEADER{PUT /_api/replication/applier-stop, Stop replication applier,handleCommandApplierStop}
+
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, stops the global replication applier for all
+databases. If set to *false*, stops the replication applier in the
+selected database.
 
 @RESTDESCRIPTION
 Stops the replication applier. This will return immediately if the
@@ -41,4 +48,3 @@ is returned if an error occurred while assembling the response.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -24,16 +24,19 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_SSL_CLIENT_CONNECTION_H 1
 
-#include "Basics/Common.h"
+#include <stddef.h>
+#include <cstdint>
+#include <memory>
 
-#include "Basics/socket-utils.h"
+#include <openssl/ossl_typ.h>
+
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
-#include "openssl/bio.h"
-#include "openssl/err.h"
-#include "openssl/ssl.h"
-
 namespace arangodb {
+class Endpoint;
+namespace basics {
+class StringBuffer;
+}
 namespace httpclient {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,9 +53,11 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  SslClientConnection(Endpoint* endpoint, double, double, size_t, uint64_t);
+  SslClientConnection(application_features::ApplicationServer& server,
+                      Endpoint* endpoint, double, double, size_t, uint64_t);
 
-  SslClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
+  SslClientConnection(application_features::ApplicationServer& server,
+                      std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection

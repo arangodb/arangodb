@@ -24,11 +24,8 @@
 #ifndef ARANGODB_RANDOM_RANDOM_GENERATOR_H
 #define ARANGODB_RANDOM_RANDOM_GENERATOR_H 1
 
-#include "Basics/Common.h"
-
-#include "Basics/Exceptions.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
+#include <cstdint>
+#include <memory>
 
 namespace arangodb {
 
@@ -42,7 +39,7 @@ class RandomDevice {
 
  public:
   RandomDevice() {}
-  virtual ~RandomDevice() {}
+  virtual ~RandomDevice() = default;
 
  public:
   virtual uint32_t random() = 0;
@@ -81,6 +78,7 @@ class RandomGenerator {
  public:
   static void initialize(RandomType);
   static void shutdown();
+  static void ensureDeviceIsInitialized();
 
   static void seed(uint64_t);
 
@@ -93,8 +91,6 @@ class RandomGenerator {
   static uint64_t interval(uint64_t);
 
  private:
-  static void ensureDeviceIsInitialized();
-
   static RandomType _type;
   static thread_local std::unique_ptr<RandomDevice> _device;
 };

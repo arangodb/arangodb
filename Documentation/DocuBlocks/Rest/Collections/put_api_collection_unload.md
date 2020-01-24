@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_unload
 @brief unloads a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/unload, Unload collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/unload, Unload collection, handleCommandPut:collectionUnload}
 
 @HINTS
 {% hint 'warning' %}
@@ -57,4 +57,3 @@ If the *collection-name* is unknown, then a *HTTP 404* is returned.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

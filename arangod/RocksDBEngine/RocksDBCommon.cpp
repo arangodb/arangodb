@@ -24,8 +24,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBCommon.h"
+#include "Basics/Exceptions.h"
 #include "Basics/RocksDBUtils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -83,6 +86,13 @@ arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
 uint64_t latestSequenceNumber() {
   auto seq = globalRocksDB()->GetLatestSequenceNumber();
   return static_cast<uint64_t>(seq);
+}
+
+void checkIteratorStatus(rocksdb::Iterator const* iterator) {
+  auto s = iterator->status();
+  if (!s.ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
+  }
 }
 
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t objectId) {
@@ -149,7 +159,7 @@ std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete) {
   LOG_TOPIC("95aeb", DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
-
+  
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   rocksdb::DB* bDB = db->GetRootDB();
   TRI_ASSERT(bDB != nullptr);

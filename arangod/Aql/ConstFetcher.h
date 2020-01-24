@@ -32,8 +32,9 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-template <bool>
-class BlockFetcher;
+template <BlockPassthrough>
+class DependencyProxy;
+class ShadowAqlItemRow;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -44,14 +45,14 @@ class BlockFetcher;
  *        of fetchRow.
  */
 class ConstFetcher {
-  using BlockFetcher = aql::BlockFetcher<true>;
+  using DependencyProxy = aql::DependencyProxy<BlockPassthrough::Enable>;
 
  public:
-  explicit ConstFetcher(BlockFetcher& executionBlock);
+  explicit ConstFetcher(DependencyProxy& executionBlock);
   TEST_VIRTUAL ~ConstFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _blockFetcher!
+  // only for testing! Does not initialize _dependencyProxy!
   ConstFetcher();
 
  public:
@@ -72,17 +73,22 @@ class ConstFetcher {
    *           If HASMORE => The Row is guaranteed to not be a nullptr.
    *           If DONE => Row can be a nullptr (nothing received) or valid.
    */
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow();
+  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = 1);
+  TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t);
   void injectBlock(SharedAqlItemBlockPtr block);
 
   // Argument will be ignored!
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t);
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
+  void setDistributeId(std::string const&) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+
+  // At most does not matter for this fetcher. It will return DONE anyways
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = 1) const;
 
  private:
   /**

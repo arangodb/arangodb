@@ -23,16 +23,19 @@
 
 #include "RestTransactionHandler.h"
 
+#include "Actions/ActionFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
-#include "Transaction/Helpers.h"
 #include "Transaction/Status.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
@@ -45,15 +48,14 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
+RestTransactionHandler::RestTransactionHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr), _lock() {}
 
 RestStatus RestTransactionHandler::execute() {
     
   switch (_request->requestType()) {
-    case rest::RequestType::GET:
-      executeGetState();
-      break;
 
     case rest::RequestType::POST:
       if (_request->suffixes().size() == 1 &&
@@ -74,6 +76,10 @@ RestStatus RestTransactionHandler::execute() {
       executeAbort();
       break;
 
+    case rest::RequestType::GET:
+      executeGetState();
+      break;
+      
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
@@ -82,11 +88,33 @@ RestStatus RestTransactionHandler::execute() {
 }
 
 void RestTransactionHandler::executeGetState() {
+  if (_request->suffixes().empty()) {
+    // no transaction id given - so list all the transactions
+    ExecContext const& exec = ExecContext::current();
+
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("transactions", VPackValue(VPackValueType::Array));
+    
+    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    TRI_ASSERT(mgr != nullptr);
+    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
+ 
+    builder.close(); // array
+    builder.close(); // object
+  
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return;
+  }
+  
   if (_request->suffixes().size() != 1) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting GET /_api/transaction/<transaction-ID>");
+    return;
   }
 
-  TRI_voc_tid_t tid = StringUtils::uint64(_request->suffixes()[1]);
+  TRI_voc_tid_t tid = StringUtils::uint64(_request->suffixes()[0]);
   if (tid == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "Illegal transaction ID");
@@ -97,7 +125,7 @@ void RestTransactionHandler::executeGetState() {
   transaction::Status status = mgr->getManagedTrxStatus(tid);
   
   if (status == transaction::Status::UNDEFINED) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_TRANSACTION_NOT_FOUND);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_TRANSACTION_NOT_FOUND);
   } else {
     generateTransactionResult(rest::ResponseCode::OK, tid, status);
   }
@@ -110,7 +138,7 @@ void RestTransactionHandler::executeBegin() {
   // figure out the transaction ID
   TRI_voc_tid_t tid = 0;
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (found) {
     if (!ServerState::isDBServer(role)) {
@@ -127,7 +155,7 @@ void RestTransactionHandler::executeBegin() {
     TRI_ASSERT(tid != 0);
     TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
   } else {
-    if (!(ServerState::isCoordinator(role) || ServerState::isSingleServer(role))) {
+    if (!ServerState::isCoordinator(role) && !ServerState::isSingleServer(role)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "Not supported on this server type");
       return;
@@ -139,7 +167,7 @@ void RestTransactionHandler::executeBegin() {
   
   
   bool parseSuccess = false;
-  VPackSlice body = parseVPackBody(parseSuccess);
+  VPackSlice slice = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
     return;
@@ -147,8 +175,8 @@ void RestTransactionHandler::executeBegin() {
   
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  Result res = mgr->createManagedTrx(_vocbase, tid, body);
+    
+  Result res = mgr->createManagedTrx(_vocbase, tid, slice);
   if (res.fail()) {
     generateError(res);
   } else {
@@ -185,21 +213,36 @@ void RestTransactionHandler::executeAbort() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
-
-  TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
-  if (tid == 0) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "bad transaction ID");
-    return;
-  }
+  
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  Result res = mgr->abortManagedTrx(tid);
-  if (res.fail()) {
-    generateError(res);
+
+  if (_request->suffixes()[0] == "write") {
+    // abort all write transactions
+    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+    ExecContext const& exec = ExecContext::current();
+    Result res = mgr->abortAllManagedWriteTrx(exec.user(), fanout);
+        
+    if (res.ok()) {
+      generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    } else {
+      generateError(res);
+    }
   } else {
-    generateTransactionResult(rest::ResponseCode::OK, tid, transaction::Status::ABORTED);
+    TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
+    if (tid == 0) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "bad transaction ID");
+      return;
+    }
+  
+    Result res = mgr->abortManagedTrx(tid);
+
+    if (res.fail()) {
+      generateError(res);
+    } else {
+      generateTransactionResult(rest::ResponseCode::OK, tid, transaction::Status::ABORTED);
+    }
   }
 }
 
@@ -217,7 +260,7 @@ void RestTransactionHandler::generateTransactionResult(rest::ResponseCode code,
   tmp.close();
   tmp.close();
   
-  generateResult(rest::ResponseCode::OK, std::move(buffer));
+  generateResult(code, std::move(buffer));
 }
 
 // ====================== V8 stuff ===================
@@ -239,7 +282,9 @@ void RestTransactionHandler::executeJSTransaction() {
 
   std::string portType = _request->connectionInfo().portType();
 
-  _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, true /*allow use database*/);
+  bool allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
+  _v8Context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
 
   if (!_v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
@@ -285,7 +330,7 @@ void RestTransactionHandler::returnContext() {
   _v8Context = nullptr;
 }
 
-bool RestTransactionHandler::cancel() {
+void RestTransactionHandler::cancel() {
   // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
@@ -293,24 +338,27 @@ bool RestTransactionHandler::cancel() {
   if (!isolate->IsExecutionTerminating()) {
     isolate->TerminateExecution();
   }
-  return true;
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestTransactionHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestTransactionHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::GET && type != rest::RequestType::PUT &&
       type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
 }

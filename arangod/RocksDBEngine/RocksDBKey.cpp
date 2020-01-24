@@ -315,31 +315,21 @@ LocalDocumentId RocksDBKey::documentId(rocksdb::Slice const& slice) {
   return LocalDocumentId(uint64FromPersistent(slice.data() + sizeof(uint64_t)));
 }
 
-LocalDocumentId RocksDBKey::indexDocumentId(RocksDBEntryType type,
-                                            rocksdb::Slice const& slice) {
+LocalDocumentId RocksDBKey::indexDocumentId(rocksdb::Slice const slice) {
   char const* data = slice.data();
   size_t const size = slice.size();
+  TRI_ASSERT(size >= (2 * sizeof(uint64_t)));
+  // last 8 bytes should be the LocalDocumentId
+  return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t)));
+}
 
-  switch (type) {
-    case RocksDBEntryType::VPackIndexValue:
-    case RocksDBEntryType::FulltextIndexValue:
-    case RocksDBEntryType::GeoIndexValue: {
-      TRI_ASSERT(size >= (2 * sizeof(uint64_t)));
-      // last 8 bytes should be the LocalDocumentId
-      return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t)));
-    }
-    case RocksDBEntryType::EdgeIndexValue: {
-      TRI_ASSERT(size >= (sizeof(char) * 3 + 2 * sizeof(uint64_t)));
-      // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
-      // + 8 byte revision ID + 1-byte 0xff
-      return LocalDocumentId(
-          uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
-    }
-
-    default: {}
-  }
-
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+LocalDocumentId RocksDBKey::edgeDocumentId(rocksdb::Slice const slice) {
+  char const* data = slice.data();
+  size_t const size = slice.size();
+  TRI_ASSERT(size >= (sizeof(char) * 3 + 2 * sizeof(uint64_t)));
+  // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
+  // + 8 byte revision ID + 1-byte 0xff
+  return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
 }
 
 arangodb::velocypack::StringRef RocksDBKey::primaryKey(RocksDBKey const& key) {
@@ -446,7 +436,7 @@ arangodb::velocypack::StringRef RocksDBKey::vertexId(char const* data, size_t si
 VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > sizeof(uint64_t));
-  return VPackSlice(data + sizeof(uint64_t));
+  return VPackSlice(reinterpret_cast<uint8_t const*>(data) + sizeof(uint64_t));
 }
 
 namespace arangodb {

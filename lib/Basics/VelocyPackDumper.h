@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/Exception.h>

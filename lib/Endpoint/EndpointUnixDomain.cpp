@@ -25,9 +25,17 @@
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 
+#include <errno.h>
+#include <stdio.h>
+#include <sys/un.h>
+#include <cstring>
+
 #include "Basics/FileUtils.h"
+#include "Basics/debugging.h"
 #include "Endpoint/Endpoint.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

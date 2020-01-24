@@ -1,0 +1,248 @@
+  <div id="replicationContent" class="innerContent replicationContent">
+
+    <% if (mode !== 0) { %>
+      <div class="pure-g cluster-values" style="margin-top: 0;">
+
+        <div class="pure-u-1-2 pure-u-md-1-3">
+          <div class="valueWrapper">
+            <div id="info-mode-id" class="value"><%=info.state%></div>
+            <div class="graphLabel">State</div>
+          </div>
+        </div>
+
+        <div class="pure-u-1-2 pure-u-md-1-3">
+          <div class="valueWrapper">
+            <div id="info-mode-id" class="value"><%=info.mode%></div>
+            <div class="graphLabel">Mode</div>
+          </div>
+        </div>
+
+        <div class="pure-u-1-2 pure-u-md-1-3">
+          <div class="valueWrapper">
+            <% if (info.role === 'follower' && mode !== 3) { %>
+              <div id="info-role-id" class="value">Slave</div>
+            <% } else if (info.role === 'leader' && mode !== 3) { %>
+              <div id="info-role-id" class="value">Master</div>
+            <% } else { %>
+              <div id="info-role-id" class="value"><%=info.role%></div>
+            <% } %>
+            <div class="graphLabel">Role</div>
+          </div>
+        </div>
+
+        <div class="pure-u-1-2 pure-u-md-1-3">
+          <div class="valueWrapper">
+            <div id="info-level-id" class="value"><%=info.level%></div>
+            <div class="graphLabel">Level</div>
+          </div>
+        </div>
+
+        <div class="pure-u-1-2 pure-u-md-1-3">
+          <div class="valueWrapper">
+            <div id="info-msg-id" class="value"><%=info.health%></div>
+            <div class="graphLabel">Health</div>
+          </div>
+        </div>
+
+        <% if (info.role === 'follower') { %>
+          <div class="pure-u-1-2 pure-u-md-1-3">
+            <div class="valueWrapper">
+              <div id="logger-lastLogTick-id" class="value"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+              <div class="graphLabel">Server ID</div>
+            </div>
+          </div>
+        <% } else { %>
+          <div class="pure-u-1-2 pure-u-md-1-3">
+            <div class="valueWrapper">
+              <div id="logger-lastLogTick-id" class="value"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+              <div class="graphLabel">Last tick</div>
+            </div>
+          </div>
+        <% } %>
+
+      </div>
+    <% } %>
+
+    <% if (mode === 0) { %>
+      <div class="repl-state">
+        <table class="pure-table half-split">
+            <tbody>
+              <tr>
+                <td>
+                  <div><i class="fa fa-server"></i></div>
+                  <div id="info-state-id"><%=info.state%></div>
+                </td>
+              </tr>
+                <tr>
+                  <td><div>This node is not replicating from any other node. Also there are no active slaves or followers found. </br>Please visit our <a href="https://www.arangodb.com/docs/stable/architecture-replication.html">Documentation</a> to find out how to setup replication.</div></td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    <% } %>
+
+    
+    <% if (mode === 5) { %>
+      <div class="repl-info">
+        <div class="categoryBar">
+          <h4>Info</h4>
+        </div>
+        <table class="pure-table">
+            <tbody>
+              <tr>
+                <td>Mode:</td>
+                <td id="info-mode-id"><%=info.mode%></td>
+              </tr>
+              <tr>
+                <td>Level:</td>
+                <td id="info-level-id"><%=info.level%></td>
+              </tr>
+              <tr>
+                <td>Role:</td>
+                <% if (mode === 3) { %>
+                  <td id="info-role-id"><%=info.role%></td>
+                <% } else { %>
+                  <% if (info.role === 'follower') { %>
+                    <td id="info-role-id">Slave</td>
+                  <% } else { %>
+                    <td id="info-role-id">Master</td>
+                  <% } %>
+                <% } %>
+              </tr>
+            </tbody>
+        </table>
+      </div>
+    <% } %>
+
+    <% if (info.role === 'leader') { %>
+      <div class="repl-comparison">
+        <div class="categoryBar">
+          <h4>Comparison</h4>
+        </div>
+        
+        <div class="pure-g cluster-graphs">
+
+          <div class="pure-u-1-1 pure-u-md-1-2">
+            <div class="graphWrapper">
+              <div id="replicationTimeChart">
+                <svg></svg>
+              </div>
+              <div class="graphLabel">COMMUNICATION</div>
+            </div>
+          </div>
+
+          <div class="pure-u-1-1 pure-u-md-1-2">
+            <div class="graphWrapper">
+              <div id="replicationTickChart">
+                <svg></svg>
+              </div>
+              <div class="graphLabel">LAST TICKS</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <% if (mode === 3) { %>
+        <div class="repl-nodes">
+          <div class="categoryBar">
+            <h4>Nodes</h4>
+          </div>
+        </div>
+        <table class="pure-table">
+            <tbody>
+              <tr>
+                <td>Leader:</td>
+                <td id="nodes-leader-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Followers:</td>
+                <td id="nodes-followers-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+            </tbody>
+        </table>
+      <% } %>
+    <% } %>
+
+    <% if (info.role === 'leader') { %>
+      <div class="repl-logger">
+        <div class="categoryBar">
+          <% if (mode === 3) { %>
+            <h4>Leader State</h4>
+          <% } else { %>
+            <h4>Master State</h4>
+          <% } %>
+        </div>
+        <table class="pure-table">
+            <tbody>
+              <tr>
+                <td>Server ID:</td>
+                <td id="logger-serverid-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Time:</td>
+                <td id="logger-time-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Operations:</td>
+                <td id="logger-totalEvents-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+            </tbody>
+        </table>
+      </div>
+
+      <div class="repl-logger-clients">
+        <div class="categoryBar">
+          <% if (mode === 3) { %>
+            <h4>Follower States</h4>
+          <% } else { %>
+            <h4>Slave States</h4>
+          <% } %>
+        </div>
+        <table class="pure-table" id="repl-logger-clients">
+            <thead>
+              <tr>
+                <th>Syncer ID</th>
+                <th>Server ID</th>
+                <th>Client info</th>
+                <th>Time</th>
+                <th>Last served tick</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+      </div>
+    <% } %>
+
+    <% if (info.role === 'follower') { %>
+      <div class="repl-applier">
+        <div class="categoryBar">
+          <% if (mode === 3) { %>
+            <h4>Follower States</h4>
+          <% } else { %>
+            <h4>Slave States</h4>
+          <% } %>
+        </div>
+
+        <table id="repl-follower-table" class="pure-table" style="width: 100%">
+          <thead>
+            <tr>
+              <th>Database</th>
+              <th>Enabled</th>
+              <th>Phase</th>
+              <th>Replicating from</th>
+              <th>Last tick</th>
+              <th>State</th>
+            </tr>
+          </thead>
+
+          <tbody>
+          </tbody>
+
+        </table>
+      </div>
+    <% } %>
+
+  </div>

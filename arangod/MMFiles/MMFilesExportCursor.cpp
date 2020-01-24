@@ -45,7 +45,7 @@ MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t& vocbase, CursorId id,
       _position(0),
       _size(_ex->_vpack.size()) {}
 
-MMFilesExportCursor::~MMFilesExportCursor() {}
+MMFilesExportCursor::~MMFilesExportCursor() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the cursor contains more data
@@ -74,8 +74,7 @@ VPackSlice MMFilesExportCursor::next() {
 
 size_t MMFilesExportCursor::count() const { return _size; }
 
-std::pair<aql::ExecutionState, Result> MMFilesExportCursor::dump(VPackBuilder& builder,
-                                                                 std::function<void()> const&) {
+std::pair<aql::ExecutionState, Result> MMFilesExportCursor::dump(VPackBuilder& builder) {
   return {aql::ExecutionState::DONE, dumpSync(builder)};
 }
 
@@ -101,7 +100,7 @@ Result MMFilesExportCursor::dumpSync(VPackBuilder& builder) {
         break;
       }
 
-      VPackSlice const slice(reinterpret_cast<char const*>(_ex->_vpack.at(_position++)));
+      VPackSlice const slice(reinterpret_cast<uint8_t const*>(_ex->_vpack.at(_position++)));
 
       builder.openObject();
 

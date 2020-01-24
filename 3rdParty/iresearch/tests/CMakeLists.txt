@@ -40,6 +40,7 @@ set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
   ./analysis/ngram_token_stream_test.cpp
+  ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
   ./analysis/token_masking_stream_tests.cpp
   ./analysis/token_stream_tests.cpp
@@ -55,15 +56,18 @@ set(IReSearch_tests_sources
   ./index/index_meta_tests.cpp
   ./index/index_profile_tests.cpp
   ./index/index_tests.cpp
+  ./index/index_column_tests.cpp
+  ./index/sorted_index_tests.cpp
   ./index/index_death_tests.cpp
-  ./index/transaction_store_tests.cpp
   ./index/field_meta_test.cpp
   ./index/merge_writer_tests.cpp
   ./index/postings_tests.cpp
+  ./index/sorted_column_test.cpp
   ./index/segment_writer_tests.cpp
   ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp
   ./search/granular_range_filter_tests.cpp
+  ./search/wildcard_filter_test.cpp
   ./search/index_reader_test.cpp
   ./search/scorers_tests.cpp
   ./search/bitset_doc_iterator_test.cpp
@@ -84,8 +88,10 @@ set(IReSearch_tests_sources
   ./iql/parser_common_test.cpp
   ./iql/query_builder_test.cpp
   ./utils/async_utils_tests.cpp
+  ./utils/automaton_test.cpp
   ./utils/bitvector_tests.cpp
   ./utils/container_utils_tests.cpp
+  ./utils/compression_test.cpp
   ./utils/crc_test.cpp
   ./utils/file_utils_tests.cpp
   ./utils/map_utils_tests.cpp
@@ -107,6 +113,8 @@ set(IReSearch_tests_sources
   ./utils/std_test.cpp
   ./utils/type_utils_tests.cpp
   ./utils/utf8_path_tests.cpp
+  ./utils/fst_builder_test.cpp
+  ./utils/fst_utils_test.cpp
   ./utils/fst_string_weight_test.cpp
   ./tests_param.cpp
   ./tests_main.cpp
@@ -118,10 +126,6 @@ set(IReSearch_tests_headers
   ./index/index_tests.hpp
   ./search/filter_test_case_base.hpp
   ./formats/formats_test_case_base.hpp
-  ./unicode/utf8.h
-  ./unicode/utf8/checked.h
-  ./unicode/utf8/unchecked.h
-  ./unicode/utf8/core.h
   ./tests_config.hpp
   ${IReSearch_generated_INCLUDE_DIR}/tests_config.hpp # auto generated
 )
@@ -142,8 +146,10 @@ add_custom_target(${IResearchTests_TARGET_NAME}
 add_executable(${IResearchTests_TARGET_NAME}-shared
   EXCLUDE_FROM_ALL ${IReSearch_sources}
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
 )
 
+set_ipo(${IResearchTests_TARGET_NAME}-shared)
 add_sanitizers(${IResearchTests_TARGET_NAME}-shared)
 
 add_executable(${IResearchTests_TARGET_NAME}-static
@@ -152,28 +158,32 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ./analysis/text_analyzer_tests.cpp
   ./formats/formats_10_tests.cpp
   ./formats/formats_11_tests.cpp
+  ./formats/formats_12_tests.cpp
   ./iql/parser_test.cpp
 )
 
+set_ipo(${IResearchTests_TARGET_NAME}-static)
 add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
-  ${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
-  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
-  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
+  ${IResearch_TARGET_NAME}-analyzer-norm-shared
+  ${IResearch_TARGET_NAME}-analyzer-stem-shared
+  ${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
 )
 
 add_dependencies(${IResearchTests_TARGET_NAME}-static
-  ${IResearch_TARGET_NAME}-analyzer-delimited-static
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-static
   ${IResearch_TARGET_NAME}-analyzer-ngram-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
-  ${IResearch_TARGET_NAME}-analyzer-text-stemming-static
-  ${IResearch_TARGET_NAME}-analyzer-token-masking-static
+  ${IResearch_TARGET_NAME}-analyzer-norm-static
+  ${IResearch_TARGET_NAME}-analyzer-stem-static
+  ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -200,23 +210,24 @@ endif()
 set_target_properties(${IResearchTests_TARGET_NAME}-shared
   PROPERTIES
   OUTPUT_NAME iresearch-tests
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;BOOST_ALL_DYN_LINK"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING;IRESEARCH_DLL;BOOST_ALL_DYN_LINK"
 )
 
 set_target_properties(${IResearchTests_TARGET_NAME}-static
   PROPERTIES
   OUTPUT_NAME iresearch-tests-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${IResearch_TARGET_NAME}-shared
-  ${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
-  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
-  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
+  ${IResearch_TARGET_NAME}-analyzer-norm-shared
+  ${IResearch_TARGET_NAME}-analyzer-stem-shared
+  ${IResearch_TARGET_NAME}-analyzer-mask-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
@@ -233,10 +244,12 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
 if(MSVC)
   target_compile_options(${IResearchTests_TARGET_NAME}-shared
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 
   target_compile_options(${IResearchTests_TARGET_NAME}-static
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 endif()
 
@@ -260,6 +273,7 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 ################################################################################

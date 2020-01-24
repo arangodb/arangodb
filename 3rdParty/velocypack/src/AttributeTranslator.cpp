@@ -27,6 +27,8 @@
 #include "velocypack/AttributeTranslator.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
+#include "velocypack/Options.h"
+#include "velocypack/Slice.h"
 #include "velocypack/Value.h"
 
 using namespace arangodb::velocypack;
@@ -67,4 +69,18 @@ void AttributeTranslator::seal() {
     _idToKey.emplace(it.value().getUInt(), key.begin());
     it.next();
   }
+}
+  
+AttributeTranslatorScope::AttributeTranslatorScope(AttributeTranslator* translator)
+      : _old(Options::Defaults.attributeTranslator) {
+  Options::Defaults.attributeTranslator = translator;
+}
+
+AttributeTranslatorScope::~AttributeTranslatorScope() {
+  revert();
+}
+  
+// prematurely revert the change
+void AttributeTranslatorScope::revert() noexcept {
+  Options::Defaults.attributeTranslator = _old;
 }

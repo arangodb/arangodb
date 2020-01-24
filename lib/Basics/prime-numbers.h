@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_PRIME__NUMBERS_H
 #define ARANGODB_BASICS_PRIME__NUMBERS_H 1
 
+#include <cstdint>
+
 #include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////

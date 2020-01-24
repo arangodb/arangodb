@@ -25,8 +25,11 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
+struct IndexTypeFactory;
 
 namespace aql {
 
@@ -76,15 +79,8 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a callback for writing 'Flush' markers into the WAL
-  /// @param link the link that will be notified of the marker during recovery
-  /// @return false on registration failure with FlushFeature
-  /// @note invocation of 'WalFlushCallback' will return if write was successful
-  /// @note WalFlushCallback argument is what is passsed to the link on recovery
-  //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<arangodb::Result(arangodb::velocypack::Slice const&)> WalFlushCallback;
-  static WalFlushCallback walFlushCallback(IResearchLink const& link);
+  template <typename Engine, typename std::enable_if<std::is_base_of<StorageEngine, Engine>::value, int>::type = 0>
+  IndexTypeFactory& factory();
 
  private:
   class Async;  // forward declaration
@@ -93,6 +89,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   std::atomic<bool> _running;
   uint64_t _threads;
   uint64_t _threadsLimit;
+  std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>> _factories;
 };
 
 }  // namespace iresearch

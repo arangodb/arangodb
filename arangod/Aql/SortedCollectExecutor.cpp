@@ -28,10 +28,12 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
+#include "Basics/ConditionalDeleter.h"
 
-#include <lib/Logger/LogMacros.h>
+#include <velocypack/Buffer.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
@@ -164,7 +166,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
     TRI_ASSERT(!this->aggregators.empty());
     TRI_ASSERT(infos.getAggregatedRegisters().size() > j);
     RegisterId const reg = infos.getAggregatedRegisters()[j].second;
-    if (reg != ExecutionNode::MaxRegisterId) {
+    if (reg != RegisterPlan::MaxRegisterId) {
       it->reduce(input.getValue(reg));
     } else {
       it->reduce(EmptyValue);
@@ -174,7 +176,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
   TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
+  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
     if (count) {
       // increase the count
       groupLength++;
@@ -236,9 +238,15 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
   builder.close();
 }
 
-void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output) {
+void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output,
+                                                        InputAqlItemRow& input) {
   // Thanks to the edge case that we have to emit a row even if we have no
   // input We cannot assert here that the input row is valid ;(
+
+  if (!input.isInitialized()) {
+    output.setAllowSourceRowUninitialized();
+  }
+
   size_t i = 0;
   for (auto& it : infos.getGroupRegisters()) {
     AqlValue val = this->groupValues[i];
@@ -260,7 +268,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   }
 
   // set the group values
-  if (infos.getCollectRegister() != ExecutionNode::MaxRegisterId) {
+  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
     if (infos.getCount()) {
       // only set group count in result register
       output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,
@@ -278,8 +286,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   }
 }
 
-std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("SortedCollectExecutor::produceRow") {
+std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
@@ -289,7 +297,7 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
   while (true) {
     if (_fetcherDone) {
       if (_currentGroup.isValid()) {
-        _currentGroup.writeToOutput(output);
+        _currentGroup.writeToOutput(output, input);
         InputAqlItemRow input{CreateInvalidInputRowHint{}};
         _currentGroup.reset(input);
         TRI_ASSERT(!_currentGroup.isValid());
@@ -321,7 +329,7 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
 
       if (state == ExecutionState::DONE) {
         TRI_ASSERT(!output.produced());
-        _currentGroup.writeToOutput(output);
+        _currentGroup.writeToOutput(output, input);
         // Invalidate group
         input = InputAqlItemRow{CreateInvalidInputRowHint{}};
         _currentGroup.reset(input);
@@ -331,7 +339,7 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
       if (_currentGroup.isValid()) {
         // Write the current group.
         // Start a new group from input
-        _currentGroup.writeToOutput(output);
+        _currentGroup.writeToOutput(output, input);
         TRI_ASSERT(output.produced());
         _currentGroup.reset(input);  // reset and recreate new group
         if (input.isInitialized()) {
@@ -344,7 +352,7 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRow(OutputAqlIt
           if (_infos.getGroupRegisters().empty()) {
             // we got exactly 0 rows as input.
             // by definition we need to emit one collect row
-            _currentGroup.writeToOutput(output);
+            _currentGroup.writeToOutput(output, input);
             TRI_ASSERT(output.produced());
           }
           TRI_ASSERT(state == ExecutionState::DONE);

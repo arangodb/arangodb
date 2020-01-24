@@ -23,7 +23,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <lib/Logger/LogMacros.h>
 #include "TestExecutorHelper.h"
 
 #include "Basics/Common.h"
@@ -32,6 +31,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Logger/LogMacros.h"
 
 #include <utility>
 
@@ -41,9 +41,9 @@ using namespace arangodb::aql;
 TestExecutorHelper::TestExecutorHelper(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher){};
 TestExecutorHelper::~TestExecutorHelper() = default;
 
-std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRow(OutputAqlItemRow &output) {
-  TRI_IF_FAILURE("TestExecutorHelper::produceRow") {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+std::pair<ExecutionState, FilterStats> TestExecutorHelper::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("TestExecutorHelper::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutionState state;
   FilterStats stats{};

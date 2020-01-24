@@ -23,8 +23,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BlockFetcherHelper.h"
-#include "catch.hpp"
+#include "gtest/gtest.h"
+
+#include "IResearch/common.h"
+#include "Mocks/Servers.h"
+#include "RowFetcherHelper.h"
 #include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
@@ -32,12 +35,11 @@
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
+#include "Aql/Variable.h"
 #include "Mocks/StorageEngineMock.h"
-#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -60,103 +62,99 @@ namespace aql {
 
 using CursorType = arangodb::transaction::Methods::CursorType;
 
-SCENARIO("EnumerateCollectionExecutor",
-         "[AQL][EXECUTOR][ENUMERATECOLLECTIONEXECUTOR]") {
+class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
+ protected:
   ExecutionState state;
-
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager;
+  arangodb::tests::mocks::MockAqlServer server;
+  TRI_vocbase_t vocbase;  // required to create collection
+  std::shared_ptr<VPackBuilder> json;
+  arangodb::LogicalCollection collection;
+  fakeit::Mock<ExecutionEngine> mockEngine;
+  fakeit::Mock<transaction::Methods> mockTrx;  // fake transaction::Methods
+  fakeit::Mock<Query> mockQuery;
 
-  GIVEN("there are no rows upstream") {
-    auto options = std::make_shared<options::ProgramOptions>("arangod", "something", "", "path");
-    arangodb::application_features::ApplicationServer server(options, "path");
-    StorageEngineMock storageEngine(server);
-    arangodb::EngineSelectorFeature::ENGINE = &storageEngine;
-    std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-    
-    // setup required application features
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required by TRI_vocbase_t(...)
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
+  Variable outVariable;
+  bool varUsedLater;
+  std::unordered_set<RegisterId> const regToClear;
+  std::unordered_set<RegisterId> const regToKeep;
+  ExecutionEngine& engine;
+  Collection abc;
+  std::vector<std::string> const projections;
+  transaction::Methods& trx;
+  std::vector<size_t> const coveringIndexAttributePositions;
+  bool useRawPointers;
+  bool random;
 
-    fakeit::Mock<TRI_vocbase_t> vocbaseMock;
-    TRI_vocbase_t& vocbase = vocbaseMock.get();  // required to create collection
-  
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }");
-    arangodb::LogicalCollection collection(vocbase, json->slice(), true);
+  EnumerateCollectionExecutorInfos infos;
 
-    fakeit::Mock<ExecutionEngine> mockEngine;
-    // fake transaction::Methods
-    fakeit::Mock<transaction::Methods> mockTrx;
+  SharedAqlItemBlockPtr block;
+  VPackBuilder input;
+
+  EnumerateCollectionExecutorTestNoRowsUpstream()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        server(),
+        vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, systemDBInfo(server.server())),
+        json(arangodb::velocypack::Parser::fromJson(
+            "{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }")),
+        collection(vocbase, json->slice(), true),
+        outVariable("name", 1),
+        varUsedLater(false),
+        engine(mockEngine.get()),
+        abc("blabli", &vocbase, arangodb::AccessMode::Type::READ),
+        trx(mockTrx.get()),
+        useRawPointers(false),
+        random(false),
+        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
+              &engine, &abc, &outVariable, varUsedLater, nullptr, projections,
+              coveringIndexAttributePositions, useRawPointers, random),
+        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
     // fake indexScan
     fakeit::When(Method(mockTrx, indexScan))
         .AlwaysDo(std::function<std::unique_ptr<IndexIterator>(std::string const&, CursorType&)>(
-            [&mockTrx, &collection](std::string const&, CursorType&) -> std::unique_ptr<IndexIterator> {
+            [this](std::string const&, CursorType&) -> std::unique_ptr<IndexIterator> {
               return std::make_unique<EmptyIndexIterator>(&collection, &(mockTrx.get()));
             }));
-    // fake transaction::Methods - end
-
-    // parameters for infos in order of ctor
-    Variable outVariable("name", 1);
-    bool varUsedLater = false;
-    std::unordered_set<RegisterId> const regToClear{};
-    std::unordered_set<RegisterId> const regToKeep{};
-    ExecutionEngine& engine = mockEngine.get();
-    Collection const abc("blabli", &vocbase, arangodb::AccessMode::Type::READ);
-    std::vector<std::string> const projections;
-    transaction::Methods& trx = mockTrx.get();
-    std::vector<size_t> const coveringIndexAttributePositions;
-    bool useRawPointers = false;
-    bool random = false;
-
-    EnumerateCollectionExecutorInfos infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/,
-                                           regToClear, regToKeep, &engine, &abc,
-                                           &outVariable, varUsedLater, projections,
-                                           &trx, coveringIndexAttributePositions,
-                                           useRawPointers, random);
-
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-    VPackBuilder input;
-
-    WHEN("the producer does not wait") {
-      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
-      EnumerateCollectionExecutor testee(fetcher, infos);
-      // Use this instead of std::ignore, so the tests will be noticed and
-      // updated when someone changes the stats type in the return value of
-      // EnumerateCollectionExecutor::produceRow().
-      EnumerateCollectionStats stats{};
-
-      THEN("the executor should return DONE") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-      }
-    }
-
-    WHEN("the producer waits") {
-      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
-      EnumerateCollectionExecutor testee(fetcher, infos);
-      // Use this instead of std::ignore, so the tests will be noticed and
-      // updated when someone changes the stats type in the return value of
-      // EnumerateCollectionExecutor::produceRow().
-      EnumerateCollectionStats stats{};
-
-      THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear());
-        std::tie(state, stats) = testee.produceRow(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-
-        AND_THEN("the executor should return DONE") {
-          std::tie(state, stats) = testee.produceRow(result);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.produced());
-        }
-      }
-    }
+    
+    Query& query = mockQuery.get();
+    fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&(mockTrx.get()));
+    fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
   }
+};
+
+TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait) {
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
+  EnumerateCollectionExecutor testee(fetcher, infos);
+  // Use this instead of std::ignore, so the tests will be noticed and
+  // updated when someone changes the stats type in the return value of
+  // EnumerateCollectionExecutor::produceRows().
+  EnumerateCollectionStats stats{};
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
+}
+
+TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
+  EnumerateCollectionExecutor testee(fetcher, infos);
+  // Use this instead of std::ignore, so the tests will be noticed and
+  // updated when someone changes the stats type in the return value of
+  // EnumerateCollectionExecutor::produceRows().
+  EnumerateCollectionStats stats{};
+
+  OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
+
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 }  // namespace aql

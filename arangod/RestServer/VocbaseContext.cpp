@@ -24,7 +24,9 @@
 #include "VocbaseContext.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::rest;
@@ -68,7 +70,8 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
                                 /*sysLevel*/ auth::Level::RO,
                                 /*dbLevel*/ auth::Level::RO);
     }
-    return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
+    return new VocbaseContext(req, vocbase, req.user().empty() ?
+                              ExecContext::Type::Internal : ExecContext::Type::Default,
                               /*sysLevel*/ auth::Level::RW,
                               /*dbLevel*/ auth::Level::RW);
   }

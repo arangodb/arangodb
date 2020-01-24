@@ -50,58 +50,58 @@ class directory_mock: public irs::directory {
 
   using directory::attributes;
 
-  virtual irs::attribute_store& attributes() NOEXCEPT override {
+  virtual irs::attribute_store& attributes() noexcept override {
     return impl_.attributes();
   }
 
   virtual irs::index_output::ptr create(
     const std::string& name
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.create(name);
   }
 
   virtual bool exists(
     bool& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.exists(result, name);
   }
 
   virtual bool length(
     uint64_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.length(result, name);
   }
 
   virtual irs::index_lock::ptr make_lock(
     const std::string& name
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.make_lock(name);
   }
 
   virtual bool mtime(
     std::time_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual irs::index_input::ptr open(
     const std::string& name,
     irs::IOAdvice advice
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.open(name, advice);
   }
 
-  virtual bool remove(const std::string& name) NOEXCEPT override {
+  virtual bool remove(const std::string& name) noexcept override {
     return impl_.remove(name);
   }
 
   virtual bool rename(
     const std::string& src, const std::string& dst
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.rename(src, dst);
   }
 
-  virtual bool sync(const std::string& name) NOEXCEPT override {
+  virtual bool sync(const std::string& name) noexcept override {
     return impl_.sync(name);
   }
 
@@ -118,7 +118,7 @@ struct blocking_directory : directory_mock {
     : tests::directory_mock(impl), blocker(blocker) {
   }
 
-  irs::index_output::ptr create(const std::string& name) NOEXCEPT {
+  irs::index_output::ptr create(const std::string& name) noexcept {
     auto stream = tests::directory_mock::create(name);
 
     if (name == blocker) {
@@ -175,19 +175,24 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::directory& dir() const { return *dir_; }
   irs::format::ptr codec() { return codec_; }
   const index_t& index() const { return index_; }
+  index_t& index() { return index_; }
+
+  void sort(const irs::comparer& comparator) {
+    for (auto& segment : index_) {
+      segment.sort(comparator);
+    }
+  }
 
   irs::index_writer::ptr open_writer(
       irs::directory& dir,
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& options = {}
-  ) {
+      const irs::index_writer::init_options& options = {}) {
     return irs::index_writer::make(dir, codec_, mode, options);
   }
 
   irs::index_writer::ptr open_writer(
       irs::OpenMode mode = irs::OM_CREATE,
-      const irs::index_writer::init_options& options = {}
-  ) {
+      const irs::index_writer::init_options& options = {}) {
     return irs::index_writer::make(*dir_, codec_, mode, options);
   }
 
@@ -195,13 +200,14 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     return irs::directory_reader::open(*dir_, codec_);
   }
 
-  void assert_index(const irs::flags& features, size_t skip = 0) const {
-    tests::assert_index(dir(), codec_, index(), features, skip);
+  void assert_index(const irs::flags& features,
+                    size_t skip = 0,
+                    irs::automaton_table_matcher* matcher = nullptr) const {
+    tests::assert_index(dir(), codec_, index(), features, skip, matcher);
   }
 
   virtual void SetUp() {
     test_base::SetUp();
-    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
 
     // set directory
     dir_ = get_directory(*this);
@@ -228,12 +234,22 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     const document* src;
 
     while ((src = gen.next())) {
-      segment.add(src->indexed.begin(), src->indexed.end());
+      segment.add(
+        src->indexed.begin(),
+        src->indexed.end(),
+        src->sorted
+      );
+
       ASSERT_TRUE(insert(
         writer,
         src->indexed.begin(), src->indexed.end(),
-        src->stored.begin(), src->stored.end()
+        src->stored.begin(), src->stored.end(),
+        src->sorted
       ));
+    }
+
+    if (writer.comparator()) {
+      segment.sort(*writer.comparator());
     }
   }
 
@@ -255,9 +271,10 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
   void add_segment(
       tests::doc_generator_base& gen,
-      irs::OpenMode mode = irs::OM_CREATE
+      irs::OpenMode mode = irs::OM_CREATE,
+      const irs::index_writer::init_options& opts = {}
   ) {
-    auto writer = open_writer(mode);
+    auto writer = open_writer(mode, opts);
     add_segment(*writer, gen);
   }
 
@@ -278,7 +295,7 @@ class token_stream_payload: public irs::token_stream {
   explicit token_stream_payload(irs::token_stream* impl);
   bool next(); 
 
-  const irs::attribute_view& attributes() const NOEXCEPT {
+  const irs::attribute_view& attributes() const noexcept {
     return impl_->attributes();
   }
 
@@ -297,7 +314,7 @@ class text_field : public tests::field_base {
  public:
   text_field(
       const irs::string_ref& name, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"ignored_words\":[]}")) {
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"stopwords\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
          throw irs::illegal_state();
@@ -309,7 +326,7 @@ class text_field : public tests::field_base {
 
   text_field(
       const irs::string_ref& name, const T& value, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"ignored_words\":[]}")),
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"stopwords\":[]}")),
      value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
@@ -320,14 +337,14 @@ class text_field : public tests::field_base {
     this->name(name);
   }
 
-  text_field(text_field&& other) NOEXCEPT
+  text_field(text_field&& other) noexcept
     : pay_stream_(std::move(other.pay_stream_)),
       token_stream_(std::move(other.token_stream_)),
       value_(std::move(other.value_)) {
   }
 
   irs::string_ref value() const { return value_; }
-  void value(const T& value) { value = value; }
+  void value(const T& value) { value_ = value; }
   void value(T&& value) { value_ = std::move(value); }
 
   const irs::flags& features() const {

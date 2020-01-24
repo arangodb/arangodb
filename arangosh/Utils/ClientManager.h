@@ -30,6 +30,9 @@
 namespace arangodb {
 class LogTopic;
 class Result;
+namespace application_features {
+class ApplicationServer;
+}
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;
@@ -44,7 +47,7 @@ class ClientManager {
    * @brief Initialize a client manager using a specific log topic for output
    * @param topic Topic to log output to
    */
-  explicit ClientManager(LogTopic& topic);
+  explicit ClientManager(application_features::ApplicationServer& server, LogTopic& topic);
   virtual ~ClientManager();
 
  public:
@@ -52,8 +55,7 @@ class ClientManager {
    * @brief Initializes a client, connects to server, and verifies version
    *
    * If the client fails to connect to the server, or if the version is
-   * mismatched, this will result in a fatal error which will terminate the
-   * running program.
+   * mismatched, this will result in an error.
    *
    * @param  httpclient Output pointer will be set on success
    * @param  force      If true, an incompatible version will not result in an
@@ -64,7 +66,8 @@ class ClientManager {
    * @return            Status code and possible error message
    */
   Result getConnectedClient(std::unique_ptr<httpclient::SimpleHttpClient>& httpClient,
-                            bool force, bool logServerVersion, bool logDatabaseNotFound);
+                            bool force, bool logServerVersion,
+                            bool logDatabaseNotFound, bool quiet);
 
   /**
    * @brief Initializes a client, connects to server, and verifies version
@@ -110,6 +113,7 @@ class ClientManager {
                                                  std::string const& name);
 
  private:
+  application_features::ApplicationServer& _server;
   LogTopic& _topic;
 };
 }  // namespace arangodb

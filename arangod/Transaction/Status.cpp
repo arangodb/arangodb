@@ -24,6 +24,7 @@
 #include "Transaction/Status.h"
 
 #include <iostream>
+#include <cstring>
 
 namespace arangodb {
 namespace transaction {

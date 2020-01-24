@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_load
 @brief loads a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/load, Load collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/load, Load collection, handleCommandPut:loadCollection}
 
 @HINTS
 {% hint 'warning' %}
@@ -69,4 +69,3 @@ is returned.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -60,7 +60,7 @@ function runSetup () {
   internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
 
   c2.insert({}, { waitForSync: true });
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

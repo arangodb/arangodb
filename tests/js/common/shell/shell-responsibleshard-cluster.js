@@ -71,6 +71,17 @@ function ResponsibleShardSuite() {
       assertNotEqual("", c.getResponsibleShard(12345));
     },
     
+    testCheckBrokenParameterArray : function () {
+      let c = db._create(cn, { numberOfShards: 5, shardKeys: ["_key"] });
+
+      try {
+        c.getResponsibleShard([]);
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+    
     testCheckKeyNotGiven : function () {
       let c = db._create(cn, { numberOfShards: 5, shardKeys: ["_key"] });
 

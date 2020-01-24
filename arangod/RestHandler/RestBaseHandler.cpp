@@ -29,36 +29,19 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Meta/conversion.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "Transaction/Context.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBaseHandler::RestBaseHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestHandler(request, response) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body as VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success) {
-  try {
-    success = true;
-    return _request->toVelocyPackBuilderPtr();
-  } catch (VPackException const& e) {
-    std::string errmsg("VPackError error: ");
-    errmsg.append(e.what());
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
-  }
-  success = false;
-  return std::make_shared<VPackBuilder>();
-}
+RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestHandler(server, request, response) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses the body as VelocyPack
@@ -177,7 +160,7 @@ void RestBaseHandler::writeResult(Payload&& payload, VPackOptions const& options
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }
-    _response->setPayload(std::forward<Payload>(payload), true, options);
+    _response->setPayload(std::forward<Payload>(payload), /*generateBody*/true, options);
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {

@@ -32,3 +32,20 @@ exports.analyzer = ArangoAnalyzers.analyzer;
 exports.remove = ArangoAnalyzers.remove;
 exports.save = ArangoAnalyzers.save;
 exports.toArray = ArangoAnalyzers.toArray;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pretty print
+////////////////////////////////////////////////////////////////////////////////
+
+var ArangoAnalyzer = global.ArangoAnalyzer;
+delete global.ArangoAnalyzer; // same as js/server/bootstrap/modules/internal.js
+ArangoAnalyzer.prototype._PRINT = function(context) {
+  var colors = require('internal').COLORS;
+  var useColor = context.useColor;
+
+  context.output += '[ArangoAnalyzer ';
+  if (useColor) { context.output += colors.COLOR_STRING; }
+  context.output += this.name();
+  if (useColor) { context.output += colors.COLOR_RESET; }
+  context.output += '" (type ' + this.type() + ')]';
+};

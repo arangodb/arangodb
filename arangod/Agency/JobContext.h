@@ -50,7 +50,7 @@ class JobContext {
   void run(bool& aborts);
 
   /// @brief Abort job
-  void abort();
+  void abort(std::string const& reason);
 
  private:
   /// @brief Actual job context

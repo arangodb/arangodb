@@ -24,166 +24,147 @@
 #ifndef ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Basics/Common.h"
-#include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
+#include "Aql/types.h"
+#include "Indexes/IndexIterator.h"
+#include "VocBase/voc-types.h"
 
-#include <velocypack/Slice.h>
+#include <functional>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
+class LocalDocumentId;
+namespace transaction {
+class Methods;
+}
+namespace velocypack {
+class Builder;
+class Slice;
+}
 namespace aql {
+class Expression;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+class Query;
 
-typedef std::function<void(InputAqlItemRow&, OutputAqlItemRow&, arangodb::velocypack::Slice, RegisterId)> DocumentProducingFunction;
+enum class ProjectionType : uint32_t {
+  IdAttribute,
+  KeyAttribute,
+  OtherAttribute
+};
 
-inline void handleProjections(std::vector<std::string> const& projections,
-                              transaction::Methods const* trxPtr, VPackSlice slice,
-                              VPackBuilder& b, bool useRawDocumentPointers) {
-  for (auto const& it : projections) {
-    if (it == StaticStrings::IdString) {
-      VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
-      if (found.isCustom()) {
-        // _id as a custom type needs special treatment
-        b.add(it, VPackValue(transaction::helpers::extractIdString(trxPtr->resolver(),
-                                                                   found, slice)));
-      } else {
-        b.add(it, found);
-      }
-    } else if (it == StaticStrings::KeyString) {
-      VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
-      if (useRawDocumentPointers) {
-        b.add(VPackValue(it));
-        b.addExternal(found.begin());
-      } else {
-        b.add(it, found);
-      }
-    } else {
-      VPackSlice found = slice.get(it);
-      if (found.isNone()) {
-        // attribute not found
-        b.add(it, VPackValue(VPackValueType::Null));
-      } else {
-        if (useRawDocumentPointers) {
-          b.add(VPackValue(it));
-          b.addExternal(found.begin());
-        } else {
-          b.add(it, found);
-        }
-      }
-    }
-  }
-}
+void handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
+                       transaction::Methods const* trxPtr, velocypack::Slice slice,
+                       velocypack::Builder& b, bool useRawDocumentPointers);
 
-static DocumentProducingFunction buildCallback(
-    DocumentProducingFunction documentProducer, Variable const* outVariable,
-    bool produceResult, std::vector<std::string> const& projections,
-    transaction::Methods* trxPtr, std::vector<size_t> const& coveringIndexAttributePositions,
-    bool& allowCoveringIndexOptimization, bool useRawDocumentPointers) {
-  if (!produceResult) {
-    // no result needed
-    documentProducer = [](InputAqlItemRow& input, OutputAqlItemRow& output,
-                          VPackSlice, RegisterId registerId) {
-      // TODO: optimize this within the register planning mechanism?
-      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
-    };
-    return documentProducer;
-  }
+struct DocumentProducingFunctionContext {
+ public:
+  DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
+                                   RegisterId outputRegister, bool produceResult,
+                                   Query* query, Expression* filter,
+                                   std::vector<std::string> const& projections,
+                                   std::vector<size_t> const& coveringIndexAttributePositions,
+                                   bool allowCoveringIndexOptimization,
+                                   bool useRawDocumentPointers, bool checkUniqueness);
 
-  if (!projections.empty()) {
-    // return a projection
-    if (!coveringIndexAttributePositions.empty()) {
-      // projections from an index value (covering index)
-      documentProducer = [trxPtr, projections, coveringIndexAttributePositions,
-                          &allowCoveringIndexOptimization,
-                          useRawDocumentPointers](InputAqlItemRow& input,
-                                                  OutputAqlItemRow& output,
-                                                  VPackSlice slice, RegisterId registerId) {
-        transaction::BuilderLeaser b(trxPtr);
-        b->openObject(true);
+  DocumentProducingFunctionContext() = delete;
 
-        if (allowCoveringIndexOptimization) {
-          // a potential call by a covering index iterator...
-          bool const isArray = slice.isArray();
-          size_t i = 0;
-          VPackSlice found;
-          for (auto const& it : projections) {
-            if (isArray) {
-              // we will get a Slice with an array of index values. now we need
-              // to look up the array values from the correct positions to
-              // populate the result with the projection values this case will
-              // be triggered for indexes that can be set up on any number of
-              // attributes (hash/skiplist)
-              found = slice.at(coveringIndexAttributePositions[i]);
-              ++i;
-            } else {
-              // no array Slice... this case will be triggered for indexes that
-              // contain simple string values, such as the primary index or the
-              // edge index
-              found = slice;
-            }
-            if (found.isNone()) {
-              // attribute not found
-              b->add(it, VPackValue(VPackValueType::Null));
-            } else {
-              if (useRawDocumentPointers) {
-                b->add(VPackValue(it));
-                b->addExternal(found.begin());
-              } else {
-                b->add(it, found);
-              }
-            }
-          }
-        } else {
-          // projections from a "real" document
-          handleProjections(projections, trxPtr, slice, *b.get(), useRawDocumentPointers);
-        }
+  ~DocumentProducingFunctionContext() = default;
 
-        b->close();
+  void setOutputRow(OutputAqlItemRow* outputRow);
 
-        AqlValue v(b.get());
-        AqlValueGuard guard{v, true};
-        output.moveValueInto(registerId, input, guard);
-      };
-      return documentProducer;
-    }
+  bool getProduceResult() const noexcept;
 
-    // projections from a "real" document
-    documentProducer = [trxPtr, projections,
-                        useRawDocumentPointers](InputAqlItemRow& input,
-                                                OutputAqlItemRow& output,
-                                                VPackSlice slice, RegisterId registerId) {
-      transaction::BuilderLeaser b(trxPtr);
-      b->openObject(true);
-      handleProjections(projections, trxPtr, slice, *b.get(), useRawDocumentPointers);
-      b->close();
+  std::vector<std::pair<ProjectionType, std::string>> const& getProjections() const noexcept;
 
-      AqlValue v(b.get());
-      AqlValueGuard guard{v, true};
-      output.moveValueInto(registerId, input, guard);
-    };
-    return documentProducer;
-  }
+  transaction::Methods* getTrxPtr() const noexcept;
 
-  // return the document as is
-  documentProducer = [useRawDocumentPointers](InputAqlItemRow& input,
-                                              OutputAqlItemRow& output,
-                                              VPackSlice slice, RegisterId registerId) {
-    uint8_t const* vpack = slice.begin();
-    if (useRawDocumentPointers) {
-      // With NoCopy we do not clone anyways
-      output.cloneValueInto(registerId, input, AqlValue(AqlValueHintDocumentNoCopy(vpack)));
-    } else {
-      // Here we do a clone, so clone once, then move into
-      AqlValue v{AqlValueHintCopy{vpack}};
-      AqlValueGuard guard{v, true};
-      output.moveValueInto(registerId, input, guard);
-    }
-  };
-  return documentProducer;
-}
+  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
+
+  bool getAllowCoveringIndexOptimization() const noexcept;
+
+  bool getUseRawDocumentPointers() const noexcept;
+
+  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization) noexcept;
+
+  void incrScanned() noexcept;
+
+  void incrFiltered() noexcept;
+
+  size_t getAndResetNumScanned() noexcept;
+  
+  size_t getAndResetNumFiltered() noexcept;
+  
+  InputAqlItemRow const& getInputRow() const noexcept;
+
+  OutputAqlItemRow& getOutputRow() const noexcept;
+
+  RegisterId getOutputRegister() const noexcept;
+
+  bool checkUniqueness(LocalDocumentId const& token);
+  
+  bool checkFilter(velocypack::Slice slice);
+
+  void reset();
+
+  void setIsLastIndex(bool val);
+  
+  bool hasFilter() const noexcept;
+
+ private:
+  InputAqlItemRow const& _inputRow;
+  OutputAqlItemRow* _outputRow;
+  Query* const _query;
+  Expression* _filter;
+  std::vector<std::pair<ProjectionType, std::string>> _projections;
+  std::vector<size_t> const& _coveringIndexAttributePositions;
+  size_t _numScanned;
+  size_t _numFiltered;
+
+  /// @brief set of already returned documents. Used to make the result distinct
+  std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
+
+  RegisterId const _outputRegister;
+  bool const _produceResult;
+  bool const _useRawDocumentPointers;
+  bool _allowCoveringIndexOptimization;
+  /// @brief Flag if the current index pointer is the last of the list.
+  ///        Used in uniqueness checks.
+  bool _isLastIndex;
+
+  /// @brief Flag if we need to check for uniqueness
+  bool _checkUniqueness;
+};
+
+namespace DocumentProducingCallbackVariant {
+struct WithProjectionsCoveredByIndex {};
+struct WithProjectionsNotCoveredByIndex {};
+struct DocumentWithRawPointer {};
+struct DocumentCopy {};
+}  // namespace DocumentProducingCallbackVariant
+
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
+                                            DocumentProducingFunctionContext& context);
+
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
+                                            DocumentProducingFunctionContext& context);
+
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
+                                            DocumentProducingFunctionContext& context);
+
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentCopy,
+                                            DocumentProducingFunctionContext& context);
+
+template <bool checkUniqueness>
+IndexIterator::LocalDocumentIdCallback getNullCallback(DocumentProducingFunctionContext& context);
+
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback buildDocumentCallback(DocumentProducingFunctionContext& context);
 
 }  // namespace aql
 }  // namespace arangodb

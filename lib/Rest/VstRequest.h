@@ -25,66 +25,59 @@
 #ifndef ARANGODB_REST_VST_REQUEST_H
 #define ARANGODB_REST_VST_REQUEST_H 1
 
-#include "Endpoint/ConnectionInfo.h"
-#include "Rest/GeneralRequest.h"
-#include "Rest/VstMessage.h"
+#include <stddef.h>
+#include <cstdint>
+#include <memory>
 
 #include <velocypack/Buffer.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include <velocypack/StringRef.h>
+
+#include "Endpoint/Endpoint.h"
+#include "Rest/GeneralRequest.h"
 
 namespace arangodb {
-class RestBatchHandler;
-
-namespace rest {
-class GeneralCommTask;
-class VstCommTask;
-}  // namespace rest
-
+struct ConnectionInfo;
 namespace velocypack {
 class Builder;
 struct Options;
 }  // namespace velocypack
 
-using rest::VstInputMessage;
-
 class VstRequest final : public GeneralRequest {
-  friend class rest::VstCommTask;
-  friend class rest::GeneralCommTask;
-
+  
  public:
-  VstRequest(ConnectionInfo const& connectionInfo, VstInputMessage&& message,
+  VstRequest(ConnectionInfo const& connectionInfo,
+             velocypack::Buffer<uint8_t> buffer,
+             size_t payloadOffset,
              uint64_t messageId);
 
-  ~VstRequest() {}
+  ~VstRequest() = default;
 
  public:
-  uint64_t messageId() const override { return _messageId; }
+  
+  size_t contentLength() const override;
+  arangodb::velocypack::StringRef rawPayload() const override;
+  velocypack::Slice payload(arangodb::velocypack::Options const*) override;
+  void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
 
-  size_t contentLength() const override { return _message.payloadSize(); }
-  arangodb::velocypack::StringRef rawPayload() const override { return _message.payload(); }
-  VPackSlice payload(arangodb::velocypack::Options const*) override;
+  virtual void setDefaultContentType() override {
+    _contentType = rest::ContentType::VPACK;
+  }
 
-  virtual arangodb::Endpoint::TransportType transportType() override {
+  arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
 
  private:
-  void setHeader(VPackSlice key, VPackSlice content);
+  void setHeader(velocypack::Slice key, velocypack::Slice content);
 
   void parseHeaderInformation();
 
  private:
-  uint64_t _messageId;
-  VstInputMessage _message;
-
+  /// message header and request body are in the same body
+  size_t _payloadOffset;
   /// @brief was VPack payload validated
   bool _validatedPayload;
-  /// @brief if payload was not VPack this will store parsed result
-  std::shared_ptr<velocypack::Builder> _vpackBuilder;
 };
 }  // namespace arangodb
 #endif

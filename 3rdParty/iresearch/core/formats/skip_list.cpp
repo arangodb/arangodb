@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -54,7 +53,7 @@ NS_ROOT
 // --SECTION--                                       skip_writer implementation
 // ----------------------------------------------------------------------------
 
-skip_writer::skip_writer(size_t skip_0, size_t skip_n) NOEXCEPT
+skip_writer::skip_writer(size_t skip_0, size_t skip_n) noexcept
   : skip_0_(skip_0), skip_n_(skip_n) {
 }
 
@@ -140,7 +139,7 @@ void skip_writer::flush(index_output& out) {
   });
 }
 
-void skip_writer::reset() NOEXCEPT {
+void skip_writer::reset() noexcept {
   for(auto& level : levels_) {
     level.stream.reset();
   }
@@ -157,8 +156,8 @@ skip_reader::level::level(
     uint64_t end,
     uint64_t child /*= 0*/,
     size_t skipped /*= 0*/,
-    doc_id_t doc /*= type_limits<type_t::doc_id_t>::invalid()*/
-) NOEXCEPT
+    doc_id_t doc /*= doc_limits::invalid()*/
+) noexcept
   : stream(std::move(stream)), // thread-safe input
     begin(begin), 
     end(end),
@@ -168,7 +167,7 @@ skip_reader::level::level(
     doc(doc) {
 }
 
-skip_reader::level::level(skip_reader::level&& rhs) NOEXCEPT 
+skip_reader::level::level(skip_reader::level&& rhs) noexcept 
   : stream(std::move(rhs.stream)),
     begin(rhs.begin),
     end(rhs.end),
@@ -242,7 +241,7 @@ int64_t skip_reader::level::checksum(size_t offset) const {
 
 skip_reader::skip_reader(
     size_t skip_0, 
-    size_t skip_n) NOEXCEPT
+    size_t skip_n) noexcept
   : skip_0_(skip_0), skip_n_(skip_n) {
 }
 
@@ -251,7 +250,7 @@ void skip_reader::read_skip(skip_reader::level& level) {
   const auto doc = read_(size_t(std::distance(&level, &levels_.back())), level);
 
   // read pointer to child level if needed
-  if (!type_limits<type_t::doc_id_t>::eof(doc) && level.child != UNDEFINED) {
+  if (!doc_limits::eof(doc) && level.child != UNDEFINED) {
     level.child = level.stream->read_vlong();
   }
 
@@ -339,7 +338,7 @@ void skip_reader::reset() {
       level.child = 0;
     }
     level.skipped = 0;
-    level.doc = type_limits<type_t::doc_id_t>::invalid();
+    level.doc = doc_limits::invalid();
   };
 
   std::for_each(levels_.begin(), levels_.end(), reset);

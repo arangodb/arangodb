@@ -333,6 +333,19 @@ describe ArangoDB do
           end
         end
       end
+      
+      it "tails the WAL with a tick far in the future" do
+        cmd = api + "/lastTick"
+        doc = ArangoDB.log_get("#{prefix}-lastTick", cmd, :body => "")
+        doc.code.should eq(200)
+        fromTick = doc.parsed_response["tick"].to_i * 10000000
+
+        cmd = api + "/tail?global=true&from=" + fromTick.to_s
+        doc = ArangoDB.log_get("#{prefix}-tail", cmd, :body => "", :format => :plain)
+
+        doc.code.should eq(204)
+        doc.headers["x-arango-replication-lastincluded"].should eq("0")
+      end
 
       it "fetches a create collection action from the follow log" do
         cid = 0

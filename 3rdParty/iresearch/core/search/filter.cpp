@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "filter.hpp"
@@ -50,8 +49,8 @@ NS_ROOT
 // --SECTION--                                                            filter
 // -----------------------------------------------------------------------------
 
-filter::filter(const type_id& type) NOEXCEPT
-  : boost_(boost::no_boost()), type_(&type) {
+filter::filter(const type_id& type) noexcept
+  : boost_(irs::no_boost()), type_(&type) {
 }
 
 filter::prepared::ptr filter::prepared::empty() {
@@ -59,10 +58,6 @@ filter::prepared::ptr filter::prepared::empty() {
   return filter::prepared::ptr(
     filter::prepared::ptr(), &empty_query::instance()
   );
-}
-
-filter::prepared::prepared(attribute_store&& attrs) NOEXCEPT
-  : attrs_(std::move(attrs)) {
 }
 
 // -----------------------------------------------------------------------------

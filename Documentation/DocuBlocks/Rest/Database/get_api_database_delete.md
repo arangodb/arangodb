@@ -2,7 +2,7 @@
 @startDocuBlock get_api_database_delete
 @brief drop an existing database
 
-@RESTHEADER{DELETE /_api/database/{database-name}, Drop database}
+@RESTHEADER{DELETE /_api/database/{database-name}, Drop database, deleteDatabase}
 
 @RESTURLPARAMETERS
 
@@ -43,4 +43,3 @@ is returned if the database could not be found.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

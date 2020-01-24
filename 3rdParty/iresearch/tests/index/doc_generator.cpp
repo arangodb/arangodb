@@ -24,10 +24,8 @@
 #include "doc_generator.hpp"
 #include "analysis/analyzers.hpp"
 #include "index/field_data.hpp"
-#include "utils/block_pool.hpp"
 #include "analysis/token_streams.hpp"
 #include "store/store_utils.hpp"
-#include "unicode/utf8.h"
 #include "utils/file_utils.hpp"
 
 #include <sstream>
@@ -37,6 +35,8 @@
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/reader.h>
 #include <rapidjson/istreamwrapper.h>
+
+#include <utf8.h>
 
 namespace utf8 {
 namespace unchecked {
@@ -111,21 +111,22 @@ NS_BEGIN(tests)
 // --SECTION--                                           document implementation
 // -----------------------------------------------------------------------------
 
-document::document(document&& rhs) NOEXCEPT
+document::document(document&& rhs) noexcept
   : indexed(std::move(rhs.indexed)), 
-    stored(std::move(rhs.stored)) {
+    stored(std::move(rhs.stored)),
+    sorted(std::move(rhs.sorted)) {
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         field_base implementation
 // -----------------------------------------------------------------------------
 
-field_base::field_base(field_base&& rhs) NOEXCEPT
+field_base::field_base(field_base&& rhs) noexcept
   : features_(std::move(rhs.features_)),
     name_(std::move(rhs.name_)) {
 }
 
-field_base& field_base::operator=(field_base&& rhs) NOEXCEPT {
+field_base& field_base::operator=(field_base&& rhs) noexcept {
   if (this != &rhs) {
     features_ = std::move(features_);
     name_ = std::move(rhs.name_);
@@ -208,11 +209,11 @@ bool binary_field::write(irs::data_output& out) const {
 // --SECTION--                                           particle implementation
 // -----------------------------------------------------------------------------
 
-particle::particle(particle&& rhs) NOEXCEPT
+particle::particle(particle&& rhs) noexcept
   : fields_(std::move(rhs.fields_)) {
 }
 
-particle& particle::operator=(particle&& rhs) NOEXCEPT {
+particle& particle::operator=(particle&& rhs) noexcept {
   if (this != &rhs) {
     fields_ = std::move(rhs.fields_);
   }
@@ -228,13 +229,13 @@ bool particle::contains(const irs::string_ref& name) const {
   });
 }
 
-std::vector<const ifield*> particle::find(const irs::string_ref& name) const {
-  std::vector<const ifield*> fields;
+std::vector<ifield::ptr> particle::find(const irs::string_ref& name) const {
+  std::vector<ifield::ptr> fields;
   std::for_each(
     fields_.begin(), fields_.end(),
-    [&fields, &name] (const ifield::ptr& fld) {
+    [&fields, &name] (ifield::ptr fld) {
       if (name == fld->name()) {
-        fields.emplace_back(fld.get());
+        fields.emplace_back(fld);
       }
   });
 
@@ -313,7 +314,7 @@ csv_doc_generator::csv_doc_generator(
     const irs::utf8_path& file, doc_template& doc
 ): doc_(doc),
    ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
-   stream_(irs::analysis::analyzers::get("delimited", irs::text_format::text, ",")) {
+   stream_(irs::analysis::analyzers::get("delimiter", irs::text_format::text, ",")) {
   doc_.init();
   doc_.reset();
 }
@@ -485,7 +486,22 @@ json_doc_generator::json_doc_generator(
   next_ = docs_.begin();
 }
 
-json_doc_generator::json_doc_generator(json_doc_generator&& rhs) NOEXCEPT
+json_doc_generator::json_doc_generator(
+    const char* data,
+    const json_doc_generator::factory_f& factory) {
+  assert(data);
+
+  rapidjson::StringStream stream(data);
+  parse_json_handler handler(factory, docs_);
+  rapidjson::Reader reader;
+
+  const auto res = reader.Parse(stream, handler);
+  assert(!res.IsError());
+
+  next_ = docs_.begin();
+}
+
+json_doc_generator::json_doc_generator(json_doc_generator&& rhs) noexcept
   : docs_(std::move(rhs.docs_)), 
     prev_(std::move(rhs.prev_)), 
     next_(std::move(rhs.next_)) {

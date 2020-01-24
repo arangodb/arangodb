@@ -22,6 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <v8.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"

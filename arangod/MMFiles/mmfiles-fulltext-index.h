@@ -24,26 +24,13 @@
 #ifndef ARANGOD_MMFILES_MMFILES_FULLTEXT_INDEX_H
 #define ARANGOD_MMFILES_MMFILES_FULLTEXT_INDEX_H 1
 
+#include <set>
+
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "mmfiles-fulltext-common.h"
 
 struct TRI_fulltext_query_s;
-struct TRI_fulltext_result_s;
-struct TRI_fulltext_wordlist_s;
-
-/// @brief type for index statistics
-struct TRI_fulltext_stats_t {
-  size_t _memoryTotal;
-#if TRI_FULLTEXT_DEBUG
-  size_t _memoryOwn;
-  size_t _memoryBase;
-  size_t _memoryNodes;
-  size_t _memoryFollowers;
-  size_t _memoryDocuments;
-  uint32_t _numNodes;
-#endif
-};
 
 /// @brief create a fulltext index
 TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t, uint32_t, uint32_t);
@@ -67,9 +54,6 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t*,
 /// note: this will free the query
 std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const,
                                                       struct TRI_fulltext_query_s*);
-
-/// @brief return stats about the index
-TRI_fulltext_stats_t TRI_StatsMMFilesFulltextIndex(TRI_fts_index_t*);
 
 /// @brief return the total memory used by the index
 size_t TRI_MemoryMMFilesFulltextIndex(TRI_fts_index_t*);

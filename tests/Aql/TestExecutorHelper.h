@@ -39,7 +39,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class TestExecutorHelperInfos : public ExecutorInfos {
@@ -62,14 +62,11 @@ class TestExecutorHelperInfos : public ExecutorInfos {
   RegisterId _inputRegister;
 };
 
-/**
- * @brief Implementation of Filter Node
- */
 class TestExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -87,14 +84,7 @@ class TestExecutorHelper {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
-  }
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  public:
   Infos& _infos;

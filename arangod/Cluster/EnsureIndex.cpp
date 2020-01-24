@@ -31,6 +31,9 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -82,7 +85,7 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature, ActionDescription const& d
   }
 }
 
-EnsureIndex::~EnsureIndex() {}
+EnsureIndex::~EnsureIndex() = default;
 
 bool EnsureIndex::first() {
   arangodb::Result res;

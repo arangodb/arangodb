@@ -23,6 +23,8 @@
 
 #include "hashes.h"
 
+#include <cstring>
+
 /// @brief the FNV hash work horse
 static inline uint64_t FnvWork(uint8_t value, uint64_t hash) {
   static uint64_t const MagicPrime = 0x00000100000001b3ULL;

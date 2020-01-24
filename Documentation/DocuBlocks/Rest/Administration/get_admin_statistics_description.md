@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_statistics_description
 @brief fetch descriptive info of statistics
 
-@RESTHEADER{GET /_admin/statistics-description, Statistics description}
+@RESTHEADER{GET /_admin/statistics-description, Statistics description, getStatisticsDescription}
 
 @RESTDESCRIPTION
 Returns a description of the statistics returned by */_admin/statistics*.
@@ -30,7 +30,6 @@ A statistics figure is described by
 @RESTRETURNCODE{200}
 Description was returned successfully.
 
-
 @RESTREPLYBODY{groups,array,required,admin_statistics_group_struct}
 A statistics group
 
@@ -42,7 +41,6 @@ The name of the group.
 
 @RESTSTRUCT{description,admin_statistics_group_struct,string,required,}
 A description of the group.
-
 
 @RESTREPLYBODY{figures,array,required,admin_statistics_figures_struct}
 A statistics figure
@@ -85,4 +83,3 @@ the error, *false* in this case
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

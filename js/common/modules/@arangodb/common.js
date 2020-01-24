@@ -157,17 +157,6 @@ exports.defineModule = function(path, file) {
   let content = fs.read(file);
   let mc = internal.db._collection('_modules');
 
-  if (mc === null) {
-    // lazily create _modules collection if it does not yet exist
-    const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
-    mc = internal.db._create('_modules', {
-      isSystem: true,
-      journalSize: 1024 * 1024,
-      replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
-      distributeShardsLike: '_graphs'
-    });
-  }
-
   path = module.normalize(path);
   let m = mc.firstExample({path: path});
 
@@ -555,12 +544,13 @@ exports.checkAvailableVersions = function(version) {
     );
     return;
   }
-
-  if (internal.isEnterprise()) {
-    // don't check for version updates in the enterprise version
+  
+  if (require('@arangodb').isServer || internal.isEnterprise()) {
+    // don't check for version updates in the server
+    // nor in the enterprise version
     return;
   }
-
+  
   try {
     var u =
       'https://www.arangodb.com/repositories/versions.php?version=' +

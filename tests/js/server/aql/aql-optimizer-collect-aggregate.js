@@ -44,16 +44,18 @@ function optimizerAggregateTestSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 5 });
 
+      let docs = [];
       for (var i = 0; i < 2000; ++i) {
-        c.save({ group: "test" + (i % 10), value1: i, value2: i % 5 });
+        docs.push({ group: "test" + (i % 10), value1: i, value2: i % 5 });
       }
+      c.insert(docs);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -600,53 +602,6 @@ function optimizerAggregateTestSuite () {
 /// @brief test aggregate
 ////////////////////////////////////////////////////////////////////////////////
 
-    testAggregateFilteredBig : function () {
-      var i;
-      for (i = 0; i < 10000; ++i) {
-        c.save({ age: 10 + (i % 80), type: 1 });
-      }
-      for (i = 0; i < 10000; ++i) {
-        c.save({ age: 10 + (i % 80), type: 2 });
-      }
-
-      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT AGGREGATE length = LENGTH(i) RETURN length";
-
-      var results = AQL_EXECUTE(query);
-      assertEqual(1, results.json.length);
-      assertEqual(125 * 30, results.json[0]);
-
-      var plan = AQL_EXPLAIN(query).plan;
-      // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
-      assertEqual(isCluster ? 2 : 1, collectNodes.length);
-
-      let collectNode = collectNodes[0];
-      if (isCluster) {
-        assertEqual("sorted", collectNode.collectOptions.method);
-        assertFalse(collectNode.count);
-        assertFalse(collectNode.isDistinctCommand);
-
-        assertEqual(0, collectNode.groups.length);
-        assertEqual(1, collectNode.aggregates.length);
-        assertEqual("LENGTH", collectNode.aggregates[0].type);
-        collectNode = collectNodes[1];
-      }
-      assertEqual("sorted", collectNode.collectOptions.method);
-      assertFalse(collectNode.count);
-      assertFalse(collectNode.isDistinctCommand);
-
-      assertEqual(0, collectNode.groups.length);
-      assertEqual(1, collectNode.aggregates.length);
-      assertEqual("length", collectNode.aggregates[0].outVariable.name);
-      assertEqual(isCluster ? "SUM" : "LENGTH", collectNode.aggregates[0].type);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
-
     testAggregateNested : function () {
       var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE length = LENGTH(j) RETURN length";
 
@@ -901,6 +856,19 @@ function optimizerAggregateTestSuite () {
       assertEqual(1, results.json.length);
       assertNull(results.json[0]);
       assertEqual(results.json[0], AQL_EXECUTE("RETURN MIN([ null, null, null, null ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min
+////////////////////////////////////////////////////////////////////////////////
+
+    testMinNotOnlyNullButStartsWithNull : function () {
+      var query = "FOR i IN [ null, null, null, null, 35 ] COLLECT AGGREGATE m = MIN(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(35, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN MIN([ null, null, null, null, 35 ])").json[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1756,13 +1724,86 @@ function optimizerAggregateTestSuite () {
   };
 }
 
+function optimizerAggregateModifyTestSuite () {
+  let c;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", { numberOfShards: 5 });
+
+      let docs = [];
+      for (var i = 0; i < 2000; ++i) {
+        docs.push({ group: "test" + (i % 10), value1: i, value2: i % 5 });
+      }
+      c.insert(docs);
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test aggregate
+////////////////////////////////////////////////////////////////////////////////
+
+    testAggregateFilteredBig : function () {
+      var i;
+      let docs = [];
+      for (i = 0; i < 10000; ++i) {
+        docs.push({ age: 10 + (i % 80), type: 1 });
+      }
+      for (i = 0; i < 10000; ++i) {
+        docs.push({ age: 10 + (i % 80), type: 2 });
+      }
+      c.insert(docs);
+
+      var query = "FOR i IN " + c.name() + " FILTER i.age >= 20 && i.age < 50 && i.type == 1 COLLECT AGGREGATE length = LENGTH(i) RETURN length";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(125 * 30, results.json[0]);
+
+      var plan = AQL_EXPLAIN(query).plan;
+      // must not have a SortNode
+      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      assertEqual(isCluster ? 2 : 1, collectNodes.length);
+
+      let collectNode = collectNodes[0];
+      if (isCluster) {
+        assertEqual("sorted", collectNode.collectOptions.method);
+        assertFalse(collectNode.count);
+        assertFalse(collectNode.isDistinctCommand);
+
+        assertEqual(0, collectNode.groups.length);
+        assertEqual(1, collectNode.aggregates.length);
+        assertEqual("LENGTH", collectNode.aggregates[0].type);
+        collectNode = collectNodes[1];
+      }
+      assertEqual("sorted", collectNode.collectOptions.method);
+      assertFalse(collectNode.count);
+      assertFalse(collectNode.isDistinctCommand);
+
+      assertEqual(0, collectNode.groups.length);
+      assertEqual(1, collectNode.aggregates.length);
+      assertEqual("length", collectNode.aggregates[0].outVariable.name);
+      assertEqual(isCluster ? "SUM" : "LENGTH", collectNode.aggregates[0].type);
+    }
+  };
+}
+    
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerAggregateCollectionTestSuite () {
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollectionA");
       var c = db._create("UnitTestsCollectionA");
 
@@ -1771,10 +1812,7 @@ function optimizerAggregateCollectionTestSuite () {
         { "_key" : "t2" }, 
         { "_key" : "t3" } 
       ];
-      values.forEach(function(doc) {
-        c.insert(doc);
-
-      });
+      c.insert(values);
 
       db._drop("UnitTestsCollectionB");
       c = db._create("UnitTestsCollectionB");
@@ -1800,12 +1838,10 @@ function optimizerAggregateCollectionTestSuite () {
         { "tlm" : 1460382104593, "ct" : 0, "rev" : "t3", "_key" : "8" }
       ];
 
-      values.forEach(function(doc) {
-        c.insert(doc);
-      });
+      c.insert(values);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollectionA");
       db._drop("UnitTestsCollectionB");
     },
@@ -1835,6 +1871,7 @@ function optimizerAggregateResultsSuite () {
     if (typeof actual === 'number') {
       actual = actual.toFixed(6);
     }
+   
     assertEqual(expected, actual, query);
     
     plan = AQL_EXPLAIN(query).plan;
@@ -1846,16 +1883,17 @@ function optimizerAggregateResultsSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 5 });
-
+      let docs = [];
       for (var i = 0; i < 2000; ++i) {
-        c.save({ group: "test" + (i % 10), value1: i, value2: i % 5 });
+        docs.push({ group: "test" + (i % 10), value1: i, value2: i % 5 });
       }
+      c.save(docs);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -1904,11 +1942,11 @@ function optimizerAggregateResultsSuite () {
     },
     
     testUnique1 : function () {
-      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value1) RETURN v");
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value1) RETURN SORTED(v)");
     },
 
     testUnique2 : function () {
-      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value2) RETURN v");
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value2) RETURN SORTED(v)");
     },
     
     testSortedUnique1 : function () {
@@ -1936,6 +1974,7 @@ function optimizerAggregateResultsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerAggregateTestSuite);
+jsunity.run(optimizerAggregateModifyTestSuite);
 jsunity.run(optimizerAggregateCollectionTestSuite);
 if (isCluster) {
   jsunity.run(optimizerAggregateResultsSuite);

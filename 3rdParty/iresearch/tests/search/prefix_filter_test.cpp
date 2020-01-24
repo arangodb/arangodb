@@ -60,7 +60,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
@@ -103,6 +103,17 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
       irs::order order;
 
       order.add<tests::sort::frequency_sort>(false);
+      check_query(irs::by_prefix().field("prefix").term("a"), order, docs, rdr);
+    }
+
+    // prefix
+    {
+      docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
+      costs_t costs{ docs.size() };
+      irs::order order;
+
+      order.add<tests::sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(true);
       check_query(irs::by_prefix().field("prefix").term("a"), order, docs, rdr);
     }
   }
@@ -189,7 +200,7 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
   void by_prefix_schemas() { 
     // write segments
     {
-      auto writer = open_writer(iresearch::OM_CREATE);
+      auto writer = open_writer(irs::OM_CREATE);
 
       std::vector<tests::doc_generator_base::ptr> gens;
       gens.emplace_back(new tests::json_doc_generator(
@@ -215,14 +226,14 @@ class prefix_filter_test_case : public tests::filter_test_case_base {
 
     check_query(irs::by_prefix().field("Name").term("Addr"), docs_t{1, 2, 77, 78}, rdr);
   }
-}; // filter_test_case_base
+}; // prefix_filter_test_case
 
 TEST(by_prefix_test, ctor) {
   irs::by_prefix q;
   ASSERT_EQ(irs::by_prefix::type(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_TRUE(q.term().empty());
-  ASSERT_EQ(irs::boost::no_boost(), q.boost());
+  ASSERT_EQ(irs::no_boost(), q.boost());
   ASSERT_EQ(1024, q.scored_terms_limit());
 }
 
@@ -257,18 +268,18 @@ TEST(by_prefix_test, boost) {
     q.field("field").term("term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(irs::no_boost(), prepared->boost());
   }
 
   // with boost
   {
-    iresearch::boost::boost_t boost = 1.5f;
+    irs::boost_t boost = 1.5f;
     irs::by_prefix q;
     q.field("field").term("term");
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(boost, prepared->boost());
   }
 }
 
@@ -287,7 +298,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_0")
+    ::testing::Values("1_0", "1_1", "1_2")
   ),
   tests::to_string
 );

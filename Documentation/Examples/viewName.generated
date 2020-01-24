@@ -1,4 +1,0 @@
-arangosh&gt; v = db._view(<span class="hljs-string">"demoView"</span>);
-[ArangoView <span class="hljs-number">102</span>, <span class="hljs-string">"demoView"</span> (type arangosearch)]
-arangosh&gt; v.name();
-demoView

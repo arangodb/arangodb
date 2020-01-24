@@ -75,6 +75,7 @@ class ClientTaskQueue {
    * the data need not be synchronized. Can be used to requeue a failed job,
    * notify another actor that the job is done, etc.
    *
+   * @param server  A reference the the underlying application server
    * @param jobData Data describing the job which was just processed
    * @param result  The result status of the job
    */
@@ -82,7 +83,8 @@ class ClientTaskQueue {
       std::function<void(std::unique_ptr<JobData>&& jobData, Result const& result)>;
 
  public:
-  ClientTaskQueue(JobProcessor processJob, JobResultHandler handleJobResult);
+  ClientTaskQueue(application_features::ApplicationServer& server,
+                  JobProcessor processJob, JobResultHandler handleJobResult);
   virtual ~ClientTaskQueue();
 
  public:
@@ -171,7 +173,7 @@ class ClientTaskQueue {
     Worker& operator=(Worker const&) = delete;
 
    public:
-    explicit Worker(ClientTaskQueue<JobData>&,
+    explicit Worker(application_features::ApplicationServer&, ClientTaskQueue<JobData>&,
                     std::unique_ptr<httpclient::SimpleHttpClient>&&);
     virtual ~Worker();
 
@@ -187,6 +189,8 @@ class ClientTaskQueue {
   };
 
  private:
+  application_features::ApplicationServer& _server;
+
   JobProcessor _processJob;
   JobResultHandler _handleJobResult;
 
@@ -206,9 +210,10 @@ class ClientTaskQueue {
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename JobData>
-inline ClientTaskQueue<JobData>::ClientTaskQueue(JobProcessor processJob,
+inline ClientTaskQueue<JobData>::ClientTaskQueue(application_features::ApplicationServer& server,
+                                                 JobProcessor processJob,
                                                  JobResultHandler handleJobResult)
-    : _processJob(processJob), _handleJobResult(handleJobResult) {}
+    : _server(server), _processJob(processJob), _handleJobResult(handleJobResult) {}
 
 template <typename JobData>
 ClientTaskQueue<JobData>::~ClientTaskQueue() {
@@ -226,7 +231,7 @@ inline bool ClientTaskQueue<JobData>::spawnWorkers(ClientManager& manager,
     MUTEX_LOCKER(lock, _workersLock);
     for (; spawned < numWorkers; spawned++) {
       auto client = manager.getConnectedClient(false, false, true);
-      auto worker = std::make_unique<Worker>(*this, std::move(client));
+      auto worker = std::make_unique<Worker>(_server, *this, std::move(client));
       _workers.emplace_back(std::move(worker));
       _workers.back()->start();
     }
@@ -321,7 +326,7 @@ inline void ClientTaskQueue<JobData>::waitForIdle() noexcept {
       }
 
       CONDITION_LOCKER(lock, _workersCondition);
-      lock.wait(std::chrono::milliseconds(250));
+      lock.wait(std::chrono::milliseconds(100));
     }
   } catch (...) {
   }
@@ -367,9 +372,10 @@ inline void ClientTaskQueue<JobData>::notifyIdle() noexcept {
 }
 
 template <typename JobData>
-inline ClientTaskQueue<JobData>::Worker::Worker(ClientTaskQueue<JobData>& queue,
-                                                std::unique_ptr<httpclient::SimpleHttpClient>&& client)
-    : Thread("Worker"), _queue(queue), _client(std::move(client)), _idle(true) {}
+inline ClientTaskQueue<JobData>::Worker::Worker(
+    application_features::ApplicationServer& server, ClientTaskQueue<JobData>& queue,
+    std::unique_ptr<httpclient::SimpleHttpClient>&& client)
+    : Thread(server, "Worker"), _queue(queue), _client(std::move(client)), _idle(true) {}
 
 template <typename JobData>
 inline ClientTaskQueue<JobData>::Worker::~Worker() {

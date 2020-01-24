@@ -1,8 +1,8 @@
 
 @startDocuBlock JSF_get_admin_status
-@brief returns status information of the server. 
+@brief returns status information of the server.
 
-@RESTHEADER{GET /_admin/status, Return status information}
+@RESTHEADER{GET /_admin/status, Return status information, RestStatusHandler}
 
 @RESTDESCRIPTION
 Returns status information about the server.
@@ -67,4 +67,3 @@ An agent will also have
 Status information was returned successfully.
 
 @endDocuBlock
-

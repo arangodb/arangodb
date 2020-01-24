@@ -38,7 +38,7 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class TestEmptyExecutorHelperInfos : public ExecutorInfos {
@@ -58,7 +58,7 @@ class TestEmptyExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -76,14 +76,7 @@ class TestEmptyExecutorHelper {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number of rows not supported");
-  }
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 };
 
 }  // namespace aql

@@ -1,2 +1,0 @@
-arangosh&gt; db.example.document(<span class="hljs-string">""</span>);
-[ArangoError <span class="hljs-number">1205</span>: illegal <span class="hljs-built_in">document</span> handle]

@@ -21,14 +21,25 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClientConnection.h"
+#include <errno.h>
+#include <string>
+
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WS2tcpip.h>
 #include <WinSock2.h>
 #endif
 
-#include <sys/types.h>
+#include "ClientConnection.h"
+
+#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/socket-utils.h"
+#include "Basics/voc-errors.h"
+#include "Endpoint/Endpoint.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -38,13 +49,17 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-ClientConnection::ClientConnection(Endpoint* endpoint, double requestTimeout,
+ClientConnection::ClientConnection(application_features::ApplicationServer& server,
+                                   Endpoint* endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {}
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+                              connectRetries) {}
 
-ClientConnection::ClientConnection(std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+ClientConnection::ClientConnection(application_features::ApplicationServer& server,
+                                   std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
                                    double connectTimeout, size_t connectRetries)
-    : GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries) {}
+    : GeneralClientConnection(server, endpoint, requestTimeout, connectTimeout,
+                              connectRetries) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a client connection

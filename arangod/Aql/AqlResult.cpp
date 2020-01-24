@@ -39,7 +39,7 @@ ExecutionEngineResult::ExecutionEngineResult(ExecutionEngine* engine)
     : _result(), _engine(engine) {}
 
 // No responsibilty for the pointer
-ExecutionEngineResult::~ExecutionEngineResult() {}
+ExecutionEngineResult::~ExecutionEngineResult() = default;
 
 ExecutionEngine* ExecutionEngineResult::engine() const { return _engine; }
 

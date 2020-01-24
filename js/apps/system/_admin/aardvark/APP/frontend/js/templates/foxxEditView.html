@@ -1,0 +1,62 @@
+<%var appInfos = attributes.app.split(":"); %>
+<div id="change-foxx" class="modal hide fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" style="display:none">
+  <div class="modal-header">
+    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+    <a class="arangoHeader">Modify Service</a>
+  </div>
+  <div class="modal-body">
+    <table>
+      <tr>
+        <th class="collectionTh">Name:</th>
+        <th class="collectionTh"><strong><%=appInfos[1] %></strong></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Documentation:</th>
+        <th class="collectionTh"><%=documentationJsonUrl%></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Mount:</th>
+        <th class="collectionTh"><input type="text" id="change-mount-point" name="mountpoint" value="<%=attributes.mount%>"/></th>
+        <th><span class="modalTooltips arangoicon icon_arangodb_info" title="The path where the app can be reached."></span></th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Version:</th>
+        <th class="collectionTh">
+          <select>
+            <option selected><%=appInfos[2] %></option>
+          </select>
+        <th>
+      </tr>
+      <tr>
+        <th class="collectionTh">System:</th>
+        <th class="collectionTh">
+          <%=attributes.isSystem ? "Yes" : "No" %>
+        <th>
+      </tr>
+      <tr>
+        <th class="collectionTh">Status:</th>
+        <th class="collectionTh">
+          <%if (attributes.active) {%>
+            <div class="modal-text active">
+              Active
+            </div>
+          <%} else {%>
+            <div class="modal-text inactive">
+              Inactive
+            </div>
+          <%}%>
+        </th>
+      </tr>
+    </table>
+  </div>
+  <div id="colFooter" class="modal-footer">
+    <button id="uninstall" class="button-danger"<%=(attributes.isSystem || attributes.development) ? " disabled" : ""%>>Uninstall</button>
+    <button id="change" class="button-success pull-right">Save</button>
+    <%if (false && attributes.active) {%>
+      <button id="deactivate" class="button-warning pull-right" style="margin-right:8px" disabled>Deactivate</button>
+    <%} else if (false) {%>
+      <button id="activate" class="button-success pull-right" style="margin-right:8px" disabled>Activate</button>
+    <%}%>
+    
+  </div>
+</div>

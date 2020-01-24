@@ -24,6 +24,7 @@
 #include "MMFilesV8Functions.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -422,7 +423,9 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
-    res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
+    TRI_GET_GLOBALS();
+    auto& feature = v8g->_server.getFeature<ClusterFeature>();
+    res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);

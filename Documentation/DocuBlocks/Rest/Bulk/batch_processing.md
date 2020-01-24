@@ -2,7 +2,7 @@
 @startDocuBlock batch_processing
 @brief executes a batch request
 
-@RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER: contentype
+@RESTHEADER{POST /_api/batch,executes a batch request, RestBatchHandler} /// TODOSWAGGER: contentype
 
 @RESTALLBODYPARAM{body,string,required}
 The multipart batch request, consisting of the envelope and the individual
@@ -81,24 +81,24 @@ The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP
 @EXAMPLE_ARANGOSH_RUN{RestBatchMultipartHeader}
     var parts = [
       "Content-Type: application/x-arango-batchpart\r\n" +
-      "Content-Id: myId1\r\n\r\n" + 
+      "Content-Id: myId1\r\n\r\n" +
       "GET /_api/version HTTP/1.1\r\n",
 
-      "Content-Type: application/x-arango-batchpart\r\n" + 
-      "Content-Id: myId2\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n" +
+      "Content-Id: myId2\r\n\r\n" +
       "DELETE /_api/collection/products HTTP/1.1\r\n",
 
-      "Content-Type: application/x-arango-batchpart\r\n" + 
-      "Content-Id: someId\r\n\r\n" + 
-      "POST /_api/collection/products HTTP/1.1\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n" +
+      "Content-Id: someId\r\n\r\n" +
+      "POST /_api/collection/products HTTP/1.1\r\n\r\n" +
       "{\"name\": \"products\" }\r\n",
 
-      "Content-Type: application/x-arango-batchpart\r\n" + 
-      "Content-Id: nextId\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n" +
+      "Content-Id: nextId\r\n\r\n" +
       "GET /_api/collection/products/figures HTTP/1.1\r\n",
 
-      "Content-Type: application/x-arango-batchpart\r\n" + 
-      "Content-Id: otherId\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n" +
+      "Content-Id: otherId\r\n\r\n" +
       "DELETE /_api/collection/products HTTP/1.1\r\n"
     ];
     var boundary = "SomeBoundaryValue";
@@ -108,11 +108,11 @@ The boundary (`SomeBoundaryValue`) is passed to the server in the HTTP
                parts.join("\r\n" + "--" + boundary + "\r\n") +
                "--" + boundary + "--\r\n";
 
-    var response = logCurlRequestRaw('POST', '/_api/batch', body, headers);
+    var response = logCurlRequestPlain('POST', '/_api/batch', body, headers);
 
     assert(response.code === 200);
 
-    logRawResponse(response);
+    logPlainResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
 Sending a batch request, setting the boundary implicitly (the server will
@@ -120,9 +120,9 @@ in this case try to find the boundary at the beginning of the request body).
 
 @EXAMPLE_ARANGOSH_RUN{RestBatchImplicitBoundary}
     var parts = [
-      "Content-Type: application/x-arango-batchpart\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n\r\n" +
          "DELETE /_api/collection/notexisting1 HTTP/1.1\r\n",
-      "Content-Type: application/x-arango-batchpart\r\n\r\n" + 
+      "Content-Type: application/x-arango-batchpart\r\n\r\n" +
          "DELETE _api/collection/notexisting2 HTTP/1.1\r\n"
     ];
     var boundary = "SomeBoundaryValue";
@@ -130,12 +130,11 @@ in this case try to find the boundary at the beginning of the request body).
                parts.join("\r\n" + "--" + boundary + "\r\n") +
                "--" + boundary + "--\r\n";
 
-    var response = logCurlRequestRaw('POST', '/_api/batch', body);
+    var response = logCurlRequestPlain('POST', '/_api/batch', body);
 
     assert(response.code === 200);
     assert(response.headers['x-arango-errors'] == 2);
 
-    logRawResponse(response);
+    logPlainResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

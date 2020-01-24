@@ -103,7 +103,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + this.collectionName
+        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -486,10 +486,9 @@
           $('#createIndex').detach().appendTo(elem);
         }
 
-        arangoHelper.createTooltips('.index-tooltip');
-        arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
         this.resetIndexForms();
       }
+      arangoHelper.createTooltips('.index-tooltip');
     },
 
     stringToArray: function (fieldString) {

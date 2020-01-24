@@ -23,8 +23,8 @@
 #ifndef ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H
 #define ARANGOD_AQL_TESTS_AQL_ITEM_BLOCK_HELPER_H
 
-#include <memory>
 #include <array>
+#include <memory>
 
 #include <boost/variant.hpp>
 
@@ -32,6 +32,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 
+#include "AqlHelper.h"
 #include "VelocyPackHelper.h"
 
 /* * * * * * * *
@@ -59,6 +60,17 @@ Also, print the block like this:
 7, 8, {"a":[],"into":[],"vpack":[]}
 10, 11, 12
 
+  Optionally you can now add a vector<pair<rowIndex, depth>>
+  To create shadow rows on the given AqlItemBlock e.g.
+
+    SharedAqlItemBlockPtr block = buildBlock<3>({
+    { {1}, {2}, {R"({ "iam": [ "a", "json" ] })"} },
+    { {4}, {5}, {"\"and will be converted\""} },
+    { {7}, {8}, {R"({ "into": [], "a": [], "vpack": [] })"} },
+    { {10}, {11}, {12} },
+  }, {{1,0},{2,1}});
+
+  would create a shadowrow on index 1 with depth 0 and a shadowrow of index 2 with depth 1
  */
 
 namespace arangodb {
@@ -74,16 +86,13 @@ template <::arangodb::aql::RegisterId columns>
 using MatrixBuilder = std::vector<RowBuilder<columns>>;
 
 template <::arangodb::aql::RegisterId columns>
-::arangodb::aql::SharedAqlItemBlockPtr buildBlock(::arangodb::aql::AqlItemBlockManager& manager,
-                                                  MatrixBuilder<columns>&& matrix);
+::arangodb::aql::SharedAqlItemBlockPtr buildBlock(
+    ::arangodb::aql::AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix,
+    std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {});
 
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-
-namespace std {
-std::ostream& operator<<(std::ostream&, ::arangodb::aql::AqlItemBlock const&);
-}
 
 namespace arangodb {
 namespace tests {
@@ -103,7 +112,11 @@ class EntryToAqlValueVisitor : public boost::static_visitor<AqlValue> {
 
 template <RegisterId columns>
 SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
-                                 MatrixBuilder<columns>&& matrix) {
+                                 MatrixBuilder<columns>&& matrix,
+                                 std::vector<std::pair<size_t, uint64_t>> const& shadowRows) {
+  if (matrix.size() == 0) {
+    return nullptr;
+  }
   SharedAqlItemBlockPtr block{new AqlItemBlock(manager, matrix.size(), columns)};
 
   for (size_t row = 0; row < matrix.size(); row++) {
@@ -111,6 +124,12 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
       auto const& entry = matrix[row][col];
       auto visitor = EntryToAqlValueVisitor();
       block->setValue(row, col, boost::apply_visitor(visitor, entry));
+    }
+  }
+
+  if (!shadowRows.empty()) {
+    for (auto const& it : shadowRows) {
+      block->setShadowRowDepth(it.first, AqlValue(AqlValueHintUInt(it.second)));
     }
   }
 

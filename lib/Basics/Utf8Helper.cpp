@@ -22,19 +22,38 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string.h>
+#include <memory>
+
+#include <unicode/brkiter.h>
+#include <unicode/coll.h>
+#include <unicode/locid.h>
+#include <unicode/regex.h>
+#include <unicode/stringpiece.h>
+#include <unicode/ucasemap.h>
+#include <unicode/uchar.h>
+#include <unicode/uclean.h>
+#include <unicode/ucol.h>
+#include <unicode/udata.h>
+#include <unicode/uloc.h>
+#include <unicode/unistr.h>
+#include <unicode/unorm2.h>
+#include <unicode/urename.h>
+#include <unicode/ustring.h>
+#include <unicode/utypes.h>
+
+#include <velocypack/StringRef.h>
+
 #include "Utf8Helper.h"
+
 #include "Basics/StaticStrings.h"
-#include "Basics/directories.h"
+#include "Basics/debugging.h"
+#include "Basics/memory.h"
+#include "Basics/system-compiler.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "unicode/brkiter.h"
-#include "unicode/normalizer2.h"
-#include "unicode/putil.h"
-#include "unicode/ucasemap.h"
-#include "unicode/uclean.h"
-#include "unicode/udata.h"
-#include "unicode/unorm2.h"
-#include "unicode/ustdio.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -42,6 +61,29 @@
 
 using namespace arangodb::basics;
 using namespace icu;
+
+#ifdef _WIN32
+std::wstring arangodb::basics::toWString(std::string const& validUTF8String) {
+  icu::UnicodeString utf16(validUTF8String.c_str(), static_cast<int32_t>(validUTF8String.size()));
+  // // probably required for newer c++ versions
+  // using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
+  // static_assert(sizeof(std::wchar_t) == sizeof(bufferType), "sizes do not match");
+  // return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
+  return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
+}
+
+std::string arangodb::basics::fromWString(wchar_t const* validUTF16String, std::size_t size) {
+  std::string out;
+  icu::UnicodeString ICUString(validUTF16String, static_cast<int32_t>(size));
+  ICUString.toUTF8String<std::string>(out);
+  return out;
+}
+
+std::string arangodb::basics::fromWString(std::wstring const& validUTF16String) {
+  return arangodb::basics::fromWString(validUTF16String.data(), validUTF16String.size());
+}
+#endif
+
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
 
@@ -457,16 +499,16 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
 /// @brief builds a regex matcher for the specified pattern
 ////////////////////////////////////////////////////////////////////////////////
 
-icu::RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
+std::unique_ptr<icu::RegexMatcher> Utf8Helper::buildMatcher(std::string const& pattern) {
   UErrorCode status = U_ZERO_ERROR;
 
   auto matcher =
     std::make_unique<icu::RegexMatcher>(icu::UnicodeString::fromUTF8(pattern), 0, status);
   if (U_FAILURE(status)) {
-    return nullptr;
+    matcher.reset();
   }
 
-  return matcher.release();
+  return matcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -554,7 +596,7 @@ char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength) {
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, 
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
                        UChar* buffer, size_t bufferSize, size_t* outLength) {
   UErrorCode status = U_ZERO_ERROR;
 
@@ -571,7 +613,7 @@ UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength,
     // use local buffer
     utf16 = buffer;
   } else {
-    // dynamic memory 
+    // dynamic memory
     utf16 = (UChar*)TRI_Allocate((utf16Length + 1) * sizeof(UChar));
     if (utf16 == nullptr) {
       return nullptr;

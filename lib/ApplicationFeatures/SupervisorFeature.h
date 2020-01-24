@@ -23,10 +23,18 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_SUPERVISOR_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_SUPERVISOR_FEATURE_H 1
 
+#include <memory>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/threads.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 class SupervisorFeature final : public application_features::ApplicationFeature {
  public:

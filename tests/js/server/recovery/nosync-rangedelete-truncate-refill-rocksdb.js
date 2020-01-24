@@ -56,7 +56,7 @@ function runSetup () {
   }
   c.insert(docs, { waitForSync: true });
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

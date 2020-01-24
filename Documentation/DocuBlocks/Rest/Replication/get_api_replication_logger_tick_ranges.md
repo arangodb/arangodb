@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_tick_ranges
 @brief returns the tick value ranges available in the logfiles
 
-@RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges available in the WAL logfiles}
+@RESTHEADER{GET /_api/replication/logger-tick-ranges, Return the tick ranges available in the WAL logfiles,handleCommandLoggerTickRanges}
 
 @RESTDESCRIPTION
 Returns the currently available ranges of tick values for all currently
@@ -49,4 +49,3 @@ Returns the available tick ranges.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

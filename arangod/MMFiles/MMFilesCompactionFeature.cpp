@@ -24,7 +24,9 @@
 #include "MMFilesCompactionFeature.h"
 
 #include "Basics/Exceptions.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -49,9 +51,9 @@ MMFilesCompactionFeature::MMFilesCompactionFeature(application_features::Applica
       _deadSizeThreshold(128 * 1024),
       _deadShare(0.1) {
   setOptional(true);
-  onlyEnabledWith("MMFilesEngine");
+  onlyEnabledWith<MMFilesEngine>();
 
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
   MMFilesCompactionFeature::COMPACTOR = this;
 }
@@ -68,7 +70,7 @@ void MMFilesCompactionFeature::collectOptions(std::shared_ptr<options::ProgramOp
                      new DoubleParameter(&_compactionCollectionInterval));
 
   options->addOption("--compaction.min-small-data-file-size",
-                     "minimal filesize threshhold original data files have to "
+                     "minimal filesize threshold original data files have to "
                      "be below for a compaction",
                      new UInt64Parameter(&_smallDatafileSize));
 

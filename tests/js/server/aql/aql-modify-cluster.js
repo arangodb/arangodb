@@ -1160,18 +1160,26 @@ function ahuacatlUpdateSuite () {
       c3 = db._create(cn3, {numberOfShards: 1});
       c4 = db._create(cn4, {numberOfShards: 1});
 
+      let docs = [];
       for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c1.insert(docs);
+      docs = [];
       for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c2.insert(docs);
+      docs = [];
       for (i = 0; i < 100; ++i) {
-        c3.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c3.insert(docs);
+      docs = [];
       for (i = 0; i < 50; ++i) {
-        c4.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
       }
+      c4.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

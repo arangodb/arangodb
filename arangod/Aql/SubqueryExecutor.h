@@ -27,13 +27,14 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 namespace aql {
-
+class ExecutionBlock;
 class NoStats;
 class OutputAqlItemRow;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class SubqueryExecutorInfos : public ExecutorInfos {
@@ -62,12 +63,13 @@ class SubqueryExecutorInfos : public ExecutorInfos {
   bool const _isConst;
 };
 
+template<bool isModificationSubquery>
 class SubqueryExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = true;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
 
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -90,15 +92,9 @@ class SubqueryExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    // Passthrough does not need to implement this!
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
-  }
+  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
   /**

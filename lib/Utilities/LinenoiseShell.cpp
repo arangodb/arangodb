@@ -27,8 +27,17 @@ extern "C" {
 #include <linenoise.h>
 }
 
+#include "Basics/operating-system.h"
 #include "Logger/Logger.h"
 #include "Utilities/Completer.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
 
 using namespace arangodb;
 

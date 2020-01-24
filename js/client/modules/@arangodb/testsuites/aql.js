@@ -53,7 +53,9 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClient (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_client);
+  let testCases = tu.scanTestPaths(testPaths.shell_client, options);
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(options, testCases, 'shell_client', tu.runInLocalArangosh);
 }
@@ -65,7 +67,9 @@ function shellClient (options) {
 function shellServer (options) {
   options.propagateInstanceInfo = true;
 
-  let testCases = tu.scanTestPaths(testPaths.shell_server);
+  let testCases = tu.scanTestPaths(testPaths.shell_server, options);
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(options, testCases, 'shell_server', tu.runThere);
 }
@@ -75,7 +79,9 @@ function shellServer (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellServerOnly (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_server_only);
+  let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(options, testCases, 'shell_server_only', tu.runThere);
 }
@@ -89,7 +95,7 @@ function shellServerAql (options) {
   let name = 'shell_server_aql';
 
   if (!options.skipAql) {
-    testCases = tu.scanTestPaths(testPaths.shell_server_aql);
+    testCases = tu.scanTestPaths(testPaths.shell_server_aql, options);
     if (options.skipRanges) {
       testCases = _.filter(testCases,
                            function (p) { return p.indexOf('ranges-combined') === -1; });
@@ -118,7 +124,7 @@ function shellClientAql (options) {
   let name = 'shell_client_aql';
 
   if (!options.skipAql) {
-    testCases = tu.scanTestPaths(testPaths.shell_client_aql);
+    testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
     if (options.skipRanges) {
       testCases = _.filter(testCases,
                            function (p) { return p.indexOf('ranges-combined') === -1; });

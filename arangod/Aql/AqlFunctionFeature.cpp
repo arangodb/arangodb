@@ -21,8 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlFunctionFeature.h"
+
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -38,8 +42,9 @@ AqlFunctionFeature* AqlFunctionFeature::AQLFUNCTIONS = nullptr;
 AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "AQLFunctions") {
   setOptional(false);
-  startsAfter("V8Phase");
-  startsAfter("Aql");
+  startsAfter<V8FeaturePhase>();
+
+  startsAfter<AqlFeature>();
 }
 
 // This feature does not have any options
@@ -79,7 +84,7 @@ Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
 void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
   // add function to the map
-  _functionNames.emplace(func.name, func);
+  _functionNames.try_emplace(func.name, func);
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& original) {
@@ -345,7 +350,7 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"IS_IN_POLYGON", ".,.|.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::IsInPolygon});
-  add({"GEO_DISTANCE", ".,.",
+  add({"GEO_DISTANCE", ".,.|.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoDistance});
   add({"GEO_CONTAINS", ".,.",
@@ -357,6 +362,9 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_EQUALS", ".,.",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
        &Functions::GeoEquals});
+  add({"GEO_AREA", ".|.",
+    Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::CanRunOnDBServer),
+    &Functions::GeoArea});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {
@@ -398,6 +406,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
+  add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
 
   // special flags:
   add({"DATE_NOW", "", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer),
@@ -434,20 +443,19 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"CHECK_DOCUMENT", ".", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::CheckDocument});  // not deterministic and not cacheable
   add({"COLLECTION_COUNT", ".h", Function::makeFlags(), &Functions::CollectionCount});  // not deterministic and not cacheable
-  add({"PREGEL_RESULT", ".", Function::makeFlags(FF::CanRunOnDBServer),
+  add({"PREGEL_RESULT", ".|.", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::PregelResult});  // not deterministic and not cacheable
   add({"ASSERT", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Assert});  // not deterministic and not cacheable
   add({"WARN", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Warn});  // not deterministic and not cacheable
 
   // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
-  // optimizer with collection-based subqueries they are all not marked as
-  // non-deterministic and non-cacheable here as they refer to documents
-  // note further that all of these function call will be replaced by equivalent
-  // subqueries by the optimizer
-  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(), &Functions::NotImplemented});
-  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
+  // optimizer with collection-/index-based subqueries. they are all
+  // marked as deterministic and cacheable here as they are just
+  // placeholders for collection/index accesses nowaways.
+  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
 }
 
 }  // namespace aql
