@@ -74,6 +74,8 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/core/demangle.hpp>
+
 #include <type_traits>
 
 using namespace arangodb;
@@ -958,6 +960,12 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);
+      if (state != ExecutionState::DONE) {
+        auto const executorName = boost::core::demangle(typeid(Executor).name());
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_INTERNAL_AQL,
+            "Unexpected result of expectedNumberOfRows in %s", executorName.c_str());
+      }
       return {state, nullptr};
     }
     block = engine.itemBlockManager().requestBlock(nrItems, nrRegs);
@@ -1161,9 +1169,8 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   if constexpr (isNewStyleExecutor<Executor>()) {
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
-      // If the executor has a method skipRowsRange, to skip outputs more
-      // efficiently than just producing them to subsequently discard them,
-      // then we use it
+      // If the executor has a method skipRowsRange, to skip outputs.
+      // Every non-passthrough executor needs to implement this.
       return _executor.skipRowsRange(inputRange, call);
     } else if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
       // If we know that every input row produces exactly one output row (this
@@ -1202,7 +1209,8 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
  * UPSTREAM   fetches rows from the upstream executor(s) to be processed by
  *            our executor.
  * SHADOWROWS process any shadow rows
- * DONE       processing is done, we return
+ * DONE       processing of one output is done. We did handle offset / limit / fullCount without crossing BatchSize limits.
+ *            This state does not indicate that we are DONE with all input, we are just done with one walk through this statemachine.
  *
  * We progress within the states in the following way:
  *   There is a nextState method that determines the next state based on the call, it can only lead to:

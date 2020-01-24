@@ -528,7 +528,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto limitNode : nodes) {
     auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
-    if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
+    if (loop != nullptr && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(loop);
       if (viewNode.noMaterialization() || viewNode.isLateMaterialized()) {
         continue; // loop is already optimized
