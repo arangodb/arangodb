@@ -218,16 +218,15 @@ RestStatus RestStatusHandler::executeOverview() {
         buffer.appendText("-");
         buffer.appendHex(static_cast<uint32_t>(1));
       }
-    }
-    else if (role == ServerState::ROLE_DBSERVER) {
+    } else if (role == ServerState::ROLE_DBSERVER) {
       buffer.appendHex(static_cast<uint32_t>(0xFFFF));
       buffer.appendText("-");
       buffer.appendHex(static_cast<uint32_t>(2));
-    else if (role == ServerState::ROLE_AGENT) {
+    } else if (role == ServerState::ROLE_AGENT) {
       buffer.appendHex(static_cast<uint32_t>(0xFFFF));
       buffer.appendText("-");
       buffer.appendHex(static_cast<uint32_t>(3));
-    else if (role == ServerState::SINGLE) {
+    } else if (role == ServerState::ROLE_SINGLE) {
       buffer.appendHex(static_cast<uint32_t>(0xFFFF));
       buffer.appendText("-");
       buffer.appendHex(static_cast<uint32_t>(4));
