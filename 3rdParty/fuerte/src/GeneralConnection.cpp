@@ -97,16 +97,25 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
 // Connect with a given number of retries
 template <SocketType ST>
 void GeneralConnection<ST>::tryConnect(unsigned retries) {
+
+  if (retries == 0) {
+    _state.store(Connection::State::Failed, std::memory_order_release);
+    drainQueue(Error::CouldNotConnect);
+    abortOngoingRequests(Error::CouldNotConnect);
+    shutdownConnection(Error::CouldNotConnect, "connecting failed");
+    return;
+  }
+  
   FUERTE_ASSERT(_state.load() == Connection::State::Connecting);
   FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
-
+  
   auto self = Connection::shared_from_this();
   if (_config._connectTimeout.count() > 0) {
     _proto.timer.expires_after(_config._connectTimeout);
     _proto.timer.async_wait([self, this](asio_ns::error_code const& ec) {
       if (!ec) {
+        // the connect handler below gets 'operation_aborted' error
         _proto.cancel();
-        shutdownConnection(Error::CouldNotConnect);
       }
     });
   } else {
@@ -124,15 +133,12 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
       _proto.timer.expires_after(std::chrono::seconds(3));
       _proto.timer.async_wait([self, this, retries](auto ec) {
-        if (!ec) {
-          tryConnect(retries - 1);
+        if (_state.load() == Connection::State::Connecting) {
+          tryConnect(!ec ? retries - 1 : 0);
         }
       });
     } else {
-      _state.store(Connection::State::Failed, std::memory_order_release);
-      drainQueue(Error::CouldNotConnect);
-      shutdownConnection(Error::CouldNotConnect,
-                         "connecting failed: " + ec.message());
+      tryConnect(0); // <- handles errors
     }
   });
 }

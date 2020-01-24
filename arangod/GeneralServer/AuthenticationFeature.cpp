@@ -242,11 +242,13 @@ std::string AuthenticationFeature::jwtActiveSecret() const {
   return _jwtSecretProgramOption;
 }
 
+#ifdef USE_ENTERPRISE
 /// verification only secrets
 std::vector<std::string> const& AuthenticationFeature::jwtPassiveSecrets() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
   return _jwtPassiveSecrets;
 }
+#endif
 
 Result AuthenticationFeature::loadJwtSecretsFromFile() {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
