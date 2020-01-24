@@ -74,6 +74,14 @@ irs::parametric_description const DESCRIPTIONS[] = {
   irs::make_parametric_description(2, false),
   irs::make_parametric_description(2, true),
 
+#if defined(_WIN32) && defined(_MSC_VER)
+  // distance 3
+  irs::make_parametric_description(3, false),
+  irs::make_parametric_description(3, true),
+
+  // distance 4
+  irs::make_parametric_description(4, false),
+#else
   // distance 3
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   readParametricDescription(
@@ -88,9 +96,6 @@ irs::parametric_description const DESCRIPTIONS[] = {
 #endif
 
   // distance 4
-#if defined(_WIN32) && defined(_MSC_VER)
-  irs::make_parametric_description(4, true),
-#else
   readParametricDescription(
     #include "PD40"
   ),
