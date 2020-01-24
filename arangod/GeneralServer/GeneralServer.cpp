@@ -185,12 +185,28 @@ IoContext& GeneralServer::selectIoContext() {
   return _contexts[lowpos];
 }
 
-asio_ns::ssl::context& GeneralServer::sslContext() {
+std::shared_ptr<asio_ns::ssl::context> GeneralServer::sslContext() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContext) {
     _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
   }
-  return *_sslContext;
+  return _sslContext;
+}
+
+Result GeneralServer::reloadTLS() {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  try {
+    _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
+    // Now cancel every acceptor once, such that a new AsioSocket is generated which will
+    // use the new context. Otherwise, the first connection will still use the old certs:
+    for (auto& a : _acceptors) {
+      a->cancel();
+    }
+    return TRI_ERROR_NO_ERROR;
+  } catch(std::exception& e) {
+    LOG_TOPIC("feffe", ERR, Logger::SSL) << "Could not reload TLS context from files, got exception with this error: " << e.what();
+    return Result(TRI_ERROR_CANNOT_READ_FILE, "Could not reload TLS context from files.");
+  }
 }
 
 application_features::ApplicationServer& GeneralServer::server() const {
