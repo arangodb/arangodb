@@ -64,16 +64,6 @@ class IRESEARCH_API by_edit_distance final : public by_prefix {
   ) const override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  by_edit_distance& scored_terms_limit(size_t limit) noexcept {
-    by_prefix::scored_terms_limit(limit);
-    return *this;
-  }
-
-  using by_prefix::scored_terms_limit;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief sets maximum allowed edit distance
   //////////////////////////////////////////////////////////////////////////////
   by_edit_distance& max_distance(byte_type limit) noexcept {
