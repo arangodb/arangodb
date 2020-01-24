@@ -1328,7 +1328,12 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::ReturnNewString, (options.returnNew ? "true" : "false"))
            .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
+           .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
+           .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
            .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
+    if(options.overwriteModeUpdate) {
+      reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode,  "update" );
+    }
 
 
     // Now prepare the requests:
@@ -2755,6 +2760,7 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
   for (auto& m : match) {
     m.second = *it2++;
   }
+
 
   LOG_TOPIC("a201e", DEBUG, Logger::BACKUP) << "DB server matches: " << match;
 
