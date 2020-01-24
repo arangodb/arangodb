@@ -1,30 +1,33 @@
+/* global arango:true */
+
 'use strict';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief JavaScript base module
-// /
-// / @file
-// /
-// / DISCLAIMER
-// /
-// / Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
-// /
-// / @author Dr. Frank Celler
-// / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+// ////////////////////////////////////////////////////////////////////////////
+// @brief JavaScript base module
+//
+// @file
+//
+// DISCLAIMER
+//
+// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+//
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Copyright holder is triAGENS GmbH, Cologne, Germany
+//
+// @author Dr. Frank Celler
+// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
@@ -523,10 +526,11 @@ exports.checkParameter = function(usage, descs, vars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.checkAvailableVersions = function(version) {
+  var isServer = require('@arangodb').isServer;
   var console = require('console');
   var log;
 
-  if (require('@arangodb').isServer) {
+  if (isServer) {
     log = console.info;
   } else {
     log = internal.print;
@@ -542,46 +546,82 @@ exports.checkAvailableVersions = function(version) {
         version +
         "') of ArangoDB"
     );
-    return;
-  }
-  
-  if (require('@arangodb').isServer || internal.isEnterprise()) {
-    // don't check for version updates in the server
-    // nor in the enterprise version
+  } else if (internal.isEnterprise()) {
+    // don't check for version updates in the enterprise version
     return;
   }
   
   try {
+    var hash = "A" + Math.random();
+    var engine = "unknown";
+    var platform = internal.platform;
+    var license = (internal.isEnterprise() ? "enterprise" : "community");
+
+    if (isServer) {
+      engine = internal.db._engine().name;
+      var role = global.ArangoServerState.role();
+
+      if (role === "COORDINATOR") {
+        hash = "1-FFFF-0001-" + global.ArangoServerState.id();
+      } else if (role === "PRIMARY") {
+        hash = "1-FFFF-0002-arangod";
+      } else if (role === "AGENT") {
+        hash = "1-FFFF-0003-arangod";
+      } else if (role === "SINGLE") {
+        hash = "1-FFFF-0004-arangod";
+      } else {
+        hash = "1-FFFF-0005-arangod";
+      }
+    } else {
+      try {
+        var result = arango.GET('/_admin/status?overview=true');
+        version = result.version;
+        hash = result.hash;
+        engine = result.engine;
+        platform = result.platform;
+        license = result.license;
+      } catch (err) {
+        if (console && console.debug) {
+          console.debug('cannot check for newer version: ', err.stack);
+        }
+      }
+    }
+
     var u =
-      'https://www.arangodb.com/repositories/versions.php?version=' +
-      version +
-      '&os=' +
-      internal.platform;
+      'https://www.arangodb.com/versions.php?'
+        + 'version=' + version
+        + '&plattform=' + platform
+        + '&engine=' + engine
+        + '&source=' + (isServer ? "arangod" : "arangosh")
+        + '&license=' + license
+        + '&hash=' + hash;
     var d = internal.download(u, '', {timeout: 5});
     var v = JSON.parse(d.body);
 
-    if (v.hasOwnProperty('bugfix')) {
-      log(
-        "Please note that a new bugfix version '" +
-          v.bugfix.version +
-          "' is available"
-      );
-    }
+    if (!isServer) {
+      if (v.hasOwnProperty('bugfix')) {
+        log(
+          "Please note that a new bugfix version '" +
+            v.bugfix.version +
+            "' is available"
+        );
+      }
 
-    if (v.hasOwnProperty('minor')) {
-      log(
-        "Please note that a new minor version '" +
-          v.minor.version +
-          "' is available"
-      );
-    }
+      if (v.hasOwnProperty('minor')) {
+        log(
+          "Please note that a new minor version '" +
+            v.minor.version +
+            "' is available"
+        );
+      }
 
-    if (v.hasOwnProperty('major')) {
-      log(
-        "Please note that a new major version '" +
-          v.major.version +
-          "' is available"
-      );
+      if (v.hasOwnProperty('major')) {
+        log(
+          "Please note that a new major version '" +
+            v.major.version +
+            "' is available"
+        );
+      }
     }
   } catch (err) {
     if (console && console.debug) {

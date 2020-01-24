@@ -208,16 +208,38 @@ RestStatus RestStatusHandler::executeOverview() {
       auto plan = ci.getPlan();
 
       if (plan != nullptr) {
-        auto dbservers = plan->slice().get("DBServers");
-        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
-    
         auto coordinators = plan->slice().get("Coordinators");
         buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
+        buffer.appendText("-");
+        auto dbservers = plan->slice().get("DBServers");
+        buffer.appendHex(static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+      } else {
+        buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+        buffer.appendText("-");
+        buffer.appendHex(static_cast<uint32_t>(1));
       }
-    } else {
-      buffer.appendHex(static_cast<uint32_t>(0));
-      buffer.appendHex(static_cast<uint32_t>(0));
     }
+    else if (role == ServerState::ROLE_DBSERVER) {
+      buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+      buffer.appendText("-");
+      buffer.appendHex(static_cast<uint32_t>(2));
+    else if (role == ServerState::ROLE_AGENT) {
+      buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+      buffer.appendText("-");
+      buffer.appendHex(static_cast<uint32_t>(3));
+    else if (role == ServerState::SINGLE) {
+      buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+      buffer.appendText("-");
+      buffer.appendHex(static_cast<uint32_t>(4));
+    } else {
+      buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+      buffer.appendText("-");
+      buffer.appendHex(static_cast<uint32_t>(5));
+    }
+  } else {
+    buffer.appendHex(static_cast<uint32_t>(0xFFFF));
+    buffer.appendText("-");
+    buffer.appendHex(static_cast<uint32_t>(6));
   }
 
   buffer.appendText("-");
