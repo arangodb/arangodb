@@ -40,7 +40,7 @@ LambdaExecutorInfos::LambdaExecutorInfos(
       _produceLambda(lambda),
       _resetLambda(reset) {}
 
-auto LambdaExecutorInfos::getLambda() const -> ProduceCall const& {
+auto LambdaExecutorInfos::getProduceLambda() const -> ProduceCall const& {
   return _produceLambda;
 }
 
@@ -59,7 +59,7 @@ LambdaSkipExecutorInfos::LambdaSkipExecutorInfos(
       _skipLambda(skipLambda),
       _resetLambda(reset) {}
 
-auto LambdaSkipExecutorInfos::getLambda() const -> ProduceCall const& {
+auto LambdaSkipExecutorInfos::getProduceLambda() const -> ProduceCall const& {
   return _produceLambda;
 }
 
@@ -89,7 +89,7 @@ auto TestLambdaExecutor::produceRows(OutputAqlItemRow& output)
 
 auto TestLambdaExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  return _infos.getLambda()(input, output);
+  return _infos.getProduceLambda()(input, output);
 }
 
 TestLambdaSkipExecutor::TestLambdaSkipExecutor(Fetcher&, Infos& infos)
@@ -113,7 +113,7 @@ auto TestLambdaSkipExecutor::produceRows(OutputAqlItemRow& output)
 
 auto TestLambdaSkipExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  return _infos.getLambda()(input, output);
+  return _infos.getProduceLambda()(input, output);
 }
 
 auto TestLambdaSkipExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)

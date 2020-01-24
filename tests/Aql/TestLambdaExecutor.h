@@ -77,7 +77,7 @@ class LambdaExecutorInfos : public ExecutorInfos {
   LambdaExecutorInfos(LambdaExecutorInfos const&) = delete;
   ~LambdaExecutorInfos() = default;
 
-  auto getLambda() const -> ProduceCall const&;
+  auto getProduceLambda() const -> ProduceCall const&;
   auto reset() -> void;
 
  private:
@@ -106,7 +106,7 @@ class LambdaSkipExecutorInfos : public ExecutorInfos {
   LambdaSkipExecutorInfos(LambdaSkipExecutorInfos const&) = delete;
   ~LambdaSkipExecutorInfos() = default;
 
-  auto getLambda() const -> ProduceCall const&;
+  auto getProduceLambda() const -> ProduceCall const&;
   auto getSkipLambda() const -> SkipCall const&;
   auto reset() -> void;
 
