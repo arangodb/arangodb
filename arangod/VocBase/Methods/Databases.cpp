@@ -380,7 +380,7 @@ int dropDBCoordinator(std::string const& dbName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-const std::string dropError = "Error when dropping Datbase";
+const std::string dropError = "Error when dropping database";
 }  // namespace
 
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const& dbName) {
