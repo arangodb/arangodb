@@ -104,23 +104,26 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
-                     new VectorParameter<StringParameter>(&_agencyEndpoints));
+                     new VectorParameter<StringParameter>(&_agencyEndpoints),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.agency-prefix", "agency prefix",
                      new StringParameter(&_agencyPrefix),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.my-role", "this server's role",
                      new StringParameter(&_myRole));
 
   options->addOption("--cluster.my-address",
                      "this server's endpoint (cluster internal)",
-                     new StringParameter(&_myEndpoint));
+                     new StringParameter(&_myEndpoint),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.my-advertised-endpoint",
                      "this server's advertised endpoint (e.g. external IP "
                      "address or load balancer, optional)",
-                     new StringParameter(&_myAdvertisedEndpoint));
+                     new StringParameter(&_myAdvertisedEndpoint),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
 
   options->addOption("--cluster.write-concern",
                      "write concern used for writes to new collections",
@@ -167,7 +170,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--cluster.create-waits-for-sync-replication",
       "active coordinator will wait for all replicas to create collection",
       new BooleanParameter(&_createWaitsForSyncReplication),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnCoordinator, arangodb::options::Flags::OnDBServer));
 
   options->addOption(
       "--cluster.index-create-timeout",
@@ -185,7 +188,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LOG_TOPIC("33707", FATAL, arangodb::Logger::CLUSTER)
         << "The dispatcher feature isn't available anymore. Use "
         << "ArangoDBStarter for this now! See "
-        << "https://github.com/arangodb-helper/ArangoDBStarter/ for more "
+        << "https://github.com/arangodb-helper/arangodb/ for more "
         << "details.";
     FATAL_ERROR_EXIT();
   }

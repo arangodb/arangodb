@@ -84,15 +84,15 @@ DaemonFeature::DaemonFeature(application_features::ApplicationServer& server)
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--daemon", "background the server, running it as daemon",
                      new BooleanParameter(&_daemon),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 
   options->addOption("--pid-file", "pid-file in daemon mode",
                      new StringParameter(&_pidFile),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 
   options->addOption("--working-directory", "working directory in daemon mode",
                      new StringParameter(&_workingDirectory),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::OsMac, arangodb::options::Flags::Hidden));
 }
 
 void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

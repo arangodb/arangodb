@@ -80,7 +80,8 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "Configure the agency");
 
   options->addOption("--agency.activate", "Activate agency",
-                     new BooleanParameter(&_activated));
+                     new BooleanParameter(&_activated),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.size", "number of agents", 
                      new UInt64Parameter(&_size),
@@ -103,11 +104,13 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.endpoint", "agency endpoints",
-                     new VectorParameter<StringParameter>(&_agencyEndpoints));
+                     new VectorParameter<StringParameter>(&_agencyEndpoints),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.my-address",
                      "which address to advertise to the outside",
-                     new StringParameter(&_agencyMyAddress));
+                     new StringParameter(&_agencyMyAddress),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.supervision",
                      "perform arangodb cluster supervision",
