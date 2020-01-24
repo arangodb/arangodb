@@ -1,6 +1,10 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.14.13.
+
+* Added HotBackup events into auditing.
+
 * Removed an unnecessary and wrong request from within the Web UI to the
   `/_admin/cluster/health` API. This lead to unauthorized network calls.
 
