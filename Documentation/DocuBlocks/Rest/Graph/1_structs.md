@@ -34,7 +34,7 @@ up-to-date copies will succeed at the same time however. The value of
 Flag if the graph is a SmartGraph (Enterprise Edition only) or not.
 
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
-The name of the sharding attribute in smart graph case (Enterprise Edition only)
+The name of the sharding attribute in SmartGraph case (Enterprise Edition only)
 
 @RESTSTRUCT{_id,vertex_representation,string,required,}
 The _id value of the stored data.

@@ -55,7 +55,7 @@ the sharding strategy selected for the collection.
 One of 'hash' or 'enterprise-hash-smart-edge'. _(cluster only)_
 
 @RESTSTRUCT{smartGraphAttribute,collection_info,string,optional,}
-Attribute that is used in smart graphs. _(cluster only)_
+Attribute that is used in SmartGraphs. _(cluster only)_
 
 @RESTSTRUCT{indexBuckets,collection_info,integer,optional,}
 the number of index buckets
