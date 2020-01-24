@@ -224,6 +224,7 @@ struct ShortestPathTestParameters {
         _outputRegisters(_makeOutputRegisters(std::get<5>(params))),
         _registerMapping(_makeRegisterMapping(std::get<5>(params))),
         _inputMatrix{std::get<2>(params)},
+        _inputMatrixCopy{std::get<2>(params)},
         _paths(std::get<3>(params)),
         _call(std::get<4>(params)),
         _blockSize(std::get<6>(params)) {}
@@ -234,6 +235,7 @@ struct ShortestPathTestParameters {
   RegisterSet _outputRegisters;
   RegisterMapping _registerMapping;
   MatrixBuilder<2> _inputMatrix;
+  MatrixBuilder<2> _inputMatrixCopy;
   PathSequence _paths;
   AqlCall _call;
   size_t _blockSize{1000};
@@ -298,6 +300,24 @@ class ShortestPathExecutorTest
       expectedFound -= parameters._call.getOffset();
     }
     return parameters._call.clampToLimit(expectedFound);
+  }
+
+  // We only verify that the shortest path executor was called with
+  // correct inputs
+  void ValidateCalledWith() {
+    auto pathsQueriedBetween = finder.getCalledWith();
+    auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
+
+    LOG_DEVEL << pathsQueriedBetween;
+    for (auto index = size_t{0}; index < block->size(); ++index) {
+      if (infos.useRegisterForInput(true)) {
+        LOG_DEVEL << block->getValue(blockIndex, infos.getInputRegister(true));
+      }
+
+      if (infos.useRegisterForInput(false)) {
+        LOG_DEVEL << block->getValue(blockIndex, infos.getInputRegister(true));
+      }
+    }
   }
 
   // TODO: check fullcount correctness.
@@ -414,11 +434,9 @@ class ShortestPathExecutorTest
       std::tie(state, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
     }
 
+    ValidateCalledWith();
     ValidateResult(outputs, skippedInitial, skippedFullCount);
   }
-
-  // Tests that the executor calls the shortest path finder with appropriate inputs
-  void TestInput() {}
 };
 
 /*
