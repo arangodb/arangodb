@@ -713,7 +713,7 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     RegisterId outReg = 0;
     RegisterId inReg = RegisterPlan::MaxRegisterId;
     SkipCall skipCall = generateNeverSkipCall();
-    bool didProduce = false;
+    auto didProduce = std::make_shared<bool>(false);
     auto builder = std::make_shared<VPackBuilder>();
     builder->openArray();
     for (size_t i = 0; i < numberLines; ++i) {
@@ -722,23 +722,22 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
     builder->close();
 
     ProduceCall prodCall =
-        [outReg, &didProduce,
+        [outReg, didProduce,
          builder](AqlItemBlockInputRange& inputRange,
                   OutputAqlItemRow& output) -> std::tuple<ExecutorState, NoStats, AqlCall> {
       if (!inputRange.hasDataRow()) {
         // Initial call, we have not produced yet.
         // Ask for more
-        EXPECT_FALSE(didProduce);
         AqlCall call{};
         return {inputRange.upstreamState(), NoStats{}, call};
       }
       // We only need to get here exactly once
-      EXPECT_FALSE(didProduce);
-      if (didProduce) {
+      EXPECT_FALSE(*didProduce);
+      if (*didProduce) {
         // Should never get here. Emergency exit.
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-      didProduce = true;
+      *didProduce = true;
       auto slice = builder->slice();
       // We need to ensure that the data fits into the given output.
       EXPECT_GE(output.numRowsLeft(), slice.length());
