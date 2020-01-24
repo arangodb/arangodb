@@ -165,11 +165,11 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--server.statistics",
                      "turn statistics gathering on or off",
                      new BooleanParameter(&_statistics),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   options->addOption("--server.statistics-history",
                      "turn storing statistics in database on or off",
                      new BooleanParameter(&_statisticsHistory),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30409)
     .setIntroducedIn(30501);
 }
