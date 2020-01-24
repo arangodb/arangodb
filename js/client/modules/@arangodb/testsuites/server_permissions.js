@@ -159,11 +159,12 @@ function server_secrets(options) {
 
   process.env["jwt-secret-folder"] = secretsDir;
 
+  let copyOptions = options;
   // necessary to fix shitty process-utils handling
-  options['server.jwt-secret-folder'] = secretsDir;
+  copyOptions['server.jwt-secret-folder'] = secretsDir;
 
-  const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], options);
-  return tu.performTests(options, testCases, 'server_secrets', tu.runInLocalArangosh, {
+  const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], copyOptions);
+  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret-folder': secretsDir,
     'cluster.create-waits-for-sync-replication': false

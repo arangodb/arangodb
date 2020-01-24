@@ -88,7 +88,7 @@ std::shared_ptr<Connection> ConnectionBuilder::connect(EventLoopService& loop) {
   }
 
   // Start the connection implementation
-  result->startConnection();
+  result->start();
 
   return result;
 }

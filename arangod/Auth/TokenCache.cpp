@@ -74,10 +74,12 @@ auth::TokenCache::~TokenCache() {
 #ifndef USE_ENTERPRISE
 
 void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
-  WRITE_LOCKER(writeLocker, _jwtSecretLock);
-  LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
-      << "Setting jwt secret of size " << jwtSecret.size();
-  _jwtActiveSecret = jwtSecret;
+  {
+    WRITE_LOCKER(writeLocker, _jwtSecretLock);
+    LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
+        << "Setting jwt secret of size " << jwtSecret.size();
+    _jwtActiveSecret = jwtSecret;
+  }
   generateSuperToken();
 }
 

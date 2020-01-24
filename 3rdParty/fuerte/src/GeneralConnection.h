@@ -49,9 +49,11 @@ class GeneralConnection : public fuerte::Connection {
   void cancel() override;
 
   // Activate this connection
-  void startConnection() override;
+  void start() override;
 
  protected:
+  
+  void startConnection();
   // shutdown connection, cancel async operations
   void shutdownConnection(const fuerte::Error, std::string const& msg = "",
                           bool mayRestart = false);

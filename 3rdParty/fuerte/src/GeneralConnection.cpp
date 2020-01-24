@@ -51,18 +51,22 @@ void GeneralConnection<ST>::cancel() {
 
 // Activate this connection.
 template <SocketType ST>
+void GeneralConnection<ST>::start() {
+  asio_ns::post(*this->_io_context, [self = Connection::shared_from_this()] {
+    static_cast<GeneralConnection<ST>&>(*self).startConnection();
+  });
+}
+
+template <SocketType ST>
 void GeneralConnection<ST>::startConnection() {
   // start connecting only if state is disconnected
   Connection::State exp = Connection::State::Disconnected;
   if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
-    auto cb = [self = Connection::shared_from_this()] {
-      auto* me = static_cast<GeneralConnection<ST>*>(self.get());
-      me->tryConnect(me->_config._maxConnectRetries);
-    };
-    asio_ns::post(*this->_io_context, std::move(cb));
+    tryConnect(_config._maxConnectRetries);
   }
 }
+
 
 // shutdown the connection and cancel all pending messages.
 template <SocketType ST>
