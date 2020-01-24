@@ -256,13 +256,13 @@ template<typename Builder, size_t Size>
 struct initializer {
   using type = typename Builder::type;
 
+  static constexpr const auto Idx = Size - 1;
+
   template<typename Array>
 #ifndef IRESEARCH_CXX_11
   constexpr
 #endif
   initializer(Array& cache) : init_(cache) {
-    constexpr const auto Idx = Size - 1;
-
     cache[Idx] = []() -> const type& {
       static const typename Builder::type INSTANCE
         = Builder::make(Idx);
@@ -277,13 +277,13 @@ template<typename Builder>
 struct initializer<Builder, 1> {
   using type = typename Builder::type;
 
+  static constexpr const auto Idx = 0;
+
   template<typename Array>
 #ifndef IRESEARCH_CXX_11
   constexpr
 #endif
   initializer(Array& cache) {
-    constexpr const auto Idx = 0;
-
     cache[Idx] = []() -> const type& {
       static const typename Builder::type INSTANCE
         = Builder::make(Idx);

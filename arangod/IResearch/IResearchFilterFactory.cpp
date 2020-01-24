@@ -2476,6 +2476,14 @@ arangodb::Result fromFuncLevenshteinMatch(
     return res;
   }
 
+  if (maxDistance < 0) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName)
+          .append("' AQL function: max distance must be a positive number")
+    };
+  }
+
   // optional 4th argument defines transpositions
   bool withTranspositions = false;
 
@@ -2491,14 +2499,14 @@ arangodb::Result fromFuncLevenshteinMatch(
     return {
       TRI_ERROR_BAD_PARAMETER,
       "'"s.append(funcName)
-          .append("' AQL function: max Levenshtein distance must be in range [0, ")
+          .append("' AQL function: max Levenshtein distance must be a number in range [0, ")
           .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE)).append("]")
     };
   } else if (withTranspositions && maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "'"s.append(funcName)
-          .append("' AQL function: max Damerau-Levenshtein distance must be in range [0, ")
+          .append("' AQL function: max Damerau-Levenshtein distance must be a number in range [0, ")
           .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE)).append("]")
     };
   }
