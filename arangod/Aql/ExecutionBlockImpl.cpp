@@ -961,10 +961,10 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);
       if (state != ExecutionState::DONE) {
-        auto const executorName = boost::core::demangle(typeid(Executor).name()).c_str();
+        auto const executorName = boost::core::demangle(typeid(Executor).name());
         THROW_ARANGO_EXCEPTION_FORMAT(
             TRI_ERROR_INTERNAL_AQL,
-            "Unexpected result of expectedNumberOfRows in %s", executorName);
+            "Unexpected result of expectedNumberOfRows in %s", executorName.c_str());
       }
       return {state, nullptr};
     }

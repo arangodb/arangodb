@@ -909,7 +909,7 @@ struct SkipCallAsserter : public BaseCallAsserter {
     switch (state) {
       case CallAsserterState::SKIP: {
         EXPECT_EQ(got.getOffset(), expected.getOffset());
-        if (call % 2 == 1) {
+        if (call % 2 == 0) {
           if (needsFullCount()) {
             state = CallAsserterState::COUNT;
           } else {
@@ -922,7 +922,7 @@ struct SkipCallAsserter : public BaseCallAsserter {
         EXPECT_EQ(got.getLimit(), 0);
         EXPECT_EQ(got.getOffset(), 0);
         EXPECT_TRUE(got.needsFullCount());
-        if (call % 2 == 1) {
+        if (call % 2 == 0) {
           state = CallAsserterState::DONE;
         }
         break;
@@ -1026,7 +1026,7 @@ struct GetOnlyCallAsserter : public BaseCallAsserter {
     switch (state) {
       case CallAsserterState::SKIP: {
         EXPECT_EQ(got.getLimit(), expected.getOffset());
-        if (call % 2 == 1) {
+        if (call % 2 == 0) {
           // We only switch to next state every second call.
           // The first call is "empty" and only forwards to upwards
           if (hasLimit()) {
@@ -1041,7 +1041,7 @@ struct GetOnlyCallAsserter : public BaseCallAsserter {
       }
       case CallAsserterState::GET: {
         EXPECT_EQ(got.getLimit(), expected.getLimit());
-        if (call % 2 == 1) {
+        if (call % 2 == 0) {
           // We only switch to next state every second call.
           // The first call is "empty" and only forwards to upwards
           if (needsFullCount()) {
@@ -1058,7 +1058,7 @@ struct GetOnlyCallAsserter : public BaseCallAsserter {
         EXPECT_TRUE(needsFullCount());
         EXPECT_EQ(got.softLimit, AqlCall::Infinity{});
         EXPECT_EQ(got.hardLimit, AqlCall::Infinity{});
-        if (call % 2 == 1) {
+        if (call % 2 == 0) {
           // We only switch to next state every second call.
           // The first call is "empty" and only forwards to upwards
           state = CallAsserterState::DONE;
