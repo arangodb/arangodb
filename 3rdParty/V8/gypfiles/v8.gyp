@@ -59,16 +59,25 @@
       "<(V8_ROOT)/src/builtins/proxy-set-prototype-of.tq",
       "<(V8_ROOT)/src/builtins/proxy.tq",
       "<(V8_ROOT)/src/builtins/reflect.tq",
+      "<(V8_ROOT)/src/builtins/regexp-exec.tq",
+      "<(V8_ROOT)/src/builtins/regexp-match-all.tq",
+      "<(V8_ROOT)/src/builtins/regexp-match.tq",
       "<(V8_ROOT)/src/builtins/regexp-replace.tq",
+      "<(V8_ROOT)/src/builtins/regexp-search.tq",
+      "<(V8_ROOT)/src/builtins/regexp-source.tq",
+      "<(V8_ROOT)/src/builtins/regexp-split.tq",
+      "<(V8_ROOT)/src/builtins/regexp-test.tq",
       "<(V8_ROOT)/src/builtins/regexp.tq",
       "<(V8_ROOT)/src/builtins/string.tq",
       "<(V8_ROOT)/src/builtins/string-endswith.tq",
       "<(V8_ROOT)/src/builtins/string-html.tq",
       "<(V8_ROOT)/src/builtins/string-iterator.tq",
+      "<(V8_ROOT)/src/builtins/string-pad.tq",
       "<(V8_ROOT)/src/builtins/string-repeat.tq",
       "<(V8_ROOT)/src/builtins/string-slice.tq",
       "<(V8_ROOT)/src/builtins/string-startswith.tq",
       "<(V8_ROOT)/src/builtins/string-substring.tq",
+      "<(V8_ROOT)/src/builtins/torque-internal.tq",
       "<(V8_ROOT)/src/builtins/typed-array-createtypedarray.tq",
       "<(V8_ROOT)/src/builtins/typed-array-every.tq",
       "<(V8_ROOT)/src/builtins/typed-array-filter.tq",
@@ -99,6 +108,13 @@
     ],
   },
   'includes': ['toolchain.gypi', 'features.gypi'],
+  'target_defaults': {
+    'msvs_settings': {
+      'VCCLCompilerTool': {
+        'AdditionalOptions': ['/utf-8']
+      }
+    },
+  },
   'targets': [
     {
       'target_name': 'run_torque',
@@ -126,6 +142,7 @@
           ],
           'outputs': [
             '<(torque_output_root)/torque-generated/builtin-definitions-tq.h',
+            '<(torque_output_root)/torque-generated/interface-descriptors-tq.inc',
             '<(torque_output_root)/torque-generated/field-offsets-tq.h',
             '<(torque_output_root)/torque-generated/class-verifiers-tq.cc',
             '<(torque_output_root)/torque-generated/class-verifiers-tq.h',
@@ -133,6 +150,8 @@
             '<(torque_output_root)/torque-generated/class-definitions-tq.cc',
             '<(torque_output_root)/torque-generated/class-definitions-tq-inl.h',
             '<(torque_output_root)/torque-generated/class-definitions-tq.h',
+            '<(torque_output_root)/torque-generated/class-debug-readers-tq.cc',
+            '<(torque_output_root)/torque-generated/class-debug-readers-tq.h',
             '<(torque_output_root)/torque-generated/exported-macros-assembler-tq.cc',
             '<(torque_output_root)/torque-generated/exported-macros-assembler-tq.h',
             '<(torque_output_root)/torque-generated/csa-types-tq.h',
@@ -264,16 +283,7 @@
       'type': 'none',
       'toolsets': ['target'],
       'hard_dependency': 1,
-      'conditions': [
-        # The dependency on v8_base should come from a transitive
-        # dependency however the Android toolchain requires libv8_base.a
-        # to appear before libv8_snapshot.a so it's listed explicitly.
-        ['v8_use_snapshot==1', {
-          'dependencies': ['v8_base', 'v8_snapshot'],
-        }, {
-          'dependencies': ['v8_base', 'v8_init', 'v8_nosnapshot'],
-        }],
-      ]
+      'dependencies': ['v8_base', 'v8_snapshot'],
     },  # v8_maybe_snapshot
     {
       'target_name': 'v8_init',
@@ -797,7 +807,7 @@
         }],
         # Platforms that don't have Compare-And-Swap (CAS) support need to link atomic library
         # to implement atomic memory access
-        ['v8_current_cpu in ["mips", "mipsel", "mips64", "mips64el", "ppc"]', {
+        ['v8_current_cpu in ["mips", "mipsel", "mips64", "mips64el", "ppc", "arm"]', {
           'link_settings': {
             'libraries': ['-latomic', ],
           },
@@ -1483,7 +1493,6 @@
               'v8_enable_i18n_support=<(v8_enable_i18n_support)',
               'v8_enable_verify_predictable=<(v8_enable_verify_predictable)',
               'v8_target_cpu=<(v8_target_arch)',
-              'v8_use_snapshot=<(v8_use_snapshot)',
               'v8_use_siphash=<(v8_use_siphash)',
               'v8_enable_embedded_builtins=<(v8_enable_embedded_builtins)',
               'v8_enable_verify_csa=<(v8_enable_verify_csa)',

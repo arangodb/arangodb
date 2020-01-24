@@ -31,22 +31,15 @@ void ReadAndParseTorqueFile(const std::string& path) {
   CurrentSourceFile::Scope source_id_scope(source_id);
 
   // path might be either a normal file path or an encoded URI.
-  auto fn = SourceFileMap::AbsolutePath(source_id);
-  auto maybe_content = ReadFile(fn);
-  std::string maybe_path;
+  auto maybe_content = ReadFile(SourceFileMap::AbsolutePath(source_id));
   if (!maybe_content) {
-    if (auto mmmaybe_path = FileUriDecode(path)) {
-      maybe_path = *mmmaybe_path;
-      maybe_content = ReadFile(maybe_path);
+    if (auto maybe_path = FileUriDecode(path)) {
+      maybe_content = ReadFile(*maybe_path);
     }
   }
-  /*
+
   if (!maybe_content) {
-    maybe_content = ReadFile(path);
-    }*/
-  if (!maybe_content) {
-    std::string allPaths = path + " - " + fn + " - " + maybe_path;
-    Error("Cannot open file path/uri: ", allPaths).Throw();
+    Error("Cannot open file path/uri: ", path).Throw();
   }
 
   ParseTorque(*maybe_content);
@@ -60,6 +53,7 @@ void CompileCurrentAst(TorqueCompilerOptions options) {
   if (options.force_assert_statements) {
     GlobalContext::SetForceAssertStatements();
   }
+  TargetArchitecture::Scope target_architecture(options.force_32bit_output);
   TypeOracle::Scope type_oracle;
 
   // Two-step process of predeclaration + resolution allows to resolve type
@@ -85,11 +79,13 @@ void CompileCurrentAst(TorqueCompilerOptions options) {
 
   ReportAllUnusedMacros();
 
-  implementation_visitor.GenerateBuiltinDefinitions(output_directory);
+  implementation_visitor.GenerateBuiltinDefinitionsAndInterfaceDescriptors(
+      output_directory);
   implementation_visitor.GenerateClassFieldOffsets(output_directory);
   implementation_visitor.GeneratePrintDefinitions(output_directory);
   implementation_visitor.GenerateClassDefinitions(output_directory);
   implementation_visitor.GenerateClassVerifiers(output_directory);
+  implementation_visitor.GenerateClassDebugReaders(output_directory);
   implementation_visitor.GenerateExportedMacrosAssembler(output_directory);
   implementation_visitor.GenerateCSATypes(output_directory);
   implementation_visitor.GenerateInstanceTypes(output_directory);
