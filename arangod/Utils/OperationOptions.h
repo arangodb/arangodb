@@ -45,7 +45,29 @@ struct OperationOptions {
         overwriteModeUpdate(false)
         {}
 
-  friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops);
+// The following code does not work with VisualStudi 2019's `cl`
+// Lets keep it for debugging on linux.
+#ifndef _WIN32
+  friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
+    // clang-format off
+    os << "OperationOptions : " << std::boolalpha
+       << "{ recoveryData : " << ops.recoveryData
+       << ", indexOperationMode : " << ops.indexOperationMode
+       << ", waitForSync : " << ops.waitForSync
+       << ", keepNull : " << ops.keepNull
+       << ", mergeObjects : " << ops.mergeObjects
+       << ", silent : " << ops.silent
+       << ", ignoreRevs : " << ops.ignoreRevs
+       << ", returnOld :" << ops.returnOld
+       << ", returnNew : "  << ops.returnNew
+       << ", isRestore : " << ops.isRestore
+       << ", overwrite : " << ops.overwrite
+       << ", overwriteModeUpdate : " << ops.overwriteModeUpdate
+       << " }" << std::endl;
+    // clang-format on
+    return os;
+  }
+#endif
 
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
@@ -92,25 +114,6 @@ struct OperationOptions {
   std::string isSynchronousReplicationFrom;
 };
 
-inline std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
-  // clang-format off
-  os << "OperationOptions : " << std::boolalpha
-     << "{ recoveryData : " << ops.recoveryData
-     << ", indexOperationMode : " << ops.indexOperationMode
-     << ", waitForSync : " << ops.waitForSync
-     << ", keepNull : " << ops.keepNull
-     << ", mergeObjects : " << ops.mergeObjects
-     << ", silent : " << ops.silent
-     << ", ignoreRevs : " << ops.ignoreRevs
-     << ", returnOld :" << ops.returnOld
-     << ", returnNew : "  << ops.returnNew
-     << ", isRestore : " << ops.isRestore
-     << ", overwrite : " << ops.overwrite
-     << ", overwriteModeUpdate : " << ops.overwriteModeUpdate
-     << " }" << std::endl;
-  // clang-format on
-  return os;
-}
 
 }  // namespace arangodb
 
