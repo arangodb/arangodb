@@ -200,7 +200,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
 
   utag = urllib.quote_plus(tag) + '_container'
   ustr = u"\uE9CB"
-  anchor = u"<a class=\"anchorjs-link \" href=\"#"+ utag + "\" aria-label=\"Anchor\" data-anchorjs-icon=\"" + ustr + "\"></a>"
+  #anchor = u"<a class=\"anchorjs-link \" href=\"#"+ utag + "\" aria-label=\"Anchor\" data-anchorjs-icon=\"" + ustr + "\"></a>"
 
   longTag = "%s_long" % tag
   shortTag = "%s_short" % tag
@@ -208,11 +208,11 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   longToggle = "$('#%s').hide(); $('#%s').show(); window.location.hash='%s';" % (longTag, shortTag, utag)
 
   fh.write(unicode("<div class=\"example-container\" id=\"%s\">\n" % utag))
-  fh.write(unicode(anchor))
+  #fh.write(unicode(anchor))
 
 
   if shortable:
-    fh.write(unicode("<div id=\"%s\" style=\"Display: none;\">\n" % longTag))
+    fh.write(unicode("<div id=\"%s\" style=\"display: none;\">\n" % longTag))
   else:
     fh.write(unicode("<div id=\"%s\">\n" % longTag))
 
