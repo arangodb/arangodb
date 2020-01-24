@@ -53,19 +53,37 @@ const createGraph = () => {
 
   const vertices = [];
   const edges = [];
-  vertices.push({
-    _key: "0"
-  });
-  vertices.push({
-    _key: "1"
-  });
-  vertices.push({
-    _key: "2"
-  });
+
+  for (var i = 0; i < 19; i++) {
+    vertices.push({
+      _key: i.toString()
+    });
+  }
 
   edges.push({ _from: `${vName}/0`, _to: `${vName}/1`, weight: 0 });
   edges.push({ _from: `${vName}/1`, _to: `${vName}/2`, weight: 1 });
   edges.push({ _from: `${vName}/2`, _to: `${vName}/3`, weight: 0 });
+
+  edges.push({ _from: `${vName}/4`, _to: `${vName}/5`, weight: 0.5});
+  edges.push({ _from: `${vName}/5`, _to: `${vName}/6`, weight: 0});
+  edges.push({ _from: `${vName}/6`, _to: `${vName}/7`, weight: 2.5});
+
+  edges.push({ _from: `${vName}/8`, _to: `${vName}/9`, weight: 0.5});
+  edges.push({ _from: `${vName}/9`, _to: `${vName}/10`, weight: 0});
+  edges.push({ _from: `${vName}/10`, _to: `${vName}/11`, weight: 2.5});
+  edges.push({ _from: `${vName}/11`, _to: `${vName}/12`, weight: 0});
+  edges.push({ _from: `${vName}/12`, _to: `${vName}/13`, weight: 1.0});
+  edges.push({ _from: `${vName}/13`, _to: `${vName}/14`, weight: 2});
+
+  edges.push({ _from: `${vName}/9`, _to: `${vName}/15`, weight: 0});
+  edges.push({ _from: `${vName}/15`, _to: `${vName}/16`, weight: 1});
+  edges.push({ _from: `${vName}/16`, _to: `${vName}/11`, weight: 1});
+
+  edges.push({ _from: `${vName}/9`, _to: `${vName}/17`, weight: 0});
+  edges.push({ _from: `${vName}/17`, _to: `${vName}/18`, weight: 0});
+  edges.push({ _from: `${vName}/18`, _to: `${vName}/14`, weight: 1});
+
+
 
   db[vName].save(vertices);
   db[eName].save(edges);
@@ -91,6 +109,38 @@ function kZeroWeightRegressionTest() {
                                                              [`${vName}/1`, `${vName}/2`] ] );
       assertEqual(path.weight, 1);
     },
+
+    testPathsExists2: function () {
+      const query = `
+        FOR path IN ANY K_SHORTEST_PATHS "${vName}/4" TO "${vName}/7" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          RETURN path`;
+      const result = db._query(query).toArray();
+      assertEqual(result.length, 1);
+      const path = result[0];
+      assertEqual(path.vertices.map((v) => v._key), [ "4", "5", "6", "7" ]);
+      assertEqual(path.edges.map((e) => [e._from, e._to]), [ [`${vName}/4`, `${vName}/5`],
+                                                             [`${vName}/5`, `${vName}/6`],
+                                                             [`${vName}/6`, `${vName}/7`] ] );
+      assertEqual(path.weight, 3);
+    },
+
+    testPathsExists3: function () {
+      const query = `
+        FOR path IN ANY K_SHORTEST_PATHS "${vName}/8" TO "${vName}/18" GRAPH "${graphName}" OPTIONS {weightAttribute: "weight"}
+          RETURN path`;
+      const result = db._query(query).toArray();
+      assertEqual(result.length, 3); 
+
+      assertEqual(result[0].vertices.map((v) => v._key), [ "8", "9", "17", "18" ]);
+      assertEqual(result[0].weight, 0.5);
+      assertEqual(result[1].vertices.map((v) => v._key), [ "8", "9", "15", "16", "11", "12", "13", "14", "18" ]);
+      assertEqual(result[1].weight, 6.5);
+      assertEqual(result[2].vertices.map((v) => v._key), [ "8", "9", "10", "11", "12", "13", "14", "18" ]);
+      assertEqual(result[2].weight, 7);
+    },
+
+
+
   };
 }
 
