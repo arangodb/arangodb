@@ -2408,8 +2408,8 @@ function ReplicationNonIncrementalKeyConflict () {
 // //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
-jsunity.run(ReplicationOtherDBSuite);
-jsunity.run(ReplicationIncrementalKeyConflict);
-jsunity.run(ReplicationNonIncrementalKeyConflict);
+//jsunity.run(ReplicationOtherDBSuite);
+//jsunity.run(ReplicationIncrementalKeyConflict);
+//jsunity.run(ReplicationNonIncrementalKeyConflict);
 
 return jsunity.done();

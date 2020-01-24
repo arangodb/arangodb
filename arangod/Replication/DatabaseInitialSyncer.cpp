@@ -1380,12 +1380,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   //std::pair<std::size_t, std::size_t> fullRange = treeMaster->range();
   std::unique_ptr<containers::RevisionTree> treeLocal =
       physical->revisionTree(*trx);
+  physical->removeRevisionTreeBlocker(blockerId);
   std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
   if (ranges.empty()) {
     // no differences, done!
+    setProgress("no differences between two revision trees, ending");
     return Result{};
   }
-  physical->removeRevisionTreeBlocker(blockerId);
 
   // now lets get the actual ranges and handle the differences
 
@@ -1493,7 +1494,11 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                   ": response field 'ranges' entry is not a revision range");
         }
         auto& currentRange = ranges[chunk];
-        local.seek(std::max(iterResume, static_cast<TRI_voc_rid_t>(currentRange.first)));
+        if (!local.hasMore() ||
+            local.revision() < static_cast<TRI_voc_rid_t>(currentRange.first)) {
+          local.seek(std::max(iterResume,
+                              static_cast<TRI_voc_rid_t>(currentRange.first)));
+        }
 
         std::size_t removalBound = masterSlice.isEmptyArray()
                                        ? currentRange.second + 1
@@ -1541,7 +1546,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         }
 
         while (local.hasMore() &&
-               local.revision() <= std::min(requestResume, currentRange.second)) {
+               local.revision() <= std::min(requestResume - 1, currentRange.second)) {
           toRemove.emplace_back(local.revision());
           iterResume = std::max(iterResume, local.revision() + 1);
           local.next();

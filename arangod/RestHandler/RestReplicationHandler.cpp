@@ -3124,7 +3124,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         it.next();
       }
 
-      if (!it.hasMore() || it.revision() >= range.at(1).getNumber<std::size_t>()) {
+      if (!it.hasMore() || it.revision() > range.at(1).getNumber<std::size_t>()) {
         TRI_ASSERT(response.isOpenArray());
         TRI_ASSERT(subOpen);
         subOpen = false;

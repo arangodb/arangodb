@@ -51,7 +51,8 @@ using namespace arangodb;
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              VPackSlice const& info)
     : PhysicalCollection(collection, info),
-      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")) {
+      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
+      _revisionTreeApplied(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -72,7 +73,8 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              PhysicalCollection const* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId) {
+      _objectId(static_cast<RocksDBMetaCollection const*>(physical)->_objectId),
+      _revisionTreeApplied(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(_objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
 
@@ -436,6 +438,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
   Result res = basics::catchToResult([this]() -> Result {
     auto ctxt = transaction::StandaloneContext::Create(_logicalCollection.vocbase());
     SingleCollectionTransaction trx(ctxt, _logicalCollection, AccessMode::Type::READ);
+    auto* state = RocksDBTransactionState::toState(&trx);
 
     std::vector<std::size_t> revisions;
     auto iter = getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
@@ -458,10 +461,12 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     if (!revisions.empty()) {
       _revisionTree->insert(revisions);
     }
+    _revisionTreeApplied = state->beginSeq();
     return Result();
   });
 
   if (res.fail() && res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    res.reset();
     // okay, we are in recovery and can't open a transaction, so we need to
     // read the raw RocksDB data; on the plus side, we are in recovery, so we
     // are single-threaded and don't need to worry about transactions anyway
@@ -488,6 +493,7 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     if (!revisions.empty()) {
       _revisionTree->insert(revisions);
     }
+    _revisionTreeApplied = db->GetLatestSequenceNumber();
   }
 
   return res;
@@ -525,6 +531,11 @@ void RocksDBMetaCollection::bufferUpdates(rocksdb::SequenceNumber seq,
   TRI_ASSERT(!inserts.empty() || !removals.empty());
   std::unique_lock guard(_revisionBufferLock);
   if (_revisionTreeApplied > seq) {
+    TRI_ASSERT(_logicalCollection.vocbase()
+                   .server()
+                   .getFeature<EngineSelectorFeature>()
+                   .engine()
+                   .inRecovery());
     return;
   }
   if (!inserts.empty()) {
