@@ -42,7 +42,7 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
       TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
     }
 
-ConnectionPool::~ConnectionPool() { shutdown(); }
+ConnectionPool::~ConnectionPool() { shutdownConnections(); }
 
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
@@ -65,6 +65,12 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
 /// @brief drain all connections
 void ConnectionPool::drainConnections() {
   WRITE_LOCKER(guard, _lock);
+  _connections.clear();
+}
+
+/// @brief shutdown all connections
+void ConnectionPool::shutdownConnections() {
+  WRITE_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);
@@ -72,12 +78,6 @@ void ConnectionPool::drainConnections() {
       c.fuerte->cancel();
     }
   }
-}
-
-/// @brief shutdown all connections
-void ConnectionPool::shutdown() {
-  WRITE_LOCKER(guard, _lock);
-  _connections.clear();
 }
 
 void ConnectionPool::removeBrokenConnections(Bucket& buck) {

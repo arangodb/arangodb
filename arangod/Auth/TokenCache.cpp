@@ -379,8 +379,8 @@ bool auth::TokenCache::validateJwtHMAC256Signature(std::string const& message,
                                                    std::string const& signature) {
   std::string decodedSignature = StringUtils::decodeBase64U(signature);
 
-  READ_LOCK(guard, _jwtSecretLock);
-  return verifyHMAC(_jwtSecret.c_str(), _jwtSecret.length(), message.c_str(),
+  READ_LOCKER(guard, _jwtSecretLock);
+  return verifyHMAC(_jwtActiveSecret.c_str(), _jwtActiveSecret.length(), message.c_str(),
                     message.length(), decodedSignature.c_str(),
                     decodedSignature.length(), SslInterface::Algorithm::ALGORITHM_SHA256);
 }

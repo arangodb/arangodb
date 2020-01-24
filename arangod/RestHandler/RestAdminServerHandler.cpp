@@ -52,8 +52,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleAvailability();
   } else if (suffixes.size() == 1 && suffixes[0] == "databaseDefaults") {
     handleDatabaseDefaults();
-  } else if (suffixes.size() == 1 && suffixes[0] == "reloadjwt") {
-    return handleJWTSecrets();
+  } else if (suffixes.size() == 1 && suffixes[0] == "jwt") {
+    handleJWTSecretsReload();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -220,8 +220,7 @@ void RestAdminServerHandler::handleDatabaseDefaults() {
 }
 
 #ifndef USE_ENTERPRISE
-RestStatus RestAdminServerHandler::handleJWTSecrets() {
+void RestAdminServerHandler::handleJWTSecretsReload() {
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-  return RestStatus::DONE;
 }
 #endif

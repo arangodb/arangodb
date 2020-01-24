@@ -148,9 +148,25 @@ function server_parameters(options) {
   return startParameterTest(options, testPaths.server_parameters, "server_parameters");
 }
 
+function server_secrets(options) {
+
+  let dummyDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
+
+  const testCases = tu.scanTestPaths('client/server_secrets', options);
+  return tu.performTests(options, testCases, 'server_secrets', tu.runInArangosh, {
+    'server.authentication': 'true',
+    'server.jwt-secret-folder': dummyDir,
+    'cluster.create-waits-for-sync-replication': false
+  });
+}
+
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['server_permissions'] = server_permissions;
   testFns['server_parameters'] = server_parameters;
+  testFns['server_secrets'] = server_secrets;
+
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
 };
