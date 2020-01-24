@@ -23,9 +23,18 @@ for collection.
 Metrics were returned successfully.
 
 @RESTRETURNCODE{404}
-The metrics API may be disabled using `--server.export-metrics-api
-false` setting in the server. In this case, the result of the call
-indicates the API to be not found.
+The metrics API may be disabled using `--server.export-metrics-api false`
+setting in the server. In this case, the result of the call indicates the API
+to be not found.
 
+@EXAMPLES
+
+@EXAMPLE_ARANGOSH_RUN{RestAdminMetrics}
+    var url = "/_admin/metrics";
+    var response = logCurlRequest('GET', url);
+
+    assert(response.code === 200);
+
+    logPlainResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -20,20 +20,18 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#ifndef ARANGO_CXX_DRIVER_HTTP_CONNECTION_H
-#define ARANGO_CXX_DRIVER_HTTP_CONNECTION_H 1
-
-#include <atomic>
-#include <chrono>
-
-#include <boost/lockfree/queue.hpp>
+#ifndef ARANGO_CXX_DRIVER_H1_CONNECTION_H
+#define ARANGO_CXX_DRIVER_H1_CONNECTION_H 1
 
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/message.h>
 
-#include "GeneralConnection.h"
+#include <atomic>
+#include <boost/lockfree/queue.hpp>
+#include <chrono>
 
+#include "GeneralConnection.h"
 #include "http.h"
 #include "http_parser/http_parser.h"
 
@@ -41,15 +39,15 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // Implements a client->server connection using node.js http-parser
 template <SocketType ST>
-class HttpConnection final : public fuerte::GeneralConnection<ST> {
+class H1Connection final : public fuerte::GeneralConnection<ST> {
  public:
-  explicit HttpConnection(EventLoopService& loop,
-                          detail::ConnectionConfiguration const&);
-  ~HttpConnection();
+  explicit H1Connection(EventLoopService& loop,
+                        detail::ConnectionConfiguration const&);
+  ~H1Connection();
 
  public:
   /// Start an asynchronous request.
-  MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
+  void sendRequest(std::unique_ptr<Request>, RequestCallback) override;
 
   /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override;
@@ -70,6 +68,22 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   void drainQueue(const fuerte::Error) override;
 
  private:
+  // in-flight request data
+  struct RequestItem {
+    /// the request header
+    std::string requestHeader;
+
+    /// Callback for when request is done (in error or succeeded)
+    RequestCallback callback;
+
+    /// Reference to the request we're processing
+    std::unique_ptr<arangodb::fuerte::v1::Request> request;
+
+    inline void invokeOnError(Error e) {
+      callback(e, std::move(request), nullptr);
+    }
+  };
+
   // build request body for given request
   std::string buildRequestBody(Request const& req);
 
@@ -81,8 +95,7 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
 
   // called by the async_write handler (called from IO thread)
   void asyncWriteCallback(asio_ns::error_code const&,
-                          std::unique_ptr<RequestItem>,
-                          size_t nwrite);
+                          std::unique_ptr<RequestItem>, size_t nwrite);
 
  private:
   static int on_message_begin(http_parser* parser);
@@ -95,9 +108,7 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
 
  private:
   /// elements to send out
-  boost::lockfree::queue<fuerte::v1::http::RequestItem*,
-                         boost::lockfree::capacity<1024>>
-      _queue;
+  boost::lockfree::queue<RequestItem*, boost::lockfree::capacity<64>> _queue;
 
   /// cached authentication header
   std::string _authHeader;
@@ -106,7 +117,7 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   http_parser _parser;
   http_parser_settings _parserSettings;
 
-  std::atomic<bool> _active; /// is loop active
+  std::atomic<bool> _active;  /// is loop active
 
   // parser state
   std::string _lastHeaderField;
