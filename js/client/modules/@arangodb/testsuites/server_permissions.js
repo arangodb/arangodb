@@ -150,14 +150,22 @@ function server_parameters(options) {
 
 function server_secrets(options) {
 
-  let dummyDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
-  fs.makeDirectory(dummyDir);
-  pu.cleanupDBDirectoriesAppend(dummyDir);
+  let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
+  fs.makeDirectory(secretsDir);
+  pu.cleanupDBDirectoriesAppend(secretsDir);
+  
+  fs.write(fs.join(secretsDir, 'secret1'), 'jwtsecret-1');
+  fs.write(fs.join(secretsDir, 'secret2'), 'jwtsecret-2');
 
-  const testCases = tu.scanTestPaths('client/server_secrets', options);
-  return tu.performTests(options, testCases, 'server_secrets', tu.runInArangosh, {
+  process.env["jwt-secret-folder"] = secretsDir;
+
+  // necessary to fix shitty process-utils handling
+  options['server.jwt-secret-folder'] = secretsDir;
+
+  const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], options);
+  return tu.performTests(options, testCases, 'server_secrets', tu.runInLocalArangosh, {
     'server.authentication': 'true',
-    'server.jwt-secret-folder': dummyDir,
+    'server.jwt-secret-folder': secretsDir,
     'cluster.create-waits-for-sync-replication': false
   });
 }

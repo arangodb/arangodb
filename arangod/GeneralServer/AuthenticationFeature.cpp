@@ -302,7 +302,6 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
 
   const std::string msg = "Given JWT secret too long. Max length is 64";
   if (activeSecret.length() > _maxSecretLength) {
-    ;
     return Result(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
@@ -313,10 +312,11 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
     for (auto const& file : list) {
       std::string secret = slurpy(file);
       if (secret.length() > _maxSecretLength) {
-        ;
         return Result(TRI_ERROR_BAD_PARAMETER, msg);
       }
-      passiveSecrets.push_back(std::move(secret));
+      if (!secret.empty()) {  // ignore
+        passiveSecrets.push_back(std::move(secret));
+      }
     }
   }
   _jwtPassiveSecrets = std::move(passiveSecrets);
