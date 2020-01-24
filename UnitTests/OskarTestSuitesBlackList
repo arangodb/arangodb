@@ -9,3 +9,4 @@ resilience_transactions
 paths_server
 hot_backup
 client_resilience
+server_secrets
