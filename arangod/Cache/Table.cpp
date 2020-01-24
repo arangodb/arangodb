@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/Table.h"
-#include "Basics/Common.h"
+
+#include "Basics/debugging.h"
 #include "Cache/Common.h"
 
-#include <stdint.h>
 #include <algorithm>
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 
@@ -154,14 +155,14 @@ std::pair<void*, Table*> Table::fetchAndLockBucket(uint32_t hash, uint64_t maxTr
   return std::make_pair(bucket, source);
 }
 
-std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
+std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> const& table) {
   std::shared_ptr<Table> result = table;
   if (table.get() != this) {
     _lock.writeLock();
-    if (table.get() == nullptr) {
+    if (table == nullptr) {
       result = _auxiliary;
       _auxiliary = table;
-    } else if (_auxiliary.get() == nullptr) {
+    } else if (_auxiliary == nullptr) {
       _auxiliary = table;
       result.reset();
     }

@@ -127,7 +127,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption(
       "--javascript.gc-frequency",
@@ -1391,7 +1391,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
     {
       v8::Context::Scope contextScope(localContext);
 
-      TRI_CreateV8Globals(isolate, id);
+      TRI_CreateV8Globals(server(), isolate, id);
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {
@@ -1573,7 +1573,7 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
 
   localContext->Exit();
 
-  LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file
+  LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8) << "loaded JavaScript file '" << file
                                          << "' for V8 context #" << context->id();
 }
 

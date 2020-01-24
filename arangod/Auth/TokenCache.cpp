@@ -79,7 +79,7 @@ void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
       << "Setting jwt secret of size " << jwtSecret.size();
   _jwtSecret = jwtSecret;
   _jwtCache.clear();
-  generateJwtToken();
+  generateSuperToken();
 }
 
 std::string auth::TokenCache::jwtSecret() const {
@@ -87,7 +87,7 @@ std::string auth::TokenCache::jwtSecret() const {
   return _jwtSecret;  // intentional copy
 }
 
-// public called from HttpCommTask.cpp and VstCommTask.cpp
+// public called from {H2,Http,Vst}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(AuthenticationMethod authType,
@@ -220,7 +220,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   }
 
   auth::TokenCache::Entry newEntry = validateJwtBody(body);
-  if (!newEntry._authenticated) {
+  if (!newEntry.authenticated()) {
     LOG_TOPIC("5fcba", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt body " << body;
     return auth::TokenCache::Entry::Unauthenticated();
@@ -431,10 +431,10 @@ std::string auth::TokenCache::generateJwt(VPackSlice const& payload) const {
 }
 
 /// generate a JWT token for internal cluster communication
-void auth::TokenCache::generateJwtToken() {
+void auth::TokenCache::generateSuperToken() {
   VPackBuilder body;
   body.openObject();
   body.add("server_id", VPackValue(ServerState::instance()->getId()));
   body.close();
-  _jwtToken = generateJwt(body.slice());
+  _jwtSuperToken = generateJwt(body.slice());
 }

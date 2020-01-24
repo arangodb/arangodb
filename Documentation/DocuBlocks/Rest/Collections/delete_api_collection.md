@@ -90,4 +90,3 @@ Dropping a system collection
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

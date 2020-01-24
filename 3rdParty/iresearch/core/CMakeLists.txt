@@ -77,12 +77,6 @@ source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
-if (USE_SIMDCOMP)
-  set(IResearch_core_optimized_sources
-    ./store/store_utils_optimized.cpp
-  )
-endif()
-
 set(IResearch_core_sources
   ./utils/string.cpp
   ./analysis/analyzer.cpp
@@ -117,16 +111,17 @@ set(IResearch_core_sources
   ./search/sort.cpp
   ./search/cost.cpp
   ./search/score.cpp
-  ./search/score_doc_iterators.cpp
   ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
   ./search/prefix_filter.cpp
+  ./search/limited_sample_scorer.cpp
   ./search/range_filter.cpp
   ./search/phrase_filter.cpp
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
-  ./search/range_query.cpp
+  ./search/wildcard_filter.cpp
+  ./search/multiterm_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
   ./store/data_input.cpp 
@@ -138,8 +133,10 @@ set(IResearch_core_sources
   ./store/mmap_directory.cpp
   ./store/memory_directory.cpp
   ./store/store_utils.cpp
+  ./store/store_utils_simd.cpp
   ./utils/async_utils.cpp
   ./utils/attributes.cpp
+  ./utils/automaton_utils.cpp
   ./utils/bit_packing.cpp
   ./utils/encryption.cpp
   ./utils/ctr_encryption.cpp
@@ -159,6 +156,7 @@ set(IResearch_core_sources
   ./utils/utf8_path.cpp
   ./utils/locale_utils.cpp
   ./utils/log.cpp
+  ./utils/result.cpp
   ./utils/so_utils.cpp
   ./utils/process_utils.cpp
   ./utils/network_utils.cpp
@@ -205,7 +203,7 @@ set(IResearch_core_headers
   ./search/prefix_filter.hpp
   ./search/range_filter.hpp
   ./search/column_existence_filter.hpp
-  ./search/range_query.hpp
+  ./search/multiterm_query.hpp
   ./search/term_query.hpp
   ./search/boolean_filter.hpp
   ./search/disjunction.hpp
@@ -218,6 +216,8 @@ set(IResearch_core_headers
   ./store/memory_directory.hpp
   ./store/store_utils.hpp
   ./utils/attributes.hpp
+  ./utils/automaton.hpp
+  ./utils/automaton_utils.hpp
   ./utils/bit_packing.hpp
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp
@@ -240,6 +240,7 @@ set(IResearch_core_headers
   ./utils/std.hpp
   ./utils/string.hpp
   ./utils/log.hpp
+  ./utils/result.hpp
   ./utils/thread_utils.hpp
   ./utils/object_pool.hpp
   ./utils/so_utils.hpp
@@ -260,8 +261,11 @@ if (NOT MSVC)
   set(DL_LIBRARY dl)
 endif()
 
-include_directories(
+include_directories( 
   ${IResearch_INCLUDE_DIR}
+)
+
+include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
   ${EXTERNAL_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
   ${BFD_INCLUDE_DIR}
@@ -274,7 +278,10 @@ add_library(${IResearch_TARGET_NAME}-shared
   SHARED
   ${IResearch_core_sources} ${IResearch_core_headers}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
 )
+
+set_ipo(${IResearch_TARGET_NAME}-shared)
 
 add_library(${IResearch_TARGET_NAME}-static
   STATIC
@@ -282,19 +289,26 @@ add_library(${IResearch_TARGET_NAME}-static
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash>
 )
 
+set_ipo(${IResearch_TARGET_NAME}-static)
+
 # setup CRT
 if(MSVC)
   add_library(${IResearch_TARGET_NAME}-shared-scrt
     SHARED
     ${IResearch_core_sources} ${IResearch_core_headers}
-  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
+    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
+    $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt>
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-shared-scrt)
 
   add_library(${IResearch_TARGET_NAME}-static-scrt
     STATIC
     ${IResearch_core_sources} ${IResearch_core_headers}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-murmurhash-scrt>
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-static-scrt)
 endif()
 
 add_sanitizers(${IResearch_TARGET_NAME}-shared)
@@ -397,14 +411,17 @@ if(MSVC)
  )
 endif()
 
+
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
+  PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 # setup CRT
@@ -412,11 +429,13 @@ if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-shared-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
+    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES>
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-static-scrt
     PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
     PRIVATE ${ICU_INCLUDE_DIR}
+    PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst-scrt,INTERFACE_INCLUDE_DIRECTORIES>
   )
 endif()
 
@@ -424,21 +443,25 @@ endif()
 if(MSVC)
   target_compile_options(${IResearch_TARGET_NAME}-shared
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-static
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-shared-scrt
     PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 
   target_compile_options(${IResearch_TARGET_NAME}-static-scrt
     PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     PRIVATE "/EHa"
   )
 endif()
@@ -486,10 +509,8 @@ else()
   set(MSVC_ONLY_LIBRARIES "")
 endif()
 
-if (USE_SIMDCOMP)
-  set(SIMD_LIBRARY_SHARED "simdcomp-shared")
-  set(SIMD_LIBRARY_STATIC "simdcomp-static")
-endif()
+set(SIMD_LIBRARY_SHARED "simdcomp-shared")
+set(SIMD_LIBRARY_STATIC "simdcomp-static")
 
 target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
@@ -504,6 +525,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
 )
+
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimiter-static
@@ -523,8 +545,15 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
-  ${BT_LIBS}
 )
+
+if (CLANG_TIDY_EXE)
+  set_target_properties(
+    ${IResearch_TARGET_NAME}-static
+    PROPERTIES
+    CXX_CLANG_TIDY "${CLANG_TIDY_EXE};-header-filter=.;-checks=clang-analyzer-cplusplus*,google-*,performance-*,readability-*"
+  )
+endif()
 
 # setup CRT
 if(MSVC)
@@ -538,6 +567,7 @@ if(MSVC)
     ${Unwind_SHARED_LIBS}
     ${DL_LIBRARY}
     ${MSVC_ONLY_LIBRARIES}
+    ${SIMD_LIBRARY_SHARED}
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-static-scrt
@@ -579,11 +609,8 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+  "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
 )
-
-if (USE_SIMDCOMP)
-  list(APPEND IRESEARCH_STATIC_DEPENDENCIES "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>")
-endif()
 
 if (MSVC)
   foreach(ELEMENT
@@ -771,10 +798,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-shared
   ./analysis/delimited_token_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-static
   STATIC
   ./analysis/delimited_token_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-static)
 
 # setup CRT
 if(MSVC)
@@ -783,10 +814,14 @@ if(MSVC)
     ./analysis/delimited_token_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt
     STATIC
     ./analysis/delimited_token_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt)
 endif()
 
 # setup CRT
@@ -875,10 +910,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-text-shared
   ./analysis/text_token_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-text-static
   STATIC
   ./analysis/text_token_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static)
 
 # setup CRT
 if(MSVC)
@@ -887,10 +926,14 @@ if(MSVC)
     ./analysis/text_token_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     STATIC
     ./analysis/text_token_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-text-static-scrt)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-text-shared
@@ -1006,10 +1049,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-norm-shared
   ./analysis/text_token_normalizing_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-norm-static
   STATIC
   ./analysis/text_token_normalizing_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-static)
 
 # setup CRT
 if(MSVC)
@@ -1018,10 +1065,14 @@ if(MSVC)
     ./analysis/text_token_normalizing_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt
     STATIC
     ./analysis/text_token_normalizing_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-norm-static-scrt)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-norm-shared
@@ -1129,10 +1180,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-stem-shared
   ./analysis/text_token_stemming_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-stem-static
   STATIC
   ./analysis/text_token_stemming_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static)
 
 # setup CRT
 if(MSVC)
@@ -1141,10 +1196,14 @@ if(MSVC)
     ./analysis/text_token_stemming_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
     STATIC
     ./analysis/text_token_stemming_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt)
 endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared
@@ -1260,10 +1319,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-mask-shared
   ./analysis/token_masking_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-mask-static
   STATIC
   ./analysis/token_masking_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-static)
 
 # setup CRT
 if(MSVC)
@@ -1272,10 +1335,14 @@ if(MSVC)
     ./analysis/token_masking_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
     STATIC
     ./analysis/token_masking_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt)
 endif()
 
 # setup CRT
@@ -1364,10 +1431,14 @@ add_library(${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ./analysis/ngram_token_stream.hpp
 )
 
+set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-shared)
+
 add_library(${IResearch_TARGET_NAME}-analyzer-ngram-static
   STATIC
   ./analysis/ngram_token_stream.cpp
 )
+
+set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-static)
 
 # setup CRT
 if(MSVC)
@@ -1376,10 +1447,14 @@ if(MSVC)
     ./analysis/ngram_token_stream.cpp
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt
     STATIC
     ./analysis/ngram_token_stream.cpp
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt)
 endif()
 
 # setup CRT
@@ -1462,12 +1537,6 @@ endif()
 ### format plugin: format-1_0
 ################################################################################
 
-if (USE_SIMDCOMP)
-  set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=1")
-else()
-  set(FORMAT_10_EXTRA_DEFS "IRESEARCH_FORMAT10_CODEC=0")
-endif()
-
 set(IResearch_format-1_0_source
   ./formats/formats_10.cpp
   ./formats/formats_10_attributes.cpp
@@ -1485,12 +1554,16 @@ add_library(${shared_format_library_name}
   ${IResearch_format-1_0_source}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
 )
+  
+set_ipo(${shared_format_library_name})
 
 add_library(${static_format_library_name}
   STATIC
   ${IResearch_format-1_0_source}
   $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst> # used by formats_burst_trie
 )
+
+set_ipo(${static_format_library_name})
 
 # setup CRT
 if(MSVC)
@@ -1500,11 +1573,15 @@ if(MSVC)
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
 
+  set_ipo(${shared_format_library_name}-scrt)
+
   add_library(${static_format_library_name}-scrt
     STATIC
     ${IResearch_format-1_0_source}
     $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst-scrt> # used by formats_burst_trie
   )
+
+  set_ipo(${static_format_library_name}-scrt)
 endif()
 
 # setup CRT
@@ -1624,10 +1701,14 @@ add_library(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_tfidf_source}
 )
 
+set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-shared)
+
 add_library(${IResearch_TARGET_NAME}-scorer-tfidf-static
   STATIC
   ${IResearch_tfidf_source}
 )
+
+set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-static)
 
 # setup CRT
 if(MSVC)
@@ -1636,10 +1717,14 @@ if(MSVC)
     ${IResearch_tfidf_source}
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt
     STATIC
     ${IResearch_tfidf_source}
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt)
 endif()
 
 # setup CRT
@@ -1719,16 +1804,19 @@ set(IResearch_bm25_source
   ./search/bm25.hpp
 )
 
-
 add_library(${IResearch_TARGET_NAME}-scorer-bm25-shared
   SHARED
   ${IResearch_bm25_source}
 )
+  
+set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-shared)
 
 add_library(${IResearch_TARGET_NAME}-scorer-bm25-static
   STATIC
   ${IResearch_bm25_source}
 )
+
+set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-static)
 
 # setup CRT
 if(MSVC)
@@ -1737,10 +1825,14 @@ if(MSVC)
     ${IResearch_bm25_source}
   )
 
+  set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-shared-scrt)
+
   add_library(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt
     STATIC
     ${IResearch_bm25_source}
   )
+
+  set_ipo(${IResearch_TARGET_NAME}-scorer-bm25-static-scrt)
 endif()
 
 # setup CRT
@@ -1811,9 +1903,9 @@ if(MSVC)
   )
 endif()
 
-##########################  
-# installation
-########################## 
+################################################################################
+### installation
+################################################################################
 
 install(TARGETS ${IResearch_TARGET_NAME}-shared
   DESTINATION lib

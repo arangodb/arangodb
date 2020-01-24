@@ -29,6 +29,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -692,9 +693,6 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "a unique identifier for a backup "
                      "(restore/upload/download operation)",
                      new StringParameter(&_options.identifier));
-
-  //  options->addOption("--include-search", "whether to include ArangoSearch data",
-  //                     new BooleanParameter(&_options.includeSearch));
 
   options->addOption(
       "--label",

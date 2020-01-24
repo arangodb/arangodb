@@ -151,7 +151,7 @@ class RecursiveWriteLocker {
   }
 
  private:
-  bool _locked;  // track locked state separately for recursive lock aquisition
+  bool _locked;  // track locked state separately for recursive lock acquisition
   arangodb::basics::WriteLocker<T> _locker;
   std::atomic<std::thread::id>& _owner;
   void (*_update)(RecursiveWriteLocker& locker);

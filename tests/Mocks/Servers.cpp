@@ -22,7 +22,6 @@
 
 #include <algorithm>
 
-#include "Servers.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -36,6 +35,7 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -61,6 +61,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -69,8 +70,10 @@
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
-#include "../IResearch/AgencyMock.h"
-#include "../IResearch/common.h"
+#include "Servers.h"
+
+#include "IResearch/AgencyMock.h"
+#include "IResearch/common.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -474,11 +477,11 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
 
 MockClusterServer::MockClusterServer()
     : MockServer(), _agencyStore(_server, nullptr, "arango") {
-  auto* agencyCommManager = new AgencyCommManagerMock("arango");
+  auto* agencyCommManager = new AgencyCommManagerMock(_server, "arango");
   std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-      _agencyStore);  // need 2 connections or Agency callbacks will fail
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);
+  std::ignore =
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);  // need 2 connections or Agency callbacks will fail
   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
   _oldRole = arangodb::ServerState::instance()->getRole();
 
@@ -503,12 +506,13 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
   arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-  arangodb::ServerState::instance()->setRebootId(1);
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers
   auto& indexFactory = const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
-  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-                       arangodb::iresearch::IResearchLinkCoordinator::factory());
+  auto& factory =
+      getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
+  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
 }
 
 void MockClusterServer::agencyTrx(std::string const& key, std::string const& value) {

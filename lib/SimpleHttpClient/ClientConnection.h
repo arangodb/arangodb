@@ -50,8 +50,10 @@ class ClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  ClientConnection(Endpoint* endpoint, double, double, size_t);
-  ClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
+  ClientConnection(application_features::ApplicationServer& server,
+                   Endpoint* endpoint, double, double, size_t);
+  ClientConnection(application_features::ApplicationServer& server,
+                   std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
