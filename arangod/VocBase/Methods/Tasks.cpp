@@ -220,11 +220,14 @@ void Task::removeTasksForDatabase(std::string const& name) {
 
 bool Task::tryCompile(v8::Isolate* isolate, std::string const& command) {
   v8::HandleScope scope(isolate);
-
+  auto context = TRI_IGETC;
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
   auto current = isolate->GetCurrentContext()->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-      current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
+                                            current->Get(context,
+                                                         TRI_V8_ASCII_STRING(isolate, "Function"))
+                                            .FromMaybe(v8::Local<v8::Value>())
+                                            );
 
   // Invoke Function constructor to create function with the given body and no
   // arguments
@@ -418,11 +421,15 @@ void Task::work(ExecContext const* exec) {
   {
     auto isolate = guard.isolate();
     v8::HandleScope scope(isolate);
+    auto context = TRI_IGETC;
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     auto current = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-        current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
+                                              current->Get(context,
+                                                           TRI_V8_ASCII_STRING(isolate, "Function"))
+                                              .FromMaybe(v8::Local<v8::Value>())
+                                              );
 
     // Invoke Function constructor to create function with the given body and
     // no

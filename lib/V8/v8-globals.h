@@ -373,6 +373,15 @@ inline v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context> &context, v8::H
 inline v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Handle<v8::Value> const &val) {
   return val->ToString(context).FromMaybe(v8::Local<v8::String>());
 }
+inline std::string TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::MaybeLocal<v8::Value> const&val) {
+  v8::String::Utf8Value x(isolate, val.FromMaybe(v8::Local<v8::Value>())->ToString(context).FromMaybe(v8::Local<v8::String>()));
+  return std::string(*x, x.length());
+}
+
+inline std::string TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::String> const&val) {
+  v8::String::Utf8Value x(isolate, val);
+  return std::string(*x, x.length());
+}
 
 /// @brief retrieve the instance of the TRI_v8_global_t of the current thread
 ///   implicitly creates a variable 'v8g' with a pointer to it.
@@ -790,18 +799,19 @@ inline bool TRI_V8_AddMethod(v8::Isolate* isolate,
                              v8::Handle<v8::String> name,
                              v8::Handle<v8::FunctionTemplate> callback,
                              bool isHidden = false) {
+  auto context = TRI_IGETC;
   // hidden method
   if (isHidden) {
     return tpl
-      .DefineOwnProperty(TRI_IGETC,
+      .DefineOwnProperty(context,
                          name,
-                         callback->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()),
+                         callback->GetFunction(context).FromMaybe(v8::Local<v8::Function>()),
                          v8::DontEnum)
         .FromMaybe(false);
   }
   // normal method
   else {
-    return tpl.Set(name, callback->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Value>()));
+    return tpl.Set(context, name, callback->GetFunction(context).FromMaybe(v8::Local<v8::Value>())).FromMaybe(false);
   }
   return false;
 }

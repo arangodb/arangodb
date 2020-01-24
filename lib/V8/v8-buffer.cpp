@@ -394,6 +394,7 @@ static unsigned hex2bin(char c) {
 static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
                            v8::Handle<v8::Value> val, TRI_V8_encoding_t encoding) {
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   // A lot of improvement can be made here. See:
   // http://code.google.com/p/v8/issues/detail?id=270
@@ -421,8 +422,7 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
   if (is_buffer) {
     v8::Local<v8::Value> arg = TRI_V8_ASCII_STRING(isolate, "binary");
     v8::Handle<v8::Object> object = val.As<v8::Object>();
-    v8::Local<v8::Function> callback =
-        object->Get(TRI_V8_ASCII_STRING(isolate, "toString")).As<v8::Function>();
+    v8::Local<v8::Function> callback = TRI_GetProperty(context, isolate, object, "toString").As<v8::Function>();
     str = TRI_GET_STRING(callback->Call(TRI_IGETC, object, 1, &arg).FromMaybe(v8::Local<v8::Value>()));
   } else {
     str = TRI_GET_STRING(val);
@@ -650,11 +650,12 @@ void V8Buffer::New(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 v8::Handle<v8::Object> V8Buffer::New(v8::Isolate* isolate, v8::Handle<v8::String> string) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+  auto context = TRI_IGETC;
 
   // get Buffer from global scope.
   v8::Local<v8::Object> global = TRI_IGETC->Global();
   TRI_GET_GLOBAL_STRING(BufferConstant);
-  v8::Local<v8::Value> bv = global->Get(BufferConstant);
+  v8::Local<v8::Value> bv = global->Get(context, BufferConstant).FromMaybe(v8::Local<v8::Value>());
 
   if (!bv->IsFunction()) {
     return v8::Object::New(isolate);
@@ -813,7 +814,7 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
     auto handle = v8::Local<v8::Object>::New(isolate, _handle);
     TRI_GET_GLOBAL(LengthKey, v8::String);
     auto len = v8::Integer::NewFromUnsigned(isolate, (uint32_t)_length);
-    handle->Set(LengthKey, len);
+    handle->Set(TRI_IGETC, LengthKey, len).FromMaybe(false);
   }
 }
 
@@ -1395,7 +1396,7 @@ static void ReadFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   double offset_tmp = TRI_GET_DOUBLE(args[0]);
   int64_t offset = static_cast<int64_t>(offset_tmp);
-  bool doTRI_ASSERT = !args[1]->BooleanValue(TRI_IGETC).FromMaybe(true);
+  bool doTRI_ASSERT = !args[1]->BooleanValue(isolate);
 
   V8Buffer* buffer = V8Buffer::unwrap(args.This());
 
@@ -1465,7 +1466,7 @@ static void WriteFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  bool doTRI_ASSERT = !args[2]->BooleanValue(TRI_IGETC).FromMaybe(true);
+  bool doTRI_ASSERT = !args[2]->BooleanValue(isolate);
 
   if (doTRI_ASSERT) {
     if (!args[0]->IsNumber()) {
@@ -1558,8 +1559,8 @@ static void JS_ByteLength(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void MapGetIndexedBuffer(uint32_t idx,
                                 const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Object> self = args.Holder();
 
@@ -1567,7 +1568,7 @@ static void MapGetIndexedBuffer(uint32_t idx,
     // seems object has become a FastBuffer already
     if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
-          self->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
+        self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
@@ -1592,8 +1593,8 @@ static void MapGetIndexedBuffer(uint32_t idx,
 static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
                                 const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Object> self = args.Holder();
 
@@ -1601,7 +1602,7 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
     // seems object has become a FastBuffer already
     if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
-          self->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
+        self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }

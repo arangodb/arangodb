@@ -466,7 +466,7 @@ static inline v8::Handle<v8::Value> ObjectJsonString(v8::Isolate* isolate,
 /// @brief converts a TRI_json_t OBJECT into a V8 object
 static v8::Handle<v8::Value> ObjectJsonObject(v8::Isolate* isolate, TRI_json_t const* json) {
   v8::Handle<v8::Object> object = v8::Object::New(isolate);
-
+  auto context = TRI_IGETC;
   if (object.IsEmpty()) {
     return v8::Undefined(isolate);
   }
@@ -489,9 +489,9 @@ static v8::Handle<v8::Value> ObjectJsonObject(v8::Isolate* isolate, TRI_json_t c
       auto k = TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
                                   key->_value._string.length - 1);
       if (!k.IsEmpty()) {
-        object->Set(TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
+        object->Set(context, TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
                                        key->_value._string.length - 1),
-                    val);
+                    val).FromMaybe(false);
       }
     }
   }
@@ -502,7 +502,7 @@ static v8::Handle<v8::Value> ObjectJsonObject(v8::Isolate* isolate, TRI_json_t c
 /// @brief converts a TRI_json_t ARRAY into a V8 object
 static v8::Handle<v8::Value> ObjectJsonArray(v8::Isolate* isolate, TRI_json_t const* json) {
   uint32_t const n = static_cast<uint32_t>(TRI_LengthArrayJson(json));
-
+  auto context = TRI_IGETC;
   v8::Handle<v8::Array> object = v8::Array::New(isolate, static_cast<int>(n));
 
   if (object.IsEmpty()) {
@@ -516,7 +516,7 @@ static v8::Handle<v8::Value> ObjectJsonArray(v8::Isolate* isolate, TRI_json_t co
     v8::Handle<v8::Value> val = TRI_ObjectJson(isolate, element);
 
     if (!val.IsEmpty()) {
-      object->Set(j++, val);
+      object->Set(context, j++, val).FromMaybe(false);
     }
   }
 
@@ -527,7 +527,7 @@ static v8::Handle<v8::Value> ObjectJsonArray(v8::Isolate* isolate, TRI_json_t co
 static v8::Handle<v8::Value> ExtractObject(v8::Isolate* isolate,
                                            TRI_json_t const* json, size_t offset) {
   v8::EscapableHandleScope scope(isolate);
-
+  auto context = TRI_IGETC;
   if (json == nullptr || json->_type != TRI_JSON_OBJECT) {
     return scope.Escape<v8::Value>(v8::Undefined(isolate));
   }
@@ -542,7 +542,7 @@ static v8::Handle<v8::Value> ExtractObject(v8::Isolate* isolate,
         static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
 
     if (value != nullptr) {
-      result->Set(count++, TRI_ObjectJson(isolate, value));
+      result->Set(context, count++, TRI_ObjectJson(isolate, value)).FromMaybe(false);
     }
   }
 
@@ -596,8 +596,8 @@ v8::Handle<v8::Value> TRI_ObjectJson(v8::Isolate* isolate, TRI_json_t const* jso
 static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
                         v8::Handle<v8::Value> const parameter, std::set<int>& seenHashes,
                         std::vector<v8::Handle<v8::Object>>& seenObjects) {
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   if (parameter->IsNull()) {
     TRI_InitNullJson(result);
@@ -605,22 +605,21 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
   }
 
   if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter =
-        parameter->ToBoolean(TRI_IGETC).FromMaybe(v8::Local<v8::Boolean>());
+    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean(isolate);
     TRI_InitBooleanJson(result, booleanParameter->Value());
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsNumber()) {
     v8::Handle<v8::Number> numberParameter =
-        parameter->ToNumber(TRI_IGETC).FromMaybe(v8::Local<v8::Number>());
+        parameter->ToNumber(context).FromMaybe(v8::Local<v8::Number>());
     TRI_InitNumberJson(result, numberParameter->Value());
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter =
-        parameter->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>());
+        parameter->ToString(context).FromMaybe(v8::Local<v8::String>());
     TRI_Utf8ValueNFC str(isolate, stringParameter);
 
     if (*str == nullptr) {
@@ -653,7 +652,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       // the reserve call above made sure we could not have run out of memory
       TRI_ASSERT(next != nullptr);
 
-      res = ObjectToJson(isolate, next, array->Get(i), seenHashes, seenObjects);
+      res = ObjectToJson(isolate, next, array->Get(context, i).FromMaybe(v8::Local<v8::Value>()), seenHashes, seenObjects);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // to mimic behavior of previous ArangoDB versions, we need to silently
@@ -675,21 +674,20 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
   if (parameter->IsObject()) {
     if (parameter->IsBooleanObject()) {
       TRI_InitBooleanJson(result, v8::Handle<v8::BooleanObject>::Cast(parameter)
-                                      ->BooleanValue(TRI_IGETC)
-                                      .FromMaybe(false));
+                          ->BooleanValue(isolate));
       return TRI_ERROR_NO_ERROR;
     }
 
     if (parameter->IsNumberObject()) {
       TRI_InitNumberJson(result, v8::Handle<v8::NumberObject>::Cast(parameter)
-                                     ->NumberValue(TRI_IGETC)
+                                     ->NumberValue(context)
                                      .FromMaybe(0.0));
       return TRI_ERROR_NO_ERROR;
     }
 
     if (parameter->IsStringObject()) {
       v8::Handle<v8::String> stringParameter(
-          parameter->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
+          parameter->ToString(context).FromMaybe(v8::Local<v8::String>()));
       TRI_Utf8ValueNFC str(isolate, stringParameter);
 
       if (*str == nullptr) {
@@ -708,23 +706,23 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     }
 
     v8::Handle<v8::Object> o =
-        parameter->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+        parameter->ToObject(context).FromMaybe(v8::Local<v8::Object>());
 
     // first check if the object has a "toJSON" function
     v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING(isolate, "toJSON", 6);
     if (TRI_HasProperty(context, isolate, o, toJsonString)) {
       // call it if yes
       v8::Handle<v8::Value> func =
-          o->Get(TRI_IGETC, toJsonString).FromMaybe(v8::Local<v8::Value>());
+          o->Get(context, toJsonString).FromMaybe(v8::Local<v8::Value>());
       if (func->IsFunction()) {
         v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
         v8::Handle<v8::Value> args;
-        v8::Handle<v8::Value> converted = toJson->Call(TRI_IGETC, o, 0, &args).FromMaybe(v8::Local<v8::Value>());
+        v8::Handle<v8::Value> converted = toJson->Call(context, o, 0, &args).FromMaybe(v8::Local<v8::Value>());
 
         if (!converted.IsEmpty()) {
           // return whatever toJSON returned
-          TRI_Utf8ValueNFC str(isolate, converted->ToString(TRI_IGETC).FromMaybe(
+          TRI_Utf8ValueNFC str(isolate, converted->ToString(context).FromMaybe(
                                             v8::Local<v8::String>()));
 
           if (*str == nullptr) {
@@ -759,7 +757,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
     seenObjects.emplace_back(o);
 
-    v8::Handle<v8::Array> names = o->GetOwnPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
+    v8::Handle<v8::Array> names = o->GetOwnPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
 
     // allocate the result object buffer in one go
@@ -775,7 +773,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
     for (uint32_t i = 0; i < n; ++i) {
       // process attribute name
-      v8::Handle<v8::Value> key = names->Get(i);
+      v8::Handle<v8::Value> key = names->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       TRI_Utf8ValueNFC str(isolate, key);
 
       if (*str == nullptr) {
@@ -796,7 +794,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       // the reserve call above made sure we could not have run out of memory
       TRI_ASSERT(next != nullptr);
 
-      res = ObjectToJson(isolate, next, o->Get(key), seenHashes, seenObjects);
+      res = ObjectToJson(isolate, next, o->Get(context, key).FromMaybe(v8::Local<v8::Value>()), seenHashes, seenObjects);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // to mimic behavior of previous ArangoDB versions, we need to silently
@@ -963,6 +961,7 @@ class KeySpace {
 
   v8::Handle<v8::Value> keyspaceKeys(v8::Isolate* isolate) {
     v8::EscapableHandleScope scope(isolate);
+    auto context = TRI_IGETC;
     v8::Handle<v8::Array> result;
     {
       READ_LOCKER(readLocker, _lock);
@@ -974,8 +973,11 @@ class KeySpace {
         auto element = it.second;
 
         if (element != nullptr) {
-          result->Set(count++, TRI_V8_PAIR_STRING(isolate, element->key,
-                                                  strlen(element->key)));
+          result->Set(context,
+                      count++,
+                      TRI_V8_PAIR_STRING(isolate,
+                                         element->key,
+                                         strlen(element->key))).FromMaybe(false);
         }
       }
     }
@@ -985,6 +987,7 @@ class KeySpace {
 
   v8::Handle<v8::Value> keyspaceKeys(v8::Isolate* isolate, std::string const& prefix) {
     v8::EscapableHandleScope scope(isolate);
+    auto context = TRI_IGETC;
     v8::Handle<v8::Array> result;
     {
       READ_LOCKER(readLocker, _lock);
@@ -997,8 +1000,10 @@ class KeySpace {
 
         if (element != nullptr) {
           if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-            result->Set(count++, TRI_V8_PAIR_STRING(isolate, element->key,
-                                                    strlen(element->key)));
+            result->Set(context,
+                        count++,
+                        TRI_V8_PAIR_STRING(isolate, element->key,
+                                           strlen(element->key))).FromMaybe(false);
           }
         }
       }
@@ -1009,6 +1014,7 @@ class KeySpace {
 
   v8::Handle<v8::Value> keyspaceGet(v8::Isolate* isolate) {
     v8::EscapableHandleScope scope(isolate);
+    auto context = TRI_IGETC;
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     {
       READ_LOCKER(readLocker, _lock);
@@ -1017,8 +1023,8 @@ class KeySpace {
         auto element = it.second;
 
         if (element != nullptr) {
-          result->Set(TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)),
-                      TRI_ObjectJson(isolate, element->json));
+          result->Set(context, TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)),
+                      TRI_ObjectJson(isolate, element->json)).FromMaybe(false);
         }
       }
     }
@@ -1028,6 +1034,7 @@ class KeySpace {
 
   v8::Handle<v8::Value> keyspaceGet(v8::Isolate* isolate, std::string const& prefix) {
     v8::EscapableHandleScope scope(isolate);
+    auto context = TRI_IGETC;
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     {
       READ_LOCKER(readLocker, _lock);
@@ -1037,8 +1044,8 @@ class KeySpace {
 
         if (element != nullptr) {
           if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-            result->Set(TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)),
-                        TRI_ObjectJson(isolate, element->json));
+            result->Set(context, TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)),
+                        TRI_ObjectJson(isolate, element->json)).FromMaybe(false);
           }
         }
       }

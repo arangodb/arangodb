@@ -512,6 +512,8 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
+
   if (args.Length() > 3 || args.Length() == 0 || !args[0]->IsString() ||
       (args.Length() > 1 && !args[1]->IsString()) ||
       (args.Length() > 2 && !args[2]->IsString())) {
@@ -550,8 +552,8 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
       auto lvl = um->databaseAuthLevel(username, vocbase.name());
 
       if (lvl != auth::Level::NONE) {  // hide non accessible collections
-        result->Set(TRI_V8_STD_STRING(isolate, vocbase.name()),
-                    TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
+        result->Set(context, TRI_V8_STD_STRING(isolate, vocbase.name()),
+                    TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl))).FromMaybe(false);
       }
     });
     TRI_V8_RETURN(result);

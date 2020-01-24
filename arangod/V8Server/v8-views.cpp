@@ -81,6 +81,7 @@ v8::Handle<v8::Object> WrapView( // wrap view
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   TRI_GET_GLOBAL(VocbaseViewTempl, v8::ObjectTemplate);
+  auto context = TRI_IGETC;
   v8::Handle<v8::Object> result = VocbaseViewTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
@@ -113,7 +114,7 @@ v8::Handle<v8::Object> WrapView( // wrap view
     TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()), // value
     v8::ReadOnly // attributes
   ).FromMaybe(false); // Ignore result...
-  result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
+  result->Set(context, _DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name())).FromMaybe(false);
 
   return scope.Escape<v8::Object>(result);
 }
@@ -220,8 +221,8 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
 static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
@@ -249,7 +250,7 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
       if (TRI_HasProperty(context, isolate, optionsObject, IsSystemKey)) {
         allowDropSystem = TRI_ObjectToBoolean(
             isolate,
-            optionsObject->Get(TRI_IGETC, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
+            optionsObject->Get(context, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
       allowDropSystem = TRI_ObjectToBoolean(isolate, args[1]);
@@ -295,8 +296,8 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 /// @brief drops a view
 static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
   auto* view = UnwrapView(isolate, args.Holder());
 
@@ -413,6 +414,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDropped()) {
@@ -471,7 +473,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       break;
     }
 
-    result->Set(entry++, c);
+    result->Set(context, entry++, c).FromMaybe(false);
   }
 
   if (error) {

@@ -92,8 +92,9 @@ static void EnvGetter(v8::Local<v8::Name> property,
     TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, two_byte_buffer, result));
   }
 #endif
+  auto context = TRI_IGETC;
   // Not found.  Fetch from prototype.
-  TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(property));
+  TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(context, property).FromMaybe(v8::Local<v8::Value>()));
 }
 
 static void EnvSetter(v8::Local<v8::Name> property, v8::Local<v8::Value> value,
@@ -193,7 +194,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   }
 
   v8::Local<v8::Array> envarr = v8::Array::New(isolate);
-
+  auto context = TRI_IGETC;
   int j = 0;
   for (int i = 0; i < size; ++i) {
     char const* var = environ[i];
@@ -201,7 +202,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     size_t const length = s ? s - var : strlen(var);
     v8::Local<v8::String> name = TRI_V8_PAIR_STRING(isolate, var, length);
     if (canExpose(isolate, name)) {
-      envarr->Set(j++, name);
+      envarr->Set(context, j++, name).FromMaybe(false); // TODO
     }
   }
 #else  // _WIN32

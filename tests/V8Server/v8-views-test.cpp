@@ -1286,9 +1286,12 @@ TEST_F(V8ViewsTest, test_auth) {
       EXPECT_TRUE(result.ToLocalChecked()->IsArray());
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
       EXPECT_EQ(1U, resultArray->Length());
+      auto context = TRI_IGETC;
       auto* v8View =
-          TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(),
-                                                 WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
+        TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(context, 0)
+                                               .FromMaybe(v8::Local<v8::Value>())
+                                               .As<v8::Object>(),
+                                               WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView1"), v8View->name());
       EXPECT_EQ(std::string("testViewType"), v8View->type().name());
@@ -1316,9 +1319,12 @@ TEST_F(V8ViewsTest, test_auth) {
       EXPECT_TRUE(result.ToLocalChecked()->IsArray());
       auto* resultArray = v8::Array::Cast(*result.ToLocalChecked());
       EXPECT_EQ(1U, resultArray->Length());
+      auto context = TRI_IGETC;
       auto* v8View =
-          TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(0).As<v8::Object>(),
-                                                 WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
+        TRI_UnwrapClass<arangodb::LogicalView>(resultArray->Get(context, 0)
+                                               .FromMaybe(v8::Local<v8::Value>())
+                                               .As<v8::Object>(),
+                                               WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8View);
       EXPECT_EQ(std::string("testView1"), v8View->name());
       EXPECT_EQ(std::string("testViewType"), v8View->type().name());

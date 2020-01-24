@@ -82,7 +82,7 @@ static void ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set((uint32_t)column, TRI_V8_STRING(isolate, field));
+  (*array)->Set(TRI_IGETC, (uint32_t)column, TRI_V8_STRING(isolate, field)).FromMaybe(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +95,7 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set((uint32_t)column, TRI_V8_STRING(isolate, field));
+  (*array)->Set(TRI_IGETC, (uint32_t)column, TRI_V8_STRING(isolate, field)).FromMaybe(false);
 
   v8::Handle<v8::Function>* cb =
       reinterpret_cast<v8::Handle<v8::Function>*>(parser->_dataEnd);
@@ -172,7 +172,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // separator
     if (TRI_HasProperty(context, isolate, options, separatorKey)) {
-      separator = TRI_ObjectToString(isolate, options->Get(separatorKey));
+      separator = TRI_ObjectToString(context, isolate, options->Get(context, separatorKey));
 
       if (separator.size() != 1) {
         TRI_V8_THROW_TYPE_ERROR(
@@ -182,7 +182,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // quote
     if (TRI_HasProperty(context, isolate, options, quoteKey)) {
-      quote = TRI_ObjectToString(isolate, options->Get(quoteKey));
+      quote = TRI_ObjectToString(context, isolate, options->Get(context, quoteKey));
 
       if (quote.length() > 1) {
         TRI_V8_THROW_TYPE_ERROR(

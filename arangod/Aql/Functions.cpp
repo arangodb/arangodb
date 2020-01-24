@@ -1119,6 +1119,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   {
     ISOLATE;
     v8::HandleScope scope(isolate);                                   \
+    auto context = TRI_IGETC;
 
     Query* query = expressionContext->query();
     TRI_ASSERT(query != nullptr);
@@ -1139,7 +1140,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
       v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
 
       for (int i = 0; i < n; ++i) {
-        params->Set(static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx));
+        params->Set(context, static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx)).FromMaybe(true);
       }
       args[1] = params;
       args[2] = TRI_V8_ASCII_STRING(isolate, AFN);

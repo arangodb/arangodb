@@ -1312,7 +1312,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -1350,9 +1350,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -1391,9 +1390,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -1433,9 +1431,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -1475,9 +1472,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
@@ -1516,9 +1512,8 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsArray());
     auto v8Result = v8::Handle<v8::Array>::Cast(result.ToLocalChecked());
-
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
-      auto v8Analyzer = v8Result->Get(i);
+      auto v8Analyzer = v8Result->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
       auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(

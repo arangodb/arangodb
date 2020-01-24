@@ -1400,9 +1400,9 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       }
 
       v8::Handle<v8::Object> globalObj = localContext->Global();
-      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj);
-      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "global"), globalObj);
-      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "root"), globalObj);
+      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj).FromMaybe(false); // TODO;
+      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "global"), globalObj).FromMaybe(false); // TODO;
+      globalObj->Set(localContext, TRI_V8_ASCII_STRING(isolate, "root"),   globalObj).FromMaybe(false); // TODO;
 
       std::string modules = "";
       std::string sep = "";

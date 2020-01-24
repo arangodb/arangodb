@@ -880,6 +880,7 @@ size_t AqlValue::sizeofDocvec() const {
 
 /// @brief construct a V8 value as input for the expression execution in V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods* trx) const {
+  auto context = TRI_IGETC;
   switch (type()) {
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -897,7 +898,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          result->Set(j++, it->getValueReference(i, 0).toV8(isolate, trx));
+          result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, trx)).FromMaybe(false);
 
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -913,8 +914,12 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
 
       for (uint32_t i = 0; i < n; ++i) {
         // is it safe to use a double here (precision loss)?
-        result->Set(i, v8::Number::New(isolate, static_cast<double>(_data.range->at(
-                                                    static_cast<size_t>(i)))));
+        result->Set(context,
+                    i,
+                    v8::Number::New(isolate,
+                                    static_cast<double>(_data.range->at(static_cast<size_t>(i)))
+                                    )
+                    ).FromMaybe(true);
 
         if (i % 1000 == 0) {
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
