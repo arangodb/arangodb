@@ -70,6 +70,7 @@ struct AqlCall {
   Limit softLimit{Infinity{}};
   Limit hardLimit{Infinity{}};
   bool fullCount{false};
+  std::size_t skippedRows{0};
 
   std::size_t getOffset() const { return offset; }
 
@@ -87,9 +88,18 @@ struct AqlCall {
     return limit;
   }
 
-  void didSkip(std::size_t n) {
+  void didSkip(std::size_t n) noexcept {
     TRI_ASSERT(n <= offset);
     offset -= n;
+    skippedRows += n;
+  }
+
+  [[nodiscard]] std::size_t getSkipCount() const noexcept {
+    return skippedRows;
+  }
+
+  [[nodiscard]] bool needSkipMore() const noexcept {
+    return (0 < getOffset()) || (getLimit() == 0 && needsFullCount());
   }
 
   void didProduce(std::size_t n) {

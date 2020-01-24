@@ -137,17 +137,8 @@ CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 template<typename T, typename... Es>
 constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 
-/*
- * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
- * TODO: This should be removed once all executors and fetchers are ported to the new style.
- */
-template <class Executor>
-static bool constexpr isNewStyleExecutor() {
-  //return std::is_same<Executor, FilterExecutor>::value || std::is_same<Executor, SortedCollectExecutor>::value;
-  return is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor>;
-}
-template<typename T>
-constexpr bool isNewStyleExecutor = is_one_of_v;
+template<typename Executor>
+constexpr bool isNewStyleExecutor = is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -175,7 +166,7 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
     AqlCallStack stack{AqlCall::SimulateGetSome(atMost)};
     auto const [state, skipped, block] = execute(stack);
     return {state, block};
@@ -458,7 +449,7 @@ static SkipVariants constexpr skipType() {
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
     AqlCallStack stack{AqlCall::SimulateSkipSome(atMost)};
     auto const [state, skipped, block] = execute(stack);
 
@@ -594,7 +585,7 @@ template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
   // TODO remove this IF
   // These are new style executors
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
     // Only this executor is fully implemented
     traceExecuteBegin(stack);
     auto res = executeWithoutTrace(stack);
@@ -1100,7 +1091,8 @@ struct dependent_false : std::false_type {};
 template <class Executor>
 std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::executeSkipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
+    call.skippedRows = 0;
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
       // If the executor has a method skipRowsRange, to skip outputs more
       // efficiently than just producing them to subsequently discard them, then
@@ -1160,7 +1152,7 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
     // Make sure there's a block allocated and set
     // the call
     ensureOutputBlock(stack.popCall());
