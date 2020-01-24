@@ -105,9 +105,9 @@ protected:
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
   Flow prepareExecution(auth::TokenCache::Entry const&, GeneralRequest&);
-
+  
   /// Must be called from sendResponse, before response is rendered
-  void finishExecution(GeneralResponse&, std::string const& corsOrigin) const;
+  void finishExecution(GeneralResponse&, std::string const& cors) const;
 
   /// Push this request into the execution pipeline
   void executeRequest(std::unique_ptr<GeneralRequest>,
@@ -136,7 +136,8 @@ protected:
   bool allowCorsCredentials(std::string const& origin) const;
   
   /// handle an OPTIONS request, will send response
-  void processCorsOptions(std::unique_ptr<GeneralRequest> req);
+  void processCorsOptions(std::unique_ptr<GeneralRequest> req,
+                          std::string const& origin);
   
   /// check authentication headers
   auth::TokenCache::Entry checkAuthHeader(GeneralRequest& request);

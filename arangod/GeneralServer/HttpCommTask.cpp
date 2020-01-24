@@ -28,6 +28,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/H2CommTask.h"
 #include "GeneralServer/VstCommTask.h"
 #include "Logger/LogMacros.h"
 #include "Rest/HttpRequest.h"
@@ -229,12 +230,11 @@ HttpCommTask<T>::~HttpCommTask() noexcept = default;
 
 template <SocketType T>
 void HttpCommTask<T>::start() {
+  LOG_TOPIC("358d4", TRACE, Logger::REQUESTS)
+      << "<http> opened connection \"" << (void*)this << "\"";
+
   asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
-    auto* me = static_cast<HttpCommTask<T>*>(self.get());
-    if (AsioSocket<T>::supportsMixedIO()) {
-      me->_protocol->setNonBlocking(true);
-    }
-    me->checkVSTPrefix();
+    static_cast<HttpCommTask<T>&>(*self.get()).checkVSTPrefix();
   });
 }
 
@@ -249,7 +249,9 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
       err = llhttp_execute(&_parser, data, buffer.size());
       if (err != HPE_OK) {
-        nparsed += llhttp_get_error_pos(&_parser) - data;
+        ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
+        TRI_ASSERT(diff > 0);
+        nparsed += static_cast<size_t>(diff);
         break;
       }
       nparsed += buffer.size();
@@ -335,15 +337,23 @@ void HttpCommTask<T>::checkVSTPrefix() {
 }
 
 template <SocketType T>
-bool HttpCommTask<T>::checkHttpUpgrade() {
-  // TODO
-  return true;
-}
-
-template <SocketType T>
 void HttpCommTask<T>::processRequest() {
   TRI_ASSERT(_request);
   this->_protocol->timer.cancel();
+
+  // we may have gotten an H2 Upgrade request
+  if (ADB_UNLIKELY(_parser.upgrade)) {
+    LOG_TOPIC("5a660", INFO, Logger::REQUESTS) << "detected an 'Upgrade' header";
+    bool found;
+    std::string const& h2 = _request->header("upgrade");
+    std::string const& settings = _request->header("http2-settings", found);
+    if (h2 == "h2c" && found && !settings.empty()) {
+      auto task = std::make_shared<H2CommTask<T>>(this->_server, this->_connectionInfo,
+                                                  std::move(this->_protocol));
+      task->upgradeHttp1(std::move(_request));
+      return;
+    }
+  }
 
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
@@ -367,13 +377,13 @@ void HttpCommTask<T>::processRequest() {
           << StringUtils::escapeUnicode(body.toString()) << "\"";
     }
   }
-
+  
   // store origin header for later use
   _origin = _request->header(StaticStrings::Origin);
 
   // OPTIONS requests currently go unauthenticated
   if (_request->requestType() == rest::RequestType::OPTIONS) {
-    this->processCorsOptions(std::move(_request));
+    this->processCorsOptions(std::move(_request), _origin);
     return;
   }
 
@@ -402,7 +412,7 @@ void HttpCommTask<T>::processRequest() {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1, nullptr);
   resp->setContentType(_request->contentTypeResponse());
   resp->setContentTypeRequested(_request->contentTypeResponse());
-
+  
   this->executeRequest(std::move(_request), std::move(resp));
 }
 
@@ -417,12 +427,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   // will add CORS headers if necessary
   this->finishExecution(*baseRes, _origin);
-
-  if (!ServerState::instance()->isDBServer()) {
-    // DB server is not user-facing, and does not need to set this header
-    // use "IfNotSet" to not overwrite an existing response header
-    response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
-  }
 
   _header.clear();
   _header.reserve(220);
@@ -523,10 +527,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       << Logger::FIXED(totalTime, 6);
 
   // sendResponse is always called from a scheduler thread
-  this->_protocol->context.io_context.post(
-      [self = this->shared_from_this(), stat]() mutable {
-        static_cast<HttpCommTask<T>&>(*self).writeResponse(stat);
-      });
+  this->_protocol->context.io_context.post([self = this->shared_from_this(), stat]() mutable {
+    static_cast<HttpCommTask<T>&>(*self).writeResponse(stat);
+  });
 }
 
 // called on IO context thread
