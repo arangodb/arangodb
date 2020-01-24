@@ -219,7 +219,7 @@ Please also keep in mind that this command may take a long time to complete
 and return. This is because it will first do a full data synchronization with
 the master, which will take time roughly proportional to the amount of data.
 
-**Note**: this method is not supported on a coordinator in a cluster.
+**Note**: this method is not supported on a Coordinator in a cluster.
 
 @RESTRETURNCODES
 
@@ -237,5 +237,5 @@ is returned if an error occurred during synchronization or when starting the
 continuous replication.
 
 @RESTRETURNCODE{501}
-is returned when this operation is called on a coordinator in a cluster.
+is returned when this operation is called on a Coordinator in a cluster.
 @endDocuBlock

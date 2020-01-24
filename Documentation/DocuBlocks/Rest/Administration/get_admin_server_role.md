@@ -10,7 +10,7 @@ The role is returned in the *role* attribute of the result.
 Possible return values for *role* are:
 - *SINGLE*: the server is a standalone server without clustering
 - *COORDINATOR*: the server is a Coordinator in a cluster
-- *PRIMARY*: the server is a DBServer in a cluster
+- *PRIMARY*: the server is a DB-Server in a cluster
 - *SECONDARY*: this role is not used anymore
 - *AGENT*: the server is an Agency node in a cluster
 - *UNDEFINED*: in a cluster, *UNDEFINED* is returned if the server role cannot be

@@ -1,13 +1,13 @@
 @startDocuBlock get_api_cluster_endpoints
-@brief This API call returns information about all coordinator endpoints (cluster only).
+@brief This API call returns information about all Coordinator endpoints (cluster only).
 
-@RESTHEADER{GET /_api/cluster/endpoints, Get information about all coordinator endpoints, handleCommandEndpoints:listClusterEndpoints}
+@RESTHEADER{GET /_api/cluster/endpoints, Get information about all Coordinator endpoints, handleCommandEndpoints:listClusterEndpoints}
 
 @RESTDESCRIPTION
 Returns an object with an attribute `endpoints`, which contains an
 array of objects, which each have the attribute `endpoint`, whose value
 is a string with the endpoint description. There is an entry for each
-coordinator in the cluster. This method only works on coordinators in
+Coordinator in the cluster. This method only works on Coordinators in
 cluster mode. In case of an error the `error` attribute is set to
 `true`.
 
@@ -25,8 +25,8 @@ the HTTP status code - 200
 A list of active cluster endpoints.
 
 @RESTSTRUCT{endpoint,cluster_endpoints_struct,string,required,}
-The bind of the coordinator, like `tcp://[::1]:8530`
+The bind of the Coordinator, like `tcp://[::1]:8530`
 
-@RESTRETURNCODE{501} server is not a coordinator or method was not GET.
+@RESTRETURNCODE{501} server is not a Coordinator or method was not GET.
 
 @endDocuBlock

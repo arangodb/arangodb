@@ -65,7 +65,7 @@ memory.
 not reported in the results. When the write-ahead log is collected, documents
 might be added to journals and datafiles of the collection, which may modify 
 the figures of the collection. Also note that `waitingFor` and `compactionStatus` 
-may be empty when called on a coordinator in a cluster.
+may be empty when called on a Coordinator in a cluster.
 
 Additionally, the filesizes of collection and index parameter JSON files are
 not reported. These files should normally have a size of a few bytes

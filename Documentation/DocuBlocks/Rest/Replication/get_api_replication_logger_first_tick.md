@@ -15,7 +15,7 @@ attribute contains the minimum tick value available in the server's
 replication
 log.
 
-**Note**: this method is not supported on a coordinator in a cluster.
+**Note**: this method is not supported on a Coordinator in a cluster.
 
 @RESTRETURNCODES
 
@@ -29,7 +29,7 @@ is returned when an invalid HTTP method is used.
 is returned if an error occurred while assembling the response.
 
 @RESTRETURNCODE{501}
-is returned when this operation is called on a coordinator in a cluster.
+is returned when this operation is called on a Coordinator in a cluster.
 
 @EXAMPLES
 

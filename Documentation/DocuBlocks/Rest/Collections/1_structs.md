@@ -40,12 +40,12 @@ contains the names of document attributes that are used to
 determine the target shard for documents. _(cluster only)_
 
 @RESTSTRUCT{replicationFactor,collection_info,integer,optional,}
-contains how many copies of each shard are kept on different DBServers.
+contains how many copies of each shard are kept on different DB-Servers.
 _(cluster only)_
 
 @RESTSTRUCT{writeConcern,collection_info,integer,optional,}
 determines how many copies of each shard are required to be
-in sync on the different DBServers. If there are less then these many copies
+in sync on the different DB-Servers. If there are less then these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
 *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_

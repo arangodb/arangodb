@@ -114,7 +114,7 @@ The response will also contain the following HTTP headers:
   If there isn't any more log data to fetch, the client might decide to go
   to sleep for a while before calling the logger again.
 
-**Note**: this method is not supported on a coordinator in a cluster.
+**Note**: this method is not supported on a Coordinator in a cluster.
 
 @RESTRETURNCODES
 
@@ -138,7 +138,7 @@ is returned when an invalid HTTP method is used.
 is returned if an error occurred while assembling the response.
 
 @RESTRETURNCODE{501}
-is returned when this operation is called on a coordinator in a cluster.
+is returned when this operation is called on a Coordinator in a cluster.
 
 @EXAMPLES
 

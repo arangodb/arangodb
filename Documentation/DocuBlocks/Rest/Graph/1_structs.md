@@ -25,7 +25,7 @@ The replication factor used for every new collection in the graph.
 @RESTSTRUCT{writeConcern,graph_representation,integer,optional,}
 Default write concern for new collections in the graph.
 It determines how many copies of each shard are required to be
-in sync on the different DBServers. If there are less then these many copies
+in sync on the different DB-Servers. If there are less then these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
 *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_

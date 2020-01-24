@@ -1,11 +1,11 @@
 
 
-@brief global agency prefix
+@brief global Agency prefix
 `--cluster.agency-prefix prefix`
 
-The global key prefix used in all requests to the agency. The specified
-prefix will become part of each agency key. Specifying the key prefix
-allows managing multiple ArangoDB clusters with the same agency
+The global key prefix used in all requests to the Agency. The specified
+prefix will become part of each Agency key. Specifying the key prefix
+allows managing multiple ArangoDB clusters with the same Agency
 server(s).
 
 *prefix* must consist of the letters *a-z*, *A-Z* and the digits *0-9*

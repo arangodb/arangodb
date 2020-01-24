@@ -127,7 +127,7 @@ compacted or unloaded. By default, unused cursors will be deleted automatically
 after a server-defined idle time, and clients can adjust this idle time by setting
 the *ttl* value.
 
-Note: this API is currently not supported on cluster coordinators.
+Note: this API is currently not supported on cluster Coordinators.
 
 @RESTRETURNCODES
 
@@ -147,6 +147,6 @@ The server will respond with *HTTP 405* if an unsupported HTTP method is used.
 
 @RESTRETURNCODE{501}
 The server will respond with *HTTP 501* if this API is called on a cluster
-coordinator.
+Coordinator.
 
 @endDocuBlock
