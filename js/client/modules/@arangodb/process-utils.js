@@ -33,6 +33,7 @@ const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/crash-utils');
 const crypto = require('@arangodb/crypto');
+const ArangoError = require('@arangodb').ArangoError;
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -1554,7 +1555,18 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
   instanceInfo.arangods.forEach(arangod => {
     // agents don't support the ID call...
     if ((arangod.role !== "agent") && (arangod.role !== "single")) {
-      const reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      let reply;
+      try {
+        reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      } catch (e) {
+        print(RED + Date() + " error requesting server '" + JSON.stringify(arangod) + "' Error: " + JSON.stringify(e) + RESET);
+        if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
+          internal.sleep(5);
+          reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+        } else {
+          throw e;
+        }
+      }
       if (reply.error || reply.code !== 200) {
         throw new Error("Server has no detectable ID! " + JSON.stringify(reply) + "\n" + JSON.stringify(arangod));
       }
@@ -1673,7 +1685,17 @@ function startInstanceCluster (instanceInfo, protocol, options,
     instanceInfo.url = d.url;
   }
 
-  arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
+  try {
+    arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
+  } catch (e) {
+    print(RED + Date() + " error connecting '" + instanceInfo.endpoint + "' Error: " + JSON.stringify(e) + RESET);
+    if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
+      internal.sleep(5);
+      arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
+    } else {
+      throw e;
+    }
+  }
   return true;
 }
 

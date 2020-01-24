@@ -66,7 +66,10 @@ OutputAqlItemRow::OutputAqlItemRow(
       _setBaseIndexNotUsed(true),
 #endif
       _allowSourceRowUninitialized(false) {
-  TRI_ASSERT(_block != nullptr);
+}
+
+bool OutputAqlItemRow::isInitialized() const noexcept {
+  return _block != nullptr;
 }
 
 template <class ItemRowType>
