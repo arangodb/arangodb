@@ -459,8 +459,8 @@ TEST_F(EnumerateListExecutorTest, test_produce_datarange) {
   v = block->getValue(1, 3);
   ASSERT_TRUE(v.isArray());
   ASSERT_TRUE(v.at(0, mustDestroy, false).toBoolean());
-  ASSERT_TRUE(v.at(1, mustDestroy, false).toBoolean());
-  ASSERT_TRUE(v.at(2, mustDestroy, false).toBoolean());
+  ASSERT_EQ(v.at(1, mustDestroy, false).toInt64(), 1);
+  ASSERT_EQ(v.at(2, mustDestroy, false).toInt64(), 2);
 
   // check registers that should be filled
   v = block->getValue(0, 4);

@@ -98,12 +98,37 @@ class EnumerateListExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
+   * @brief Will fetch a new InputRow if necessary and store their local state
+   *
+   * @return bool done in case we do not have any input and upstreamState is done
+   */
+  void initializeNewRow(AqlItemBlockInputRange& inputRange);
+
+  /**
+   * @brief Will process an found array element
+   */
+  void processArrayElement(OutputAqlItemRow& output);
+
+  /**
+   * @brief Will skip a found array element
+   */
+  void skipArrayElement();
+
+  /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
-      AqlItemBlockInputRange& input, OutputAqlItemRow& output);
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  //[[nodiscard]] std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(
+  //  AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
@@ -114,9 +139,10 @@ class EnumerateListExecutor {
   Fetcher& _fetcher;
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
+  ExecutorState _currentRowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
-  size_t _produced;
+  size_t _skipped;
 };
 
 }  // namespace aql

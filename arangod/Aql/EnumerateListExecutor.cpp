@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateListExecutor.h"
+#include <Logger/LogMacros.h>
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -81,7 +82,7 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExec
 
 std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
   while (true) {
-    // HIT in first run, because pos and length are initiliazed
+    // HIT in first run, because pos and length are initialized
     // both with 0
 
     if (_inputArrayPosition == _inputArrayLength) {
@@ -152,66 +153,108 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlI
   }
 }
 
-std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
-    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
-  while (inputRange.hasDataRow() && !output.isFull() > 0) {
-    initialize();
-    auto const& [state, input] = inputRange.nextDataRow();
-    TRI_ASSERT(input.isInitialized());
-    // HIT in first run, because pos and length are initiliazed
-    // both with 0
-
-    AqlValue const& inputList = input.getValue(_infos.getInputRegister());
-
-    while (true) {
-      if (_inputArrayPosition == 0) {
-        // store the length into a local variable
-        // so we don't need to calculate length every time
-        if (inputList.isDocvec()) {
-          _inputArrayLength = inputList.docvecSize();
-        } else {
-          if (!inputList.isArray()) {
-            throwArrayExpectedException(inputList);
-          }
-          _inputArrayLength = inputList.length();
-        }
-      }
-
-      if (_inputArrayLength == 0) {
-        continue;
-      } else if (_inputArrayLength == _inputArrayPosition) {
-        // we reached the end, forget all state
-        initialize();
-        break;
-      } else {
-        bool mustDestroy;
-        AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
-        AqlValueGuard guard(innerValue, mustDestroy);
-
-        TRI_IF_FAILURE("EnumerateListBlock::getSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        output.moveValueInto(_infos.getOutputRegister(), input, guard);
-        output.advanceRow();
-        _produced++;
-
-        // set position to +1 for next iteration after new fetchRow
-        _inputArrayPosition++;
-      }
-    }
+void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
+  if (!_currentRow) {
+    std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
+  } else {
+    std::tie(_currentRowState, _currentRow) = inputRange.nextDataRow();
   }
 
-  AqlCall upstreamCall{};
-  auto const& clientCall = output.getClientCall();
-  upstreamCall.softLimit = clientCall.getLimit();
-  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+  // fetch new row, put it in local state
+  AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
+
+  // store the length into a local variable
+  // so we don't need to calculate length every time
+  if (inputList.isDocvec()) {
+    _inputArrayLength = inputList.docvecSize();
+  } else {
+    if (!inputList.isArray()) {
+      throwArrayExpectedException(inputList);
+    }
+    _inputArrayLength = inputList.length();
+  }
+
+  _inputArrayPosition = 0;
 }
 
+void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
+  bool mustDestroy;
+  AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
+  AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
+  AqlValueGuard guard(innerValue, mustDestroy);
+
+  TRI_IF_FAILURE("EnumerateListBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
+  output.advanceRow();
+
+  // set position to +1 for next iteration after new fetchRow
+  _inputArrayPosition++;
+}
+
+void EnumerateListExecutor::skipArrayElement() {
+  // set position to +1 for next iteration after new fetchRow
+  _inputArrayPosition++;
+  _skipped++;
+}
+
+std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  AqlCall upstreamCall{};
+  upstreamCall.fullCount = output.getClientCall().fullCount;
+
+  if (!inputRange.hasDataRow()) {
+    return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+  }
+
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    if (_inputArrayLength == _inputArrayPosition) {
+      // we reached either the end of an array
+      // or are in our first loop iteration
+      // auto [state, _currentRow] = inputRange.nextDataRow();
+      initializeNewRow(inputRange);
+      continue;
+    }
+    // auto const& [state, input] = inputRange.peekDataRow();
+
+    TRI_ASSERT(_inputArrayPosition <= _inputArrayLength);
+    //TRI_ASSERT(_inputArrayLength < _inputArrayPosition);
+    processArrayElement(output);
+  }
+
+  return {ExecutorState::DONE, NoStats{}, upstreamCall};
+}
+
+/*
+// TODO Remove me, we are using the getSome skip variant here.
+std::tuple<ExecutorState, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  ExecutorState state = ExecutorState::HASMORE;
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  size_t skipped = 0;
+  while (inputRange.hasDataRow() && skipped < call.getOffset()) {
+    std::tie(state, input) = inputRange.nextDataRow();
+    if (!input) {
+      TRI_ASSERT(!inputRange.hasDataRow());
+      break;
+    }
+    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+      skipped++;
+    }
+  }
+  call.didSkip(skipped);
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = call.getOffset();
+  return {state, skipped, upstreamCall};
+}*/
+
 void EnumerateListExecutor::initialize() {
+  _skipped = 0;
   _inputArrayLength = 0;
   _inputArrayPosition = 0;
-  _produced = 0;
   _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
 }
 
