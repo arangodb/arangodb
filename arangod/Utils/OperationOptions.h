@@ -42,11 +42,37 @@ struct OperationOptions {
         returnNew(false),
         isRestore(false),
         overwrite(false),
-        ignoreUniqueConstraints(false) {}
+        ignoreUniqueConstraints(false),
+        overwriteModeUpdate(false)
+        {}
+
+// The following code does not work with VisualStudi 2019's `cl`
+// Lets keep it for debugging on linux.
+#ifndef _WIN32
+  friend std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
+    // clang-format off
+    os << "OperationOptions : " << std::boolalpha
+       << "{ recoveryData : " << ops.recoveryData
+       << ", indexOperationMode : " << ops.indexOperationMode
+       << ", waitForSync : " << ops.waitForSync
+       << ", keepNull : " << ops.keepNull
+       << ", mergeObjects : " << ops.mergeObjects
+       << ", silent : " << ops.silent
+       << ", ignoreRevs : " << ops.ignoreRevs
+       << ", returnOld :" << ops.returnOld
+       << ", returnNew : "  << ops.returnNew
+       << ", isRestore : " << ops.isRestore
+       << ", overwrite : " << ops.overwrite
+       << ", overwriteModeUpdate : " << ops.overwriteModeUpdate
+       << " }" << std::endl;
+    // clang-format on
+    return os;
+  }
+#endif
 
   // original marker, set by an engine's recovery procedure only!
   void* recoveryData;
-  
+
   Index::OperationMode indexOperationMode;
 
   // wait until the operation has been synced
@@ -82,6 +108,9 @@ struct OperationOptions {
   // for replication; only set true if you an guarantee that any conflicts have
   // already been removed, and are simply not reflected in the transaction read
   bool ignoreUniqueConstraints;
+  
+  // above replace becomes an update
+  bool overwriteModeUpdate;
 
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
@@ -89,6 +118,7 @@ struct OperationOptions {
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
 };
+
 
 }  // namespace arangodb
 

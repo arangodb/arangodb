@@ -47,11 +47,10 @@ using namespace arangodb;
 
 struct DummyConnection final : public fuerte::Connection {
   DummyConnection(fuerte::detail::ConnectionConfiguration const& conf) : fuerte::Connection(conf) {}
-  fuerte::MessageID sendRequest(std::unique_ptr<fuerte::Request> r,
+  void sendRequest(std::unique_ptr<fuerte::Request> r,
                                 fuerte::RequestCallback cb) override {
     _sendRequestNum++;
     cb(_err, std::move(r), std::move(_response));
-    return 0;
   }
   
   std::size_t requestsLeft() const override {
