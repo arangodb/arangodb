@@ -158,7 +158,7 @@ class V8ClientConnection {
   std::chrono::duration<double> _requestTimeout;
 
   mutable std::recursive_mutex _lock;
-  int _lastHttpReturnCode;
+  unsigned _lastHttpReturnCode;
   std::string _lastErrorMessage;
   std::string _version;
   std::string _mode;
