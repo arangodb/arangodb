@@ -266,7 +266,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
 
-  if (_lastResponse != nullptr || _lastError.fail()) {
+  if (_lastResponse != nullptr) {
     // We have an open result still.
     auto response = std::move(_lastResponse);
 
@@ -287,6 +287,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
       return {ExecutionState::DONE, {errorNumber, errorSlice.copyString()}};
     }
     return {ExecutionState::DONE, errorNumber};
+  } else if (_lastError.fail()) {
+    return {ExecutionState::DONE, std::move(_lastError)};
   }
 
   VPackOptions options(VPackOptions::Defaults);
