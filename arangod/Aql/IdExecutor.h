@@ -155,14 +155,10 @@ class IdExecutor {
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
-                                                        AqlItemBlockInputRange& input,
-                                                        OutputAqlItemRow& output);
+  auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(size_t atMost,
-                                                           AqlItemBlockInputRange& input);
-
-  template <BlockPassthrough allowPass = usePassThrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
+  // Deprecated remove me
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:

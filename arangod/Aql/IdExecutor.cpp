@@ -160,27 +160,24 @@ IdExecutor<UsedFetcher>::~IdExecutor() = default;
 
 template <class UsedFetcher>
 std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAqlItemRow& output) {
-  ExecutionState state = ExecutionState::HASMORE;
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class UsedFetcher>
+auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
+                                          OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, NoStats, AqlCall> {
   NoStats stats;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  while (!output.isFull() && state != ExecutionState::DONE) {
-    std::tie(state, inputRow) = _fetcher.fetchRow(output.numRowsLeft());
 
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!inputRow);
-      return {state, stats};
-    }
-
-    if (!inputRow) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
+  while (!output.isFull() && inputRange.hasDataRow()) {
+    auto const& [state, inputRow] = inputRange.nextDataRow();
+    TRI_ASSERT(inputRow);
 
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
     /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
     output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
     TRI_ASSERT(output.produced());
@@ -191,73 +188,14 @@ std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAq
     }
   }
 
-  return {state, stats};
+  return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-std::tuple<ExecutorState, NoStats, AqlCall> IdExecutor<usePassThrough, UsedFetcher>::produceRows(
-    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
-  NoStats stats;
-
-  while (!output.isFull() && inputRange.hasMore() && limit > 0) {
-    auto const& [state, inputRow] = inputRange.next();
-
-    TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    TRI_ASSERT(state == ExecutorState::HASMORE || state == ExecutorState::DONE);
-    /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
-    output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
-    TRI_ASSERT(output.produced());
-    output.advanceRow();
-
-    TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
-  AqlCall upstreamCall{};
-  upstreamCall.softLimit = limit;
-  return {inputRange.peek().first, stats, upstreamCall};
-}
-
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-template <BlockPassthrough allowPass, typename>
-std::tuple<ExecutionState, NoStats, size_t> IdExecutor<usePassThrough, UsedFetcher>::skipRows(size_t atMost) {
-  ExecutionState state;
-  size_t skipped;
-  std::tie(state, skipped) = _fetcher.skipRows(atMost);
-  return {state, NoStats{}, skipped};
-}
-
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-std::tuple<ExecutorState, size_t, AqlCall> IdExecutor<usePassThrough, UsedFetcher>::skipRowsRange(
-    size_t offset, AqlItemBlockInputRange& inputRange) {
-  ExecutorState state;
-  size_t skipped = 0;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
-  while (inputRange.hasMore() && skipped < offset) {
-    std::tie(state, input) = inputRange.next();
-    if (!input) {
-      TRI_ASSERT(!inputRange.hasMore());
-      break;
-    }
-    skipped++;
-  }
-
-  AqlCall upstreamCall{};
-  upstreamCall.softLimit = offset - skipped;
-  return {state, skipped, upstreamCall};
-}
-
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-template <BlockPassthrough allowPass, typename>
-std::tuple<ExecutionState, typename IdExecutor<usePassThrough, UsedFetcher>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<usePassThrough, UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
-  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-  return {rv.first, {}, std::move(rv.second)};
+template <class UsedFetcher>
+std::tuple<ExecutionState, typename IdExecutor<UsedFetcher>::Stats, SharedAqlItemBlockPtr>
+IdExecutor<UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;

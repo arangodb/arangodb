@@ -157,6 +157,8 @@ static bool constexpr isNewStyleExecutor() {
       std::is_same_v<Executor, TestLambdaExecutor> ||
       std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
+      std::is_same_v<Executor, IdExecutor<ConstFetcher>> ||
+      std::is_same_v<Executor, IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>> ||
       std::is_same_v<Executor, FilterExecutor>;
 }
 
