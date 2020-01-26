@@ -22,6 +22,7 @@
 
 #include "ConstFetcher.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Basics/Exceptions.h"
@@ -34,6 +35,64 @@ ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 
 ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
+
+auto ConstFetcher::execute(AqlCallStack& stack)
+    -> std::tuple<ExecutionState, size_t, AqlItemBlockInputRange> {
+  // Note this fetcher can only be executed on top level (it is the singleton, or test)
+  TRI_ASSERT(stack.isRelevant());
+  auto call = stack.popCall();
+  if (!indexIsValid()) {
+    // we are done, nothing to move arround here.
+    return {ExecutionState::DONE, 0, AqlItemBlockInputRange{ExecutorState::DONE}};
+  }
+
+  size_t skipped = 0;
+  if (call.getOffset() > 0) {
+    TRI_ASSERT(_blockForPassThrough->size() > _rowIndex);
+    skipped = (std::min)(call.getOffset(), _blockForPassThrough->size() - _rowIndex);
+    _rowIndex += skipped;
+    call.didSkip(skipped);
+    if (call.getOffset() > 0) {
+      // Skipped over the full block
+      TRI_ASSERT(!indexIsValid());
+      return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
+    }
+  }
+  if (call.getLimit() > 0) {
+    if (call.getLimit() >= numRowsLeft()) {
+      size_t startIndex = _rowIndex;
+      // Increase _rowIndex to maximum
+      _rowIndex = _currentBlock->size();
+      return {ExecutionState::DONE, skipped,
+              AqlItemBlockInputRange{ExecutorState::DONE, _currentBlock,
+                                     startIndex, _currentBlock->size()}};
+    }
+    // Unlucky case we need to slice
+    // This is expensive, however this is only used in tests.
+    auto newBlock = _currentBlock->slice(_rowIndex, _rowIndex + call.getLimit());
+    _rowIndex += call.getLimit();
+    if (call.hasHardLimit() && call.needsFullCount()) {
+      skipped += numRowsLeft();
+      call.didSkip(numRowsLeft());
+      _rowIndex = _currentBlock->size();
+      TRI_ASSERT(!indexIsValid());
+      return {ExecutionState::DONE, skipped,
+              AqlItemBlockInputRange{ExecutorState::HASMORE, newBlock, 0,
+                                     newBlock->size()}};
+    }
+    return {ExecutionState::HASMORE, skipped,
+            AqlItemBlockInputRange{ExecutorState::HASMORE, newBlock, 0, newBlock->size()}};
+  }
+  if (call.hasHardLimit() && call.needsFullCount()) {
+    // FastForward
+    skipped += numRowsLeft();
+    call.didSkip(numRowsLeft());
+    _rowIndex = _currentBlock->size();
+    TRI_ASSERT(!indexIsValid());
+    return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
+  }
+  return {ExecutionState::HASMORE, skipped, AqlItemBlockInputRange{ExecutorState::HASMORE}};
+}
 
 void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
   _currentBlock = block;
@@ -77,13 +136,20 @@ std::pair<ExecutionState, size_t> ConstFetcher::skipRows(size_t) {
   return {rowState, 1};
 }
 
-bool ConstFetcher::indexIsValid() {
+auto ConstFetcher::indexIsValid() const noexcept -> bool {
   return _currentBlock != nullptr && _rowIndex + 1 <= _currentBlock->size();
 }
 
-bool ConstFetcher::isLastRowInBlock() {
+auto ConstFetcher::isLastRowInBlock() const noexcept -> bool {
   TRI_ASSERT(indexIsValid());
   return _rowIndex + 1 == _currentBlock->size();
+}
+
+auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
+  if (!indexIsValid()) {
+    return 0;
+  }
+  return _currentBlock->size() - _rowIndex;
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ConstFetcher::fetchBlockForPassthrough(size_t) {
