@@ -885,7 +885,6 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceNthCxx : function () {
-      var actual;
 
       var testArray = [
         null,
@@ -4126,4 +4125,3 @@ function ahuacatlFunctionsTestSuite () {
 jsunity.run(ahuacatlFunctionsTestSuite);
 
 return jsunity.done();
-
