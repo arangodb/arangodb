@@ -1,3 +1,8 @@
+v3.6.2 (2020-XX-XX)
+-------------------
+
+* Clean out server job checks preconditions plan version unchanged for start.
+
 v3.6.1 (2020-XX-XX)
 -------------------
 
