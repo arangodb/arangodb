@@ -3091,7 +3091,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   auto const& nf = feature.server().getFeature<NetworkFeature>();
   auto* pool = nf.pool();
   if (pool) {
-    pool->drainConnections();
+    pool->shutdownConnections();
   }
 
   auto startTime = std::chrono::steady_clock::now();
