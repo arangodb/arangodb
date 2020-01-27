@@ -3,9 +3,9 @@ v3.5.5 (XXXX-XX-XX)
 
 * Added HotBackup events into auditing.
 
-
-v3.5.4 (2020-01-22)
--------------------
+* Include collections "_queues" and "_jobs" in dumps created by arangodump
+  in case the option `--include-system-collections` was set to true. Previously
+  these collections were always excluded from dumps.
 
 * Updated ArangoDB Starter to 0.14.13.
 
