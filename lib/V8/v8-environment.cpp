@@ -228,7 +228,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     auto value = TRI_V8_STRING_UTF16(isolate, two_byte_buffer, (int)two_byte_buffer_len);
 
     if (canExpose(isolate, value)) {
-      envarr->Set(i, value);
+      envarr->Set(context, i, value).FromMaybe(false;;
     }
     p = s + wcslen(s) + 1;
     i++;
