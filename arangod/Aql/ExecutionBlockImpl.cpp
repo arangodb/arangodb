@@ -159,7 +159,6 @@ static bool constexpr isNewStyleExecutor() {
 #endif
       std::is_same_v<Executor, FilterExecutor> ||
       std::is_same_v<Executor, KShortestPathsExecutor>;
->>>>>>> feature/AqlSubqueryExecutionBlockImplExecuteImplementation
 }
 
 template <class Executor>
