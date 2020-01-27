@@ -1100,48 +1100,6 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_1_read_1_limit_12) {
 
 INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, LimitExecutorWaitingTest, testing::Bool());
 
-// New test class for the new "execute" API.
-// TODO Can be renamed when the old tests are removed.
-class LimitExecutorExecuteApiTest : public ::testing::Test {
- protected:
-  ExecutionState state;
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-  SharedAqlItemBlockPtr block;
-  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep;
-
-  // Should never be called, and can be removed as soon as the LimitExecutor's
-  // Fetcher argument&member are removed.
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> dummyFetcher;
-
-  // Special parameters:
-  // 4th offset
-  // 5th limit
-  // 6th fullCount
-  // 7th queryDepth
-
-  LimitExecutorExecuteApiTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{})),
-        registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{0})),
-        dummyFetcher(itemBlockManager, 0, false, nullptr) {}
-
-
-  auto buildBlockRange(size_t const begin, size_t const end) -> SharedAqlItemBlockPtr {
-    auto builder = MatrixBuilder<1>{};
-    builder.reserve(end - begin);
-    for (size_t i = begin; i < end; ++i) {
-      builder.emplace_back(RowBuilder<1>{i});
-    }
-    return buildBlock<1>(itemBlockManager, std::move(builder));
-  }
-};
-// TODO Prepare LimitExecutorExecuteApiTest and write some tests
-
 /*
  * How a test case for LimitExecutor is described:
  *
@@ -1166,19 +1124,104 @@ class LimitExecutorExecuteApiTest : public ::testing::Test {
  * HASMORE, or immediately with DONE.
  */
 
-TEST_F(LimitExecutorExecuteApiTest, test1) {
-  // Input. TODO use GetParam()
-  AqlCall const clientCall{};
-  size_t const offset{};
-  size_t const limit{};
-  bool const fullCount{};
-  std::vector<size_t> const inputLengths{};
+// New test class for the new "execute" API.
+// TODO Can be renamed when the old tests are removed.
+class LimitExecutorExecuteApiTest
+    : public LimitExecutorTestBase,
+      public ::testing::TestWithParam<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> {
+ protected:
+  ExecutionState state;
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager;
+  SharedAqlItemBlockPtr block;
+  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
+  std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep;
+
+  // Should never be called, and can be removed as soon as the LimitExecutor's
+  // Fetcher argument&member are removed.
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> dummyFetcher;
+
+  LimitExecutorExecuteApiTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
+        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{})),
+        registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{0})),
+        dummyFetcher(itemBlockManager, 1, false, nullptr) {}
+
+
+  auto buildBlockRange(size_t const begin, size_t const end) -> SharedAqlItemBlockPtr {
+    auto builder = MatrixBuilder<1>{};
+    builder.reserve(end - begin);
+    for (size_t i = begin; i < end; ++i) {
+      builder.emplace_back(RowBuilder<1>{i});
+    }
+    return buildBlock<1>(itemBlockManager, std::move(builder));
+  }
+};
+
+auto const testingOffsets = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
+auto const testingLimits = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
+auto const testingFullCount = ::testing::Bool();
+using InputLengths = std::vector<size_t>;
+auto const testingInputLengths = ::testing::Values(
+    // 0
+    InputLengths{},
+    // 1
+    InputLengths{1},
+    // 2
+    InputLengths{2},
+    InputLengths{1, 1},
+    // 3
+    InputLengths{3},
+    InputLengths{1, 2},
+    InputLengths{2, 1},
+    InputLengths{1, 1, 1},
+    // 4
+    InputLengths{4},
+    InputLengths{3, 1},
+    InputLengths{2, 2},
+    // 9
+    InputLengths{9},
+    // 10
+    InputLengths{10},
+    InputLengths{9, 1},
+    // 11
+    InputLengths{11},
+    InputLengths{10, 1},
+    InputLengths{9, 2},
+    InputLengths{9, 1, 1},
+    // 19
+    InputLengths{19},
+    // 20
+    InputLengths{20},
+    InputLengths{1, 19},
+    InputLengths{19, 1},
+    InputLengths{10, 10},
+    // 21
+    InputLengths{21},
+    InputLengths{20, 1},
+    InputLengths{19, 2},
+    InputLengths{19, 1, 1},
+    InputLengths{10, 10, 1},
+    InputLengths{1, 9, 9, 1, 1}
+);
+auto const testingAqlCalls = ::testing::Values(AqlCall{});
+auto const testingDoneResultIsEmpty = ::testing::Bool();
+
+auto const limitTestCases =
+    ::testing::Combine(testingOffsets, testingLimits, testingFullCount,
+                       testingInputLengths, testingAqlCalls, testingDoneResultIsEmpty);
+
+TEST_P(LimitExecutorExecuteApiTest, testSuite) {
+  // Input.
+  auto const& [offset, limit, fullCount, inputLengths, clientCall, doneResultIsEmpty] =
+      GetParam();
 
   auto const numInputRows =
       std::accumulate(inputLengths.begin(), inputLengths.end(), size_t{0});
   {  // Validation of the test case:
-    TRI_ASSERT(numInputRows <= limit);
-    TRI_ASSERT(numInputRows <= clientCall.getLimit());
     TRI_ASSERT(!clientCall.hasSoftLimit());
     TRI_ASSERT(std::all_of(inputLengths.begin(), inputLengths.end(),
                            [](auto l) { return l > 0; }));
@@ -1190,9 +1233,13 @@ TEST_F(LimitExecutorExecuteApiTest, test1) {
   };
 
   // Expected output, though the expectedPassedBlocks are also the input.
-  auto const [expectedSkipped, expectedPassedBlocks, expectedStats] = std::invoke([&]() {
-    std::vector<SharedAqlItemBlockPtr> blocks;
-    auto const effectiveOffset = clientCall.getOffset() + offset;
+  // Note that structured bindings are *not* captured by lambdas, at least in C++17.
+  // So we must explicity capture them.
+  auto const [expectedSkipped, expectedPassedBlocks, expectedStats] =
+      std::invoke([&, offset = offset, limit = limit, fullCount = fullCount,
+                   &inputLengths = inputLengths, clientCall = clientCall]() {
+        std::vector<SharedAqlItemBlockPtr> blocks;
+        auto const effectiveOffset = clientCall.getOffset() + offset;
     // The combined limit of a call and a LimitExecutor:
     auto const effectiveLimit =
         std::min(clientCall.getLimit(),
@@ -1220,19 +1267,28 @@ TEST_F(LimitExecutorExecuteApiTest, test1) {
     }
     return std::make_tuple(skipped, blocks, stats);
   });
+  {
+    auto const numReturnedRows =
+        std::accumulate(expectedPassedBlocks.begin(), expectedPassedBlocks.end(),
+                        size_t{0}, [](auto const& accum, auto const& it) {
+                          return accum + it->size();
+                        });
+    TRI_ASSERT(numReturnedRows <= limit);
+    TRI_ASSERT(numReturnedRows <= clientCall.getLimit());
+  }
 
   // TODO Build Infos, (dummy)Fetcher, OutputRow; and, of course, LimitExecutor.
   // TODO Run LimitExecutor over input
-  auto infos = LimitExecutorInfos{1, 1, {}, {0}, 0, 1, true};
-  auto fetcher = SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable>{itemBlockManager, nullptr, false};
-  auto testee = LimitExecutor{fetcher, infos};
+  auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
+  auto testee = LimitExecutor{dummyFetcher, infos};
   auto accumulatedStats = LimitStats{};
   auto skipped = size_t{0};
 
   auto inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
-  auto output = std::make_unique<OutputAqlItemRow>(nullptr, outputRegisters, registersToKeep,
-                                                   infos.registersToClear(),
-                                                   AqlCall{clientCall});
+  auto output =
+      std::make_unique<OutputAqlItemRow>(nullptr, outputRegisters, registersToKeep,
+                                         infos.registersToClear(), AqlCall{clientCall},
+                                         OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
 
   auto executorState = ExecutorState::HASMORE;
   auto skippedUpstream = size_t{0};
@@ -1240,6 +1296,8 @@ TEST_F(LimitExecutorExecuteApiTest, test1) {
 
   auto outputBlocks = std::vector<SharedAqlItemBlockPtr>{};
 
+  // TODO If the clientCall contained a softLimit, call again afterwards with a
+  //  new AqlCall{}.
   while (executorState != ExecutorState::DONE) {
     auto upstreamCall = AqlCall{};
     auto stats = LimitStats{};
@@ -1272,8 +1330,12 @@ TEST_F(LimitExecutorExecuteApiTest, test1) {
     }
     EXPECT_LE(upstreamCall.getOffset() + skippedUpstream, expectedSkipped);
     skippedUpstream += upstreamCall.getOffset();
-    if (upstreamCall.getLimit() > 0) {
-      if (nextInputBlockIt != expectedPassedBlocks.end()) {
+
+    {
+      auto const wantsMore = upstreamCall.getLimit() > 0;
+      auto const hasMore = nextInputBlockIt != expectedPassedBlocks.end();
+      auto const fastForward = upstreamCall.hasHardLimit() && upstreamCall.getLimit() == 0;
+      if (wantsMore && hasMore) {
         EXPECT_FALSE(inputRange.hasDataRow());
         auto const nextBlock = *nextInputBlockIt;
         ++nextInputBlockIt;
@@ -1282,10 +1344,20 @@ TEST_F(LimitExecutorExecuteApiTest, test1) {
         if (output->isInitialized()) {
           outputBlocks.emplace_back(output->stealBlock());
         }
-        output = std::make_unique<OutputAqlItemRow>(nextBlock, outputRegisters, registersToKeep, infos.registersToClear(), std::move(call));
-      } else {
+        output = std::make_unique<OutputAqlItemRow>(
+            nextBlock, outputRegisters, registersToKeep, infos.registersToClear(),
+            std::move(call), OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
+      } else if (!hasMore || fastForward) {
         inputRange = AqlItemBlockInputRange{ExecutorState::DONE, upstreamCall.getOffset()};
+      } else {
+        TRI_ASSERT(hasMore && !fastForward && !wantsMore);
+        TRI_ASSERT(upstreamCall.getLimit() == 0 && !upstreamCall.hasHardLimit());
+        // We got a soft limit of 0.
+        inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE, upstreamCall.getOffset()};
+        // I don't think this should happen:
+        ASSERT_TRUE(false);
       }
+
     }
   }
   if (output->isInitialized()) {
@@ -1295,6 +1367,8 @@ TEST_F(LimitExecutorExecuteApiTest, test1) {
   EXPECT_EQ(expectedStats, accumulatedStats);
   EXPECT_EQ(expectedPassedBlocks, outputBlocks);
 }
+
+INSTANTIATE_TEST_CASE_P(LimitExecutorExecuteApiVariations, LimitExecutorExecuteApiTest, limitTestCases);
 
 }  // namespace aql
 }  // namespace tests
