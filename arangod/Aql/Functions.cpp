@@ -6454,7 +6454,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
   uint64_t pos = 0;
   VPackArrayIterator it(arraySlice);
   while (it.valid()) {
-    if (pos != replaceOffset) {
+    if (it.index() != replaceOffset) {
       builder->add(it.value());
     } else {
       builder->add(replaceValue);
