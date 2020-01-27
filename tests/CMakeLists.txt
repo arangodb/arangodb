@@ -33,6 +33,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/JaccardFunctionTest.cpp
+  Aql/LevenshteinMatchFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
   Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
@@ -178,6 +180,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryOptions-test.cpp
   IResearch/IResearchQueryOr-test.cpp
   IResearch/IResearchQueryPhrase-test.cpp
+  IResearch/IResearchQueryLevenshteinMatch-test.cpp
   IResearch/IResearchQueryWildcard-test.cpp
   IResearch/IResearchQueryScorer-test.cpp
   IResearch/IResearchQuerySelectAll-test.cpp

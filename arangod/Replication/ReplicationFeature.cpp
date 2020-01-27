@@ -73,7 +73,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      "switch to enable or disable the automatic start "
                      "of replication appliers",
                      new BooleanParameter(&_replicationApplierAutoStart),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addSection("database", "Configure the database");
   options->addOldOption("server.disable-replication-applier",
@@ -83,7 +83,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
   options->addOption("--replication.automatic-failover",
                      "Please use `--replication.active-failover` instead",
                      new BooleanParameter(&_enableActiveFailover),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   options->addOption("--replication.active-failover",
                      "Enable active-failover during asynchronous replication",
                      new BooleanParameter(&_enableActiveFailover));
@@ -91,7 +91,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
   options->addOption("--replication.max-parallel-tailing-invocations",
                      "Maximum number of concurrently allowed WAL tailing invocations (0 = unlimited)",
                      new UInt64Parameter(&_maxParallelTailingInvocations),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30500);
   
   options->addOption("--replication.connect-timeout",
