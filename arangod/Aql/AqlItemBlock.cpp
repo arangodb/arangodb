@@ -908,7 +908,7 @@ RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
 
-std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() {
+std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   // NOTE:
   // Right now we can only support a range of datarows, that ends
   // In a range of ShadowRows.

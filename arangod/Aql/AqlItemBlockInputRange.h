@@ -33,12 +33,14 @@ class ShadowAqlItemRow;
 
 class AqlItemBlockInputRange {
  public:
-  explicit AqlItemBlockInputRange(ExecutorState state);
+  explicit AqlItemBlockInputRange(ExecutorState state, std::size_t skipped = 0);
 
-  AqlItemBlockInputRange(ExecutorState, arangodb::aql::SharedAqlItemBlockPtr const&,
-                         std::size_t startIndex, std::size_t endIndex);
-  AqlItemBlockInputRange(ExecutorState, arangodb::aql::SharedAqlItemBlockPtr&&,
-                         std::size_t startIndex, std::size_t endIndex) noexcept;
+  AqlItemBlockInputRange(ExecutorState, std::size_t skipped,
+                         arangodb::aql::SharedAqlItemBlockPtr const&, std::size_t startIndex);
+
+  AqlItemBlockInputRange(ExecutorState, std::size_t skipped,
+                         arangodb::aql::SharedAqlItemBlockPtr&&,
+                         std::size_t startIndex) noexcept;
 
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
@@ -47,17 +49,25 @@ class AqlItemBlockInputRange {
 
   bool hasDataRow() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow();
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
 
-  std::size_t getRowIndex() noexcept { return _rowIndex; };
+  std::size_t getRowIndex() const noexcept { return _rowIndex; };
 
   bool hasShadowRow() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRow();
+  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRow() const;
 
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
+
+  // Subtract up to this many rows from the local `_skipped` state; return
+  // the number actually skipped.
+  // TODO It would probably be useful to skip available rows as well, after
+  //  subtracting from _skipped!
+  auto skip(std::size_t) noexcept -> std::size_t;
+
+  auto skippedInFlight() const noexcept -> std::size_t;
 
  private:
   bool isIndexValid(std::size_t index) const noexcept;
@@ -70,10 +80,11 @@ class AqlItemBlockInputRange {
   ExecutorState nextState() const noexcept;
 
  private:
-  arangodb::aql::SharedAqlItemBlockPtr _block;
-  std::size_t _rowIndex;
-  std::size_t _endIndex;
-  ExecutorState _finalState;
+  arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
+  std::size_t _rowIndex{};
+  ExecutorState _finalState{ExecutorState::HASMORE};
+  // How many rows were skipped upstream
+  std::size_t _skipped{};
 };
 
 }  // namespace arangodb::aql

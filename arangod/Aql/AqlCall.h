@@ -92,6 +92,10 @@ struct AqlCall {
     return limit;
   }
 
+  bool skipNow() const {
+    return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
+  }
+
   void didSkip(std::size_t n) {
     if (n <= offset) {
       // TRI_ASSERT(n <= offset);

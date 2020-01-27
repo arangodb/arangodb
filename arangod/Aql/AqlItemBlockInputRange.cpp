@@ -30,22 +30,22 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state)
-    : _block(nullptr), _rowIndex(0), _endIndex(0), _finalState(state) {
+AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state, std::size_t skipped)
+    : _finalState{state}, _skipped{skipped} {
   TRI_ASSERT(!hasDataRow());
 }
 
-AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
-                                               SharedAqlItemBlockPtr const& block,
-                                               std::size_t index, std::size_t)
-    : _block{block}, _rowIndex{index}, _endIndex(_block->size()), _finalState{state} {
+AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state, std::size_t skipped,
+                                               arangodb::aql::SharedAqlItemBlockPtr const& block,
+                                               std::size_t index)
+    : _block{block}, _rowIndex{index}, _finalState{state}, _skipped{skipped} {
   TRI_ASSERT(index <= _block->size());
 }
 
-AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
-                                               SharedAqlItemBlockPtr&& block,
-                                               std::size_t index, std::size_t) noexcept
-    : _block{std::move(block)}, _rowIndex{index}, _endIndex(_block->size()), _finalState{state} {
+AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state, std::size_t skipped,
+                                               arangodb::aql::SharedAqlItemBlockPtr&& block,
+                                               std::size_t index) noexcept
+    : _block{std::move(block)}, _rowIndex{index}, _finalState{state}, _skipped{skipped} {
   TRI_ASSERT(index <= _block->size());
 }
 
@@ -57,7 +57,7 @@ bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }
 
-std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() {
+std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peekDataRow() const {
   if (hasDataRow()) {
     return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
                           InputAqlItemRow{_block, _rowIndex});
@@ -95,7 +95,7 @@ bool AqlItemBlockInputRange::isShadowRowAtIndex(std::size_t index) const noexcep
   return _block->isShadowRow(index);
 }
 
-std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRow() {
+std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRow() const {
   if (hasShadowRow()) {
     return std::make_pair(nextState<LookAhead::NEXT, RowType::SHADOW>(),
                           ShadowAqlItemRow{_block, _rowIndex});
@@ -145,4 +145,14 @@ ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
     }
     return ExecutorState::DONE;
   }
+}
+
+auto AqlItemBlockInputRange::skip(std::size_t const toSkip) noexcept -> std::size_t {
+  auto const skipCount = std::min(_skipped, toSkip);
+  _skipped -= skipCount;
+  return skipCount;
+}
+
+auto AqlItemBlockInputRange::skippedInFlight() const noexcept -> std::size_t {
+  return _skipped;
 }
