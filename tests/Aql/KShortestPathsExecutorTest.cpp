@@ -279,8 +279,10 @@ class KShortestPathsExecutorTest
           AqlValue value = block->getValue(blockIndex, infos.getOutputRegister());
           EXPECT_TRUE(value.isArray());
 
+          // Note that the correct layout of the result path is currently the
+          // responsibility of the path finder (tested separately), so we get
+          // away with fake outputs.
           auto verticesResult = VPackArrayIterator(value.slice());
-
           auto pathExpected = pathsFound.at(expectedRowsIndex);
           auto verticesExpected = std::begin(pathExpected);
 
@@ -344,6 +346,9 @@ class KShortestPathsExecutorTest
 };  // namespace aql
 
 TEST_P(KShortestPathsExecutorTest, the_test) { TestExecutor(infos, input); }
+
+// Conflict with the other shortest path finder
+namespace {
 
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
     regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
@@ -410,6 +415,7 @@ auto blockSizes = testing::Values(5, 1000);
 
 INSTANTIATE_TEST_CASE_P(KShortestPathExecutorTestInstance, KShortestPathsExecutorTest,
                         testing::Combine(sources, targets, inputs, paths, calls, blockSizes));
+}  // namespace
 
 }  // namespace aql
 }  // namespace tests

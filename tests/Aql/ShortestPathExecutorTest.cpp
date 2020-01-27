@@ -485,6 +485,8 @@ class ShortestPathExecutorTest
 
 TEST_P(ShortestPathExecutorTest, the_test) { TestExecutor(); }
 
+// Namespace conflict with the other shortest path executor
+namespace {
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
     regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
@@ -544,7 +546,7 @@ auto blockSizes = testing::Values(size_t{5}, 1000);
 INSTANTIATE_TEST_CASE_P(ShortestPathExecutorTestInstance, ShortestPathExecutorTest,
                         testing::Combine(sources, targets, inputs, paths, calls,
                                          variants, blockSizes));
-
+}  // namespace
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
