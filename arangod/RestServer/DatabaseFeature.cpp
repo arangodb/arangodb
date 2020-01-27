@@ -295,25 +295,25 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "default wait-for-sync behavior, can be overwritten "
                      "when creating a collection",
                      new BooleanParameter(&_defaultWaitForSync),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--database.force-sync-properties",
                      "force syncing of collection properties to disk, "
                      "will use waitForSync value of collection when "
                      "turned off",
                      new BooleanParameter(&_forceSyncProperties),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--database.ignore-datafile-errors",
                      "load collections even if datafiles may contain errors",
                      new BooleanParameter(&_ignoreDatafileErrors),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading",
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   // the following option was removed in 3.2
   // index-creation is now automatically parallelized via the Boost ASIO thread
