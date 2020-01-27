@@ -808,16 +808,18 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     // timeout
-    v8::MaybeLocal<v8::Value> tv = options->Get(context, TRI_V8_ASCII_STRING(isolate, "timeout"));
-    if (!tv.IsEmpty()) {
-      v8::Local<v8::Value> v = tv.FromMaybe(v8::Local<v8::Value>());
-      if (!v->IsNumber()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "invalid option value for timeout");
+    if (TRI_HasProperty(context, isolate, options, "timeout")) {
+      v8::MaybeLocal<v8::Value> tv = options->Get(context, TRI_V8_ASCII_STRING(isolate, "timeout"));
+      if (!tv.IsEmpty()) {
+        v8::Local<v8::Value> v = tv.FromMaybe(v8::Local<v8::Value>());
+        if (!v->IsNumber()) {
+          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "invalid option value for timeout");
+        }
+        
+        timeout = TRI_ObjectToDouble(isolate, TRI_GetProperty(context, isolate,
+                                                              options, "timeout"));
       }
-
-      timeout = TRI_ObjectToDouble(isolate, TRI_GetProperty(context, isolate,
-                                                            options, "timeout"));
     }
 
     // return body as a buffer?
