@@ -20,17 +20,23 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
+#include "AqlItemBlockHelper.h"
+#include "Mocks/Servers.h"
+#include "RowFetcherHelper.h"
+
 #include "Aql/AqlCall.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 
@@ -198,4 +204,156 @@ auto copyBehaviours = testing::Values(OutputAqlItemRow::CopyRowBehavior::CopyInp
 INSTANTIATE_TEST_CASE_P(IdExecutorTest, IdExecutorTestCombiner,
                         ::testing::Combine(inputs, upstreamStates, clientCalls, copyBehaviours));
 
+class IdExecutionBlockTest : public ::testing::Test {
+ protected:
+  mocks::MockAqlServer server{};
+  ResourceMonitor monitor{};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
+  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
+
+  IdExecutionBlockTest() {
+    auto engine =
+        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
+    fakedQuery->setEngine(engine.release());
+  }
+
+  /**
+   * @brief Creates and manages a ExecutionNode.
+   *        These nodes can be used to create the Executors
+   *        Caller does not need to manage the memory.
+   *
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
+   */
+  ExecutionNode* generateNodeDummy() {
+    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
+    auto res = dummy.get();
+    _execNodes.emplace_back(std::move(dummy));
+    return res;
+  }
+};
+
+// The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
+TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
+  IdExecutorInfos infos{1, {0}, {}};
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+                                                      generateNodeDummy(),
+                                                      std::move(infos)};
+  auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
+
+  for (size_t i = 0; i < inputBlock->size(); ++i) {
+    InputAqlItemRow input{inputBlock, i};
+    ASSERT_TRUE(input.isInitialized());
+    {
+      // Test first call, executor is done, cannot skip and does not return
+      AqlCall call{};
+      AqlCallStack stack(std::move(call));
+      auto const& [state, skipped, block] = testee.execute(stack);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(block, nullptr);
+    }
+    {
+      // Initialize cursor
+      auto const& [state, result] = testee.initializeCursor(input);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_TRUE(result.ok());
+    }
+    {
+      // Test second call, executor needs to return the row
+      AqlCall call{};
+      AqlCallStack stack(std::move(call));
+      auto const& [state, skipped, block] = testee.execute(stack);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 0);
+      ASSERT_NE(block, nullptr);
+      EXPECT_EQ(block->size(), 1);
+      auto const& val = block->getValueReference(0, 0);
+      ASSERT_TRUE(val.isNumber());
+      EXPECT_EQ(static_cast<size_t>(val.toInt64()), i);
+    }
+  }
+}
+
+// The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
+TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
+  IdExecutorInfos infos{1, {0}, {}};
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+                                                      generateNodeDummy(),
+                                                      std::move(infos)};
+  auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
+
+  for (size_t i = 0; i < inputBlock->size(); ++i) {
+    InputAqlItemRow input{inputBlock, i};
+    ASSERT_TRUE(input.isInitialized());
+    {
+      // Test first call, executor is done, cannot skip and does not return
+      AqlCall call{};
+      call.offset = 10;
+      AqlCallStack stack(std::move(call));
+      auto const& [state, skipped, block] = testee.execute(stack);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(block, nullptr);
+    }
+    {
+      // Initialize cursor
+      auto const& [state, result] = testee.initializeCursor(input);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_TRUE(result.ok());
+    }
+    {
+      // Test second call, executor needs to skip the row
+      AqlCall call{};
+      call.offset = 10;
+      AqlCallStack stack(std::move(call));
+      auto const& [state, skipped, block] = testee.execute(stack);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 1);
+      ASSERT_EQ(block, nullptr);
+    }
+  }
+}
+
+// The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
+TEST_F(IdExecutionBlockTest, test_initialize_cursor_fulCount) {
+  IdExecutorInfos infos{1, {0}, {}};
+  ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
+                                                      generateNodeDummy(),
+                                                      std::move(infos)};
+  auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
+
+  for (size_t i = 0; i < inputBlock->size(); ++i) {
+    InputAqlItemRow input{inputBlock, i};
+    ASSERT_TRUE(input.isInitialized());
+    {
+      // Test first call, executor is done, cannot skip and does not return
+      AqlCall call{};
+      call.hardLimit = 0;
+      call.fullCount = true;
+      AqlCallStack stack(std::move(call));
+      auto const& [state, skipped, block] = testee.execute(stack);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(block, nullptr);
+    }
+    {
+      // Initialize cursor
+      auto const& [state, result] = testee.initializeCursor(input);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_TRUE(result.ok());
+    }
+    {
+      // Test second call, executor needs to skip the row
+      AqlCall call{};
+      call.hardLimit = 0;
+      call.fullCount = true;
+      AqlCallStack stack(std::move(call));
+      auto const& [state, skipped, block] = testee.execute(stack);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 1);
+      ASSERT_EQ(block, nullptr);
+    }
+  }
+}
 }  // namespace arangodb::tests::aql

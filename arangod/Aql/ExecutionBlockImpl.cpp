@@ -579,6 +579,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
   _lastRange = DataRange(ExecutorState::HASMORE);
+  _hasUsedDataRangeBlock = false;
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
