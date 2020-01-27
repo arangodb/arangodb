@@ -66,7 +66,7 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   std::string _engine;
   std::string _engineFilePath;
   std::atomic<bool> _selected;
-  bool _allowDeprecated;
+  bool _allowDeprecatedDeployments;
 };
 
 }  // namespace arangodb

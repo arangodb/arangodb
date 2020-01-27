@@ -70,7 +70,7 @@ EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationSe
     : ApplicationFeature(server, "EngineSelector"), 
       _engine("auto"), 
       _selected(false),
-      _allowDeprecated(false) {
+      _allowDeprecatedDeployments(false) {
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -86,7 +86,7 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   // this is a hidden option that is there only for running tests for deprecated engines
   options->addOption("--server.allow-deprecated-storage-engine", "allow deprecated storage engines for new deployments "
                      "(only useful for testing - do not use in production)",
-                     new BooleanParameter(&_allowDeprecated),
+                     new BooleanParameter(&_allowDeprecatedDeployments),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30700);
 }
@@ -156,7 +156,7 @@ void EngineSelectorFeature::prepare() {
 
       if (!ServerState::instance()->isCoordinator() &&
           !basics::FileUtils::isRegularFile(_engineFilePath) &&
-          !_allowDeprecated) {
+          !_allowDeprecatedDeployments) {
         LOG_TOPIC("ca0a7", FATAL, Logger::STARTUP)
             << "The " << _engine << " storage engine cannot be used for new deployments.";
          FATAL_ERROR_EXIT();
