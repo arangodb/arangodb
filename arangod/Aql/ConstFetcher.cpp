@@ -91,6 +91,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     TRI_ASSERT(!indexIsValid());
     return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
+  TRI_ASSERT(skipped > 0);
   return {ExecutionState::HASMORE, skipped, AqlItemBlockInputRange{ExecutorState::HASMORE}};
 }
 
