@@ -6418,7 +6418,7 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
 AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   // cppcheck-suppress variableScope
-  static char const* AFN = "RELPLACE_NTH";
+  static char const* AFN = "REPLACE_NTH";
 
   AqlValue const& baseArray = extractFunctionParameterValue(parameters, 0);
   AqlValue const& offset = extractFunctionParameterValue(parameters, 1);
