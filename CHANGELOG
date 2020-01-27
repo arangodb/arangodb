@@ -1,6 +1,17 @@
 devel
 -----
 
+* added `REPLACE_NTH` AQL function to replace a member inside an array.
+
+* Added JWT secret rotation (Enterprise only).
+
+* The `--dump-options` command for arangod now also provides the "components"
+  attribute that shows for which components (agent, coordinator, db server,
+  single server) an option is relevant. Additionally, each option provides an "os" 
+  attribute that indicates on which operating systems the option is supported.
+  This can be used when reading the options descriptions programmatically, e.g.
+  for auto-generating the documentation.
+
 * Add update-insert operation similar to existing replace-insert functionality of insert.
 
   Like for the existing variant the `overwrite` flag has to be set to true.
