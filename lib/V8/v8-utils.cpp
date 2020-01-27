@@ -205,7 +205,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
-                               bool stripShebang, bool execute, bool useGlobalContext) {
+                               bool execute, bool useGlobalContext) {
   v8::HandleScope handleScope(isolate);
 
   TRI_GET_GLOBALS();
@@ -227,32 +227,17 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   auto guard = scopeGuard([&content] { TRI_FreeString(content); });
 
-  size_t bangOffset = 0;
-  if (stripShebang) {
-    if (strncmp(content, "#!", 2) == 0) {
-      // shebang
-      char const* endOfBang = strchr(content, '\n');
-      if (endOfBang != nullptr) {
-        bangOffset = size_t(endOfBang - content + 1);
-        TRI_ASSERT(bangOffset <= length);
-        length -= bangOffset;
-      }
-    }
-  }
-
   if (useGlobalContext) {
     constexpr char const* prologue = "(function() { ";
     constexpr char const* epilogue = "/* end-of-file */ })()";
 
-    char* contentWrapper = TRI_Concatenate3String(prologue, content + bangOffset, epilogue);
+    char* contentWrapper = TRI_Concatenate3String(prologue, content, epilogue);
 
     TRI_FreeString(content);
 
     length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
 
-    // shebang already handled here
-    bangOffset = 0;
   }
 
   if (content == nullptr) {
@@ -264,7 +249,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   v8::Handle<v8::String> name = TRI_V8_STRING(isolate, filename);
   v8::Handle<v8::String> source =
-      TRI_V8_PAIR_STRING(isolate, content + bangOffset, (int)length);
+      TRI_V8_PAIR_STRING(isolate, content, (int)length);
 
   v8::TryCatch tryCatch(isolate);
 
@@ -308,7 +293,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 /// @brief reads all files from a directory into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool stripShebang,
+static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
                                     bool execute, bool useGlobalContext) {
   v8::HandleScope scope(isolate);
 
@@ -336,7 +321,7 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path, bool
                                      std::string("not allowed to read files in this path: ") + full);
     }
 
-    bool ok = LoadJavaScriptFile(isolate, full.c_str(), stripShebang, execute, useGlobalContext);
+    bool ok = LoadJavaScriptFile(isolate, full.c_str(), execute, useGlobalContext);
 
     result = result && ok;
 
@@ -5180,9 +5165,8 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 /// @brief reads a file into the current context
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const* filename,
-                                     bool stripShebang) {
-  return LoadJavaScriptFile(isolate, filename, stripShebang, true, false);
+bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const* filename) {
+  return LoadJavaScriptFile(isolate, filename, true, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5190,15 +5174,15 @@ bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const* filename,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteLocalJavaScriptDirectory(v8::Isolate* isolate, char const* path) {
-  return LoadJavaScriptDirectory(isolate, path, false, true, true);
+  return LoadJavaScriptDirectory(isolate, path, true, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename, bool stripShebang) {
-  return LoadJavaScriptFile(isolate, filename, stripShebang, false, false);
+bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename) {
+  return LoadJavaScriptFile(isolate, filename, false, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

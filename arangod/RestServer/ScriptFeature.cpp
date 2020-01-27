@@ -87,7 +87,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
       v8::Context::Scope contextScope(localContext);
       for (auto const& script : scripts) {
         LOG_TOPIC("e703c", TRACE, arangodb::Logger::FIXME) << "executing script '" << script << "'";
-        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
+        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str());
 
         if (!r) {
           LOG_TOPIC("9d38a", FATAL, arangodb::Logger::FIXME)
