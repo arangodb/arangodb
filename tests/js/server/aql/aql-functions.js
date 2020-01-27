@@ -900,7 +900,7 @@ function ahuacatlFunctionsTestSuite () {
       for (let replaceIndex = 0;  replaceIndex <= testArray.length + 2; replaceIndex ++) {
         for (let replaceValue = 0;  replaceValue < testArray.length; replaceValue ++) {
           const msg = `Index: ${replaceIndex} ReplaceValue: ${replaceValue}`;
-          actual = getQueryResults("RETURN NOOPT(REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue))",
+          let actual = getQueryResults("RETURN NOOPT(REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue))",
                                    {
                                      testArray: testArray,
                                      which: replaceIndex,
