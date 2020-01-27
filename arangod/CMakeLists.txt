@@ -620,7 +620,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
-  RestHandler/RestAqlReloadHandler.cpp
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
