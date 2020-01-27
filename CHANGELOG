@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added load-balancing support for listing currently running and slow AQL queries,
+  killing running AQL queries and clearing the list of slow AQL queries.
+
 * Added JWT secret rotation (Enterprise only).
 
 * The `--dump-options` command for arangod now also provides the "components"
