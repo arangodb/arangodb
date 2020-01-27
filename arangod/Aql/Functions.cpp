@@ -6536,7 +6536,7 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
 
 /// @brief function ReplaceNth
 AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction::Methods* trx,
-                            VPackFunctionParameters const& parameters) {
+                               VPackFunctionParameters const& parameters) {
   // cppcheck-suppress variableScope
   static char const* AFN = "REPLACE_NTH";
 
@@ -6547,13 +6547,11 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
 
   bool havePadValue = parameters.size() == 4;
 
-  uint64_t replaceOffset;
   if (offset.isNull(true) || offset.toInt64() < 0) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
-  } else {
-    replaceOffset = static_cast<uint64_t>(offset.toInt64());
   }
-  
+  uint64_t replaceOffset = static_cast<uint64_t>(offset.toInt64());
+
   if (!baseArray.isArray()) {
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
@@ -6569,9 +6567,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
   
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
-  
 
-  uint64_t pos = 0;
   VPackArrayIterator it(arraySlice);
   while (it.valid()) {
     if (it.index() != replaceOffset) {
@@ -6579,10 +6575,10 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
     } else {
       builder->add(replaceValue);
     }
-    ++pos;
     it.next();
   }
 
+  uint64_t pos = arraySlice.length();
   if (replaceOffset >= baseArray.length()) {
     VPackSlice paddVpValue = materializer.slice(paddValue, false);
     while (pos < replaceOffset) {
