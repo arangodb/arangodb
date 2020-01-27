@@ -94,6 +94,8 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     _source = std::string{start.copyString()};
     _target = std::string{end.copyString()};
 
+    _calledWith.emplace_back(std::make_pair(_source, _target));
+
     EXPECT_NE(_source, "");
     EXPECT_NE(_target, "");
     EXPECT_NE(_source, _target);
@@ -111,7 +113,11 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
       builder.add(VPackValue(v));
     }
     builder.close();
+
+    // HACK
+    _finder++;
     _pathAvailable = gotoNextPath();
+
     return _pathAvailable;
   }
 
@@ -123,6 +129,9 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
   bool isPathAvailable() const override { return _pathAvailable; }
 
   PathSequence& getPathsProduced() noexcept { return _pathsProduced; }
+  std::vector<std::pair<std::string, std::string>> getCalledWith() noexcept {
+    return _calledWith;
+  }
 
  private:
   // We emulate a number of paths between PathPair
@@ -132,18 +141,20 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
   bool _pathAvailable;
   PathSequence::const_iterator _finder;
   PathSequence _pathsProduced;
+  std::vector<std::pair<std::string, std::string>> _calledWith;
 };
 
 // TODO: this needs a << operator
 struct KShortestPathsTestParameters {
-  KShortestPathsTestParameters(std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall> params)
+  KShortestPathsTestParameters(std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, size_t> params)
       : _source(std::get<0>(params)),
         _target(std::get<1>(params)),
         // TODO: Make output registers configurable?
         _outputRegisters(std::initializer_list<RegisterId>{2}),
         _inputMatrix(std::get<2>(params)),
         _paths(std::get<3>(params)),
-        _call(std::get<4>(params)){};
+        _call(std::get<4>(params)),
+        _blockSize(std::get<5>(params)){};
 
   Vertex _source;
   Vertex _target;
@@ -152,12 +163,17 @@ struct KShortestPathsTestParameters {
   MatrixBuilder<2> _inputMatrix;
   PathSequence _paths;
   AqlCall _call;
+  size_t _blockSize{1000};
 };
 
 class KShortestPathsExecutorTest
     : public ::testing::Test,
-      public ::testing::WithParamInterface<std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall>> {
+      public ::testing::WithParamInterface<std::tuple<Vertex, Vertex, MatrixBuilder<2>, PathSequence, AqlCall, size_t>> {
  protected:
+  // parameters are copied because they are const otherwise
+  // and that doesn't mix with std::move
+  KShortestPathsTestParameters parameters;
+
   MockAqlServer server;
   ExecutionState state;
   ResourceMonitor monitor;
@@ -167,9 +183,6 @@ class KShortestPathsExecutorTest
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
   ShortestPathOptions options;
 
-  // parameters are copied because they are const otherwise
-  // and that doesn't mix with std::move
-  KShortestPathsTestParameters parameters;
   KShortestPathsExecutorInfos infos;
 
   FakeKShortestPathsFinder& finder;
@@ -184,20 +197,18 @@ class KShortestPathsExecutorTest
   OutputAqlItemRow output;
 
   KShortestPathsExecutorTest()
-      : server{},
+      : parameters(GetParam()),
+        server{},
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        // 1000 rows, 3 registers
-        block(new AqlItemBlock(itemBlockManager, 1000, 3)),
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
-        parameters(GetParam()),
         infos(std::make_shared<RegisterSet>(parameters._inputRegisters),
               std::make_shared<RegisterSet>(parameters._outputRegisters), 2, 3, {}, {0},
               std::make_unique<FakeKShortestPathsFinder>(options, parameters._paths),
               std::move(parameters._source), std::move(parameters._target)),
         finder(static_cast<FakeKShortestPathsFinder&>(infos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
-        input(AqlItemBlockInputRange(ExecutorState::HASMORE, inputBlock, 0,
+        input(AqlItemBlockInputRange(ExecutorState::DONE, inputBlock, 0,
                                      inputBlock->size())),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
@@ -211,72 +222,124 @@ class KShortestPathsExecutorTest
     } else {
       expectedFound -= parameters._call.getOffset();
     }
-    if (parameters._call.getLimit() >= expectedFound) {
-      return expectedFound;
-    } else {
-      return parameters._call.getLimit();
+    return parameters._call.clampToLimit(expectedFound);
+  }
+
+  void ValidateCalledWith() {
+    auto calledWith = finder.getCalledWith();
+    auto block = buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix));
+
+    // We should always only call the finder at most for all input rows
+    ASSERT_LE(calledWith.size(), block->size());
+
+    auto blockIndex = size_t{0};
+    for (auto const& input : calledWith) {
+      auto source = std::string{};
+      auto target = std::string{};
+
+      if (infos.useRegisterForSourceInput()) {
+        AqlValue value = block->getValue(blockIndex, infos.getSourceInputRegister());
+        ASSERT_TRUE(value.isString());
+        source = value.slice().copyString();
+      } else {
+        source = infos.getSourceInputValue();
+      }
+
+      if (infos.useRegisterForTargetInput()) {
+        AqlValue value = block->getValue(blockIndex, infos.getTargetInputRegister());
+        ASSERT_TRUE(value.isString());
+        target = value.slice().copyString();
+      } else {
+        target = infos.getTargetInputValue();
+      }
+      ASSERT_EQ(source, input.first);
+      ASSERT_EQ(target, input.second);
+      blockIndex++;
     }
   }
 
-  void ValidateResult(OutputAqlItemRow& result, size_t skipped) {
-    auto resultBlock = result.stealBlock();
+  void ValidateResult(std::vector<SharedAqlItemBlockPtr>& results,
+                      size_t skippedInitial, size_t skippedFullCount) {
     auto pathsFound = finder.getPathsProduced();
 
     // We expect to be getting exactly the rows returned
     // that we produced with the shortest path finder.
     // in exactly the order they were produced in.
 
-    auto expectedNrRowsSkipped =
+    auto expectedNrRowsSkippedInitial =
         std::min(parameters._call.getOffset(), pathsFound.size());
+    EXPECT_EQ(skippedInitial, expectedNrRowsSkippedInitial);
 
     auto expectedNrRowsProduced = ExpectedNumberOfRowsProduced(pathsFound.size());
-    EXPECT_EQ(skipped, expectedNrRowsSkipped);
 
-    if (resultBlock == nullptr) {
-      EXPECT_EQ(expectedNrRowsProduced, 0);
-      return;
+    auto expectedRowsIndex = size_t{skippedInitial};
+    for (auto const& block : results) {
+      if (block != nullptr) {
+        for (size_t blockIndex = 0; blockIndex < block->size(); ++blockIndex, ++expectedRowsIndex) {
+          AqlValue value = block->getValue(blockIndex, infos.getOutputRegister());
+          EXPECT_TRUE(value.isArray());
+
+          auto verticesResult = VPackArrayIterator(value.slice());
+
+          auto pathExpected = pathsFound.at(expectedRowsIndex);
+          auto verticesExpected = std::begin(pathExpected);
+
+          while (verticesExpected != std::end(pathExpected) &&
+                 verticesResult != verticesResult.end()) {
+            ASSERT_EQ((*verticesResult).copyString(), *verticesExpected);
+            verticesResult++;
+            verticesExpected++;
+          }
+          ASSERT_TRUE((verticesExpected == std::end(pathExpected)) &&
+                      // Yes, really, they didn't implement == for iterators
+                      !(verticesResult != verticesResult.end()));
+        }
+      }
     }
 
-    ASSERT_NE(resultBlock, nullptr);
+    ASSERT_EQ(expectedRowsIndex - skippedInitial, expectedNrRowsProduced);
 
-    for (auto blockIndex = size_t{skipped}; blockIndex < resultBlock->size(); ++blockIndex) {
-      AqlValue value = resultBlock->getValue(blockIndex, infos.getOutputRegister());
-
-      EXPECT_TRUE(value.isArray());
-
-      auto verticesResult = VPackArrayIterator(value.slice());
-
-      auto pathExpected = pathsFound.at(blockIndex);
-      auto verticesExpected = std::begin(pathExpected);
-
-      while (verticesExpected != std::end(pathExpected) &&
-             verticesResult != verticesResult.end()) {
-        ASSERT_EQ((*verticesResult).copyString(), *verticesExpected);
-        verticesResult++;
-        verticesExpected++;
-      }
-      ASSERT_TRUE((verticesExpected == std::end(pathExpected)) &&
-                  // Yes, really, they didn't implement == for iterators
-                  !(verticesResult != verticesResult.end()));
+    // If a fullCount was requested, the sum (skippedInitial + produced +
+    // skippedFullCount) should be exactly the number of rows we produced.
+    if (parameters._call.fullCount) {
+      ASSERT_EQ(skippedInitial + (expectedRowsIndex - skippedInitial) + skippedFullCount,
+                pathsFound.size());
     }
   }
+
   void TestExecutor(KShortestPathsExecutorInfos& infos, AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
-    auto skipCall = AqlCall{parameters._call};
+    auto ourCall = AqlCall{parameters._call};
+    auto skippedInitial = size_t{0};
+    auto skippedFullCount = size_t{0};
+    auto state = ExecutorState{ExecutorState::HASMORE};
+    auto outputs = std::vector<SharedAqlItemBlockPtr>{};
 
-    auto const [skipState, skipped, resultSkipCall] = testee.skipRowsRange(input, skipCall);
+    if (ourCall.getOffset() > 0) {
+      std::tie(state, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
+    }
 
-    // TODO: Do we want to assert more here?
-    EXPECT_TRUE(skipState == ExecutorState::HASMORE || skipState == ExecutorState::DONE);
+    while (state == ExecutorState::HASMORE && ourCall.getLimit() > 0) {
+      SharedAqlItemBlockPtr block =
+          itemBlockManager.requestBlock(parameters._blockSize, 4);
 
-    auto const [produceState, stats, resultProduceCall] =
-        testee.produceRows(input, output);
+      OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                              infos.registersToKeep(), infos.registersToClear());
+      output.setCall(std::move(ourCall));
 
-    // TODO: should we make a way to assert the state?
-    EXPECT_TRUE(produceState == ExecutorState::HASMORE || produceState == ExecutorState::DONE);
+      std::tie(state, std::ignore, std::ignore) = testee.produceRows(input, output);
 
-    ValidateResult(output, skipped);
+      outputs.emplace_back(output.stealBlock());
+      ourCall = output.stealClientCall();
+    }
+
+    if (ourCall.needsFullCount()) {
+      std::tie(state, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
+    }
+
+    ValidateCalledWith();
+    ValidateResult(outputs, skippedInitial, skippedFullCount);
   }
 };  // namespace aql
 
@@ -293,6 +356,10 @@ MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}
 MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
                                  {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
                                  {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const someRows{{{{R"("vertex/c")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/b")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/e")"}, {R"("vertex/target")"}}},
+                                {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
 
 PathSequence const noPath = {};
 PathSequence const onePath = {
@@ -334,12 +401,15 @@ auto paths =
     testing::Values(noPath, onePath, threePaths, somePaths,
                     generateSomeBiggerCase(100), generateSomeBiggerCase(999),
                     generateSomeBiggerCase(1000), generateSomeBiggerCase(2000));
-auto calls = testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
-                             AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false},
-                             AqlCall{1, 1, 1}, AqlCall{100, 1, 1}, AqlCall{1000});
+auto calls =
+    testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},
+                    AqlCall{0, 0, 1, false}, AqlCall{0, 1, 1, false},
+                    AqlCall{1, 1, 1}, AqlCall{100, 1, 1}, AqlCall{1000},
+                    AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, true});
+auto blockSizes = testing::Values(5, 1000);
 
 INSTANTIATE_TEST_CASE_P(KShortestPathExecutorTestInstance, KShortestPathsExecutorTest,
-                        testing::Combine(sources, targets, inputs, paths, calls));
+                        testing::Combine(sources, targets, inputs, paths, calls, blockSizes));
 
 }  // namespace aql
 }  // namespace tests
