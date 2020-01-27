@@ -97,7 +97,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
 
   /// @brief Activate the connection.
-  virtual void startConnection() = 0;
+  virtual void start() = 0;
 
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {

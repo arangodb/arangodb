@@ -400,8 +400,8 @@ void ClusterFeature::prepare() {
     if (af->isActive() && !af->hasUserdefinedJwt()) {
       LOG_TOPIC("6e615", FATAL, arangodb::Logger::CLUSTER)
           << "Cluster authentication enabled but JWT not set via command line. "
-          << " Please provide --server.jwt-secret which is used throughout the "
-             "cluster.";
+             "Please provide --server.jwt-secret-keyfile or "
+             "--server.jwt-secret-folder which is used throughout the cluster.";
       FATAL_ERROR_EXIT();
     }
   }

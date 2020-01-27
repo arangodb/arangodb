@@ -276,15 +276,11 @@ ClusterComm::ClusterComm(application_features::ApplicationServer& server)
     : _server(server),
       _roundRobin(0),
       _logConnectionErrors(false),
-      _authenticationEnabled(false),
-      _jwtAuthorization("") {
+      _tokenCache(nullptr) {
   TRI_ASSERT(server.hasFeature<AuthenticationFeature>());
   AuthenticationFeature& af = server.getFeature<AuthenticationFeature>();
   if (af.isActive()) {
-    std::string token = af.tokenCache().jwtToken();
-    TRI_ASSERT(!token.empty());
-    _authenticationEnabled = true;
-    _jwtAuthorization = "bearer " + token;
+    _tokenCache = &(af.tokenCache());
   }
 }
 
@@ -293,8 +289,7 @@ ClusterComm::ClusterComm(application_features::ApplicationServer& server, bool i
     : _server(server),
       _roundRobin(0),
       _logConnectionErrors(false),
-      _authenticationEnabled(false),
-      _jwtAuthorization("") {}  // ClusterComm::ClusterComm(bool)
+      _tokenCache(nullptr) {}  // ClusterComm::ClusterComm(bool)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm destructor
@@ -1119,10 +1114,11 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
   return std::make_pair(result.release(), request);
 }
 
-void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {
-  if (_authenticationEnabled &&
+void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) const {
+  if (_tokenCache != nullptr &&
       headers->find(StaticStrings::Authorization) == headers->end()) {
-    headers->try_emplace(StaticStrings::Authorization, _jwtAuthorization);
+    headers->try_emplace(StaticStrings::Authorization,
+                         std::string("bearer ") + _tokenCache->jwtToken());
   }
 }
 
