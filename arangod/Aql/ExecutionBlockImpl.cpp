@@ -738,6 +738,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
+  // Reset state of execute
+  _lastRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
+  _hasUsedDataRangeBlock = false;
+
   SharedAqlItemBlockPtr block =
       input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
                          infos().numberOfOutputRegisters());
@@ -1376,7 +1380,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             if (shadowRow.isRelevant()) {
               // We found a relevant shadow Row.
               // We need to reset the Executor
-              // TODO: call reset!
+              resetAfterShadowRow();
             }
             TRI_ASSERT(_outputItemRow->produced());
             _outputItemRow->advanceRow();
