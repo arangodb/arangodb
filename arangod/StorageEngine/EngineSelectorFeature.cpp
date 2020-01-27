@@ -87,7 +87,8 @@ void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addOption("--server.allow-deprecated-storage-engine", "allow deprecated storage engines for new deployments "
                      "(only useful for testing - do not use in production)",
                      new BooleanParameter(&_allowDeprecated),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30700);
 }
 
 void EngineSelectorFeature::prepare() {
