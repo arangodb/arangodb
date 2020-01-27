@@ -49,6 +49,10 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
   TRI_ASSERT(index <= _block->size());
 }
 
+SharedAqlItemBlockPtr AqlItemBlockInputRange::getBlock() const noexcept {
+  return _block;
+}
+
 bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }

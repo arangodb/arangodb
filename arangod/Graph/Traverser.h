@@ -208,6 +208,9 @@ class Traverser {
   /// @brief Get the next possible path in the graph.
   bool next();
 
+  /// @brief Function to clear all used caches properly
+  virtual void clear() = 0;
+
   graph::TraverserCache* traverserCache();
 
  protected:

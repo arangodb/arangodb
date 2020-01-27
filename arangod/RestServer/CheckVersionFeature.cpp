@@ -22,6 +22,7 @@
 
 #include "CheckVersionFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"

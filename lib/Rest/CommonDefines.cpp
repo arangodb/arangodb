@@ -42,7 +42,7 @@ std::string contentTypeToString(ContentType type) {
     case ContentType::DUMP:
       return StaticStrings::MimeTypeDump;
     case ContentType::CUSTOM:
-      return "";  // use value from headers
+      return StaticStrings::Empty;  // use value from headers
     case ContentType::UNSET:
     case ContentType::JSON:
     default:
