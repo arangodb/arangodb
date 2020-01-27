@@ -120,7 +120,7 @@ endif()
 
 
 ################################################################################
-## WINDOWS with msbuild
+## WINDOWS with msbuild; Gyp now does TrackFileAccess too.
 ################################################################################
 
 set(GYP_MAIN ${PROJECT_SOURCE_DIR}/gyp/gyp_main.py)
