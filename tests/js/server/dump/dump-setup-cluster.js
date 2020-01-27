@@ -305,6 +305,18 @@ function setupSatelliteCollections() {
 
   db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
   db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
+  
+  // insert an entry into _jobs collection
+  try {
+    db._jobs.remove("test");
+  } catch (err) {}
+  db._jobs.insert({ _key: "test", status: "completed" });
+
+  // insert an entry into _queues collection
+  try {
+    db._queues.remove("test");
+  } catch (err) {}
+  db._queues.insert({ _key: "test" });
 
   // Install Foxx
   const fs = require('fs');

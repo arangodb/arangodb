@@ -720,6 +720,8 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   // fetch the collection inventory
   std::string const url = "/_api/replication/inventory?includeSystem=" +
                           std::string(_options.includeSystemCollections ? "true" : "false") +
+                          "&includeFoxxQueues=" + 
+                          std::string(_options.includeSystemCollections ? "true" : "false") +
                           "&batchId=" + basics::StringUtils::itoa(batchId);
   std::unique_ptr<httpclient::SimpleHttpResult> response(
       client.request(rest::RequestType::GET, url, nullptr, 0));
@@ -775,7 +777,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < _options.collections.size(); ++i) {
-    restrictList.insert(std::pair<std::string, bool>(_options.collections[i], true));
+    auto const& name = _options.collections[i];
+    restrictList.insert(std::pair<std::string, bool>(name, true));
+    if (!name.empty() && name[0] == '_') {
+      // if the user explictly asked for dumping certain collections, toggle the system collection flag automatically
+      _options.includeSystemCollections = true;
+    }
   }
 
   // Step 3. iterate over collections, queue dump jobs
