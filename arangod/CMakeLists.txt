@@ -70,6 +70,7 @@ add_library(arango_iresearch
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
+  IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
   IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
@@ -86,6 +87,7 @@ target_compile_definitions(arango_iresearch
 
 target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
+  PRIVATE ${LZ4_INCLUDE_DIR}
 )
 
 if (USE_ENTERPRISE)
@@ -1001,7 +1003,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangod jemalloc)
+  add_dependencies(arangod jemalloc_build)
 endif ()
   
 foreach(TARGET
