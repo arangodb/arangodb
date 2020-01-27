@@ -207,6 +207,7 @@ endif()
 
 set(USE_IPO ${IPO_ENABLED})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
+set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
@@ -271,6 +272,12 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 ################################################################################
+## NGHTTP2
+################################################################################
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/nghttp2/)
+
+################################################################################
 ## LINK_DIRECTORIES
 ################################################################################
 
@@ -311,7 +318,8 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/GeneralConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/HttpConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H1Connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/H2Connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/jwt.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/loop.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/message.cpp
@@ -322,6 +330,15 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
   )
+
+target_link_libraries(fuerte nghttp2)
+
+check_type_size("ssize_t" SIZEOF_SSIZE_T)
+if(SIZEOF_SSIZE_T STREQUAL "")
+  # ssize_t is a signed type in POSIX storing at least -1.
+  # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
+  target_compile_definitions(fuerte PRIVATE ssize_t=int)
+endif()
 
 target_include_directories(fuerte SYSTEM PRIVATE
   "${Boost_INCLUDE_DIRS}/"

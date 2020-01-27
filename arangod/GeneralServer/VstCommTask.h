@@ -51,6 +51,8 @@ class VstCommTask final : public GeneralCommTask<T> {
   bool enableReadTimeout() const override {
     return true;
   }
+  
+  void start() override;
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
