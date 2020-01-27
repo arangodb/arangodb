@@ -88,45 +88,50 @@ arangodb::graph::KShortestPathsFinder& KShortestPathsExecutorInfos::finder() con
   return *_finder.get();
 }
 
-bool KShortestPathsExecutorInfos::useRegisterForInput(bool isTarget) const {
-  if (isTarget) {
-    return _target.type == InputVertex::Type::REGISTER;
-  }
+auto KShortestPathsExecutorInfos::useRegisterForSourceInput() const -> bool {
   return _source.type == InputVertex::Type::REGISTER;
 }
 
-RegisterId KShortestPathsExecutorInfos::getInputRegister(bool isTarget) const {
-  TRI_ASSERT(useRegisterForInput(isTarget));
-  if (isTarget) {
-    return _target.reg;
-  }
+auto KShortestPathsExecutorInfos::useRegisterForTargetInput() const -> bool {
+  return _target.type == InputVertex::Type::REGISTER;
+}
+
+auto KShortestPathsExecutorInfos::getSourceInputRegister() const -> RegisterId {
+  TRI_ASSERT(useRegisterForSourceInput());
   return _source.reg;
 }
 
-std::string const& KShortestPathsExecutorInfos::getInputValue(bool isTarget) const {
-  TRI_ASSERT(!useRegisterForInput(isTarget));
-  if (isTarget) {
-    return _target.value;
-  }
+auto KShortestPathsExecutorInfos::getTargetInputRegister() const -> RegisterId {
+  TRI_ASSERT(useRegisterForTargetInput());
+  return _target.reg;
+}
+
+auto KShortestPathsExecutorInfos::getSourceInputValue() const -> std::string const& {
+  TRI_ASSERT(!useRegisterForSourceInput());
   return _source.value;
 }
 
-RegisterId KShortestPathsExecutorInfos::getOutputRegister() const {
+auto KShortestPathsExecutorInfos::getTargetInputValue() const -> std::string const& {
+  TRI_ASSERT(!useRegisterForTargetInput());
+  return _target.value;
+}
+
+auto KShortestPathsExecutorInfos::getOutputRegister() const -> RegisterId {
   TRI_ASSERT(_outputRegister != RegisterPlan::MaxRegisterId);
   return _outputRegister;
 }
 
-KShortestPathsExecutorInfos::InputVertex KShortestPathsExecutorInfos::getSourceVertex() const
-    noexcept {
+auto KShortestPathsExecutorInfos::getSourceVertex() const noexcept
+    -> KShortestPathsExecutorInfos::InputVertex {
   return _source;
 }
 
-KShortestPathsExecutorInfos::InputVertex KShortestPathsExecutorInfos::getTargetVertex() const
-    noexcept {
+auto KShortestPathsExecutorInfos::getTargetVertex() const noexcept
+    -> KShortestPathsExecutorInfos::InputVertex {
   return _target;
 }
 
-graph::TraverserCache* KShortestPathsExecutorInfos::cache() const {
+auto KShortestPathsExecutorInfos::cache() const -> graph::TraverserCache* {
   return _finder->options().cache();
 }
 
@@ -138,11 +143,11 @@ KShortestPathsExecutor::KShortestPathsExecutor(Fetcher& fetcher, Infos& infos)
       _finder{infos.finder()},
       _sourceBuilder{},
       _targetBuilder{} {
-  if (!_infos.useRegisterForInput(false)) {
-    _sourceBuilder.add(VPackValue(_infos.getInputValue(false)));
+  if (!_infos.useRegisterForSourceInput()) {
+    _sourceBuilder.add(VPackValue(_infos.getSourceInputValue()));
   }
-  if (!_infos.useRegisterForInput(true)) {
-    _targetBuilder.add(VPackValue(_infos.getInputValue(true)));
+  if (!_infos.useRegisterForTargetInput()) {
+    _targetBuilder.add(VPackValue(_infos.getTargetInputValue()));
   }
 }
 

@@ -92,21 +92,24 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  [[nodiscard]] auto useRegisterForInput(bool isTarget) const -> bool;
+  [[nodiscard]] auto useRegisterForSourceInput() const -> bool;
+  [[nodiscard]] auto useRegisterForTargetInput() const -> bool;
 
   /**
    * @brief get the register used for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  [[nodiscard]] auto getInputRegister(bool isTarget) const -> RegisterId;
+  [[nodiscard]] auto getSourceInputRegister() const -> RegisterId;
+  [[nodiscard]] auto getTargetInputRegister() const -> RegisterId;
 
   /**
    * @brief get the const value for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  [[nodiscard]] auto getInputValue(bool isTarget) const -> std::string const&;
+  [[nodiscard]] auto getSourceInputValue() const -> std::string const&;
+  [[nodiscard]] auto getTargetInputValue() const -> std::string const&;
 
   /**
    * @brief get the output register for the given type
