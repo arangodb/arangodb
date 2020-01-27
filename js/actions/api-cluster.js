@@ -181,10 +181,13 @@ actions.defineHttp({
       return;
     }
 
+    const expire = new Date();
+    expire.setHours(expire.getHours() + 1);
+
     let operations = {};
     if (body === "on") {
       operations['/arango/Supervision/Maintenance'] =
-        {"op":"set","new":"on","ttl":3600};
+        {"op":"set","new":expire.toISOString()};
     } else if (body === "off") {
       operations['/arango/Supervision/Maintenance'] = {"op":"delete"};
     } else {
@@ -195,6 +198,7 @@ actions.defineHttp({
       });
       return;
     }
+
     let preconditions = {};
     try {
       global.ArangoAgency.write([[operations, preconditions]]);

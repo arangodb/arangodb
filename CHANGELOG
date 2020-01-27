@@ -7,6 +7,18 @@ v3.5.5 (XXXX-XX-XX)
 v3.5.4 (2020-01-22)
 -------------------
 
+* Updated ArangoDB Starter to 0.14.13.
+
+* Supervision maintenance mode from "on" and TTL to expiry string.
+
+* Fix spurious "substr index out of bounds" VelocyPack errors that were thrown
+  unintentionally when a full substr was requested.
+
+* Make sure heartbeats are actually sent out and received every second.
+
+
+v3.5.4 (2020-01-22)
+-------------------
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
   while.
 
@@ -39,7 +51,7 @@ v3.5.4 (2020-01-22)
 * Fixed issue #10725: Wrong document count shown inside an empty collection in
   the web UI.
 
-* Fixed issue #10371: AQL Error when using a custom ArangoSearch analyzer on a
+* Fixed issue #10601: AQL Error when using a custom ArangoSearch analyzer on a
   cluster deployment.
 
 * Fixed internal issue #656: While executing large amount of concurrent

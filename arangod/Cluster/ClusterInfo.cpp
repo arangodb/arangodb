@@ -25,6 +25,7 @@
 
 #include "ClusterInfo.h"
 
+#include "Agency/TimeString.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -4262,6 +4263,7 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
 
 std::string const backupKey = "/arango/Target/HotBackup/Create/";
 std::string const maintenanceKey = "/arango/Supervision/Maintenance";
+std::string const supervisionMode = "/arango/Supervision/State/Mode";
 std::string const toDoKey = "/arango/Target/ToDo";
 std::string const pendingKey = "/arango/Target/Pending";
 std::string const writeURL = "_api/agency/write";
@@ -4279,6 +4281,8 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
   LOG_TOPIC("e74e5", DEBUG, Logger::BACKUP)
       << "initiating agency lock for hot backup " << backupId;
 
+  auto const timeouti = static_cast<long>(std::ceil(timeout));
+
   VPackBuilder builder;
   {
     VPackArrayBuilder trxs(&builder);
@@ -4288,14 +4292,16 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       // Operations
       {
         VPackObjectBuilder o(&builder);
-        builder.add(backupKey + backupId, VPackValue(0));  // Hot backup key
-        builder.add(VPackValue(maintenanceKey));
-        {
-          VPackObjectBuilder value(&builder);
-          builder.add("op", VPackValue("set"));
-          builder.add("new", VPackValue("on"));  // Turn off supervision
-          builder.add("ttl", VPackValue(uint64_t(std::ceil(timeout))));
-        }
+        builder.add(                                      // Backup lock
+          backupKey + backupId,
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
+        builder.add(                                      // Turn off supervision
+          maintenanceKey,
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
       }
 
       // Preconditions
@@ -4316,10 +4322,10 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           VPackObjectBuilder oe(&builder);
           builder.add("old", VPackSlice::emptyObjectSlice());
         }
-        builder.add(VPackValue(maintenanceKey));  // Supervision on
+        builder.add(VPackValue(supervisionMode));  // Supervision on
         {
           VPackObjectBuilder old(&builder);
-          builder.add("oldEmpty", VPackValue(true));
+          builder.add("old", VPackValue("Normal"));
         }
       }
     }
@@ -4330,14 +4336,16 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
       // Operations
       {
         VPackObjectBuilder o(&builder);
-        builder.add(backupKey + backupId, VPackValue(0));  // Hot backup key
-        builder.add(VPackValue(maintenanceKey));
-        {
-          VPackObjectBuilder value(&builder);
-          builder.add("op", VPackValue("set")); 
-          builder.add("new", VPackValue("on"));  // Turn off supervision
-          builder.add("ttl", VPackValue(uint64_t(std::ceil(timeout))));
-        }
+        builder.add(                                      // Backup lock
+          backupKey + backupId,
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
+        builder.add(                                      // Turn off supervision
+          maintenanceKey,
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::seconds(timeouti))));
       }
 
       // Prevonditions
@@ -4358,10 +4366,10 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
           VPackObjectBuilder oe(&builder);
           builder.add("old", VPackSlice::emptyObjectSlice());
         }
-        builder.add(VPackValue(maintenanceKey));  // Supervision off
+        builder.add(VPackValue(supervisionMode)); // Supervision off
         {
           VPackObjectBuilder old(&builder);
-          builder.add("old", VPackValue("on"));
+          builder.add("old", VPackValue("Maintenance"));
         }
       }
     }
