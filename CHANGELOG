@@ -1,6 +1,8 @@
 devel
 -----
 
+* added support for REPLACE_NTH AQL function
+
 * Added JWT secret rotation (Enterprise only).
 
 * The `--dump-options` command for arangod now also provides the "components"
