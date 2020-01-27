@@ -122,8 +122,8 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addOption(
       "--server.jwt-secret-folder",
       "folder containing one or more jwt secret files to use for jwt "
-      "authentication. Files are sorted alphabetical: First secret "
-      "is used for signining + verifying of jwt tokens. "
+      "authentication. Files are sorted alphabetically: First secret "
+      "is used for signining + verifying jwt tokens. "
       "(Enterprise only) The latter secrets are only used for verifying.",
       new StringParameter(&_jwtSecretFolderProgramOption))
       .setIntroducedIn(30700);
@@ -236,7 +236,7 @@ bool AuthenticationFeature::hasUserdefinedJwt() const {
   return !_jwtSecretProgramOption.empty();
 }
 
-/// secret used for signing & verification secrets
+/// secret used for signing & verification of secrets
 std::string AuthenticationFeature::jwtActiveSecret() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
   return _jwtSecretProgramOption;
@@ -244,9 +244,9 @@ std::string AuthenticationFeature::jwtActiveSecret() const {
 
 #ifdef USE_ENTERPRISE
 /// verification only secrets
-std::vector<std::string> const& AuthenticationFeature::jwtPassiveSecrets() const {
+std::pair<std::string, std::vector<std::string>> AuthenticationFeature::jwtSecrets() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return _jwtPassiveSecrets;
+  return {_jwtSecretProgramOption, _jwtPassiveSecrets};
 }
 #endif
 

@@ -70,7 +70,7 @@ class AuthenticationFeature final : public application_features::ApplicationFeat
   std::string jwtActiveSecret() const;
 #ifdef USE_ENTERPRISE
   /// verification only secrets
-  std::vector<std::string> const& jwtPassiveSecrets() const;
+  std::pair<std::string, std::vector<std::string>> jwtSecrets() const;
 #endif
   
   // load secrets from file(s)
