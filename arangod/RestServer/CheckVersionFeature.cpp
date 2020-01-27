@@ -75,7 +75,7 @@ void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options
   options->addOption("--database.check-version",
                      "checks the versions of the database and exit",
                      new BooleanParameter(&_checkVersion),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                   arangodb::options::Flags::Command));
 }
 

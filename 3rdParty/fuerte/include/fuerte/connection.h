@@ -69,14 +69,14 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// When a response is received or an error occurs, the corresponding
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
-  virtual MessageID sendRequest(std::unique_ptr<Request> r,
-                                RequestCallback cb) = 0;
+  virtual void sendRequest(std::unique_ptr<Request> r,
+                           RequestCallback cb) = 0;
 
   /// @brief Send a request to the server and return immediately.
   /// When a response is received or an error occurs, the corresponding
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
-  MessageID sendRequest(Request const& r, RequestCallback cb) {
+  void sendRequest(Request const& r, RequestCallback cb) {
     auto copy = std::make_unique<Request>(r);
     return sendRequest(std::move(copy), cb);
   }
