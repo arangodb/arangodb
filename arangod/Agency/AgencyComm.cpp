@@ -847,7 +847,7 @@ std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     : _server(server) {}
 
-AgencyCommResult AgencyComm::sendServerState(double ttl) {
+AgencyCommResult AgencyComm::sendServerState() {
   // construct JSON value { "status": "...", "time": "..." }
   VPackBuilder builder;
 
@@ -865,7 +865,7 @@ AgencyCommResult AgencyComm::sendServerState(double ttl) {
 
   AgencyCommResult result(
       setTransient("Sync/ServerStates/" + ServerState::instance()->getId(),
-                   builder.slice(), ttl));
+                   builder.slice(), 0));
 
   return result;
 }
@@ -916,9 +916,9 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
 AgencyCommResult AgencyComm::setTransient(std::string const& key,
                                           arangodb::velocypack::Slice const& slice,
-                                          double ttl) {
+                                          uint64_t ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
-  operation._ttl = static_cast<uint64_t>(ttl);
+  operation._ttl = ttl;
   AgencyTransientTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);

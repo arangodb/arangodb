@@ -52,6 +52,7 @@
 #include "analysis/token_streams.hpp"
 #include "index/index_writer.hpp"
 #include "store/store_utils.hpp"
+#include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/text_format.hpp"
@@ -62,12 +63,13 @@ NS_LOCAL
 
 const std::string HELP = "help";
 const std::string BATCH_SIZE = "batch-size";
-const std::string CONSOLIDATE = "consolidate";
+const std::string CONSOLIDATE_ALL = "consolidate-all";
 const std::string INDEX_DIR = "index-dir";
 const std::string OUTPUT = "out";
 const std::string INPUT = "in";
 const std::string MAX = "max-lines";
 const std::string THR = "threads";
+const std::string CONS_THR = "consolidation-threads";
 const std::string CPR = "commit-period";
 const std::string DIR_TYPE = "dir-type";
 const std::string FORMAT = "format";
@@ -342,10 +344,10 @@ int put(
     std::istream& stream,
     size_t lines_max,
     size_t indexer_threads,
+    size_t consolidation_threads,
     size_t commit_interval_ms,
     size_t batch_size,
-    bool consolidate
-) {
+    bool consolidate_all) {
   auto dir = create_directory(dir_type, path);
 
   if (!dir) {
@@ -362,9 +364,10 @@ int put(
 
   auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE);
 
-  indexer_threads = (std::max)(size_t(1), (std::min)(indexer_threads, (std::numeric_limits<size_t>::max)() - 1 - 1)); // -1 for commiter thread -1 for stream reader thread
+  indexer_threads = (std::min)(indexer_threads, (std::numeric_limits<size_t>::max)() - 1 - consolidation_threads); // -1 for commiter thread
+  indexer_threads = (std::max)(size_t(1), indexer_threads);
 
-  irs::async_utils::thread_pool thread_pool(indexer_threads + 1 + 1); // +1 for commiter thread +1 for stream reader thread
+  irs::async_utils::thread_pool thread_pool(indexer_threads + consolidation_threads + 1); // +1 for commiter thread
 
   SCOPED_TIMER("Total Time");
   std::cout << "Configuration: " << std::endl;
@@ -373,9 +376,10 @@ int put(
   std::cout << FORMAT << "=" << format << std::endl;
   std::cout << MAX << "=" << lines_max << std::endl;
   std::cout << THR << "=" << indexer_threads << std::endl;
+  std::cout << CONS_THR << "=" << consolidation_threads << std::endl;
   std::cout << CPR << "=" << commit_interval_ms << std::endl;
   std::cout << BATCH_SIZE << "=" << batch_size << std::endl;
-  std::cout << CONSOLIDATE << "=" << consolidate << std::endl;
+  std::cout << CONSOLIDATE_ALL << "=" << consolidate_all << std::endl;
 
   struct {
     std::condition_variable cond_;
@@ -438,9 +442,12 @@ int put(
     std::cout << "EOF" << std::flush;
   });
 
+  std::mutex consolidation_mutex;
+  std::condition_variable consolidation_cv;
+
   // commiter thread
   if (commit_interval_ms) {
-    thread_pool.run([&batch_provider, commit_interval_ms, &writer]()->void {
+    thread_pool.run([&consolidation_cv, &consolidation_mutex, &batch_provider, commit_interval_ms, &writer, consolidation_threads]()->void {
       while (!batch_provider.done_.load()) {
         {
           SCOPED_TIMER("Commit time");
@@ -448,7 +455,38 @@ int put(
           writer->commit();
         }
 
+        // notify consolidation threads
+        if (consolidation_threads) {
+          SCOPED_LOCK(consolidation_mutex);
+          consolidation_cv.notify_all();
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(commit_interval_ms));
+      }
+    });
+  }
+
+  // consolidation threads
+  const irs::index_utils::consolidate_tier consolidation_options;
+  auto policy = irs::index_utils::consolidation_policy(consolidation_options);
+
+  for (size_t i = consolidation_threads; i; --i) {
+    thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex, &consolidation_cv, &writer]()->void {
+      while (!batch_provider.done_.load()) {
+        {
+          SCOPED_LOCK_NAMED(consolidation_mutex, lock);
+          consolidation_cv.wait(lock);
+        }
+
+        {
+          SCOPED_TIMER("Consolidation time");
+          writer->consolidate(policy);
+        }
+
+        {
+          SCOPED_TIMER("Cleanup time");
+          irs::directory_utils::remove_all_unreferenced(*dir);
+        }
       }
     });
   }
@@ -492,13 +530,15 @@ int put(
     writer->commit();
   }
 
-  if (consolidate) {
+  if (consolidate_all) {
     // merge all segments into a single segment
-
-    SCOPED_TIMER("Merge time");
-    std::cout << "Merging segments:" << std::endl;
+    SCOPED_TIMER("Consolidating all time");
+    std::cout << "Consolidating all segments:" << std::endl;
     writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()));
     writer->commit();
+  }
+
+  if (consolidate_all || consolidation_threads) {
     irs::directory_utils::remove_all_unreferenced(*dir);
   }
 
@@ -518,13 +558,14 @@ int put(const cmdline::parser& args) {
     return 1;
   }
 
-  auto batch_size = args.exist(BATCH_SIZE) ? args.get<size_t>(BATCH_SIZE) : size_t(0);
-  auto consolidate = args.exist(CONSOLIDATE) ? args.get<bool>(CONSOLIDATE) : false;
-  auto commit_interval_ms = args.exist(CPR) ? args.get<size_t>(CPR) : size_t(0);
-  auto indexer_threads = args.exist(THR) ? args.get<size_t>(THR) : size_t(0);
-  auto lines_max = args.exist(MAX) ? args.get<size_t>(MAX) : size_t(0);
-  auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
-  auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
+  const auto batch_size = args.exist(BATCH_SIZE) ? args.get<size_t>(BATCH_SIZE) : size_t(0);
+  const auto consolidate = args.exist(CONSOLIDATE_ALL) ? args.get<bool>(CONSOLIDATE_ALL) : false;
+  const auto commit_interval_ms = args.exist(CPR) ? args.get<size_t>(CPR) : size_t(0);
+  const auto indexer_threads = args.exist(THR) ? args.get<size_t>(THR) : size_t(0);
+  const auto consolidation_threads = args.exist(CONS_THR) ? args.get<size_t>(CONS_THR) : size_t(0);
+  const auto lines_max = args.exist(MAX) ? args.get<size_t>(MAX) : size_t(0);
+  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("mmap");
+  const auto format = args.exist(FORMAT) ? args.get<std::string>(FORMAT) : std::string("1_0");
 
   if (args.exist(INPUT)) {
     const auto& file = args.get<std::string>(INPUT);
@@ -534,10 +575,12 @@ int put(const cmdline::parser& args) {
       return 1;
     }
 
-    return put(path, dir_type, format, in, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
+    return put(path, dir_type, format, in, lines_max, indexer_threads,
+               consolidation_threads, commit_interval_ms, batch_size, consolidate);
   }
 
-  return put(path, dir_type, format, std::cin, lines_max, indexer_threads, commit_interval_ms, batch_size, consolidate);
+  return put(path, dir_type, format, std::cin, lines_max, indexer_threads, 
+             consolidation_threads, commit_interval_ms, batch_size, consolidate);
 }
 
 int put(int argc, char* argv[]) {
@@ -549,9 +592,10 @@ int put(int argc, char* argv[]) {
   cmdput.add(FORMAT, 0, "Format (1_0|1_1|1_2|1_2simd)", false, std::string("1_0"));
   cmdput.add(INPUT, 0, "Input file", true, std::string());
   cmdput.add(BATCH_SIZE, 0, "Lines per batch", false, size_t(0));
-  cmdput.add(CONSOLIDATE, 0, "Consolidate segments", false, false);
+  cmdput.add(CONSOLIDATE_ALL, 0, "Consolidate all segments into one", false, false);
   cmdput.add(MAX, 0, "Maximum lines", false, size_t(0));
   cmdput.add(THR, 0, "Number of insert threads", false, size_t(0));
+  cmdput.add(CONS_THR, 0, "Number of consolidation threads", false, size_t(0));
   cmdput.add(CPR, 0, "Commit period in lines", false, size_t(0));
 
   cmdput.parse(argc, argv);

@@ -281,8 +281,7 @@ CommTask::Flow CommTask::prepareExecution(auth::TokenCache::Entry const& authTok
 }
 
 /// Must be called from sendResponse, before response is rendered
-void CommTask::finishExecution(GeneralResponse& res,
-                               std::string const& corsOrigin) const {
+void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) const {
   ServerState::Mode mode = ServerState::mode();
   if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
@@ -292,18 +291,18 @@ void CommTask::finishExecution(GeneralResponse& res,
   }
   
   // CORS response handling
-  if (!corsOrigin.empty()) {
+  if (!origin.empty()) {
     // the request contained an Origin header. We have to send back the
     // access-control-allow-origin header now
     LOG_TOPIC("be603", DEBUG, arangodb::Logger::REQUESTS)
         << "handling CORS response";
 
     // send back original value of "Origin" header
-    res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, corsOrigin);
+    res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, origin);
 
     // send back "Access-Control-Allow-Credentials" header
     res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                 (allowCorsCredentials(corsOrigin)
+                                 (allowCorsCredentials(origin)
                                       ? "true"
                                       : "false"));
 
@@ -311,6 +310,13 @@ void CommTask::finishExecution(GeneralResponse& res,
     // by Foxx applications
     res.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
                             StaticStrings::ExposedCorsHeaders);
+  }
+  
+  if (res.transportType() == Endpoint::TransportType::HTTP &&
+      !ServerState::instance()->isDBServer()) {
+    // DB server is not user-facing, and does not need to set this header
+    // use "IfNotSet" to not overwrite an existing response header
+    res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
   }
 }
 
@@ -692,15 +698,13 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
 }
 
 /// handle an OPTIONS request
-void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req) {
+void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
+                                  std::string const& origin) {
   
   auto resp = createResponse(rest::ResponseCode::OK, req->messageId());
   resp->setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
   
-  bool found;
-  std::string const& origin = req->header(StaticStrings::Origin, found);
-
-  if (found && !origin.empty()) {
+  if (!origin.empty()) {
     LOG_TOPIC("e1cfa", DEBUG, arangodb::Logger::REQUESTS)
         << "got CORS preflight request";
     std::string const allowHeaders =

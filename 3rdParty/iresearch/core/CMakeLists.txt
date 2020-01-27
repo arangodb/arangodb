@@ -121,6 +121,7 @@ set(IResearch_core_sources
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
   ./search/wildcard_filter.cpp
+  ./search/levenshtein_filter.cpp
   ./search/multiterm_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp
@@ -149,6 +150,8 @@ set(IResearch_core_sources
   ./utils/hash_utils.cpp
   ./utils/index_utils.cpp
   ./utils/math_utils.cpp 
+  ./utils/levenshtein_utils.cpp
+  ./utils/levenshtein_default_pdp.cpp
   ./utils/memory.cpp
   ./utils/text_format.cpp
   ./utils/timer_utils.cpp
@@ -218,6 +221,7 @@ set(IResearch_core_headers
   ./utils/attributes.hpp
   ./utils/automaton.hpp
   ./utils/automaton_utils.hpp
+  ./utils/wildcard_utils.hpp
   ./utils/bit_packing.hpp
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp

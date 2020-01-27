@@ -79,7 +79,7 @@ void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
       << "Setting jwt secret of size " << jwtSecret.size();
   _jwtSecret = jwtSecret;
   _jwtCache.clear();
-  generateJwtToken();
+  generateSuperToken();
 }
 
 std::string auth::TokenCache::jwtSecret() const {
@@ -431,10 +431,10 @@ std::string auth::TokenCache::generateJwt(VPackSlice const& payload) const {
 }
 
 /// generate a JWT token for internal cluster communication
-void auth::TokenCache::generateJwtToken() {
+void auth::TokenCache::generateSuperToken() {
   VPackBuilder body;
   body.openObject();
   body.add("server_id", VPackValue(ServerState::instance()->getId()));
   body.close();
-  _jwtToken = generateJwt(body.slice());
+  _jwtSuperToken = generateJwt(body.slice());
 }
