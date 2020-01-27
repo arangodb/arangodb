@@ -207,6 +207,7 @@ endif()
 
 set(USE_IPO ${IPO_ENABLED})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
+set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")

@@ -557,7 +557,7 @@ exports.checkAvailableVersions = function(version) {
       version +
       '&os=' +
       internal.platform;
-    var d = internal.download(u, '', {timeout: 5});
+    var d = internal.download(u, '', {timeout: 3});
     var v = JSON.parse(d.body);
 
     if (v.hasOwnProperty('bugfix')) {
