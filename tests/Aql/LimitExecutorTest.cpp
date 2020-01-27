@@ -1222,7 +1222,6 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   auto const numInputRows =
       std::accumulate(inputLengths.begin(), inputLengths.end(), size_t{0});
   {  // Validation of the test case:
-    TRI_ASSERT(!clientCall.hasSoftLimit());
     TRI_ASSERT(std::all_of(inputLengths.begin(), inputLengths.end(),
                            [](auto l) { return l > 0; }));
   }
@@ -1277,12 +1276,9 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
     TRI_ASSERT(numReturnedRows <= clientCall.getLimit());
   }
 
-  // TODO Build Infos, (dummy)Fetcher, OutputRow; and, of course, LimitExecutor.
-  // TODO Run LimitExecutor over input
   auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
   auto testee = LimitExecutor{dummyFetcher, infos};
-  auto accumulatedStats = LimitStats{};
-  auto skipped = size_t{0};
+
 
   auto inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
   auto output =
@@ -1294,6 +1290,8 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   auto skippedUpstream = size_t{0};
   auto nextInputBlockIt = expectedPassedBlocks.begin();
 
+  auto accumulatedStats = LimitStats{};
+  auto skipped = size_t{0};
   auto outputBlocks = std::vector<SharedAqlItemBlockPtr>{};
 
   // TODO If the clientCall contained a softLimit, call again afterwards with a
@@ -1348,6 +1346,7 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
             nextBlock, outputRegisters, registersToKeep, infos.registersToClear(),
             std::move(call), OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
       } else if (!hasMore || fastForward) {
+        // TODO Add rows skipped due to fullCount
         inputRange = AqlItemBlockInputRange{ExecutorState::DONE, upstreamCall.getOffset()};
       } else {
         TRI_ASSERT(hasMore && !fastForward && !wantsMore);
@@ -1357,7 +1356,6 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
         // I don't think this should happen:
         ASSERT_TRUE(false);
       }
-
     }
   }
   if (output->isInitialized()) {

@@ -329,14 +329,17 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
   auto upstreamCall = calculateUpstreamCall(clientCall);
 
   auto numRowsWritten = size_t{0};
+  auto stats = LimitStats{};
   while (upstreamCall.getLimit() > 0 && input.hasDataRow()) {
     output.copyRow(input.nextDataRow().second);
     output.advanceRow();
     ++numRowsWritten;
   }
+  if (infos().isFullCountEnabled()) {
+    stats.incrFullCountBy(numRowsWritten);
+  }
 
-  // TODO Stats! Count fullCount!
-  return {input.upstreamState(), LimitStats{}, upstreamCall};
+  return {input.upstreamState(), stats, calculateUpstreamCall(clientCall)};
 }
 
 auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
