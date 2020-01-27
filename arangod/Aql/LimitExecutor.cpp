@@ -331,6 +331,7 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
   auto numRowsWritten = size_t{0};
   while (upstreamCall.getLimit() > 0 && input.hasDataRow()) {
     output.copyRow(input.nextDataRow().second);
+    output.advanceRow();
     ++numRowsWritten;
   }
 
