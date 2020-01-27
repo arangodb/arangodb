@@ -119,7 +119,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
     _hasWaited = true;
     return {ExecutionState::WAITING, 0, nullptr};
   }
-  if (_variant == WaitingBehaviour::ALLWAYS) {
+  if (_variant == WaitingBehaviour::ALWAYS) {
     // If we allways wait, reset.
     _hasWaited = false;
   }

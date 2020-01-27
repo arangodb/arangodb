@@ -51,7 +51,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   enum WaitingBehaviour {
     NEVER,  // Never return WAITING
     ONCE,  // Return WAITING on the first execute call, afterwards return all blocks
-    ALLWAYS  // Return Waiting once for every execute Call.
+    ALWAYS  // Return Waiting once for every execute Call.
   };
 
   /**
@@ -65,7 +65,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
                             arangodb::aql::ExecutionNode const* node,
                             std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
-                            WaitingBehaviour variant = WaitingBehaviour::ALLWAYS);
+                            WaitingBehaviour variant = WaitingBehaviour::ALWAYS);
 
   virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
 

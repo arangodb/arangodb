@@ -1353,7 +1353,7 @@ class ExecutionBlockImplExecuteIntegrationTest
     blockDeque.push_back(std::move(block));
     return std::make_unique<WaitingExecutionBlockMock>(
         fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-        doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+        doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                       : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   }
 
@@ -1844,7 +1844,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls) {
 
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   NoneAsserter produceAsserter{getCall(), ExecutionBlock::DefaultBatchSize * 3};
@@ -1897,7 +1897,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
 
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   NoneAsserter produceAsserter{getCall(), ExecutionBlock::DefaultBatchSize * 3};
@@ -2042,7 +2042,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, only_relevant_shadowRows) {
   // We have 3 consecutive shadowRows of Depth 0
   auto producer = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   RegisterId outReg = 0;
@@ -2100,7 +2100,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_relevant_shadowRow) {
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -2152,7 +2152,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, input_and_non_relevant_shadowRo
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -2213,7 +2213,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
   }
   auto singleton = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
-      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALLWAYS
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
                     : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   size_t dataRowCount = 250;
   auto builder = std::make_shared<VPackBuilder>();
