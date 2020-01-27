@@ -19,3 +19,48 @@
 ///
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "LimitStats.h"
+
+using namespace arangodb;
+using namespace arangodb::aql;
+
+LimitStats::LimitStats(LimitStats&& other) noexcept
+    : _fullCount(other._fullCount) {
+  // It is relied upon that other._fullcount is zero after the move!
+  other._fullCount = 0;
+}
+
+auto LimitStats::operator=(LimitStats&& other) noexcept -> LimitStats& {
+  _fullCount = other._fullCount;
+  other._fullCount = 0;
+  return *this;
+}
+
+void LimitStats::incrFullCount() noexcept { _fullCount++; }
+
+void LimitStats::incrFullCountBy(size_t amount) noexcept {
+  _fullCount += amount;
+}
+
+auto LimitStats::getFullCount() const noexcept -> std::size_t {
+  return _fullCount;
+}
+
+auto operator+=(LimitStats& limitStats, LimitStats const& other) noexcept -> LimitStats& {
+  limitStats.incrFullCountBy(other.getFullCount());
+  return limitStats;
+}
+
+auto operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
+    -> ExecutionStats& {
+  executionStats.fullCount += limitStats.getFullCount();
+  return executionStats;
+}
+
+auto operator==(LimitStats const& left, LimitStats const& right) noexcept -> bool {
+  static_assert(
+      sizeof(LimitStats) == sizeof(left.getFullCount()),
+      "When adding members to LimitStats, remember to update operator==!");
+  return left.getFullCount() == right.getFullCount();
+}
