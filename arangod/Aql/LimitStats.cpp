@@ -47,18 +47,18 @@ auto LimitStats::getFullCount() const noexcept -> std::size_t {
   return _fullCount;
 }
 
-auto operator+=(LimitStats& limitStats, LimitStats const& other) noexcept -> LimitStats& {
+auto aql::operator+=(LimitStats& limitStats, LimitStats const& other) noexcept -> LimitStats& {
   limitStats.incrFullCountBy(other.getFullCount());
   return limitStats;
 }
 
-auto operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
+auto aql::operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
     -> ExecutionStats& {
   executionStats.fullCount += limitStats.getFullCount();
   return executionStats;
 }
 
-auto operator==(LimitStats const& left, LimitStats const& right) noexcept -> bool {
+auto aql::operator==(LimitStats const& left, LimitStats const& right) noexcept -> bool {
   static_assert(
       sizeof(LimitStats) == sizeof(left.getFullCount()),
       "When adding members to LimitStats, remember to update operator==!");
