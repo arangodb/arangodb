@@ -58,20 +58,18 @@ struct ClusterCollectionCreationInfo;
 // make sure a collection is still in Plan
 // we are only going from *assuming* that it is present
 // to it being changed to not present.
-class CollectionWatcher
-{
-public:
+class CollectionWatcher {
+ public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry *agencyCallbackRegistry, LogicalCollection const& collection)
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-    AgencyComm ac;
 
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id());
     std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
 
     _agencyCallback = std::make_shared<AgencyCallback>(
-        ac, where,
+        collection.vocbase().server(), where,
         [this](VPackSlice const& result) {
           if (result.isNone()) {
             _present.store(false);
@@ -80,7 +78,7 @@ public:
         },
         true, false);
     _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  };
+  }
   ~CollectionWatcher();
 
   bool isPresent() {
@@ -110,7 +108,7 @@ class PlanCollectionReader {
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id());
 
-    AgencyComm ac;
+    AgencyComm ac(collection.vocbase().server());
 
     std::string path =
         "Plan/Collections/" + databaseName + "/" + collectionID;

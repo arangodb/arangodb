@@ -47,6 +47,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -85,6 +86,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _queryString(queryString),
       _bindParameters(bindParameters),
       _options(options),
+      _queryOptions(vocbase.server().getFeature<QueryRegistryFeature>()),
       _collections(&vocbase),
       _trx(nullptr),
       _startTime(TRI_microtime()),
@@ -162,6 +164,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _queryString(),
       _queryBuilder(queryStruct),
       _options(options),
+      _queryOptions(vocbase.server().getFeature<QueryRegistryFeature>()),
       _collections(&vocbase),
       _trx(nullptr),
       _startTime(TRI_microtime()),
@@ -674,7 +677,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+          auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
           if (res.first == ExecutionState::WAITING) {
             return res.first;
           }
@@ -687,17 +690,19 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             break;
           }
 
-          // cache low-level pointer to avoid repeated shared-ptr-derefs
-          TRI_ASSERT(_resultBuilder != nullptr);
-          auto& resultBuilder = *_resultBuilder;
+          if (!_queryOptions.silent) {
+            // cache low-level pointer to avoid repeated shared-ptr-derefs
+            TRI_ASSERT(_resultBuilder != nullptr);
+            auto& resultBuilder = *_resultBuilder;
 
-          size_t const n = res.second->size();
+            size_t const n = res.second->size();
 
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = res.second->getValueReference(i, resultRegister);
+            for (size_t i = 0; i < n; ++i) {
+              AqlValue const& val = res.second->getValueReference(i, resultRegister);
 
-            if (!val.isEmpty()) {
-              val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
+              if (!val.isEmpty()) {
+                val.toVelocyPack(_trx.get(), resultBuilder, useQueryCache);
+              }
             }
           }
 
@@ -882,11 +887,11 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       uint32_t j = 0;
       ExecutionState state = ExecutionState::HASMORE;
       while (state != ExecutionState::DONE) {
-        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
         state = res.first;
         while (state == ExecutionState::WAITING) {
           ss->waitForAsyncWakeup();
-          res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+          res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
           state = res.first;
         }
         SharedAqlItemBlockPtr value = std::move(res.second);
@@ -910,10 +915,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
               }
-            }
-
-            if (V8PlatformFeature::isOutOfMemory(isolate)) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+            
+              if (V8PlatformFeature::isOutOfMemory(isolate)) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+              }
             }
           }
         }
@@ -1402,6 +1407,9 @@ bool Query::canUseQueryCache() const {
     return false;
   }
   if (_isModificationQuery) {
+    return false;
+  }
+  if (_queryOptions.silent) {
     return false;
   }
 

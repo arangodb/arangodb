@@ -22,6 +22,7 @@
 
 #include "CheckVersionFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
@@ -74,7 +75,7 @@ void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options
   options->addOption("--database.check-version",
                      "checks the versions of the database and exit",
                      new BooleanParameter(&_checkVersion),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                   arangodb::options::Flags::Command));
 }
 

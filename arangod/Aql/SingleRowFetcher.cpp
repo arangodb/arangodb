@@ -47,7 +47,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> SingleRowFetcher<passBlocksThro
   if (_upstreamState == ExecutionState::DONE) {
     return {_upstreamState, nullptr};
   }
-  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
+  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize);
   // There are still some blocks left that ask their parent even after they got
   // DONE the last time, and I don't currently have time to track them down.
   // Thus the following assert is commented out.
@@ -134,6 +134,17 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
     }
   }
   return {returnState(false), _currentRow};
+}
+
+template <BlockPassthrough blockPassthrough>
+auto SingleRowFetcher<blockPassthrough>::fetchRowWithGlobalState(size_t atMost)
+    -> RowWithStates {
+  auto [state, row] = fetchRow(atMost);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, ExecutionState::WAITING, row};
+  }
+
+  return {state, returnState(true), row};
 }
 
 template <BlockPassthrough passBlocksThrough>

@@ -45,7 +45,7 @@ MultiDependencySingleRowFetcher::MultiDependencySingleRowFetcher(
 std::pair<ExecutionState, SharedAqlItemBlockPtr> MultiDependencySingleRowFetcher::fetchBlockForDependency(
     size_t dependency, size_t atMost) {
   TRI_ASSERT(!_dependencyInfos.empty());
-  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize());
+  atMost = (std::min)(atMost, ExecutionBlock::DefaultBatchSize);
   TRI_ASSERT(dependency < _dependencyInfos.size());
 
   auto& depInfo = _dependencyInfos[dependency];
