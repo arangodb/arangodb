@@ -119,19 +119,23 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
 
   // do extra sanity checking for user facing APIs, parsing
   // is performed in `transaction::Options::fromVelocyPack`
-  auto lockTimeout = object->Get(context, TRI_V8_ASCII_STRING(isolate, "lockTimeout"));
-  if (!lockTimeout.IsEmpty() &&
-      !lockTimeout.FromMaybe(v8::Local<v8::Value>())->IsNumber()) {
-    rv.reset(TRI_ERROR_BAD_PARAMETER,
-             "<lockTimeout> must be a valid numeric value");
-    return rv;
+  if (TRI_HasProperty(context, isolate, object, "lockTimeout")) {
+    auto lockTimeout = object->Get(context, TRI_V8_ASCII_STRING(isolate, "lockTimeout"));
+    if (!lockTimeout.IsEmpty() &&
+        !lockTimeout.FromMaybe(v8::Local<v8::Value>())->IsNumber()) {
+      rv.reset(TRI_ERROR_BAD_PARAMETER,
+               "<lockTimeout> must be a valid numeric value");
+      return rv;
+    }
   }
-  auto waitForSync = object->Get(context, WaitForSyncKey);
-  if (!waitForSync.IsEmpty() &&
-      !waitForSync.FromMaybe(v8::Local<v8::Value>())->IsBoolean() &&
-      !waitForSync.FromMaybe(v8::Local<v8::Value>())->IsBooleanObject()) {
-    rv.reset(TRI_ERROR_BAD_PARAMETER, "<waitForSync> must be a boolean value");
-    return rv;
+  if (TRI_HasProperty(context, isolate, object, WaitForSyncKey)) {
+    auto waitForSync = object->Get(context, WaitForSyncKey);
+    if (!waitForSync.IsEmpty() &&
+        !waitForSync.FromMaybe(v8::Local<v8::Value>())->IsBoolean() &&
+        !waitForSync.FromMaybe(v8::Local<v8::Value>())->IsBooleanObject()) {
+      rv.reset(TRI_ERROR_BAD_PARAMETER, "<waitForSync> must be a boolean value");
+      return rv;
+    }
   }
 
   // extract the properties from the object
@@ -195,9 +199,8 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   auto getCollections =
     [&isolate, &context](v8::Handle<v8::Object> obj, std::vector<std::string>& collections,
                          char const* attributeName, std::string& collectionError) -> bool {
-      auto maybeAttr = obj->Get(context, TRI_V8_ASCII_STRING(isolate, attributeName));
-      if (!maybeAttr.IsEmpty()) {
-        auto localAttr = maybeAttr.FromMaybe(v8::Local<v8::Value>());
+      if (TRI_HasProperty(context, isolate, obj, attributeName)) {
+        auto localAttr = obj->Get(context, TRI_V8_ASCII_STRING(isolate, attributeName)).FromMaybe(v8::Local<v8::Value>());
         if (localAttr->IsArray()) {
           v8::Handle<v8::Array> names =
             v8::Handle<v8::Array>::Cast(localAttr);
