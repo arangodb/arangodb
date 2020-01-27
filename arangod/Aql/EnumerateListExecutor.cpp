@@ -154,10 +154,12 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlI
 }
 
 void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
+  if (_currentRow) {
+    std::ignore = inputRange.nextDataRow();
+  }
+  std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
   if (!_currentRow) {
-    std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
-  } else {
-    std::tie(_currentRowState, _currentRow) = inputRange.nextDataRow();
+    return;
   }
 
   // fetch new row, put it in local state
@@ -205,6 +207,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
+
   if (!inputRange.hasDataRow()) {
     return {inputRange.upstreamState(), NoStats{}, upstreamCall};
   }
@@ -213,11 +216,9 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
     if (_inputArrayLength == _inputArrayPosition) {
       // we reached either the end of an array
       // or are in our first loop iteration
-      // auto [state, _currentRow] = inputRange.nextDataRow();
       initializeNewRow(inputRange);
       continue;
     }
-    // auto const& [state, input] = inputRange.peekDataRow();
 
     TRI_ASSERT(_inputArrayPosition <= _inputArrayLength);
     processArrayElement(output);
@@ -228,7 +229,12 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
 
 std::tuple<ExecutorState, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  // ExecutorState state = ExecutorState::HASMORE;
+  AqlCall upstreamCall{};
+
+  if (!inputRange.hasDataRow()) {
+    return {inputRange.upstreamState(), 0, upstreamCall};
+  }
+
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   size_t skipped = 0;
   bool offsetPhase = (call.getOffset() > 0);
@@ -237,7 +243,6 @@ std::tuple<ExecutorState, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
     if (_inputArrayLength == _inputArrayPosition) {
       // we reached either the end of an array
       // or are in our first loop iteration
-      // auto [state, _currentRow] = inputRange.nextDataRow();
       initializeNewRow(inputRange);
       continue;
     }
@@ -260,11 +265,12 @@ std::tuple<ExecutorState, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
   }
   call.didSkip(skipped);
 
-  AqlCall upstreamCall{};
   upstreamCall.softLimit = call.getOffset();
   if (offsetPhase) {
     if (skipped < call.getOffset()) {
       return {inputRange.upstreamState(), skipped, upstreamCall};
+    } else if (_inputArrayPosition < _inputArrayLength) {
+      return {ExecutorState::HASMORE, skipped, upstreamCall};
     }
     return {_currentRowState, skipped, upstreamCall};
   }
