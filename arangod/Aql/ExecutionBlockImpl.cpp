@@ -157,7 +157,8 @@ static bool constexpr isNewStyleExecutor() {
       std::is_same_v<Executor, TestLambdaExecutor> ||
       std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
-      std::is_same_v<Executor, FilterExecutor>;
+      std::is_same_v<Executor, FilterExecutor> ||
+      std::is_same_v<Executor, ShortestPathExecutor>;
 }
 
 template <class Executor>
@@ -1138,9 +1139,10 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 
   static_assert(useExecutor == (
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                                   std::is_same_v<Executor, TestLambdaSkipExecutor> ||
+                                   (std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
 #endif
-                                   std::is_same_v<Executor, FilterExecutor>),
+                                   std::is_same_v<Executor, FilterExecutor> ||
+                                   std::is_same_v<Executor, ShortestPathExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
