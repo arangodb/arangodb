@@ -33,6 +33,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
 #include "Graph/KShortestPathsFinder.h"

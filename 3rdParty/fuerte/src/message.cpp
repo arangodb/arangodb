@@ -25,10 +25,9 @@
 
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <boost/algorithm/string.hpp>
 #include <sstream>
 
-#include <iostream>
+#include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -36,25 +35,11 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 // class MessageHeader
 ///////////////////////////////////////////////
 
-void MessageHeader::addMeta(std::string key, std::string value) {
-  if (boost::iequals(key, fu_accept_key)) {
-    this->_acceptType = to_ContentType(value);
-  } else if (boost::iequals(key, fu_content_type_key)) {
-    this->_contentType = to_ContentType(value);
-  } else {
-    this->_meta.emplace(std::move(key), std::move(value));
-  }
-}
-
-void MessageHeader::addMeta(StringMap const& map) {
-  for (auto& pair : map) {
-    this->addMeta(pair.first, pair.second);
-  }
-}
-
 void MessageHeader::setMeta(StringMap map) {
   if (!this->_meta.empty()) {
-    addMeta(map);
+    for (auto& pair : map) {
+      this->addMeta(pair.first, pair.second);
+    }
   } else {
     this->_meta = std::move(map);
   }
@@ -78,25 +63,17 @@ std::string const& MessageHeader::metaByKey(std::string const& key,
   }
 }
 
-void MessageHeader::contentType(std::string const& type) {
-  addMeta(fu_content_type_key, type);
-}
-
-void MessageHeader::contentType(ContentType type) {
-  contentType(to_string(type));
-}
-
 ///////////////////////////////////////////////
 // class RequestHeader
 ///////////////////////////////////////////////
 
-ContentType RequestHeader::acceptType() const { return _acceptType; }
-
-void RequestHeader::acceptType(ContentType type) { _acceptType = type; }
+void RequestHeader::acceptType(std::string const& type) {
+   addMeta(fu_accept_key, type);
+ }
 
 void RequestHeader::addParameter(std::string const& key,
                                  std::string const& value) {
-  parameters.emplace(key, value);
+  parameters.try_emplace(key, value);
 }
 
 /// @brief analyze path and split into components
@@ -130,10 +107,8 @@ void RequestHeader::parseArangoPath(std::string const& p) {
     q += 5;
     const char* pathBegin = q;
     // read until end of database name
-    while (*q != '\0') {
-      if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' || *q == '\r') {
-        break;
-      }
+    while (*q != '\0' && *q != '/' && *q != '?' &&
+           *q != ' ' && *q != '\n' && *q != '\r') {
       ++q;
     }
     this->database = std::string(pathBegin, q - pathBegin);
@@ -248,7 +223,7 @@ size_t Request::payloadSize() const { return _payload.byteSize(); }
 
 std::vector<VPackSlice> Response::slices() const {
   std::vector<VPackSlice> slices;
-  if (isContentTypeVPack()) {
+  if (isContentTypeVPack() && payloadSize() > 0) {
     VPackValidator validator;
 
     auto length = _payload.byteSize() - _payloadOffset;
@@ -262,6 +237,7 @@ std::vector<VPackSlice> Response::slices() const {
       if (length < sliceSize) {
         throw std::logic_error("invalid buffer");
       }
+      FUERTE_ASSERT(length >= sliceSize);
       cursor += sliceSize;
       length -= sliceSize;
     }
@@ -275,11 +251,17 @@ asio_ns::const_buffer Response::payload() const {
 }
 
 size_t Response::payloadSize() const {
+  if (_payloadOffset > _payload.byteSize()) {
+    return 0;
+  }
   return _payload.byteSize() - _payloadOffset;
 }
 
 std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
   auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
+  if (payloadSize() == 0) {
+    return buffer;
+  }
   buffer->append(_payload.data() + _payloadOffset,
                  _payload.byteSize() - _payloadOffset);
   return buffer;
@@ -296,10 +278,5 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
   _payload.clear();
   _payloadOffset = 0;
   return buffer;
-}
-
-void Response::setPayload(VPackBuffer<uint8_t> buffer, size_t payloadOffset) {
-  _payloadOffset = payloadOffset;
-  _payload = std::move(buffer);
 }
 }}}  // namespace arangodb::fuerte::v1

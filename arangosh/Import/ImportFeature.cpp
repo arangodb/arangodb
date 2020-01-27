@@ -156,8 +156,10 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--quote", "quote character(s), used for csv",
                      new StringParameter(&_quote));
 
-  options->addOption("--separator", "field separator, used for csv and tsv",
-                     new StringParameter(&_separator));
+  options->addOption("--separator", "field separator, used for csv and tsv. "
+                     "Defaults to a comma (csv) or a tabulation character (tsv)",
+                     new StringParameter(&_separator),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
@@ -224,7 +226,7 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
 
   for (auto const& it : _translations) {
-    auto parts = StringUtils::split(it, "=");
+    auto parts = StringUtils::split(it, '=');
     if (parts.size() != 2) {
       LOG_TOPIC("e322b", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
@@ -289,8 +291,7 @@ void ImportFeature::start() {
 
   int err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
-  auto dbName = client.databaseName();
-  bool createdDatabase = false;
+  auto const dbName = client.databaseName();
 
   auto successfulConnection = [&]() {
     std::cout << ClientFeature::buildConnectedMessage(_httpClient->getEndpointSpecification(),
@@ -343,12 +344,15 @@ void ImportFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
-    successfulConnection();
-
     // restore old database name
     client.setDatabaseName(dbName);
-    versionString = _httpClient->getServerVersion(nullptr);
-    createdDatabase = true;
+    err = TRI_ERROR_NO_ERROR;
+    versionString = _httpClient->getServerVersion(&err);
+  
+    if (err != TRI_ERROR_NO_ERROR) {
+      // disconnecting here will abort arangoimport a few lines below
+      _httpClient->disconnect();
+    }
   }
 
   if (!_httpClient->isConnected()) {
@@ -359,10 +363,12 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  TRI_ASSERT(client.databaseName() == dbName);
+    
   // successfully connected
-  if (!createdDatabase) {
-    successfulConnection();
-  }
+  // print out connection info
+  successfulConnection();
+
   _httpClient->disconnect();  // we do not reuse this anymore
 
   SimpleHttpClientParams params = _httpClient->params();
@@ -386,7 +392,7 @@ void ImportFeature::start() {
 
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {
-    auto parts = StringUtils::split(it, "=");
+    auto parts = StringUtils::split(it, '=');
     TRI_ASSERT(parts.size() == 2);  // already validated before
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);

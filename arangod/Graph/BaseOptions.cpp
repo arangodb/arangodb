@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BaseOptions.h"
+
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
@@ -29,7 +30,7 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
@@ -55,7 +56,7 @@ BaseOptions::LookupInfo::LookupInfo()
   idxHandles.resize(1);
 }
 
-BaseOptions::LookupInfo::~LookupInfo() {}
+BaseOptions::LookupInfo::~LookupInfo() = default;
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
                                     VPackSlice const& info, VPackSlice const& shards) {
@@ -121,7 +122,7 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
 
-  idxHandles[0].toVelocyPack(result, Index::makeFlags(Index::Serialize::Basics));
+  idxHandles[0]->toVelocyPack(result, Index::makeFlags(Index::Serialize::Basics));
 
   if (expression != nullptr) {
     result.add(VPackValue("expression"));
@@ -142,7 +143,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   // If we do not have an index yet we cannot do anything.
   // Should NOT be the case
   TRI_ASSERT(!idxHandles.empty());
-  std::shared_ptr<Index> idx = idxHandles[0].getIndex();
+  std::shared_ptr<Index> const& idx = idxHandles[0];
   if (idx->hasSelectivityEstimate()) {
     double s = idx->selectivityEstimate();
     if (s > 0.0) {
@@ -282,7 +283,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     }
   }
 
-  arangodb::HashSet<size_t> toRemove;
+  ::arangodb::containers::HashSet<size_t> toRemove;
   aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition,
                                             toRemove, nullptr, false);
   size_t n = condition->numMembers();
@@ -314,7 +315,7 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   _ctx->serializeAllVariables(_trx, builder);
 }
 
-void BaseOptions::setCollectionToShard(std::map<std::string, std::string>const& in){
+void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const& in) {
   _collectionToShard = std::move(in);
 }
 
@@ -334,7 +335,7 @@ void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
       builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       builder.close();
     }
   }

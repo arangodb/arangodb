@@ -26,6 +26,8 @@
           } else {
             callback(xmlHttp.responseText);
           }
+        } else if (xmlHttp.readyState === 4 && xmlHttp.status === 404) {
+          callback();
         }
       };
       xmlHttp.open('GET', theUrl, true); // true for asynchronous
@@ -45,8 +47,13 @@
           cb();
           cbscnd();
         } catch (err) {
-          cb();
-          cbscnd();
+          // we we're not able to fetch/parse the manifest
+          if (cb) {
+            cb(true);
+          }
+          if (cbscnd) {
+            cbscnd(true);
+          }
         }
       };
 

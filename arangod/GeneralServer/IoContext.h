@@ -40,24 +40,24 @@ class IoContext {
  private:
   
   class IoThread final : public Thread {
-  public:
-   explicit IoThread(application_features::ApplicationServer&, IoContext&);
-   explicit IoThread(IoThread const&);
-   ~IoThread();
-   void run() override;
+   public:
+    explicit IoThread(application_features::ApplicationServer&, IoContext&);
+    explicit IoThread(IoThread const&);
+    ~IoThread();
+    void run() override;
     
-  private:
+   private:
     IoContext& _iocontext;
   };
   
-public:
+ public:
   
   asio_ns::io_context io_context;
   
  private:
   application_features::ApplicationServer& _server;
   IoThread _thread;
-  asio_ns::io_context::work _asioWork;
+  asio_ns::executor_work_guard<asio_ns::io_context::executor_type> _work;
   std::atomic<unsigned> _clients;
 
  public:
@@ -65,9 +65,10 @@ public:
   explicit IoContext(IoContext const&);
   ~IoContext();
   
-  int clients() const noexcept {
+  unsigned clients() const noexcept {
     return _clients.load(std::memory_order_acquire);
   }
+
   void incClients() noexcept {
     _clients.fetch_add(1, std::memory_order_release);
   }

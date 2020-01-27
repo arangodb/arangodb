@@ -26,7 +26,7 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
 #include "Transaction/Methods.h"
 
 #include <string>
@@ -43,6 +43,16 @@ class ExecutionPlan;
 class SortCondition;
 struct AstNode;
 struct Variable;
+
+// note to maintainers:
+// 
+enum class ConditionOptimization {
+  None,       // only generic optimizations are made (e.g. AND to n-ry AND, sorting and deduplicating IN nodes )
+  NoNegation, // no conversions to negation normal form. Implies NoDNF and no optimization.
+  NoDNF,      // no conversions to DNF are made and no condition optimization
+  Auto,       // all existing condition optimizations are applied
+
+};
 
 enum ConditionPartCompareResult {
   IMPOSSIBLE = 0,
@@ -114,7 +124,7 @@ class Condition {
   /// @brief: note: index may be a nullptr
   static void collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
                                         AstNode const* andNode, AstNode const* otherAndNode,
-                                        arangodb::HashSet<size_t>& toRemove,
+                                        ::arangodb::containers::HashSet<size_t>& toRemove,
                                         Index const* index, bool isFromTraverser);
 
   /// @brief return the condition root
@@ -144,7 +154,9 @@ class Condition {
   /// this will convert the condition into its disjunctive normal form
   /// @param mutlivalued attributes may have more than one value
   ///                    (ArangoSearch view case)
-  void normalize(ExecutionPlan*, bool multivalued = false);
+  /// @param conditionOptimization  allowed condition optimizations
+  void normalize(ExecutionPlan*, bool multivalued = false, 
+                 ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
@@ -160,7 +172,7 @@ class Condition {
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
   /// @brief remove (now) invalid variables from the condition
-  bool removeInvalidVariables(arangodb::HashSet<Variable const*> const&);
+  bool removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const&);
 
   /// @brief locate indexes which can be used for conditions
   /// return value is a pair indicating whether the index can be used for
@@ -175,11 +187,22 @@ class Condition {
       Variable const*, bool includeNull) const;
 
   /// @brief get the attributes for a sub-condition that are not-null
-  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(Variable const*) const;
+  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(
+      Variable const*) const;
 
  private:
   /// @brief optimize the condition expression tree
   void optimize(ExecutionPlan*, bool multivalued);
+
+  /// @brief optimize the condition expression tree which is non-DnfConverted
+  /// does only basic deduplicating of conditions
+  void optimizeNonDnf();
+
+  /// @brief deduplicates conditions in AND/OR node
+  void deduplicateJunctionNode(AstNode* unlockedNode);
+
+  /// @brief recursively deduplicates and sorts members in  IN/AND/OR nodes in subtree
+  void deduplicateComparisonsRecursive(AstNode* p);
 
   /// @brief registers an attribute access for a particular (collection)
   /// variable
@@ -206,12 +229,15 @@ class Condition {
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);
 
-  /// @brief converts binary to n-ary, comparision normal and negation normal
-  ///        form
-  AstNode* transformNodePreorder(AstNode*);
+  /// @brief converts binary to n-ary, comparison normal and negation normal form
+  AstNode* transformNodePreorder(
+      AstNode*, 
+      ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
 
   /// @brief converts from negation normal to disjunctive normal form
-  AstNode* transformNodePostorder(AstNode*);
+  AstNode* transformNodePostorder(
+      AstNode*, 
+      ConditionOptimization conditionOptimization = ConditionOptimization::Auto);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step

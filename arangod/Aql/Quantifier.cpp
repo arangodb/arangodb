@@ -28,10 +28,6 @@
 
 using namespace arangodb::aql;
 
-int64_t const Quantifier::NONE = 1;
-int64_t const Quantifier::ALL = 2;
-int64_t const Quantifier::ANY = 3;
-
 /// @brief converts a quantifier string into an int equivalent
 int64_t Quantifier::FromString(std::string const& value) {
   if (value == "all") {

@@ -35,7 +35,7 @@ RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(application_features::Applica
 
 RestStatus RestPleaseUpgradeHandler::execute() {
   resetResponse(rest::ResponseCode::OK);
-  
+
   _response->setContentType(rest::ContentType::TEXT);
   _response->addRawPayload(StringRef("Database: "));
   _response->addRawPayload(StringRef(_request->databaseName()));

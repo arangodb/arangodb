@@ -23,6 +23,7 @@
 
 #include "RocksDBTransactionState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
@@ -32,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -39,10 +41,10 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
-#include "Statistics/ServerStatistics.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -106,7 +108,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     // register with manager
     transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
     updateStatus(transaction::Status::RUNNING);
-    ServerStatistics::statistics()._transactionsStatistics._transactionsStarted++;
+    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
     setRegistered();
 
@@ -397,7 +399,7 @@ Result RocksDBTransactionState::commitTransaction(transaction::Methods* activeTr
     if (res.ok()) {
       updateStatus(transaction::Status::COMMITTED);
       cleanupTransaction();  // deletes trx
-      ServerStatistics::statistics()._transactionsStatistics._transactionsCommitted++;
+      _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
     } else {
       abortTransaction(activeTrx);  // deletes trx
     }
@@ -429,7 +431,7 @@ Result RocksDBTransactionState::abortTransaction(transaction::Methods* activeTrx
     TRI_ASSERT(!_rocksTransaction && !_cacheTx && !_readSnapshot);
   }
 
-  ServerStatistics::statistics()._transactionsStatistics._transactionsAborted++;
+  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   unuseCollections(nestingLevel());
   return result;
 }
@@ -601,7 +603,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
   }
 
   hasPerformedIntermediateCommit = true;
-  ServerStatistics::statistics()._transactionsStatistics._intermediateCommits++;
+  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._intermediateCommits++;
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

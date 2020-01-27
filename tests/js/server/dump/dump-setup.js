@@ -33,20 +33,14 @@
   var db = require("@arangodb").db;
   var i, c;
 
-  try {
-    db._dropDatabase("UnitTestsDumpSrc");
-  } catch (err1) {
-  }
-  db._createDatabase("UnitTestsDumpSrc");
-
-  try {
-    db._dropDatabase("UnitTestsDumpDst");
-  } catch (err2) {
-  }
-
-
+  ["UnitTestsDumpSrc", "UnitTestsDumpDst"].forEach(function(name) {
+    try {
+      db._dropDatabase(name);
+    } catch (err) {}
+    db._createDatabase(name);
+  });
+  
   db._useDatabase("UnitTestsDumpSrc");
-
 
   // this remains empty
   db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
@@ -230,6 +224,8 @@
 
   c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
 
+  let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
+
   // setup a view
   try {
     c = db._create("UnitTestsDumpViewCollection");
@@ -247,7 +243,7 @@
         "UnitTestsDumpViewCollection": {
           includeAllFields: true,
           fields: {
-            text: { analyzers: [ "text_en" ] }
+            text: { analyzers: [ "text_en", analyzer.name ] }
           }
         }
       }
@@ -256,6 +252,30 @@
     c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
     c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
+
+  // setup a view on _analyzers collection
+  try {
+    let view = db._createView("analyzersView", "arangosearch", {
+      links: {
+        _analyzers : {
+          includeAllFields: true,
+          analyzers: [ analyzer.name ]
+        }
+      }
+    });
+  } catch (err) {}
+
+  // insert an entry into _jobs collection
+  try {
+    db._jobs.remove("test");
+  } catch (err) {}
+  db._jobs.insert({ _key: "test", status: "completed" });
+
+  // insert an entry into _queues collection
+  try {
+    db._queues.remove("test");
+  } catch (err) {}
+  db._queues.insert({ _key: "test" });
 
   // Install Foxx
   const fs = require('fs');

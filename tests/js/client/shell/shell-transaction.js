@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -649,7 +649,114 @@ function transactionInvocationSuite () {
           try { trx.abort(); } catch (err) {}
         });
       }
-    }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort write transactions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortWriteTransactions: function () {
+      db._create(cn, {numberOfShards: 2});
+      let trx1, trx2, trx3;
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        trx1 = db._createTransaction(obj);
+        trx2 = db._createTransaction(obj);
+        trx3 = db._createTransaction(obj);
+        
+        let trx = db._transactions();
+        // the following assertions are not safe, as transactions have
+        // an idle timeout of 10 seconds, and we cannot guarantee any
+        // runtime performance in our test environment
+        // assertInList(trx, trx1);
+        // assertInList(trx, trx2);
+        // assertInList(trx, trx3);
+        
+        let result = arango.DELETE("/_api/transaction/write");
+        assertEqual(result.code, 200);
+
+        trx = db._transactions();
+        assertNotInList(trx, trx1);
+        assertNotInList(trx, trx2);
+        assertNotInList(trx, trx3);
+      } finally {
+        if (trx1 && trx1._id) {
+          try { trx1.abort(); } catch (err) {}
+        }
+        if (trx2 && trx2._id) {
+          try { trx2.abort(); } catch (err) {}
+        }
+        if (trx3 && trx3._id) {
+          try { trx3.abort(); } catch (err) {}
+        }
+      }
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: abort write transactions
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testAbortWriteTransactionAQL: function () {
+      db._create(cn, {numberOfShards: 2});
+      let trx1;
+      
+      let obj = {
+        collections: {
+          write: [ cn ]
+        }
+      };
+     
+      try {
+        trx1 = db._createTransaction(obj);
+        let result = arango.POST_RAW("/_api/cursor", {
+          query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
+        }, { 
+          "x-arango-trx-id" : trx1._id,
+          "x-arango-async" : "store"
+        });
+
+        let jobId = result.headers["x-arango-async-id"];
+
+        let tries = 0;
+        while (++tries < 60) {
+          result = arango.PUT_RAW("/_api/job/" + jobId, {});
+
+          require("internal").wait(0.5, false);
+          
+          if (result.code === 204) {
+            break;
+          }
+        }
+        
+        let trx = db._transactions();
+        assertInList(trx, trx1);
+       
+        result = arango.DELETE("/_api/transaction/write");
+        assertEqual(result.code, 200);
+
+        tries = 0;
+        while (++tries < 60) {
+          result = arango.PUT_RAW("/_api/job/" + jobId, {});
+          
+          require("internal").wait(0.5, false);
+          
+          if (result.code === 410) {
+            break;
+          }
+        }
+        assertEqual(410, result.code);
+      } finally {
+        if (trx1 && trx1._id) {
+          try { trx1.abort(); } catch (err) {}
+        }
+      }
+    },
 
   };
 }
@@ -4047,7 +4154,6 @@ function transactionAQLStreamSuite () {
   };
 }
 
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
@@ -4083,15 +4189,22 @@ function transactionTTLStreamSuite () {
 
     testAbortIdleTrx: function () {
       let trx = db._createTransaction({
-        collections: { read: cn }
+        collections: { write: cn }
       });
 
-      internal.sleep(12);
-      try {
-        trx.collection(cn).save({key:'val'});
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+      trx.collection(cn).save({value:'val'});
+
+      let x = 60;
+      do {
+        internal.sleep(1);
+
+        if (trx.status().status === "aborted") {
+          return;
+        }
+
+      } while(--x > 0);
+      if (x <= 0) {
+        fail(); // should not be reached
       }
     }
   };

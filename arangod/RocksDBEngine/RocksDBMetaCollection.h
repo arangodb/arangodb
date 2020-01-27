@@ -63,9 +63,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
   
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override final;
-  
   int lockWrite(double timeout = 0.0);
   void unlockWrite();
   int lockRead(double timeout = 0.0);

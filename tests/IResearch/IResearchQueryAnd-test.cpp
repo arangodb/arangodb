@@ -352,6 +352,7 @@ TEST_F(IResearchQueryAndTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -388,6 +389,7 @@ TEST_F(IResearchQueryAndTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -416,6 +418,7 @@ TEST_F(IResearchQueryAndTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -451,6 +454,7 @@ TEST_F(IResearchQueryAndTest, test) {
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
     size_t i = 0;
+    ASSERT_EQ(expected.size(), slice.length());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
@@ -476,6 +480,7 @@ TEST_F(IResearchQueryAndTest, test) {
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
     size_t i = 0;
+    ASSERT_EQ(expected.size(), slice.length());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
@@ -503,6 +508,7 @@ TEST_F(IResearchQueryAndTest, test) {
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
     size_t i = 0;
+    ASSERT_EQ(expected.size(), slice.length());
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
@@ -526,6 +532,7 @@ TEST_F(IResearchQueryAndTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -552,6 +559,7 @@ TEST_F(IResearchQueryAndTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
@@ -578,6 +586,7 @@ TEST_F(IResearchQueryAndTest, test) {
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
+    ASSERT_EQ(expected.size(), slice.length());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {

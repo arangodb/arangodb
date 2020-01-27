@@ -124,7 +124,7 @@ class V8Completer : public Completer {
  public:
   V8Completer() {}
 
-  ~V8Completer() {}
+  ~V8Completer() = default;
 
  public:
   bool isComplete(std::string const& source, size_t /*lineno*/) override final {
@@ -293,7 +293,7 @@ class V8Completer : public Completer {
     std::string prefix;
 
     if (*text != '\0') {
-      std::vector<std::string> splitted = basics::StringUtils::split(text, '.', '\0');
+      std::vector<std::string> splitted = basics::StringUtils::split(text, '.');
 
       if (1 < splitted.size()) {
         for (size_t i = 0; i < splitted.size() - 1; ++i) {

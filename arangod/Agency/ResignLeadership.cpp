@@ -228,7 +228,7 @@ bool ResignLeadership::start(bool& aborts) {
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
-    for (auto const& x : VPackArrayIterator(cleanedServers)) {
+    for (VPackSlice x : VPackArrayIterator(cleanedServers)) {
       if (x.isString() && x.copyString() == _server) {
         finish("", "", false, "server must not be in `Target/CleanedServers`");
         return false;
@@ -374,7 +374,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
-        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
           if (dbserver.copyString() == _server) {
             found = count;
             break;
@@ -398,7 +398,7 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                   _jobId, database.first, collptr.first, shard.first, _server,
-                  toServer, isLeader, true)
+                  toServer, isLeader, true).withParent(_jobId)
             .create(trx);
 
         } else {

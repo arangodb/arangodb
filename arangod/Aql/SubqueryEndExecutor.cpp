@@ -24,17 +24,18 @@
 #include "Aql/SubqueryEndExecutor.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/ScopeGuard.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::aql;
-
-constexpr bool SubqueryEndExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough SubqueryEndExecutor::Properties::allowsBlockPassthrough;
-constexpr bool SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize;
 
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
@@ -42,20 +43,34 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    transaction::Methods* trxPtr, RegisterId outReg)
-    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+    velocypack::Options const* const options, RegisterId inReg, RegisterId outReg)
+    : ExecutorInfos(std::move(readableInputRegisters),
+                    std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _trxPtr(trxPtr),
-      _outReg(outReg) {}
-
-SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&& other) = default;
+      _vpackOptions(options),
+      _outReg(outReg),
+      _inReg(inReg) {}
 
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
-SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
-    : _fetcher(fetcher), _infos(infos), _accumulator(nullptr), _state(ACCUMULATE) {
-  resetAccumulator();
+bool SubqueryEndExecutorInfos::usesInputRegister() const noexcept {
+  return _inReg != RegisterPlan::MaxRegisterId;
 }
+
+velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions() const noexcept {
+  return _vpackOptions;
+}
+
+RegisterId SubqueryEndExecutorInfos::getOutputRegister() const noexcept {
+  return _outReg;
+}
+
+RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept {
+  return _inReg;
+}
+
+SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
+    : _fetcher(fetcher), _infos(infos), _accumulator(_infos.vpackOptions()) {}
 
 SubqueryEndExecutor::~SubqueryEndExecutor() = default;
 
@@ -67,7 +82,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
 
   while (!output.isFull()) {
     switch (_state) {
-      case ACCUMULATE: {
+      case State::ACCUMULATE_DATA_ROWS: {
         std::tie(state, inputRow) = _fetcher.fetchRow();
 
         if (state == ExecutionState::WAITING) {
@@ -76,93 +91,59 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         }
 
         // We got a data row, put it into the accumulator
-        if (inputRow.isInitialized()) {
-          // Above is a RETURN which writes to register 0
-          // TODO: The RETURN node above is superflous and could be folded
-          //       into the SubqueryEndNode
-          TRI_ASSERT(_accumulator->isOpenArray());
-          AqlValue value = inputRow.getValue(0);
-          value.toVelocyPack(_infos.getTrxPtr(), *_accumulator, false);
+        if (inputRow.isInitialized() && _infos.usesInputRegister()) {
+          _accumulator.addValue(inputRow.getValue(_infos.getInputRegister()));
         }
 
         // We have received DONE on data rows, so now
         // we have to read a relevant shadow row
         if (state == ExecutionState::DONE) {
-          _accumulator->close();
-          TRI_ASSERT(_accumulator->isClosed());
-          _state = RELEVANT_SHADOW_ROW_PENDING;
+          _state = State::PROCESS_SHADOW_ROWS;
         }
-        break;
-      }
-      case RELEVANT_SHADOW_ROW_PENDING: {
+      } break;
+      case State::PROCESS_SHADOW_ROWS: {
         std::tie(state, shadowRow) = _fetcher.fetchShadowRow();
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!shadowRow.isInitialized());
           return {ExecutionState::WAITING, NoStats{}};
         }
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-        TRI_ASSERT(shadowRow.isInitialized() == true);
-        TRI_ASSERT(shadowRow.isRelevant() == true);
 
-        // Here we have all data *and* the relevant shadow row,
-        // so we can now submit
-        bool shouldDelete = true;
-        AqlValue resultDocVec{_buffer.get(), shouldDelete};
-        if (shouldDelete) {
-          // resultDocVec told us to delete our data
-          _buffer->clear();
-        } else {
-          // relinquish ownership of _buffer, as it now belongs to
-          // resultDocVec
-          _buffer.reset();
-        }
-        AqlValueGuard guard{resultDocVec, true};
-
-        // Responsibility is handed over to output
-        output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
-        TRI_ASSERT(output.produced());
-        output.advanceRow();
-
-        // Reset the accumulator in case we read more data
-        resetAccumulator();
-
-        if (state == ExecutionState::DONE) {
-          return {ExecutionState::DONE, NoStats{}};
-        } else {
-          _state = FORWARD_IRRELEVANT_SHADOW_ROWS;
-        }
-        break;
-      }
-      case FORWARD_IRRELEVANT_SHADOW_ROWS: {
-        // Forward irrelevant shadow rows (and only those)
-        std::tie(state, shadowRow) = _fetcher.fetchShadowRow();
-
-        if (state == ExecutionState::WAITING) {
-          return {ExecutionState::WAITING, NoStats{}};
-        }
-
-        if (shadowRow.isInitialized()) {
-          // We got a shadow row, it must be irrelevant,
-          // because to get another relevant shadowRow we must
-          // first call fetchRow again
-          TRI_ASSERT(shadowRow.isRelevant() == false);
-          output.decreaseShadowRowDepth(shadowRow);
-          output.advanceRow();
-        } else {
-          // We did not get another shadowRow; either we
-          // are DONE or we are getting another relevant
-          // shadow row, but only after we called fetchRow
-          // again
+        if (!shadowRow.isInitialized()) {
+          TRI_ASSERT(_accumulator.numValues() == 0);
           if (state == ExecutionState::HASMORE) {
-            _state = ACCUMULATE;
+            // We did not get another shadowRow; either we
+            // are DONE or we are getting another relevant
+            // shadow row, but only after we called fetchRow
+            // again
+            _state = State::ACCUMULATE_DATA_ROWS;
+          } else {
+            TRI_ASSERT(state == ExecutionState::DONE);
+            return {ExecutionState::DONE, NoStats{}};
+          }
+        } else {
+          if (shadowRow.isRelevant()) {
+            AqlValue value;
+            AqlValueGuard guard = _accumulator.stealValue(value);
+
+            // Responsibility is handed over to output
+            output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
+            TRI_ASSERT(output.produced());
+            output.advanceRow();
+
+            if (state == ExecutionState::DONE) {
+              return {ExecutionState::DONE, NoStats{}};
+            }
+          } else {
+            TRI_ASSERT(_accumulator.numValues() == 0);
+            // We got a shadow row, it must be irrelevant,
+            // because to get another relevant shadowRow we must
+            // first call fetchRow again
+            output.decreaseShadowRowDepth(shadowRow);
+            output.advanceRow();
           }
         }
-
-        if (state == ExecutionState::DONE) {
-          return {ExecutionState::DONE, NoStats{}};
-        }
-        break;
-      }
+      } break;
 
       default: {
         TRI_ASSERT(false);
@@ -170,16 +151,61 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
       }
     }
   }
+
   // We should *only* fall through here if output.isFull() is true.
   TRI_ASSERT(output.isFull());
   return {ExecutionState::HASMORE, NoStats{}};
 }
 
-void SubqueryEndExecutor::resetAccumulator() {
-  _buffer.reset(new arangodb::velocypack::Buffer<uint8_t>);
-  _accumulator.reset(new VPackBuilder(*_buffer));
-  TRI_ASSERT(_accumulator != nullptr);
-  _accumulator->openArray();
+void SubqueryEndExecutor::Accumulator::reset() {
+  _buffer = std::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
+  _builder = std::make_unique<VPackBuilder>(*_buffer);
+  TRI_ASSERT(_builder != nullptr);
+  _builder->openArray();
+  _numValues = 0;
+}
+
+void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
+  TRI_ASSERT(_builder->isOpenArray());
+  value.toVelocyPack(_options, *_builder, false);
+  ++_numValues;
+}
+
+SubqueryEndExecutor::Accumulator::Accumulator(VPackOptions const* const options)
+    : _options(options) {
+  reset();
+}
+
+AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
+  // Note that an AqlValueGuard holds an AqlValue&, so we cannot create it from
+  // a local AqlValue and return the Guard!
+
+  TRI_ASSERT(_builder->isOpenArray());
+  _builder->close();
+  TRI_ASSERT(_builder->isClosed());
+
+  // Here we have all data *and* the relevant shadow row,
+  // so we can now submit
+  bool shouldDelete = true;
+  result = AqlValue{_buffer.get(), shouldDelete};
+  if (shouldDelete) {
+    // resultDocVec told us to delete our data
+    _buffer->clear();
+  } else {
+    // relinquish ownership of _buffer, as it now belongs to
+    // resultDocVec
+    std::ignore = _buffer.release();
+  }
+
+  // Call reset *after* AqlValueGuard is constructed, so when an exception is
+  // thrown, the ValueGuard can free the AqlValue.
+  TRI_DEFER(reset());
+
+  return AqlValueGuard{result, true};
+}
+
+size_t SubqueryEndExecutor::Accumulator::numValues() const noexcept {
+  return _numValues;
 }
 
 // We write at most the number of rows that we get from above (potentially much less if we accumulate a lot)

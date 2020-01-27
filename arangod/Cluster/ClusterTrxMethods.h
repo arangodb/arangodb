@@ -54,8 +54,9 @@ void addTransactionHeader(transaction::Methods const& trx,
                           ServerID const& server, MapT& headers);
 
 /// @brief add transaction ID header for setting up AQL snippets
-void addAQLTransactionHeader(transaction::Methods const& trx, ServerID const& server,
-                             std::unordered_map<std::string, std::string>& headers);
+template <typename MapT>
+void addAQLTransactionHeader(transaction::Methods const& trx,
+                             ServerID const& server, MapT& headers);
 
 /// @brief check whether this is a kind el cheapo transaction
 bool isElCheapo(transaction::Methods const& trx);

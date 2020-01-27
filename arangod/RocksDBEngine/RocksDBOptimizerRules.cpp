@@ -38,8 +38,8 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
-#include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/HashSet.h"
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -74,13 +74,13 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule) {
   // These are all the nodes where we start traversing (including all
   // subqueries)
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
-  arangodb::HashSet<Variable const*> vars;
+  ::arangodb::containers::HashSet<Variable const*> vars;
   std::unordered_set<std::string> attributes;
 
   for (auto& n : nodes) {
@@ -259,8 +259,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           opts.forceProjection = true;
           auto inode = new IndexNode(plan.get(), plan->nextId(),
                                      en->collection(), en->outVariable(),
-                                     std::vector<transaction::Methods::IndexHandle>{
-                                         transaction::Methods::IndexHandle{picked}},
+                                     std::vector<transaction::Methods::IndexHandle>{picked},
                                      std::move(condition), opts);
           en->CollectionAccessingNode::cloneInto(*inode);
           en->DocumentProducingNode::cloneInto(plan.get(), *inode);
@@ -340,8 +339,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         condition->normalize(plan.get());
         auto inode = new IndexNode(plan.get(), plan->nextId(), en->collection(),
                                    en->outVariable(),
-                                   std::vector<transaction::Methods::IndexHandle>{
-                                       transaction::Methods::IndexHandle{picked}},
+                                   std::vector<transaction::Methods::IndexHandle>{picked},
                                    std::move(condition), opts);
         plan->registerNode(inode);
         plan->replaceNode(n, inode);
@@ -359,8 +357,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt,
                                                std::unique_ptr<ExecutionPlan> plan,
                                                OptimizerRule const& rule) {
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::SORT, true);
 
   bool modified = false;

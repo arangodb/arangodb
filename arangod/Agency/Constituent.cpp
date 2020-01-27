@@ -31,6 +31,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
@@ -474,6 +475,9 @@ void Constituent::callElection() {
   auto const& nf = _agent->server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
   
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = timeout;
+  
   // Ask everyone for their vote
   // Collect ballots. I vote for myself.
   auto yea = std::make_shared<std::atomic<size_t>>(1);
@@ -486,7 +490,7 @@ void Constituent::callElection() {
       continue;
     }
     network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, path.str(),
-                         VPackBuffer<uint8_t>(), timeout).thenValue([=](network::Response r) {
+                         VPackBuffer<uint8_t>(), reqOpts).thenValue([=](network::Response r) {
       if (r.ok() && r.response->statusCode() == 200) {
         VPackSlice slc = r.slice();
 
@@ -782,7 +786,8 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
 }
 
 // Notify about heartbeat being sent out:
-void Constituent::notifyHeartbeatSent(std::string followerId) {
+void Constituent::notifyHeartbeatSent(std::string const& followerId) {
+  double now = TRI_microtime();
   MUTEX_LOCKER(guard, _heartBeatMutex);
-  _lastHeartbeatSent[followerId] = TRI_microtime();
+  _lastHeartbeatSent[followerId] = now;
 }

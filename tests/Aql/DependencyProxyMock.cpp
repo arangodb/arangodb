@@ -21,13 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DependencyProxyMock.h"
-#include "Basics/Common.h"
 
 #include "gtest/gtest.h"
 
-namespace arangodb {
-namespace tests {
-namespace aql {
+#include <velocypack/Options.h>
+
+namespace arangodb::tests::aql {
 
 using namespace arangodb::aql;
 
@@ -43,9 +42,8 @@ DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::aql::Resou
                                                             ::arangodb::aql::RegisterId nrRegisters)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                          std::shared_ptr<std::unordered_set<RegisterId>>(),
-                                         nrRegisters),
+                                         nrRegisters, &velocypack::Options::Defaults),
       _itemsToReturn(),
-      _fetchedBlocks(),
       _numFetchBlockCalls(0),
       _monitor(monitor),
       _itemBlockManager(&_monitor, SerializationFormat::SHADOWROWS) {}
@@ -63,14 +61,6 @@ DependencyProxyMock<passBlocksThrough>::fetchBlock(size_t) {
   std::pair<ExecutionState, SharedAqlItemBlockPtr> returnValue =
       std::move(_itemsToReturn.front());
   _itemsToReturn.pop();
-
-  if (returnValue.second != nullptr) {
-    auto blockPtr = reinterpret_cast<AqlItemBlockPtr>(returnValue.second.get());
-    bool didInsert;
-    std::tie(std::ignore, didInsert) = _fetchedBlocks.insert(blockPtr);
-    // DependencyProxyMock<passBlocksThrough>::fetchBlock() should not return the same block twice:
-    TRI_ASSERT(didInsert);
-  }
 
   return returnValue;
 }
@@ -146,12 +136,45 @@ size_t DependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
 }
 
 template <BlockPassthrough passBlocksThrough>
+std::pair<ExecutionState, size_t> DependencyProxyMock<passBlocksThrough>::skipSome(size_t atMost) {
+  ExecutionState state;
+  SharedAqlItemBlockPtr block;
+
+  std::tie(state, block) = _itemsToReturn.front();
+
+  if (block == nullptr) {
+    return {ExecutionState::DONE, 0};
+  }
+
+  size_t const firstShadowRow = [&]() {
+    size_t row;
+    for (row = 0; row < block->size(); ++row) {
+      if (block->isShadowRow(row)) break;
+    }
+    return row;
+  }();
+  atMost = (std::min)(firstShadowRow, atMost);
+
+  if (block->size() <= atMost) {
+    // Return the whole block
+    std::tie(state, block) = fetchBlock(atMost);
+    return {state, block->size()};
+  }
+  TRI_ASSERT(block != nullptr);
+  TRI_ASSERT(block->size() > atMost);
+  SharedAqlItemBlockPtr rest = block->slice(atMost, block->size());
+  _itemsToReturn.front().second = rest;
+
+  return {ExecutionState::HASMORE, atMost};
+}
+
+template <BlockPassthrough passBlocksThrough>
 MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     arangodb::aql::ResourceMonitor& monitor,
     ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                          std::shared_ptr<std::unordered_set<RegisterId>>(),
-                                         nrRegisters),
+                                         nrRegisters, &velocypack::Options::Defaults),
       _itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
@@ -164,6 +187,12 @@ std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr>
 MultiDependencyProxyMock<passBlocksThrough>::fetchBlockForDependency(size_t dependency,
                                                                      size_t atMost) {
   return getDependencyMock(dependency).fetchBlock(atMost);
+}
+
+template <BlockPassthrough passBlocksThrough>
+std::pair<arangodb::aql::ExecutionState, size_t> MultiDependencyProxyMock<passBlocksThrough>::skipSomeForDependency(
+    size_t dependency, size_t atMost) {
+  return getDependencyMock(dependency).skipSome(atMost);
 }
 
 template <BlockPassthrough passBlocksThrough>
@@ -185,9 +214,7 @@ size_t MultiDependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
   return res;
 }
 
-}  // namespace aql
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests::aql
 
 template class ::arangodb::tests::aql::DependencyProxyMock<::arangodb::aql::BlockPassthrough::Enable>;
 template class ::arangodb::tests::aql::DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable>;

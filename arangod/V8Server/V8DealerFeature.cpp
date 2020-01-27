@@ -127,19 +127,19 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption(
       "--javascript.gc-frequency",
       "JavaScript time-based garbage collection frequency (each x seconds)",
       new DoubleParameter(&_gcFrequency),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.gc-interval",
       "JavaScript request-based garbage collection interval (each x requests)",
       new UInt64Parameter(&_gcInterval),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.app-path", "directory for Foxx applications",
                      new StringParameter(&_appPath));
@@ -152,7 +152,7 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.module-directory",
                      "additional paths containing JavaScript modules",
                      new VectorParameter<StringParameter>(&_moduleDirectories),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.copy-installation",
@@ -173,23 +173,23 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.v8-contexts-max-invocations",
       "maximum number of invocations for each V8 context before it is disposed",
       new UInt64Parameter(&_maxContextInvocations),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.v8-contexts-max-age",
       "maximum age for each V8 context (in seconds) before it is disposed",
       new DoubleParameter(&_maxContextAge),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.enabled", "enable the V8 JavaScript engine",
                      new BooleanParameter(&_enableJS),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -513,18 +513,16 @@ void V8DealerFeature::copyInstallationFiles() {
         // don't copy files in .bin
         return true;
       }
-      if (filename.size() >= nodeModulesPath.size()) {
-        std::string normalized = filename;
-        FileUtils::normalizePath(normalized);
-        if ((!nodeModulesPath.empty() && 
-             normalized.size() >= nodeModulesPath.size() &&
-             normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
-            (!nodeModulesPathVersioned.empty() &&
-             normalized.size() >= nodeModulesPathVersioned.size() &&
-             normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
-          // filter it out!
-          return true;
-        }
+      std::string normalized = filename;
+      FileUtils::normalizePath(normalized);
+      if ((!nodeModulesPath.empty() && 
+           normalized.size() >= nodeModulesPath.size() &&
+           normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
+          (!nodeModulesPathVersioned.empty() &&
+           normalized.size() >= nodeModulesPathVersioned.size() &&
+           normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
+        // filter it out!
+        return true;
       }
       // let the file/directory pass through
       return false;
@@ -1393,7 +1391,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
     {
       v8::Context::Scope contextScope(localContext);
 
-      TRI_CreateV8Globals(isolate, id);
+      TRI_CreateV8Globals(server(), isolate, id);
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {
@@ -1575,7 +1573,7 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
 
   localContext->Exit();
 
-  LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file
+  LOG_TOPIC("53bbb", TRACE, arangodb::Logger::V8) << "loaded JavaScript file '" << file
                                          << "' for V8 context #" << context->id();
 }
 

@@ -30,28 +30,34 @@
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
-// in-flight request data
-struct RequestItem {
-  /// the request header
-  std::string requestHeader;
+/// url-decodes [src, src+len) into out
+void urlDecode(std::string& out, char const* src, size_t len);
 
-  /// Callback for when request is done (in error or succeeded)
-  RequestCallback callback;
-  
-  /// Reference to the request we're processing
-  std::unique_ptr<arangodb::fuerte::v1::Request> request;
+/// url-decodes str into out - convenience function
+inline void urlDecode(std::string& out, std::string const& str) {
+  return urlDecode(out, str.data(), str.size());
+}
 
-  inline void invokeOnError(Error e) {
-    callback(e, std::move(request), nullptr);
-  }
-};
+/// url-decodes str and returns it - convenience function
+inline std::string urlDecode(std::string const& str) {
+  std::string result;
+  urlDecode(result, str.c_str(), str.size());
+  return result;
+}
 
-std::string urlDecode(std::string const& str);
-std::string urlEncode(char const* src, size_t const len);
-std::string urlEncode(char const* src);
+/// url-encodes [src, src+len) into out
+void urlEncode(std::string& out, char const* src, size_t len);
 
+/// url-encodes str into out - convenience function
+inline void urlEncode(std::string& out, std::string const& str) {
+  return urlEncode(out, str.data(), str.size());
+}
+
+/// url-encodes str and returns it - convenience function
 inline std::string urlEncode(std::string const& str) {
-  return urlEncode(str.c_str(), str.size());
+  std::string result;
+  urlEncode(result, str.c_str(), str.size());
+  return result;
 }
 }}}}  // namespace arangodb::fuerte::v1::http
 #endif

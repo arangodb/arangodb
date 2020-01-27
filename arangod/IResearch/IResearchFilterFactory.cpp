@@ -25,7 +25,6 @@
 // 3rdParty\iresearch\core\shared.hpp
 #if defined(_MSC_VER)
 #include "date/date.h"
-#undef NOEXCEPT
 #endif
 
 #include "search/all_filter.hpp"
@@ -33,12 +32,16 @@
 #include "search/column_existence_filter.hpp"
 #include "search/granular_range_filter.hpp"
 #include "search/phrase_filter.hpp"
+#include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+#include "search/wildcard_filter.hpp"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
+#include "Aql/Quantifier.h"
 #include "Aql/Range.h"
 #include "Basics/StringUtils.h"
 #include "IResearch/AqlHelper.h"
@@ -48,6 +51,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchKludge.h"
+#include "IResearch/IResearchPDP.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/Methods.h"
@@ -57,39 +61,152 @@ using namespace std::literals::string_literals;
 
 namespace {
 
-struct FilterContext {
-  FilterContext( // constructor
-      arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer, // analyzer
-                irs::boost_t boost) noexcept
-      : analyzer(analyzer), boost(boost) {
-    TRI_ASSERT(analyzer._pool);
+namespace error {
+
+template<size_t Min, size_t Max>
+struct Range {
+  static constexpr size_t MIN = Min;
+  static constexpr size_t MAX = Max;
+};
+
+template<typename>
+struct isRange : std::false_type { };
+template<size_t Min, size_t Max>
+struct isRange<Range<Min, Max>> : std::true_type { };
+
+template<bool MaxBound, size_t Value>
+struct OpenRange {
+  static constexpr bool MAX_BOUND = MaxBound;
+  static constexpr size_t VALUE = Value;
+};
+
+template<typename>
+struct isOpenRange : std::false_type { };
+template<bool MaxBound, size_t Value>
+struct isOpenRange<OpenRange<MaxBound, Value>> : std::true_type { };
+
+template<size_t Value>
+struct ExactValue {
+  static constexpr size_t VALUE = Value;
+};
+
+template<typename>
+struct isExactValue : std::false_type { };
+template<size_t Value>
+struct isExactValue<ExactValue<Value>> : std::true_type { };
+
+template<typename RangeType>
+arangodb::Result invalidArgsCount(char const* funcName) {
+  if constexpr (isRange<RangeType>::value) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: Invalid number of arguments passed (expected >= ")
+               .append(std::to_string(RangeType::MIN)).append(" and <= ").append(std::to_string(RangeType::MAX)).append(")")
+    };
+  } else if constexpr (isOpenRange<RangeType>::value) {
+    if constexpr (RangeType::MAX_BOUND) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "'"s.append(funcName).append("' AQL function: Invalid number of arguments passed (expected <= ")
+                             .append(std::to_string(RangeType::VALUE)).append(")")
+      };
+    }
+
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: Invalid number of arguments passed (expected >= ")
+                           .append(std::to_string(RangeType::VALUE)).append(")")
+    };
+  } else if constexpr (isExactValue<RangeType>::value) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: Invalid number of arguments passed (expected ")
+               .append(std::to_string(RangeType::VALUE)).append(")")
+    };
   }
 
-  FilterContext(FilterContext const&) = default;
-  FilterContext& operator=(FilterContext const&) = delete;
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "'"s.append(funcName).append("' AQL function: Invalid number of arguments passed")
+  };
+}
 
-  // need shared_ptr since pool could be deleted from the feature
-  arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer;
-  irs::boost_t boost;
-};  // FilterContext
+arangodb::Result negativeNumber(char const* funcName, size_t i) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "'"s.append(funcName).append("' AQL function: argument at position '")
+        .append(std::to_string(i)).append("' must be a positive number")
+  };
+}
 
-typedef std::function<
-  arangodb::Result(irs::boolean_filter*,
-                   QueryContext const&,
-                   FilterContext const&,
-                   arangodb::aql::AstNode const&)
-> ConvertionHandler;
+arangodb::Result nondeterministicArgs(char const* funcName) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "Unable to handle non-deterministic arguments for '"s
+        .append(funcName).append("' function")
+  };
+}
 
-// forward declaration
-arangodb::Result filter(irs::boolean_filter* filter,
-                        QueryContext const& queryctx,
-                        FilterContext const& filterCtx,
-                        arangodb::aql::AstNode const& node);
+arangodb::Result nondeterministicArg(char const* funcName, size_t i) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "'"s.append(funcName).append("' AQL function: argument at position '")
+        .append(std::to_string(i)).append("' is intended to be dterministic")
+  };
+}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logs message about malformed AstNode with the specified type
-////////////////////////////////////////////////////////////////////////////////
-arangodb::Result logMalformedNode(arangodb::aql::AstNodeType type) {
+arangodb::Result invalidAttribute(char const* funcName, size_t i) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+     "'"s.append(funcName).append("' AQL function: Unable to parse argument at position '")
+         .append(std::to_string(i)).append("' as an attribute identifier")
+  };
+}
+
+arangodb::Result invalidArgument(char const* funcName, size_t i) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "'"s.append(funcName).append("' AQL function: argument at position '")
+        .append(std::to_string(i)).append("' is invalid")
+  };
+}
+
+arangodb::Result failedToEvaluate(const char* funcName, size_t i) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "'"s.append(funcName).append("' AQL function: Failed to evaluate argument at position '")
+        .append(std::to_string(i)).append(("'"))
+  };
+}
+
+arangodb::Result typeMismatch(const char* funcName, size_t i,
+                              ScopedValueType expectedType,
+                              ScopedValueType actualType) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "'"s.append(funcName).append("' AQL function: argument at position '").append(std::to_string(i))
+             .append("' has invalid type '").append(ScopedAqlValue::typeString(actualType).c_str())
+             .append("' ('").append(ScopedAqlValue::typeString(expectedType).c_str()).append("' expected)")
+  };
+}
+
+arangodb::Result failedToParse(char const* funcName, size_t i, ScopedValueType expectedType) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "'"s.append(funcName).append("' AQL function: Unable to parse argument at position '")
+        .append(std::to_string(i)).append("' as ").append(ScopedAqlValue::typeString(expectedType).c_str())
+  };
+}
+
+arangodb::Result failedToGenerateName(char const* funcName, size_t i) {
+  return {
+    TRI_ERROR_BAD_PARAMETER,
+    "'"s.append(funcName).append("' AQL function: Failed to generate field name from the argument at position '")
+        .append(std::to_string(i)).append("'")
+  };
+}
+
+arangodb::Result malformedNode(arangodb::aql::AstNodeType type) {
   auto const* typeName = arangodb::iresearch::getNodeTypeName(type);
 
   std::string message("Can't process malformed AstNode of type '");
@@ -100,9 +217,171 @@ arangodb::Result logMalformedNode(arangodb::aql::AstNodeType type) {
   }
   message += "'";
 
-  LOG_TOPIC("5070f", WARN, arangodb::iresearch::TOPIC) << message;
   return {TRI_ERROR_BAD_PARAMETER, message};
 }
+
+}
+
+template<typename T, bool CheckDeterminism = false>
+arangodb::Result evaluateArg(
+    T& out, ScopedAqlValue& value,
+    char const* funcName,
+    arangodb::aql::AstNode const& args,
+    size_t i,
+    irs::boolean_filter const* filter,
+    QueryContext const& ctx) {
+  static_assert(
+    std::is_same<T, irs::string_ref>::value ||
+    std::is_same<T, int64_t>::value ||
+    std::is_same<T, double_t>::value ||
+    std::is_same<T, bool>::value);
+
+  auto const* arg = args.getMemberUnchecked(i);
+
+  if (!arg) {
+    return error::invalidArgument(funcName, 2);
+  }
+
+  if constexpr (CheckDeterminism) {
+    if (!arg->isDeterministic()) {
+      return error::nondeterministicArg(funcName, i);
+    }
+  }
+
+  value.reset(*arg);
+
+  if (filter || value.isConstant()) {
+    if (!value.execute(ctx)) {
+      return error::failedToEvaluate(funcName, i + 1);
+    }
+
+    ScopedValueType expectedType = ScopedValueType::SCOPED_VALUE_TYPE_INVALID;
+    if constexpr (std::is_same<T, irs::string_ref>::value) {
+      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_STRING;
+    } else if constexpr (std::is_same<T, int64_t>::value || std::is_same<T, double_t>::value) {
+      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE;
+    } else if constexpr (std::is_same<T, bool>::value) {
+      expectedType = arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL;
+    }
+
+    if (expectedType != value.type()) {
+      return error::typeMismatch(funcName, i + 1, expectedType, value.type());
+    }
+
+    if constexpr (std::is_same<T, irs::string_ref>::value) {
+      if (!value.getString(out)) {
+        return error::failedToParse(funcName, i + 1, expectedType);
+      }
+    } else if constexpr (std::is_same<T, int64_t>::value) {
+      out = value.getInt64();
+    } else if constexpr (std::is_same<T, double>::value) {
+      if (!value.getDouble(out)) {
+        return error::failedToParse(funcName, i + 1, expectedType);
+      }
+    } else if constexpr (std::is_same<T, bool>::value) {
+      out = value.getBoolean();
+    }
+  }
+
+  return {};
+}
+
+arangodb::Result extractAnalyzerFromArg(
+    arangodb::iresearch::FieldMeta::Analyzer& out,
+    char const* funcName,
+    irs::boolean_filter const* filter,
+    arangodb::aql::AstNode const& args,
+    size_t i,
+    QueryContext const& ctx) {
+  auto const* analyzerArg = args.getMemberUnchecked(i);
+
+  if (!analyzerArg) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function: ")
+          .append(std::to_string(i + 1)).append(" argument is invalid analyzer")
+    };
+  }
+
+  TRI_ASSERT(ctx.trx);
+  auto& server = ctx.trx->vocbase().server();
+  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "'"s.append(IResearchAnalyzerFeature::name())
+          .append("' feature is not registered, unable to evaluate '")
+          .append(funcName).append("' function")
+    };
+  }
+  auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
+
+  ScopedAqlValue analyzerValue(*analyzerArg);
+  irs::string_ref analyzerId;
+
+  auto rv = evaluateArg(analyzerId, analyzerValue, funcName, args, i, filter, ctx);
+
+  if (rv.fail()) {
+    return rv;
+  }
+
+  if (!filter && !analyzerValue.isConstant()) {
+    return {};
+  }
+
+  auto& analyzer = out._pool;
+  auto& shortName = out._shortName;
+
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
+
+  if (sysVocbase) {
+    analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+
+    shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+        analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
+  }
+
+  if (!analyzer) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append("' AQL function: Unable to load requested analyzer '")
+          .append(analyzerId.c_str(), analyzerId.size()).append("'")
+    };
+  }
+
+  return {};
+}
+
+struct FilterContext {
+  FilterContext( // constructor
+      arangodb::iresearch::FieldMeta::Analyzer const& analyzer, // analyzer
+                irs::boost_t boost) noexcept
+      : analyzer(analyzer), boost(boost) {
+    TRI_ASSERT(analyzer._pool);
+  }
+
+  FilterContext(FilterContext const&) = default;
+  FilterContext& operator=(FilterContext const&) = delete;
+
+  // need shared_ptr since pool could be deleted from the feature
+  arangodb::iresearch::FieldMeta::Analyzer const& analyzer;
+  irs::boost_t boost;
+};  // FilterContext
+
+typedef std::function<
+  arangodb::Result(char const* funcName,
+                   irs::boolean_filter*,
+                   QueryContext const&,
+                   FilterContext const&,
+                   arangodb::aql::AstNode const&)
+> ConvertionHandler;
+
+// forward declaration
+arangodb::Result filter(irs::boolean_filter* filter,
+                        QueryContext const& queryctx,
+                        FilterContext const& filterCtx,
+                        arangodb::aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends value tokens to a phrase filter
@@ -138,100 +417,9 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
   exprFilter.boost(filterCtx.boost);
 }
 
-arangodb::iresearch::IResearchLinkMeta::Analyzer extractAnalyzerFromArg(
-    irs::boolean_filter const* filter, arangodb::aql::AstNode const* analyzerArg,
-    QueryContext const& ctx, size_t argIdx, irs::string_ref const& functionName) {
-  static const arangodb::iresearch::IResearchLinkMeta::Analyzer invalid( // invalid analyzer
-    nullptr, ""
-  );
-
-  if (!analyzerArg) {
-    auto message =  "'"s + std::string(functionName.c_str(), functionName.size()) + "' AQL function: " + std::to_string(argIdx) + " argument is invalid analyzer";
-    LOG_TOPIC("a33c4", WARN, arangodb::iresearch::TOPIC) << message;
-    THROW_ARANGO_EXCEPTION((arangodb::Result{TRI_ERROR_BAD_PARAMETER, message}));
-    return invalid;
-  }
-
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (!server.hasFeature<IResearchAnalyzerFeature>()) {
-    LOG_TOPIC("03314", WARN, arangodb::iresearch::TOPIC)
-        << "'" << IResearchAnalyzerFeature::name()
-        << "' feature is not registered, unable to evaluate '" << functionName
-        << "' function";
-
-    return invalid;
-  }
-  auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-
-  ScopedAqlValue analyzerValue(*analyzerArg);
-
-  if (!filter && !analyzerValue.isConstant()) {
-    return arangodb::iresearch::IResearchLinkMeta::Analyzer();
-  }
-
-  if (!analyzerValue.execute(ctx)) {
-    LOG_TOPIC("9f918", WARN, arangodb::iresearch::TOPIC)
-      << "'" << functionName << "' AQL function: Failed to evaluate " << argIdx << " argument";
-
-    return invalid;
-  }
-
-  if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != analyzerValue.type()) {
-    LOG_TOPIC("3ac4c", WARN, arangodb::iresearch::TOPIC)
-      << "'" << functionName << "' AQL function: " << argIdx << " argument has invalid type '" << arangodb::iresearch::ScopedAqlValue::typeString(analyzerValue.type()) << "' (string expected)";
-
-    return invalid;
-  }
-
-  irs::string_ref analyzerId;
-
-  if (!analyzerValue.getString(analyzerId)) {
-    LOG_TOPIC("73ca9", WARN, arangodb::iresearch::TOPIC)
-      << "'" << functionName << "' AQL function: Unable to parse " << argIdx << " argument as a string";
-
-    return invalid;
-  }
-
-  arangodb::iresearch::IResearchLinkMeta::Analyzer result(nullptr, analyzerId);
-  auto& analyzer = result._pool;
-  auto& shortName = result._shortName;
-
-  if (ctx.trx) {
-    auto& server = arangodb::application_features::ApplicationServer::server();
-    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
-                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-                          : nullptr;
-
-    if (sysVocbase) {
-      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
-
-      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-        analyzerId, ctx.trx->vocbase(), *sysVocbase, false // args
-      );
-    }
-  } else {
-    analyzer = analyzerFeature.get(analyzerId);  // verbatim
-  }
-
-  if (!analyzer) {
-    LOG_TOPIC("402b1", WARN, arangodb::iresearch::TOPIC)
-      << "'" << functionName << "' AQL function: Unable to load requested analyzer '" << analyzerId << "'";
-  }
-
-  return result;
-}
-
-arangodb::Result byTerm(irs::by_term* filter, arangodb::aql::AstNode const& attribute,
-            ScopedAqlValue const& value, QueryContext const& ctx,
-            FilterContext const& filterCtx) {
-  std::string name;
-
-  if (filter && !arangodb::iresearch::nameFromAttributeAccess(name, attribute, ctx)) {
-    auto message = "Failed to generate field name from node " + arangodb::aql::AstNode::toString(&attribute);
-    LOG_TOPIC("d4b6e", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
-  }
-
+arangodb::Result byTerm(irs::by_term* filter, std::string name,
+                        ScopedAqlValue const& value, QueryContext const& ctx,
+                        FilterContext const& filterCtx) {
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL:
       if (filter) {
@@ -294,6 +482,20 @@ arangodb::Result byTerm(irs::by_term* filter, arangodb::aql::AstNode const& attr
   }
 }
 
+arangodb::Result byTerm(irs::by_term* filter, arangodb::aql::AstNode const& attribute,
+            ScopedAqlValue const& value, QueryContext const& ctx,
+            FilterContext const& filterCtx) {
+  std::string name;
+  if (filter && !arangodb::iresearch::nameFromAttributeAccess(name, attribute, ctx)) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Failed to generate field name from node "s.append(arangodb::aql::AstNode::toString(&attribute))
+    };
+  }
+
+  return byTerm(filter, std::move(name), value, ctx, filterCtx);
+}
+
 arangodb::Result byTerm(irs::by_term* filter, arangodb::iresearch::NormalizedCmpNode const& node,
             QueryContext const& ctx, FilterContext const& filterCtx) {
   TRI_ASSERT(node.attribute && node.attribute->isDeterministic());
@@ -324,9 +526,10 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
   std::string name;
 
   if (filter && !nameFromAttributeAccess(name, attribute, ctx)) {
-    auto message = "Failed to generate field name from node " + arangodb::aql::AstNode::toString(&attribute);
-    LOG_TOPIC("cb2d8", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Failed to generate field name from node "s.append(arangodb::aql::AstNode::toString(&attribute))
+    };
   }
 
   TRI_ASSERT(filter);
@@ -368,9 +571,11 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
     }
 
     if (!min.execute(ctx)) {
-      auto message = "Failed to evaluate lower boundary from node '" + arangodb::aql::AstNode::toString(&minValueNode) + "'";
-      LOG_TOPIC("1e23d", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to evaluate lower boundary from node '"s
+          .append(arangodb::aql::AstNode::toString(&minValueNode)).append("'")
+      };
     }
   }
 
@@ -383,25 +588,31 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
     }
 
     if (!max.execute(ctx)) {
-      auto message = "Failed to evaluate upper boundary from node '" + arangodb::aql::AstNode::toString(&maxValueNode) + "'";
-      LOG_TOPIC("5a0a4", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "Failed to evaluate upper boundary from node '"s
+          .append(arangodb::aql::AstNode::toString(&maxValueNode)).append("'")
+      };
     }
   }
 
   if (min.type() != max.type()) {
-    auto message = "Failed to build range query, lower boundary '" + arangodb::aql::AstNode::toString(&minValueNode) +
-                   "' mismatches upper boundary '" + arangodb::aql::AstNode::toString(&maxValueNode) + "'";
-    LOG_TOPIC("03078", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Failed to build range query, lower boundary '"s
+          .append(arangodb::aql::AstNode::toString(&minValueNode))
+          .append("' mismatches upper boundary '")
+          .append(arangodb::aql::AstNode::toString(&maxValueNode)).append("'")
+    };
   }
 
   std::string name;
 
   if (filter && !nameFromAttributeAccess(name, attributeNode, ctx)) {
-    auto message = "Failed to generate field name from node " + arangodb::aql::AstNode::toString(&attributeNode);
-    LOG_TOPIC("00282", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Failed to generate field name from node "s.append(arangodb::aql::AstNode::toString(&attributeNode))
+    };
   }
 
   switch (min.type()) {
@@ -496,34 +707,8 @@ arangodb::Result byRange(irs::boolean_filter* filter, arangodb::aql::AstNode con
 }
 
 template <irs::Bound Bound>
-arangodb::Result byRange(irs::boolean_filter* filter,
-             arangodb::iresearch::NormalizedCmpNode const& node, bool const incl,
-             QueryContext const& ctx, FilterContext const& filterCtx) {
-  TRI_ASSERT(node.attribute && node.attribute->isDeterministic());
-  TRI_ASSERT(node.value && node.value->isDeterministic());
-
-  ScopedAqlValue value(*node.value);
-
-  if (!value.isConstant()) {
-    if (!filter) {
-      // can't evaluate non constant filter before the execution
-      return {};
-    }
-
-    if (!value.execute(ctx)) {
-      // could not execute expression
-      return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
-    }
-  }
-
-  std::string name;
-
-  if (filter && !nameFromAttributeAccess(name, *node.attribute, ctx)) {
-    auto message = "Failed to generate field name from node " + arangodb::aql::AstNode::toString(node.attribute);
-    LOG_TOPIC("1a218", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
-  }
-
+arangodb::Result byRange(irs::boolean_filter* filter, std::string name, const ScopedAqlValue& value,
+                              bool const incl, QueryContext const& ctx, FilterContext const& filterCtx) {
   switch (value.type()) {
     case arangodb::iresearch::SCOPED_VALUE_TYPE_NULL: {
       if (filter) {
@@ -599,6 +784,35 @@ arangodb::Result byRange(irs::boolean_filter* filter,
       // wrong value type
       return {TRI_ERROR_BAD_PARAMETER, "invalid value type"};
   }
+}
+
+template <irs::Bound Bound>
+arangodb::Result byRange(irs::boolean_filter* filter,
+             arangodb::iresearch::NormalizedCmpNode const& node, bool const incl,
+             QueryContext const& ctx, FilterContext const& filterCtx) {
+  TRI_ASSERT(node.attribute && node.attribute->isDeterministic());
+  TRI_ASSERT(node.value && node.value->isDeterministic());
+
+  std::string name;
+  if (filter && !nameFromAttributeAccess(name, *node.attribute, ctx)) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Failed to generate field name from node "s.append(arangodb::aql::AstNode::toString(node.attribute))
+    };
+  }
+  auto value = ScopedAqlValue(*node.value);
+  if (!value.isConstant()) {
+    if (!filter) {
+      // can't evaluate non constant filter before the execution
+      return {};
+    }
+
+    if (!value.execute(ctx)) {
+      // could not execute expression
+      return { TRI_ERROR_BAD_PARAMETER, "can not execute expression" };
+    }
+  }
+  return byRange<Bound>(filter, name, value, incl, ctx, filterCtx);
 }
 
 arangodb::Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -727,8 +941,8 @@ arangodb::Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ct
   TRI_ASSERT(arangodb::aql::NODE_TYPE_RANGE == node.type);
 
   if (node.numMembers() != 2) {
-    logMalformedNode(node.type);
-    return {TRI_ERROR_BAD_PARAMETER, "wrong number of arguments in range expression"};  // wrong number of members
+    auto rv = error::malformedNode(node.type);
+    return rv.reset(TRI_ERROR_BAD_PARAMETER, "wrong number of arguments in range expression: " + rv.errorMessage());
   }
 
   // ranges are always true
@@ -737,6 +951,397 @@ arangodb::Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ct
   }
 
   return {};
+}
+
+std::pair<arangodb::Result, arangodb::aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
+    irs::boolean_filter* &filter, arangodb::aql::AstNodeType arrayComparison,
+    const arangodb::aql::AstNode* qualifierNode, size_t arraySize) {
+  TRI_ASSERT(qualifierNode);
+  auto qualifierType = qualifierNode->getIntValue(true);
+  arangodb::aql::AstNodeType expansionNodeType = arangodb::aql::NODE_TYPE_ROOT;
+  if (0 == arraySize) {
+    expansionNodeType = arangodb::aql::NODE_TYPE_ROOT; // no subfilters expansion needed
+    switch (qualifierType) {
+      case arangodb::aql::Quantifier::ANY:
+        if (filter) {
+          filter->add<irs::empty>();
+        }
+        break;
+      case arangodb::aql::Quantifier::ALL:
+      case arangodb::aql::Quantifier::NONE:
+        if (filter) {
+          filter->add<irs::all>();
+        }
+        break;
+      default:
+        TRI_ASSERT(false); // new qualifier added ?
+        return std::make_pair(
+            arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown qualifier in Array comparison operator"),
+            arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+    }
+  } else {
+    // NONE is inverted ALL so do conversion
+    if (arangodb::aql::Quantifier::NONE == qualifierType) {
+      qualifierType = arangodb::aql::Quantifier::ALL;
+      switch (arrayComparison) {
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT;
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+          arrayComparison = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE;
+          break;
+        default:
+          TRI_ASSERT(false); // new array comparison operator?
+          return std::make_pair(
+              arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array NONE comparison operator"),
+              arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+      }
+    }
+    switch (qualifierType) {
+      case arangodb::aql::Quantifier::ALL:
+        // calculate node type for expanding operation
+        // As soon as array is left argument but for filter we place document to the left
+        // we reverse comparison operation
+        switch (arrayComparison) {
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::Not>().filter<irs::Or>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::And>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE;
+            break;
+          default:
+            TRI_ASSERT(false); // new array comparison operator?
+            return std::make_pair(
+                arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ALL/NONE comparison operator"),
+                arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+        }
+        break;
+      case arangodb::aql::Quantifier::ANY: {
+        switch (arrayComparison) {
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::Not>().filter<irs::And>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT;
+            break;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
+            if (filter) {
+              filter = static_cast<irs::boolean_filter*>(&filter->add<irs::Or>());
+            }
+            expansionNodeType = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE;
+            break;
+          default:
+            TRI_ASSERT(false); // new array comparison operator?
+            return std::make_pair(
+                arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown Array ANY comparison operator"),
+                arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+        }
+        break;
+      }
+      default:
+        TRI_ASSERT(false); // new qualifier added ?
+        return std::make_pair(
+            arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED, "Unknown qualifier in Array comparison operator"),
+            arangodb::aql::AstNodeType::NODE_TYPE_ROOT);
+    }
+  }
+  return std::make_pair(TRI_ERROR_NO_ERROR, expansionNodeType);
+}
+
+class ByTermSubFilterFactory {
+ public:
+  static arangodb::Result byNodeSubFilter(irs::boolean_filter* filter,
+                                          arangodb::iresearch::NormalizedCmpNode const& node,
+                                          QueryContext const& ctx, FilterContext const& filterCtx) {
+    TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.cmp);
+    iresearch::by_term* termFilter =  nullptr;
+    if (filter) {
+      termFilter = &filter->add<irs::by_term>();
+    }
+    return byTerm(termFilter, node, ctx, filterCtx);
+  }
+
+  static arangodb::Result byValueSubFilter(irs::boolean_filter* filter, std::string fieldName, const ScopedAqlValue& value,
+                                           arangodb::aql::AstNodeType arrayExpansionNodeType,
+                                           QueryContext const& ctx, FilterContext const& filterCtx) {
+    TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == arrayExpansionNodeType);
+    iresearch::by_term* termFilter =  nullptr;
+    if (filter) {
+      termFilter = &filter->add<irs::by_term>();
+    }
+    return byTerm(termFilter, std::move(fieldName), value, ctx, filterCtx);
+  }
+};
+
+class ByRangeSubFilterFactory {
+ public:
+  static arangodb::Result byNodeSubFilter(irs::boolean_filter* filter,
+                                          arangodb::iresearch::NormalizedCmpNode const& node,
+                                          QueryContext const& ctx, FilterContext const& filterCtx) {
+    bool incl, min;
+    std::tie(min, incl) = calcMinInclude(node.cmp);
+    return min ? byRange<irs::Bound::MIN>(filter, node, incl, ctx, filterCtx)
+               : byRange<irs::Bound::MAX>(filter, node, incl, ctx, filterCtx);
+  }
+
+  static arangodb::Result byValueSubFilter(irs::boolean_filter* filter, std::string fieldName, const ScopedAqlValue& value,
+                                           arangodb::aql::AstNodeType arrayExpansionNodeType,
+                                           QueryContext const& ctx, FilterContext const& filterCtx) {
+    bool incl, min;
+    std::tie(min, incl) = calcMinInclude(arrayExpansionNodeType);
+    return min ? byRange<irs::Bound::MIN>(filter, fieldName, value, incl, ctx, filterCtx)
+               : byRange<irs::Bound::MAX>(filter, fieldName, value, incl, ctx, filterCtx);
+  }
+
+ private:
+  static std::pair<bool, bool> calcMinInclude(arangodb::aql::AstNodeType arrayExpansionNodeType) {
+    TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT == arrayExpansionNodeType ||
+               arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == arrayExpansionNodeType ||
+               arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == arrayExpansionNodeType ||
+               arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == arrayExpansionNodeType);
+    return std::pair<bool, bool>(
+        // min
+        arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT == arrayExpansionNodeType ||
+        arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == arrayExpansionNodeType,
+        // incl
+        arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == arrayExpansionNodeType ||
+        arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == arrayExpansionNodeType);
+  }
+};
+
+
+template<typename SubFilterFactory>
+arangodb::Result fromArrayComparison(irs::boolean_filter*& filter, QueryContext const& ctx,
+                                     FilterContext const& filterCtx, arangodb::aql::AstNode const& node) {
+  TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT == node.type ||
+             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE == node.type ||
+             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT == node.type ||
+             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE == node.type ||
+             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ == node.type ||
+             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE == node.type ||
+             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN == node.type ||
+             arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN == node.type);
+  if (node.numMembers() != 3) {
+    auto rv = error::malformedNode(node.type);
+    return rv.reset(rv.errorNumber(), "error in Array comparison operator: " + rv.errorMessage());
+  }
+
+  auto const* valueNode = node.getMemberUnchecked(0);
+  TRI_ASSERT(valueNode);
+
+  auto const* attributeNode = node.getMemberUnchecked(1);
+  TRI_ASSERT(attributeNode);
+
+  auto const* qualifierNode = node.getMemberUnchecked(2);
+  TRI_ASSERT(qualifierNode);
+
+  if (qualifierNode->type != arangodb::aql::NODE_TYPE_QUANTIFIER) {
+    return { TRI_ERROR_BAD_PARAMETER, "wrong qualifier node type for Array comparison operator" };
+  }
+    if (arangodb::aql::NODE_TYPE_ARRAY == valueNode->type) {
+    if (!attributeNode->isDeterministic()) {
+      // not supported by IResearch, but could be handled by ArangoDB
+      return fromExpression(filter, ctx, filterCtx, node);
+    }
+    size_t const n = valueNode->numMembers();
+    if (!arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref)) {
+      // no attribute access specified in attribute node, try to
+      // find it in value node
+      bool attributeAccessFound = false;
+      for (size_t i = 0; i < n; ++i) {
+        attributeAccessFound |=
+            (nullptr != arangodb::iresearch::checkAttributeAccess(valueNode->getMemberUnchecked(i),
+                                                                *ctx.ref));
+      }
+      if (!attributeAccessFound) {
+        return fromExpression(filter, ctx, filterCtx, node);
+      }
+    }
+    arangodb::Result buildRes;
+    arangodb::aql::AstNodeType arrayExpansionNodeType;
+    std::tie(buildRes, arrayExpansionNodeType) = buildBinaryArrayComparisonPreFilter(filter, node.type, qualifierNode, n);
+    if (!buildRes.ok()) {
+      return buildRes;
+    }
+    if (filter) {
+      filter->boost(filterCtx.boost);
+    }
+    if (arangodb::aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
+      // nothing to do more
+      return {};
+    }
+    FilterContext const subFilterCtx{
+      filterCtx.analyzer,
+      irs::no_boost() };  // reset boost
+    // Expand array interval as several binaryInterval nodes ('array' feature is ensured by pre-filter)
+    arangodb::iresearch::NormalizedCmpNode normalized;
+    arangodb::aql::AstNode toNormalize(arrayExpansionNodeType);
+    toNormalize.reserve(2);
+    for (size_t i = 0; i < n; ++i) {
+      auto const* member = valueNode->getMemberUnchecked(i);
+      TRI_ASSERT(member);
+
+      // edit in place for now; TODO change so we can replace instead
+      TEMPORARILY_UNLOCK_NODE(&toNormalize);
+      toNormalize.clearMembers();
+      toNormalize.addMember(attributeNode);
+      toNormalize.addMember(member);
+      toNormalize.flags = member->flags;
+      if (!arangodb::iresearch::normalizeCmpNode(toNormalize, *ctx.ref, normalized)) {
+        if (!filter) {
+          // can't evaluate non constant filter before the execution
+          return {};
+        }
+        // use std::shared_ptr since AstNode is not copyable/moveable
+        auto exprNode = std::make_shared<arangodb::aql::AstNode>(arrayExpansionNodeType);
+        exprNode->reserve(2);
+        exprNode->addMember(attributeNode);
+        exprNode->addMember(member);
+
+        // not supported by IResearch, but could be handled by ArangoDB
+        auto rv = fromExpression(filter, ctx, subFilterCtx, std::move(exprNode));
+        if (rv.fail()) {
+          return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+        }
+      } else {
+        auto rv = SubFilterFactory::byNodeSubFilter(filter, normalized, ctx, subFilterCtx);
+        if (rv.fail()) {
+          return rv.reset(rv.errorNumber(), "while getting array: " + rv.errorMessage());
+        }
+      }
+    }
+    return {};
+  }
+
+  if (!node.isDeterministic() ||
+      !arangodb::iresearch::checkAttributeAccess(attributeNode, *ctx.ref) ||
+      arangodb::iresearch::findReference(*valueNode, *ctx.ref)) {
+    return fromExpression(filter, ctx, filterCtx, node);
+  }
+
+  if (!filter) {
+    // can't evaluate non constant filter before the execution
+    return {};
+  }
+
+  ScopedAqlValue value(*valueNode);
+  if (!value.execute(ctx)) {
+    // can't execute expression
+    return {TRI_ERROR_BAD_PARAMETER, "Unable to extract value from Array comparison operator"};
+  }
+
+  switch (value.type()) {
+    case arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY: {
+      size_t const n = value.size();
+      arangodb::Result buildRes;
+      arangodb::aql::AstNodeType arrayExpansionNodeType;
+      std::tie(buildRes, arrayExpansionNodeType) = buildBinaryArrayComparisonPreFilter(filter, node.type, qualifierNode, n);
+      if (!buildRes.ok()) {
+        return buildRes;
+      }
+      filter->boost(filterCtx.boost);
+      if (arangodb::aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
+        // nothing to do more
+        return {};
+      }
+      FilterContext const subFilterCtx{
+          filterCtx.analyzer,
+          irs::no_boost()  // reset boost
+      };
+
+      std::string fieldName;
+      if (filter && !nameFromAttributeAccess(fieldName, *attributeNode, ctx)) {
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "Failed to generate field name from node " + arangodb::aql::AstNode::toString(attributeNode)
+        };
+      }
+      for (size_t i = 0; i < n; ++i) {
+        auto rv = SubFilterFactory::byValueSubFilter(filter, fieldName, value.at(i), arrayExpansionNodeType, ctx, subFilterCtx);
+        if (rv.fail()) {
+          return rv.reset(rv.errorNumber(), "failed to create filter because: " + rv.errorMessage());
+        }
+      }
+      return {};
+    }
+    default:
+      break;
+  }
+
+  // wrong value node type
+  return {TRI_ERROR_BAD_PARAMETER, "wrong value node type for Array comparison operator"};
 }
 
 arangodb::Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -855,7 +1460,7 @@ arangodb::Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
              arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type);
 
   if (node.numMembers() != 2) {
-    auto rv = logMalformedNode(node.type);
+    auto rv = error::malformedNode(node.type);
     return rv.reset(rv.errorNumber(), "error in from In" + rv.errorMessage());
   }
 
@@ -884,10 +1489,8 @@ arangodb::Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
     ScopedAqlValue value(*valueNode);
 
     if (!value.execute(ctx)) {
-      auto message = "Unable to extract value from 'IN' operator";
       // con't execute expression
-      LOG_TOPIC("f43d1", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
+      return {TRI_ERROR_BAD_PARAMETER, "Unable to extract value from 'IN' operator"};
     }
 
     // range
@@ -908,9 +1511,7 @@ arangodb::Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (!value.execute(ctx)) {
     // con't execute expression
-    auto message = "Unable to extract value from 'IN' operator";
-    LOG_TOPIC("dafaa", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return {TRI_ERROR_BAD_PARAMETER, "Unable to extract value from 'IN' operator"};
   }
 
   switch (value.type()) {
@@ -977,7 +1578,7 @@ arangodb::Result fromNegation(irs::boolean_filter* filter, QueryContext const& c
   TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_UNARY_NOT == node.type);
 
   if (node.numMembers() != 1) {
-    auto rv = logMalformedNode(node.type);
+    auto rv = error::malformedNode(node.type);
     return rv.reset(rv.errorNumber(), "Bad node in negation" + rv.errorMessage());
   }
 
@@ -1094,200 +1695,157 @@ arangodb::Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
   return {};
 }
 
-// Analyze(<filter-expression>, analyzer)
-arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext const& ctx,
-                      FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
+// ANALYZER(<filter-expression>, analyzer)
+arangodb::Result fromFuncAnalyzer(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
   auto const argc = args.numMembers();
 
   if (argc != 2) {
-    auto message = "'ANALYZER' AQL function: Invalid number of arguments passed (must be 2)";
-    LOG_TOPIC("9bc36", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgsCount<error::ExactValue<2>>(funcName);
   }
 
   // 1st argument defines filter expression
   auto expressionArg = args.getMemberUnchecked(0);
 
   if (!expressionArg) {
-    auto message = "'ANALYZER' AQL function: 1st argument is invalid"s;
-    LOG_TOPIC("7c828", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgument(funcName, 1);
   }
 
-  // 2nd argument defines a boost
-  auto const analyzerArg = args.getMemberUnchecked(1);
+  // 2nd argument defines an analyzer
+  irs::string_ref analyzerId;
+  ScopedAqlValue analyzerIdValue;
 
-  if (!analyzerArg) {
-    auto message = "'ANALYZER' AQL function: 2nd argument is invalid"s;
-    LOG_TOPIC("d9b1c", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  auto rv = evaluateArg<decltype(analyzerId), true>(
+        analyzerId, analyzerIdValue, funcName,
+        args, 1, filter, ctx);
+
+  if (rv.fail()) {
+    return rv;
   }
 
-  if (!analyzerArg->isDeterministic()) {
-    auto message = "'ANALYZER' AQL function: 2nd argument is intended to be deterministic"s;
-    LOG_TOPIC("f7ad1", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-  }
-
-  ScopedAqlValue analyzerId(*analyzerArg);
-  arangodb::iresearch::IResearchLinkMeta::Analyzer analyzerValue; // default analyzer
+  arangodb::iresearch::FieldMeta::Analyzer analyzerValue; // default analyzer
   auto& analyzer = analyzerValue._pool;
   auto& shortName = analyzerValue._shortName;
 
-  if (filter || analyzerId.isConstant()) {
-    if (!analyzerId.execute(ctx)) {
-      auto message = "'ANALYZER' AQL function: Failed to evaluate 2nd argument"s;
-      LOG_TOPIC("f361f", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != analyzerId.type()) {
-      auto message =
-          "'ANALYZER' AQL function: 'analyzer' argument has invalid type '"s +
-          std::string(ScopedAqlValue::typeString(analyzerId.type())) +
-          "' (string expected)";
-      LOG_TOPIC("624cc", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    irs::string_ref analyzerIdValue;
-
-    if (!analyzerId.getString(analyzerIdValue)) {
-      auto message = "'ANALYZER' AQL function: Unable to parse 2nd argument as string"s;
-      LOG_TOPIC("0c41f", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    auto& server = arangodb::application_features::ApplicationServer::server();
+  if (filter || analyzerIdValue.isConstant()) {
+    TRI_ASSERT(ctx.trx);
+    auto& server = ctx.trx->vocbase().server();
     if (!server.hasFeature<IResearchAnalyzerFeature>()) {
-      auto message =
-          "'"s + IResearchAnalyzerFeature::name() +
-          "' feature is not registered, unable to evaluate 'ANALYZER' function";
-      LOG_TOPIC("26571", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, message};
+      return {
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "'"s.append(IResearchAnalyzerFeature::name())
+            .append("' feature is not registered, unable to evaluate '")
+            .append(funcName).append("' function")
+      };
     }
+
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
 
-    shortName = analyzerIdValue;
+    shortName = analyzerId;
 
-    if (ctx.trx) {
-      auto& server = arangodb::application_features::ApplicationServer::server();
-      auto sysVocbase =
-          server.hasFeature<arangodb::SystemDatabaseFeature>()
-              ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-              : nullptr;
+    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                          : nullptr;
 
-      if (sysVocbase) {
-        analyzer = analyzerFeature.get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
+    if (sysVocbase) {
+      analyzer = analyzerFeature.get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
 
-        shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false // args
-        );
-      }
-    } else {
-      analyzer = analyzerFeature.get(analyzerIdValue);  // verbatim
+      shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize(  // normalize
+          analyzerId, ctx.trx->vocbase(), *sysVocbase, false);  // args
     }
 
     if (!analyzer) {
-      auto message = "'ANALYZER' AQL function: Unable to lookup analyzer '"s + analyzerIdValue.c_str() + "'"s;
-      LOG_TOPIC("404c9", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "'"s.append(funcName).append("' AQL function: Unable to lookup analyzer '")
+            .append(analyzerId.c_str()).append("'")
+      };
     }
   }
 
   FilterContext const subFilterContext(analyzerValue, filterCtx.boost); // override analyzer
 
-  auto rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
-  if( rv.fail() ){
-    return arangodb::Result{rv.errorNumber(), "failed to get filter for analyzer: " + analyzer->name() + " : " + rv.errorMessage()};
+  rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
+
+  if (rv.fail()) {
+    return {
+      rv.errorNumber(),
+      "failed to get filter for analyzer: "s
+          .append(analyzer->name()).append(" : ").append(rv.errorMessage())
+    };
   }
   return rv;
 }
 
 // BOOST(<filter-expression>, boost)
-arangodb::Result fromFuncBoost(irs::boolean_filter* filter, QueryContext const& ctx,
-                   FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
+arangodb::Result fromFuncBoost(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
   auto const argc = args.numMembers();
 
   if (argc != 2) {
-    auto message = "'BOOST' AQL function: Invalid number of arguments passed (must be 2)";
-    LOG_TOPIC("c22fa", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgsCount<error::ExactValue<2>>(funcName);
   }
 
   // 1st argument defines filter expression
   auto expressionArg = args.getMemberUnchecked(0);
 
   if (!expressionArg) {
-    auto message = "'BOOST' AQL function: 1st argument is invalid";
-    LOG_TOPIC("f8c16", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgument(funcName, 1);
   }
+
+  ScopedAqlValue tmpValue;
 
   // 2nd argument defines a boost
-  auto const boostArg = args.getMemberUnchecked(1);
-
-  if (!boostArg) {
-    auto message = "'BOOST' AQL function: 2nd argument is invalid";
-    LOG_TOPIC("f2d0d", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-  }
-
-  if (!boostArg->isDeterministic()) {
-    auto message = "'BOOST' AQL function: 2nd argument is intended to be deterministic";
-    LOG_TOPIC("6c133", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-  }
-
-  ScopedAqlValue boost(*boostArg);
   double_t boostValue = 0;
+  auto rv = evaluateArg<decltype(boostValue), true>(
+        boostValue, tmpValue, funcName, args, 1, filter, ctx);
 
-  if (filter || boost.isConstant()) {
-    if (!boost.execute(ctx)) {
-      auto message = "'BOOST' AQL function: Failed to evaluate 2nd argument";
-      LOG_TOPIC("82c3b", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != boost.type()) {
-      auto message = "'BOOST' AQL function: 2nd argument has invalid type '"s + ScopedAqlValue::typeString(boost.type()).c_str() + "' (double expected)"s;
-      LOG_TOPIC("1a742", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (!boost.getDouble(boostValue)) {
-      auto message = "'BOOST' AQL function: Failed to parse 2nd argument as string";
-      LOG_TOPIC("53ba8", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
+  if (rv.fail()) {
+    return rv;
   }
 
   FilterContext const subFilterContext{filterCtx.analyzer,
                                        filterCtx.boost * static_cast<float_t>(boostValue)};
 
-  auto rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
-  if(rv.fail()){
-    return arangodb::Result{rv.errorNumber(), "error in sub-filter context: " + rv.errorMessage()};
+  rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
+
+  if (rv.fail()) {
+    return {rv.errorNumber(), "error in sub-filter context: " + rv.errorMessage()};
   }
+
   return {};
 }
 
 // EXISTS(<attribute>, <"analyzer">, <"analyzer-name">)
 // EXISTS(<attribute>, <"string"|"null"|"bool"|"numeric">)
-arangodb::Result fromFuncExists(irs::boolean_filter* filter, QueryContext const& ctx,
-                    FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
+arangodb::Result fromFuncExists(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
   if (!args.isDeterministic()) {
-    auto message = "Unable to handle non-deterministic arguments for 'EXISTS' function";
-    LOG_TOPIC("20cf9", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::nondeterministicArgs(funcName);
   }
 
   auto const argc = args.numMembers();
 
   if (argc < 1 || argc > 3) {
-    auto message = "'EXISTS' AQL function: Invalid number of arguments passed (must be >= 1 and <= 3)";
-    LOG_TOPIC("90b23", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgsCount<error::Range<1, 3>>(funcName);
   }
 
   // 1st argument defines a field
@@ -1295,9 +1853,7 @@ arangodb::Result fromFuncExists(irs::boolean_filter* filter, QueryContext const&
       arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
 
   if (!fieldArg) {
-    auto message = "'EXISTS' AQL function: 1st argument is invalid";
-    LOG_TOPIC("509c2", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidAttribute(funcName, 1);
   }
 
   bool prefixMatch = true;
@@ -1305,85 +1861,62 @@ arangodb::Result fromFuncExists(irs::boolean_filter* filter, QueryContext const&
   auto analyzer = filterCtx.analyzer;
 
   if (filter && !arangodb::iresearch::nameFromAttributeAccess(fieldName, *fieldArg, ctx)) {
-    auto message = "'EXISTS' AQL function: Failed to generate field name from the 1st argument";
-    LOG_TOPIC("9c179", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::failedToGenerateName(funcName, 1);
   }
 
   if (argc > 1) {
     // 2nd argument defines a type (if present)
-    auto const typeArg = args.getMemberUnchecked(1);
+    ScopedAqlValue argValue;
+    irs::string_ref arg;
+    auto rv = evaluateArg(arg, argValue, funcName, args, 1, filter, ctx);
 
-    if (!typeArg) {
-      auto message = "'EXISTS' AQL function: 2nd argument is invalid";
-      LOG_TOPIC("d9ed2", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    if (rv.fail()) {
+      return rv;
     }
 
-    irs::string_ref arg;
-    ScopedAqlValue type(*typeArg);
-
-    if (filter || type.isConstant()) {
-      if (!type.execute(ctx)) {
-        auto message = "'EXISTS' AQL function: Failed to evaluate 2nd argument";
-        LOG_TOPIC("3d773", WARN, arangodb::iresearch::TOPIC) << message;
-        return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != type.type()) {
-        auto message = "'EXISTS' AQL function: 2nd argument has invalid type '"s + ScopedAqlValue::typeString(type.type()).c_str() + "' (string expected)";
-        LOG_TOPIC("0e630", WARN, arangodb::iresearch::TOPIC) << message;
-        return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      if (!type.getString(arg)) {
-        auto message = "'EXISTS' AQL function: Failed to parse 2nd argument as string";
-        LOG_TOPIC("2e7a9", WARN, arangodb::iresearch::TOPIC) << message;
-        return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-      }
-
+    if (filter || argValue.isConstant()) { // arg is constant
       std::string strArg(arg);
-      arangodb::basics::StringUtils::tolowerInPlace(&strArg);  // normalize user input
+      arangodb::basics::StringUtils::tolowerInPlace(strArg);  // normalize user input
       irs::string_ref const TypeAnalyzer("analyzer");
 
-      typedef bool (*TypeHandler)(std::string&, arangodb::iresearch::IResearchLinkMeta::Analyzer const&);
+      typedef bool (*TypeHandler)(std::string&, arangodb::iresearch::FieldMeta::Analyzer const&);
 
       static std::map<irs::string_ref, TypeHandler> const TypeHandlers{
           // any string
           {irs::string_ref("string"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleAnalyzer(name);
              return true;  // a prefix match
            }},
           // any non-string type
           {irs::string_ref("type"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleType(name);
              return true;  // a prefix match
            }},
           // concrete analyzer from the context
           {TypeAnalyzer,
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const& analyzer)->bool {
              kludge::mangleStringField(name, analyzer);
              return false;  // not a prefix match
            }},
           {irs::string_ref("numeric"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleNumeric(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("bool"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleBool(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("boolean"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleBool(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("null"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleNull(name);
              return false;  // not a prefix match
            }}};
@@ -1391,25 +1924,31 @@ arangodb::Result fromFuncExists(irs::boolean_filter* filter, QueryContext const&
       auto const typeHandler = TypeHandlers.find(strArg);
 
       if (TypeHandlers.end() == typeHandler) {
-        auto message =
-            "'EXISTS' AQL function: 2nd argument must be equal to one of the following: 'string', 'type', 'analyzer', 'numeric', 'bool', 'boolean', 'null', but got '"s +
-            arg.c_str() + "'";
-        LOG_TOPIC("96e61", WARN, arangodb::iresearch::TOPIC) << message;
-        return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append("' AQL function: 2nd argument must be equal to one of the following: "
+                      "'string', 'type', 'analyzer', 'numeric', 'bool', 'boolean', 'null', but got '")
+             .append(arg.c_str()).append("'")
+        };
       }
 
       if (argc > 2) {
         if (TypeAnalyzer.c_str() != typeHandler->first.c_str()) {
-          auto message = "'EXISTS' AQL function: 3rd argument is intended to use with 'analyzer' type only";
-          LOG_TOPIC("d69e2", WARN, arangodb::iresearch::TOPIC) << message;
-          return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+          return {
+            TRI_ERROR_BAD_PARAMETER,
+            "'"s.append(funcName).append("' AQL function: 3rd argument is intended to be used with 'analyzer' type only")
+          };
         }
 
-        analyzer = extractAnalyzerFromArg(filter, args.getMemberUnchecked(2),
-                                          ctx, 2, "EXISTS");
+        rv = extractAnalyzerFromArg(analyzer, funcName, filter, args, 2, ctx);
 
+        if (rv.fail()) {
+          return rv;
+        }
+
+        TRI_ASSERT(analyzer._pool);
         if (!analyzer._pool) {
-          return arangodb::Result{TRI_ERROR_INTERNAL, "analyzer not found"};
+          return {TRI_ERROR_INTERNAL, "analyzer not found"};
         }
       }
 
@@ -1428,14 +1967,18 @@ arangodb::Result fromFuncExists(irs::boolean_filter* filter, QueryContext const&
 }
 
 // MIN_MATCH(<filter-expression>[, <filter-expression>,...], <min-match-count>)
-arangodb::Result fromFuncMinMatch(irs::boolean_filter* filter, QueryContext const& ctx,
-                      FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
+arangodb::Result fromFuncMinMatch(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
   auto const argc = args.numMembers();
 
   if (argc < 2) {
-    auto message = "'MIN_MATCH' AQL function: Invalid number of arguments passed (must be >= 2)";
-    LOG_TOPIC("6c8d4", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgsCount<error::OpenRange<false, 2>>(funcName);
   }
 
   // ...........................................................................
@@ -1443,42 +1986,23 @@ arangodb::Result fromFuncMinMatch(irs::boolean_filter* filter, QueryContext cons
   // ...........................................................................
 
   auto const lastArg = argc - 1;
-  auto minMatchCountArg = args.getMemberUnchecked(lastArg);
+  ScopedAqlValue minMatchCountValue;
+  int64_t minMatchCount= 0;
 
-  if (!minMatchCountArg) {
-    auto message = "'MIN_MATCH' AQL function: " + std::to_string(lastArg) + " argument is invalid";
-    LOG_TOPIC("eea57", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+  auto rv = evaluateArg<decltype(minMatchCount), true>(
+        minMatchCount, minMatchCountValue, funcName, args, lastArg, filter, ctx);
+
+  if (rv.fail()) {
+    return rv;
   }
 
-  if (!minMatchCountArg->isDeterministic()) {
-    auto message = "'MIN_MATCH' AQL function: "s + std::to_string(lastArg) + " argument is intended to be deterministic"s;
-    LOG_TOPIC("b58bc", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-  }
-
-  ScopedAqlValue minMatchCount(*minMatchCountArg);
-  int64_t minMatchCountValue = 0;
-
-  if (filter || minMatchCount.isConstant()) {
-    if (!minMatchCount.execute(ctx)) {
-      auto message = "'MIN_MATCH' AQL function: Failed to evaluate "s + std::to_string(lastArg) + " argument"s;
-      LOG_TOPIC("2c964", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != minMatchCount.type()) {
-      auto message = "'MIN_MATCH' AQL function: "s + std::to_string(lastArg) + " argument has invalid type '"s + ScopedAqlValue::typeString(minMatchCount.type()).c_str() + "' (numeric expected)"s;
-      LOG_TOPIC("21df2", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    minMatchCountValue = minMatchCount.getInt64();
+  if (minMatchCount < 0) {
+    return error::negativeNumber(funcName, argc);
   }
 
   if (filter) {
     auto& minMatchFilter = filter->add<irs::Or>();
-    minMatchFilter.min_match_count(minMatchCountValue);
+    minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
     minMatchFilter.boost(filterCtx.boost);
 
     // become a new root
@@ -1486,49 +2010,149 @@ arangodb::Result fromFuncMinMatch(irs::boolean_filter* filter, QueryContext cons
   }
 
   FilterContext const subFilterCtx{
-      filterCtx.analyzer,
-      irs::no_boost()  // reset boost
+    filterCtx.analyzer,
+    irs::no_boost() // reset boost
   };
 
   for (size_t i = 0; i < lastArg; ++i) {
     auto subFilterExpression = args.getMemberUnchecked(i);
 
     if (!subFilterExpression) {
-      auto message = "'MIN_MATCH' AQL function: Failed to evaluate " + std::to_string(i) + " argument";
-      LOG_TOPIC("77f47", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "'"s.append(funcName).append("' AQL function: Failed to evaluate argument at position '")
+            .append(std::to_string(i)).append("'")
+      };
     }
 
     irs::boolean_filter* subFilter = filter ? &filter->add<irs::Or>() : nullptr;
 
-    auto rv = ::filter(subFilter, ctx, subFilterCtx, *subFilterExpression);
+    rv = ::filter(subFilter, ctx, subFilterCtx, *subFilterExpression);
     if (rv.fail()) {
-      auto message = "'MIN_MATCH' AQL function: Failed to instantiate sub-filter for " + std::to_string(i) + " argument" + rv.errorMessage();
-      LOG_TOPIC("79498", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "'"s.append(funcName).append("' AQL function: Failed to instantiate sub-filter for argument at position '")
+            .append(std::to_string(i)).append("': ").append(rv.errorMessage())
+      };
     }
   }
 
   return {};
 }
 
+arangodb::Result processPhraseArgs(
+    char const* funcName,
+    irs::by_phrase* phrase,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& valueArgs,
+    size_t valueArgsBegin, size_t valueArgsEnd,
+    irs::analysis::analyzer::ptr& analyzer,
+    size_t offset,
+    bool allowDefaultOffset,
+    bool allowRecursion) {
+  irs::string_ref value;
+  bool expectingOffset = false;
+  for (size_t idx = valueArgsBegin; idx < valueArgsEnd; ++idx) {
+    auto currentArg = valueArgs.getMemberUnchecked(idx);
+    if (!currentArg) {
+      return error::invalidArgument(funcName, idx);
+    }
+    if (currentArg->isArray() && (!expectingOffset || allowDefaultOffset)) {
+      if (0 == currentArg->numMembers()) {
+        expectingOffset = true;
+        // do not reset offset here as we should accumulate it
+        continue; // just skip empty arrays. This is not error anymore as this case may arise while working with autocomplete
+      }
+      // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
+      // No array recursion allowed. This could be allowed, but just looks tangled.
+      // Anyone interested coud use FLATTEN  to explicitly require processing all recurring arrays as one array
+      if (allowRecursion) {
+        auto subRes = processPhraseArgs(funcName, phrase, ctx, filterCtx, *currentArg, 0, currentArg->numMembers(), analyzer, offset, true, false);
+        if (subRes.fail()) {
+          return subRes;
+        }
+        expectingOffset = true;
+        offset = 0;
+        continue;
+      }
+
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "'"s.append(funcName).append("' AQL function: recursive arrays not allowed at position ")
+            .append(std::to_string(idx))
+      };
+    }
+    ScopedAqlValue currentValue(*currentArg);
+    if (phrase || currentValue.isConstant()) {
+      if (!currentValue.execute(ctx)) {
+        return error::invalidArgument(funcName, idx);
+      }
+      if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE == currentValue.type() && expectingOffset) {
+        offset += static_cast<uint64_t>(currentValue.getInt64());
+        expectingOffset = false;
+        continue; // got offset let`s go search for value
+      } else if ( (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != currentValue.type() || !currentValue.getString(value)) || // value is not a string at all
+                  (expectingOffset && !allowDefaultOffset)) { // offset is expected mandatory but got value
+        std::string expectedValue;
+        if (expectingOffset && allowDefaultOffset) {
+          expectedValue = " as a value or offset";
+        } else if (expectingOffset) {
+          expectedValue = " as an offset";
+        } else {
+          expectedValue = " as a value";
+        }
+
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "'"s.append(funcName).append("' AQL function: Unable to parse argument at position ")
+              .append(std::to_string(idx)).append(expectedValue)
+        };
+      }
+    } else {
+      // in case of non const node encountered while parsing we can not decide if current and following args are correct before execution
+      // so at this stage we say all is ok
+      return {};
+    }
+    if (phrase) {
+      TRI_ASSERT(analyzer);
+      appendTerms(*phrase, value, *analyzer, offset);
+    }
+    offset = 0;
+    expectingOffset = true;
+  }
+
+  if (!expectingOffset) { // that means last arg is numeric - this is error as no term to apply offset to
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName).append("' AQL function : Unable to parse argument at position ")
+          .append(std::to_string(valueArgsEnd - 1)).append("as a value")
+    };
+  }
+
+  return {};
+}
+
+// note: <value> could be either string ether array of strings with offsets inbetween . Inside array
+// 0 offset could be omitted e.g. [term1, term2, 2, term3] is equal to: [term1, 0, term2, 2, term3]
 // PHRASE(<attribute>, <value> [, <offset>, <value>, ...] [, <analyzer>])
-// PHRASE(<attribute>, '[' <value> [, <offset>, <value>, ...] ']' [,
-// <analyzer>])
-arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const& ctx,
-                    FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
+// PHRASE(<attribute>, '[' <value> [, <offset>, <value>, ...] ']' [,<analyzer>])
+arangodb::Result fromFuncPhrase(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
   if (!args.isDeterministic()) {
-    auto message = "Unable to handle non-deterministic arguments for 'PHRASE' function"s;
-    LOG_TOPIC("df524", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};  // nondeterministic
+    return error::nondeterministicArgs(funcName);
   }
 
   auto argc = args.numMembers();
 
   if (argc < 2) {
-    auto message = "'PHRASE' AQL function: Invalid number of arguments passed (must be >= 2)";
-    LOG_TOPIC("4368f", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgsCount<error::OpenRange<false, 2>>(funcName);
   }
 
   // ...........................................................................
@@ -1540,11 +2164,15 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
   if (0 != (argc & 1)) {  // override analyzer
     --argc;
 
-    analyzerPool = extractAnalyzerFromArg(filter, args.getMemberUnchecked(argc),
-                                          ctx, argc, "PHRASE");
+    auto rv = extractAnalyzerFromArg(analyzerPool, funcName, filter, args, argc, ctx);
 
+    if (rv.fail()) {
+      return rv;
+    }
+
+    TRI_ASSERT(analyzerPool._pool);
     if (!analyzerPool._pool) {
-      return {TRI_ERROR_INTERNAL};
+      return {TRI_ERROR_BAD_PARAMETER};
     }
   }
 
@@ -1556,92 +2184,35 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
       arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
 
   if (!fieldArg) {
-    auto message = "'PHRASE' AQL function: 1st argument is invalid";
-    LOG_TOPIC("335b3", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidAttribute(funcName, 1);
   }
 
   // ...........................................................................
-  // 2nd argument defines a value
+  // 2nd argument and later defines a values
   // ...........................................................................
-
-  auto const* valueArg = args.getMemberUnchecked(1);
-
-  if (!valueArg) {
-    auto message = "'PHRASE' AQL function: 2nd argument is invalid";
-    LOG_TOPIC("c3aec", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
-  }
-
   auto* valueArgs = &args;
   size_t valueArgsBegin = 1;
   size_t valueArgsEnd = argc;
 
-  if (valueArg->isArray()) {
-    valueArgs = valueArg;
-    valueArgsBegin = 0;
-    valueArgsEnd = valueArg->numMembers();
-
-    if (0 == (valueArgsEnd & 1)) {
-      auto message = "'PHRASE' AQL function: 2nd argument has an invalid number of members (must be an odd number)";
-      LOG_TOPIC("05c0c", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    valueArg = valueArgs->getMemberUnchecked(valueArgsBegin);
-
-    if (!valueArg) {
-      std::stringstream ss;;
-      ss << valueArg;
-      auto message = "'PHRASE' AQL function: 2nd argument has an invalid member at offset: "s + ss.str();
-      LOG_TOPIC("892bc", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-  }
-
-  irs::string_ref value;
-  ScopedAqlValue inputValue(*valueArg);
-
-  if (filter || inputValue.isConstant()) {
-    if (!inputValue.execute(ctx)) {
-      auto message =  "'PHRASE' AQL function: Failed to evaluate 2nd argument";
-      LOG_TOPIC("14a81", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != inputValue.type()) {
-      auto message = "'PHRASE' AQL function: 2nd argument has invalid type '"s +
-           ScopedAqlValue::typeString(inputValue.type()).c_str() + "' (string expected)";
-      LOG_TOPIC("a91b6", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (!inputValue.getString(value)) {
-      auto message = "'PHRASE' AQL function: Unable to parse 2nd argument as string";
-      LOG_TOPIC("b546d", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-  }
-
   irs::by_phrase* phrase = nullptr;
   irs::analysis::analyzer::ptr analyzer;
-
+  // prepare filter if execution phase
   if (filter) {
     std::string name;
 
     if (!arangodb::iresearch::nameFromAttributeAccess(name, *fieldArg, ctx)) {
-      auto message = "'PHRASE' AQL function: Failed to generate field name from the 1st argument";
-      LOG_TOPIC("3b1e4", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
+      return error::failedToGenerateName(funcName, 1);
     }
 
     TRI_ASSERT(analyzerPool._pool);
-    analyzer = analyzerPool._pool->get();  // get analyzer from pool
+    analyzer = analyzerPool._pool->get();
 
     if (!analyzer) {
-      auto message = "'PHRASE' AQL function: Unable to instantiate analyzer '"s + analyzerPool._pool->name() + "'";
-      LOG_TOPIC("4d142", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_INTERNAL, message};
+      return {
+        TRI_ERROR_INTERNAL,
+        "'"s.append("' AQL function: Unable to instantiate analyzer '")
+            .append(analyzerPool._pool->name()).append("'")
+      };
     }
 
     kludge::mangleStringField(name, analyzerPool);
@@ -1649,81 +2220,29 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
     phrase = &filter->add<irs::by_phrase>();
     phrase->field(std::move(name));
     phrase->boost(filterCtx.boost);
-
-    TRI_ASSERT(analyzer);
-    appendTerms(*phrase, value, *analyzer, 0);
   }
-
-  decltype(fieldArg) offsetArg = nullptr;
-  size_t offset = 0;
-
-  for (size_t idx = valueArgsBegin + 1, end = valueArgsEnd; idx < end; idx += 2) {
-    offsetArg = valueArgs->getMemberUnchecked(idx);
-
-    if (!offsetArg) {
-      auto message = "'PHRASE' AQL function: Unable to parse argument on position "s + std::to_string(idx) + " as an offset"s;
-      LOG_TOPIC("44bed", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    valueArg = valueArgs->getMemberUnchecked(idx + 1);
-
-    if (!valueArg) {
-      auto message = "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx + 1) + " as a value";
-      LOG_TOPIC("ac06b", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    ScopedAqlValue offsetValue(*offsetArg);
-
-    if (filter || offsetValue.isConstant()) {
-      if (!offsetValue.execute(ctx) ||
-          arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != offsetValue.type()) {
-        auto message = "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx) + " as an offset";
-        LOG_TOPIC("d819d", WARN, arangodb::iresearch::TOPIC) << message;
-        return {TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      offset = static_cast<uint64_t>(offsetValue.getInt64());
-    }
-
-    ScopedAqlValue inputValue(*valueArg);
-
-    if (filter || inputValue.isConstant()) {
-      if (!inputValue.execute(ctx) ||
-          arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != inputValue.type() ||
-          !inputValue.getString(value)) {
-        auto message =  "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx + 1) + " as a value";
-        LOG_TOPIC("39e12", WARN, arangodb::iresearch::TOPIC) << message;
-        return {TRI_ERROR_BAD_PARAMETER, message};
-      }
-    }
-
-    if (phrase) {
-      TRI_ASSERT(analyzer);
-      appendTerms(*phrase, value, *analyzer, offset);
-    }
-  }
-
-  return { }; //ok;
+  // on top level we require explicit offsets - to be backward compatible and be able to distinguish last argument as analyzer or value
+  // Also we allow recursion inside array to support older syntax (one array arg) and add ability to pass several arrays as args
+  return processPhraseArgs(funcName, phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
 }
 
 // STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])
-arangodb::Result fromFuncStartsWith(irs::boolean_filter* filter, QueryContext const& ctx,
-                        FilterContext const& filterCtx,
-                        arangodb::aql::AstNode const& args) {
+arangodb::Result fromFuncStartsWith(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
   if (!args.isDeterministic()) {
-    auto message = "Unable to handle non-deterministic arguments for 'STARTS_WITH' function";
-    LOG_TOPIC("f2851", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return error::nondeterministicArgs(funcName);
   }
 
   auto const argc = args.numMembers();
 
   if (argc < 2 || argc > 3) {
-    auto message = "'STARTS_WITH' AQL function: Invalid number of arguments passed (should be >= 2 and <= 3)";
-    LOG_TOPIC("b157e", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgsCount<error::Range<2, 3>>(funcName);
   }
 
   // 1st argument defines a field
@@ -1731,81 +2250,42 @@ arangodb::Result fromFuncStartsWith(irs::boolean_filter* filter, QueryContext co
       arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
 
   if (!field) {
-    auto message = "'STARTS_WITH' AQL function: Unable to parse 1st argument as an attribute identifier";
-    LOG_TOPIC("4d7a8", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidAttribute(funcName, 1);
   }
 
   // 2nd argument defines a value
-  auto const* prefixArg = args.getMemberUnchecked(1);
-
-  if (!prefixArg) {
-    auto message = "'STARTS_WITH' AQL function: 2nd argument is invalid";
-    LOG_TOPIC("6f500", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
-  }
-
+  ScopedAqlValue prefixValue;
   irs::string_ref prefix;
-  size_t scoringLimit = 128;  // FIXME make configurable
+  auto rv = evaluateArg(prefix, prefixValue, funcName, args, 1, filter, ctx);
 
-  ScopedAqlValue prefixValue(*prefixArg);
-
-  if (filter || prefixValue.isConstant()) {
-    if (!prefixValue.execute(ctx)) {
-      auto message = "'STARTS_WITH' AQL function: Failed to evaluate 2nd argument";
-      LOG_TOPIC("e196b", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != prefixValue.type()) {
-      auto message = "'STARTS_WITH' AQL function: 2nd argument has invalid type '"s + ScopedAqlValue::typeString(prefixValue.type()).c_str() + "' (string expected)";
-      LOG_TOPIC("bd9c8", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    if (!prefixValue.getString(prefix)) {
-      auto message = "'STARTS_WITH' AQL function: Unable to parse 2nd argument as string";
-      LOG_TOPIC("e4ebc", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
+  if (rv.fail()) {
+    return rv;
   }
+
+  size_t scoringLimit = 128;  // FIXME make configurable
 
   if (argc > 2) {
     // 3rd (optional) argument defines a number of scored terms
-    auto const* scoringLimitArg = args.getMemberUnchecked(2);
+    ScopedAqlValue scoringLimitValueBuf;
+    int64_t scoringLimitValue = static_cast<int64_t>(scoringLimit);
+    rv = evaluateArg(scoringLimitValue, scoringLimitValueBuf, funcName, args, 2, filter, ctx);
 
-    if (!scoringLimitArg) {
-      auto message = "'STARTS_WITH' AQL function: 3rd argument is invalid";
-      LOG_TOPIC("f67b7", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
+    if (rv.fail()) {
+      return rv;
     }
 
-    ScopedAqlValue scoringLimitValue(*scoringLimitArg);
-
-    if (filter || scoringLimitValue.isConstant()) {
-      if (!scoringLimitValue.execute(ctx)) {
-        auto message = "'STARTS_WITH' AQL function: Failed to evaluate 3rd argument";
-        LOG_TOPIC("1c334", WARN, arangodb::iresearch::TOPIC) << message;
-        return {TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != scoringLimitValue.type()) {
-        auto message = "'STARTS_WITH' AQL function: 3rd argument has invalid type '"s + ScopedAqlValue::typeString(scoringLimitValue.type()).c_str() + "' (numeric expected)";
-        LOG_TOPIC("40130", WARN, arangodb::iresearch::TOPIC) << message;
-        return {TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      scoringLimit = static_cast<size_t>(scoringLimitValue.getInt64());
+    if (scoringLimitValue < 0) {
+      return error::negativeNumber(funcName, 3);
     }
+
+    scoringLimit = static_cast<size_t>(scoringLimitValue);
   }
 
   if (filter) {
     std::string name;
 
     if (!nameFromAttributeAccess(name, *field, ctx)) {
-      auto message = "'STARTS_WITH' AQL function: Failed to generate field name from the 1st argument";
-      LOG_TOPIC("91862", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
+      return error::failedToGenerateName(funcName, 1);
     }
 
     TRI_ASSERT(filterCtx.analyzer);
@@ -1822,21 +2302,22 @@ arangodb::Result fromFuncStartsWith(irs::boolean_filter* filter, QueryContext co
 }
 
 // IN_RANGE(<attribute>, <low>, <high>, <include-low>, <include-high>)
-arangodb::Result fromFuncInRange(irs::boolean_filter* filter, QueryContext const& ctx,
-                     FilterContext const& filterCtx,
-                     arangodb::aql::AstNode const& args) {
+arangodb::Result fromFuncInRange(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
   if (!args.isDeterministic()) {
-    auto message = "Unable to handle non-deterministic arguments for 'IN_RANGE' function";
-    LOG_TOPIC("dff45", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message}; // nondeterministic
+    return error::nondeterministicArgs(funcName);
   }
 
   auto const argc = args.numMembers();
 
   if (argc != 5) {
-    auto message = "'IN_RANGE' AQL function: Invalid number of arguments passed (should be 5)";
-    LOG_TOPIC("2f5a8", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgsCount<error::ExactValue<5>>(funcName);
   }
 
   // 1st argument defines a field
@@ -1844,80 +2325,214 @@ arangodb::Result fromFuncInRange(irs::boolean_filter* filter, QueryContext const
       arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
 
   if (!field) {
-    auto message = "'IN_RANGE' AQL function: Unable to parse 1st argument as an attribute identifier";
-    LOG_TOPIC("7c56a", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidAttribute(funcName, 1);
   }
-
-  ScopedAqlValue includeValue;
-  auto getInclusion = [&ctx, filter, &includeValue](
-      arangodb::aql::AstNode const* arg,
-      bool& include,
-      irs::string_ref const& argName) -> arangodb::Result {
-    if (!arg) {
-      auto message = "'IN_RANGE' AQL function: "s + argName.c_str() + " argument is invalid"s;
-      LOG_TOPIC("8ec00", WARN, arangodb::iresearch::TOPIC) << message;
-      return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    includeValue.reset(*arg);
-
-    if (filter || includeValue.isConstant()) {
-      if (!includeValue.execute(ctx)) {
-        auto message = "'IN_RANGE' AQL function: Failed to evaluate "s + argName.c_str() + " argument"s;
-        LOG_TOPIC("32f3b", WARN, arangodb::iresearch::TOPIC) << message;
-        return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      if (arangodb::iresearch::SCOPED_VALUE_TYPE_BOOL != includeValue.type()) {
-        std::string type = ScopedAqlValue::typeString(includeValue.type());
-        auto message = "'IN_RANGE' AQL function: "s + std::string(argName.c_str()) + " argument has invalid type '" + type + "' (boolean expected)";
-        LOG_TOPIC("57a29", WARN, arangodb::iresearch::TOPIC) << message;
-        return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
-      }
-
-      include = includeValue.getBoolean();
-    }
-
-    return {};
-  };
 
   // 2nd argument defines a lower boundary
   auto const* lhsArg = args.getMemberUnchecked(1);
 
   if (!lhsArg) {
-    auto message = "'IN_RANGE' AQL function: 2nd argument is invalid";
-    LOG_TOPIC("f1167", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgument(funcName, 2);
   }
 
   // 3rd argument defines an upper boundary
   auto const* rhsArg = args.getMemberUnchecked(2);
 
   if (!rhsArg) {
-    auto message = "'IN_RANGE' AQL function: 3rd argument is invalid";
-    LOG_TOPIC("d5fe6", WARN, arangodb::iresearch::TOPIC) << message;
-    return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
+    return error::invalidArgument(funcName, 3);
   }
+
+  ScopedAqlValue includeValue;
 
   // 4th argument defines inclusion of lower boundary
   bool lhsInclude = false;
-  auto inc1 = getInclusion(args.getMemberUnchecked(3), lhsInclude, "4th");
-  if (inc1.fail()){
-    return inc1;
+
+  auto rv = evaluateArg(lhsInclude, includeValue, funcName, args, 3, filter, ctx);
+
+  if (rv.fail()) {
+    return rv;
   }
 
   // 5th argument defines inclusion of upper boundary
   bool rhsInclude = false;
-  auto inc2 = getInclusion(args.getMemberUnchecked(4), rhsInclude, "5th");
-  if (inc2.fail()){
-    return inc2;
+
+  rv = evaluateArg(rhsInclude, includeValue, funcName, args, 4, filter, ctx);
+
+  if (rv.fail()) {
+    return rv;
   }
 
-  auto rv = ::byRange(filter, *field, *lhsArg, lhsInclude, *rhsArg, rhsInclude, ctx, filterCtx);
-  if(rv.fail()){
+  rv = ::byRange(filter, *field, *lhsArg, lhsInclude, *rhsArg, rhsInclude, ctx, filterCtx);
+
+  if (rv.fail()) {
     return {rv.errorNumber(), "error in byRange: " + rv.errorMessage()};
   }
+
+  return {};
+}
+
+// LIKE(<attribute>, <pattern>)
+arangodb::Result fromFuncLike(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
+  if (!args.isDeterministic()) {
+    return error::nondeterministicArgs(funcName);
+  }
+
+  auto const argc = args.numMembers();
+
+  if (argc != 2) {
+    return error::invalidArgsCount<error::ExactValue<2>>(funcName);
+  }
+
+
+  // 1st argument defines a field
+  auto const* field =
+      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+  if (!field) {
+    return error::invalidAttribute(funcName, 1);
+  }
+
+  // 2nd argument defines a matching pattern
+  ScopedAqlValue patternValue;
+  irs::string_ref pattern;
+  arangodb::Result res = evaluateArg(pattern, patternValue, funcName, args, 1, filter, ctx);
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  const size_t scoringLimit = 128;  // FIXME make configurable
+
+  if (filter) {
+    std::string name;
+
+    if (!nameFromAttributeAccess(name, *field, ctx)) {
+      return error::failedToGenerateName(funcName, 1);
+    }
+
+    TRI_ASSERT(filterCtx.analyzer);
+    kludge::mangleStringField(name, filterCtx.analyzer);
+
+    auto& wildcardFilter = filter->add<irs::by_wildcard>();
+    wildcardFilter.scored_terms_limit(scoringLimit);
+    wildcardFilter.field(std::move(name));
+    wildcardFilter.boost(filterCtx.boost);
+    wildcardFilter.term(pattern);
+  }
+
+  return {};
+}
+
+// LEVENSHTEIN_MATCH(<attribute>, <target>, <max-distance> [, <include-transpositions>])
+arangodb::Result fromFuncLevenshteinMatch(
+    char const* funcName,
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& args) {
+  TRI_ASSERT(funcName);
+
+  if (!args.isDeterministic()) {
+    return error::nondeterministicArgs(funcName);
+  }
+
+  auto const argc = args.numMembers();
+
+  if (argc < 3 || argc > 4) {
+    return error::invalidArgsCount<error::Range<3, 4>>(funcName);
+  }
+
+  // 1st argument defines a field
+  auto const* field =
+      arangodb::iresearch::checkAttributeAccess(args.getMemberUnchecked(0), *ctx.ref);
+
+  if (!field) {
+    return error::invalidAttribute(funcName, 1);
+  }
+
+  // 2nd argument defines a target
+  ScopedAqlValue targetValue;
+  irs::string_ref target;
+  arangodb::Result res = evaluateArg(target, targetValue, funcName, args, 1, filter, ctx);
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  ScopedAqlValue tmpValue; // can reuse value for int64_t and bool
+
+  // 3rd argument defines a max distance
+  int64_t maxDistance = 0;
+  res = evaluateArg(maxDistance, tmpValue, funcName, args, 2, filter, ctx);
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  if (maxDistance < 0) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName)
+          .append("' AQL function: max distance must be a positive number")
+    };
+  }
+
+  // optional 4th argument defines transpositions
+  bool withTranspositions = false;
+
+  if (4 == argc) {
+    res = evaluateArg(withTranspositions, tmpValue, funcName, args, 3, filter, ctx);
+
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  if (!withTranspositions && maxDistance > MAX_LEVENSHTEIN_DISTANCE) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName)
+          .append("' AQL function: max Levenshtein distance must be a number in range [0, ")
+          .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE)).append("]")
+    };
+  } else if (withTranspositions && maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "'"s.append(funcName)
+          .append("' AQL function: max Damerau-Levenshtein distance must be a number in range [0, ")
+          .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE)).append("]")
+    };
+  }
+
+  const size_t scoringLimit = 128;  // FIXME make configurable
+
+  if (filter) {
+    std::string name;
+
+    if (!nameFromAttributeAccess(name, *field, ctx)) {
+      return error::failedToGenerateName(funcName, 1);
+    }
+
+    TRI_ASSERT(filterCtx.analyzer);
+    kludge::mangleStringField(name, filterCtx.analyzer);
+
+    auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
+    levenshtein_filter.scored_terms_limit(scoringLimit);
+    levenshtein_filter.field(std::move(name));
+    levenshtein_filter.term(target);
+    levenshtein_filter.boost(filterCtx.boost);
+    levenshtein_filter.max_distance(irs::byte_type(maxDistance));
+    levenshtein_filter.with_transpositions(withTranspositions);
+    levenshtein_filter.provider(&arangodb::iresearch::getParametricDescription);
+  }
+
   return {};
 }
 
@@ -1928,23 +2543,25 @@ arangodb::Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& 
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL_USER == node.type);
 
   if (node.numMembers() != 1) {
-    return logMalformedNode(node.type);
+    return error::malformedNode(node.type);
   }
 
   auto const* args = arangodb::iresearch::getNode(node, 0, arangodb::aql::NODE_TYPE_ARRAY);
 
   if (!args) {
-    auto message = "Unable to parse user function arguments as an array'"s;
-    LOG_TOPIC("457fe", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Unable to parse user function arguments as an array'"
+    };
   }
 
   irs::string_ref name;
 
   if (!arangodb::iresearch::parseValue(name, node)) {
-    auto message ="Unable to parse user function name"s;
-    LOG_TOPIC("3ca23", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Unable to parse user function name"
+    };
   }
 
   auto const entry = FCallUserConvertionHandlers.find(name);
@@ -1954,29 +2571,40 @@ arangodb::Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& 
   }
 
   if (!args->isDeterministic()) {
-    auto message = "Unable to handle non-deterministic function '"s + std::string(name.c_str(), name.size()) + "' arguments";
-    LOG_TOPIC("b2265", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Unable to handle non-deterministic function '"s.append(name.c_str(), name.size()).append("' arguments")
+    };
   }
 
-  return entry->second(filter, ctx, filterCtx, *args);
+  return entry->second(entry->first.c_str(), filter, ctx, filterCtx, *args);
 }
 
 std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
-    {"PHRASE", fromFuncPhrase},     {"STARTS_WITH", fromFuncStartsWith},
-    {"EXISTS", fromFuncExists},     {"BOOST", fromFuncBoost},
-    {"ANALYZER", fromFuncAnalyzer}, {"MIN_MATCH", fromFuncMinMatch},
-    {"IN_RANGE", fromFuncInRange}
+    // filter functions
+    {"PHRASE", fromFuncPhrase},
+    {"STARTS_WITH", fromFuncStartsWith},
+    {"EXISTS", fromFuncExists},
+    {"MIN_MATCH", fromFuncMinMatch},
+    {"IN_RANGE", fromFuncInRange},
+    {"LIKE", fromFuncLike },
+    {"LEVENSHTEIN_MATCH", fromFuncLevenshteinMatch},
+    // context functions
+    {"BOOST", fromFuncBoost},
+    {"ANALYZER", fromFuncAnalyzer},
 };
 
-arangodb::Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,
-               FilterContext const& filterCtx, arangodb::aql::AstNode const& node) {
+arangodb::Result fromFCall(
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    FilterContext const& filterCtx,
+    arangodb::aql::AstNode const& node) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
 
   auto const* fn = static_cast<arangodb::aql::Function*>(node.getData());
 
   if (!fn || node.numMembers() != 1) {
-    return logMalformedNode(node.type);
+    return error::malformedNode(node.type);
   }
 
   if (!arangodb::iresearch::isFilter(*fn)) {
@@ -1993,12 +2621,13 @@ arangodb::Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,
   auto const* args = arangodb::iresearch::getNode(node, 0, arangodb::aql::NODE_TYPE_ARRAY);
 
   if (!args) {
-    auto message = "Unable to parse arguments of system function '"s + fn->name + "' as an array'";
-    LOG_TOPIC("ed878", WARN, arangodb::iresearch::TOPIC) << message;
-    return {TRI_ERROR_BAD_PARAMETER, message};  // invalid args
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Unable to parse arguments of system function '"s.append(fn->name).append("' as an array'")
+    };
   }
 
-  return entry->second(filter, ctx, filterCtx, *args);
+  return entry->second(entry->first.c_str(), filter, ctx, filterCtx, *args);
 }
 
 arangodb::Result fromFilter(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -2006,8 +2635,8 @@ arangodb::Result fromFilter(irs::boolean_filter* filter, QueryContext const& ctx
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FILTER == node.type);
 
   if (node.numMembers() != 1) {
-    logMalformedNode(node.type);
-    return {TRI_ERROR_BAD_PARAMETER, "wrong number of parameters"};  // wrong number of members
+    auto rv = error::malformedNode(node.type);
+    return rv.reset(rv.errorNumber(), "wrong number of parameters: " + rv.errorMessage());
   }
 
   auto const* member = node.getMemberUnchecked(0);
@@ -2061,6 +2690,17 @@ arangodb::Result filter(irs::boolean_filter* filter, QueryContext const& queryCt
       return fromGroup<irs::And>(filter, queryCtx, filterCtx, node);
     case arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR:  // n-ary or
       return fromGroup<irs::Or>(filter, queryCtx, filterCtx, node);
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:   // compare ARRAY in
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:  // compare ARRAY not in
+    // for iresearch filters IN and EQ queries will be actually the same
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:  // compare ARRAY ==
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:  // compare ARRAY !=
+      return fromArrayComparison<ByTermSubFilterFactory>(filter, queryCtx, filterCtx, node);
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:  // compare ARRAY <
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:  // compare ARRAY <=
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:  // compare ARRAY >
+    case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:  // compare ARRAY >=
+      return fromArrayComparison<ByRangeSubFilterFactory>(filter, queryCtx, filterCtx, node);
     default:
       return fromExpression(filter, queryCtx, filterCtx, node);
   }
@@ -2075,14 +2715,22 @@ namespace iresearch {
 // --SECTION--                                      FilerFactory implementation
 // ----------------------------------------------------------------------------
 
-/*static*/ arangodb::Result FilterFactory::filter(irs::boolean_filter* filter, QueryContext const& ctx,
-                                      arangodb::aql::AstNode const& node) {
+/*static*/ arangodb::Result FilterFactory::filter(
+    irs::boolean_filter* filter,
+    QueryContext const& ctx,
+    arangodb::aql::AstNode const& node) {
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
-  IResearchLinkMeta::Analyzer analyzer = IResearchLinkMeta::Analyzer();
+  FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
   FilterContext const filterCtx(analyzer, irs::no_boost());
 
-  return ::filter(filter, ctx, filterCtx, node);
+  const auto res = ::filter(filter, ctx, filterCtx, node);
+
+  if (res.fail()) {
+    LOG_TOPIC("dfa15", WARN, arangodb::iresearch::TOPIC) << res.errorMessage();
+  }
+
+  return res;
 }
 
 }  // namespace iresearch

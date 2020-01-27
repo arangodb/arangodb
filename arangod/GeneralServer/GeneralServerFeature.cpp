@@ -47,6 +47,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
 #include "RestHandler/RestAdminExecuteHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
@@ -74,15 +75,18 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestRedirectHandler.h"
 #include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
+#include "RestHandler/RestSupervisionStateHandler.h"
 #include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
 #include "RestHandler/RestTimeHandler.h"
@@ -152,14 +156,14 @@ void GeneralServerFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--server.io-threads",
                      "Number of threads used to handle IO",
                      new UInt64Parameter(&_numIoThreads),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addSection("http", "HttpServer features");
 
   options->addOption("--http.allow-method-override",
                      "allow HTTP method override using special headers",
                      new BooleanParameter(&_allowMethodOverride),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--http.keep-alive-timeout",
                      "keep-alive timeout in seconds",
@@ -254,6 +258,9 @@ void GeneralServerFeature::beginShutdown() {
 
 void GeneralServerFeature::stop() {
   _jobManager->deleteJobs();
+  for (auto& server : _servers) {
+    server->stopConnections();
+  }
 }
 
 void GeneralServerFeature::unprepare() {
@@ -437,6 +444,7 @@ void GeneralServerFeature::defineHandlers() {
         agency.agent());
   }
 
+  
   if (cluster.isEnabled()) {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
@@ -490,6 +498,9 @@ void GeneralServerFeature::defineHandlers() {
   // /_admin
   // ...........................................................................
 
+  _handlerFactory->addPrefixHandler("/_admin/cluster",
+                                    RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
+
   _handlerFactory->addHandler("/_admin/status",
                               RestHandlerCreator<RestStatusHandler>::createNoData);
 
@@ -512,6 +523,9 @@ void GeneralServerFeature::defineHandlers() {
                                       RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
   }
 
+  _handlerFactory->addHandler("/_admin/supervisionState",
+                              RestHandlerCreator<arangodb::RestSupervisionStateHandler>::createNoData);
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler("/_admin/debug",
@@ -531,6 +545,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/statistics",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+
+  _handlerFactory->addHandler("/_admin/metrics",
+                              RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
@@ -561,6 +578,22 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
 
   _handlerFactory->addPrefixHandler("/", RestHandlerCreator<RestActionHandler>::createNoData);
+
+  // ...........................................................................
+  // redirects
+  // ...........................................................................
+
+  // UGLY HACK INCOMING!
+
+#define ADD_REDIRECT(from, to) do{_handlerFactory->addPrefixHandler(from, \
+                                    RestHandlerCreator<RestRedirectHandler>::createData<const char*>, \
+                                    (void*) to);}while(0)
+
+  ADD_REDIRECT("/_admin/clusterNodeVersion", "/_admin/cluster/nodeVersion");
+  ADD_REDIRECT("/_admin/clusterNodeEngine", "/_admin/cluster/nodeEngine");
+  ADD_REDIRECT("/_admin/clusterNodeStats", "/_admin/cluster/nodeStatistics");
+  ADD_REDIRECT("/_admin/clusterStatistics", "/_admin/cluster/statistics");
+
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

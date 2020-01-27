@@ -24,6 +24,7 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -40,7 +41,7 @@ namespace network {
 
 int resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
                        network::EndpointSpec& spec) {
-  
+
   // Now look up the actual endpoint:
   if (!feature.server().hasFeature<ClusterFeature>()) {
     return TRI_ERROR_SHUTTING_DOWN;
@@ -53,9 +54,14 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
                        network::EndpointSpec& spec) {
   using namespace arangodb;
 
-  if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
+  if (dest.compare(0, 6, "tcp://", 6) == 0 || dest.compare(0, 6, "ssl://", 6) == 0) {
     spec.endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
+  }
+
+  if (dest.compare(0, 11, "http+tcp://", 11) == 0) {
+    spec.endpoint = dest.substr(5);
+    return TRI_ERROR_NO_ERROR;
   }
 
   // This sets result.shardId, result.serverId and result.endpoint,
@@ -101,7 +107,7 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice body) {
+int errorCodeFromBody(arangodb::velocypack::Slice body, int defaultErrorCode) {
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
     if (num.isNumber()) {
@@ -109,7 +115,7 @@ int errorCodeFromBody(arangodb::velocypack::Slice body) {
       return num.getNumericValue<int>();
     }
   }
-  return TRI_ERROR_ILLEGAL_NUMBER;
+  return defaultErrorCode;
 }
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& body,
@@ -163,7 +169,7 @@ void errorCodesFromHeaders(network::Headers headers,
       return;
     }
 
-    for (auto const& code : VPackObjectIterator(codesSlice)) {
+    for (auto code : VPackObjectIterator(codesSlice)) {
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
       int codeNr = NumberUtils::atoi_zero<int>(codeString, codeString + codeLength);
@@ -215,17 +221,72 @@ int toArangoErrorCodeInternal(fuerte::Error err) {
 }
 }  // namespace
 
+fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType verb) {
+  switch (verb) {
+    case rest::RequestType::DELETE_REQ:
+      return fuerte::RestVerb::Delete;
+    case rest::RequestType::GET:
+      return fuerte::RestVerb::Get;
+    case rest::RequestType::POST:
+      return fuerte::RestVerb::Post;
+    case rest::RequestType::PUT:
+      return fuerte::RestVerb::Put;
+    case rest::RequestType::HEAD:
+      return fuerte::RestVerb::Head;
+    case rest::RequestType::PATCH:
+      return fuerte::RestVerb::Patch;
+    case rest::RequestType::OPTIONS:
+      return fuerte::RestVerb::Options;
+    case rest::RequestType::ILLEGAL:
+      return fuerte::RestVerb::Illegal;
+  }
+
+  return fuerte::RestVerb::Illegal;
+}
+
+rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb verb) {
+  switch (verb) {
+    case fuerte::RestVerb::Illegal:
+      return rest::RequestType::ILLEGAL;
+    case fuerte::RestVerb::Delete:
+      return rest::RequestType::DELETE_REQ;
+    case fuerte::RestVerb::Get:
+      return rest::RequestType::GET;
+    case fuerte::RestVerb::Post:
+      return rest::RequestType::POST;
+    case fuerte::RestVerb::Put:
+      return rest::RequestType::PUT;
+    case fuerte::RestVerb::Head:
+      return rest::RequestType::HEAD;
+    case fuerte::RestVerb::Patch:
+      return rest::RequestType::PATCH;
+    case fuerte::RestVerb::Options:
+      return rest::RequestType::OPTIONS;
+  }
+
+  return rest::RequestType::ILLEGAL;
+}
+
 int fuerteToArangoErrorCode(network::Response const& res) {
-  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError)
-      << "cluster error: '" << fuerte::to_string(res.error)
+  LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION, res.error != fuerte::Error::NoError)
+      << "communication error: '" << fuerte::to_string(res.error)
       << "' from destination '" << res.destination << "'";
   return toArangoErrorCodeInternal(res.error);
 }
 
 int fuerteToArangoErrorCode(fuerte::Error err) {
-  LOG_TOPIC_IF("abcdf", ERR, Logger::CLUSTER, err != fuerte::Error::NoError)
-      << "cluster error: '" << fuerte::to_string(err) << "'";
+  LOG_TOPIC_IF("abcdf", ERR, Logger::COMMUNICATION, err != fuerte::Error::NoError)
+      << "communication error: '" << fuerte::to_string(err) << "'";
   return toArangoErrorCodeInternal(err);
 }
+
+std::string fuerteToArangoErrorMessage(network::Response const& res) {
+  return TRI_errno_string(fuerteToArangoErrorCode(res));
+}
+
+std::string fuerteToArangoErrorMessage(fuerte::Error err) {
+  return TRI_errno_string(fuerteToArangoErrorCode(err));
+}
+
 }  // namespace network
 }  // namespace arangodb

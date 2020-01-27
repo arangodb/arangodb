@@ -1,0 +1,56 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright (c) 2018 Mateusz Loskot <mateusz@loskot.net>
+# Copyright (c) 2018 Dmitry Arkhipov
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import os ;
+import path ;
+import regex ;
+
+rule generate_self_contained_headers ( headers_subpath * : exclude_subpaths * )
+{
+    # On CI services, test the self-contained headers on-demand only to avoid build timeouts
+    # CI environment is common for Travis CI, AppVeyor, CircleCI, etc.
+    # For example:
+    # if ! [ os.environ CI ] || [ os.environ TEST_HEADERS ] {
+    #    alias self_contained_headers : [ generate_self_contained_headers ] ;
+    # }
+
+    local targets ;
+
+    # NOTE: All '/' in test names are replaced with '-' because apparently
+    #       test scripts have a problem with test names containing slashes.
+
+    local top_headers_path = [ path.make $(BOOST_ROOT)/libs/gil/include/boost/gil ] ;
+
+    for local file in [ path.glob-tree $(top_headers_path)/$(headers_subpath) : *.hpp : $(exclude_subpaths) ]
+    {
+        local rel_file = [ path.relative-to $(top_headers_path) $(file) ] ;
+        local target_name = [ regex.replace h/$(rel_file) "/" "-" ] ;
+        local target_name = [ regex.replace $(target_name) "\.hpp" "" ] ;
+        targets += [
+            compile $(BOOST_ROOT)/libs/gil/test/headers/main.cpp
+            : <define>"BOOST_GIL_TEST_HEADER=$(rel_file)" <dependency>$(file)
+            : $(target_name)
+        ] ;
+    }
+
+    return $(targets) ;
+}
+
+# TODO: Review sorting to get as close as possible from general to specific
+
+# Core
+alias concepts : [ generate_self_contained_headers concepts ] ;
+alias core : [ generate_self_contained_headers : concepts extension io ] ;
+alias io : [ generate_self_contained_headers io : concepts extension ] ;
+
+# Extensions
+alias extension/dynamic_image : [ generate_self_contained_headers extension/dynamic_image ] ;
+alias extension/io : [ generate_self_contained_headers extension/io ] ;
+alias extension/numeric : [ generate_self_contained_headers extension/numeric ] ;
+alias extension/toolbox : [ generate_self_contained_headers extension/toolbox ] ;

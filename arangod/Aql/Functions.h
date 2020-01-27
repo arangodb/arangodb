@@ -25,9 +25,10 @@
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
 #include "Aql/AqlValue.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
+class Result;
 namespace transaction {
 class Methods;
 }
@@ -40,11 +41,16 @@ namespace aql {
 
 class ExpressionContext;
 
-typedef SmallVector<AqlValue> VPackFunctionParameters;
+typedef ::arangodb::containers::SmallVector<AqlValue> VPackFunctionParameters;
 
 typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
                                            transaction::Methods*,
                                            VPackFunctionParameters const&);
+
+void registerError(ExpressionContext* expressionContext, char const* functionName, int code);
+void registerWarning(ExpressionContext* expressionContext, char const* functionName, int code);
+void registerWarning(ExpressionContext* expressionContext, char const* functionName, Result const& rr);
+void registerInvalidArgumentWarning(ExpressionContext* expressionContext, char const* functionName);
 
 struct Functions {
  public:
@@ -139,6 +145,9 @@ struct Functions {
   static AqlValue Soundex(arangodb::aql::ExpressionContext*,
                           transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue LevenshteinDistance(arangodb::aql::ExpressionContext*,
+                                      transaction::Methods*,
+                                      VPackFunctionParameters const&);
+  static AqlValue LevenshteinMatch(arangodb::aql::ExpressionContext*,
                                       transaction::Methods*,
                                       VPackFunctionParameters const&);
   // Date
@@ -296,6 +305,8 @@ struct Functions {
                                transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue Outersection(arangodb::aql::ExpressionContext*,
                                transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Jaccard(arangodb::aql::ExpressionContext*,
+                          transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue Distance(arangodb::aql::ExpressionContext*,
                            transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue GeoDistance(arangodb::aql::ExpressionContext*,

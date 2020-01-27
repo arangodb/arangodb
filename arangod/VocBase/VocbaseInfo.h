@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_VOCBASE_VOCBASEINFO_H
@@ -68,8 +68,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo(application_features::ApplicationServer&);
-  // CreateDatabaseInfo(CreateDatabaseInfo &&) = delete; // TODO - then replace shared with unique ptr
+  explicit CreateDatabaseInfo(application_features::ApplicationServer&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -85,7 +84,7 @@ class CreateDatabaseInfo {
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;
   void UsersToVelocyPack(VPackBuilder& builder) const;
-  
+
   application_features::ApplicationServer& server() const;
 
   uint64_t getId() const {
@@ -93,6 +92,8 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_validId);
     return _id;
   }
+
+  bool valid() const { return _valid; }
 
   bool validId() const { return _validId; }
 
@@ -102,7 +103,7 @@ class CreateDatabaseInfo {
     _validId = true;
   }
 
-  std::string getName() const {
+  std::string const& getName() const {
     TRI_ASSERT(_valid);
     return _name;
   }
@@ -116,10 +117,13 @@ class CreateDatabaseInfo {
     TRI_ASSERT(_valid);
     return _writeConcern;
   }
-  std::string sharding() const {
+  std::string const& sharding() const {
     TRI_ASSERT(_valid);
     return _sharding;
   }
+
+  ShardingPrototype shardingPrototype() const;
+  void shardingPrototype(ShardingPrototype type);
 
   void allowSystemDB(bool s) { _isSystemDB = s; }
 
@@ -131,14 +135,15 @@ class CreateDatabaseInfo {
 
  private:
   application_features::ApplicationServer& _server;
-  
+
   std::uint64_t _id = 0;
   std::string _name = "";
+  std::string _sharding = "flexible";
   std::vector<DBUser> _users;
 
   std::uint32_t _replicationFactor = 1;
   std::uint32_t _writeConcern = 1;
-  std::string _sharding = "flexible";
+  ShardingPrototype _shardingPrototype = ShardingPrototype::Undefined;
 
   bool _validId = false;
   bool _valid = false;  // required because TRI_ASSERT needs variable in Release mode.
@@ -153,10 +158,10 @@ struct VocbaseOptions {
 
 VocbaseOptions getVocbaseOptions(application_features::ApplicationServer&, velocypack::Slice const&);
 
-void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding,
+void addClusterOptions(velocypack::Builder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t writeConcern);
-void addVocbaseOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
+void addClusterOptions(velocypack::Builder&, VocbaseOptions const&);
 
 }  // namespace arangodb
 #endif

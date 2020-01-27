@@ -34,6 +34,8 @@
 #include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/MoveShard.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
 #include "Cluster/ResultT.h"
@@ -235,11 +237,12 @@ class ClusterRepairsTestBrokenDistribution
  protected:
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager;
+  arangodb::application_features::ApplicationServer server;
 
   ClusterRepairsTestBrokenDistribution()
-      : oldManager(std::move(AgencyCommManager::MANAGER)) {
+      : oldManager(std::move(AgencyCommManager::MANAGER)), server{nullptr, nullptr} {
     // get a new manager
-    AgencyCommManager::initialize("testArangoAgencyPrefix");
+    AgencyCommManager::initialize(server, "testArangoAgencyPrefix");
   }
 
   ~ClusterRepairsTestBrokenDistribution() {
@@ -445,6 +448,7 @@ class ClusterRepairsTestOperations
   std::unique_ptr<AgencyCommManager> oldManager;
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
+  arangodb::application_features::ApplicationServer server;
 
   static uint64_t mockJobIdGenerator() {
     EXPECT_TRUE(false);
@@ -459,9 +463,10 @@ class ClusterRepairsTestOperations
   ClusterRepairsTestOperations()
       : oldManager(std::move(AgencyCommManager::MANAGER)),
         oldServerId(ServerState::instance()->getId()),
-        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {
+        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator),
+        server{nullptr, nullptr} {
     // get a new manager
-    AgencyCommManager::initialize("testArangoAgencyPrefix");
+    AgencyCommManager::initialize(server, "testArangoAgencyPrefix");
   }
 
   ~ClusterRepairsTestOperations() {
@@ -480,11 +485,9 @@ TEST_F(ClusterRepairsTestOperations,
                                   _collectionReplicationFactor = 3,
                                   _protoReplicationFactor = 3,
                                   _renameDistributeShardsLike = true};
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobid] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.has_value());
 
   VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
   Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
@@ -564,11 +567,9 @@ TEST_F(ClusterRepairsTestOperations,
                                   _protoReplicationFactor = 4,
                                   _renameDistributeShardsLike = false};
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobid] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.has_value());
 
   VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
   Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
@@ -607,11 +608,9 @@ TEST_F(ClusterRepairsTestOperations,
                                   _protoReplicationFactor = 5,
                                   _renameDistributeShardsLike = true};
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobid] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.has_value());
 
   VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
   Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
@@ -665,11 +664,9 @@ TEST_F(ClusterRepairsTestOperations, a_finishrepairsoperation_converted_into_an_
                   "shard2", "protoShard2", {"dbServer2", "dbServer3"})},
       _replicationFactor = 3};
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobid] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.has_value());
 
   VPackBufferPtr protoIdVPack = R"=("789876")="_vpack;
   Slice protoIdSlice = Slice(protoIdVPack->data());
@@ -787,11 +784,9 @@ TEST_F(ClusterRepairsTestOperations, a_moveshardoperation_converted_into_an_agen
   conversionVisitor =
       RepairOperationToTransactionVisitor(jobIdGenerator, jobCreationTimestampGenerator);
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobId;
-  std::tie(trx, jobId) = conversionVisitor(operation);
+  auto [trx, jobId] = conversionVisitor(operation);
 
-  ASSERT_TRUE(jobId.is_initialized());
+  ASSERT_TRUE(jobId.has_value());
   // "timeCreated": "2018-03-07T15:20:01.284Z",
   VPackBufferPtr todoVPack = R"=(
           {
@@ -810,9 +805,9 @@ TEST_F(ClusterRepairsTestOperations, a_moveshardoperation_converted_into_an_agen
   Slice todoSlice = Slice(todoVPack->data());
 
   AgencyWriteTransaction expectedTrx{
-      AgencyOperation{"Target/ToDo/" + std::to_string(jobId.get()),
+      AgencyOperation{"Target/ToDo/" + std::to_string(jobId.value()),
                       AgencyValueOperationType::SET, todoSlice},
-      AgencyPrecondition{"Target/ToDo/" + std::to_string(jobId.get()),
+      AgencyPrecondition{"Target/ToDo/" + std::to_string(jobId.value()),
                          AgencyPrecondition::Type::EMPTY, true}};
 
   trx.clientId = expectedTrx.clientId = "dummy-client-id";
@@ -884,11 +879,9 @@ TEST_F(ClusterRepairsTestOperations,
   Slice previousServerOrderSlice = Slice(previousServerOrderVPack->data());
   Slice correctServerOrderSlice = Slice(correctServerOrderVPack->data());
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobId] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobId.has_value());
 
   AgencyWriteTransaction expectedTrx{
       AgencyOperation{"Plan/Collections/myDbName/123456/shards/s1",

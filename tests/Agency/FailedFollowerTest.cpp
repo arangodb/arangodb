@@ -191,7 +191,7 @@ TEST_F(FailedFollowerTest, if_collection_is_missing_job_should_just_finish) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -246,7 +246,7 @@ TEST_F(FailedFollowerTest, distributeshardslike_should_fail_immediately) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -305,7 +305,7 @@ TEST_F(FailedFollowerTest, if_follower_is_healthy_again_we_fail_the_job) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -368,7 +368,7 @@ TEST_F(FailedFollowerTest, if_there_is_no_healthy_free_server_at_start_just_fini
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -396,8 +396,19 @@ TEST_F(FailedFollowerTest, if_there_is_no_healthy_free_server_at_start_just_fini
   ASSERT_TRUE(builder);
   Node agency = createNodeFromBuilder(*builder);
 
-  // nothing should happen
   Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    // check that moveshard is being moved to failed
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+    EXPECT_TRUE(std::string(q->slice()[0][0].get("/arango/Target/Failed/1").typeName()) ==
+                "object");
+    return fakeWriteResult;
+  });
+
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
   auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
@@ -405,7 +416,6 @@ TEST_F(FailedFollowerTest, if_there_is_no_healthy_free_server_at_start_just_fini
 
 TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
   Mock<AgentInterface> moveShardMockAgent;
-
   Builder moveShardBuilder;
   When(Method(moveShardMockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     EXPECT_EQ(std::string(q->slice().typeName()), "array");
@@ -416,7 +426,6 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
     EXPECT_TRUE(std::string(q->slice()[0][0].get("/arango/Target/ToDo/2").typeName()) ==
                 "object");
     moveShardBuilder.add(q->slice()[0][0].get("/arango/Target/ToDo/2"));
-
     return fakeWriteResult;
   });
   When(Method(moveShardMockAgent, waitFor)).Return();
@@ -425,13 +434,12 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
       MoveShard(baseStructure(PREFIX), &moveShardAgent, "2", "strunz", DATABASE,
                 COLLECTION, SHARD, SHARD_LEADER, FREE_SERVER, true, true);
   moveShard.create();
-
   std::string jobId = "1";
   TestStructureType createTestStructure = [&](Slice const& s, std::string const& path) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -440,28 +448,31 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
       }
       if (path == "/arango/Supervision/Shards") {
         builder->add(SHARD, VPackValue("2"));
+
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createJob().slice());
+
       } else if (path == "/arango/Target/Pending") {
         builder->add("2", moveShardBuilder.slice());
       }
+
     } else {
       if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION +
-                      "/" + SHARD + "/servers") {
+                  "/" + SHARD + "/servers") {
         VPackArrayBuilder a(builder.get());
         builder->add(VPackValue(SHARD_LEADER));
         builder->add(VPackValue(SHARD_FOLLOWER2));
+
       } else {
         builder->add(s);
       }
     }
     return builder;
   };
-
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   Node agency = createNodeFromBuilder(*builder);
-
+  // nothing should happen
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     // check that moveshard is being moved to failed
@@ -474,11 +485,9 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
     return fakeWriteResult;
   });
 
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
   auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
   ASSERT_FALSE(failedFollower.start(aborts));
-  Verify(Method(mockAgent, write));
 }
 
 TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
@@ -487,7 +496,7 @@ TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -572,7 +581,7 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -717,7 +726,7 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -730,7 +739,7 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
         VPackBuilder timedOutJob;
         {
           VPackObjectBuilder a(&timedOutJob);
-          for (auto const& it : VPackObjectIterator(todoJob.slice())) {
+          for (auto it : VPackObjectIterator(todoJob.slice())) {
             if (it.key.copyString() == "timeCreated") {
               timedOutJob.add("timeCreated",
                               VPackValue("2015-01-01T00:00:00Z"));
@@ -780,7 +789,7 @@ TEST_F(FailedFollowerTest, job_should_be_abortable_in_todo) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {

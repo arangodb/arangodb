@@ -275,7 +275,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         auto slice = RocksDBValue::data(value);
         storeMaxTick(basics::VelocyPackHelper::stringUInt64(slice, "objectId"));
         VPackSlice indexes = slice.get("indexes");
-        for (VPackSlice const& idx : VPackArrayIterator(indexes)) {
+        for (VPackSlice idx : VPackArrayIterator(indexes)) {
           storeMaxTick(
               std::max(basics::VelocyPackHelper::stringUInt64(idx, "objectId"),
                        basics::VelocyPackHelper::stringUInt64(idx, "id")));

@@ -104,12 +104,14 @@ class Query {
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
   /// the query
-  TEST_VIRTUAL Query* clone(QueryPart, bool);
+  TEST_VIRTUAL Query* clone(QueryPart, bool withPlan);
 
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
-  inline bool killed() const { return _killed; }
+  bool killed() const;
+
+  void setKilled() { _killed = true; }
 
   /// @brief set the query to killed
   void kill();
@@ -229,7 +231,7 @@ class Query {
 
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
-  aql::ExecutionState executeV8(v8::Isolate* isolate, QueryRegistry*, QueryResultV8&);
+  QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
@@ -306,10 +308,6 @@ class Query {
   /// @brief pass-thru a resolver object from the transaction context
   CollectionNameResolver const& resolver();
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::unique_ptr<ExecutionPlan> stealPlan() { return preparePlan(); }
-#endif
-
  private:
   /// @brief initializes the query
   void init();
@@ -340,7 +338,8 @@ class Query {
   void cleanupPlanAndEngineSync(int errorCode, velocypack::Builder* statsBuilder = nullptr) noexcept;
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(int errorCode, velocypack::Builder* statsBuilder = nullptr);
+  ExecutionState cleanupPlanAndEngine(int errorCode,
+                                      velocypack::Builder* statsBuilder = nullptr);
 
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
@@ -350,7 +349,7 @@ class Query {
 
  private:
   /// @brief query id
-  TRI_voc_tick_t _id;
+  const TRI_voc_tick_t _id;
 
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
@@ -436,7 +435,7 @@ class Query {
   /// once for this expression
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
-  
+
   /// @brief whether or not the hash was already calculated
   mutable bool _queryHashCalculated;
 
@@ -447,11 +446,11 @@ class Query {
   /// Options for _resultBuilder. Optimally, its lifetime should be linked to
   /// it, but this is hard to do.
   std::shared_ptr<arangodb::velocypack::Options> _resultBuilderOptions;
-  
+
   /// @brief current state the query is in (used for profiling and error
   /// messages)
   QueryExecutionState::ValueType _state;
-  
+
   /// @brief the query part
   QueryPart const _part;
 

@@ -29,6 +29,7 @@
 
 #include "ManagedDirectory.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
@@ -245,12 +246,8 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
       return;
     }
 
-    std::vector<std::string> files(TRI_FullTreeDirectory(_path.c_str()));
-    bool isEmpty = (files.size() <= 1);
-    // TODO: TRI_FullTreeDirectory always returns at least one element ("")
-    // even if directory is empty?
-
-    if (!isEmpty) {
+    std::vector<std::string> files(TRI_FilesDirectory(_path.c_str()));
+    if (!files.empty()) {
       // directory exists, has files, and we aren't allowed to overwrite
       if (requireEmpty) {
         _status.reset(TRI_ERROR_CANNOT_OVERWRITE_FILE,

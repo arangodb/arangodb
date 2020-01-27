@@ -36,7 +36,11 @@
     },
 
     render: function () {
-      this.model.fetchThumbnail(function () {
+      this.model.fetchThumbnail(function (error) {
+        if (error) {
+          $(this.el).remove();
+        }
+
         var thumbnailUrl = this.model.get('defaultThumbnailUrl');
         if (this.model.get('manifest')) {
           try {
@@ -52,8 +56,11 @@
           upgrade: this._upgrade
         }));
       }.bind(this));
-      // set categories for each foxx
-      $(this.el).attr('category', this.model.get('categories'));
+
+      if (this.model.get('categories')) {
+        // set categories for each foxx
+        $(this.el).attr('category', this.model.get('categories'));
+      }
 
       return $(this.el);
     },
@@ -201,21 +208,23 @@
 
     installFoxxFromStore: function (e) {
       if (window.modalView.modalTestAll()) {
-        var mount, flag;
+        var mount, info, options;
         if (this._upgrade) {
           mount = window.App.replaceAppData.mount;
-          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
             mount = '/' + mount;
           }
         }
-        if (flag !== undefined) {
-          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this), flag);
-        } else {
-          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this));
-        }
+
+        info = {
+          name: this.toInstall,
+          version: this.version
+        };
+
+        options = arangoHelper.getFoxxFlags();
+        this.collection.install('store', info, mount, options, this.installCallback.bind(this));
         window.modalView.hide();
 
         if (this._upgrade) {

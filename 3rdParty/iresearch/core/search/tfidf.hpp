@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TFIDF_H
@@ -32,7 +31,7 @@ class tfidf_sort : public sort {
 public:
   DECLARE_SORT_TYPE();
 
-  static CONSTEXPR bool WITH_NORMS() NOEXCEPT {
+  static constexpr bool WITH_NORMS() noexcept {
     return false;
   }
 
@@ -41,11 +40,11 @@ public:
 
   typedef float_t score_t;
 
-  explicit tfidf_sort(bool normalize = WITH_NORMS()) NOEXCEPT;
+  explicit tfidf_sort(bool normalize = WITH_NORMS()) noexcept;
 
   static void init(); // for trigering registration in a static build
-  bool normalize() const NOEXCEPT { return normalize_; }
-  void normalize(bool value) NOEXCEPT { normalize_ = value; }
+  bool normalize() const noexcept { return normalize_; }
+  void normalize(bool value) noexcept { normalize_ = value; }
 
   virtual sort::prepared::ptr prepare() const override;
 

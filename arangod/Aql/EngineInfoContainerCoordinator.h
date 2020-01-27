@@ -100,13 +100,14 @@ class EngineInfoContainerCoordinator {
   ExecutionEngineResult buildEngines(Query& query, QueryRegistry* registry,
                                      std::string const& dbname,
                                      std::unordered_set<std::string> const& restrictToShards,
-                                     MapRemoteToSnippet const& dbServerQueryIds) const;
+                                     MapRemoteToSnippet const& dbServerQueryIds,
+                                     std::vector<uint64_t>& coordinatorQueryIds) const;
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster
   std::vector<EngineInfo> _engines;
 
-  std::stack<size_t> _engineStack;
+  std::stack<size_t, std::vector<size_t>> _engineStack;
 };
 
 }  // namespace aql

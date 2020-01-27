@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -43,20 +43,6 @@ function dumpTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test the empty collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -90,8 +76,16 @@ function dumpTestSuite () {
       assertEqual(100000, c.count());
 
       // test all documents
-      for (var i = 0; i < 100000; ++i) {
-        var doc = c.document("test" + i);
+      let docs = [], results = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push("test" + i);
+        if (docs.length === 10000) {
+          results = results.concat(c.document(docs));
+          docs = [];
+        }
+      }
+      for (let i = 0; i < 100000; ++i) {
+        let doc = results[i];
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
@@ -158,13 +152,11 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(9000, c.count());
 
-      var i;
-      for (i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         if (i % 10 === 0) {
           assertFalse(c.exists("test" + i));
-        }
-        else {
-          var doc = c.document("test" + i);
+        } else {
+          let doc = c.document("test" + i);
           assertEqual(i, doc.value1);
 
           if (i < 1000) {
@@ -404,14 +396,19 @@ function dumpTestSuite () {
       }
 
       let view = db._view("UnitTestsDumpView");
-      assertTrue(view !== null);
+      assertNotEqual(null, view);
       let props = view.properties();
+      assertEqual("UnitTestsDumpView", view.name());
       assertEqual(Object.keys(props.links).length, 1);
       assertTrue(props.hasOwnProperty("links"));
       assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+      assertEqual(Object.keys(props.links.UnitTestsDumpViewCollection.fields).length, 1);
+      assertTrue(props.links.UnitTestsDumpViewCollection.fields.text.analyzers.length, 2);
+      assertTrue("text_en", props.links.UnitTestsDumpViewCollection.fields.text.analyzers[0]);
+      assertTrue("UnitTestsDumpView::custom", props.links.UnitTestsDumpViewCollection.fields.text.analyzers[1]);
 
       assertEqual(props.consolidationIntervalMsec, 0);
       assertEqual(props.cleanupIntervalStep, 456);
@@ -442,8 +439,38 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
       assertEqual(1, res.length);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test custom analyzers restoring
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzers: function() {
+      assertNotEqual(null, db._collection("_analyzers"));
+      assertEqual(1, db._analyzers.count()); // only 1 stored custom analyzer
+
+      let analyzer = analyzers.analyzer("custom");
+      assertEqual(db._name() + "::custom", analyzer.name());
+      assertEqual("delimiter", analyzer.type());
+      assertEqual(Object.keys(analyzer.properties()).length, 1);
+      assertEqual(" ", analyzer.properties().delimiter);
+      assertEqual(1, analyzer.features().length);
+      assertEqual("frequency", analyzer.features()[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test link on analyzers collection
+////////////////////////////////////////////////////////////////////////////////
+    testIndexAnalyzerCollection : function() {
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
+    },
+
+    testJobsAndQueues : function() {
+      assertEqual("test", db._jobs.document("test")._key);
+      assertEqual("test", db._queues.document("test")._key);
+    },
   };
 }
 

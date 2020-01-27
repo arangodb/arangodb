@@ -1,12 +1,12 @@
 @startDocuBlock post_create_document
 @brief creates documents
 
-@RESTHEADER{POST /_api/document/{collection}, Create document, insertDocument}
+@RESTHEADER{POST /_api/document/{collection},Create document,insertDocument}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection,string,required}
-The *collection* in which the collection is to be created.
+Name of the *collection* in which the document is to be created.
 
 @RESTALLBODYPARAM{data,json,required}
 A JSON representation of a single document.
@@ -31,7 +31,7 @@ Additionally return the complete old document under the attribute *old*
 in the result. Only available if the overwrite option is used.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the created document. This option can be used to
 save some network traffic.
 
@@ -39,6 +39,26 @@ save some network traffic.
 If set to *true*, the insert becomes a replace-insert. If a document with the
 same *_key* already exists the new document is not rejected with unique
 constraint violated but will replace the old document.
+
+@RESTQUERYPARAM{overwriteMode,string,optional}
+This parameter can be set to *replace* or *update*. If given it sets implicitly
+the overwrite flag. In case it is set to *update*, the replace-insert becomes an
+update-insert. Otherwise this option follows the rules of the overwrite parameter.
+
+@RESTQUERYPARAM{keepNull,boolean,optional}
+If the intention is to delete existing attributes with the update-insert
+command, the URL query parameter *keepNull* can be used with a value of
+*false*. This will modify the behavior of the patch command to remove any
+attributes from the existing document that are contained in the patch document
+with an attribute value of *null*.
+This option controls the update-insert behavior only.
+
+@RESTQUERYPARAM{mergeObjects,boolean,optional}
+Controls whether objects (not arrays) will be merged if present in both the
+existing and the update-insert document. If set to *false*, the value in the
+patch document will overwrite the existing document's value. If set to *true*,
+objects will be merged. The default is *true*.
+This option controls the update-insert behavior only.
 
 @RESTDESCRIPTION
 Creates a new document from the document given in the body, unless there
@@ -53,10 +73,10 @@ contains the path to the newly created document. The *Etag* header field
 contains the revision of the document. Both are only set in the single
 document case.
 
-If *silent* is not set to *true*, the body of the response contains a 
+If *silent* is not set to *true*, the body of the response contains a
 JSON object with the following attributes:
 
-  - *_id* contains the document handle of the newly created document
+  - *_id* contains the document identifier of the newly created document
   - *_key* contains the document key
   - *_rev* contains the document revision
 
@@ -238,4 +258,3 @@ Use of returnNew:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

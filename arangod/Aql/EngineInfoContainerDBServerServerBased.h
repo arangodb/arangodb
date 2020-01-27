@@ -36,7 +36,9 @@
 #include <stack>
 
 namespace arangodb {
-class ClusterComm;
+namespace network {
+class ConnectionPool;
+}
 
 namespace velocypack {
 class Builder;
@@ -133,13 +135,13 @@ class EngineInfoContainerDBServerServerBased {
    * they may be leftovers from Coordinator.
    * Will also clear the list of queryIds after return.
    *
-   * @param cc The ClusterComm
+   * @param pool The ConnectionPool
    * @param errorCode error Code to be send to DBServers for logging.
    * @param dbname Name of the database this query is executed in.
    * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
    * -> queryid.
    */
-  void cleanupEngines(std::shared_ptr<ClusterComm> cc, int errorCode,
+  void cleanupEngines(network::ConnectionPool* pool, int errorCode,
                       std::string const& dbname, MapRemoteToSnippet& queryIds) const;
 
   // Insert a GraphNode that needs to generate TraverserEngines on

@@ -26,8 +26,6 @@
 #ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/RegisterPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 
@@ -35,12 +33,10 @@
 #include <unordered_set>
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
 namespace velocypack {
 class Builder;
-}
+struct Options;
+}  // namespace velocypack
 namespace aql {
 
 class AqlItemBlock;
@@ -49,7 +45,7 @@ struct AqlValue;
 
 struct CreateInvalidInputRowHint {
   // Forbid creating this via `{}`
-  explicit CreateInvalidInputRowHint() = default;
+  constexpr explicit CreateInvalidInputRowHint() = default;
 };
 
 /**
@@ -65,7 +61,8 @@ struct CreateInvalidInputRowHint {
 class InputAqlItemRow {
  public:
   // The default constructor contains an invalid item row
-  explicit InputAqlItemRow(CreateInvalidInputRowHint);
+  constexpr explicit InputAqlItemRow(CreateInvalidInputRowHint)
+      : _block(nullptr), _baseIndex(0) {}
 
   InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex);
 
@@ -89,21 +86,33 @@ class InputAqlItemRow {
    */
   AqlValue stealValue(RegisterId registerId);
 
-  std::size_t getNrRegisters() const noexcept;
+  RegisterCount getNrRegisters() const noexcept;
 
+  // Note that == and != here check whether the rows are *identical*, that is,
+  // the same row in the same block.
+  // TODO Make this a named method
   bool operator==(InputAqlItemRow const& other) const noexcept;
 
   bool operator!=(InputAqlItemRow const& other) const noexcept;
+
+  // This checks whether the rows are equivalent, in the sense that they hold
+  // the same number of registers and their entry-AqlValues compare equal.
+  // In maintainer mode, it also asserts that the number of registers of the
+  // blocks are equal, because comparing rows of blocks with different layouts
+  // does not make sense.
+  // Invalid rows are considered equivalent.
+  [[nodiscard]] bool equates(InputAqlItemRow const& other,
+                             velocypack::Options const* options) const noexcept;
 
   bool isInitialized() const noexcept;
 
   explicit operator bool() const noexcept;
 
-  bool isFirstRowInBlock() const noexcept;
+  bool isFirstDataRowInBlock() const noexcept;
 
   bool isLastRowInBlock() const noexcept;
 
-  bool blockHasMoreRows() const noexcept;
+  bool blockHasMoreDataRowsAfterThis() const noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
@@ -122,7 +131,9 @@ class InputAqlItemRow {
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   /// Uses the same API as an AqlItemBlock with only a single row
-  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  void toSimpleVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
 
  private:
   AqlItemBlock& block() noexcept;

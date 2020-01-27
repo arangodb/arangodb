@@ -55,6 +55,8 @@
 #include "Random/UniformCharacter.h"
 #include "Ssl/ssl-helper.h"
 
+#include <nghttp2/nghttp2.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -67,11 +69,7 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
       _keyfile(),
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-      _sslProtocol(TLS_V13),
-#else
-      _sslProtocol(TLS_V12),
-#endif
+      _sslProtocol(TLS_GENERIC),
       _sslOptions(asio_ns::ssl::context::default_workarounds |
                   asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
@@ -111,7 +109,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--ssl.options",
                      "ssl connection options, see OpenSSL documentation",
                      new UInt64Parameter(&_sslOptions),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--ssl.ecdh-curve",
@@ -197,6 +195,21 @@ class BIOGuard {
   BIO* _bio;
 };
 }  // namespace
+
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg) {
+  int rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+
+  if (rv != 1) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  return SSL_TLSEXT_ERR_OK;
+}
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 asio_ns::ssl::context SslServerFeature::createSslContext() const {
   try {
@@ -318,6 +331,10 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
     }
 
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
+    
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     return sslContext;
   } catch (std::exception const& ex) {

@@ -17,11 +17,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan-Christoph Uhde
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseInfo.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -30,8 +32,19 @@
 #include "Utils/Events.h"
 
 namespace arangodb {
-  
+
 CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server) : _server(server) {}
+  
+ShardingPrototype CreateDatabaseInfo::shardingPrototype() const { 
+  if (_name != StaticStrings::SystemDatabase) {
+    return ShardingPrototype::Graphs;
+  }
+  return _shardingPrototype; 
+}
+
+void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
+  _shardingPrototype = type; 
+}
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
   Result res;
@@ -62,7 +75,7 @@ Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& use
 #endif
 
   return checkOptions();
-};
+}
 
 Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
                                 VPackSlice const& users) {
@@ -126,7 +139,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
 #endif
 
   return checkOptions();
-};
+}
 
 void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) const {
   TRI_ASSERT(_validId);
@@ -134,11 +147,10 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
+  builder.add(StaticStrings::DataSourceSystem, VPackValue(_isSystemDB));
 
   if (ServerState::instance()->isCoordinator()) {
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-    builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
-    builder.add(StaticStrings::Sharding, VPackValue(_sharding));
+    addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
   }
 
   if (withUsers) {
@@ -229,7 +241,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
                                           bool extractId, bool extractName) {
   if (options.isNone() || options.isNull()) {
     return Result();
-  } 
+  }
   if (!options.isObject()) {
     events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
@@ -239,7 +251,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
   _replicationFactor = vocopts.replicationFactor;
   _writeConcern = vocopts.writeConcern;
   _sharding = vocopts.sharding;
-  
+
   if (extractName) {
     auto nameSlice = options.get(StaticStrings::DatabaseName);
     if (!nameSlice.isString()) {
@@ -276,8 +288,12 @@ Result CreateDatabaseInfo::checkOptions() {
     _validId = false;
   }
 
+  // we cannot use IsAllowedName for database name length validation alone, because
+  // IsAllowedName allows up to 256 characters. Database names are just up to 64
+  // chars long, as their names are also used as filesystem directories (for Foxx apps)
   if (_name.empty() ||
-      !TRI_vocbase_t::IsAllowedName(_isSystemDB, arangodb::velocypack::StringRef(_name))) {
+      !TRI_vocbase_t::IsAllowedName(_isSystemDB, arangodb::velocypack::StringRef(_name)) ||
+      _name.size() > 64) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
@@ -343,21 +359,19 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
   }
 
   {
-    // not an error: for historical reasons the write concern is read from the
-    // variable "minReplicationFactor"
-    VPackSlice writeConcernSlice = options.get(StaticStrings::MinReplicationFactor);
+    // simon: new API in 3.6 no need to check legacy "minReplicationFactor"
+    VPackSlice writeConcernSlice = options.get(StaticStrings::WriteConcern);
     bool isNumber =
         (writeConcernSlice.isNumber() && writeConcernSlice.getNumber<int>() > 0);
     if (!isNumber) {
       if (haveCluster) {
         vocbaseOptions.writeConcern = server.getFeature<ClusterFeature>().writeConcern();
       } else {
-        // note: writeConcern is named "minReplicationFactor" in the APIs for historical reasons
         LOG_TOPIC("eeeed", ERR, Logger::CLUSTER)
-            << "Cannot access ClusterFeature to determine minReplicationFactor";
+            << "Cannot access ClusterFeature to determine writeConcern";
       }
     } else if (isNumber) {
-      vocbaseOptions.writeConcern = 
+      vocbaseOptions.writeConcern =
           writeConcernSlice.getNumber<decltype(vocbaseOptions.writeConcern)>();
     }
   }
@@ -365,7 +379,7 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
   return vocbaseOptions;
 }
 
-void addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding,
+void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
                                    std::uint32_t replicationFactor,
                                    std::uint32_t writeConcern) {
   TRI_ASSERT(builder.isOpenObject());
@@ -375,11 +389,10 @@ void addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sha
   } else {  // 0 is satellite
     builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
   }
-  builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
+  builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
 }
 
-void addVocbaseOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addVocbaseOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor,
-                                opt.writeConcern);
+void addClusterOptions(VPackBuilder& builder, VocbaseOptions const& opt) {
+  addClusterOptions(builder, opt.sharding, opt.replicationFactor, opt.writeConcern);
 }
 }  // namespace arangodb

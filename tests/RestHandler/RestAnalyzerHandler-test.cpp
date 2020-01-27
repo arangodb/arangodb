@@ -66,7 +66,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
   static ptr make(irs::string_ref const&) {
@@ -133,9 +133,11 @@ class RestAnalyzerHandlerTest
     // TODO: This should at the very least happen in the mock
     // create system vocbase
     {
+      std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(server.getSystemDatabase(),
                                                    arangodb::tests::AnalyzerCollectionName,
-                                                   false);
+                                                   false,
+                                                   unused);
     }
     createAnalyzers();
 
@@ -176,11 +178,10 @@ class RestAnalyzerHandlerTest
     grantOnDb({{name, arangodb::auth::Level::RW},
                {arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW}});
 
-    arangodb::Result res;
-    std::tie(res, std::ignore) =
-        arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
+    std::shared_ptr<arangodb::LogicalCollection> ignored;
+    arangodb::Result res = arangodb::methods::Collections::createSystem(*dbFeature.useDatabase(name),
                                                      arangodb::tests::AnalyzerCollectionName,
-                                                     false);
+                                                     false, ignored);
 
     ASSERT_TRUE(res.ok());
 

@@ -215,28 +215,20 @@ To remove all available node modules and start a clean installation run:
 
 The frontend can also be built using these commands:
 
-    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/
+    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
     npm install
-    grunt deploy
+    npm run build
 
-For development purposes, go to `js/apps/system/_admin/aardvark/APP/` and open
-`manifest.json`. Then apply the following change:
+For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
+run:
 
-```
-     "/app.js": {
-     -      "path": "frontend/build/app.min.js",
-     -      "gzip": true
-     +      "path": "frontend/build/app.js",
-     +      "gzip": false
-          },
-```
+    npm start
 
-Then run `grunt`, `grunt deploy` and `grunt watch`. This should make every
-change in the code available after a reload for the browser. It is faster this
-way because the minification step is skipped.
+This will deploy a development server (Port: 3000) and automatically start your
+favorite browser and open the web UI.
 
-Note: You might need to do the same for other files.
-Usually the change for `app` should suffice however.
+All changes to any source will automatically re-build and reload your browser.
+Enjoy :)
 
 #### NPM Dependencies
 
@@ -532,7 +524,7 @@ It contains of a list of directories corresponding to the components of ArangoDB
     - arangovpack
 
 In these directories you will find subdirectories with the hash corresponding
-to the id of the binaries. Their date should corrospond to the release date
+to the id of the binaries. Their date should correspond to the release date
 of their respective arango release.
 
 This means i.e. for ArangoDB 3.1.11:
@@ -827,10 +819,10 @@ You can later on use Wireshark to inpsect the capture files.
 
 ### Evaluating json test reports from previous testruns
 
-All test results of testruns are dumped to a json file named `UNITTEST_RESULT.json` which can be used 
-for later analyzing of timings etc. 
+All test results of testruns are dumped to a json file named `UNITTEST_RESULT.json` which can be used
+for later analyzing of timings etc.
 
-Currently available analyzers are: 
+Currently available Analyzers are:
 
   - unitTestPrettyPrintResults - Prints a pretty summary and writes an ASCII representation into `out/testfailures.txt` (if any errors)
   - saveToJunitXML - saves jUnit compatible XML files

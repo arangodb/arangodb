@@ -48,13 +48,14 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result existsCollection(std::string const& database, std::string const& collection) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (!server.hasFeature<arangodb::DatabaseFeature>()) {
+arangodb::Result existsCollection(v8::Isolate* isolate, std::string const& database,
+                                  std::string const& collection) {
+  TRI_GET_GLOBALS();
+  if (!v8g->_server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
-  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto& databaseFeature = v8g->_server.getFeature<arangodb::DatabaseFeature>();
 
   static const std::string wildcard("*");
 
@@ -356,7 +357,7 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   // validate that the collection is present
   {
-    auto res = existsCollection(db, coll);
+    auto res = existsCollection(isolate, db, coll);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -408,7 +409,7 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   // validate that the collection is present
   {
-    auto res = existsCollection(db, coll);
+    auto res = existsCollection(isolate, db, coll);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);

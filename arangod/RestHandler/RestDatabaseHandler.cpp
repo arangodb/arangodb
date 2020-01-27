@@ -72,13 +72,13 @@ RestStatus RestDatabaseHandler::getDatabases() {
       if (!_vocbase.isSystem()) {
         res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       } else {
-        names = methods::Databases::list(std::string());
+        names = methods::Databases::list(server(), std::string());
       }
     } else if (suffixes[0] == "user") {
       if (!_request->authenticated() && ExecContext::isAuthEnabled()) {
         res.reset(TRI_ERROR_FORBIDDEN);
       } else {
-        names = methods::Databases::list(_request->user());
+        names = methods::Databases::list(server(), _request->user());
       }
     }
 
@@ -87,8 +87,8 @@ RestStatus RestDatabaseHandler::getDatabases() {
       builder.add(VPackValue(name));
     }
     builder.close();
-  } else if (suffixes[0] == "current" || suffixes[0] == "properties") {
-    res = _vocbase.toVelocyPack(builder);
+  } else if (suffixes[0] == "current") {
+    _vocbase.toVelocyPack(builder);
   }
 
   if (res.fail()) {

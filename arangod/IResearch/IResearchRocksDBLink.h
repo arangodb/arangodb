@@ -26,6 +26,7 @@
 
 #include "IResearchLink.h"
 
+#include "Indexes/IndexFactory.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 
 namespace arangodb {
@@ -38,6 +39,8 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResearchLink {
  public:
+  IResearchRocksDBLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
+
   void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
   }
@@ -47,11 +50,6 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   }
 
   arangodb::Result drop() override { return IResearchLink::drop(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the factory for this type of index
-  //////////////////////////////////////////////////////////////////////////////
-  static arangodb::IndexTypeFactory const& factory();
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
@@ -77,7 +75,10 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
     return IResearchLink::matchesDefinition(slice);
   }
 
-  size_t memory() const override { return IResearchLink::memory(); }
+  size_t memory() const override {
+    // FIXME return in memory size
+    return stats().indexSize;
+  }
 
   arangodb::Result remove(arangodb::transaction::Methods& trx,
                                   arangodb::RocksDBMethods*,
@@ -95,6 +96,10 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
 
+  void toVelocyPackFigures(velocypack::Builder& builder) const override {
+    IResearchLink::toVelocyPackStats(builder);
+  }
+
   IndexType type() const override { return IResearchLink::type(); }
 
   char const* typeName() const override {
@@ -109,10 +114,33 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
     }
   }
 
- private:
-  struct IndexFactory;  // forward declaration
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief IResearchRocksDBLink-specific implementation of an IndexTypeFactory
+  ////////////////////////////////////////////////////////////////////////////////
+  struct IndexFactory : public arangodb::IndexTypeFactory {
+    friend class IResearchRocksDBLink;
 
-  IResearchRocksDBLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
+   private:
+    IndexFactory(arangodb::application_features::ApplicationServer& server);
+
+   public:
+    bool equal(arangodb::velocypack::Slice const& lhs,
+               arangodb::velocypack::Slice const& rhs) const override;
+
+    std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
+                                                 arangodb::velocypack::Slice const& definition,
+                                                 TRI_idx_iid_t id,
+                                                 bool /*isClusterConstructor*/) const override;
+
+    virtual arangodb::Result normalize(             // normalize definition
+        arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+        arangodb::velocypack::Slice definition,  // source definition
+        bool isCreation,              // definition for index creation
+        TRI_vocbase_t const& vocbase  // index vocbase
+        ) const override;
+  };
+
+  static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
 };
 
 }  // namespace iresearch

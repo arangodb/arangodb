@@ -30,6 +30,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
@@ -39,6 +40,7 @@
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 CollectNode::CollectNode(
@@ -436,46 +438,188 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-/// @brief helper struct for finding variables
-struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
-  explicit UserVarFinder(int mindepth) : mindepth(mindepth), depth(-1) {}
+auto isStartNode(ExecutionNode const& node) -> bool {
+  switch (node.getType()) {
+    case ExecutionNode::SINGLETON:
+    case ExecutionNode::SUBQUERY_START:
+      return true;
+    case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::FILTER:
+    case ExecutionNode::LIMIT:
+    case ExecutionNode::CALCULATION:
+    case ExecutionNode::SUBQUERY:
+    case ExecutionNode::SORT:
+    case ExecutionNode::COLLECT:
+    case ExecutionNode::SCATTER:
+    case ExecutionNode::GATHER:
+    case ExecutionNode::REMOTE:
+    case ExecutionNode::INSERT:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::RETURN:
+    case ExecutionNode::NORESULTS:
+    case ExecutionNode::DISTRIBUTE:
+    case ExecutionNode::UPSERT:
+    case ExecutionNode::TRAVERSAL:
+    case ExecutionNode::INDEX:
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::DISTRIBUTE_CONSUMER:
+    case ExecutionNode::SUBQUERY_END:
+    case ExecutionNode::MATERIALIZE:
+      return false;
+    case ExecutionNode::MAX_NODE_TYPE_VALUE:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+}
 
-  ~UserVarFinder() = default;
+auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
+  switch (node.getType()) {
+    case ExecutionNode::SINGLETON:
+    case ExecutionNode::SUBQUERY_START:
+    case ExecutionNode::COLLECT:
+      return true;
+    case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::FILTER:
+    case ExecutionNode::LIMIT:
+    case ExecutionNode::CALCULATION:
+    case ExecutionNode::SUBQUERY:
+    case ExecutionNode::SORT:
+    case ExecutionNode::SCATTER:
+    case ExecutionNode::GATHER:
+    case ExecutionNode::REMOTE:
+    case ExecutionNode::INSERT:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::RETURN:
+    case ExecutionNode::NORESULTS:
+    case ExecutionNode::DISTRIBUTE:
+    case ExecutionNode::UPSERT:
+    case ExecutionNode::TRAVERSAL:
+    case ExecutionNode::INDEX:
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::DISTRIBUTE_CONSUMER:
+    case ExecutionNode::SUBQUERY_END:
+    case ExecutionNode::MATERIALIZE:
+      return false;
+    case ExecutionNode::MAX_NODE_TYPE_VALUE:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+}
 
-  std::vector<Variable const*> userVars;
-  int mindepth;  // minimal depth to consider
-  int depth;
+auto isLoop(ExecutionNode const& node) -> bool {
+  switch (node.getType()) {
+    case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::INDEX:
+    case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::TRAVERSAL:
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS:
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::COLLECT:
+      return true;
+    case ExecutionNode::SINGLETON:
+    case ExecutionNode::SUBQUERY_START:
+    case ExecutionNode::FILTER:
+    case ExecutionNode::LIMIT:
+    case ExecutionNode::CALCULATION:
+    case ExecutionNode::SUBQUERY:
+    case ExecutionNode::SORT:
+    case ExecutionNode::SCATTER:
+    case ExecutionNode::GATHER:
+    case ExecutionNode::REMOTE:
+    case ExecutionNode::INSERT:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::RETURN:
+    case ExecutionNode::NORESULTS:
+    case ExecutionNode::DISTRIBUTE:
+    case ExecutionNode::UPSERT:
+    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::DISTRIBUTE_CONSUMER:
+    case ExecutionNode::SUBQUERY_END:
+    case ExecutionNode::MATERIALIZE:
+      return false;
+    case ExecutionNode::MAX_NODE_TYPE_VALUE:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+}
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;
+// Get all variables that should be collected "INTO" the group variable.
+// Returns whether we are at the top level.
+// Gets passed whether we did encounter a loop "on the way" from the collect node.
+auto getGroupVariables(ExecutionNode const& node, std::vector<Variable const*>& groupVariables,
+                       bool const encounteredLoop = false, int const subqueryDepth = 0) -> bool {
+  TRI_ASSERT(subqueryDepth >= 0);
+  auto const recSubqueryDepth = [&]() {
+    if (node.getType() == ExecutionNode::SUBQUERY_END) {
+      return subqueryDepth + 1;
+    } else if (node.getType() == ExecutionNode::SUBQUERY_START) {
+      return subqueryDepth - 1;
+    }
+    return subqueryDepth;
+  }();
+
+  auto const dep = node.getFirstDependency();
+
+  // Skip nodes inside a subquery, except for SUBQUERY_END!
+  if (subqueryDepth > 0) {
+    if (dep != nullptr) {
+      return getGroupVariables(*dep, groupVariables, encounteredLoop, recSubqueryDepth);
+    } else {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                     "Unexpected end of plan inside subquery");
+    }
   }
 
-  void after(ExecutionNode* en) override final {
-    if (en->getType() == ExecutionNode::SINGLETON) {
-      depth = 0;
-    } else if (en->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-               en->getType() == ExecutionNode::INDEX ||
-               en->getType() == ExecutionNode::ENUMERATE_LIST ||
-               en->getType() == ExecutionNode::TRAVERSAL ||
-               en->getType() == ExecutionNode::SHORTEST_PATH ||
-               en->getType() == ExecutionNode::K_SHORTEST_PATHS ||
-               en->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW ||
-               en->getType() == ExecutionNode::COLLECT) {
-      depth += 1;
+  bool const depIsTopLevel = [&]() {
+    // Abort recursion on invalidating nodes
+    if (dep != nullptr && !isVariableInvalidatingNode(node)) {
+      return getGroupVariables(*dep, groupVariables,
+                               encounteredLoop || isLoop(node), recSubqueryDepth);
+    } else {
+      return isStartNode(node);
     }
-    // Now depth is set correct for this node.
-    if (depth >= mindepth) {
-      for (auto const& v : en->getVariablesSetHere()) {
-        if (v->isUserDefined()) {
-          userVars.emplace_back(v);
-        }
+  }();
+
+  // when we encounter a loop, we're no longer on the top level.
+  bool const isTopLevel = depIsTopLevel && !isLoop(node);
+
+  // top level variables aren't added, unless the collect node itself is on the
+  // top level, which is true when there aren't any loops on the way.
+  bool const addVariables = !isTopLevel || !encounteredLoop;
+
+  if (addVariables) {
+    // Add all variables of the current node
+    for (auto const& v : node.getVariablesSetHere()) {
+      if (v->isUserDefined()) {
+        groupVariables.emplace_back(v);
       }
     }
   }
-};
+
+  return isTopLevel;
+}
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void CollectNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
   }
@@ -491,18 +635,13 @@ void CollectNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars)
     if (_keepVariables.empty()) {
       // Here we have to find all user defined variables in this query
       // amongst our dependencies:
-      UserVarFinder finder(1);
-      auto myselfAsNonConst = const_cast<CollectNode*>(this);
-      myselfAsNonConst->walk(finder);
-      if (finder.depth == 1) {
-        // we are top level, let's run again with mindepth = 0
-        finder.userVars.clear();
-        finder.mindepth = 0;
-        finder.depth = -1;
-        finder.reset();
-        myselfAsNonConst->walk(finder);
-      }
-      for (auto& x : finder.userVars) {
+
+      auto const dep = getFirstDependency();
+      TRI_ASSERT(dep != nullptr);
+      std::vector<Variable const*> userVars;
+      getGroupVariables(*dep, userVars);
+
+      for (auto& x : userVars) {
         vars.emplace(x);
       }
     } else {

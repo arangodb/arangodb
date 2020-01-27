@@ -35,8 +35,8 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -68,11 +68,16 @@ std::string const& stateToString(aql::ExecutionState state) {
 
 }  // namespace
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+size_t ExecutionBlock::DefaultBatchSize = ExecutionBlock::ProductionDefaultBatchSize;
+#endif
+
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
-      _trx(engine->getQuery()->trx()),
+      _trxVpackOptions(engine->getQuery()->trx()->transactionContextPtr()->getVPackOptions()),
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _done(false),
+      _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
       _exeNode(ep),
       _dependencyPos(_dependencies.end()),
       _profile(engine->getQuery()->queryOptions().getProfileLevel()),
@@ -170,7 +175,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+      _engine->_stats.nodes.try_emplace(en->id(), stats);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -178,9 +183,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
       auto const queryId = this->_engine->getQuery()->id();
       LOG_TOPIC("07a60", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
-          << "getSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state)
-          << " items=" << items;
+          << "getSome done type=" << node->getTypeString()
+          << " this=" << (uintptr_t)this << " id=" << node->id()
+          << " state=" << stateToString(state) << " items=" << items;
 
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (result == nullptr) {
@@ -189,11 +194,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          {
-            VPackObjectBuilder guard(&builder);
-            result->toVelocyPack(transaction(), builder);
-          }
-          auto options = transaction()->transactionContextPtr()->getVPackOptions();
+          auto const options = trxVpackOptions();
+          result->toSimpleVPack(options, builder);
           LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
               << "[query#" << queryId << "] "
               << "getSome type=" << node->getTypeString()
@@ -240,7 +242,7 @@ std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+      _engine->_stats.nodes.try_emplace(en->id(), stats);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -248,9 +250,9 @@ std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
       auto const queryId = this->_engine->getQuery()->id();
       LOG_TOPIC("d1950", INFO, Logger::QUERIES)
           << "[query#" << queryId << "] "
-          << "skipSome done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state)
-          << " skipped=" << skipped;
+          << "skipSome done type=" << node->getTypeString()
+          << " this=" << (uintptr_t)this << " id=" << node->id()
+          << " state=" << stateToString(state) << " skipped=" << skipped;
     }
   }
   return res;
@@ -274,7 +276,9 @@ ExecutionState ExecutionBlock::getHasMoreState() {
 
 ExecutionNode const* ExecutionBlock::getPlanNode() const { return _exeNode; }
 
-transaction::Methods* ExecutionBlock::transaction() const { return _trx; }
+velocypack::Options const* ExecutionBlock::trxVpackOptions() const noexcept {
+  return _trxVpackOptions;
+}
 
 void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   TRI_ASSERT(ep != nullptr);
@@ -283,4 +287,8 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
              _dependencies.end());
   _dependencies.emplace_back(ep);
   _dependencyPos = _dependencies.end();
+}
+
+bool ExecutionBlock::isInSplicedSubquery() const noexcept {
+  return _isInSplicedSubquery;
 }

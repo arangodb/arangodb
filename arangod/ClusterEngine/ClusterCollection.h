@@ -81,7 +81,7 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief return the figures for a collection
-  futures::Future<std::shared_ptr<velocypack::Builder>> figures() override;
+  futures::Future<OperationResult> figures() override;
 
   /// @brief closes an open collection
   int close() override;
@@ -110,9 +110,6 @@ class ClusterCollection final : public PhysicalCollection {
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
-
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -161,7 +158,7 @@ class ClusterCollection final : public PhysicalCollection {
 
  protected:
   /// @brief Inject figures that are specific to StorageEngine
-  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(arangodb::velocypack::Builder&) override;
 
  private:
   void addIndex(std::shared_ptr<arangodb::Index> idx);

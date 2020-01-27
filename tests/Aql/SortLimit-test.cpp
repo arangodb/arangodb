@@ -100,7 +100,7 @@ class SortLimitTest
     EXPECT_TRUE(nodes.isArray());
 
     std::string strategy;
-    for (auto const& it : VPackArrayIterator(nodes)) {
+    for (VPackSlice it : VPackArrayIterator(nodes)) {
       if (!it.get("type").isEqualString("SortNode")) {
         continue;
       }
@@ -126,7 +126,7 @@ class SortLimitTest
     while (true) {
       auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
       if (state == arangodb::aql::ExecutionState::WAITING) {
-        ss->waitForAsyncResponse();
+        ss->waitForAsyncWakeup();
       } else {
         break;
       }
@@ -146,7 +146,7 @@ class SortLimitTest
       if (0 != arangodb::basics::VelocyPackHelper::compare(
                    insertedDocs[expected[i++]].slice(), resolved, true)) {
         return false;
-      };
+      }
     }
 
     return true;
@@ -166,7 +166,7 @@ class SortLimitTest
           "{ \"valAsc\": " + std::to_string(i) +
           ", \"valDsc\": " + std::to_string(total - 1 - i) +
           ", \"mod\": " + std::to_string(i % 100) + "}"));
-    };
+    }
 
     arangodb::OperationOptions options;
     options.returnNew = true;

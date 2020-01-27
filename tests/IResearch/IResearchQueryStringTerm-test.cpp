@@ -105,8 +105,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed));
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -2029,6 +2028,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
+
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
                            resolved, true));

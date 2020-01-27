@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapper macro for anonymous memory mapping

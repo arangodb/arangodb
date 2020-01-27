@@ -50,8 +50,6 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
                              bool allowJwtSecret, double connectionTimeout, double requestTimeout)
     : HttpEndpointProvider(server, "Client"),
       _databaseName("_system"),
-      _authentication(true),
-      _askJwtSecret(false),
       _endpoint(Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)),
       _username("root"),
       _password(""),
@@ -60,11 +58,14 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
       _requestTimeout(requestTimeout),
       _maxPacketSize(1024 * 1024 * 1024),
       _sslProtocol(TLS_V12),
-      _allowJwtSecret(allowJwtSecret),
       _retries(DEFAULT_RETRIES),
+      _authentication(true),
+      _askJwtSecret(false),
+      _allowJwtSecret(allowJwtSecret),
       _warn(false),
       _warnConnect(true),
-      _haveServerPassword(false)
+      _haveServerPassword(false),
+      _forceJson(false)
 #if _WIN32
       ,
       _codePage(65001),  // default to UTF8
@@ -104,6 +105,12 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "for a password",
                      new StringParameter(&_password));
 
+  options->addOption("--server.force-json",
+                     "force to not use VelocyPack for easier debugging",
+                     new BooleanParameter(&_forceJson),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+    .setIntroducedIn(30600);
+
   if (_allowJwtSecret) {
     // currently the option is only present for arangosh, but none
     // of the other client tools
@@ -116,7 +123,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new BooleanParameter(&_askJwtSecret),
-        arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
     options->addOption("--server.jwt-secret-keyfile",
                        "if this option is specified, the jwt secret will be loaded "
@@ -126,7 +133,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                        "connections - even when a new connection to another server is "
                        "created",
                        new StringParameter(&_jwtSecretFile),
-                       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   }
 
   options->addOption("--server.connection-timeout",
@@ -142,7 +149,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.max-packet-size",
       "maximum packet size (in bytes) for client/server communication",
       new UInt64Parameter(&_maxPacketSize),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
@@ -153,7 +160,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.code-page",
                      "Windows code page to use; defaults to UTF8",
                      new UInt16Parameter(&_codePage),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows, arangodb::options::Flags::Hidden));
 #endif
 }
 
@@ -292,7 +299,7 @@ void ClientFeature::prepare() {
   if (_askJwtSecret) {
     // ask for a jwt secret
     readJwtSecret();
-  } else if(!_jwtSecretFile.empty()) {
+  } else if (!_jwtSecretFile.empty()) {
     loadJwtSecretFile();
   } else if (_authentication && _haveServerPassword) {
     // ask for a password
@@ -314,8 +321,8 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(std::st
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
-                                       _retries, _sslProtocol));
+      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
+                                       _connectionTimeout, _retries, _sslProtocol));
 
   return connection;
 }
@@ -339,8 +346,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
-                                       _retries, _sslProtocol));
+      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
+                                       _connectionTimeout, _retries, _sslProtocol));
 
   return std::make_unique<SimpleHttpClient>(connection, params);
 }

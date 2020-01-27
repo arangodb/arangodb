@@ -24,17 +24,6 @@
 #ifndef ARANGOD_AQL_AST_H
 #define ARANGOD_AQL_AST_H 1
 
-#include "Aql/AstNode.h"
-#include "Aql/Scopes.h"
-#include "Aql/VariableGenerator.h"
-
-#include "Aql/types.h"
-#include "VocBase/AccessMode.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
-
-#include <Basics/AttributeNameParser.h>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -42,6 +31,17 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#include <velocypack/Builder.h>
+#include <velocypack/StringRef.h>
+
+#include "Aql/AstNode.h"
+#include "Aql/Scopes.h"
+#include "Aql/VariableGenerator.h"
+#include "Aql/types.h"
+#include "Basics/AttributeNameParser.h"
+#include "Containers/HashSet.h"
+#include "VocBase/AccessMode.h"
 
 namespace arangodb {
 class CollectionNameResolver;
@@ -216,6 +216,9 @@ class Ast {
   /// @brief create an AST reference node
   AstNode* createNodeReference(Variable const* variable);
 
+  /// @brief create an AST subquery reference node
+  AstNode* createNodeSubqueryReference(std::string const& variableName);
+
   /// @brief create an AST parameter node for a value literal
   AstNode* createNodeParameter(char const* name, size_t length);
 
@@ -370,7 +373,8 @@ class Ast {
   void validateAndOptimize();
 
   /// @brief determines the variables referenced in an expression
-  static void getReferencedVariables(AstNode const*, arangodb::HashSet<Variable const*>&);
+  static void getReferencedVariables(AstNode const*,
+                                     ::arangodb::containers::HashSet<Variable const*>&);
 
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
@@ -518,6 +522,10 @@ class Ast {
                                             AccessMode::Type accessType);
 
   void extractCollectionsFromGraph(AstNode const* graphNode);
+
+  /// @brief copies node payload from node into copy. this is *not* copying
+  /// the subnodes
+  void copyPayload(AstNode const* node, AstNode* copy) const;
 
  public:
   /// @brief negated comparison operators

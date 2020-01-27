@@ -24,7 +24,6 @@
 #include "StringUtils.h"
 
 #include <algorithm>
-#include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -164,11 +163,17 @@ unsigned char const BASE64U_REVS[256] = {
 };
 
 inline bool isBase64(unsigned char c) {
-  return (isalnum(c) || (c == '+') || (c == '/'));
+  return (c >= '0' && c <= '9') ||
+         (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         c == '+' || c == '/';
 }
 
 inline bool isBase64U(unsigned char c) {
-  return (isalnum(c) || (c == '-') || (c == '_'));
+  return (c >= '0' && c <= '9') ||
+         (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         c == '-' || c == '_';
 }
 
 unsigned char consume(char const*& s) {
@@ -444,98 +449,56 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   return result;
 }
 
-std::vector<std::string> split(std::string const& source, char delim, char quote) {
+std::vector<std::string> split(std::string const& source, char delim) {
   std::vector<std::string> result;
 
-  if (source.empty()) {
-    return result;
-  }
+  char const* q = source.data();
+  char const* e = q + source.size();
 
-  auto buffer = std::make_unique<char[]>(source.size() + 1);
-  char* p = buffer.get();
+  if (q != e) {
+    char const* last = q;
 
-  char const* q = source.c_str();
-  char const* e = source.c_str() + source.size();
-
-  if (quote == '\0') {
     for (; q < e; ++q) {
       if (*q == delim) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
+        result.emplace_back(last, q - last);
+        last = q + 1;
       }
     }
-  } else {
-    for (; q < e; ++q) {
-      if (*q == quote) {
-        if (q + 1 < e) {
-          *p++ = *++q;
-        }
-      } else if (*q == delim) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
-      }
-    }
+    result.emplace_back(last, q - last);
   }
 
-  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
-std::vector<std::string> split(std::string const& source,
-                               std::string const& delim, char quote) {
+std::vector<std::string> split(std::string const& source, std::string const& delim) {
   std::vector<std::string> result;
 
-  if (source.empty()) {
-    return result;
-  }
+  char const* q = source.data();
+  char const* e = source.data() + source.size();
 
-  auto buffer = std::make_unique<char[]>(source.size() + 1);
-  char* p = buffer.get();
+  if (q != e) {
+    char const* last = q;
 
-  char const* q = source.c_str();
-  char const* e = source.c_str() + source.size();
-
-  if (quote == '\0') {
     for (; q < e; ++q) {
       if (delim.find(*q) != std::string::npos) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
+        result.emplace_back(last, q - last);
+        last = q + 1;
       }
     }
-  } else {
-    for (; q < e; ++q) {
-      if (*q == quote) {
-        if (q + 1 < e) {
-          *p++ = *++q;
-        }
-      } else if (delim.find(*q) != std::string::npos) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
-      }
-    }
+    result.emplace_back(last, q - last);
   }
 
-  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
 std::string trim(std::string const& sourceStr, std::string const& trimStr) {
   size_t s = sourceStr.find_first_not_of(trimStr);
-  size_t e = sourceStr.find_last_not_of(trimStr);
 
   if (s == std::string::npos) {
     return std::string();
-  } else {
-    return std::string(sourceStr, s, e - s + 1);
   }
+  size_t e = sourceStr.find_last_not_of(trimStr);
+  return std::string(sourceStr, s, e - s + 1);
 }
 
 void trimInPlace(std::string& str, std::string const& trimStr) {
@@ -558,9 +521,8 @@ std::string lTrim(std::string const& str, std::string const& trimStr) {
 
   if (s == std::string::npos) {
     return std::string();
-  } else {
-    return std::string(str, s);
-  }
+  } 
+  return std::string(str, s);
 }
 
 std::string rTrim(std::string const& sourceStr, std::string const& trimStr) {
@@ -686,71 +648,97 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   return std::string(ptr, k);
 }
 
-void tolowerInPlace(std::string* str) {
+void tolowerInPlace(std::string& str) {
+  // unrolled version of
+  // for (auto& c : str) {
+  //   c = StringUtils::tolower(c);
+  // }
+  auto pos = str.data();
+  auto end = pos + str.size();
 
-  if (str->empty()) {
-    return;
-  }
+  while (pos != end) {
+    size_t len = end - pos;
+    if (len > 4) {
+      len = 4;
+    }
 
-  for (std::string::iterator i = str->begin(); i != str->end(); ++i) {
-    *i = ::tolower(*i);
+    switch (len) {
+      case 4:
+        pos[3] = StringUtils::tolower(pos[3]);
+        [[fallthrough]];
+      case 3:
+        pos[2] = StringUtils::tolower(pos[2]);
+        [[fallthrough]];
+      case 2:
+        pos[1] = StringUtils::tolower(pos[1]);
+        [[fallthrough]];
+      case 1:
+        pos[0] = StringUtils::tolower(pos[0]);
+    }
+    pos += len;
   }
 }
 
 std::string tolower(std::string&& str) {
-
-  std::transform(
-    str.begin(), str.end(), str.begin(), [](unsigned char c){ return ::tolower(c); });
-
+  tolowerInPlace(str);
   return std::move(str);
 }
 
 std::string tolower(std::string const& str) {
-
-  size_t len = str.length();
-
-  if (len == 0) {
-    return "";
-  }
-
   std::string result;
-  result.reserve(len);
+  result.resize(str.size());
 
-  char const* ptr = str.c_str();
-
-  for (; 0 < len; len--, ptr++) {
-    result.push_back(static_cast<char>(::tolower(*ptr)));
+  size_t i = 0;
+  for (auto& c : result) {
+    c = StringUtils::tolower(str[i++]);
   }
 
   return result;
 }
 
-void toupperInPlace(std::string* str) {
-  size_t len = str->length();
+void toupperInPlace(std::string& str) {
+  // unrolled version of
+  // for (auto& c : str) {
+  //   c = StringUtils::toupper(c);
+  // }
+  auto pos = str.data();
+  auto end = pos + str.size();
 
-  if (len == 0) {
-    return;
-  }
+  while (pos != end) {
+    size_t len = end - pos;
+    if (len > 4) {
+      len = 4;
+    }
 
-  for (std::string::iterator i = str->begin(); i != str->end(); ++i) {
-    *i = ::toupper(*i);
+    switch (len) {
+      case 4:
+        pos[3] = StringUtils::toupper(pos[3]);
+        [[fallthrough]];
+      case 3:
+        pos[2] = StringUtils::toupper(pos[2]);
+        [[fallthrough]];
+      case 2:
+        pos[1] = StringUtils::toupper(pos[1]);
+        [[fallthrough]];
+      case 1:
+        pos[0] = StringUtils::toupper(pos[0]);
+    }
+    pos += len;
   }
 }
 
+std::string toupper(std::string&& str) {
+  toupperInPlace(str);
+  return std::move(str);
+}
+
 std::string toupper(std::string const& str) {
-  size_t len = str.length();
-
-  if (len == 0) {
-    return "";
-  }
-
   std::string result;
-  result.reserve(len);
+  result.resize(str.size());
 
-  char const* ptr = str.c_str();
-
-  for (; 0 < len; len--, ptr++) {
-    result.push_back(static_cast<char>(::toupper(*ptr)));
+  size_t i = 0;
+  for (auto& c : result) {
+    c = StringUtils::toupper(str[i++]);
   }
 
   return result;
@@ -883,20 +871,12 @@ std::string urlEncode(std::string const& str) {
   return urlEncode(str.c_str(), str.size());
 }
 
-std::string urlEncode(char const* src) {
-  if (src != nullptr) {
-    size_t len = strlen(src);
-    return urlEncode(src, len);
-  }
-  return "";
-}
-
 std::string urlEncode(char const* src, size_t const len) {
   static char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   char const* end = src + len;
-  
+
   // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -936,11 +916,7 @@ std::string urlEncode(char const* src, size_t const len) {
   return result;
 }
 
-std::string encodeURIComponent(std::string const& str) {
-  return encodeURIComponent(str.c_str(), str.size());
-}
-
-std::string encodeURIComponent(char const* src, size_t const len) {
+std::string encodeURIComponent(char const* src, size_t len) {
   char const* end = src + len;
 
   // cppcheck-suppress unsignedPositive
@@ -970,11 +946,11 @@ std::string encodeURIComponent(char const* src, size_t const len) {
   return result;
 }
 
-std::string soundex(std::string const& str) {
-  return soundex(str.c_str(), str.size());
+std::string encodeURIComponent(std::string const& str) {
+  return encodeURIComponent(str.data(), str.size());
 }
 
-std::string soundex(char const* src, size_t const len) {
+std::string soundex(char const* src, size_t len) {
   char const* end = src + len;
 
   while (src < end) {
@@ -1013,6 +989,10 @@ std::string soundex(char const* src, size_t const len) {
   }
 
   return result;
+}
+
+std::string soundex(std::string const& str) {
+  return soundex(str.data(), str.size());
 }
 
 unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
@@ -1426,6 +1406,68 @@ size_t itoa(uint64_t attr, char* buffer) {
   return p - buffer;
 }
 
+void itoa(uint64_t attr, std::string& out) {
+  if (10000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000ULL) % 10 + '0'));
+  }
+  if (10000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000ULL) % 10 + '0'));
+  }
+  if (1000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000ULL) % 10 + '0'));
+  }
+  if (100000000ULL <= attr) {
+    out.push_back(char((attr / 100000000ULL) % 10 + '0'));
+  }
+  if (10000000ULL <= attr) {
+    out.push_back(char((attr / 10000000ULL) % 10 + '0'));
+  }
+  if (1000000ULL <= attr) {
+    out.push_back(char((attr / 1000000ULL) % 10 + '0'));
+  }
+  if (100000ULL <= attr) {
+    out.push_back(char((attr / 100000ULL) % 10 + '0'));
+  }
+  if (10000ULL <= attr) {
+    out.push_back(char((attr / 10000ULL) % 10 + '0'));
+  }
+  if (1000ULL <= attr) {
+    out.push_back(char((attr / 1000ULL) % 10 + '0'));
+  }
+  if (100ULL <= attr) {
+    out.push_back(char((attr / 100ULL) % 10 + '0'));
+  }
+  if (10ULL <= attr) {
+    out.push_back(char((attr / 10ULL) % 10 + '0'));
+  }
+
+  out.push_back(char(attr % 10 + '0'));
+}
+
 std::string ftoa(double i) {
   char buffer[24];
   int length = fpconv_dtoa(i, &buffer[0]);
@@ -1442,7 +1484,7 @@ bool boolean(std::string const& str) {
     return false;
   }
   std::string lower = trim(str);
-  tolowerInPlace(&lower);
+  tolowerInPlace(lower);
 
   if (lower == "true" || lower == "yes" || lower == "on" || lower == "y" ||
       lower == "1" || lower == "✓") {
@@ -1475,61 +1517,61 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   switch (length) {
     case 20:
       result += (value[length - 20] - '0') * 10000000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 19:
       result += (value[length - 19] - '0') * 1000000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 18:
       result += (value[length - 18] - '0') * 100000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 17:
       result += (value[length - 17] - '0') * 10000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 16:
       result += (value[length - 16] - '0') * 1000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 15:
       result += (value[length - 15] - '0') * 100000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 14:
       result += (value[length - 14] - '0') * 10000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 13:
       result += (value[length - 13] - '0') * 1000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 12:
       result += (value[length - 12] - '0') * 100000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 11:
       result += (value[length - 11] - '0') * 10000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 10:
       result += (value[length - 10] - '0') * 1000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 9:
       result += (value[length - 9] - '0') * 100000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 8:
       result += (value[length - 8] - '0') * 10000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 7:
       result += (value[length - 7] - '0') * 1000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 6:
       result += (value[length - 6] - '0') * 100000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 5:
       result += (value[length - 5] - '0') * 10000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 4:
       result += (value[length - 4] - '0') * 1000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 3:
       result += (value[length - 3] - '0') * 100ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 2:
       result += (value[length - 2] - '0') * 10ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 1:
       result += (value[length - 1] - '0');
   }
@@ -1709,20 +1751,16 @@ float floatDecimal(char const* value, size_t size) {
 // BASE64
 // .............................................................................
 
-std::string encodeBase64(std::string const& in) {
+std::string encodeBase64(char const* in, size_t len) {
+  std::string ret;
+  ret.reserve((len * 4 / 3) + 2);
+
   unsigned char charArray3[3];
   unsigned char charArray4[4];
-
-  std::string ret;
-  ret.reserve((in.size() * 4 / 3) + 2);
+  unsigned char const* bytesToEncode = reinterpret_cast<unsigned char const*>(in);
 
   int i = 0;
-
-  unsigned char const* bytesToEncode =
-      reinterpret_cast<unsigned char const*>(in.c_str());
-  size_t in_len = in.size();
-
-  while (in_len--) {
+  while (len--) {
     charArray3[i++] = *(bytesToEncode++);
 
     if (i == 3) {
@@ -1761,16 +1799,19 @@ std::string encodeBase64(std::string const& in) {
   return ret;
 }
 
+std::string encodeBase64(std::string const& str) {
+  return encodeBase64(str.data(), str.size());
+}
+
 std::string decodeBase64(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
-
-  std::string ret;
 
   int i = 0;
   int inp = 0;
 
   int in_len = (int)source.size();
+  std::string ret;
   ret.reserve((source.size() / 4 * 3) + 1);
 
   while (in_len-- && (source[inp] != '=') && isBase64(source[inp])) {

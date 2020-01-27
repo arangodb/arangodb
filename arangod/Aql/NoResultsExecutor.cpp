@@ -30,11 +30,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool NoResultsExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough NoResultsExecutor::Properties::allowsBlockPassthrough;
-constexpr bool NoResultsExecutor::Properties::inputSizeRestrictsOutputSize;
-
-NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos){};
+NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos) {}
 NoResultsExecutor::~NoResultsExecutor() = default;
 
 std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRows(OutputAqlItemRow& output) {

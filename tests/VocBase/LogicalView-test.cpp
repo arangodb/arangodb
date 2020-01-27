@@ -53,7 +53,7 @@ struct TestView : public arangodb::LogicalView {
       : arangodb::LogicalView(vocbase, definition, planVersion) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder& builder,
-      std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
+      Serialization) const override {
     builder.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
@@ -160,14 +160,14 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // no ExecContext
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto logicalView = vocbase.createView(viewJson->slice());
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
 
   // no read access
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -185,7 +185,7 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // no write access
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
@@ -204,7 +204,7 @@ TEST_F(LogicalViewTest, test_auth) {
 
   // write access (view access is db access as per https://github.com/arangodb/backlog/issues/459)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
     auto logicalView = vocbase.createView(viewJson->slice());
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()

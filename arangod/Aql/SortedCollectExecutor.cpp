@@ -28,6 +28,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ConditionalDeleter.h"
 
@@ -38,10 +39,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-constexpr bool SortedCollectExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough SortedCollectExecutor::Properties::allowsBlockPassthrough;
-constexpr bool SortedCollectExecutor::Properties::inputSizeRestrictsOutputSize;
 
 static const AqlValue EmptyValue;
 

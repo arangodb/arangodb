@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,8 +29,9 @@
 #include <chrono>
 #include <thread>
 
-#include "Agency/AgentCallback.h"
 #include "Agency/AgencyFeature.h"
+#include "Agency/AgentCallback.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -72,7 +73,22 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _agentNeedsWakeup(false),
       _compactor(this),
       _ready(false),
-      _preparing(0) {
+      _preparing(0),
+      _write_ok(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_write_ok", 0, "Agency write ok")),
+      _write_no_leader(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_write_no_leader", 0, "Agency write no leader")),
+      _read_ok(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_read_ok", 0, "Agency write ok")),
+      _read_no_leader(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_read_no_leader", 0, "Agency write no leader")),
+      _write_hist_msec(
+        _server.getFeature<arangodb::MetricsFeature>().histogram(
+          "agency_agent_write_hist", 10, 0., 20., "Agency write histogram [ms]")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -634,11 +650,14 @@ void Agent::sendAppendEntriesRPC() {
       }
       LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
           << "Setting _earliestPackage to now + 30s for id " << followerId;
+      
+      network::RequestOptions reqOpts;
+      reqOpts.timeout = network::Timeout(150);
 
       // Send request
       auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
       network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
-                           std::move(buffer), network::Timeout(150)).thenValue([=](network::Response r) {
+                           std::move(buffer), reqOpts).thenValue([=](network::Response r) {
         ac->operator()(r);
       });
       
@@ -671,7 +690,7 @@ void Agent::resign(term_t otherTerm) {
 }
 
 /// Leader's append entries, empty ones for heartbeat, triggered by Constituent
-void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
+void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   if (!leading()) {
     LOG_TOPIC("95220", DEBUG, Logger::AGENCY)
@@ -710,9 +729,12 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   VPackBufferUInt8 buffer;
   buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
   auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);
-  network::Timeout timeout(3 * _config.minPing() * _config.timeoutMult());
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
+
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
-                       std::move(buffer), timeout).thenValue([=](network::Response r) {
+                       std::move(buffer), reqOpts).thenValue([=](network::Response r) {
     ac->operator()(r);
   });
   
@@ -1048,7 +1070,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
 
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
 
-  // Apply to spearhead and get indices for log entries
+  // Apply to _transient and get indices for log entries
   {
     VPackArrayBuilder b(ret.get());
 
@@ -1058,8 +1080,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
       return trans_ret_t(false, NO_LEADER);
     }
 
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);
+    MUTEX_LOCKER(transientLocker, _transientLock);
 
     // Read and writes
     for (const auto& query : VPackArrayIterator(queries->slice())) {
@@ -1089,7 +1110,7 @@ write_ret_t Agent::inquire(query_t const& query) {
   while (true) {
     // Check ongoing ones:
     bool found = false;
-    for (auto const& s : VPackArrayIterator(query->slice())) {
+    for (VPackSlice s : VPackArrayIterator(query->slice())) {
       std::string ss = s.copyString();
       if (isTrxOngoing(ss)) {
         found = true;
@@ -1118,6 +1139,8 @@ write_ret_t Agent::inquire(query_t const& query) {
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
+
+  using namespace std::chrono;
   std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;
   auto multihost = size() > 1;
@@ -1128,6 +1151,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (multihost && leader != id()) {
+    ++_write_no_leader;
     return write_ret_t(false, leader);
   }
 
@@ -1159,9 +1183,11 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
     // Check that we are actually still the leader:
     if (!leading()) {
+      ++_write_no_leader;
       return write_ret_t(false, NO_LEADER);
     }
 
+    auto const start = high_resolution_clock::now();
     // Apply to spearhead and get indices for log entries
     // Avoid keeping lock indefinitely
     for (size_t i = 0, l = 0; i < npacks; ++i) {
@@ -1176,11 +1202,13 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       // Only leader else redirect
       if (multihost && challengeLeadership()) {
         resign();
+        ++_write_no_leader;
         return write_ret_t(false, NO_LEADER);
       }
 
       // Check that we are actually still the leader:
       if (!leading()) {
+        ++_write_no_leader;
         return write_ret_t(false, NO_LEADER);
       }
 
@@ -1191,6 +1219,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       auto tmp = _state.logLeaderMulti(chunk, applied, currentTerm);
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
+    _write_hist_msec.count(
+      duration<double,std::milli>(high_resolution_clock::now()-start).count());
   }
 
   // Maximum log index
@@ -1206,6 +1236,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     advanceCommitIndex();
   }
 
+  ++_write_ok;
   return write_ret_t(true, id(), applied, indices);
 }
 
@@ -1217,6 +1248,7 @@ read_ret_t Agent::read(query_t const& query) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
+    ++_read_no_leader;
     return read_ret_t(false, leader);
   }
 
@@ -1230,10 +1262,12 @@ read_ret_t Agent::read(query_t const& query) {
   // Only leader else redirect
   if (challengeLeadership()) {
     resign();
+    ++_read_no_leader;
     return read_ret_t(false, NO_LEADER);
   }
 
   leader = _constituent.leaderID();
+  
   auto result = std::make_shared<arangodb::velocypack::Builder>();
 
   READ_LOCKER(oLocker, _outputLock);
@@ -1241,6 +1275,7 @@ read_ret_t Agent::read(query_t const& query) {
   // Retrieve data from readDB
   std::vector<bool> success = _readDB.read(query, result);
 
+  ++_read_no_leader;
   return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
@@ -1248,6 +1283,7 @@ read_ret_t Agent::read(query_t const& query) {
 void Agent::run() {
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
+
     {
       // We set the variable to false here, if any change happens during
       // or after the calls in this loop, this will be set to true to
@@ -1410,7 +1446,7 @@ bool Agent::prepareLead() {
 
   {
     // Clear transient for supervision start
-    MUTEX_LOCKER(ioLocker, _ioLock);
+    MUTEX_LOCKER(transientLocker, _transientLock);
     _transient.clear();
   }
 
@@ -1672,12 +1708,17 @@ void Agent::executeLockedWrite(std::function<void()> const& cb) {
   cb();
 }
 
+void Agent::executeTransientLocked(std::function<void()> const& cb) {
+  MUTEX_LOCKER(transientLocker, _transientLock);
+  cb();
+}
+
 /// Get transient
 /// intentionally no lock is acquired here, so we can return
 /// a const reference
 /// the caller has to make sure the lock is actually held
 Store const& Agent::transient() const {
-  _ioLock.assertLockedByCurrentThread();
+  _transientLock.assertLockedByCurrentThread();
   return _transient;
 }
 
@@ -1771,7 +1812,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   VPackSlice pslice = slice.get("pool");
 
   LOG_TOPIC("65dd8", TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
-  for (auto const& pair : VPackObjectIterator(pslice)) {
+  for (auto pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           20004, "Gossip message pool must contain string parameters");
@@ -2073,6 +2114,27 @@ Inception const* Agent::inception() const { return _inception.get(); }
 
 void Agent::updateConfiguration(Slice const& slice) {
   _config.updateConfiguration(slice);
+}
+
+void Agent::updateSomeConfigValues(VPackSlice data) {
+  if (!data.isObject()) {
+    return;
+  }
+  double d;
+  VPackSlice slice = data.get("okThreshold");
+  if (slice.isNumber()) {
+    d = slice.getNumber<double>();
+    LOG_TOPIC("12341", DEBUG, Logger::SUPERVISION) << "Updating okThreshold to " << d;
+    _config.setSupervisionOkThreshold(d);
+    _supervision.setOkThreshold(d);
+  }
+  slice = data.get("gracePeriod");
+  if (slice.isNumber()) {
+    d = slice.getNumber<double>();
+    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION) << "Updating gracePeriod to " << d;
+    _config.setSupervisionGracePeriod(d);
+    _supervision.setGracePeriod(d);
+  }
 }
 
 }  // namespace consensus

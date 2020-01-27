@@ -33,7 +33,8 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -44,6 +45,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 
 namespace arangodb {
 namespace tests {
@@ -56,12 +58,20 @@ class GeoConstructorTest : public ::testing::Test {
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx;
+  fakeit::Mock<transaction::Context> contextMock;
+  transaction::Context& context;
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   SmallVector<AqlValue> params;
 
   GeoConstructorTest()
-      : expressionContext(expressionContextMock.get()), trx(trxMock.get()), params{arena} {}
+      : expressionContext(expressionContextMock.get()),
+        trx(trxMock.get()),
+        context(contextMock.get()),
+        params{arena} {
+    fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
+    fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
+  }
 };
 
 namespace geo_point {

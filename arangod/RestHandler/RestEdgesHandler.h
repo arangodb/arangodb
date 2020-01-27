@@ -64,14 +64,6 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool readEdgesForMultipleVertices();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the index and read it completely with the given callback
-  //////////////////////////////////////////////////////////////////////////////
-
-  void readCursor(aql::AstNode* condition, aql::Variable const* var,
-                  std::string const& collectionName, transaction::Methods& trx,
-                  std::function<void(LocalDocumentId const&)> const& cb);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief get all edges for a given vertex. Independent from the request
   //////////////////////////////////////////////////////////////////////////////
 

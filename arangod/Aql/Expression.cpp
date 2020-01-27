@@ -37,6 +37,7 @@
 #include "Aql/Range.h"
 #include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
@@ -75,7 +76,7 @@ Expression::Expression(ExecutionPlan const* plan, Ast* ast, arangodb::velocypack
 Expression::~Expression() { freeInternals(); }
 
 /// @brief return all variables used in the expression
-void Expression::variables(arangodb::HashSet<Variable const*>& result) const {
+void Expression::variables(::arangodb::containers::HashSet<Variable const*>& result) const {
   Ast::getReferencedVariables(_node, result);
 }
 
@@ -411,13 +412,10 @@ AqlValue Expression::executeSimpleExpression(AstNode const* node, transaction::M
     case NODE_TYPE_OPERATOR_NARY_OR:
       return executeSimpleExpressionNaryAndOr(node, trx, mustDestroy);
     case NODE_TYPE_COLLECTION:
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_NOT_IMPLEMENTED,
-          "node type 'collection' is not supported in ArangoDB 3.4");
     case NODE_TYPE_VIEW:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
-          "node type 'view' is not supported in ArangoDB 3.4");
+          std::string("node type '") + node->getTypeString() + "' is not supported in expressions");
 
     default:
       std::string msg("unhandled type '");
@@ -768,12 +766,12 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
     // use stack-based allocation for the first few function call
     // parameters. this saves a few heap allocations per function
     // call invocation
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    ::arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
     VPackFunctionParameters parameters{arena};
 
     // same here
-    SmallVector<uint64_t>::allocator_type::arena_type arena2;
-    SmallVector<uint64_t> destroyParameters{arena2};
+    ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type arena2;
+    ::arangodb::containers::SmallVector<uint64_t> destroyParameters{arena2};
 
     explicit FunctionParameters(size_t n) {
       parameters.reserve(n);
@@ -1558,7 +1556,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
     TRI_ASSERT(!mustDestroy);
     r = 0.0;
   }
-
+  
   if (r == 0.0) {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_DIV || node->type == NODE_TYPE_OPERATOR_BINARY_MOD) {
       // division by zero
@@ -1571,7 +1569,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(AstNode const* node,
       return AqlValue(AqlValueHintNull());
     }
   }
-
+  
   mustDestroy = false;
   double result;
 
@@ -1621,6 +1619,7 @@ bool Expression::canRunOnDBServer() {
   TRI_ASSERT(_node != nullptr);
   return _node->canRunOnDBServer();
 }
+
 bool Expression::isDeterministic() {
   if (_type == UNPROCESSED) {
     initExpression();

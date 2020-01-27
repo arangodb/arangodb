@@ -7,6 +7,7 @@
 #define FST_FST_DECL_H_
 
 #include <sys/types.h>
+
 #include <memory>  // for allocator<>
 
 #include <fst/types.h>
@@ -188,13 +189,8 @@ using StdVectorFst = VectorFst<StdArc>;
 
 // StdArc aliases for on-the-fly operations.
 
-#if defined _MSC_VER && _MSC_VER < 1900
-// defined in arcsort.h as class in case of MSVC2013
-template<class Compare> class StdArcSortFst;
-#else
 template <class Compare>
 using StdArcSortFst = ArcSortFst<StdArc, Compare>;
-#endif
 
 using StdClosureFst = ClosureFst<StdArc>;
 
@@ -250,6 +246,9 @@ class AltSequenceComposeFilter;
 
 template <class Matcher1, class Matcher2 = Matcher1>
 class MatchComposeFilter;
+
+template <class Matcher1, class Matcher2 = Matcher1>
+class NoMatchComposeFilter;
 
 }  // namespace fst
 

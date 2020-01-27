@@ -2376,42 +2376,61 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(arr.length, 1);
       assertEqual(arr[0].a, 5);
 
-      rv = collection.insert({x : 3},{overwrite:true, returnNew:true});
+      rv = collection.insert({x : 3},{overwriteMode:"replace", returnNew:true});
       assertEqual(rv.new.x, 3);
       assertTypeOf("string", rv._id);
       assertTypeOf("string", rv._key);
 
     },
 
+    testInsertOverwriteMode : function () {
+      let doc = { _key : "Harry",
+                  type : "hunk",
+                  color: "black",
+                  hobbies : { "1" : "sleeping" }
+                };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test new features from 3.0
-////////////////////////////////////////////////////////////////////////////////
+      let update = { _key : "Harry",
+                     color: "grey",
+                     age: 11
+                   };
 
-/* Not Functional in arangosh connected to coordinator.
-    testNewFeatures : function () {
-      if (! require("@arangodb/cluster").isCluster()) {
-        var x = collection.insert({Hallo: 12}, { silent: true });
-        assertEqual(true, x);
-        x = collection.insert([{Hallo: 13}], { silent: true });
-        assertEqual(true, x);
-        x = collection.insert({Hallo:14});
-        var y = collection.replace(x._key, {Hallo:15}, { silent: true });
-        assertEqual(true, y);
-        y = db._replace(x._id, {Hallo: 16}, {silent: true});
-        assertEqual(true, y);
-        y = collection.update(x._key, {Hallo:17}, { silent: true });
-        assertEqual(true, y);
-        y = db._update(x._id, {Hallo:18}, { silent: true });
-        assertEqual(true, y);
-        y = collection.remove(x._key, { silent: true });
-        assertEqual(true, y);
-        x = collection.insert({Hallo:19});
-        y = db._remove(x._id, {silent: true});
-        assertEqual(true, y);
-      }
-    }
-*/
+      let merged = {...doc, ...update};
+
+      collection.insert(doc);
+      var rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+
+      update.age = null;
+      merged.age = null;
+      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true, keepNull:true});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+
+      update.age = null;
+      delete merged.age;
+      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld:true, returnNew:true, keepNull:false});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+
+      update.hobbies = { "2" : "eating" };
+      merged.hobbies = {...update.hobbies, ...merged.hobbies };
+      rv = collection.insert(update,{overwriteMode: "update", returnOld:true, returnNew:true, keepNull:false});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+
+      update.hobbies = { "2" : "eating" };
+      merged.hobbies = update.hobbies;
+      rv = collection.insert(update,{overwriteMode: "update", returnOld:true, returnNew:true, mergeObjects:false});
+      Object.keys(merged).forEach((key) => {
+        assertEqual(merged[key], rv.new[key]);
+      });
+    }, // testInsertOverwriteModeUpdate
 
   };
 }

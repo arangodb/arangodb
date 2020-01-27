@@ -237,9 +237,8 @@
           arangoHelper.arangoError('User', 'Could not edit user settings');
         } else {
           arangoHelper.arangoNotification('User', 'Changes confirmed.');
-          this.updateUserProfile();
         }
-      }.bind(this);
+      };
 
       this.currentUser.setExtras(name, img, callback);
       window.modalView.hide();

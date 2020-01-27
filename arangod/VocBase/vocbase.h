@@ -40,6 +40,7 @@
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/VocbaseInfo.h"
 
 #include <velocypack/Slice.h>
 
@@ -56,7 +57,6 @@ class Slice;
 class StringRef;
 }  // namespace velocypack
 class CollectionKeysRepository;
-class CreateDatabaseInfo;
 class CursorRepository;
 class DatabaseReplicationApplier;
 class LogicalCollection;
@@ -73,7 +73,7 @@ constexpr auto TRI_COL_NAME_USERS = "_users";
 constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 
 /// @brief maximal name length
-constexpr size_t TRI_COL_NAME_LENGTH = 64;
+constexpr size_t TRI_COL_NAME_LENGTH = 256;
 
 /// @brief default maximal collection journal size
 constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MiB
@@ -138,7 +138,7 @@ struct TRI_vocbase_t {
   /// @brief database state
   enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo const&);
+  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
@@ -160,16 +160,12 @@ struct TRI_vocbase_t {
 
   arangodb::application_features::ApplicationServer& _server;
 
-  TRI_voc_tick_t const _id;  // internal database id
-  std::string  _name; // database name
+  arangodb::CreateDatabaseInfo _info;
+
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
   State _state;
   bool _isOwnAppsDirectory;
-
-  std::uint32_t _replicationFactor; // 0 is satellite, 1 disabled
-  std::uint32_t _writeConcern;
-  std::string _sharding; // "flexible" (same as "") or "single"
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _deadCollections;  // collections dropped that can be removed later
@@ -214,8 +210,8 @@ struct TRI_vocbase_t {
     return _server;
   }
 
-  TRI_voc_tick_t id() const { return _id; }
-  std::string const& name() const { return _name; }
+  TRI_voc_tick_t id() const { return _info.getId(); }
+  std::string const& name() const { return _info.getName(); }
   std::string path() const;
   std::uint32_t replicationFactor() const;
   std::uint32_t writeConcern() const;
@@ -224,7 +220,7 @@ struct TRI_vocbase_t {
   State state() const { return _state; }
   void setState(State state) { _state = state; }
 
-  arangodb::Result toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }
@@ -268,7 +264,7 @@ struct TRI_vocbase_t {
   bool markAsDropped();
 
   /// @brief returns whether the database is the system database
-  bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }
+  bool isSystem() const { return _info.getName() == TRI_VOC_SYSTEM_DATABASE; }
 
   /// @brief stop operations in this vocbase. must be called prior to
   /// shutdown to clean things up
@@ -276,6 +272,15 @@ struct TRI_vocbase_t {
 
   /// @brief closes a database and all collections
   void shutdown();
+
+  /// @brief sets prototype collection for sharding (_users or _graphs)
+  void setShardingPrototype(ShardingPrototype type);
+
+  /// @brief gets prototype collection for sharding (_users or _graphs)
+  ShardingPrototype shardingPrototype() const;
+ 
+  /// @brief gets name of prototype collection for sharding (_users or _graphs)
+  std::string const& shardingPrototypeName() const;
 
   /// @brief returns all known views
   std::vector<std::shared_ptr<arangodb::LogicalView>> views();
@@ -373,7 +378,7 @@ struct TRI_vocbase_t {
 
   /// @brief visit all DataSources registered with this vocbase
   /// @param visitor returns if visitation should continue
-  /// @param lockWrite aquire write lock (if 'visitor' will modify vocbase)
+  /// @param lockWrite acquire write lock (if 'visitor' will modify vocbase)
   /// @return visitation compleated successfully
   typedef std::function<bool(arangodb::LogicalDataSource& dataSource)> dataSourceVisitor;
   bool visitDataSources(dataSourceVisitor const& visitor, bool lockWrite = false);

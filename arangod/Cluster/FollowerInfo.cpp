@@ -342,7 +342,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
   TRI_ASSERT(_docColl != nullptr);
   std::string curPath = CurrentShardPath(*_docColl);
   std::string planPath = PlanShardPath(*_docColl);
-  AgencyComm ac;
+  AgencyComm ac(_docColl->vocbase().server());
   do {
     if (_docColl->deleted() || _docColl->vocbase().isDropped()) {
       LOG_TOPIC("8972a", INFO, Logger::CLUSTER) << "giving up persisting follower info for dropped collection"; 
@@ -445,7 +445,7 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
     VPackObjectBuilder b(&newValue);
     // Copy all but SERVERS and FailoverCandidates.
     // They will be injected later.
-    for (auto const& it : VPackObjectIterator(oldValue)) {
+    for (auto it : VPackObjectIterator(oldValue)) {
       if (!it.key.isEqualString(maintenance::SERVERS) &&
           !it.key.isEqualString(StaticStrings::FailoverCandidates)) {
         newValue.add(it.key);

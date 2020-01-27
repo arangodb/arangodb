@@ -36,9 +36,9 @@ class SharedAqlItemBlockPtr {
   // allow implicit cast from nullptr:
   // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
   // cppcheck-suppress noExplicitConstructor
-  inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
+  constexpr inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
 
-  inline SharedAqlItemBlockPtr() noexcept;
+  constexpr inline SharedAqlItemBlockPtr() noexcept;
 
   inline ~SharedAqlItemBlockPtr() noexcept;
 
@@ -92,10 +92,10 @@ arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlIt
   incrRefCount();
 }
 
-arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept
+constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept
     : _aqlItemBlock(nullptr) {}
 
-arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr() noexcept
+constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr() noexcept
     : _aqlItemBlock(nullptr) {}
 
 SharedAqlItemBlockPtr::~SharedAqlItemBlockPtr() noexcept { decrRefCount(); }

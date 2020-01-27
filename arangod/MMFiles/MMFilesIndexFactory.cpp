@@ -50,7 +50,9 @@ namespace {
 struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
   std::string const _type;
 
-  explicit DefaultIndexFactory(std::string const& type) : _type(type) {}
+  explicit DefaultIndexFactory(arangodb::application_features::ApplicationServer& server,
+                               std::string const& type)
+      : IndexTypeFactory(server), _type(type) {}
 
   bool equal(arangodb::velocypack::Slice const& lhs,
              arangodb::velocypack::Slice const& rhs) const override {
@@ -59,7 +61,9 @@ struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  explicit EdgeIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit EdgeIndexFactory(arangodb::application_features::ApplicationServer& server,
+                            std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -93,7 +97,9 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct FulltextIndexFactory : public DefaultIndexFactory {
-  explicit FulltextIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit FulltextIndexFactory(arangodb::application_features::ApplicationServer& server,
+                                std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -118,7 +124,9 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 };
 
 struct GeoIndexFactory : public DefaultIndexFactory {
-  explicit GeoIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit GeoIndexFactory(arangodb::application_features::ApplicationServer& server,
+                           std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -142,7 +150,9 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo1IndexFactory : public DefaultIndexFactory {
-  explicit Geo1IndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit Geo1IndexFactory(arangodb::application_features::ApplicationServer& server,
+                            std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -166,7 +176,9 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo2IndexFactory : public DefaultIndexFactory {
-  explicit Geo2IndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit Geo2IndexFactory(arangodb::application_features::ApplicationServer& server,
+                            std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -190,7 +202,9 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 };
 
 struct HashIndexFactory : public DefaultIndexFactory {
-  explicit HashIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit HashIndexFactory(arangodb::application_features::ApplicationServer& server,
+                            std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -219,7 +233,9 @@ struct HashIndexFactory : public DefaultIndexFactory {
 };
 
 struct PersistentIndexFactory : public DefaultIndexFactory {
-  explicit PersistentIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit PersistentIndexFactory(arangodb::application_features::ApplicationServer& server,
+                                  std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -244,7 +260,9 @@ struct PersistentIndexFactory : public DefaultIndexFactory {
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
-  explicit TtlIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit TtlIndexFactory(arangodb::application_features::ApplicationServer& server,
+                           std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -268,7 +286,9 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  explicit PrimaryIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit PrimaryIndexFactory(arangodb::application_features::ApplicationServer& server,
+                               std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -303,7 +323,9 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct SkiplistIndexFactory : public DefaultIndexFactory {
-  explicit SkiplistIndexFactory(std::string const& type) : DefaultIndexFactory(type) {}
+  explicit SkiplistIndexFactory(arangodb::application_features::ApplicationServer& server,
+                                std::string const& type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
@@ -329,17 +351,19 @@ struct SkiplistIndexFactory : public DefaultIndexFactory {
 
 }  // namespace
 
-MMFilesIndexFactory::MMFilesIndexFactory() {
-  static const EdgeIndexFactory edgeIndexFactory("edge");
-  static const FulltextIndexFactory fulltextIndexFactory("fulltext");
-  static const GeoIndexFactory geoIndexFactory("geo");
-  static const Geo1IndexFactory geo1IndexFactory("geo1");
-  static const Geo2IndexFactory geo2IndexFactory("geo2");
-  static const HashIndexFactory hashIndexFactory("hash");
-  static const PersistentIndexFactory persistentIndexFactory("persistent");
-  static const PrimaryIndexFactory primaryIndexFactory("primary");
-  static const SkiplistIndexFactory skiplistIndexFactory("skiplist");
-  static const TtlIndexFactory ttlIndexFactory("ttl");
+MMFilesIndexFactory::MMFilesIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
+  static const EdgeIndexFactory edgeIndexFactory(server, "edge");
+  static const FulltextIndexFactory fulltextIndexFactory(server, "fulltext");
+  static const GeoIndexFactory geoIndexFactory(server, "geo");
+  static const Geo1IndexFactory geo1IndexFactory(server, "geo1");
+  static const Geo2IndexFactory geo2IndexFactory(server, "geo2");
+  static const HashIndexFactory hashIndexFactory(server, "hash");
+  static const PersistentIndexFactory persistentIndexFactory(server,
+                                                             "persistent");
+  static const PrimaryIndexFactory primaryIndexFactory(server, "primary");
+  static const SkiplistIndexFactory skiplistIndexFactory(server, "skiplist");
+  static const TtlIndexFactory ttlIndexFactory(server, "ttl");
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -368,7 +392,7 @@ void MMFilesIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
 void MMFilesIndexFactory::prepareIndexes(
     LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
     std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
       continue;
     }

@@ -32,8 +32,7 @@
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class InputAqlItemRow;
 class OutputAqlItemRow;
@@ -54,7 +53,7 @@ class FilterExecutorInfos : public ExecutorInfos {
   FilterExecutorInfos(FilterExecutorInfos const&) = delete;
   ~FilterExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept;
+  [[nodiscard]] RegisterId getInputRegister() const noexcept;
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
@@ -87,16 +86,15 @@ class FilterExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif

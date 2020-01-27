@@ -32,6 +32,7 @@
 const expect = require('chai').expect;
 const arangodb = require("@arangodb");
 const replication = require("@arangodb/replication");
+const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const compareTicks = replication.compareTicks;
 const errors = arangodb.errors;
 const db = arangodb.db;
@@ -122,7 +123,7 @@ const waitForReplication = function() {
 // You do not need to monitor any state.
 const connectToMaster = function() {
   if (!onMaster) {
-    arango.reconnect(masterEndpoint, "_system", username, password);
+    reconnectRetry(masterEndpoint, "_system", username, password);
     db._flushCache();
     onMaster = true;
   } else {
@@ -132,7 +133,7 @@ const connectToMaster = function() {
 
 const connectToSlave = function() {
   if (onMaster) {
-    arango.reconnect(slaveEndpoint, "_system", username, password);
+    reconnectRetry(slaveEndpoint, "_system", username, password);
     db._flushCache();
     onMaster = false;
   } else {

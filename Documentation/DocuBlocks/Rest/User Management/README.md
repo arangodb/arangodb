@@ -1,5 +1,3 @@
-<!-- ---------------------------------------------------------------------- -->
-
 @startDocuBlock UserHandling_create
 @brief Create a new user.
 
@@ -15,7 +13,7 @@ then the password will be set the value stored in the environment variable
 `ARANGODB_DEFAULT_ROOT_PASSWORD`. This can be used to pass an instance
 variable into ArangoDB. For example, the instance identifier from Amazon.
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
@@ -61,7 +59,6 @@ Returned if a user with the same name already exists.
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_grantDatabase
 @brief Set the database access level.
@@ -69,10 +66,8 @@ Returned if a user with the same name already exists.
 @RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Set the database access level}
 
 @RESTBODYPARAM{grant,string,required,string}
-Use "rw" to set the database access level to *Administrate* .
-
-Use "ro" to set the database access level to *Access*.
-
+Use "rw" to set the database access level to *Administrate*.<br>
+Use "ro" to set the database access level to *Access*.<br>
 Use "none" to set the database access level to *No access*.
 
 @RESTURLPARAMETERS
@@ -123,7 +118,6 @@ Returned if you have *No access* server access level.
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_revokeDatabase
 @brief Clear the database access level, revert back to the default access level
@@ -172,7 +166,6 @@ users.remove(theUser);
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_grantCollection
 @brief Set the collection access level.
@@ -241,7 +234,6 @@ Returned if you have *No access* server access level.
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_revokeCollection
 @brief Clear the collection access level, revert back to the default access level
@@ -297,7 +289,6 @@ If there was an error
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchDatabaseList
 @brief List the accessible databases for a user
@@ -377,19 +368,18 @@ users.remove(theUser);
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchDatabasePermission
 @brief Get specific database access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{database}, Get the database access level}
+@RESTHEADER{GET /_api/user/{user}/database/{dbname}, Get the database access level}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{user,string,required}
 The name of the user for which you want to query the databases.
 
-@RESTURLPARAM{database,string,required}
+@RESTURLPARAM{dbname,string,required}
 The name of the database to query
 
 @RESTDESCRIPTION
@@ -398,7 +388,7 @@ Fetch the database access level for a specific database
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the acccess level can be returned
+Returned if the access level can be returned
 
 @RESTRETURNCODE{400}
 If the access privileges are not right etc.
@@ -429,19 +419,18 @@ users.remove(theUser);
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchCollectionPermission
 @brief Get the collection access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{database}/{collection}, Get the specific collection access level}
+@RESTHEADER{GET /_api/user/{user}/database/{dbname}/{collection}, Get the specific collection access level}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{user,string,required}
 The name of the user for which you want to query the databases.
 
-@RESTURLPARAM{database,string,required}
+@RESTURLPARAM{dbname,string,required}
 The name of the database to query
 
 @RESTURLPARAM{collection,string,required}
@@ -453,7 +442,7 @@ Returns the collection access level for a specific collection
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Returned if the acccess level can be returned
+Returned if the access level can be returned
 
 @RESTRETURNCODE{400}
 If the access privileges are not right etc.
@@ -484,7 +473,6 @@ users.remove(theUser);
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_replace
 @brief Replace an existing user.
@@ -500,7 +488,7 @@ The name of the user
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
@@ -549,7 +537,6 @@ The specified user does not exist
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_modify
 @brief Modify attributes of an existing user
@@ -565,7 +552,7 @@ The name of the user
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
@@ -617,7 +604,6 @@ The specified user does not exist
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_delete
 @brief delete a user permanently.
@@ -665,7 +651,6 @@ The specified user does not exist
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetch
 @brief fetch the properties of a user.
@@ -715,7 +700,6 @@ The user with the specified name does not exist.
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchProperties
 @brief fetch the properties of a user.

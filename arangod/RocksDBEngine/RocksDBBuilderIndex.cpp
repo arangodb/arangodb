@@ -22,9 +22,10 @@
 
 #include "RocksDBBuilderIndex.h"
 
-#include "Basics/HashSet.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -71,7 +72,7 @@ struct BuilderTrx : public arangodb::transaction::Methods {
 
 struct BuilderCookie : public arangodb::TransactionState::Cookie {
   // do not track removed documents twice
-  arangodb::HashSet<LocalDocumentId::BaseType> tracked;
+  ::arangodb::containers::HashSet<LocalDocumentId::BaseType> tracked;
 };
 }  // namespace
 
@@ -178,6 +179,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
   Result res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -214,9 +216,10 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
           ridx.estimator()->remove(hash);
         }
       } else {
+        uint64_t seq = rootDB->GetLatestSequenceNumber();
         // since cuckoo estimator uses a map with seq as key we need to 
-        ridx.estimator()->bufferUpdates(1, std::move(it->second.inserts),
-                                           std::move(it->second.removals));
+        ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
+                                             std::move(it->second.removals));
       }
     }
   };

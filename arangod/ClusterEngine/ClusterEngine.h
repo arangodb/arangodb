@@ -41,7 +41,7 @@ class ClusterEngine final : public StorageEngine {
   explicit ClusterEngine(application_features::ApplicationServer& server);
   ~ClusterEngine();
 
-  void setActualEngine(StorageEngine* e) { _actualEngine = e; }
+  void setActualEngine(StorageEngine* e);
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
@@ -68,7 +68,8 @@ class ClusterEngine final : public StorageEngine {
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
+                                                           TRI_voc_tid_t tid,
                                                            transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
@@ -168,10 +169,9 @@ class ClusterEngine final : public StorageEngine {
   }
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& parameters,
-                                                      bool isUpgrade, int& status) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                      bool isUpgrade) override;
+  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
                                                 int& status) override;
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
@@ -242,12 +242,6 @@ class ClusterEngine final : public StorageEngine {
   void releaseTick(TRI_voc_tick_t) override {
     // noop
   }
-
- private:
-  /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      VPackSlice args,
-                                                      bool wasCleanShutdown, bool isUpgrade);
 
  public:
   static std::string const EngineName;

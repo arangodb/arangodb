@@ -23,6 +23,7 @@
 
 #include "MMFilesLogfileManager.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -164,14 +165,14 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addOption("--wal.allow-oversize-entries",
                      "allow entries that are bigger than '--wal.logfile-size'",
                      new BooleanParameter(&_allowOversizeEntries),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--wal.use-mlock",
       "mlock WAL logfiles in memory (may require elevated privileges or "
       "limits)",
       new BooleanParameter(&_useMLock),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--wal.directory", "logfile directory",
                      new StringParameter(&_directory));
@@ -193,7 +194,7 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
 
   options->addOption("--wal.flush-timeout", "flush timeout (in milliseconds)",
                      new UInt64Parameter(&_flushTimeout),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--wal.logfile-size", "size of each logfile (in bytes)",
                      new UInt32Parameter(&_filesize));
@@ -208,7 +209,7 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
 
   options->addOption("--wal.slots", "number of logfile slots to use",
                      new UInt32Parameter(&_numberOfSlots),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--wal.sync-interval",
@@ -220,13 +221,13 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
       "throttle writes when at least this many operations are waiting for "
       "collection (set to 0 to deactivate write-throttling)",
       new UInt64Parameter(&_throttleWhenPending),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--wal.throttle-wait",
       "maximum wait time per operation when write-throttled (in milliseconds)",
       new UInt64Parameter(&_maxThrottleWait),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void MMFilesLogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -980,7 +981,7 @@ void MMFilesLogfileManager::relinkLogfile(MMFilesWalLogfile* logfile) {
   MMFilesWalLogfile::IdType const id = logfile->id();
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
-  _logfiles.emplace(id, logfile);
+  _logfiles.try_emplace(id, logfile);
 }
 
 // removes logfiles that are allowed to be removed
@@ -1178,7 +1179,7 @@ TRI_voc_tick_t MMFilesLogfileManager::addLogfileBarrier(TRI_voc_tick_t databaseI
 
   {
     WRITE_LOCKER(barrierLock, _barriersLock);
-    _barriers.emplace(id, logfileBarrier.get());
+    _barriers.try_emplace(id, logfileBarrier.get());
   }
 
   logfileBarrier.release();
@@ -2184,7 +2185,7 @@ int MMFilesLogfileManager::inventory() {
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
         WRITE_LOCKER(writeLocker, _logfilesLock);
-        _logfiles.emplace(id, nullptr);
+        _logfiles.try_emplace(id, nullptr);
       }
     }
   }
@@ -2348,7 +2349,7 @@ int MMFilesLogfileManager::createReserveLogfile(uint32_t size) {
 
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
-    _logfiles.emplace(id, logfile.get());
+    _logfiles.try_emplace(id, logfile.get());
   }
   logfile.release();
 

@@ -157,7 +157,7 @@ class ConnectionCount {
     }  // for
   };
 
-  virtual ~ConnectionCount(){};
+  virtual ~ConnectionCount() = default;
 
   long newMaxConnections(long newRequestCount) {
     int ret_val(eMinOpenConnects);

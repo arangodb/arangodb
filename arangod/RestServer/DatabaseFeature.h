@@ -84,17 +84,20 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   // used by catch tests
-  #ifdef ARANGODB_USE_GOOGLE_TESTS
-    inline int loadDatabases(velocypack::Slice const& databases) {
-      return iterateDatabases(databases);
-    }
-  #endif
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  inline int loadDatabases(velocypack::Slice const& databases) {
+    return iterateDatabases(databases);
+  }
+#endif
 
   /// @brief will be called when the recovery phase has run
   /// this will call the engine-specific recoveryDone() procedures
   /// and will execute engine-unspecific operations (such as starting
   /// the replication appliers) for all databases
   void recoveryDone();
+
+  /// @brief enumerate all databases
+  void enumerate(std::function<void(TRI_vocbase_t*)> const& callback);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
@@ -113,7 +116,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  Result createDatabase(arangodb::CreateDatabaseInfo const& , TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo&& , TRI_vocbase_t*& result);
 
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
@@ -140,6 +143,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
+  void disableUpgrade() { _upgrade = false; }
   bool throwCollectionNotLoadedError() const {
     return _throwCollectionNotLoadedError.load(std::memory_order_relaxed);
   }

@@ -44,7 +44,7 @@ class text_token_stemming_stream: public analyzer, util::noncopyable {
   DECLARE_FACTORY(const irs::string_ref& locale);
 
   text_token_stemming_stream(const std::locale& locale);
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const noexcept override {
     return attrs_;
   }
   static void init(); // for trigering registration in a static build

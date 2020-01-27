@@ -28,6 +28,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/TraversalExecutor.h"
@@ -217,6 +218,7 @@ class TraverserHelper : public Traverser {
   }
 
   void destroyEngines() override {}
+  void clear() override {}
 
   std::string const& startVertexUsedAt(uint64_t index) {
     TRI_ASSERT(index < _usedVertexAt.size());

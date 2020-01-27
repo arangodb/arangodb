@@ -64,7 +64,7 @@ struct OptimizerRule {
   static std::underlying_type<Flags>::type makeFlags() {
     return static_cast<std::underlying_type<Flags>::type>(Flags::Default);
   }
-  
+
   /// @brief check a flag for the rule
   bool hasFlag(Flags flag) const {
     return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0);
@@ -73,15 +73,15 @@ struct OptimizerRule {
   bool canBeDisabled() const {
     return hasFlag(Flags::CanBeDisabled);
   }
-  
+
   bool isClusterOnly() const {
     return hasFlag(Flags::ClusterOnly);
   }
-  
+
   bool isHidden() const {
     return hasFlag(Flags::Hidden);
   }
-  
+
   bool canCreateAdditionalPlans() const {
     return hasFlag(Flags::CanCreateAdditionalPlans);
   }
@@ -244,7 +244,7 @@ struct OptimizerRule {
 
     // make operations on sharded collections use distribute
     distributeInClusterRule,
-    
+
 #ifdef USE_ENTERPRISE
     smartJoinsRule,
 #endif
@@ -292,15 +292,42 @@ struct OptimizerRule {
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
 
-    // moves filters on collection data into EnumerateCollection to
+    // moves filters on collection data into EnumerateCollection/Index to
     // avoid copying large amounts of unneeded documents
-    moveFiltersIntoEnumerateCollection,
+    moveFiltersIntoEnumerateRule,
+
+    // parallelizes execution in coordinator-sided GatherNodes
+    parallelizeGatherRule,
+
+    // move document materialization after SORT and LIMIT
+    // this must be run AFTER all cluster rules as this rule
+    // needs to take into account query distribution across cluster nodes
+    // for arango search view
+    lateDocumentMaterializationArangoSearchRule,
+
+    // move document materialization after SORT and LIMIT
+    // this must be run AFTER all cluster rules as this rule
+    // needs to take into account query distribution across cluster nodes
+    // for index
+    lateDocumentMaterializationRule,
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.
     spliceSubqueriesRule
   };
+
+#ifdef USE_ENTERPRISE
+  static_assert(clusterOneShardRule < distributeInClusterRule);
+  static_assert(clusterOneShardRule < smartJoinsRule);
+  static_assert(clusterOneShardRule < scatterInClusterRule);
+  
+  // smart joins must come before we move filters around, so the smart-join
+  // detection code does not need to take the special filters into account
+  static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
+#endif
+  
+  static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   velocypack::StringRef name;
   RuleFunction func;
@@ -316,14 +343,14 @@ struct OptimizerRule {
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;
-  
+
   OptimizerRule(OptimizerRule const& other) = delete;
   OptimizerRule& operator=(OptimizerRule const& other) = delete;
-  
-  friend bool operator<(OptimizerRule const& lhs, int level) {
-    return lhs.level < level;
+
+  friend bool operator<(OptimizerRule const& lhs, int rhs) {
+    return lhs.level < rhs;
   }
-  
+
   friend bool operator<(int lhs, OptimizerRule const& rhs) {
     return lhs < rhs.level;
   }

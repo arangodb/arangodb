@@ -37,7 +37,45 @@
 using namespace arangodb::velocypack;
 
 namespace {
-  
+
+// checks whether a memmove operation is allowed to get rid of the padding
+bool isAllowedToMemmove(Options const* options, uint8_t const* start, 
+                        std::vector<ValueLength> const& index, ValueLength offsetSize) {
+  VELOCYPACK_ASSERT(offsetSize == 1 || offsetSize == 2);
+
+  if (options->paddingBehavior == Options::PaddingBehavior::NoPadding || 
+      (offsetSize == 1 && options->paddingBehavior == Options::PaddingBehavior::Flexible)) {
+    std::size_t const n = (std::min)(std::size_t(8 - 2 * offsetSize), index.size());
+    for (std::size_t i = 0; i < n; i++) {
+      if (start[index[i]] == 0x00) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  return false;
+}
+
+uint8_t determineArrayType(bool needIndexTable, ValueLength offsetSize) {
+  uint8_t type;
+  // Now build the table:
+  if (needIndexTable) {
+    type = 0x06;
+  } else {  // no index table
+    type = 0x02;
+  }
+  // Finally fix the byte width in the type byte:
+  if (offsetSize == 2) {
+    type += 1;
+  } else if (offsetSize == 4) {
+    type += 2;
+  } else if (offsetSize == 8) {
+    type += 3;
+  }
+  return type;
+}
+
 constexpr ValueLength LinearAttributeUniquenessCutoff = 4;
   
 // struct used when sorting index tables for objects:
@@ -52,11 +90,17 @@ struct SortEntry {
 // reallocations
 constexpr size_t minSortEntriesAllocation = 32;
 
+
+#ifndef VELOCYPACK_NO_THREADLOCALS
+
 // thread-local, reusable buffer used for sorting medium to big index entries
-thread_local std::unique_ptr<std::vector<SortEntry>> sortEntries; 
+thread_local std::unique_ptr<std::vector<SortEntry>> sortEntries;
 
 // thread-local, reusable set to track usage of duplicate keys
 thread_local std::unique_ptr<std::unordered_set<StringRef>> duplicateKeys;
+
+#endif
+
 
 // Find the actual bytes of the attribute name of the VPack value
 // at position base, also determine the length len of the attribute.
@@ -89,6 +133,7 @@ bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
   do {
     // key(true) guarantees a String as returned type
     StringRef key = it.key(true).stringRef();
+
     ValueLength index = it.index();
     // compare with all other already looked-at keys
     for (ValueLength i = 0; i < index; ++i) {
@@ -105,16 +150,23 @@ bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
 }
 
 bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
+#ifndef VELOCYPACK_NO_THREADLOCALS
+  std::unique_ptr<std::unordered_set<StringRef>>& tmp = ::duplicateKeys;
+
   if (::duplicateKeys == nullptr) {
     ::duplicateKeys.reset(new std::unordered_set<StringRef>());
   } else {
     ::duplicateKeys->clear();
   }
+#else
+  std::unique_ptr<std::unordered_set<StringRef>> tmp(new std::unordered_set<StringRef>());
+#endif
+
   do {
     Slice const key = it.key(true);
     // key(true) guarantees a String as returned type
     VELOCYPACK_ASSERT(key.isString());
-    if (VELOCYPACK_UNLIKELY(!::duplicateKeys->emplace(key).second)) {
+    if (VELOCYPACK_UNLIKELY(!tmp->emplace(key).second)) {
       // identical key
       return false;
     }
@@ -124,19 +176,9 @@ bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
   return true;
 }
 
-
 } // namespace
   
-// create an empty Builder, using default Options 
-Builder::Builder()
-      : _buffer(std::make_shared<Buffer<uint8_t>>()),
-        _bufferPtr(_buffer.get()),
-        _start(_bufferPtr->data()),
-        _pos(0),
-        _keyWritten(false),
-        options(&Options::Defaults) {}
- 
-// create an empty Builder, with custom Options 
+// create an empty Builder, using Options 
 Builder::Builder(Options const* options)
       : _buffer(std::make_shared<Buffer<uint8_t>>()),
         _bufferPtr(_buffer.get()),
@@ -149,9 +191,11 @@ Builder::Builder(Options const* options)
   }
 }
   
+// create an empty Builder, using an existing buffer
 Builder::Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer, Options const* options)
       : _buffer(buffer), 
         _bufferPtr(_buffer.get()), 
+        _start(nullptr),
         _pos(0), 
         _keyWritten(false), 
         options(options) {
@@ -159,48 +203,69 @@ Builder::Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer, Options const* 
     throw Exception(Exception::InternalError, "Buffer cannot be a nullptr");
   }
   _start = _bufferPtr->data();
+  _pos = _bufferPtr->size();
 
   if (VELOCYPACK_UNLIKELY(options == nullptr)) {
     throw Exception(Exception::InternalError, "Options cannot be a nullptr");
   }
 }
   
+// create a Builder that uses an existing Buffer. the Builder will not
+// claim ownership for this Buffer
 Builder::Builder(Buffer<uint8_t>& buffer, Options const* options)
-      : _bufferPtr(nullptr), 
+      : _bufferPtr(&buffer), 
+        _start(_bufferPtr->data()),
         _pos(buffer.size()), 
         _keyWritten(false), 
         options(options) {
-  _buffer.reset(&buffer, BufferNonDeleter<uint8_t>());
-  _bufferPtr = _buffer.get();
-  _start = _bufferPtr->data();
 
   if (VELOCYPACK_UNLIKELY(options == nullptr)) {
     throw Exception(Exception::InternalError, "Options cannot be a nullptr");
   }
 }
   
+// populate a Builder from a Slice
 Builder::Builder(Slice slice, Options const* options)
       : Builder(options) {
   add(slice);
 }
 
 Builder::Builder(Builder const& that)
-      : _buffer(std::make_shared<Buffer<uint8_t>>(*that._buffer)),
-        _bufferPtr(_buffer.get()),
-        _start(_bufferPtr->data()),
+      : _bufferPtr(nullptr),
+        _start(nullptr),
         _pos(that._pos),
         _stack(that._stack),
         _index(that._index),
         _keyWritten(that._keyWritten),
         options(that.options) {
   VELOCYPACK_ASSERT(options != nullptr);
+
+  if (that._buffer == nullptr) {
+    _bufferPtr = that._bufferPtr;
+  } else {
+    _buffer = std::make_shared<Buffer<uint8_t>>(*that._buffer);
+    _bufferPtr = _buffer.get();
+  }
+        
+  if (_bufferPtr != nullptr) {
+    _start = _bufferPtr->data();
+  }
 }
 
 Builder& Builder::operator=(Builder const& that) {
   if (this != &that) {
-    _buffer = std::make_shared<Buffer<uint8_t>>(*that._buffer);
-    _bufferPtr = _buffer.get();
-    _start = _bufferPtr->data();
+    if (that._buffer == nullptr) {
+      _buffer.reset();
+      _bufferPtr = that._bufferPtr;
+    } else {
+      _buffer = std::make_shared<Buffer<uint8_t>>(*that._buffer);
+      _bufferPtr = _buffer.get();
+    }
+    if (_bufferPtr == nullptr) {
+      _start = nullptr;
+    } else {
+      _start = _bufferPtr->data();
+    }
     _pos = that._pos;
     _stack = that._stack;
     _index = that._index;
@@ -211,52 +276,61 @@ Builder& Builder::operator=(Builder const& that) {
   return *this;
 }
 
-Builder::Builder(Builder&& that) {
-  if (VELOCYPACK_UNLIKELY(!that.isClosed())) {
-    throw Exception(Exception::InternalError, "Cannot move an open Builder");
+Builder::Builder(Builder&& that) noexcept
+    : _buffer(std::move(that._buffer)),
+      _bufferPtr(nullptr),
+      _start(nullptr),
+      _pos(that._pos),
+      _stack(std::move(that._stack)),
+      _index(std::move(that._index)),
+      _keyWritten(that._keyWritten),
+      options(that.options) {
+  
+  if (_buffer != nullptr) {
+    _bufferPtr = _buffer.get();
+  } else {
+    _bufferPtr = that._bufferPtr;
   }
-  _buffer = that._buffer;
-  _bufferPtr = _buffer.get();
-  _start = _bufferPtr->data();
-  _pos = that._pos;
-  _stack.clear();
-  _stack.swap(that._stack);
-  _index.clear();
-  _index.swap(that._index);
-  _keyWritten = that._keyWritten;
-  options = that.options;
-  that._pos = 0;
-  that._keyWritten = false;
+  if (_bufferPtr != nullptr) {
+    _start = _bufferPtr->data();
+  }
+  VELOCYPACK_ASSERT(that._buffer == nullptr);
+  that._bufferPtr = nullptr;
+  that.clear();
 }
 
-Builder& Builder::operator=(Builder&& that) {
-  if (VELOCYPACK_UNLIKELY(!that.isClosed())) {
-    throw Exception(Exception::InternalError, "Cannot move an open Builder");
-  }
+Builder& Builder::operator=(Builder&& that) noexcept {
   if (this != &that) {
-    _buffer = that._buffer;
-    _bufferPtr = _buffer.get();
-    _start = _bufferPtr->data();
+    _buffer = std::move(that._buffer);
+    if (_buffer != nullptr) {
+      _bufferPtr = _buffer.get();
+    } else {
+      _bufferPtr = that._bufferPtr;
+    }
+    if (_bufferPtr != nullptr) {
+      _start = _bufferPtr->data();
+    } else {
+      _start = nullptr;
+    }
     _pos = that._pos;
-    _stack.clear();
-    _stack.swap(that._stack);
-    _index.clear();
-    _index.swap(that._index);
+    _stack = std::move(that._stack);
+    _index = std::move(that._index);
     _keyWritten = that._keyWritten;
     options = that.options;
-    that._pos = 0;
-    that._keyWritten = false;
+    VELOCYPACK_ASSERT(that._buffer == nullptr);
+    that._bufferPtr = nullptr;
+    that.clear();
   }
   return *this;
 }
 
 std::string Builder::toString() const {
-  Options options;
-  options.prettyPrint = true;
+  Options opts;
+  opts.prettyPrint = true;
 
   std::string buffer;
   StringSink sink(&buffer);
-  Dumper::dump(slice(), &sink, &options);
+  Dumper::dump(slice(), &sink, &opts);
   return buffer;
 }
 
@@ -292,6 +366,9 @@ void Builder::sortObjectIndexShort(uint8_t* objBase,
 
 void Builder::sortObjectIndexLong(uint8_t* objBase,
                                   std::vector<ValueLength>& offsets) {
+#ifndef VELOCYPACK_NO_THREADLOCALS
+  std::unique_ptr<std::vector<SortEntry>>& tmp = ::sortEntries;
+
   // start with clean sheet in case the previous run left something
   // in the vector (e.g. when bailing out with an exception)
   if (::sortEntries == nullptr) {
@@ -299,19 +376,22 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
   } else {
     ::sortEntries->clear();
   }
+#else
+  std::unique_ptr<std::vector<SortEntry>> tmp(new std::vector<SortEntry>());
+#endif
 
   std::size_t const n = offsets.size();
   VELOCYPACK_ASSERT(n > 1);
-  ::sortEntries->reserve(std::max(::minSortEntriesAllocation, n));
+  tmp->reserve(std::max(::minSortEntriesAllocation, n));
   for (std::size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
     e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
-    ::sortEntries->push_back(e);
+    tmp->push_back(e);
   }
-  VELOCYPACK_ASSERT(::sortEntries->size() == n);
-  std::sort(::sortEntries->begin(), ::sortEntries->end(), [](SortEntry const& a, 
-                                                             SortEntry const& b) 
+  VELOCYPACK_ASSERT(tmp->size() == n);
+  std::sort(tmp->begin(), tmp->end(), [](SortEntry const& a,
+                                         SortEntry const& b)
 #ifdef VELOCYPACK_64BIT
     noexcept
 #endif
@@ -327,7 +407,7 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
 
   // copy back the sorted offsets
   for (std::size_t i = 0; i < n; i++) {
-    offsets[i] = (*::sortEntries)[i].offset;
+    offsets[i] = (*tmp)[i].offset;
   }
 }
 
@@ -391,9 +471,6 @@ bool Builder::closeCompactArrayOrObject(ValueLength tos, bool isArray,
 Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
   VELOCYPACK_ASSERT(!index.empty());
 
-  // fix head byte in case a compact Array was originally requested:
-  _start[tos] = 0x06;
-
   bool needIndexTable = true;
   bool needNrSubs = true;
 
@@ -424,67 +501,81 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
     }
   }
 
+  VELOCYPACK_ASSERT(needIndexTable == needNrSubs);
+  
   // First determine byte length and its format:
   unsigned int offsetSize;
   // can be 1, 2, 4 or 8 for the byte width of the offsets,
   // the byte length and the number of subvalues:
-  if (_pos - tos + (needIndexTable ? index.size() : 0) - (needNrSubs ? 6 : 7) <=
-      0xff) {
+  bool allowMemmove = ::isAllowedToMemmove(options, _start + tos, index, 1);
+  if (_pos - tos + 
+      (needIndexTable ? index.size() : 0) - 
+      (allowMemmove ? (needNrSubs ? 6 : 7) : 0) <= 0xff) {
     // We have so far used _pos - tos bytes, including the reserved 8
     // bytes for byte length and number of subvalues. In the 1-byte number
     // case we would win back 6 bytes but would need one byte per subvalue
     // for the index table
     offsetSize = 1;
-  } else if (_pos - tos + (needIndexTable ? 2 * index.size() : 0) <= 0xffff) {
-    offsetSize = 2;
-  } else if (_pos - tos + (needIndexTable ? 4 * index.size() : 0) <=
-             0xffffffffu) {
-    offsetSize = 4;
   } else {
-    offsetSize = 8;
+    allowMemmove = ::isAllowedToMemmove(options, _start + tos, index, 2);
+    if (_pos - tos + 
+        (needIndexTable ? 2 * index.size() : 0) - 
+        (allowMemmove ? (needNrSubs ? 4 : 6) : 0) <= 0xffff) {
+      offsetSize = 2;
+    } else {
+      allowMemmove = false;
+      if (_pos - tos + 
+          (needIndexTable ? 4 * index.size() : 0) <= 0xffffffffu) {
+        offsetSize = 4;
+      } else {
+        offsetSize = 8;
+      }
+    }
   }
 
+  VELOCYPACK_ASSERT(offsetSize == 1 || offsetSize == 2 || offsetSize == 4 || offsetSize == 8); 
+  VELOCYPACK_ASSERT(!allowMemmove || offsetSize == 1 || offsetSize == 2);
+
+  if (offsetSize < 8 &&
+      !needIndexTable && 
+      options->paddingBehavior == Options::PaddingBehavior::UsePadding) {
+    // if we are allowed to use padding, we will pad to 8 bytes anyway. as we are not
+    // using an index table, we can also use type 0x05 for all Arrays without making
+    // things worse space-wise
+    offsetSize = 8;
+    allowMemmove = false;
+  }
+
+  // fix head byte
+  _start[tos] = ::determineArrayType(needIndexTable, offsetSize);
+  
   // Maybe we need to move down data:
-  if (offsetSize == 1) {
+  if (allowMemmove) {
     // check if one of the first entries in the array is ValueType::None 
     // (0x00). in this case, we could not distinguish between a None (0x00) 
     // and the optional padding. so we must prevent the memmove here
-    bool allowMemMove = true;
-    std::size_t const n = (std::min)(std::size_t(6), index.size());
-    for (std::size_t i = 0; i < n; i++) {
-      if (_start[tos + index[i]] == 0x00) {
-        allowMemMove = false;
-        break;
-      }
+    ValueLength targetPos = 1 + 2 * offsetSize;
+    if (!needIndexTable) {
+      targetPos -= offsetSize;
     }
-    if (allowMemMove) {
-      ValueLength targetPos = 3;
-      if (!needIndexTable) {
-        targetPos = 2;
-      }
-      if (_pos > (tos + 9)) {
-        ValueLength len = _pos - (tos + 9);
-        memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
-      }
-      ValueLength const diff = 9 - targetPos;
-      rollback(diff);
-      if (needIndexTable) {
-        std::size_t const n = index.size();
-        for (std::size_t i = 0; i < n; i++) {
-          index[i] -= diff;
-        }
-      }  // Note: if !needIndexTable the index array is now wrong!
+    if (_pos > (tos + 9)) {
+      ValueLength len = _pos - (tos + 9);
+      memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
     }
+    ValueLength const diff = 9 - targetPos;
+    rollback(diff);
+    if (needIndexTable) {
+      std::size_t const n = index.size();
+      for (std::size_t i = 0; i < n; i++) {
+        index[i] -= diff;
+      }
+    }  // Note: if !needIndexTable the index array is now wrong!
   }
-  // One could move down things in the offsetSize == 2 case as well,
-  // since we only need 4 bytes in the beginning. However, saving these
-  // 4 bytes has been sacrificed on the Altar of Performance.
 
   // Now build the table:
   if (needIndexTable) {
-    ValueLength tableBase;
     reserve(offsetSize * index.size() + (offsetSize == 8 ? 8 : 0));
-    tableBase = _pos;
+    ValueLength tableBase = _pos;
     advance(offsetSize * index.size());
     for (std::size_t i = 0; i < index.size(); i++) {
       uint64_t x = index[i];
@@ -493,21 +584,12 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
         x >>= 8;
       }
     }
-  } else {  // no index table
-    _start[tos] = 0x02;
   }
-  // Finally fix the byte width in the type byte:
-  if (offsetSize > 1) {
-    if (offsetSize == 2) {
-      _start[tos] += 1;
-    } else if (offsetSize == 4) {
-      _start[tos] += 2;
-    } else {  // offsetSize == 8
-      _start[tos] += 3;
-      if (needNrSubs) {
-        appendLength<8>(index.size());
-      }
-    }
+
+  // Finally fix the byte width at tthe end:
+  if (offsetSize == 8 && needNrSubs) {
+    reserve(8);
+    appendLengthUnchecked<8>(index.size());
   }
 
   // Fix the byte length in the beginning:
@@ -558,6 +640,13 @@ Builder& Builder::close() {
       (head == 0x06 && options->buildUnindexedArrays) ||
       (head == 0x0b && (options->buildUnindexedObjects || index.size() == 1))) {
     if (closeCompactArrayOrObject(tos, isArray, index)) {
+      // And, if desired, check attribute uniqueness:
+      if (options->checkAttributeUniqueness && 
+          index.size() > 1 &&
+          !checkAttributeUniqueness(Slice(_start + tos))) {
+        // duplicate attribute name!
+        throw Exception(Exception::DuplicateAttributeName);
+      }
       return *this;
     }
     // This might fall through, if closeCompactArrayOrObject gave up!
@@ -583,9 +672,20 @@ Builder& Builder::close() {
     // case we would win back 6 bytes but would need one byte per subvalue
     // for the index table
     offsetSize = 1;
-
+    // One could move down things in the offsetSize == 2 case as well,
+    // since we only need 4 bytes in the beginning. However, saving these
+    // 4 bytes has been sacrificed on the Altar of Performance.
+  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
+    offsetSize = 2;
+  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
+    offsetSize = 4;
+  }
+    
+  if (offsetSize < 4 &&
+      (options->paddingBehavior == Options::PaddingBehavior::NoPadding ||
+       (offsetSize == 1 && options->paddingBehavior == Options::PaddingBehavior::Flexible))) {
     // Maybe we need to move down data:
-    ValueLength targetPos = 3;
+    ValueLength targetPos = 1 + 2 * offsetSize;
     if (_pos > (tos + 9)) {
       ValueLength len = _pos - (tos + 9);
       memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
@@ -596,14 +696,6 @@ Builder& Builder::close() {
     for (std::size_t i = 0; i < n; i++) {
       index[i] -= diff;
     }
-
-    // One could move down things in the offsetSize == 2 case as well,
-    // since we only need 4 bytes in the beginning. However, saving these
-    // 4 bytes has been sacrificed on the Altar of Performance.
-  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
-    offsetSize = 2;
-  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
-    offsetSize = 4;
   }
 
   // Now build the table:
@@ -629,7 +721,8 @@ Builder& Builder::close() {
       _start[tos] += 2;
     } else {  // offsetSize == 8
       _start[tos] += 3;
-      appendLength<8>(index.size());
+      reserve(8);
+      appendLengthUnchecked<8>(index.size());
     }
   }
 
@@ -660,6 +753,7 @@ Builder& Builder::close() {
   // off the _stack:
   _stack.pop_back();
   // Intentionally leave _index[depth] intact to avoid future allocs!
+      
   return *this;
 }
 
@@ -707,11 +801,31 @@ Slice Builder::getKey(std::string const& key) const {
   return Slice();
 }
 
-uint8_t* Builder::set(Value const& item) {
+void Builder::appendTag(uint64_t tag) {
+  if (options->disallowTags) {
+    // Tagged values explicitly disallowed
+    throw Exception(Exception::BuilderTagsDisallowed);
+  }
+  if (tag <= 255) {
+    reserve(1 + 1);
+    appendByte(0xee);
+    appendLengthUnchecked<1>(tag);
+  } else {
+    reserve(1 + 8);
+    appendByte(0xef);
+    appendLengthUnchecked<8>(tag);
+  }
+}
+
+uint8_t* Builder::set(uint64_t tag, Value const& item) {
   auto const oldPos = _pos;
   auto ctype = item.cType();
 
   checkKeyIsString(item.valueType() == ValueType::String);
+
+  if (tag != 0) {
+    appendTag(tag);
+  }
 
   // This method builds a single further VPack item at the current
   // append position. If this is an array or object, then an index
@@ -953,6 +1067,9 @@ uint8_t* Builder::set(Value const& item) {
     case ValueType::BCD: {
       throw Exception(Exception::NotImplemented);
     }
+    case ValueType::Tagged: {
+      throw Exception(Exception::NotImplemented);
+    }
     case ValueType::Custom: {
       if (options->disallowCustom) {
         // Custom values explicitly disallowed as a security precaution
@@ -969,12 +1086,16 @@ uint8_t* Builder::set(Value const& item) {
   return _start + oldPos;
 }
 
-uint8_t* Builder::set(Slice const& item) {
+uint8_t* Builder::set(uint64_t tag, Slice const& item) {
   checkKeyIsString(item);
 
   if (VELOCYPACK_UNLIKELY(options->disallowCustom && item.isCustom())) {
     // Custom values explicitly disallowed as a security precaution
     throw Exception(Exception::BuilderCustomDisallowed);
+  }
+
+  if (tag != 0) {
+    appendTag(tag);
   }
 
   ValueLength const l = item.byteSize();
@@ -984,7 +1105,7 @@ uint8_t* Builder::set(Slice const& item) {
   return _start + _pos - l;
 }
 
-uint8_t* Builder::set(ValuePair const& pair) {
+uint8_t* Builder::set(uint64_t tag, ValuePair const& pair) {
   // This method builds a single further VPack item at the current
   // append position. This is the case for ValueType::String,
   // ValueType::Binary, or ValueType::Custom, which can be built
@@ -993,6 +1114,10 @@ uint8_t* Builder::set(ValuePair const& pair) {
   auto const oldPos = _pos;
 
   checkKeyIsString(pair.valueType() == ValueType::String);
+
+  if (tag != 0) {
+    appendTag(tag);
+  }
 
   if (pair.valueType() == ValueType::Binary) {
     uint64_t v = pair.getSize();
@@ -1042,7 +1167,7 @@ bool Builder::checkAttributeUniqueness(Slice obj) const {
   VELOCYPACK_ASSERT(options->checkAttributeUniqueness == true);
   VELOCYPACK_ASSERT(obj.isObject());
   VELOCYPACK_ASSERT(obj.length() >= 2);
-
+  
   if (obj.isSorted()) {
     // object attributes are sorted
     return checkAttributeUniquenessSorted(obj);
@@ -1091,7 +1216,7 @@ bool Builder::checkAttributeUniquenessUnsorted(Slice obj) const {
   // will use an std::unordered_set for O(1) lookups but with heap
   // allocations
   ObjectIterator it(obj, true);
-
+    
   if (it.size() <= ::LinearAttributeUniquenessCutoff) {
     return ::checkAttributeUniquenessUnsortedBrute(it);
   }

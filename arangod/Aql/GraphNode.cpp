@@ -26,6 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphNode.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
@@ -151,7 +153,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         // do not re-add the same collection!
         continue;
       }
-      seenCollections.emplace(eColName, dir);
+      seenCollections.try_emplace(eColName, dir);
 
       auto collection = resolver->getCollection(eColName);
 
@@ -274,7 +276,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
   // Directions
   VPackSlice dirList = base.get("directions");
-  for (auto const& it : VPackArrayIterator(dirList)) {
+  for (VPackSlice it : VPackArrayIterator(dirList)) {
     uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
     TRI_edge_direction_e d = uint64ToDirection(dir);
     // Only TRI_EDGE_IN and TRI_EDGE_OUT allowed here
@@ -282,7 +284,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     _directions.emplace_back(d);
   }
 
-  if(!ServerState::instance()->isDBServer()) {
+  if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
     if (base.hasKey("graph") && (base.get("graph").isString())) {
@@ -313,7 +315,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
                                    "graph needs an array of edge collections.");
   }
 
-  for (auto const& it : VPackArrayIterator(currentSlice)) {
+  for (VPackSlice it : VPackArrayIterator(currentSlice)) {
     std::string e = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
     _edgeColls.emplace_back(
         std::make_unique<aql::Collection>(e, _vocbase, AccessMode::Type::READ));
@@ -327,7 +329,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         "graph needs an array of vertex collections.");
   }
 
-  for (auto const& it : VPackArrayIterator(currentSlice)) {
+  for (VPackSlice it : VPackArrayIterator(currentSlice)) {
     std::string v = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
     _vertexColls.emplace_back(
         std::make_unique<aql::Collection>(v, _vocbase, AccessMode::Type::READ));
@@ -418,9 +420,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 GraphNode::~GraphNode() = default;
 
 std::string const& GraphNode::collectionToShardName(std::string const& collName) const {
-  if(_collectionToShard.empty()){
+  if (_collectionToShard.empty()) {
     return collName;
-  };
+  }
 
   auto found = _collectionToShard.find(collName);
   TRI_ASSERT(found != _collectionToShard.cend());
@@ -522,7 +524,7 @@ CostEstimate GraphNode::estimateCost() const {
 
 void GraphNode::addEngine(TraverserEngineID const& engine, ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-  _engines.emplace(server, engine);
+  _engines.try_emplace(server, engine);
 }
 
 /// @brief Returns a reference to the engines. (CLUSTER ONLY)
@@ -552,13 +554,7 @@ Collection const* GraphNode::collection() const {
 
 void GraphNode::injectVertexCollection(aql::Collection const* other) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  for (auto const& e : _edgeColls) {
-    if (e->name() == other->name()) {
-      // This collection is already known.
-      // unfortunately we cannot do pointer comparison
-      return;
-    }
-  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This is a workaround to inject all unknown aql collections into
   // this node, that should be list of unique values!

@@ -577,7 +577,7 @@ std::unique_ptr<MMFilesPersistentIndexIterator> MMFilesPersistentIndex::lookup(t
 
   VPackSlice lastNonEq;
   leftSearch.openArray();
-  for (auto const& it : VPackArrayIterator(searchValues)) {
+  for (VPackSlice it : VPackArrayIterator(searchValues)) {
     TRI_ASSERT(it.isObject());
     VPackSlice eq = it.get(StaticStrings::IndexEq);
     if (eq.isNone()) {

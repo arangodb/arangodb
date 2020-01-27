@@ -27,14 +27,17 @@
 #include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
+#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -53,6 +56,16 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
+
+namespace {
+static std::string serverPrefix("server:");
+
+std::string stripServerPrefix(std::string const& destination) {
+  TRI_ASSERT(destination.size() >= serverPrefix.size() &&
+             destination.substr(0, serverPrefix.size()) == serverPrefix);
+  return destination.substr(serverPrefix.size());
+}
+}  // namespace
 
 TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
                                              ActionDescription const& desc)
@@ -97,21 +110,20 @@ TakeoverShardLeadership::TakeoverShardLeadership(MaintenanceFeature& feature,
 
 TakeoverShardLeadership::~TakeoverShardLeadership() = default;
 
-static void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers,
-                              std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
-                              std::string const& databaseName, ShardID const& shardID,
-                              std::string const& oldLeader) {
-
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
+static void sendLeaderChangeRequests(network::ConnectionPool* pool,
+                                     std::vector<ServerID> const& currentServers,
+                                     std::shared_ptr<std::vector<ServerID>>& realInsyncFollowers,
+                                     std::string const& databaseName,
+                                     ShardID const& shardID, std::string const& oldLeader) {
+  if (pool == nullptr) {
     // nullptr happens only during controlled shutdown
     return;
   }
 
   std::string const& sid = ServerState::instance()->getId();
 
-
-  VPackBuilder bodyBuilder;
+  VPackBufferUInt8 buffer;
+  VPackBuilder bodyBuilder(buffer);
   {
     VPackObjectBuilder ob(&bodyBuilder);
     bodyBuilder.add("leaderId", VPackValue(sid));
@@ -119,28 +131,36 @@ static void sendLeaderChangeRequests(std::vector<ServerID> const& currentServers
     bodyBuilder.add("shard", VPackValue(shardID));
   }
 
-  std::string const url = "/_db/" + databaseName + "/_api/replication/set-the-leader";
+  network::RequestOptions options;
+  options.database = databaseName;
+  options.timeout = network::Timeout(3.0);
+  options.skipScheduler = true; // hack to speed up future.get()
 
-  std::vector<ClusterCommRequest> requests;
-  auto body = std::make_shared<std::string>(bodyBuilder.toJson());
+  std::string const url = "/_api/replication/set-the-leader";
+
+  std::vector<network::FutureRes> futures;
+  futures.reserve(currentServers.size());
+
   for (auto const& srv : currentServers) {
     if (srv == sid) {
       continue; // ignore ourself
     }
     LOG_TOPIC("42516", DEBUG, Logger::MAINTENANCE)
       << "Sending " << bodyBuilder.toJson() << " to " << srv;
-    requests.emplace_back("server:" + srv, RequestType::PUT, url, body);
+    auto f = network::sendRequest(pool, "server:" + srv, fuerte::RestVerb::Put,
+                                  url, buffer, options);
+    futures.emplace_back(std::move(f));
   }
 
-  cc->performRequests(requests, 3.0, Logger::COMMUNICATION, false);
+  auto responses = futures::collectAll(futures).get();
 
   // This code intentionally ignores all errors
   realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
-  for (auto const& req : requests) {
-    ClusterCommResult const& result = req.result;
-    if (result.status == CL_COMM_RECEIVED && result.errorCode == TRI_ERROR_NO_ERROR) {
-      if (result.result && result.result->getHttpReturnCode() == 200) {
-        realInsyncFollowers->push_back(result.serverID);
+  for (auto const& res : responses) {
+    if (res.hasValue() && res.get().ok()) {
+      auto& result = res.get();
+      if (result.response && result.response->statusCode() == fuerte::StatusOK) {
+        realInsyncFollowers->push_back(::stripServerPrefix(result.destination));
       }
     }
   }
@@ -178,7 +198,11 @@ static void handleLeadership(LogicalCollection& collection,
           oldLeader = oldLeader.substr(1);
 
           // Update all follower and tell them that we are the leader now
-          sendLeaderChangeRequests(currentServers, realInsyncFollowers, databaseName, collection.name(), oldLeader);
+          NetworkFeature& nf =
+              collection.vocbase().server().getFeature<NetworkFeature>();
+          network::ConnectionPool* pool = nf.pool();
+          sendLeaderChangeRequests(pool, currentServers, realInsyncFollowers,
+                                   databaseName, collection.name(), oldLeader);
         }
       }
 
@@ -218,20 +242,21 @@ bool TakeoverShardLeadership::first() {
   try {
     DatabaseGuard guard(database);
     auto& vocbase = guard.database();
-    Result found = methods::Collections::lookup(
-        vocbase, shard, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-          TRI_ASSERT(coll);
-          LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
-              << "trying to become leader of shard '" << database << "/" << shard;
-          // We adjust local leadership, note that the planned
-          // resignation case is not handled here, since then
-          // ourselves does not appear in shards[shard] but only
-          // "_" + ourselves.
-          handleLeadership(*coll, localLeader, plannedLeader,
-                           vocbase.name(), oldCounter, feature());
-        });
 
-    if (found.fail()) {
+    std::shared_ptr<LogicalCollection> coll;
+    Result found = methods::Collections::lookup(vocbase, shard, coll);
+    if (found.ok()) {
+
+      TRI_ASSERT(coll);
+      LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
+          << "trying to become leader of shard '" << database << "/" << shard;
+      // We adjust local leadership, note that the planned
+      // resignation case is not handled here, since then
+      // ourselves does not appear in shards[shard] but only
+      // "_" + ourselves.
+      handleLeadership(*coll, localLeader, plannedLeader,
+                       vocbase.name(), oldCounter, feature());
+    } else {
       std::stringstream error;
       error << "TakeoverShardLeadership: failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC("65342", ERR, Logger::MAINTENANCE) << error.str();

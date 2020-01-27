@@ -31,6 +31,7 @@
 #include "Basics/json.h"
 #include "Basics/memory.h"
 #include "Basics/tri-strings.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "VocBase/vocbase.h"
@@ -1086,110 +1087,90 @@ class KeySpace {
 
   bool keySet(v8::Isolate* isolate, std::string const& key,
               v8::Handle<v8::Value> const& value, bool replace) {
-    auto element = new KeySpaceElement(key.c_str(), key.size(),
+    // do not get memory under the lock
+    auto element = std::make_unique<KeySpaceElement>(key.c_str(), key.size(),
                                        TRI_ObjectToJson(isolate, value));
-    {
       WRITE_LOCKER(writeLocker, _lock);
 
-      if (replace) {
+    auto [it, emplaced] = _hash.try_emplace(key, element.get());
+
+    if (replace && !emplaced) {
         // delete previous entry
-        auto it = _hash.find(key);
-        if (it != _hash.end()) {
-          delete (*it).second;
-          _hash.erase(it);
-        }
+      delete it->second;
+      it->second =  element.get();
+      emplaced=true;
       }
 
-      auto it = _hash.emplace(key, element);
-      if (it.second) {
-        return true;
-      }
+    if (emplaced) {
+      element.release();
     }
 
-    // insertion failed
-    delete element;
-    return false;
+    return emplaced;
   }
 
-  bool keySet(std::string const& key, double val) {
-    TRI_json_t* json = TRI_CreateNumberJson(val);
 
+  bool keySet(std::string const& key, double val) {
+    // do not get memory under the lock
+    TRI_json_t* json = TRI_CreateNumberJson(val);
     if (json == nullptr) {
       // OOM
       return false;
     }
     auto element = std::make_unique<KeySpaceElement>(key.c_str(), key.size(), json);
+
     {
       WRITE_LOCKER(writeLocker, _lock);
-      auto it = _hash.find(key);
-      if (it != _hash.end()) {
-        it->second->json->_value._number = val;
-        return true;
+      auto [it, emplaced] = _hash.try_emplace(key, element.get());
+
+      if (emplaced) {
+        element.release();
       } else {
-        auto it2 = _hash.emplace(key, element.get());
-        if (it2.second) {
-          element.release();  // _hash now has ownership
-          return true;
-        }
+        it->second->json->_value._number = val;
+        emplaced = true;
       }
+
+      return emplaced;
     }
-    // insertion failed
-    return false;
   }
 
   int keyCas(v8::Isolate* isolate, std::string const& key, v8::Handle<v8::Value> const& value,
              v8::Handle<v8::Value> const& compare, bool& match) {
-    auto element = new KeySpaceElement(key.c_str(), key.size(),
+    // do not get memory under the lock
+    auto element = std::make_unique<KeySpaceElement>(key.c_str(), key.size(),
                                        TRI_ObjectToJson(isolate, value));
 
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto it = _hash.emplace(key, element);
-    if (it.second) {
+    auto [it, emplaced] = _hash.try_emplace(key, element.get());
+    if (emplaced) {
       // no object saved yet
       match = true;
-
+      element.release();
       return TRI_ERROR_NO_ERROR;
     }
 
-    auto it2 = _hash.find(key);
-    if (it2 == _hash.end()) {
-      return TRI_ERROR_INTERNAL;
-    }
-
-    KeySpaceElement* found = (*it2).second;
 
     if (compare->IsUndefined()) {
       // other object saved, but we compare it with nothing => no match
-      delete element;
       match = false;
-
       return TRI_ERROR_NO_ERROR;
     }
 
     TRI_json_t* other = TRI_ObjectToJson(isolate, compare);
-
     if (other == nullptr) {
-      delete element;
       match = false;
-
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
+    KeySpaceElement* found = it->second;
     int res = TRI_CompareValuesJson(found->json, other);
     TRI_FreeJson(other);
 
     if (res != 0) {
-      delete element;
       match = false;
     } else {
-      auto it = _hash.find(key);
-      if (it != _hash.end()) {
-        auto found = (*it).second;
-        _hash.erase(it);
         delete found;
-      }
-      _hash.emplace(key, element);
+      found = element.release();
       match = true;
     }
 
@@ -1226,25 +1207,20 @@ class KeySpace {
   int keyIncr(std::string const& key, double value, double& result) {
     WRITE_LOCKER(writeLocker, _lock);
 
-    KeySpaceElement* found = nullptr;
-    auto it = _hash.find(key);
-    if (it != _hash.end()) {
-      found = (*it).second;
-    }
+    auto [found, emplaced] = _hash.try_emplace(
+      key,
+      arangodb::lazyConstruct([&]{
+          return new KeySpaceElement(key.c_str(), key.size(), TRI_CreateNumberJson(value));
+      })
+    );
 
-    if (found == nullptr) {
-      auto element =
-          new KeySpaceElement(key.c_str(), key.size(), TRI_CreateNumberJson(value));
-
-      _hash.emplace(key, element);
+    if (emplaced) {
       result = value;
     } else {
-      TRI_json_t* current = found->json;
-
+      TRI_json_t* current = found->second->json;
       if (!TRI_IsNumberJson(current)) {
         return TRI_ERROR_ILLEGAL_NUMBER;
       }
-
       result = current->_value._number += value;
     }
 
@@ -1274,8 +1250,7 @@ class KeySpace {
       }
 
       auto element = new KeySpaceElement(key.c_str(), key.size(), list);
-
-      _hash.emplace(key, element);
+      _hash.try_emplace(key, element);
     } else {
       TRI_json_t* current = found->json;
 
@@ -1306,6 +1281,7 @@ class KeySpace {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
+    // cppcheck-suppress nullPointer ; cannot get here if found is nullptr
     TRI_json_t* current = found->json;
 
     if (!TRI_IsArrayJson(current)) {
@@ -1378,8 +1354,9 @@ class KeySpace {
       TRI_PushBack2ArrayJson(list, sourceItem);
 
       try {
-        auto element = new KeySpaceElement(keyTo.c_str(), keyTo.size(), list);
-        _hash.emplace(keyTo, element);
+        auto element = std::make_unique<KeySpaceElement>(keyTo.c_str(), keyTo.size(), list);
+        _hash.try_emplace(keyTo, element.get());
+        element.release();
         // hack: decrease the vector size
         TRI_SetLengthVector(&current->_value._objects,
                             TRI_LengthVector(&current->_value._objects) - 1);
@@ -1564,13 +1541,17 @@ class KeySpace {
 
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto it = _hash.find(key);
-    if (it == _hash.end()) {
-      auto element = new KeySpaceElement(key.c_str(), key.size(),
+    auto [it, emplaced] = _hash.try_emplace(
+      key,
+      arangodb::lazyConstruct([&]{
+        return new KeySpaceElement(key.c_str(), key.size(),
                                          TRI_ObjectToJson(isolate, value));
-      _hash.emplace(key, element);
+      })
+    );
 
-      TRI_V8_RETURN(value);
+
+    if (emplaced) {
+      TRI_V8_RETURN(value); // does a real return
     }
 
     KeySpaceElement* found = (*it).second;
@@ -1682,8 +1663,11 @@ static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     try {
-      h->data.emplace(std::make_pair(name, ptr.get()));
-      ptr.release();
+      auto [it, emplaced] = h->data.try_emplace(name, ptr.get());
+      if (emplaced) {
+        ptr.release();
+        TRI_ASSERT(it != h->data.end());
+      }
     } catch (...) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }

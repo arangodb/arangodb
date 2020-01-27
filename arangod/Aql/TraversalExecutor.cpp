@@ -26,6 +26,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/system-compiler.h"
 #include "Graph/Traverser.h"
@@ -35,10 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
-
-constexpr bool TraversalExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough TraversalExecutor::Properties::allowsBlockPassthrough;
-constexpr bool TraversalExecutor::Properties::inputSizeRestrictsOutputSize;
 
 TraversalExecutorInfos::TraversalExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
@@ -230,7 +227,6 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputA
       }
       if (_infos.usePathOutput()) {
         transaction::BuilderLeaser tmp(_traverser.trx());
-        tmp->clear();
         AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
         AqlValueGuard guard{path, true};
         output.moveValueInto(_infos.pathRegister(), _input, guard);
@@ -255,7 +251,7 @@ ExecutionState TraversalExecutor::computeState() const {
 }
 
 bool TraversalExecutor::resetTraverser() {
-  _traverser.traverserCache()->clear();
+  _traverser.clear();
 
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is

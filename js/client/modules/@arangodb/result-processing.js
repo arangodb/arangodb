@@ -58,6 +58,7 @@ const internalMembers = [
   'processStats',
   'startupTime',
   'testDuration',
+  'timeout',
   'shutdownTime',
   'totalSetUp',
   'totalTearDown',
@@ -98,10 +99,6 @@ function gatherStatus(result) {
   }, true
   );
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief pretty prints the result
-// //////////////////////////////////////////////////////////////////////////////
 
 function fancyTimeFormat(time)
 {   
@@ -331,6 +328,10 @@ function saveToJunitXML(options, results) {
   });
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pretty prints the result
+// //////////////////////////////////////////////////////////////////////////////
+
 function unitTestPrettyPrintResults (options, results) {
   let onlyFailedMessages = '';
   let failedMessages = '';
@@ -381,6 +382,7 @@ function unitTestPrettyPrintResults (options, results) {
           failedCases[testSuiteName] = {
             test: testCaseMessage(testSuite)
           };
+          failsOfOneSuite[testSuiteName + '_ALL'] = testCaseMessage(testSuite);
         }
       }
     },
@@ -493,7 +495,7 @@ function unitTestPrettyPrintResults (options, results) {
     onlyFailedMessages += failText + '\n';
     failText = RED + failText + RESET;
   }
-  if (cu.GDB_OUTPUT !== '') {
+  if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText === options.testFailureText) {
     // write more verbose failures to the testFailureText file
     onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
   }
@@ -509,7 +511,17 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
     onlyFailedMessages += '\n' + crashedText;
   }
   fs.write(options.testOutputDirectory + options.testFailureText, onlyFailedMessages);
+
+  if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText !== options.testFailureText ) {
+    // write more verbose failures to the testFailureText file
+    fs.write(options.testOutputDirectory + options.crashAnalysisText, cu.GDB_OUTPUT);
+  }
+
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief creates a chartlist of the longest running tests
+// //////////////////////////////////////////////////////////////////////////////
 
 function locateLongRunning(options, results) {
   let testRunStatistics = "";
@@ -608,6 +620,11 @@ function locateLongRunning(options, results) {
   print(testRunStatistics);
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief creates a chart list of the tests with the most excessive
+//          setup/teardown usage
+// //////////////////////////////////////////////////////////////////////////////
+
 function locateLongSetupTeardown(options, results) {
   let testRunStatistics = "  Setup  | Run  |  tests | setupAll | suite name\n";
   let sortedByDuration = [];
@@ -702,7 +719,9 @@ function locateLongSetupTeardown(options, results) {
   print(testRunStatistics);
 }
 
-
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prints the factor server startup/teardown vs. test duration
+// //////////////////////////////////////////////////////////////////////////////
 
 function locateShortServerLife(options, results) {
   let rc = true;

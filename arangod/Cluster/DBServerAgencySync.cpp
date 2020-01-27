@@ -23,6 +23,7 @@
 
 #include "DBServerAgencySync.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -95,9 +96,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
-        collection->properties(collections,
-                               LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                                            LogicalDataSource::Serialize::ForPersistence));
+        collection->properties(collections, LogicalDataSource::Serialization::Persistence);
 
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();
@@ -127,7 +126,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
   TRI_ASSERT(AgencyCommManager::isEnabled());
-  AgencyComm comm;
+  AgencyComm comm(_server);
 
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;

@@ -27,8 +27,10 @@
 
 #include <stddef.h>
 #include <cstdint>
+#include <cstring>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -65,11 +67,10 @@ namespace StringUtils {
 std::string escapeUnicode(std::string const& name, bool escapeSlash = true);
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source, char delim = ',', char quote = '\\');
+std::vector<std::string> split(std::string const& source, char delim = ',');
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source,
-                               std::string const& delim, char quote = '\\');
+std::vector<std::string> split(std::string const& source, std::string const& delim);
 
 /// @brief joins a string
 template <typename C>
@@ -111,7 +112,7 @@ std::string join(C const& source, char delim = ',') {
 /// @brief joins a string
 template <typename C, typename T>
 std::string join(C const& source, std::string const& delim,
-                 std::function<std::string(T)> cb) {
+                 std::function<std::string(T)> const& cb) {
   std::string result;
   bool first = true;
 
@@ -159,17 +160,33 @@ std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
 std::string replace(std::string const& sourceStr, std::string const& fromString,
                     std::string const& toString);
 
-/// @brief converts string to lower case in place
-void tolowerInPlace(std::string* str);
+static inline char tolower(char c) {
+  return c + ((static_cast<unsigned char>(c - 65) < 26U) << 5);
+}
 
-/// @brief converts string to lower case
+static inline unsigned char tolower(unsigned char c) {
+  return c + ((c - 65U < 26U) << 5);
+}
+
+static inline char toupper(char c) {
+  return c - ((static_cast<unsigned char>(c - 97) < 26U) << 5);
+}
+
+static inline unsigned char toupper(unsigned char c) {
+  return c - ((c - 97U < 26U) << 5);
+}
+
+/// @brief converts string to lower case in place - locale-independent, ASCII only!
+void tolowerInPlace(std::string& str);
+
+/// @brief converts string to lower case - locale-independent, ASCII only!
 std::string tolower(std::string&& str);
 std::string tolower(std::string const& str);
 
-/// @brief converts string to upper case in place
-void toupperInPlace(std::string* str);
+/// @brief converts string to upper case in place - locale-independent, ASCII only!
+void toupperInPlace(std::string& str);
 
-/// @brief converts string to upper case
+/// @brief converts string to upper case - locale-independent, ASCII only!
 std::string toupper(std::string const& str);
 
 /// @brief checks for a prefix
@@ -183,22 +200,19 @@ std::string urlDecodePath(std::string const& str);
 std::string urlDecode(std::string const& str);
 
 /// @brief url encodes the string
-std::string urlEncode(char const* src);
-
-/// @brief url encodes the string
-std::string urlEncode(char const* src, size_t const len);
+std::string urlEncode(char const* src, size_t len);
 
 /// @brief uri encodes the component string
 std::string encodeURIComponent(std::string const& str);
 
 /// @brief uri encodes the component string
-std::string encodeURIComponent(char const* src, size_t const len);
+std::string encodeURIComponent(char const* src, size_t len);
 
 /// @brief converts input string to soundex code
 std::string soundex(std::string const& str);
 
 /// @brief converts input string to soundex code
-std::string soundex(char const* src, size_t const len);
+std::string soundex(char const* src, size_t len);
 
 /// @brief converts input string to vector of character codes
 std::vector<uint32_t> characterCodes(std::string const& str);
@@ -230,6 +244,8 @@ std::string itoa(uint64_t i);
 
 /// @brief converts unsigned integer to string
 size_t itoa(uint64_t i, char* result);
+
+void itoa(uint64_t i, std::string& result);
 
 /// @brief converts integer to string
 std::string itoa(int32_t i);
@@ -304,10 +320,16 @@ inline uint64_t uint64(char const* value, size_t size) noexcept {
 inline uint64_t uint64(std::string const& value) noexcept {
   return StringUtils::uint64(value.data(), value.size());
 }
+inline uint64_t uint64(std::string_view const& value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
+}
 #else
 uint64_t uint64(std::string const& value);
 inline uint64_t uint64(char const* value, size_t size) {
   return StringUtils::uint64(std::string(value, size));
+}
+inline uint64_t uint64(std::string_view const& value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
 }
 #endif
 
@@ -370,6 +392,7 @@ float floatDecimal(char const* value, size_t size);
 // -----------------------------------------------------------------------------
 
 /// @brief converts to base64
+std::string encodeBase64(char const* value, size_t length);
 std::string encodeBase64(std::string const&);
 
 /// @brief converts from base64

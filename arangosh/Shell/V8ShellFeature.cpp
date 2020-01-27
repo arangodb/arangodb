@@ -92,16 +92,16 @@ V8ShellFeature::V8ShellFeature(application_features::ApplicationServer& server,
 }
 
 void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.startup-directory",
-                     "startup paths containing the Javascript files",
+                     "startup paths containing the JavaScript files",
                      new StringParameter(&_startupDirectory),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.client-module",
                      "client module to use at startup", new StringParameter(&_clientModule),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.copy-directory",
@@ -112,7 +112,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.module-directory",
                      "additional paths containing JavaScript modules",
                      new VectorParameter<StringParameter>(&_moduleDirectories),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",
@@ -136,7 +136,7 @@ void V8ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   }
 
   if (!_moduleDirectories.empty()) {
-    LOG_TOPIC("90ca0", DEBUG, Logger::V8) << "using Javascript modules at '"
+    LOG_TOPIC("90ca0", DEBUG, Logger::V8) << "using JavaScript modules at '"
                                  << StringUtils::join(_moduleDirectories, ";") << "'";
   }
 }
@@ -149,7 +149,7 @@ void V8ShellFeature::start() {
   }
 
   LOG_TOPIC("9c2f7", DEBUG, Logger::V8)
-      << "using Javascript startup files at '" << _startupDirectory << "'";
+      << "using JavaScript startup files at '" << _startupDirectory << "'";
 
   _isolate = platform.createIsolate();
 
@@ -160,7 +160,7 @@ void V8ShellFeature::start() {
 
   auto* isolate = _isolate;
   TRI_GET_GLOBALS();
-  v8g = TRI_CreateV8Globals(isolate, 0);
+  v8g = TRI_CreateV8Globals(server(), isolate, 0);
   v8g->_securityContext = arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
   // create the global template
@@ -288,17 +288,16 @@ void V8ShellFeature::copyInstallationFiles() {
       return true;
     }
 
-    if (filename.size() >= nodeModulesPath.size()) {
-      std::string normalized = filename;
-      FileUtils::normalizePath(normalized);
-      TRI_ASSERT(filename.size() == normalized.size());
-      if (normalized.substr(normalized.size() - nodeModulesPath.size(),
-                            nodeModulesPath.size()) == nodeModulesPath ||
-          normalized.substr(normalized.size() - nodeModulesPathVersioned.size(),
-                            nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
-        // filter it out!
-        return true;
-      }
+    std::string normalized = filename;
+    FileUtils::normalizePath(normalized);
+    if ((!nodeModulesPath.empty() && 
+         normalized.size() >= nodeModulesPath.size() &&
+         normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
+        (!nodeModulesPathVersioned.empty() &&
+         normalized.size() >= nodeModulesPathVersioned.size() &&
+         normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
+      // filter it out!
+      return true;
     }
     // let the file/directory pass through
     return false;
@@ -401,7 +400,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
   return promptError;
 }
 
-// the result is wrapped in a Javascript variable SYS_ARANGO
+// the result is wrapped in a JavaScript variable SYS_ARANGO
 std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     v8::Local<v8::Context>& context, bool createConnection,
     std::vector<std::string> const& positionals, bool* promptError) {
@@ -603,7 +602,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
   for (auto const& file : files) {
     if (!FileUtils::exists(file)) {
       LOG_TOPIC("4beec", ERR, arangodb::Logger::FIXME)
-          << "error: Javascript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -726,7 +725,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
   for (auto& file : files) {
     if (!FileUtils::exists(file)) {
       LOG_TOPIC("4f748", ERR, arangodb::Logger::FIXME)
-          << "error: Javascript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -790,7 +789,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   for (auto const& file : files) {
     if (!FileUtils::exists(file)) {
       LOG_TOPIC("51bdb", ERR, arangodb::Logger::FIXME)
-          << "error: Javascript file not found: '" << file << "'";
+          << "error: JavaScript file not found: '" << file << "'";
       ok = false;
       continue;
     }
@@ -982,9 +981,8 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  application_features::ApplicationServer& server =
-      application_features::ApplicationServer::server();
-  ShellFeature& shell = server.getFeature<ShellFeature>();
+  TRI_GET_GLOBALS();
+  ShellFeature& shell = v8g->_server.getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));
 
@@ -994,7 +992,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes global Javascript variables
+/// @brief initializes global JavaScript variables
 ////////////////////////////////////////////////////////////////////////////////
 
 void V8ShellFeature::initGlobals() {

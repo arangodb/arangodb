@@ -477,7 +477,7 @@ void Communicator::createRequestInProgress(std::unique_ptr<NewRequest> newReques
     // should never happen that the key for the ticketId already exists
     // in the map
     auto result =
-        _handlesInProgress.emplace(ticketId, std::move(handleInProgress));
+        _handlesInProgress.try_emplace(ticketId, std::move(handleInProgress));
     TRI_ASSERT(result.second);
   }
   curl_multi_add_handle(_curl, handle);
@@ -554,8 +554,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
         curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &httpStatusCode);
 
         // take over ownership for _responseBody
-        auto response = std::make_unique<HttpResponse>(static_cast<ResponseCode>(httpStatusCode),
-                                                       std::move(rip->_responseBody));  
+        auto response = std::make_unique<HttpResponse>(static_cast<ResponseCode>(httpStatusCode), 1, std::move(rip->_responseBody));
         response->setHeaders(std::move(rip->_responseHeaders));
 
         if (httpStatusCode < 400) {
@@ -704,7 +703,7 @@ size_t Communicator::readHeaders(char* buffer, size_t size, size_t nitems, void*
     // mop: hmm response needs lowercased headers
     std::string headerKey =
         basics::StringUtils::tolower(std::string(header.c_str(), pivot));
-    rip->_responseHeaders.emplace(std::move(headerKey),
+    rip->_responseHeaders.try_emplace(std::move(headerKey),
                                   header.substr(pivot + 2, header.length() - pivot - 4));
   }
   return realsize;

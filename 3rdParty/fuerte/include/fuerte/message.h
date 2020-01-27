@@ -36,9 +36,10 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
+const std::string fu_accept_key("accept");
+const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
 const std::string fu_content_type_key("content-type");
-const std::string fu_accept_key("accept");
 const std::string fu_keep_alive_key("keep-alive");
 
 struct MessageHeader {
@@ -47,9 +48,23 @@ struct MessageHeader {
   void setVersion(short v) { _version = v; }
 
  public:
-  // Header metadata helpers
-  void addMeta(std::string key, std::string value);
-  void addMeta(StringMap const&);
+  // Header metadata helpers#
+  template<typename K, typename V>
+  void addMeta(K&& key, V&& value) {
+    if (fu_accept_key == key) {
+      _acceptType = to_ContentType(value);
+      if (_acceptType != ContentType::Custom) {
+        return;
+      }
+    } else if (fu_content_type_key == key) {
+      _contentType = to_ContentType(value);
+      if (_contentType != ContentType::Custom) {
+        return;
+      }
+    }
+    this->_meta.emplace(std::forward<K>(key), std::forward<V>(value));
+  }
+
   void setMeta(StringMap);
   StringMap const& meta() const { return _meta; }
 
@@ -61,15 +76,19 @@ struct MessageHeader {
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
   // content type accessors
-  inline ContentType contentType() const { return _contentType; }
-  void contentType(std::string const& type);
-  void contentType(ContentType type);
+  ContentType contentType() const { return _contentType; }
+  void contentType(ContentType type) {
+    _contentType = type;
+  }
+  void contentType(std::string const& type) {
+    addMeta(fu_content_type_key, type);
+  }
 
  protected:
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
-  ContentType _contentType;
-  ContentType _acceptType;
+  ContentType _contentType = ContentType::Unset;
+  ContentType _acceptType = ContentType::Unset;
 };
 
 struct RequestHeader final : public MessageHeader {
@@ -87,9 +106,10 @@ struct RequestHeader final : public MessageHeader {
 
  public:
   // accept header accessors
-  ContentType acceptType() const;
-  void acceptType(ContentType type);
-
+  ContentType acceptType() const { return _acceptType; }
+  void acceptType(ContentType type) { _acceptType = type; }
+  void acceptType(std::string const& type);
+  
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
 
@@ -104,10 +124,7 @@ struct ResponseHeader final : public MessageHeader {
   /// Response code
   StatusCode responseCode = StatusUndefined;
 
-  MessageType responseType() const { return _responseType; }
-
- private:
-  MessageType _responseType = MessageType::Response;
+  MessageType responseType() const { return MessageType::Response; }
 };
 
 // Message is base class for message being send to (Request) or
@@ -137,7 +154,7 @@ class Message {
   }
 
   /// get the content as a slice
-  velocypack::Slice slice() {
+  velocypack::Slice slice() const {
     auto slices = this->slices();
     if (!slices.empty()) {
       return slices[0];
@@ -158,13 +175,10 @@ class Message {
 class Request final : public Message {
  public:
   static constexpr std::chrono::milliseconds defaultTimeout =
-      std::chrono::milliseconds(300 * 1000);
+      std::chrono::seconds(300);
 
-  Request(RequestHeader&& messageHeader = RequestHeader())
+  Request(RequestHeader messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
-
-  Request(RequestHeader const& messageHeader)
-      : header(messageHeader), _timeout(defaultTimeout) {}
 
   /// @brief request header
   RequestHeader header;
@@ -196,6 +210,7 @@ class Request final : public Message {
   std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
   std::size_t payloadSize() const override;
+  velocypack::Buffer<uint8_t>&& moveBuffer() && { return std::move(_payload); }
 
   // get timeout, 0 means no timeout
   inline std::chrono::milliseconds timeout() const { return _timeout; }
@@ -208,28 +223,33 @@ class Request final : public Message {
 };
 
 // Response contains the message resulting from a request to a server.
-class Response final : public Message {
+class Response : public Message {
  public:
-  Response(ResponseHeader&& reqHeader = ResponseHeader())
+  Response(ResponseHeader reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
+
+  Response(Response const&) = delete;
+  Response& operator=(Response const&) = delete;
 
   /// @brief request header
   ResponseHeader header;
 
-  MessageType type() const override { return header._responseType; }
+  MessageType type() const override { return header.responseType(); }
   MessageHeader const& messageHeader() const override { return header; }
   ///////////////////////////////////////////////
   // get / check status
   ///////////////////////////////////////////////
 
   // statusCode returns the (HTTP) status code for the request (200==OK).
-  StatusCode statusCode() { return header.responseCode; }
+  StatusCode statusCode() const noexcept { return header.responseCode; }
   // checkStatus returns true if the statusCode equals one of the given valid
   // code, false otherwise.
-  bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) {
+  bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) const {
     auto actual = statusCode();
     for (auto code : validStatusCodes) {
-      if (code == actual) return true;
+      if (code == actual) {
+        return true;
+      }
     }
     return false;
   }
@@ -254,8 +274,10 @@ class Response final : public Message {
   std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload();
 
   /// @brief move in the payload
-  void setPayload(velocypack::Buffer<uint8_t> buffer,
-                  std::size_t payloadOffset);
+  void setPayload(velocypack::Buffer<uint8_t>&& buffer, std::size_t offset) {
+    _payloadOffset = offset;
+    _payload = std::move(buffer);
+  }
 
  private:
   velocypack::Buffer<uint8_t> _payload;

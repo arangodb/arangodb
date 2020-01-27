@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Agency/Supervision.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/MetricsFeature.h"
 
 struct TRI_vocbase_t;
 
@@ -165,7 +166,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
-  void sendEmptyAppendEntriesRPC(std::string followerId);
+  void sendEmptyAppendEntriesRPC(std::string const& followerId);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -187,6 +188,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   index_t index();
 
   /// @brief Start orderly shutdown of threads
+  // cppcheck-suppress virtualCallInConstructor
   void beginShutdown() override final;
 
   /// @brief Report appended entries from AgentCallback
@@ -224,7 +226,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///  and write lock for _readDB
   void executeLockedWrite(std::function<void()> const& cb);
 
-  /// @brief Get read store and compaction index
+  /// @brief execute a callback while holding _transientLock
+  void executeTransientLocked(std::function<void()> const& cb);
+
+    /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
   /// @brief Get read store and compaction index
@@ -243,9 +248,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Store const& spearhead() const;
 
   /// @brief Get transient store
-  ///  WARNING: this assumes caller holds appropriate
-  ///  locks or will use executeLockedRead() or
-  ///  executeLockedWrite() with a lambda function
+  /// WARNING: this assumes caller holds _transientLock
   Store const& transient() const;
 
   /// @brief Serve active agent interface
@@ -324,6 +327,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief add agent to configuration (from State after successful local persistence)
   void updateConfiguration(VPackSlice const&);
 
+  /// @brief patch some configuration values, this is for manual interaction with
+  /// the agency leader.
+  void updateSomeConfigValues(VPackSlice);
+
  private:
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
@@ -363,7 +370,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Committed (read) kv-store
   Store _readDB;
 
-  /// @brief Committed (read) kv-store for transient data
+  /// @brief Committed (read) kv-store for transient data. This is
+  /// protected by the _transientLock mutex.
   Store _transient;
 
   /// @brief Condition variable for appending to the log and for
@@ -418,6 +426,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// Allows reading from one or both if used alone.
   /// Writing requires this held first, then _waitForCV's mutex
   mutable arangodb::basics::ReadWriteLock _outputLock;
+
+  /// @brief The following mutex protects the _transient store. It is
+  /// needed for all accesses to _transient.
+  mutable arangodb::Mutex _transientLock;
 
   /// @brief RAFT consistency lock and update notifier:
   ///   _readDB and _commitIndex
@@ -475,8 +487,16 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
+  Counter& _write_ok;
+  Counter& _write_no_leader;
+  Counter& _read_ok;
+  Counter& _read_no_leader;
+  Histogram<double>& _write_hist_msec;
+  
 };
 }  // namespace consensus
 }  // namespace arangodb
 
 #endif
+ 
