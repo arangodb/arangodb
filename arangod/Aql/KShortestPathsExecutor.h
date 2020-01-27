@@ -179,8 +179,7 @@ class KShortestPathsExecutor {
    *
    * @return false if we are done and no path could be found.
    */
-  [[nodiscard]] auto fetchPaths(AqlItemBlockInputRange& input)
-      -> std::pair<bool, ExecutorState>;
+  [[nodiscard]] auto fetchPaths(AqlItemBlockInputRange& input) -> bool;
   auto doOutputPath(OutputAqlItemRow& output) -> void;
 
   /**

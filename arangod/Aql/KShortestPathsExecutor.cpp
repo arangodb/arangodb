@@ -166,15 +166,20 @@ auto KShortestPathsExecutor::produceRows(OutputAqlItemRow& output)
 auto KShortestPathsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (true) {
-    auto [havePath, upstreamState] = fetchPaths(input);
-
-    if (havePath) {
+    if (_finder.isPathAvailable()) {
       doOutputPath(output);
       if (output.isFull()) {
-        return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
+        if (_finder.isPathAvailable()) {
+          return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
+        } else {
+          return {input.upstreamState(), NoStats{}, AqlCall{}};
+        }
       }
     } else {
-      return {upstreamState, NoStats{}, AqlCall{}};
+      if (!fetchPaths(input)) {
+        TRI_ASSERT(!input.hasDataRow());
+        return {input.upstreamState(), NoStats{}, AqlCall{}};
+      }
     }
   }
 }
@@ -182,44 +187,44 @@ auto KShortestPathsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAq
 auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, size_t, AqlCall> {
   auto skipped = size_t{0};
-  while (true) {
-    auto [havePath, upstreamState] = fetchPaths(input);
 
-    if (havePath) {
-      while (_finder.isPathAvailable() && call.getOffset() > 0) {
-        _finder.skipPath();
-        call.didSkip(1);
-        ++skipped;
-      }
-      if (call.getOffset() == 0) {
-        return {ExecutorState::HASMORE, skipped, AqlCall{}};
-      }
+  while (call.getOffset() > 0 || (call.getOffset() == 0 && call.getLimit() == 0)) {
+    if (_finder.isPathAvailable()) {
+      skipped++;
+      call.didSkip(1);
+      _finder.skipPath();
     } else {
-      return {upstreamState, skipped, AqlCall{}};
+      if (!fetchPaths(input)) {
+        TRI_ASSERT(!input.hasDataRow());
+        return {input.upstreamState(), skipped, AqlCall{}};
+      }
     }
+  }
+
+  //
+  if (_finder.isPathAvailable()) {
+    return {ExecutorState::HASMORE, skipped, AqlCall{}};
+  } else {
+    return {input.upstreamState(), skipped, AqlCall{}};
   }
 }
 
-auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input)
-    -> std::pair<bool, ExecutorState> {
-  if (_finder.isPathAvailable()) {
-    return {true, ExecutorState::HASMORE};
-  } else {
-    while (input.hasDataRow()) {
-      auto source = VPackSlice{};
-      auto target = VPackSlice{};
-      std::tie(std::ignore, _inputRow) = input.nextDataRow();
-      TRI_ASSERT(_inputRow.isInitialized());
+auto KShortestPathsExecutor::fetchPaths(AqlItemBlockInputRange& input) -> bool {
+  TRI_ASSERT(!_finder.isPathAvailable());
+  while (input.hasDataRow()) {
+    auto source = VPackSlice{};
+    auto target = VPackSlice{};
+    std::tie(std::ignore, _inputRow) = input.nextDataRow();
+    TRI_ASSERT(_inputRow.isInitialized());
 
-      // Check start and end for validity
-      if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
-          getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target) &&
-          _finder.startKShortestPathsTraversal(source, target)) {
-        return {true, input.upstreamState()};
-      }
+    // Check start and end for validity
+    if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
+        getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target) &&
+        _finder.startKShortestPathsTraversal(source, target)) {
+      return true;
     }
-    return {false, input.upstreamState()};
   }
+  return false;
 }
 
 auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
@@ -227,10 +232,7 @@ auto KShortestPathsExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
     auto tmp = transaction::BuilderLeaser{_finder.options().trx()};
     tmp->clear();
     _finder.getNextPathAql(*tmp.builder());
-    // TODO: prettier?
-    AqlValue path = AqlValue(*tmp.builder());
-    AqlValueGuard guard{path, true};
-    output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+    output.cloneValueInto(_infos.getOutputRegister(), _inputRow, AqlValue(*tmp.builder()));
     output.advanceRow();
   }
 }
