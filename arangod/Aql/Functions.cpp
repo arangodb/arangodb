@@ -6439,7 +6439,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
     return AqlValue(AqlValueHintNull());
   }
   
-  if ((baseArray.length() < replaceOffset ) &&!havePadValue) {
+  if (baseArray.length() < replaceOffset && !havePadValue) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
 
