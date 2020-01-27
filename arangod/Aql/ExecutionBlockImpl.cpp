@@ -1165,8 +1165,9 @@ template <class T>
 struct dependent_false : std::false_type {};
 
 template <class Executor>
-std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::executeSkipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(AqlItemBlockInputRange& inputRange,
+                                                        AqlCall& call)
+    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
   if constexpr (isNewStyleExecutor<Executor>()) {
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
       // If the executor has a method skipRowsRange, to skip outputs.
@@ -1177,19 +1178,22 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
       // is a property of the executor), then we can just let the fetcher skip
       // the number of rows that we would like to skip.
       // Returning this will trigger to end in upstream state now, with the
-      // call that was handed it
-      return {inputRange.upstreamState(), 0, call};
+      // call that was handed it.
+      static_assert(
+          std::is_same_v<typename Executor::Stats, NoStats>,
+          "Executors with custom statistics must implement skipRowsRange.");
+      return {inputRange.upstreamState(), NoStats{}, 0, call};
     } else {
       static_assert(dependent_false<Executor>::value,
                     "This value of SkipRowsRangeVariant is not supported");
-      return std::make_tuple(ExecutorState::DONE, 0, call);
+      return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
     }
   } else {
     TRI_ASSERT(false);
-    return std::make_tuple(ExecutorState::DONE, 0, call);
+    return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
   }
   // Compiler is unhappy without this.
-  return std::make_tuple(ExecutorState::DONE, 0, call);
+  return std::make_tuple(ExecutorState::DONE, typename Executor::Stats{}, 0, call);
 }
 
 /**
@@ -1256,8 +1260,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     while (execState != ExecState::DONE) {
       switch (execState) {
         case ExecState::SKIP: {
-          auto [state, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
+          auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
           skipped += skippedLocal;
+          _engine->_stats += stats;
           // The execute might have modified the client call.
           if (state == ExecutorState::DONE) {
             execState = ExecState::SHADOWROWS;
@@ -1323,8 +1328,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::FULLCOUNT: {
-          auto [state, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
+          auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
           skipped += skippedLocal;
+          _engine->_stats += stats;
 
           if (state == ExecutorState::DONE) {
             execState = ExecState::SHADOWROWS;

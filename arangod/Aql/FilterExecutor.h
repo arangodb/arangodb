@@ -103,7 +103,7 @@ class FilterExecutor {
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  [[nodiscard]] std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   [[nodiscard]] std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;

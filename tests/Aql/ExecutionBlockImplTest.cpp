@@ -560,9 +560,10 @@ class SharedExecutionBlockImplTest {
    * @param numRowsLeftWithInput The number of available rows in the output, if we have given an input
    * @return ProduceCall The call ready to hand over to the LambdaExecutorInfos
    */
-  ProduceCall generateProduceCall(size_t& nrCalls, AqlCall expectedCall,
+  static auto generateProduceCall(size_t& nrCalls, AqlCall expectedCall,
                                   size_t numRowsLeftNoInput = ExecutionBlock::DefaultBatchSize,
-                                  size_t numRowsLeftWithInput = ExecutionBlock::DefaultBatchSize) {
+                                  size_t numRowsLeftWithInput = ExecutionBlock::DefaultBatchSize)
+      -> ProduceCall {
     return [&nrCalls, numRowsLeftNoInput, numRowsLeftWithInput,
             expectedCall](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
                -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
@@ -608,10 +609,9 @@ class SharedExecutionBlockImplTest {
    * @param expectedCall The call that is expected on every invocation of this function.
    * @return SkipCall The call ready to hand over to the LambdaExecutorInfos
    */
-  SkipCall generateSkipCall(size_t& nrCalls, AqlCall expectedCall) {
-    return [&nrCalls,
-            expectedCall](AqlItemBlockInputRange& inputRange,
-                          AqlCall& clientCall) -> std::tuple<ExecutorState, size_t, AqlCall> {
+  static auto generateSkipCall(size_t& nrCalls, AqlCall expectedCall) -> SkipCall {
+    return [&nrCalls, expectedCall](AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+               -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       if (nrCalls > 10) {
         EXPECT_TRUE(false);
         // This is emergency bailout, we ask way to often here
@@ -635,7 +635,7 @@ class SharedExecutionBlockImplTest {
       upstreamCall.hardLimit = clientCall.getOffset() + clientCall.hardLimit;
       upstreamCall.offset = 0;
 
-      return {inputRange.upstreamState(), localSkip, upstreamCall};
+      return {inputRange.upstreamState(), NoStats{}, localSkip, upstreamCall};
     };
   }
 
@@ -645,9 +645,9 @@ class SharedExecutionBlockImplTest {
    *
    * @return SkipCall The always failing call to be used for the executor.
    */
-  SkipCall generateNeverSkipCall() {
+  static auto generateNeverSkipCall() -> SkipCall {
     return [](AqlItemBlockInputRange& input,
-              AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
+              AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       // Should not be called here. No Skip!
       EXPECT_TRUE(false);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -660,7 +660,7 @@ class SharedExecutionBlockImplTest {
    *
    * @return ProduceCall The always failing call to be used for the executor.
    */
-  ProduceCall generateNeverProduceCall() {
+  static auto generateNeverProduceCall() -> ProduceCall {
     return [](AqlItemBlockInputRange& input,
               OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
       // Should not be called here. No limit, only skip!
@@ -1136,9 +1136,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, call};
     };
 
-    auto skipData =
-        [data, iterator](AqlItemBlockInputRange& inputRange,
-                         AqlCall& clientCall) -> std::tuple<ExecutorState, size_t, AqlCall> {
+    auto skipData = [data, iterator](AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+        -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       size_t skipped = 0;
       while (inputRange.hasDataRow() &&
              (clientCall.getOffset() > 0 ||
@@ -1165,7 +1164,7 @@ class ExecutionBlockImplExecuteIntegrationTest
         call.softLimit = clientCall.getOffset();
       }  // else softLimit == unlimited
       call.fullCount = false;
-      return {inputRange.upstreamState(), skipped, call};
+      return {inputRange.upstreamState(), NoStats{}, skipped, call};
     };
     auto infos = outReg == 0
                      ? makeSkipInfos(std::move(writeData), skipData,
@@ -1453,8 +1452,9 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
     request.softLimit = (std::min)(getClient.softLimit, getClient.hardLimit);
     return {inputRange.upstreamState(), NoStats{}, request};
   };
-  auto forwardSkipCall = [&](AqlItemBlockInputRange& inputRange,
-                             AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
+  auto forwardSkipCall =
+      [&](AqlItemBlockInputRange& inputRange,
+          AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
     skipState.gotCalled(call);
     size_t skipped = 0;
     while (inputRange.hasDataRow() &&
@@ -1471,7 +1471,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
       request.softLimit = call.getOffset();
     }  // else fullCount case, simple get UNLIMITED from above
 
-    return {inputRange.upstreamState(), skipped, request};
+    return {inputRange.upstreamState(), NoStats{}, skipped, request};
   };
 
   auto upper = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(

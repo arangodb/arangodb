@@ -339,19 +339,24 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
 }
 
 auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
-  // TODO Stats! Count fullCount!
-  auto upstreamCall = calculateUpstreamCall(call);
-
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   if (ADB_UNLIKELY(inputRange.hasDataRow())) {
     static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
-        "For LIMIT with passthrough to work, there must not be input rows when skipping. "
-        "The following code also assumes this.");
+                  "For LIMIT with passthrough to work, there must not be input "
+                  "rows when skipping. "
+                  "The following code also assumes this.");
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Unexpected input while skipping");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "Unexpected input while skipping");
   }
 
-  // TODO How to count what's skipped above? Is it correct to return 0 here?
-
-  return {inputRange.upstreamState(), 0, upstreamCall};
+  auto const skipTotal = call.offset + infos().getOffset();
+  auto const skipped = inputRange.skip(skipTotal);
+  call.didSkip(skipped);
+  auto const upstreamCall = calculateUpstreamCall(call);
+  auto stats = LimitStats{};
+  if (infos().isFullCountEnabled()) {
+    stats.incrFullCountBy(skipped);
+  }
+  return {inputRange.upstreamState(), stats, skipped, upstreamCall};
 }

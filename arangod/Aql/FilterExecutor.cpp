@@ -102,10 +102,11 @@ std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t at
 }
 
 // TODO Remove me, we are using the getSome skip variant here.
-std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   ExecutorState state = ExecutorState::HASMORE;
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  FilterStats stats{};
   size_t skipped = 0;
   while (inputRange.hasDataRow() && skipped < call.getOffset()) {
     std::tie(state, input) = inputRange.nextDataRow();
@@ -115,17 +116,19 @@ std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
     }
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       skipped++;
+    } else {
+      stats.incrFiltered();
     }
   }
   call.didSkip(skipped);
 
   AqlCall upstreamCall{};
   upstreamCall.softLimit = call.getOffset();
-  return {state, skipped, upstreamCall};
+  return {state, stats, skipped, upstreamCall};
 }
 
-std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
-    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
   TRI_IF_FAILURE("FilterExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
