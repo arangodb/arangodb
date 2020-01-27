@@ -49,20 +49,24 @@ class GeneralConnection : public fuerte::Connection {
   void cancel() override;
 
   // Activate this connection
-  void startConnection() override;
+  void start() override;
 
  protected:
+  
+  void startConnection();
   // shutdown connection, cancel async operations
   void shutdownConnection(const fuerte::Error, std::string const& msg = "",
                           bool mayRestart = false);
-
-  // Connect with a given number of retries
-  void tryConnect(unsigned retries);
 
   void restartConnection(const Error error);
 
   // Call on IO-Thread: read from socket
   void asyncReadSome();
+  
+private:
+  
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries);
 
  protected:
   virtual void finishConnect() = 0;
