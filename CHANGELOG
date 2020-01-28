@@ -6,6 +6,8 @@ devel
   AQL functions are automatically reloaded when functions are changed, and
   there is no need to call these APIs manually.
 
+* Fixed issue #10949: k shortest paths behaviour wrong with negative weights.
+
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
 
 * Added JWT secret rotation (Enterprise only).
