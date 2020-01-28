@@ -138,10 +138,14 @@ class GraphNode : public ExecutionNode {
   void injectVertexCollection(aql::Collection const* other);
 
   std::vector<aql::Collection const*> const collections() const;
-  void setCollectionToShard(std::map<std::string, std::string> const& map) { _collectionToShard = map; }
-  void addCollectionToShard(std::string const& coll, std::string const& shard) { _collectionToShard.emplace(coll,shard); }
+  void setCollectionToShard(std::map<std::string, std::string> const& map) {
+    _collectionToShard = map;
+  }
+  void addCollectionToShard(std::string const& coll, std::string const& shard) {
+    _collectionToShard.emplace(coll, shard);
+  }
 
- protected:
+ public:
   graph::Graph const* graph() const noexcept;
 
  private:
