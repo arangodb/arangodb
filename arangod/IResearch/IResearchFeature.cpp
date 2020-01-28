@@ -407,7 +407,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &minMatchFunc });  // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, { "BOOST", ".,.", flags, &contextFunc });  // (filter expression, boost)
   addFunction(functions, { "ANALYZER", ".,.", flags, &contextFunc });  // (filter expression, analyzer)
-  addFunction(functions, { "NGRAM_SIMILAR", ".,.,.", flags, &dummyFilterFunc }); // (attribute, target, threshold)
+  addFunction(functions, { "NGRAM_MATCH", ".,.,.|.", flags, &dummyFilterFunc }); // (attribute, target, threshold, [analyzer])
 }
 
 namespace {
