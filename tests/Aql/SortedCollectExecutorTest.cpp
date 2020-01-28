@@ -26,6 +26,7 @@
 
 #include "gtest/gtest.h"
 
+#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
@@ -950,7 +951,7 @@ class SortedCollectExecutorTestSplit : public ::testing::Test {
 
   SortedCollectExecutorTestSplit()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        fakedQuery(server.createFakeQuery()),
+        fakedQuery(server.createFakeQuery(true)),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         readableInputRegisters({0}),
@@ -965,398 +966,21 @@ class SortedCollectExecutorTestSplit : public ::testing::Test {
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
-        block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
-
-  struct TestData {
-    SortedCollectExecutorTestSplit& test;
-    SortedCollectExecutor testee;
-    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
-
-    std::vector<uint64_t> values = {};
-    std::vector<uint64_t> output = {};
-    std::vector<size_t> split = {};
-    uint64_t splitStep = 0;
-    size_t skip = 0;
-    size_t consume = 0;
-    std::optional<ExecutorState> endState = {};
-
-    template <typename... Vs>
-    TestData& setValues(Vs&&... vs) {
-      values = {uint64_t(vs)...};
-      return *this;
-    }
-
-    template <typename... Vs>
-    TestData& setSplit(Vs&&... vs) {
-      split = {size_t(vs)...};
-      return *this;
-    }
-
-    TestData& setSplitStep(size_t step) {
-      splitStep = step;
-      return *this;
-    }
-
-    TestData& setLimit(size_t skip, size_t consume) {
-      this->skip = skip;
-      this->consume = consume;
-      return *this;
-    }
-
-    template <typename... Vs>
-    TestData& expectOutput(Vs&&... vs) {
-      output = {uint64_t(vs)...};
-      return *this;
-    }
-
-    TestData& expectEndState(ExecutorState state) {
-      endState = state;
-      return *this;
-    }
-
-    void run() {
-      ASSERT_FALSE(splitStep == 0 && split.empty());
-      ASSERT_FALSE(output.empty());
-
-      std::vector<std::pair<SharedAqlItemBlockPtr, AqlItemBlockInputRange>> inputs;
-      if (splitStep != 0) {
-        MatrixBuilder<1> matrix;
-        for (auto const value : values) {
-          matrix.push_back({value});
-
-          if (matrix.size() == splitStep) {
-            SharedAqlItemBlockPtr inputBlock =
-                buildBlock<1>(test.itemBlockManager, std::move(matrix));
-            AqlItemBlockInputRange inputRange(ExecutorState::HASMORE,
-                                              inputBlock, 0, inputBlock->size());
-            inputs.emplace_back(std::move(inputBlock), std::move(inputRange));
-            matrix.clear();
-          }
-        }
-        if (matrix.empty()) {
-          inputs.emplace_back(nullptr, AqlItemBlockInputRange{ExecutorState::DONE});
-        } else {
-          SharedAqlItemBlockPtr inputBlock =
-              buildBlock<1>(test.itemBlockManager, std::move(matrix));
-          AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                            inputBlock->size());
-          inputs.emplace_back(std::move(inputBlock), std::move(inputRange));
-        }
-      } else if (!split.empty()) {
-        MatrixBuilder<1> matrix;
-        auto splitIter = split.begin();
-
-        for (auto const value : values) {
-          matrix.push_back({value});
-
-          if (splitIter != split.end() && matrix.size() == *splitIter) {
-            SharedAqlItemBlockPtr inputBlock =
-                buildBlock<1>(test.itemBlockManager, std::move(matrix));
-            AqlItemBlockInputRange inputRange(ExecutorState::HASMORE,
-                                              inputBlock, 0, inputBlock->size());
-            inputs.emplace_back(std::move(inputBlock), std::move(inputRange));
-            matrix.clear();
-            splitIter++;
-          }
-        }
-        if (matrix.empty()) {
-          inputs.emplace_back(nullptr, AqlItemBlockInputRange{ExecutorState::DONE});
-        } else {
-          SharedAqlItemBlockPtr inputBlock =
-              buildBlock<1>(test.itemBlockManager, std::move(matrix));
-          AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                            inputBlock->size());
-          inputs.emplace_back(std::move(inputBlock), std::move(inputRange));
-        }
-      } else {
-        ASSERT_TRUE(false);
-      }
-
-      AqlCall clientCall;
-      clientCall.offset = skip;
-
-      SharedAqlItemBlockPtr outputBlock =
-          test.itemBlockManager.requestBlock(output.size(),
-                                             test.infos.numberOfOutputRegisters());
-
-      OutputAqlItemRow result{outputBlock, test.infos.getOutputRegisters(),
-                              test.infos.registersToKeep(),
-                              test.infos.registersToClear(), clientCall};
-
-      AqlItemBlockInputRange initInputRange(ExecutorState::HASMORE);
-      // init with empty input range
-      if (skip > 0) {
-        auto [state, skipped, upstreamCall] =
-            testee.skipRowsRange(initInputRange, result.getModifiableClientCall());
-        EXPECT_EQ(ExecutorState::HASMORE, state);
-        EXPECT_EQ(skipped, 0);
-      } else {
-        auto [state, stats, upstreamCall] = testee.produceRows(initInputRange, result);
-        ASSERT_EQ(ExecutorState::HASMORE, state);
-        ASSERT_FALSE(result.produced());
-      }
-
-      size_t didSkip = 0;
-
-      ExecutorState state = ExecutorState::HASMORE;
-      bool wasDone = false;
-
-      for (auto [block, itemRange] : inputs) {
-        /*
-         * Call skip until didskip == skip
-         * Call produce until numItems == consume
-         */
-
-        EXPECT_EQ(state, ExecutorState::HASMORE);
-
-        if (didSkip < skip) {
-          ASSERT_EQ(result.getClientCall().offset, skip - didSkip);
-          AqlCall upstreamCall;
-          size_t skipped;
-          std::tie(state, skipped, upstreamCall) =
-              testee.skipRowsRange(itemRange, result.getModifiableClientCall());
-          ASSERT_LE(didSkip + skipped, skip);
-          ASSERT_FALSE(wasDone && state == ExecutorState::HASMORE);
-          wasDone = state == ExecutorState::DONE;
-          didSkip += skipped;
-        } else if (consume == 0 || result.numRowsWritten() < consume) {
-          EXPECT_EQ(result.getClientCall().offset, 0);
-          AqlCall upstreamCall;
-          SortedCollectExecutor::Stats stats;
-          std::tie(state, stats, upstreamCall) = testee.produceRows(itemRange, result);
-          ASSERT_FALSE(wasDone && state == ExecutorState::HASMORE);
-          wasDone = state == ExecutorState::DONE;
-        } else {
-          ASSERT_TRUE(false);
-          break;
-        }
-      }
-
-      if (endState) {
-        EXPECT_EQ(state, endState.value());
-      }
-
-      {}
-    }
-  };
-
-  [[nodiscard]] TestData newTest() {
-    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-        itemBlockManager, std::make_shared<VPackBuffer<uint8_t>>(), false);
-
-    SortedCollectExecutor testee(fetcher, infos);
-    return {*this, std::move(testee), fetcher};
+        block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {
+    auto engine =
+        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
+    fakedQuery->setEngine(engine.release());
   }
-};
-
-template <typename E, std::size_t inputColumns = 1, std::size_t outputColumns = 1>
-struct ExecutorTestHelper {
-  using SplitType = std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
-
-  ExecutorTestHelper(ExecutorTestHelper const&) = delete;
-  ExecutorTestHelper(ExecutorTestHelper&&) = delete;
-  explicit ExecutorTestHelper(E& testee) : testee(testee) {}
-
-  auto setCall(AqlCall c) {
-    call = c;
-    return *this;
-  }
-
-  auto setInputValue(MatrixBuilder<inputColumns> in) -> ExecutorTestHelper& {
-    input = std::move(in);
-    return *this;
-  }
-
-  template <typename... Ts>
-  auto setInputValueList(Ts&&... ts) -> ExecutorTestHelper& {
-    input = MatrixBuilder<inputColumns>{{ts}...};
-    return *this;
-  }
-
-  auto setInputSplit(std::vector<std::size_t> const& list) -> ExecutorTestHelper& {
-    inputSplit = list;
-    return *this;
-  }
-
-  auto setInputSplitStep(std::size_t step) -> ExecutorTestHelper& {
-    inputSplit = step;
-    return *this;
-  }
-
-  template <typename T>
-  auto setOutputSplit(T&& list) -> ExecutorTestHelper& {
-    ASSERT_FALSE(true);
-    outputSplit = std::forward<T>(list);
-    return *this;
-  }
-
-  auto expectOutput(std::array<std::size_t, outputColumns> const& regs,
-                    MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
-    outputRegisters = regs;
-    output = out;
-    return *this;
-  }
-
-  template <typename... Ts>
-  auto expectOutputValueList(Ts&&... ts) -> ExecutorTestHelper& {
-    static_assert(outputColumns == 1);
-    outputRegisters[0] = 1;
-    output = MatrixBuilder<outputColumns>{{ts}...};
-    return *this;
-  }
-
-  auto expectFullCount(std::size_t count) -> ExecutorTestHelper& {
-    fullCount = count;
-    return *this;
-  }
-
-  void run(ExecutorInfos const& infos) {
-    ResourceMonitor monitor;
-    AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
-
-    SharedAqlItemBlockPtr outputBlock =
-        itemBlockManager.requestBlock(output.size(), infos.numberOfOutputRegisters());
-
-    OutputAqlItemRow result{outputBlock, infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear(), call};
-
-
-
-    auto inputs = generateInputRanges(itemBlockManager);
-
-    initCallExecutor(result);
-    applyInputBlocks(inputs, result);
-
-    SharedAqlItemBlockPtr expectedOutputBlock = buildBlock<outputColumns>(itemBlockManager, std::move(output));
-    testOutputBlock(result, outputBlock, expectedOutputBlock);
-  };
-
- private:
-  void applyInputBlocks(std::vector<std::pair<SharedAqlItemBlockPtr, AqlItemBlockInputRange>>& inputs,
-                        OutputAqlItemRow& result) {
-    for (auto [block, itemRange] : inputs) {
-      /*
-       * Call skip until didskip == skip
-       * Call produce until numItems == consume
-       */
-      AqlCall call = result.getClientCall();
-
-      if (call.offset > 0) {
-        std::ignore = testee.skipRowsRange(itemRange, result.getModifiableClientCall());
-      } else {
-        std::ignore = testee.produceRows(itemRange, result);
-      }
-    }
-  }
-
-  void testOutputBlock(OutputAqlItemRow& result, SharedAqlItemBlockPtr& outputBlock,
-                       SharedAqlItemBlockPtr& expectedOutputBlock) {
-
-    velocypack::Options vpackOptions;
-
-    EXPECT_EQ(result.numRowsWritten(), output.size());
-    for (size_t i = 0; i < result.numRowsWritten(); i++) {
-      for (size_t j = 0; j < outputColumns; j++) {
-
-        AqlValue x = outputBlock->getValue(i, outputRegisters[j]);
-        AqlValue y = expectedOutputBlock->getValue(i, j);
-
-        EXPECT_EQ(x.slice().toJson(), y.slice().toJson());
-
-        EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0) << "Row " << i << " Column " << j << " (Reg " << outputRegisters[j] << ") do not agree";
-      }
-    }
-  }
-
-  void initCallExecutor(OutputAqlItemRow& result) {
-    AqlItemBlockInputRange initInputRange(ExecutorState::HASMORE);
-    // init with empty input range
-    if (result.getModifiableClientCall().offset > 0) {
-      auto [state, skipped, upstreamCall] =
-          testee.skipRowsRange(initInputRange, result.getModifiableClientCall());
-      EXPECT_EQ(ExecutorState::HASMORE, state);
-      EXPECT_EQ(skipped, 0);
-    } else {
-      auto [state, stats, upstreamCall] = testee.produceRows(initInputRange, result);
-      EXPECT_EQ(ExecutorState::HASMORE, state);
-      EXPECT_FALSE(result.produced());
-    }
-  }
-
-  auto generateInputRanges(AqlItemBlockManager& itemBlockManager)
-      -> std::vector<std::pair<SharedAqlItemBlockPtr, AqlItemBlockInputRange>> {
-    using VectorSizeT = std::vector<std::size_t>;
-
-    std::vector<std::pair<SharedAqlItemBlockPtr, AqlItemBlockInputRange>> inputs;
-    MatrixBuilder<inputColumns> matrix;
-
-    std::optional<VectorSizeT::iterator> iter, end;
-
-    if (std::holds_alternative<VectorSizeT>(inputSplit)) {
-      iter = std::get<VectorSizeT>(inputSplit).begin();
-      end = std::get<VectorSizeT>(inputSplit).end();
-    }
-
-    for (auto const& value : input) {
-      matrix.push_back(value);
-
-      bool openNewBlock =
-          std::visit(overload{[&](std::vector<std::size_t>& list) {
-                                if (*iter != *end && matrix.size() == **iter) {
-                                  iter->operator++();
-                                  return true;
-                                }
-
-                                return false;
-                              },
-                              [&](std::size_t size) {
-                                return matrix.size() == size;
-                              },
-                              [](auto) { return false; }},
-                     inputSplit);
-      if (openNewBlock) {
-        SharedAqlItemBlockPtr inputBlock =
-            buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
-        AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, inputBlock, 0,
-                                          inputBlock->size());
-        inputs.emplace_back(std::move(inputBlock), std::move(inputRange));
-        matrix.clear();
-      }
-    }
-
-    SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, std::move(matrix));
-    AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                      inputBlock->size());
-    inputs.emplace_back(std::move(inputBlock), std::move(inputRange));
-
-    return inputs;
-  }
-
-  E& testee;
-  AqlCall call;
-  MatrixBuilder<inputColumns> input;
-  MatrixBuilder<outputColumns> output;
-  std::array<std::size_t, outputColumns> outputRegisters;
-  std::optional<std::size_t> fullCount;
-
-  SplitType inputSplit = {std::monostate()};
-  SplitType outputSplit = {std::monostate()};
 };
 
 TEST_F(SortedCollectExecutorTestSplit, split_1) {
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, std::make_shared<VPackBuffer<uint8_t>>(), false);
-
-  SortedCollectExecutor executor(fetcher, infos);
-
-  ExecutorTestHelper<SortedCollectExecutor>(executor)
+  ExecutorTestHelper<SortedCollectExecutor>(*fakedQuery)
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplit({2, 3})
-      .setCall(/*...*/)
+      .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
       .expectOutputValueList(3, 4)
       .expectFullCount(5)
-      .outputSplit({1, 1})
-      .run(infos);
+      .run(std::move(infos));
 
   /*
   newTest <SortedCollectExecutor> ()
@@ -1367,6 +991,7 @@ TEST_F(SortedCollectExecutorTestSplit, split_1) {
       .run();*/
 }
 
+/*
 TEST_F(SortedCollectExecutorTestSplit, split_2) {
   newTest()
       .setValues(1, 1, 1, 2, 3, 4, 4, 5)
@@ -1374,5 +999,5 @@ TEST_F(SortedCollectExecutorTestSplit, split_2) {
       .expectOutput(1, 2, 3, 4, 5)
       .run();
 }
-
+*/
 }  // namespace arangodb::tests::aql
