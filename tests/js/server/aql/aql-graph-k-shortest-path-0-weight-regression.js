@@ -41,7 +41,7 @@ const tearDownAll = () => {
   try {
     gm._drop(graphName, true);
   } catch (e) {
-    // Don't care for error, we might runinitially with no graph exist
+    // Don't care for error, we might run initially with no graph existing
   }
   db._drop(eName);
   db._drop(vName);
