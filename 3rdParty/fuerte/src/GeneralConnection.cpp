@@ -129,20 +129,14 @@ void GeneralConnection<ST>::tryConnect(unsigned retries, std::chrono::steady_clo
   FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
 
   auto self = Connection::shared_from_this();
-  auto timeout = relativeTimeout(_config, start);
 
-  if (timeout.count() > 0) {
-    _proto.timer.expires_after(timeout);
-    _proto.timer.async_wait([self, this](asio_ns::error_code const& ec) {
-      if (!ec) {
-        // the connect handler below gets 'operation_aborted' error
-        _proto.cancel();
-      }
-    });
-  } else {
-    asio_ns::error_code ec;
-    _proto.timer.cancel(ec);
-  }
+  _proto.timer.expires_after(relativeTimeout(_config, start));
+  _proto.timer.async_wait([self, this](asio_ns::error_code const& ec) {
+    if (!ec) {
+      // the connect handler below gets 'operation_aborted' error
+      _proto.cancel();
+    }
+  });
   
   _proto.connect(_config, [=](auto const& ec) {
     _proto.timer.cancel();
