@@ -724,7 +724,7 @@ bool make_json_config(
     // explicit_stopwords_set  marks that even empty stopwords list is valid
     rapidjson::Value stopwordsArray(rapidjson::kArrayType);
     if (!options.explicit_stopwords.empty()) {
-      // for simplifying comparsion between properties we need deterministic order of stopwords
+      // for simplifying comparison between properties we need deterministic order of stopwords
       std::vector<irs::string_ref> sortedWords;
       sortedWords.reserve(options.explicit_stopwords.size());
       for (const auto& stopword : options.explicit_stopwords) {

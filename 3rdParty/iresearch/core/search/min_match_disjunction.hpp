@@ -246,11 +246,16 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     }
   }
 
+  size_t count_matched() {
+    push_valid_to_lead();
+    return lead_;
+  }
+
  protected:
   doc_iterators_t itrs_; // sub iterators
   size_t min_match_count_; // minimum number of hits
   document doc_; // current doc
-  
+  size_t lead_; // number of iterators in lead group
   //////////////////////////////////////////////////////////////////////////////
   /// @returns the first iterator in the lead group
   //////////////////////////////////////////////////////////////////////////////
@@ -263,6 +268,28 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
   //////////////////////////////////////////////////////////////////////////////
   inline std::vector<size_t>::iterator lead_end() {
     return heap_.end();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief push all valid iterators to lead
+  //////////////////////////////////////////////////////////////////////////////
+  inline void push_valid_to_lead() {
+    for(auto lead = this->lead(), begin = heap_.begin();
+      lead != begin && top().value() <= doc_.value;) {
+      // hitch head
+      if (top().value() == doc_.value) {
+        // got hit here
+        add_lead();
+        --lead;
+      } else {
+        if (doc_limits::eof(top()->seek(doc_.value))) {
+          // iterator exhausted
+          remove_top();
+        } else {
+          refresh_top();
+        }
+      }
+    }
   }
 
  private:
@@ -402,28 +429,11 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
     ++lead_;
   }
 
+
   inline void score_impl(byte_type* lhs) {
     assert(!heap_.empty());
 
-    // push all valid iterators to lead
-    {
-      for(auto lead = this->lead(), begin = heap_.begin();
-          lead != begin && top().value() <= doc_.value;) {
-        // hitch head
-        if (top().value() == doc_.value) {
-          // got hit here
-          add_lead();
-          --lead;
-        } else {
-          if (doc_limits::eof(top()->seek(doc_.value))) {
-            // iterator exhausted
-            remove_top();
-          } else {
-            refresh_top();
-          }
-        }
-      }
-    }
+    push_valid_to_lead();
 
     // score lead iterators
     const irs::byte_type** pVal = scores_vals_.data();
@@ -438,7 +448,6 @@ class min_match_disjunction : public doc_iterator_base, score_ctx {
 
   std::vector<size_t> heap_;
   mutable std::vector<const irs::byte_type*> scores_vals_;
-  size_t lead_; // number of iterators in lead group
   const order::prepared* ord_;
 }; // min_match_disjunction
 

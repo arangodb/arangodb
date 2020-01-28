@@ -228,11 +228,11 @@ class IRESEARCH_API sort {
     virtual void prepare_stats(byte_type* stats) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief add the score from 'src' to the score in 'dst', i.e. +=
+    /// @brief merge range of scores denoted by 'src_start' and 'size' at a
+    ///        specified 'offset' to 'dst', i.e. using +=
     ////////////////////////////////////////////////////////////////////////////////
-    virtual void add(byte_type* dst, const byte_type* src) const = 0;
-
-    virtual void  merge(byte_type* dst, const byte_type** src_start, const size_t size, size_t offset) const = 0;
+    virtual void merge(byte_type* dst, const byte_type** src_start,
+                       const size_t size, size_t offset) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
@@ -431,17 +431,11 @@ class IRESEARCH_API sort {
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief add the score from 'src' to the score in 'dst', i.e. +=
+    /// @brief merge range of scores denoted by 'src_start' and 'size' at a
+    ///        specified 'offset' to 'dst', i.e. using +=
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline void add(
-      byte_type* dst,
-      const byte_type* src
-    ) const override final {
-      base_t::score_cast(dst) += base_t::score_cast(src);
-    }
-
-    virtual void  merge(byte_type* dst, const byte_type** src_start,
-                        const size_t size, size_t offset) const {
+    virtual void merge(byte_type* dst, const byte_type** src_start,
+                       const size_t size, size_t offset) const {
       auto& casted_dst = base_t::score_cast(dst + offset);
       casted_dst = ScoreType();
       for (size_t i = 0; i < size; ++i) {
@@ -452,9 +446,8 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief compare two score containers and determine if 'lhs' < 'rhs', i.e. <
     ////////////////////////////////////////////////////////////////////////////////
-    virtual inline bool less(
-      const byte_type* lhs, const byte_type* rhs
-    ) const override final {
+    virtual inline bool less(const byte_type* lhs,
+                             const byte_type* rhs) const override final {
       return base_t::score_cast(lhs) < base_t::score_cast(rhs);
     }
   }; // prepared_basic
@@ -909,6 +902,19 @@ class IRESEARCH_API order final {
   order_t order_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // order
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class filter_boost
+/// @brief represents addition to score from filter specific to particular 
+///        document. May vary from document to document.
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API filter_boost : public basic_attribute<boost_t> {
+  DECLARE_ATTRIBUTE_TYPE();
+  filter_boost() noexcept;
+
+  void clear() { value = 1.f; }
+};
+
 
 NS_END
 
