@@ -1,9 +1,9 @@
 devel
 -----
 
-* Cluster collection creation preconditioned on involved db server not
+* Cluster collection creation preconditioned on involved db servers not
   in process of being cleaned and Fixed.
-  
+
 * beyond issue #10949: k shortest paths behaviour wrong with negative weights.
 
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
