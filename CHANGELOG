@@ -1,6 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #10949: k shortest paths behaviour wrong with negative weights
+
 * Added HotBackup events into auditing.
 
 * Include collections "_queues" and "_jobs" in dumps created by arangodump
