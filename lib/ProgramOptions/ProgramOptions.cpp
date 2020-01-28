@@ -169,8 +169,9 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           builder.close();
           
           // component support
-          std::cout << "PROG: " << _progname << std::endl;
-          if (_progname == "arangod") {
+          char const* arangod = "arangod";
+          if (_progname.size() >= strlen(arangod) &&
+              _progname.compare(_progname.size() - strlen(arangod), strlen(arangod), arangod) == 0) {
             builder.add("component", VPackValue(VPackValueType::Array));
             if (option.hasFlag(arangodb::options::Flags::OnCoordinator)) {
               builder.add(VPackValue("coordinator"));
