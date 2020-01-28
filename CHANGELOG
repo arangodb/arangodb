@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix a bug in collection creation with `distributeShardsLike`.
+
 * Fixed issue #10949: k shortest paths behaviour wrong with negative weights.
 
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
