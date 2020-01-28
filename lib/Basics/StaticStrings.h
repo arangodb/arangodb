@@ -68,6 +68,7 @@ class StaticStrings {
   static std::string const ReplaceExisting;
   static std::string const Prefix;
   static std::string const OverWrite;
+  static std::string const OverWriteMode;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;

@@ -163,6 +163,7 @@ LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_VIEW("audit-view", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::DEBUG);
 LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_HOTBACKUP("audit-hotbackup", LogLevel::INFO);
 #endif
 
 std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {

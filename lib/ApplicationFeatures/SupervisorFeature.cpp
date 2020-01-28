@@ -116,7 +116,7 @@ void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--supervisor",
                      "background the server, starts a supervisor",
                      new BooleanParameter(&_supervisor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void SupervisorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
