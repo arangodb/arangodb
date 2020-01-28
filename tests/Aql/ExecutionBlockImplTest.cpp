@@ -1616,6 +1616,46 @@ class ExecutionBlockImplExecuteIntegrationTest
   }
 };
 
+// This test asserts that the mock we are using here is working as expected.
+// If this does not work we will undefined follow up errors
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_waiting_block_mock) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    MatrixBuilder<1> matrix;
+    matrix.reserve(250);
+    builder->openArray();
+    for (size_t i = 0; i < 250; ++i) {
+      builder->add(VPackValue(i));
+      matrix.emplace_back(RowBuilder<1>{i});
+    }
+    builder->close();
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), std::move(matrix));
+    blockDeque.push_back(std::move(block));
+  }
+
+  WaitingExecutionBlockMock testee{fakedQuery->engine(), generateNodeDummy(),
+                                   std::move(blockDeque),
+                                   doesWaiting()
+                                       ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
+                                       : WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
+
+  auto const& call = getCall();
+  AqlCallStack stack{call};
+
+  auto [state, skipped, block] = testee.execute(stack);
+  if (doesWaiting()) {
+    EXPECT_EQ(state, ExecutionState::WAITING);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+    std::tie(state, skipped, block) = testee.execute(stack);
+  }
+
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ValidateResult(builder, skipped, block, 0);
+}
+
 // Test a simple produce block. that has is supposed to write 1000 rows.
 TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_produce_only) {
   auto singleton = createSingleton();
@@ -2293,6 +2333,111 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
       ValidateShadowRow(block, block->size() - 1, 1);
     }
   }
+}
+
+// Test forward outer queries.
+// The executors should not be called if there is no relevant call on the Stack
+// Block shall be returned unmodified.
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_outer_subquery_forwarding_passthrough) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    MatrixBuilder<1> matrix;
+    matrix.reserve(250);
+    builder->openArray();
+    for (size_t i = 0; i < 250; ++i) {
+      builder->add(VPackValue(i));
+      matrix.emplace_back(RowBuilder<1>{i});
+    }
+    builder->close();
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), std::move(matrix));
+    blockDeque.push_back(std::move(block));
+  }
+
+  // Note: WaitingExecutionBlockMock does not use the ExecutionBlockImpl logic
+  // and will React to any call on the spec, if it is relevant or not.
+  auto singleton = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  auto const& call = getCall();
+  AqlCallStack stack{call};
+  ASSERT_TRUE(stack.isRelevant());
+  stack.increaseSubqueryDepth();
+  EXPECT_FALSE(stack.isRelevant());
+
+  ProduceCall prodCall = generateNeverProduceCall();
+
+  ExecutionBlockImpl<LambdaExePassThrough> testee{fakedQuery->engine(),
+                                                  generateNodeDummy(),
+                                                  makeInfos(prodCall)};
+
+  testee.addDependency(singleton.get());
+
+  auto [state, skipped, block] = testee.execute(stack);
+  if (doesWaiting()) {
+    EXPECT_EQ(state, ExecutionState::WAITING);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+    std::tie(state, skipped, block) = testee.execute(stack);
+  }
+
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ValidateResult(builder, skipped, block, 0);
+}
+
+// Test forward outer queries.
+// The executors should not be called if there is no relevant call on the Stack
+// Block shall be returned unmodified.
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_outer_subquery_forwarding) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  auto builder = std::make_shared<VPackBuilder>();
+  {
+    MatrixBuilder<1> matrix;
+    matrix.reserve(250);
+    builder->openArray();
+    for (size_t i = 0; i < 250; ++i) {
+      builder->add(VPackValue(i));
+      matrix.emplace_back(RowBuilder<1>{i});
+    }
+    builder->close();
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(), std::move(matrix));
+    blockDeque.push_back(std::move(block));
+  }
+
+  // Note: WaitingExecutionBlockMock does not use the ExecutionBlockImpl logic
+  // and will React to any call on the spec, if it is relevant or not.
+  auto singleton = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  auto const& call = getCall();
+  AqlCallStack stack{call};
+  ASSERT_TRUE(stack.isRelevant());
+  stack.increaseSubqueryDepth();
+  EXPECT_FALSE(stack.isRelevant());
+
+  ProduceCall prodCall = generateNeverProduceCall();
+  SkipCall skipCall = generateNeverSkipCall();
+  ExecutionBlockImpl<LambdaExe> testee{fakedQuery->engine(), generateNodeDummy(),
+                                       makeSkipInfos(prodCall, skipCall)};
+
+  testee.addDependency(singleton.get());
+
+  auto [state, skipped, block] = testee.execute(stack);
+  if (doesWaiting()) {
+    EXPECT_EQ(state, ExecutionState::WAITING);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+    std::tie(state, skipped, block) = testee.execute(stack);
+  }
+
+  EXPECT_EQ(state, ExecutionState::DONE);
+  ValidateResult(builder, skipped, block, 0);
 }
 
 // The numbers here are random, but all of them are below 1000 which is the default batch size

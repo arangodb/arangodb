@@ -113,6 +113,9 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
 
 // NOTE: Does not care for shadowrows!
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
+  while (!stack.isRelevant()) {
+    stack.pop();
+  }
   auto myCall = stack.popCall();
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     // If we orderd waiting check on _hasWaited and wait if not
@@ -126,18 +129,18 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
   size_t skipped = 0;
   SharedAqlItemBlockPtr result = nullptr;
   while (!_data.empty()) {
-    TRI_ASSERT(_data.front()->size() >= _inflight);
+    if (_data.front()->size() <= _inflight) {
+      dropBlock();
+      continue;
+    }
+    TRI_ASSERT(_data.front()->size() > _inflight);
     // Drop while skip
     if (myCall.getOffset() > 0) {
-      size_t canSkip = _data.front()->size() - _inflight;
-      if (canSkip <= myCall.getOffset()) {
-        dropBlock();
-        myCall.didSkip(canSkip);
-      } else {
-        _inflight += canSkip;
-      }
-
+      size_t canSkip = (std::min)(_data.front()->size() - _inflight, myCall.getOffset());
+      _inflight += canSkip;
+      myCall.didSkip(canSkip);
       skipped += canSkip;
+      continue;
     } else if (myCall.getLimit() > 0) {
       size_t canReturn = _data.front()->size() - _inflight;
 
@@ -163,6 +166,8 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
         // adjust _inflight to the fist non-returned row.
         _inflight += myCall.getLimit();
       }
+      TRI_ASSERT(result != nullptr);
+      myCall.didProduce(result->size());
     } else if (myCall.needsFullCount()) {
       size_t counts = _data.front()->size() - _inflight;
       dropBlock();
@@ -176,9 +181,9 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
         }
       }
       if (_data.empty()) {
-        return {ExecutionState::DONE, skipped, nullptr};
+        return {ExecutionState::DONE, skipped, result};
       } else {
-        return {ExecutionState::HASMORE, skipped, nullptr};
+        return {ExecutionState::HASMORE, skipped, result};
       }
     }
   }

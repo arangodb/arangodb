@@ -1221,6 +1221,15 @@ template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if constexpr (isNewStyleExecutor<Executor>()) {
+    if (!stack.isRelevant()) {
+      // We are bypassing subqueries.
+      // This executor is not allowed to perform actions
+      // However we need to maintain the upstream state.
+      size_t skippedLocal = 0;
+      typename Fetcher::DataRange bypassedRange{ExecutorState::HASMORE};
+      std::tie(_upstreamState, skippedLocal, bypassedRange) = _rowFetcher.execute(stack);
+      return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
+    }
     AqlCall clientCall = stack.popCall();
 
     // We can only have returned the following internal states
