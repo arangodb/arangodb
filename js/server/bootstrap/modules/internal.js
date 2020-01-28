@@ -320,10 +320,19 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief reloads the AQL user functions (does nothing in 3.7)
+  // / @brief reloads the AQL user functions
   // //////////////////////////////////////////////////////////////////////////////
 
-  exports.reloadAqlFunctions = function () {};
+  if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
+    exports.reloadAqlFunctions = function () {
+      global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadAql');
+      require('@arangodb/aql').reload();
+    };
+  } else {
+    exports.reloadAqlFunctions = function () {
+      require('@arangodb/aql').reload();
+    };
+  }
 
   // replication
   if (global.REPLICATION_LOGGER_STATE) {
