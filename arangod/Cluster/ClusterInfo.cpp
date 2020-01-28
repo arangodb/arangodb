@@ -2253,10 +2253,6 @@ Result ClusterInfo::createCollectionsCoordinator(
     
     AgencyWriteTransaction transaction(opers, precs);
 
-    VPackBuilder log;
-    transaction.toVelocyPack(log);
-    LOG_DEVEL << log.toJson();
-
     {  // we hold this mutex from now on until we have updated our cache
       // using loadPlan, this is necessary for the callback closure to
       // see the new planned state for this collection. Otherwise it cannot
