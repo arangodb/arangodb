@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed issue #10949: k shortest paths behaviour wrong with negative weights
+* Fixed issue #10949: k shortest paths behaviour wrong with negative weights.
 
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
 
