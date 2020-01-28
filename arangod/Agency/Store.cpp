@@ -480,18 +480,18 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
             continue;
           }
           if (node->slice().isArray()) {
-            bool found = false;
+            bool found_ = false;
             for (auto const& i : VPackArrayIterator(node->slice())) {
               if (op.value.isArray()) {
                 for (auto const& j : VPackArrayIterator(op.value)) {
                   if (basics::VelocyPackHelper::equal(i, j, false)) {
-                    found = true;
+                    found_ = true;
                     break;
                   }
                 }
               } 
             }
-            if (!found) {
+            if (!found_) {
               continue;
             }
             ret.push_back(precond.key);
