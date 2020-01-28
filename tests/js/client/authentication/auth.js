@@ -573,6 +573,7 @@ function AuthSuite() {
         db._dropDatabase("other");
       }
     }
+
   };
 }
 

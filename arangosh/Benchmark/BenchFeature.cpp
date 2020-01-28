@@ -104,14 +104,14 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "bucket width, dynamically calculated by default: "
                      "(first measured time * 20) / num-intervals",
                      new DoubleParameter(&_histogramIntervalSize),
-                     arangodb::options::makeFlags(options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(options::Flags::Dynamic));
   options->addOption("--histogram.num-intervals",
                      "number of buckets (resolution)",
                      new UInt64Parameter(&_histogramNumIntervals));
   options->addOption("--histogram.percentiles",
                      "which percentiles to calculate",
                      new VectorParameter<DoubleParameter>(&_percentiles),
-                     arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+                     arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
   
   options->addOption("--async", "send asynchronous requests", new BooleanParameter(&_async));
 

@@ -27,6 +27,7 @@
 #include "multiterm_query.hpp"
 #include "term_query.hpp"
 #include "index/index_reader.hpp"
+#include "utils/wildcard_utils.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/hash_utils.hpp"
 

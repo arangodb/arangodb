@@ -58,6 +58,8 @@
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
+#include "IResearch/VelocyPackHelper.h"
+#include "IResearch/IResearchPDP.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "Ssl/SslInterface.h"
@@ -70,6 +72,8 @@
 #include "V8Server/v8-collection.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+
+#include "utils/levenshtein_utils.hpp"
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -1565,8 +1569,69 @@ AqlValue Functions::LevenshteinDistance(ExpressionContext*, transaction::Methods
   return AqlValue(AqlValueHintInt(encoded));
 }
 
+/// Executes LEVENSHTEIN_MATCH
+AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx, transaction::Methods* trx,
+                                     VPackFunctionParameters const& args) {
+  static char const* AFN = "LEVENSHTEIN_MATCH";
+
+  auto const& maxDistance = extractFunctionParameterValue(args, 2);
+
+  if (ADB_UNLIKELY(!maxDistance.isNumber())) {
+    arangodb::aql::registerInvalidArgumentWarning(ctx, AFN);
+    return arangodb::aql::AqlValue{arangodb::aql::AqlValueHintNull{}};
+  }
+
+  bool withTranspositionsValue = false;
+  int64_t maxDistanceValue = maxDistance.toInt64();
+
+  if (args.size() > 3) {
+    auto const& withTranspositions = extractFunctionParameterValue(args, 3);
+
+    if (ADB_UNLIKELY(!withTranspositions.isBoolean())) {
+      registerInvalidArgumentWarning(ctx, AFN);
+      return AqlValue{AqlValueHintNull{}};
+    }
+
+    withTranspositionsValue = withTranspositions.toBoolean();
+  }
+
+  if (maxDistanceValue < 0 ||
+      (withTranspositionsValue && maxDistanceValue > arangodb::iresearch::MAX_DAMERAU_LEVENSHTEIN_DISTANCE)) {
+    registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  if (!withTranspositionsValue && maxDistanceValue > arangodb::iresearch::MAX_LEVENSHTEIN_DISTANCE) {
+    // fallback to LEVENSHTEIN_DISTANCE
+    auto const dist = Functions::LevenshteinDistance(ctx, trx, args);
+    TRI_ASSERT(dist.isNumber());
+
+    return AqlValue{AqlValueHintBool{dist.toInt64() <= maxDistanceValue}};
+  }
+
+  size_t const unsignedMaxDistanceValue = static_cast<size_t>(maxDistanceValue);
+
+  auto& description = arangodb::iresearch::getParametricDescription(
+    static_cast<irs::byte_type>(unsignedMaxDistanceValue),
+    withTranspositionsValue);
+
+  if (ADB_UNLIKELY(!description)) {
+    registerInvalidArgumentWarning(ctx, AFN);
+    return AqlValue{AqlValueHintNull{}};
+  }
+
+  auto const& lhs = extractFunctionParameterValue(args, 0);
+  auto const lhsValue = lhs.isString() ? iresearch::getBytesRef(lhs.slice()) : irs::bytes_ref::EMPTY;
+  auto const& rhs = extractFunctionParameterValue(args, 1);
+  auto const rhsValue = rhs.isString() ? iresearch::getBytesRef(rhs.slice()) : irs::bytes_ref::EMPTY;
+
+  size_t const dist = irs::edit_distance(description, lhsValue, rhsValue);
+
+  return AqlValue(AqlValueHintBool(dist <= unsignedMaxDistanceValue));
+}
+
 /// @brief function TO_BOOL
-AqlValue Functions::ToBool(ExpressionContext*, transaction::Methods* trx,
+AqlValue Functions::ToBool(ExpressionContext*, transaction::Methods* /*trx*/,
                            VPackFunctionParameters const& parameters) {
   AqlValue const& a = extractFunctionParameterValue(parameters, 0);
   return AqlValue(AqlValueHintBool(a.toBoolean()));
@@ -4714,6 +4779,61 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
   return AqlValue(builder.get());
 }
 
+/// @brief function JACCARD
+AqlValue Functions::Jaccard(ExpressionContext* ctx,
+                            transaction::Methods* trx,
+                            VPackFunctionParameters const& args) {
+  static char const* AFN = "JACCARD";
+
+  typedef std::unordered_map<
+    VPackSlice, size_t,
+    basics::VelocyPackHelper::VPackHash,
+    basics::VelocyPackHelper::VPackEqual> ValuesMap;
+
+  auto options = trx->transactionContextPtr()->getVPackOptions();
+  ValuesMap values(512, basics::VelocyPackHelper::VPackHash(),
+                        basics::VelocyPackHelper::VPackEqual(options));
+
+  AqlValue const& lhs = extractFunctionParameterValue(args, 0);
+
+  if (ADB_UNLIKELY(!lhs.isArray())) {
+    // not an array
+    registerWarning(ctx, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue const& rhs = extractFunctionParameterValue(args, 1);
+
+  if (ADB_UNLIKELY(!rhs.isArray())) {
+    // not an array
+    registerWarning(ctx, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer lhsMaterializer(options);
+  AqlValueMaterializer rhsMaterializer(options);
+
+  VPackSlice lhsSlice = lhsMaterializer.slice(lhs, false);
+  VPackSlice rhsSlice = rhsMaterializer.slice(rhs, false);
+
+  size_t cardinality = 0; // cardinality of intersection
+
+  for (VPackSlice slice : VPackArrayIterator(lhsSlice)) {
+    values.try_emplace(slice, 1);
+  }
+
+  for (VPackSlice slice : VPackArrayIterator(rhsSlice)) {
+    auto& count = values.try_emplace(slice, 0).first->second;
+    cardinality += count;
+    count = 0;
+  }
+
+  auto const jaccard = values.empty()
+    ? 0.0 : double_t(cardinality)/values.size();
+
+  return AqlValue{AqlValueHintDouble{jaccard}};
+}
+
 /// @brief function OUTERSECTION
 AqlValue Functions::Outersection(ExpressionContext* expressionContext,
                                  transaction::Methods* trx,
@@ -6409,6 +6529,63 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
       builder->add(it);
     }
     cur++;
+  }
+  builder->close();
+  return AqlValue(builder.get());
+}
+
+/// @brief function ReplaceNth
+AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction::Methods* trx,
+                               VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
+  static char const* AFN = "REPLACE_NTH";
+
+  AqlValue const& baseArray = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& offset = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& newValue = extractFunctionParameterValue(parameters, 2);
+  AqlValue const& paddValue = extractFunctionParameterValue(parameters, 3);
+
+  bool havePadValue = parameters.size() == 4;
+
+  if (offset.isNull(true) || offset.toInt64() < 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+  uint64_t replaceOffset = static_cast<uint64_t>(offset.toInt64());
+
+  if (!baseArray.isArray()) {
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  if (baseArray.length() < replaceOffset && !havePadValue) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice arraySlice = materializer.slice(baseArray, false);
+  VPackSlice replaceValue = materializer.slice(newValue, false);
+  
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+
+  VPackArrayIterator it(arraySlice);
+  while (it.valid()) {
+    if (it.index() != replaceOffset) {
+      builder->add(it.value());
+    } else {
+      builder->add(replaceValue);
+    }
+    it.next();
+  }
+
+  uint64_t pos = arraySlice.length();
+  if (replaceOffset >= baseArray.length()) {
+    VPackSlice paddVpValue = materializer.slice(paddValue, false);
+    while (pos < replaceOffset) {
+      builder->add(paddVpValue);
+      ++pos;
+    }
+    builder->add(replaceValue);
   }
   builder->close();
   return AqlValue(builder.get());

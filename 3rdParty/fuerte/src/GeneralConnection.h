@@ -49,19 +49,24 @@ class GeneralConnection : public fuerte::Connection {
   void cancel() override;
 
   // Activate this connection
-  void startConnection() override;
+  void start() override;
 
  protected:
+  
+  void startConnection();
   // shutdown connection, cancel async operations
-  void shutdownConnection(const fuerte::Error, std::string const& msg = "");
-
-  // Connect with a given number of retries
-  void tryConnect(unsigned retries);
+  void shutdownConnection(const fuerte::Error, std::string const& msg = "",
+                          bool mayRestart = false);
 
   void restartConnection(const Error error);
 
   // Call on IO-Thread: read from socket
   void asyncReadSome();
+  
+private:
+  
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries);
 
  protected:
   virtual void finishConnect() = 0;
@@ -72,7 +77,7 @@ class GeneralConnection : public fuerte::Connection {
   // called by the async_read handler (called from IO thread)
   virtual void asyncReadCallback(asio_ns::error_code const&) = 0;
 
-  /// abort ongoing / unfinished requests
+  /// abort ongoing / unfinished requests (locally)
   virtual void abortOngoingRequests(const fuerte::Error) = 0;
 
   /// abort all requests lingering in the queue
@@ -83,8 +88,6 @@ class GeneralConnection : public fuerte::Connection {
   std::shared_ptr<asio_ns::io_context> _io_context;
   /// @brief underlying socket
   Socket<ST> _proto;
-  /// @brief timer to handle connection / request timeouts
-  asio_ns::steady_timer _timeout;
 
   /// default max chunksize is 30kb in arangodb
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
