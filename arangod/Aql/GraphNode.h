@@ -64,13 +64,13 @@ class GraphNode : public ExecutionNode {
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             std::vector<std::unique_ptr<Collection>> const& edgeColls,
             std::vector<std::unique_ptr<Collection>> const& vertexColls,
-            std::vector<TRI_edge_direction_e> const& directions,
+            std::vector<TRI_edge_direction_e> directions,
             std::unique_ptr<graph::BaseOptions> options);
 
   std::string const& collectionToShardName(std::string const& collName) const;
 
  public:
-  ~GraphNode() override;
+  ~GraphNode() override = default;
 
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
                           std::unordered_set<ExecutionNode const*>& seen) const override;
@@ -140,6 +140,9 @@ class GraphNode : public ExecutionNode {
   std::vector<aql::Collection const*> const collections() const;
   void setCollectionToShard(std::map<std::string, std::string> const& map) { _collectionToShard = map; }
   void addCollectionToShard(std::string const& coll, std::string const& shard) { _collectionToShard.emplace(coll,shard); }
+
+ protected:
+  graph::Graph const* graph() const noexcept;
 
  private:
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);

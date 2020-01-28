@@ -93,6 +93,11 @@ class TraversalNode : public GraphNode {
                 std::vector<TRI_edge_direction_e> const& directions,
                 std::unique_ptr<graph::BaseOptions> options);
 
+ protected:
+  /// @brief Move from another traversal node. Used to create a
+  /// SatelliteTraversalNode from a TraversalNode, see the constructor there.
+  TraversalNode(TraversalNode&& other);
+
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }

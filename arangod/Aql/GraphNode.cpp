@@ -31,13 +31,14 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -385,7 +386,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                      std::vector<std::unique_ptr<Collection>> const& edgeColls,
                      std::vector<std::unique_ptr<Collection>> const& vertexColls,
-                     std::vector<TRI_edge_direction_e> const& directions,
+                     std::vector<TRI_edge_direction_e> directions,
                      std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
@@ -395,7 +396,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
       _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
-      _directions(directions),
+      _directions(std::move(directions)),
       _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(false) {
@@ -416,8 +417,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         std::make_unique<aql::Collection>(it->name(), _vocbase, AccessMode::Type::READ));
   }
 }
-
-GraphNode::~GraphNode() = default;
 
 std::string const& GraphNode::collectionToShardName(std::string const& collName) const {
   if (_collectionToShard.empty()) {
@@ -653,4 +652,8 @@ std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::edgeColls() cons
 
 std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::vertexColls() const {
   return _vertexColls;
+}
+
+graph::Graph const* GraphNode::graph() const noexcept {
+  return _graphObj;
 }
