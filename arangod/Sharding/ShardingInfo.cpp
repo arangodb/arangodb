@@ -439,7 +439,7 @@ std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
   for (auto const& mapElement : *_shardIds) {
     vector->emplace_back(mapElement.first);
   }
-  sortShardNamesNumerically(vector);
+  sortShardNamesNumerically(*vector);
   return vector;
 }
 
