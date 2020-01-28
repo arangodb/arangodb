@@ -108,25 +108,19 @@ int H2Connection<T>::on_frame_recv(nghttp2_session* session,
                                    void* user_data) {
   H2Connection<T>* me = static_cast<H2Connection<T>*>(user_data);
 
-  const int32_t stream_id = frame->hd.stream_id;
-  FUERTE_LOG_HTTPTRACE << "on_frame_recv " << stream_id << "\n";
+  const int32_t sid = frame->hd.stream_id;
+  FUERTE_LOG_HTTPTRACE << "on_frame_recv " << sid << "\n";
 
   switch (frame->hd.type) {
     case NGHTTP2_DATA:
     case NGHTTP2_HEADERS: {
       if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-        Stream* strm = me->findStream(stream_id);
+        auto strm = me->eraseStream(sid);
         if (strm) {
-          FUERTE_LOG_HTTPTRACE << "finalized response on stream " << stream_id
-                               << "\n";
+          FUERTE_LOG_HTTPTRACE << "got response on stream " << sid << "\n";
           strm->response->setPayload(std::move(strm->data), /*offset*/ 0);
           strm->callback(Error::NoError, std::move(strm->request),
                          std::move(strm->response));
-          me->_streams.erase(stream_id);
-
-          uint32_t cc =
-              me->_streamCount.fetch_sub(1, std::memory_order_relaxed);
-          FUERTE_ASSERT(cc > 0);
         }
       }
       break;
@@ -156,20 +150,266 @@ template <SocketType T>
                                                 int32_t stream_id,
                                                 uint32_t error_code,
                                                 void* user_data) {
-  FUERTE_LOG_HTTPTRACE << "closing stream " << stream_id << " error ("
-                       << error_code << ")\n";
+  FUERTE_LOG_HTTPTRACE << "closing stream " << stream_id
+  << " error '" << nghttp2_http2_strerror(error_code)
+  << "' (" << error_code << ")\n";
   H2Connection<T>* me = static_cast<H2Connection<T>*>(user_data);
 
-  if (error_code != NGHTTP2_NO_ERROR) {
-    Stream* strm = me->findStream(stream_id);
-    if (strm) {
-      strm->invokeOnError(fuerte::Error::ProtocolError);
-      uint32_t cc = me->_streamCount.fetch_sub(1, std::memory_order_relaxed);
-      FUERTE_ASSERT(cc > 0);
-    }
+  auto strm = me->eraseStream(stream_id);
+  if (error_code != NGHTTP2_NO_ERROR && strm != nullptr) {
+    strm->invokeOnError(fuerte::Error::ProtocolError);
   }
-  me->_streams.erase(stream_id);
 
+  return 0;
+}
+
+namespace {
+std::string strframetype(uint8_t type) {
+  switch (type) {
+  case NGHTTP2_DATA:
+    return "DATA";
+  case NGHTTP2_HEADERS:
+    return "HEADERS";
+  case NGHTTP2_PRIORITY:
+    return "PRIORITY";
+  case NGHTTP2_RST_STREAM:
+    return "RST_STREAM";
+  case NGHTTP2_SETTINGS:
+    return "SETTINGS";
+  case NGHTTP2_PUSH_PROMISE:
+    return "PUSH_PROMISE";
+  case NGHTTP2_PING:
+    return "PING";
+  case NGHTTP2_GOAWAY:
+    return "GOAWAY";
+  case NGHTTP2_WINDOW_UPDATE:
+    return "WINDOW_UPDATE";
+  case NGHTTP2_ALTSVC:
+    return "ALTSVC";
+  case NGHTTP2_ORIGIN:
+    return "ORIGIN";
+  }
+
+//  std::string s = "extension(0x";
+//  s += util::format_hex(&type, 1);
+//  s += ')';
+
+  return "extenstion";
+};
+void print_frame_hd(const nghttp2_frame_hd &hd) {
+  std::cout << "<length=" << hd.length << ", flags=" << hd.flags << ", stream_id=" << hd.stream_id << ">\n";
+}
+void print_flags(const nghttp2_frame_hd &hd) {
+  std::string s;
+  switch (hd.type) {
+  case NGHTTP2_DATA:
+    if (hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      s += "END_STREAM";
+    }
+    if (hd.flags & NGHTTP2_FLAG_PADDED) {
+      if (!s.empty()) {
+        s += " | ";
+      }
+      s += "PADDED";
+    }
+    break;
+  case NGHTTP2_HEADERS:
+    if (hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      s += "END_STREAM";
+    }
+    if (hd.flags & NGHTTP2_FLAG_END_HEADERS) {
+      if (!s.empty()) {
+        s += " | ";
+      }
+      s += "END_HEADERS";
+    }
+    if (hd.flags & NGHTTP2_FLAG_PADDED) {
+      if (!s.empty()) {
+        s += " | ";
+      }
+      s += "PADDED";
+    }
+    if (hd.flags & NGHTTP2_FLAG_PRIORITY) {
+      if (!s.empty()) {
+        s += " | ";
+      }
+      s += "PRIORITY";
+    }
+
+    break;
+  case NGHTTP2_PRIORITY:
+    break;
+  case NGHTTP2_SETTINGS:
+    if (hd.flags & NGHTTP2_FLAG_ACK) {
+      s += "ACK";
+    }
+    break;
+  case NGHTTP2_PUSH_PROMISE:
+    if (hd.flags & NGHTTP2_FLAG_END_HEADERS) {
+      s += "END_HEADERS";
+    }
+    if (hd.flags & NGHTTP2_FLAG_PADDED) {
+      if (!s.empty()) {
+        s += " | ";
+      }
+      s += "PADDED";
+    }
+    break;
+  case NGHTTP2_PING:
+    if (hd.flags & NGHTTP2_FLAG_ACK) {
+      s += "ACK";
+    }
+    break;
+  }
+  std::cout << "; " << s << "\n";
+}
+const char *strsettingsid(int32_t id) {
+  switch (id) {
+  case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
+    return "SETTINGS_HEADER_TABLE_SIZE";
+  case NGHTTP2_SETTINGS_ENABLE_PUSH:
+    return "SETTINGS_ENABLE_PUSH";
+  case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
+    return "SETTINGS_MAX_CONCURRENT_STREAMS";
+  case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
+    return "SETTINGS_INITIAL_WINDOW_SIZE";
+  case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
+    return "SETTINGS_MAX_FRAME_SIZE";
+  case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
+    return "SETTINGS_MAX_HEADER_LIST_SIZE";
+  case NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL:
+    return "SETTINGS_ENABLE_CONNECT_PROTOCOL";
+  default:
+    return "UNKNOWN";
+  }
+}
+
+void print_frame(const nghttp2_frame *frame) {
+  std::cout << strframetype(frame->hd.type);
+  print_frame_hd(frame->hd);
+  if (frame->hd.flags) {
+    std::cout << "          ";
+    print_flags(frame->hd);
+  }
+  switch (frame->hd.type) {
+  case NGHTTP2_DATA:
+    if (frame->data.padlen > 0) {
+      std::cout << "          ";
+      printf("(padlen=%zu)\n", frame->data.padlen);
+    }
+    break;
+  case NGHTTP2_HEADERS:     {
+    std::cout << "          ";
+    printf("(padlen=%zu", frame->headers.padlen);
+    if (frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+      printf(", dep_stream_id=%d, weight=%u, exclusive=%d",
+              frame->headers.pri_spec.stream_id, frame->headers.pri_spec.weight,
+              frame->headers.pri_spec.exclusive);
+    }
+    printf(")\n");
+    switch (frame->headers.cat) {
+    case NGHTTP2_HCAT_REQUEST:
+      std::cout << "          ";
+      printf("; Open new stream\n");
+      break;
+    case NGHTTP2_HCAT_RESPONSE:
+      std::cout << "          ";
+      printf("; First response header\n");
+      break;
+    case NGHTTP2_HCAT_PUSH_RESPONSE:
+      std::cout << "          ";
+      printf("; First push response header\n");
+      break;
+    default:
+      break;
+    }
+        auto nva = frame->headers.nva;
+      auto end = nva + frame->headers.nvlen;
+      for (; nva != end; ++nva) {
+        std::cout << "          ";
+
+        std::cout << std::string((char const*)nva->name, nva->namelen)
+        << " : " <<  std::string((char const*)nva->value, nva->valuelen);
+      }
+    break;
+    }
+      
+  case NGHTTP2_PRIORITY:
+    std::cout << "          ";
+
+    printf("(dep_stream_id=%d, weight=%u, exclusive=%d)\n",
+            frame->priority.pri_spec.stream_id, frame->priority.pri_spec.weight,
+            frame->priority.pri_spec.exclusive);
+
+    break;
+  case NGHTTP2_RST_STREAM:
+    std::cout << "          ";
+    printf("(error_code=%s(0x%02x))\n",
+            nghttp2_http2_strerror(frame->rst_stream.error_code),
+            frame->rst_stream.error_code);
+    break;
+  case NGHTTP2_SETTINGS:
+    std::cout << "          ";
+    printf("(niv=%lu)\n",
+            static_cast<unsigned long>(frame->settings.niv));
+    for (size_t i = 0; i < frame->settings.niv; ++i) {
+      std::cout << "          ";
+      printf("[%s(0x%02x):%u]\n",
+              strsettingsid(frame->settings.iv[i].settings_id),
+              frame->settings.iv[i].settings_id, frame->settings.iv[i].value);
+    }
+    break;
+  case NGHTTP2_PUSH_PROMISE:
+    std::cout << "          ";
+    printf("(padlen=%zu, promised_stream_id=%d)\n",
+            frame->push_promise.padlen, frame->push_promise.promised_stream_id);
+//    print_nv(frame->push_promise.nva, frame->push_promise.nvlen);
+    break;
+  case NGHTTP2_PING:
+    std::cout << "          ";
+    printf("(opaque_data=xxx)\n");
+    break;
+  case NGHTTP2_GOAWAY:
+    std::cout << "          ";
+    printf("(last_stream_id=%d, error_code=%s(0x%02x), "
+            "opaque_data(xxx))\n",
+            frame->goaway.last_stream_id,
+            nghttp2_http2_strerror(frame->goaway.error_code),
+            frame->goaway.error_code);
+    break;
+  case NGHTTP2_WINDOW_UPDATE:
+    std::cout << "          ";
+    printf("(window_size_increment=%d)\n",
+            frame->window_update.window_size_increment);
+    break;
+  case NGHTTP2_ALTSVC: {
+    auto altsvc = static_cast<nghttp2_ext_altsvc *>(frame->ext.payload);
+    std::cout << "          ";
+    printf("(origin=[%.*s], altsvc_field_value=[%.*s])\n",
+            static_cast<int>(altsvc->origin_len), altsvc->origin,
+            static_cast<int>(altsvc->field_value_len), altsvc->field_value);
+    break;
+  }
+  case NGHTTP2_ORIGIN: {
+    auto origin = static_cast<nghttp2_ext_origin *>(frame->ext.payload);
+    for (size_t i = 0; i < origin->nov; ++i) {
+      auto ent = &origin->ov[i];
+      std::cout << "          ";
+      printf("[%.*s]\n", (int)ent->origin_len, ent->origin);
+    }
+    break;
+  }
+  default:
+    break;
+  }
+}
+} // namespace
+
+template <SocketType T>
+/*static*/ int H2Connection<T>::on_frame_send(nghttp2_session *session,
+                                              const nghttp2_frame *frame,
+                                              void *user_data) {
+  print_frame(frame);
   return 0;
 }
 
@@ -181,7 +421,8 @@ template <SocketType T>
   if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
-  FUERTE_LOG_HTTPTRACE << "frame not send";
+  FUERTE_LOG_HTTPTRACE << "frame not send: '"
+  << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code << ")";
 
   // Issue RST_STREAM so that stream does not hang around.
   nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
@@ -198,18 +439,26 @@ int on_error_callback(nghttp2_session* session, int lib_error_code,
   return 0;
 }
 
-constexpr uint32_t window_size = (1 << 30) - 1;  // 1 GiB
-void populateSettings(std::array<nghttp2_settings_entry, 3>& iv) {
+int on_invalid_frame_recv(nghttp2_session *session, const nghttp2_frame *frame,
+                         int lib_error_code, void *user_data) {
+ FUERTE_LOG_DEBUG << "received illegal data frame on stream " << frame->hd.stream_id
+  <<  ": '" << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code << ")\n";
+  return 0;
+}
+
+constexpr uint32_t window_size = 512 * 1024 * 1024;
+void populateSettings(std::array<nghttp2_settings_entry, 4>& iv) {
   // 64 streams matches the queue capacity
   iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 64};
   // typically client is just a *sink* and just process data as
   // much as possible.  Use large window size by default.
   iv[1] = {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size};
-  iv[2] = {NGHTTP2_SETTINGS_ENABLE_PUSH, 0};
+  iv[2] = {NGHTTP2_SETTINGS_MAX_FRAME_SIZE, (1 << 14)}; // 16k
+  iv[3] = {NGHTTP2_SETTINGS_ENABLE_PUSH, 0};
 }
 
 void submitConnectionPreface(nghttp2_session* session) {
-  std::array<nghttp2_settings_entry, 3> iv;
+  std::array<nghttp2_settings_entry, 4> iv;
   populateSettings(iv);
 
   nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
@@ -239,7 +488,7 @@ template <SocketType T>
 H2Connection<T>::H2Connection(EventLoopService& loop,
                               fu::detail::ConnectionConfiguration const& config)
     : fuerte::GeneralConnection<T>(loop, config),
-      _queue(),
+      _ping(*(this->_io_context)),
       _authHeader(makeAuthHeader(config)) {}
 
 template <SocketType T>
@@ -268,18 +517,19 @@ void H2Connection<T>::initNgHttp2Session() {
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, H2Connection<T>::on_begin_headers);
-  nghttp2_session_callbacks_set_on_header_callback(callbacks,
-                                                   H2Connection<T>::on_header);
+  nghttp2_session_callbacks_set_on_header_callback(
+      callbacks, H2Connection<T>::on_header);
   nghttp2_session_callbacks_set_on_frame_recv_callback(
       callbacks, H2Connection<T>::on_frame_recv);
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
       callbacks, H2Connection<T>::on_data_chunk_recv);
   nghttp2_session_callbacks_set_on_stream_close_callback(
       callbacks, H2Connection<T>::on_stream_close);
-  //  nghttp2_session_callbacks_set_on_frame_send_callback(callbacks,
-  //  H2Connection<T>::on_frame_send);
+  nghttp2_session_callbacks_set_on_frame_send_callback(
+      callbacks, H2Connection<T>::on_frame_send);
   nghttp2_session_callbacks_set_on_frame_not_send_callback(
       callbacks, H2Connection<T>::on_frame_not_send);
+  nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(callbacks, on_invalid_frame_recv);
   nghttp2_session_callbacks_set_error_callback2(callbacks, on_error_callback);
 
   if (_session) {  // this might be called again if we reconnect
@@ -299,6 +549,9 @@ void H2Connection<T>::initNgHttp2Session() {
 template <SocketType T>
 void H2Connection<T>::sendRequest(std::unique_ptr<Request> req,
                                   RequestCallback cb) {
+  
+  FUERTE_LOG_HTTPTRACE << "queuing request " << req->header.path << "\n";
+  
   // Create RequestItem from parameters
   auto item = std::make_unique<Stream>();
   item->callback = cb;
@@ -347,22 +600,19 @@ std::size_t H2Connection<T>::requestsLeft() const {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-// socket connection is up without TLS
+// socket connection is used without TLS
 template <SocketType T>
 void H2Connection<T>::finishConnect() {
   FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";
   FUERTE_ASSERT(this->state() == Connection::State::Connecting);
 
-  std::array<nghttp2_settings_entry, 3> iv;
+  std::array<nghttp2_settings_entry, 4> iv;
   populateSettings(iv);
 
-  std::string packed(3 * 6, ' ');
+  std::string packed(iv.size() * 6, ' ');
   ssize_t nwrite = nghttp2_pack_settings_payload(
       (uint8_t*)packed.data(), packed.size(), iv.data(), iv.size());
-  if (nwrite < 0) {
-    this->shutdownConnection(Error::ProtocolError);
-    return;
-  }
+  FUERTE_ASSERT(nwrite >= 0);
   packed.resize(static_cast<size_t>(nwrite));
   std::string encoded = fu::encodeBase64(packed);
 
@@ -373,9 +623,15 @@ void H2Connection<T>::finishConnect() {
   ssize_t rv = nghttp2_session_upgrade2(_session, (uint8_t const*)packed.data(),
                                         packed.size(), /*head*/ 0, nullptr);
   if (rv < 0) {
-    this->shutdownConnection(Error::ProtocolError);
+    FUERTE_ASSERT(false);
+    this->shutdownConnection(Error::ProtocolError, "error during upgrade");
     return;
   }
+  
+  // simon: important otherwise big responses fail
+  // increase connection window size up to window_size
+  rv = nghttp2_session_set_local_window_size(_session, NGHTTP2_FLAG_NONE, 0, window_size);
+  FUERTE_ASSERT(rv == 0);
 
   auto req = std::make_shared<std::string>();
   req->append("GET / HTTP/1.1\r\nConnection: Upgrade, HTTP2-Settings\r\n");
@@ -383,14 +639,13 @@ void H2Connection<T>::finishConnect() {
   req->append(encoded);
   req->append("\r\n\r\n");
 
-  std::cout << "sending request '" << *req << "'\n";
-
   asio_ns::async_write(
       this->_proto.socket, asio_ns::buffer(req->data(), req->size()),
       [self(Connection::shared_from_this())](auto const& ec,
                                              std::size_t nsend) {
         auto& me = static_cast<H2Connection<T>&>(*self);
         if (ec) {
+          FUERTE_ASSERT(false);
           me.shutdownConnection(Error::WriteError, ec.message());
         } else {
           me.readSwitchingProtocolsResponse();
@@ -400,6 +655,8 @@ void H2Connection<T>::finishConnect() {
 
 template <SocketType T>
 void H2Connection<T>::readSwitchingProtocolsResponse() {
+  FUERTE_LOG_HTTPTRACE << "readSwitchingProtocolsResponse)\n";
+
   auto self = Connection::shared_from_this();
   this->_proto.timer.expires_after(std::chrono::seconds(5));
   this->_proto.timer.async_wait([self](auto ec) {
@@ -413,7 +670,7 @@ void H2Connection<T>::readSwitchingProtocolsResponse() {
         auto& me = static_cast<H2Connection<T>&>(*self);
         me._proto.timer.cancel();
         if (ec) {
-          me.shutdownConnection(Error::ProtocolError);
+          me.shutdownConnection(Error::ReadError, "error reading upgrade response");
           return;
         }
 
@@ -425,13 +682,14 @@ void H2Connection<T>::readSwitchingProtocolsResponse() {
           FUERTE_ASSERT(nread == header.size());
           me._receiveBuffer.consume(nread);
           me._state.store(Connection::State::Connected);
-
+          
           // submit a ping so the connection is not closed right away
-          nghttp2_submit_ping(me._session, NGHTTP2_FLAG_NONE, nullptr);
+          me.startPing();
+          
           me.startWriting();  // starts writing queue if non-empty
         } else {
           FUERTE_ASSERT(false);
-          me.shutdownConnection(Error::ProtocolError);
+          me.shutdownConnection(Error::ProtocolError, "illegal upgrade response");
         }
       });
 }
@@ -447,8 +705,7 @@ void H2Connection<SocketType::Ssl>::finishConnect() {
   submitConnectionPreface(_session);
 
   // submit a ping so the connection is not closed right away
-  nghttp2_submit_ping(_session, NGHTTP2_FLAG_NONE, nullptr);
-
+  startPing();
   startWriting();  // starts writing queue if non-empty
 }
 
@@ -464,7 +721,7 @@ void H2Connection<T>::startWriting() {
   FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
   bool tmp = _signaledWrite.load();
   if (!tmp && !_signaledWrite.exchange(true)) {
-    this->_io_context->dispatch([self = Connection::shared_from_this(), this] {
+    this->_io_context->post([self = Connection::shared_from_this(), this] {
       _signaledWrite.store(false);
       // we have been in a race with shutdownConnection()
       Connection::State state = this->_state.load();
@@ -473,8 +730,8 @@ void H2Connection<T>::startWriting() {
           this->startConnection();
         }
       } else {
-        this->doWrite();
         this->asyncReadSome();
+        this->doWrite();
       }
     });
   }
@@ -509,11 +766,13 @@ void H2Connection<T>::queueHttp2Requests() {
           {(uint8_t*)":scheme", (uint8_t*)"https", 7, 5,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
     }
+    
+    std::string path;
+    http::appendPath(req, path);
 
     nva.push_back(
-        {(uint8_t*)":path", (uint8_t*)req.header.path.data(), 5,
-         req.header.path.size(),
-         NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
+        {(uint8_t*)":path", (uint8_t*)path.data(), 5,
+         path.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
 
     nva.push_back(
         {(uint8_t*)":authority", (uint8_t*)this->_config._host.c_str(), 10,
@@ -564,39 +823,42 @@ void H2Connection<T>::queueHttp2Requests() {
       len = std::to_string(req.payloadSize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
                      len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
+      
+      if (req.payloadSize() > 0) {
+        prd.source.ptr = strm.get();
+        prd.read_callback = [](nghttp2_session* session, int32_t stream_id,
+                               uint8_t* buf, size_t length, uint32_t* data_flags,
+                               nghttp2_data_source* source,
+                               void* user_data) -> ssize_t {
+          auto strm = static_cast<H2Connection<T>::Stream*>(source->ptr);
 
-      prd.source.ptr = strm.get();
-      prd.read_callback = [](nghttp2_session* session, int32_t stream_id,
-                             uint8_t* buf, size_t length, uint32_t* data_flags,
-                             nghttp2_data_source* source,
-                             void* user_data) -> ssize_t {
-        auto strm = static_cast<H2Connection<T>::Stream*>(source->ptr);
+          auto payload = strm->request->payload();
 
-        auto payload = strm->request->payload();
+          // TODO do not copy the body if it is > 16kb
+          FUERTE_ASSERT(payload.size() > strm->responseOffset);
+          const uint8_t* src = reinterpret_cast<uint8_t const*>(payload.data()) +
+                               strm->responseOffset;
+          size_t len = std::min(length, payload.size() - strm->responseOffset);
+          FUERTE_ASSERT(len > 0);
+          std::copy_n(src, len, buf);
 
-        // TODO do not copy the body if it is > 16kb
-        FUERTE_ASSERT(payload.size() > strm->responseOffset);
-        const uint8_t* src = reinterpret_cast<uint8_t const*>(payload.data()) +
-                             strm->responseOffset;
-        size_t len = std::min(length, payload.size() - strm->responseOffset);
-        FUERTE_ASSERT(len > 0);
-        std::copy_n(src, len, buf);
+          strm->responseOffset += len;
+          if (strm->responseOffset == payload.size()) {
+            *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+          }
 
-        strm->responseOffset += len;
-        if (strm->responseOffset == payload.size()) {
-          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-        }
-
-        return static_cast<ssize_t>(len);
-      };
-      prd_ptr = &prd;
+          return static_cast<ssize_t>(len);
+        };
+        prd_ptr = &prd;
+      }
     }
 
     int32_t sid = nghttp2_submit_request(_session, /*pri_spec*/ nullptr,
                                          nva.data(), nva.size(), prd_ptr,
                                          /*stream_user_data*/ nullptr);
+    
     if (sid < 0) {
-      this->shutdownConnection(Error::ProtocolError);
+      this->shutdownConnection(Error::ProtocolError, "illegal stream id");
       return;
     }
     FUERTE_LOG_HTTPTRACE << "enqueuing stream " << sid << " to "
@@ -628,7 +890,7 @@ void H2Connection<T>::doWrite() {
     const uint8_t* data;
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
-      this->shutdownConnection(Error::ProtocolError);
+      this->shutdownConnection(Error::ProtocolError, "http2 framing error");
       return;
     }
     if (rv == 0) {  // done
@@ -650,10 +912,11 @@ void H2Connection<T>::doWrite() {
   outBuffers[0] = asio_ns::buffer(_outbuffer.data(), len);
 
   if (asio_ns::buffer_size(outBuffers) == 0) {
-    if (shouldStop()) {
-      this->shutdownConnection(Error::CloseRequested);
-    }
     _writing = false;
+    if (shouldStop()) {
+      this->shutdownConnection(Error::CloseRequested,
+                               "nothing to write and connection should stop");
+    }
     return;
   }
 
@@ -684,9 +947,9 @@ void H2Connection<T>::doWrite() {
 template <SocketType T>
 void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
   if (ec) {
-    FUERTE_LOG_VSTTRACE
-        << "asyncReadCallback: Error while reading form socket: "
-        << ec.message();
+    FUERTE_LOG_DEBUG
+        << "asyncReadCallback: Error while reading from socket: "
+        << ec.message() << "\n";
     this->restartConnection(translateError(ec, Error::ReadError));
     return;
   }
@@ -698,21 +961,24 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
 
     ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
     if (rv < 0) {
-      this->shutdownConnection(Error::ProtocolError);
+      this->shutdownConnection(Error::ProtocolError, "http2 parsing error");
       return;  // stop read loop
     }
 
     parsedBytes += static_cast<size_t>(rv);
   }
+  
+  FUERTE_ASSERT(this->_receiveBuffer.size() == parsedBytes);
 
-  FUERTE_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
   // Remove consumed data from receive buffer.
   this->_receiveBuffer.consume(parsedBytes);
+  FUERTE_LOG_HTTPTRACE << "parsed " << parsedBytes << " bytes\n";
 
   doWrite();
 
   if (!_writing && shouldStop()) {
-    this->shutdownConnection(Error::CloseRequested);
+    this->shutdownConnection(Error::CloseRequested,
+                             "nothing more to read or write on connection");
     return;  // stop read loop
   }
 
@@ -745,16 +1011,16 @@ void H2Connection<T>::setTimeout() {
         auto& me = static_cast<H2Connection<T>&>(*s);
         // cancel expired requests
         auto now = std::chrono::steady_clock::now();
-        auto it = me._streams.begin();
-        while (it != me._streams.end()) {
-          if (it->second->expires < now) {
-            FUERTE_LOG_DEBUG << "HTTP2-Request timeout\n";
-            it->second->invokeOnError(Error::Timeout);
-            it = me._streams.erase(it);
-          } else {
-            it++;
+        std::vector<int32_t> expired;
+        for (auto const& pair : me._streams) {
+          if (pair.second->expires < now) {
+            expired.push_back(pair.first);
           }
         }
+        std::for_each(expired.begin(), expired.end(), [&](auto sid) {
+          auto strm = me.eraseStream(sid);
+          strm->invokeOnError(Error::Timeout);
+        });
 
         if (me._streams.empty()) {  // no more messages to wait on
           FUERTE_LOG_DEBUG << "HTTP2-Connection timeout\n";
@@ -770,8 +1036,11 @@ void H2Connection<T>::setTimeout() {
 /// abort ongoing / unfinished requests (locally)
 template <SocketType T>
 void H2Connection<T>::abortOngoingRequests(const fuerte::Error err) {
-  FUERTE_LOG_HTTPTRACE << "aborting ongoing requests";
+  FUERTE_LOG_HTTPTRACE << "aborting ongoing requests\n";
   // Cancel all streams
+  for (auto& pair : _streams) {
+    pair.second->invokeOnError(err);
+  }
   _streams.clear();
   _streamCount.store(0);
 }
@@ -797,11 +1066,50 @@ typename H2Connection<T>::Stream* H2Connection<T>::findStream(
   return nullptr;
 }
 
+template <SocketType T>
+std::unique_ptr<typename H2Connection<T>::Stream> H2Connection<T>::eraseStream(int32_t sid) {
+  std::unique_ptr<Stream> tmp;
+  auto it = _streams.find(sid);
+  if (it != _streams.end()) {
+    tmp = std::move(it->second);
+    _streams.erase(it);
+    uint32_t cc = _streamCount.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(cc > 0);
+  }
+  if (_streams.empty()) {
+    startPing();
+  }
+  return tmp;
+}
+
 /// should close connection
 template <SocketType T>
 bool H2Connection<T>::shouldStop() const {
   return !nghttp2_session_want_read(_session) &&
          !nghttp2_session_want_write(_session);
+}
+
+// ping ensures server does not close the connection
+template <SocketType T>
+void H2Connection<T>::startPing() {
+  _ping.expires_after(std::chrono::seconds(30));
+  
+  _ping.async_wait([self(Connection::weak_from_this())](auto const& ec) {
+    std::shared_ptr<Connection> s = self.lock();
+    if (ec || !s) {
+      return;
+    }
+    
+    auto& me = static_cast<H2Connection<T>&>(*s);
+    if (me._state != Connection::State::Connected || !me._streams.empty()) {
+      return;
+    }
+    // queue the ping frame in nghttp2
+    nghttp2_submit_ping(me._session, NGHTTP2_FLAG_NONE, nullptr);
+
+    me.startWriting(); // signal the write loop
+    me.startPing(); // do again in 30s
+  });
 }
 
 template class arangodb::fuerte::v1::http::H2Connection<SocketType::Tcp>;

@@ -262,29 +262,8 @@ std::string H1Connection<ST>::buildRequestBody(Request const& req) {
   header.append(fu::to_string(req.header.restVerb));
   header.push_back(' ');
 
-  // construct request path ("/_db/<name>/" prefix)
-  if (!req.header.database.empty()) {
-    header.append("/_db/", 5);
-    http::urlEncode(header, req.header.database);
-  }
-  // must start with /, also turns /_db/abc into /_db/abc/
-  if (req.header.path.empty() || req.header.path[0] != '/') {
-    header.push_back('/');
-  }
+  http::appendPath(req, /*target*/header);
 
-  header.append(req.header.path);
-
-  if (!req.header.parameters.empty()) {
-    header.push_back('?');
-    for (auto const& p : req.header.parameters) {
-      if (header.back() != '?') {
-        header.push_back('&');
-      }
-      http::urlEncode(header, p.first);
-      header.push_back('=');
-      http::urlEncode(header, p.second);
-    }
-  }
   header.append(" HTTP/1.1\r\n")
       .append("Host: ")
       .append(this->_config._host)

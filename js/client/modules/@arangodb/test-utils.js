@@ -815,16 +815,28 @@ function writeTestResult(path, data) {
   fs.write(jsonFN, JSON.stringify(data));
 }
 
+/// make arangosh use HTTP, VST or HTTP2 according to option
+function findEndpoint(options, instanceInfo) {
+  let endpoint = instanceInfo.endpoint;
+  if (options.vst) {
+    endpoint = endpoint.replace(/.*\/\//, 'vst://');
+  } else if (options.http2) {
+    endpoint = endpoint.replace(/.*\/\//, 'h2://');
+  }
+  print("using endpoint ", endpoint);
+  return endpoint;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file using arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
 function runInArangosh (options, instanceInfo, file, addArgs) {
   let args = pu.makeArgs.arangosh(options);
-  let endpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
-      instanceInfo.vstEndpoint : 
-      instanceInfo.endpoint ;
-  args['server.endpoint'] = endpoint;
+  // let endpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
+  //     instanceInfo.vstEndpoint : 
+  //     instanceInfo.endpoint ;
+  args['server.endpoint'] = findEndpoint(options, instanceInfo);
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
@@ -853,13 +865,12 @@ runInArangosh.info = 'runInExternalArangosh';
 
 function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   let endpoint = arango.getEndpoint();
-  if (( options.vst && endpoint !== instanceInfo.vstEndpoint) ||
-      (!options.vst && endpoint !== instanceInfo.endpoint)) {
-    let newEndpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
-        instanceInfo.vstEndpoint : 
-        instanceInfo.endpoint;
-    print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
-    arango.reconnect(newEndpoint, '_system', 'root', '');
+  if (options.vst || options.http2) {
+    let newEndpoint = findEndpoint(options, instanceInfo);
+    if (endpoint !== newEndpoint) {
+      print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
+      arango.reconnect(newEndpoint, '_system', 'root', '');
+    }
   }
   
   let testCode;

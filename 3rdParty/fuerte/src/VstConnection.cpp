@@ -353,7 +353,7 @@ template <SocketType ST>
 void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   if (ec) {
     FUERTE_LOG_VSTTRACE
-        << "asyncReadCallback: Error while reading form socket: "
+        << "asyncReadCallback: Error while reading from socket: "
         << ec.message();
     this->restartConnection(translateError(ec, Error::ReadError));
     return;

@@ -72,8 +72,11 @@ void GeneralConnection<ST>::startConnection() {
 template <SocketType ST>
 void GeneralConnection<ST>::shutdownConnection(const Error err, std::string const& msg,
                                                bool mayRestart) {
-  FUERTE_LOG_DEBUG << "shutdownConnection: '" << msg
-                   << "' this=" << this << "\n";
+  FUERTE_LOG_DEBUG << "shutdownConnection: err = '" << to_string(err) << "' ";
+  if (!msg.empty()) {
+    FUERTE_LOG_DEBUG << ", msg = '" << msg<< "' ";
+  }
+  FUERTE_LOG_DEBUG<< "this=" << this << "\n";
 
   auto state = _state.load();
   if (state != Connection::State::Failed) {
@@ -89,6 +92,7 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
   _receiveBuffer.consume(_receiveBuffer.size());
   abortOngoingRequests(err);
 
+  std::cout << "shutting down stream\n";
   _proto.shutdown([=, self(shared_from_this())](auto const& ec) {
     if (mayRestart && requestsLeft() > 0) {
       startConnection();

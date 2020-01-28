@@ -88,6 +88,8 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
                                 size_t len, void* user_data);
   static int on_stream_close(nghttp2_session* session, int32_t stream_id,
                              uint32_t error_code, void* user_data);
+  static int on_frame_send(nghttp2_session *session,
+                           const nghttp2_frame *frame, void *user_data);
   static int on_frame_not_send(nghttp2_session* session,
                                const nghttp2_frame* frame, int lib_error_code,
                                void* user_data);
@@ -116,9 +118,6 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
   // adjust the timeouts (only call from IO-Thread)
   void setTimeout();
 
-  /// should close connection
-  bool shouldStop() const;
-
   // queue the response onto the session, call only on IO thread
   void queueHttp2Requests();
 
@@ -126,6 +125,14 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
   void doWrite();
 
   Stream* findStream(int32_t sid) const;
+  
+  std::unique_ptr<Stream> eraseStream(int32_t sid);
+  
+  /// should close connection
+  bool shouldStop() const;
+  
+  // ping ensures server does not close the connection
+  void startPing();
 
  private:
   velocypack::Buffer<uint8_t> _outbuffer;
@@ -134,6 +141,8 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
   boost::lockfree::queue<Stream*, boost::lockfree::capacity<512>> _queue;
 
   std::map<int32_t, std::unique_ptr<Stream>> _streams;
+  
+  asio_ns::steady_timer _ping; // keep connection open
 
   const std::string _authHeader;
 

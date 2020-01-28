@@ -151,8 +151,12 @@ template <SocketType T>
                                               uint32_t error_code, void* user_data) {
   H2CommTask<T>* me = static_cast<H2CommTask<T>*>(user_data);
   me->_streams.erase(stream_id);
-  LOG_TOPIC("d04f7", TRACE, Logger::REQUESTS) << "<http2> closing stream "
-     << stream_id << " error (" << error_code << ")";
+  
+  if (error_code != NGHTTP2_NO_ERROR) {
+    LOG_TOPIC("d04f7", DEBUG, Logger::REQUESTS) << "<http2> closing stream "
+       << stream_id << " with error '" << nghttp2_http2_strerror(error_code) << "' (" << error_code << ")";
+  }
+
   return 0;
 }
 
@@ -170,10 +174,14 @@ template <SocketType T>
   if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
-
+  
+  const int32_t sid = frame->hd.stream_id;
+  LOG_TOPIC("d15e8", DEBUG, Logger::REQUESTS) << "sending RST on stream "
+    << sid << " with error '" << nghttp2_strerror(lib_error_code)
+    << "' (" << lib_error_code << ")";
+  
   // Issue RST_STREAM so that stream does not hang around.
-  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                            NGHTTP2_INTERNAL_ERROR);
+  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, sid, NGHTTP2_INTERNAL_ERROR);
 
   return 0;
 }
@@ -209,19 +217,36 @@ int on_error_callback(nghttp2_session *session, int lib_error_code,
   return 0;
 }
 
+int on_invalid_frame_recv(nghttp2_session *session, const nghttp2_frame *frame,
+                         int lib_error_code, void *user_data) {
+  LOG_TOPIC("b5de2", INFO, Logger::REQUESTS) << "received illegal data frame on stream "
+  << frame->hd.stream_id <<  ": '" << nghttp2_strerror(lib_error_code) << "' (" << lib_error_code << ")";
+  return 0;
+}
+
 constexpr uint32_t window_size = (1 << 30) - 1;  // 1 GiB
 void submitConnectionPreface(nghttp2_session* session) {
-  std::array<nghttp2_settings_entry, 3> iv;
+  std::array<nghttp2_settings_entry, 4> iv;
   // 64 streams matches the queue capacity
   iv[0] = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 64};
   // typically client is just a *sink* and just process data as
   // much as possible.  Use large window size by default.
   iv[1] = {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size};
-  iv[2] = {NGHTTP2_SETTINGS_ENABLE_PUSH, 0};
+  iv[2] = {NGHTTP2_SETTINGS_MAX_FRAME_SIZE, (1 << 14)}; // 16k
+  iv[3] = {NGHTTP2_SETTINGS_ENABLE_PUSH, 0};
   
   nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
   // increase connection window size up to window_size
-  nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 0, 1 << 30);
+//  nghttp2_session_set_local_window_size(session, NGHTTP2_FLAG_NONE, 0, 1 << 30);
+}
+
+ssize_t data_source_read_length_callback(
+nghttp2_session *session, uint8_t frame_type, int32_t stream_id,
+int32_t session_remote_window_size, int32_t stream_remote_window_size,
+                                         uint32_t remote_max_frame_size, void *user_data) {
+  LOG_DEVEL << "session_remote_window_size: " << session_remote_window_size << ", stream_remote_window_size: " << stream_remote_window_size
+  << ", remote_max_frame_size: " << remote_max_frame_size;
+  return (1 << 14); // 64kB
 }
 }
 
@@ -243,7 +268,10 @@ void H2CommTask<T>::initNgHttp2Session() {
   nghttp2_session_callbacks_set_on_stream_close_callback(callbacks, H2CommTask<T>::on_stream_close);
   nghttp2_session_callbacks_set_on_frame_send_callback(callbacks, H2CommTask<T>::on_frame_send);
   nghttp2_session_callbacks_set_on_frame_not_send_callback(callbacks, H2CommTask<T>::on_frame_not_send);
+  nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(callbacks, on_invalid_frame_recv);
   nghttp2_session_callbacks_set_error_callback2(callbacks, on_error_callback);
+  
+  nghttp2_session_callbacks_set_data_source_read_length_callback(callbacks, data_source_read_length_callback);
 
   rv = nghttp2_session_server_new(&_session, callbacks, /*args*/ this);
   if (rv != 0) {
@@ -306,7 +334,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
 
 template <SocketType T>
 void H2CommTask<T>::start() {
-  LOG_TOPIC("db5ab", TRACE, Logger::REQUESTS)
+  LOG_TOPIC("db5ab", INFO, Logger::REQUESTS)
       << "<http2> opened connection \"" << (void*)this << "\"";
 
   asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
@@ -325,6 +353,7 @@ template <SocketType T>
 bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   if (ec) {
     this->close(ec);
+    LOG_DEVEL << "closing stream in readCallback: " << ec.message();
     return false;  // stop read loop
   }
 
@@ -333,11 +362,12 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
     const uint8_t* data = reinterpret_cast<const uint8_t*>(buffer.data());
 
     ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
-    if (rv < 0) {
+    if (rv < 0 || static_cast<size_t>(rv) != buffer.size()) {
       LOG_TOPIC("43942", INFO, Logger::REQUESTS)
         << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv)
         << "\" (" << rv << ")";
       this->close(ec);
+      LOG_DEVEL << "stop reading";
       return false;  // stop read loop
     }
 
@@ -352,6 +382,7 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
 
   if (!_writing && shouldStop()) {
     this->close();
+    LOG_DEVEL << "stop reading";
     return false;  // stop read loop
   }
 
@@ -459,6 +490,8 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   while (ADB_UNLIKELY(!_responses.push(tmp))) {
     std::this_thread::yield();
     if (--retries == 0) {
+      LOG_TOPIC("924dc", WARN, Logger::REQUESTS)
+        << "was not able to queue response" << (void*)this;
       // we are overloaded close stream
       asio_ns::post(this->_protocol->context.io_context,
                     [self(this->shared_from_this()), mid(res->messageId())] {
@@ -546,39 +579,50 @@ void H2CommTask<T>::queueHttp2Responses() {
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
                      len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
 
-      prd.source.ptr = strm;
-      prd.read_callback = [](nghttp2_session* session, int32_t stream_id,
-                             uint8_t* buf, size_t length, uint32_t* data_flags,
-                             nghttp2_data_source* source, void* user_data) -> ssize_t {
-        auto strm = static_cast<H2CommTask<T>::Stream*>(source->ptr);
-
-        basics::StringBuffer& body = strm->response->body();
-
-        // TODO do not copy the body if it is > 16kb
-        TRI_ASSERT(body.size() >= strm->responseOffset);
+      if (res.bodySize() > 0) {
+        LOG_DEVEL << "body size " << res.bodySize();
         
-        size_t nread = std::min(length, body.size() - strm->responseOffset);
-        if (nread == 0 || strm->responseOffset == body.size()) {
-          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-        } else {
+        prd.source.ptr = strm;
+        prd.read_callback = [](nghttp2_session* session, int32_t stream_id,
+                               uint8_t* buf, size_t length, uint32_t* data_flags,
+                               nghttp2_data_source* source, void* user_data) -> ssize_t {
+          auto strm = static_cast<H2CommTask<T>::Stream*>(source->ptr);
+          LOG_DEVEL << "read_callback len = " << length;
+
+          basics::StringBuffer& body = strm->response->body();
+
+          // TODO do not copy the body if it is > 16kb
+          TRI_ASSERT(body.size() > strm->responseOffset);
+          size_t nread = std::min(length, body.size() - strm->responseOffset);
+          TRI_ASSERT(nread > 0);
+            
           const char* src = body.data() + strm->responseOffset;
           std::copy_n(src, nread, buf);
           strm->responseOffset += nread;
-        }
-        
-        // simon: might be needed if NGHTTP2_DATA_FLAG_NO_COPY is used
-//        if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
-//            nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id, NGHTTP2_NO_ERROR);
-//        }
-
-        return static_cast<ssize_t>(nread);
-      };
-      prd_ptr = &prd;
+          LOG_DEVEL << "wrote " << nread << " data bytes for " << stream_id;
+          
+          if (strm->responseOffset == body.size()) {
+            LOG_DEVEL << "done writing data frame for " << stream_id;
+            *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+          }
+          
+          // simon: might be needed if NGHTTP2_DATA_FLAG_NO_COPY is used
+  //        if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
+  //            nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id, NGHTTP2_NO_ERROR);
+  //        }
+          return static_cast<ssize_t>(nread);
+        };
+        prd_ptr = &prd;
+      }
     }
 
+    LOG_DEVEL << "submitting response " << streamId;
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
                                      nva.size(), prd_ptr);
     if (rv != 0) {
+      LOG_TOPIC("3d794", INFO, arangodb::Logger::REQUESTS)
+        << "HTTP2 submit_response error: \"" << nghttp2_strerror((int)rv)
+        << "\" (" << rv << ")";
       this->close();
       return;
     }
@@ -595,58 +639,67 @@ void H2CommTask<T>::doWrite() {
   
   queueHttp2Responses();
   
-  static constexpr size_t kMaxOutBufferLen = 32 * 1024 * 1024;
+  static constexpr size_t kMaxOutBufferLen = 128 * 1024;
   _outbuffer.resetTo(0);
   _outbuffer.reserve(16 * 1024);
+  TRI_ASSERT(_outbuffer.size() == 0);
 
-  size_t len = 0;
   std::array<asio_ns::const_buffer, 2> outBuffers;
   while (true) {
     const uint8_t* data;
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
+      _writing = false;
+      LOG_TOPIC("2b6c4", INFO, arangodb::Logger::REQUESTS)
+        << "HTTP2 framing error: \"" << nghttp2_strerror((int)rv)
+        << "\" (" << rv << ")";
       this->close();
       return;
-    } else if (rv == 0) {  // done
+    }
+    
+    if (rv == 0) {  // done
       break;
     }
 
     const size_t nread = static_cast<size_t>(rv);
     // if the data is long we just pass it to async_write
-    if (len + nread > kMaxOutBufferLen) {
+    if (_outbuffer.size() + nread > kMaxOutBufferLen) {
       outBuffers[1] = asio_ns::buffer(data, nread);
       break;
     }
-    
+
     _outbuffer.reserve(nread); // reserves extra bytes
-    std::copy_n(data, nread, _outbuffer.data() + len);
-    len += nread;
+    std::copy_n(data, nread, _outbuffer.data() + _outbuffer.size());
     _outbuffer.advance(nread);
   }
-  outBuffers[0] = asio_ns::buffer(_outbuffer.data(), len);
-
-  if (asio_ns::buffer_size(outBuffers) == 0) {
-    if (shouldStop()) {
-      this->close();
-    }
-    this->_writing = false;
-    return;
-  }
-
+  outBuffers[0] = asio_ns::buffer(_outbuffer.data(), _outbuffer.size());
+  
   // Reset read timer here, because normally client is sending
   // something, it does not expect timeout while doing it.
   this->setTimeout(this->DefaultTimeout);
 
+  if (asio_ns::buffer_size(outBuffers) == 0) {
+    LOG_DEVEL << "nothing more to send";
+    this->_writing = false;
+//    if (shouldStop()) {
+//      LOG_DEVEL << "closing stream in doWrite";
+//      this->close();
+//    }
+    return;
+  }
+
+  LOG_DEVEL << "about to write " << asio_ns::buffer_size(outBuffers) << " bytes";
   asio_ns::async_write(this->_protocol->socket, outBuffers,
                        [self = this->shared_from_this()](const asio_ns::error_code& ec,
-                                                         std::size_t) {
+                                                         std::size_t nwrite) {
                          auto& me = static_cast<H2CommTask<T>&>(*self);
+                         me._writing = false;
                          if (ec) {
                            me.close(ec);
                            return;
                          }
 
-                         me._writing = false;
+    LOG_DEVEL << "did write " << nwrite << " bytes";
                          me.doWrite();
                        });
 }

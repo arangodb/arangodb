@@ -75,7 +75,7 @@ VstCommTask<T>::~VstCommTask() {
 
 template <SocketType T>
 void VstCommTask<T>::start() {
-  LOG_TOPIC("7215f", TRACE, Logger::REQUESTS)
+  LOG_TOPIC("7215f", INFO, Logger::REQUESTS)
     << "<vst> opened connection \"" << (void*)this << "\"";
   asio_ns::dispatch(this->_protocol->context.io_context, [self = this->shared_from_this()] {
     static_cast<VstCommTask<T>&>(*self).asyncReadSome();
