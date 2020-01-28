@@ -673,7 +673,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   for (auto& it : *otherShardsMap) {
     otherShards.push_back(it.first);
   }
-  std::sort(otherShards.begin(), otherShards.end());
+  ShardingInfo::sortShardNamesNumerically(otherShards);
 
   TRI_ASSERT(numberOfShards == otherShards.size());
 
