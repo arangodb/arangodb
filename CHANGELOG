@@ -1,7 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
-* Added HotBackup events into auditing.
+* Cluster collection creation preconditioned on involved db server not
+  in process of being cleaned and beyond.
 
 * Include collections "_queues" and "_jobs" in dumps created by arangodump
   in case the option `--include-system-collections` was set to true. Previously
