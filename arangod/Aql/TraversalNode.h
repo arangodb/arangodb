@@ -186,6 +186,8 @@ class TraversalNode : public GraphNode {
 
   bool allDirectionsEqual() const;
 
+  bool isEligibleAsSatelliteTraversal() const;
+
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
   void getPruneVariables(std::vector<Variable const*>&) const;
