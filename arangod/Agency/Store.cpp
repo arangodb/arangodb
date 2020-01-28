@@ -475,6 +475,31 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (mode == FIRST_FAIL) {
             break;
           }
+        } else if (oper == "intersectionEmpty") {  // in
+          if (!found) {
+            continue;
+          }
+          if (node->slice().isArray()) {
+            bool found = false;
+            for (auto const& i : VPackArrayIterator(node->slice())) {
+              if (op.value.isArray()) {
+                for (auto const& j : VPackArrayIterator(op.value)) {
+                  if (basics::VelocyPackHelper::equal(i, j, false)) {
+                    found = true;
+                    break;
+                  }
+                }
+              } 
+            }
+            if (!found) {
+              continue;
+            }
+            ret.push_back(precond.key);
+          }
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
         } else {
           // Objects without any of the above cases are not considered to
           // be a precondition:
