@@ -365,6 +365,18 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
   return applied;
 }
 
+struct slice_equals {
+  bool operator()(VPackSlice s1, VPackSlice s2) const {
+    return s1.binaryEquals(s2);
+  }
+};
+
+struct slice_hash {
+  size_t operator()(VPackSlice s) const {
+    return s.hash();
+  }
+};
+
 /// Check precodition object
 check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
   TRI_ASSERT(slice.isObject());
@@ -479,26 +491,36 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (!found) {
             continue;
           }
-          if (node->slice().isArray()) {
+          auto const nslice = node->slice();
+          if (nslice.isArray() && op.value.isArray()) {
             bool found_ = false;
-            for (auto const& i : VPackArrayIterator(node->slice())) {
-              if (op.value.isArray()) {
-                for (auto const& j : VPackArrayIterator(op.value)) {
-                  if (basics::VelocyPackHelper::equal(i, j, false)) {
-                    found_ = true;
-                    break;
-                  }
-                }
-              } 
+            std::unordered_set<VPackSlice, slice_hash, slice_equals> elems;
+            Slice shorter, longer;
+            
+            if (nslice.length() <= op.value.length()) {
+              longer = op.value;
+              shorter = nslice;
+            } else {
+              shorter = nslice;
+              longer = op.value;
+            }
+
+            for (auto const i : VPackArrayIterator(shorter)) {
+              elems.emplace(i);
+            }
+            for (auto const i : VPackArrayIterator(longer)) {
+              if (elems.find(i) != elems.end()) {
+                found_ = true;
+                break;
+              }
             }
             if (!found_) {
               continue;
             }
             ret.push_back(precond.key);
-          }
-          ret.push_back(precond.key);
-          if (mode == FIRST_FAIL) {
-            break;
+            if (mode == FIRST_FAIL) {
+              break;
+            }
           }
         } else {
           // Objects without any of the above cases are not considered to
