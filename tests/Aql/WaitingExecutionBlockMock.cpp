@@ -174,7 +174,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
       myCall.didSkip(counts);
       skipped += counts;
     } else {
-      if (myCall.getLimit() == 0 && !myCall.needsFullCount()) {
+      if (myCall.getLimit() == 0 && !myCall.needsFullCount() && myCall.hasHardLimit()) {
         while (!_data.empty()) {
           // Drop data we are in fastForward phase
           dropBlock();

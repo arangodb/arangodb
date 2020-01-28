@@ -1651,8 +1651,15 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_waiting_block_mock) {
     EXPECT_EQ(block, nullptr);
     std::tie(state, skipped, block) = testee.execute(stack);
   }
+  if (call.getLimit() > builder->slice().length() || call.needsFullCount() ||
+      call.hasHardLimit()) {
+    // We need to consume everything
+    EXPECT_EQ(state, ExecutionState::DONE);
+  } else {
+    // We cannot consume everything.
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+  }
 
-  EXPECT_EQ(state, ExecutionState::DONE);
   ValidateResult(builder, skipped, block, 0);
 }
 
@@ -2015,8 +2022,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
         // The first data row includes skip
         EXPECT_EQ(skipped, offset);
       } else {
-        // No more skipping on later data rows
-        EXPECT_EQ(skipped, 0);
+        if (call.getLimit() == 0 && call.hasHardLimit() && call.needsFullCount()) {
+          // The last row, with fullCount needs to contain data.
+          EXPECT_EQ(skipped, 1000 - limit - offset);
+        } else {
+          // Do not skip on later data rows
+          // Except the last one on fullcount
+          EXPECT_EQ(skipped, 0);
+        }
       }
       // NOTE: We might want to get into this situation.
       // Even if the output is full, we fulfill the fullCount request
@@ -2028,7 +2041,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
         EXPECT_EQ(state, ExecutionState::HASMORE);
       }
       */
-      if (it.isLast() && call.getLimit() > 0) {
+      if ((it.isLast() && call.getLimit() > 0) ||
+          (call.getLimit() == 0 && call.hasHardLimit())) {
         // This is an unlimited test.
         // We reached end of output, but still have limit left
         EXPECT_EQ(state, ExecutionState::DONE);
@@ -2037,31 +2051,6 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
       }
 
       it++;
-    }
-    if (call.hasHardLimit() && call.needsFullCount()) {
-      // We need to fetch once more
-      // The call before has filled the output row and did return
-      AqlCallStack stack{call};
-      // If one of these two kicks in we are in invalid state.
-      ASSERT_EQ(call.getOffset(), 0);
-      ASSERT_EQ(call.getLimit(), 0);
-      auto [state, skipped, block] = testee->execute(stack);
-      if (doesWaiting()) {
-        size_t waited = 0;
-        while (state == ExecutionState::WAITING &&
-               waited < offset + 10 /* avoid endless waiting*/) {
-          EXPECT_EQ(state, ExecutionState::WAITING);
-          EXPECT_EQ(skipped, 0);
-          EXPECT_EQ(block, nullptr);
-          waited++;
-          std::tie(state, skipped, block) = testee->execute(stack);
-        }
-        // We wait some time before the last row is produced
-        EXPECT_LT(waited, 1000);
-      }
-      EXPECT_EQ(state, ExecutionState::DONE);
-      EXPECT_EQ(skipped, 1000 - limit - offset);
-      EXPECT_EQ(block, nullptr);
     }
   }
 }  // namespace aql
@@ -2384,7 +2373,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_outer_subquery_forwarding_
     std::tie(state, skipped, block) = testee.execute(stack);
   }
 
-  EXPECT_EQ(state, ExecutionState::DONE);
+  if (call.getLimit() > builder->slice().length() || call.needsFullCount() ||
+      call.hasHardLimit()) {
+    // We need to consume everything
+    EXPECT_EQ(state, ExecutionState::DONE);
+  } else {
+    // We cannot consume everything.
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+  }
   ValidateResult(builder, skipped, block, 0);
 }
 
@@ -2436,7 +2432,14 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_outer_subquery_forwarding)
     std::tie(state, skipped, block) = testee.execute(stack);
   }
 
-  EXPECT_EQ(state, ExecutionState::DONE);
+  if (call.getLimit() > builder->slice().length() || call.needsFullCount() ||
+      call.hasHardLimit()) {
+    // We need to consume everything
+    EXPECT_EQ(state, ExecutionState::DONE);
+  } else {
+    // We cannot consume everything.
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+  }
   ValidateResult(builder, skipped, block, 0);
 }
 
