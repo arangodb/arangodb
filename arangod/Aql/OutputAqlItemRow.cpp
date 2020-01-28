@@ -82,6 +82,10 @@ OutputAqlItemRow::OutputAqlItemRow(
 #endif
 }
 
+bool OutputAqlItemRow::isInitialized() const noexcept {
+  return _block != nullptr;
+}
+
 template <class ItemRowType>
 void OutputAqlItemRow::cloneValueInto(RegisterId registerId, ItemRowType const& sourceRow,
                                       AqlValue const& value) {

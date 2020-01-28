@@ -64,6 +64,8 @@ class OutputAqlItemRow {
   OutputAqlItemRow(OutputAqlItemRow&&) = delete;
   OutputAqlItemRow& operator=(OutputAqlItemRow&&) = delete;
 
+  bool isInitialized() const noexcept;
+
   // Clones the given AqlValue
   template <class ItemRowType>
   void cloneValueInto(RegisterId registerId, ItemRowType const& sourceRow,
@@ -137,7 +139,7 @@ class OutputAqlItemRow {
    *        the left-over space for ShadowRows.
    */
   [[nodiscard]] bool allRowsUsed() const {
-    return block().size() <= _baseIndex;
+    return _block == nullptr || block().size() <= _baseIndex;
   }
 
   /**
@@ -152,6 +154,9 @@ class OutputAqlItemRow {
    *        passed from ExecutionBlockImpl.
    */
   [[nodiscard]] size_t numRowsLeft() const {
+    if (_block == nullptr) {
+      return 0;
+    }
     return (std::min)(block().size() - _baseIndex, _call.getLimit());
   }
 

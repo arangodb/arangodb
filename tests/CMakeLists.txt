@@ -67,6 +67,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
+  Aql/TestLambdaExecutor.cpp
   Aql/TraversalExecutorTest.cpp
   Aql/UpdateExecutorTest.cpp
   Aql/UpsertExecutorTest.cpp
