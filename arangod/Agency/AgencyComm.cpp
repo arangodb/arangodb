@@ -131,7 +131,7 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
         case AgencyPrecondition::Type::VALUE:
           builder.add("old", value);
           break;
-        case AgencyPrecondition::Type::IN:
+        case AgencyPrecondition::Type::TIN:
           builder.add("in", value);
           break;
         case AgencyPrecondition::Type::NOTIN:
