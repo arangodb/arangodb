@@ -173,6 +173,47 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
+TraversalNode::TraversalNode(TraversalNode&& other)
+    : GraphNode(other._plan, other._id, other._vocbase, other._edgeColls, other._vertexColls,
+                std::move(other._directions), std::move(other._options)),
+      _pathOutVariable(other._pathOutVariable),
+      _inVariable(other._inVariable),
+      _vertexId(std::move(other._vertexId)),
+      _condition(std::move(other._condition)),
+      _conditionVariables(std::move(other._conditionVariables)),
+      _fromCondition(other._fromCondition),
+      _toCondition(other._toCondition),
+      _pruneExpression(std::move(other._pruneExpression)),
+      _globalEdgeConditions(std::move(other._globalEdgeConditions)),
+      _globalVertexConditions(std::move(other._globalVertexConditions)),
+      _edgeConditions(std::move(other._edgeConditions)),
+      _vertexConditions(std::move(other._vertexConditions)),
+      _pruneVariables(std::move(other._pruneVariables)) {
+  // TODO Maybe we need to copy/move members of ExecutionNode as well!
+
+  // Copy remaining members of GraphNode
+  _vertexOutVariable = other._vertexOutVariable;
+  _edgeOutVariable = other._edgeOutVariable;
+  _graphObj = other._graphObj;
+  _defaultDirection = other._defaultDirection;
+  _isSmart = other._isSmart;
+
+  // Clear everything that's not moved, especially everything involving manual
+  // memory management.
+  other._plan = nullptr;
+  other._id = -1;
+  other._vocbase = nullptr;
+  other._edgeColls.clear();
+  other._vertexColls.clear();
+  other._pathOutVariable = nullptr;
+  other._inVariable = nullptr;
+  other._fromCondition = nullptr;
+  other._toCondition = nullptr;
+  other._vertexOutVariable = nullptr;
+  other._edgeOutVariable = nullptr;
+  other._graphObj = nullptr;
+}
+
 TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),
       _pathOutVariable(nullptr),
