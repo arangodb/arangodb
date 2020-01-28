@@ -451,7 +451,7 @@ std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
   for (auto const& mapElement : *_shardIds) {
     vector->emplace_back(mapElement.first);
   }
-  std::sort(vector->begin(), vector->end());
+  sortShardNamesNumerically(vector);
   return vector;
 }
 
@@ -568,4 +568,15 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
   }
 
   return Result();
+}
+
+void ShardingInfo::sortShardNamesNumerically(std::vector<ShardID>& list) {
+  // We need to sort numerically, so s99 is before s100:
+  std::sort(list.begin(), list.end(), [](ShardID const& lhs, ShardID const& rhs) {
+    TRI_ASSERT(lhs.size() > 1 && lhs[0] == 's');
+    uint64_t l = basics::StringUtils::uint64(lhs.c_str() + 1, lhs.size() - 1);
+    TRI_ASSERT(rhs.size() > 1 && rhs[0] == 's');
+    uint64_t r = basics::StringUtils::uint64(rhs.c_str() + 1, rhs.size() - 1);
+    return l < r;
+  });
 }
