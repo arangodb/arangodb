@@ -586,13 +586,13 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      Index::SortCosts costs =
+      Index::SortCosts sc =
           idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
-      if (costs.supportsCondition) {
+      if (sc.supportsCondition) {
         supportsSort = true;
       }
-      sortCost = costs.estimatedCosts;
-      coveredAttributes = costs.coveredAttributes;
+      sortCost = sc.estimatedCosts;
+      coveredAttributes = sc.coveredAttributes;
     }
 
     if (!supportsSort && isOnlyAttributeAccess && node->isOnlyEqualityMatch()) {

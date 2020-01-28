@@ -969,9 +969,7 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC("04e4e", INFO, Logger::HEARTBEAT)
             << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
-        if (config._jwt.empty()) {
-          config._jwt = af->tokenCache().jwtToken();
-        }
+        config._jwt = af->tokenCache().jwtToken();
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
@@ -1015,9 +1013,14 @@ void HeartbeatThread::runSingleServer() {
             debug.close();
             LOG_TOPIC("3ffb1", DEBUG, Logger::HEARTBEAT)
                 << "previous applier state was: " << debug.toJson();
-            applier->startTailing(0, false,
-                                  0);  // reads ticks from configuration
-            continue;                  // check again next time
+            
+            auto config = applier->configuration();
+            config._jwt = af->tokenCache().jwtToken();
+            applier->reconfigure(config);
+            
+            // reads ticks from configuration, check again next time
+            applier->startTailing(0, false, 0);
+            continue;
           }
         }
         // complete resync next round

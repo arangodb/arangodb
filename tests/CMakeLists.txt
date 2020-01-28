@@ -300,6 +300,9 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 
+if (USE_JEMALLOC)
+   add_dependencies(arangodbtests jemalloc_build)
+endif ()
 # older macos has no uncaught exceptions
 if (DARWIN)
   target_compile_definitions(arangodbtests PUBLIC CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS)
