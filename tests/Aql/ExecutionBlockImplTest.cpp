@@ -1372,7 +1372,9 @@ class ExecutionBlockImplExecuteIntegrationTest
     ASSERT_NE(block, nullptr);
     ASSERT_GT(block->size(), row);
     ASSERT_TRUE(block->isShadowRow(row));
-    EXPECT_EQ(block->getShadowRowDepth(row), expected);
+    auto val = block->getShadowRowDepth(row);
+    ASSERT_TRUE(val.isNumber());
+    EXPECT_EQ(static_cast<size_t>(val.toInt64()), expected);
   }
 
   /**
@@ -2385,19 +2387,20 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
   SkipCallAsserter skipAsserter{getCall()};
   auto testee = forwardBlock(getAsserter, skipAsserter, singleton.get(), outReg);
 
-  AqlCallStack stack{getCall()};
   if (doesWaiting()) {
+    AqlCallStack stack{getCall()};
     // we only wait exactly once, only one block upstream that is not sliced.
-    auto const& [state, skipped, block] = testee.execute();
+    auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::WAITING);
     EXPECT_EQ(skipped, 0);
     EXPECT_EQ(block, nullptr);
   }
   auto call = getCall();
-  bool skip = call.offset() > 0;
+  bool skip = call.getOffset() > 0 || (call.getLimit() == 0 && call.needsFullCount());
   {
     // First subquery
-    auto const& [state, skipped, block] = testee.execute();
+    AqlCallStack stack{getCall()};
+    auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
     if (skip) {
@@ -2435,7 +2438,8 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   {
     // Second subquery
-    auto const& [state, skipped, block] = testee.execute();
+    AqlCallStack stack{getCall()};
+    auto const& [state, skipped, block] = testee->execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     ASSERT_NE(block, nullptr);
     EXPECT_EQ(skipped, 0);
@@ -2460,15 +2464,30 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
 
   {
     // Third subquery
-    auto const& [state, skipped, block] = testee.execute();
-    EXPECT_EQ(state, ExecutionState::HASMORE);
+    AqlCallStack stack{getCall()};
+    auto const& [state, skipped, block] = testee->execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
     ASSERT_NE(block, nullptr);
     EXPECT_EQ(skipped, 0);
-    EXPECT_EQ(block->size(), 1);
+    EXPECT_EQ(block->size(), 2);
     size_t row = 0;
     AssertIsShadowRowOfDepth(block, row, 0);
-    AssertValueEquals(block, row, outReg, 4);
-    // TODO assert that the asserters are called exactly.
+    AssertValueEquals(block, row, outReg, 5);
+    row++;
+    AssertIsShadowRowOfDepth(block, row, 1);
+    AssertValueEquals(block, row, outReg, 6);
+    if (skip) {
+      // wo do not have empty input, we can skip
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 1);
+      // we need to call getSome never
+      EXPECT_EQ(getAsserter.getNumberCalls(), 0);
+    } else {
+      // we do not skip
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 0);
+      // wo do not have empty input, we can produce
+      EXPECT_EQ(getAsserter.getNumberCalls(), 1);
+    }
+
     getAsserter.reset();
     skipAsserter.reset();
   }
