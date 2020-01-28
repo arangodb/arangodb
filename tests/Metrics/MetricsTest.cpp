@@ -57,8 +57,6 @@ TEST_F(MetricsTest, test_counter) {
 
   std::string s;
   c.toPrometheus(s);
-  LOG_DEVEL << s;
-
 }
 
 template<typename T> void gauge_test() {
@@ -81,8 +79,6 @@ template<typename T> void gauge_test() {
 
   std::string s;
   g.toPrometheus(s);
-  LOG_DEVEL << s;
-
 }
 
 TEST_F(MetricsTest, long_double) {
@@ -134,8 +130,6 @@ template<typename T> void histogram_test(
   // dump
   std::string s;
   h.toPrometheus(s);
-  LOG_DEVEL << s;
-
 }
 
 
