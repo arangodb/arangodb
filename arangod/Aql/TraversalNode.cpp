@@ -42,6 +42,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterTraverser.h"
+#include "Graph/Graph.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
 #endif
@@ -284,7 +285,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     for (auto const& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
       _vertexConditions.try_emplace(StringUtils::uint64(key),
-                                new AstNode(plan->getAst(), cond.value));
+                                    new AstNode(plan->getAst(), cond.value));
     }
   }
 
@@ -474,7 +475,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::VERTEX,
-                                  it->second.registerId);
+                                      it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
@@ -482,7 +483,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::EDGE,
-                                  it->second.registerId);
+                                      it->second.registerId);
   }
   if (usesPathOutVariable()) {
     auto it = varInfo.find(pathOutVariable()->id);
@@ -490,7 +491,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
     outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
-                                  it->second.registerId);
+                                      it->second.registerId);
   }
   auto opts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<Traverser> traverser;
@@ -715,12 +716,9 @@ void TraversalNode::prepareOptions() {
     for (auto const& jt : _globalVertexConditions) {
       it.second->addMember(jt);
     }
-    opts->_vertexExpressions.try_emplace(
-      it.first,
-      arangodb::lazyConstruct([&]{
-        return new Expression(_plan, ast, it.second);
-      })
-    );
+    opts->_vertexExpressions.try_emplace(it.first, arangodb::lazyConstruct([&] {
+                                           return new Expression(_plan, ast, it.second);
+                                         }));
   }
   if (!_globalVertexConditions.empty()) {
     auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -761,26 +759,23 @@ void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t condition
                                       AstNode const* condition) {
   Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
-    auto[it, emplaced] = _edgeConditions.try_emplace(
-      conditionLevel,
-      arangodb::lazyConstruct([&]()-> std::unique_ptr<TraversalEdgeConditionBuilder> {
-        auto builder = std::make_unique<TraversalEdgeConditionBuilder>(this);
-        builder->addConditionPart(condition);
-        return builder;
-      })
-    );
+    auto [it, emplaced] = _edgeConditions.try_emplace(
+        conditionLevel, arangodb::lazyConstruct([&]() -> std::unique_ptr<TraversalEdgeConditionBuilder> {
+          auto builder = std::make_unique<TraversalEdgeConditionBuilder>(this);
+          builder->addConditionPart(condition);
+          return builder;
+        }));
     if (!emplaced) {
       it->second->addConditionPart(condition);
     }
   } else {
-    auto [it, emplaced] = _vertexConditions.try_emplace(
-      conditionLevel,
-      arangodb::lazyConstruct([&]{
-        auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-        cond->addMember(condition);
-        return cond;
-      })
-    );
+    auto [it, emplaced] =
+        _vertexConditions.try_emplace(conditionLevel, arangodb::lazyConstruct([&] {
+                                        auto cond = _plan->getAst()->createNodeNaryOperator(
+                                            NODE_TYPE_OPERATOR_NARY_AND);
+                                        cond->addMember(condition);
+                                        return cond;
+                                      }));
     if (!emplaced) {
       it->second->addMember(condition);
     }
@@ -823,6 +818,10 @@ void TraversalNode::checkConditionsDefined() const {
 
   TRI_ASSERT(_toCondition != nullptr);
   TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+}
+
+bool TraversalNode::isEligibleAsSatelliteTraversal() {
+  return graph() != nullptr && graph()->isSatellite();
 }
 
 #endif
