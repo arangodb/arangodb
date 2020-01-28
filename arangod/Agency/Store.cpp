@@ -496,7 +496,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
             bool found_ = false;
             std::unordered_set<VPackSlice, slice_hash, slice_equals> elems;
             Slice shorter, longer;
-            
+
             if (nslice.length() <= op.value.length()) {
               longer = op.value;
               shorter = nslice;

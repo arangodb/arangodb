@@ -2250,7 +2250,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     precs.emplace_back(
       AgencyPrecondition(
         "Target/CleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY, serversBuilder.slice()));
-    
+
     AgencyWriteTransaction transaction(opers, precs);
 
     {  // we hold this mutex from now on until we have updated our cache
