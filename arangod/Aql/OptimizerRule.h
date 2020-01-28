@@ -270,6 +270,9 @@ struct OptimizerRule {
     removeUnnecessaryRemoteScatterRule,
 
 #ifdef USE_ENTERPRISE
+    // move traversal on satellite graph to db server and add scatter / gather / remote
+    scatterSatelliteGraphRule,
+
     // remove any superflous satellite collection joins...
     // put it after Scatter rule because we would do
     // the work twice otherwise
@@ -321,12 +324,12 @@ struct OptimizerRule {
   static_assert(clusterOneShardRule < distributeInClusterRule);
   static_assert(clusterOneShardRule < smartJoinsRule);
   static_assert(clusterOneShardRule < scatterInClusterRule);
-  
+
   // smart joins must come before we move filters around, so the smart-join
   // detection code does not need to take the special filters into account
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif
-  
+
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   velocypack::StringRef name;

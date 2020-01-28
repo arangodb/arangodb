@@ -25,8 +25,12 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
 #define ARANGOD_AQL_OPTIMIZER_RULES_H 1
 
+#include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Common.h"
+#include "ClusterNodes.h"
+#include "ExecutionNode.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace aql {
@@ -151,6 +155,10 @@ ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, Subque
                                                           bool& wasModified);
 
 /// @brief remove scatter/gather and remote nodes for satellite collections
+void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                               OptimizerRule const&);
+
+/// @brief remove scatter/gather and remote nodes for satellite collections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
@@ -267,6 +275,73 @@ void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
+// TODO: to be renamed
+// TODO: check return type/method
+// TODO: Check inline
+inline std::unique_ptr<ExecutionPlan> scatterHelperFunction(
+    std::unique_ptr<ExecutionPlan> plan, TRI_vocbase_t* vocbase,
+    ExecutionNode* node, SortElementVector& elements, size_t numberOfShards,
+    std::unordered_map<ExecutionNode*, ExecutionNode*>& subqueries) {
+  // insert a scatter node
+  auto* scatterNode =
+      new ScatterNode(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD);
+  plan->registerNode(scatterNode);
+  TRI_ASSERT(node->getDependencies().empty());
+  scatterNode->addDependency(node->getDependencies()[0]);
+
+  // insert a remote node
+  ExecutionNode* remoteNode =
+      new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
+  plan->registerNode(remoteNode);
+  TRI_ASSERT(scatterNode);
+  remoteNode->addDependency(scatterNode);
+
+  // re-link with the remote node
+  node->addDependency(remoteNode);
+
+  // insert another remote node
+  remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, "", "", "");
+  plan->registerNode(remoteNode);
+  TRI_ASSERT(node);
+  remoteNode->addDependency(node);
+
+  // insert a gather node
+  auto const sortMode = GatherNode::evaluateSortMode(numberOfShards);
+  // single-sharded collections don't require any parallelism. collections with more than
+  // one shard are eligible for later parallelization (the Undefined allows this)
+  auto const parallelism = (numberOfShards <= 1 ? GatherNode::Parallelism::Serial
+                                                : GatherNode::Parallelism::Undefined);
+  auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism);
+  plan->registerNode(gatherNode);
+  TRI_ASSERT(remoteNode);
+  gatherNode->addDependency(remoteNode);
+  // On SmartEdge collections we have 0 shards and we need the elements
+  // to be injected here as well. So do not replace it with > 1
+  if (!elements.empty() && numberOfShards != 1) {
+    gatherNode->elements(elements);
+  }
+
+  auto const& parents = node->getParents();
+  // and now link the gather node with the rest of the plan
+  if (parents.size() == 1) {
+    parents[0]->replaceDependency(node->getDependencies()[0], gatherNode);
+  }
+
+  // check if the node that we modified was at the end of a subquery
+  auto it = subqueries.find(node);
+
+  if (it != subqueries.end()) {
+    ExecutionNode::castTo<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
+  }
+
+  if (plan->isRoot(node)) {
+    // if we replaced the root node, set a new root node
+    plan->root(gatherNode);
+  }
+
+  return plan;
+}
 
 }  // namespace aql
 }  // namespace arangodb
