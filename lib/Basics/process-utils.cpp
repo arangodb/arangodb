@@ -76,6 +76,8 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/PageSize.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -91,22 +93,57 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief physical memory
-////////////////////////////////////////////////////////////////////////////////
+namespace {
 
-uint64_t TRI_PhysicalMemory;
+#ifdef TRI_HAVE_LINUX_PROC
+/// @brief consumes all whitespace
+void skipWhitespace(char const*& p, char const* e) {
+  while (p < e && *p == ' ') {
+    ++p;
+  }
+}
+/// @brief consumes all non-whitespace
+void skipNonWhitespace(char const*& p, char const* e) {
+  if (p < e && *p == '(') {
+    // special case: if the value starts with a '(', we will skip over all
+    // data until we find the closing parenthesis. this is used for the process
+    // name at least
+    ++p;
+    while (p < e && *p != ')') {
+      ++p;
+    }
+    if (p < e && *p == ')') {
+      ++p;
+    }
+  } else {
+    // no parenthesis at start, so just skip over whitespace
+    while (p < e && *p != ' ') {
+      ++p;
+    }
+  }
+}
+/// @brief reads over the whitespace at the beginning plus the following data
+void skipEntry(char const*& p, char const* e) {
+  skipWhitespace(p, e);
+  skipNonWhitespace(p, e);
+}
+/// @brief reads a numeric entry from the buffer
+template<typename T>
+T readEntry(char const*& p, char const* e) {
+  skipWhitespace(p, e);
+  char const* s = p;
+  skipNonWhitespace(p, e);
+  return arangodb::NumberUtils::atoi_unchecked<uint64_t>(s, p);
+}
+#endif
 
-////////////////////////////////////////////////////////////////////////////////
+} // namespace
+
+
 /// @brief all external processes
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<ExternalProcess*> ExternalProcesses;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector ExternalProcesses
-////////////////////////////////////////////////////////////////////////////////
-
 static arangodb::Mutex ExternalProcessesLock;
 
 ProcessInfo::ProcessInfo()
@@ -750,163 +787,76 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_HAVE_LINUX_PROC
 
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief contains all data documented by "proc"
-  ///
-  /// @see man 5 proc for the state of a process
-  ////////////////////////////////////////////////////////////////////////////////
-  typedef struct process_state_s {
-    pid_t pid;
-    /* size was chosen arbitrary */
-    char comm[128];
-    char state;
-    int ppid;
-    int pgrp;
-    int session;
-    int tty_nr;
-    int tpgid;
-    unsigned flags;
-    /* lu */
-    unsigned long minflt;
-    unsigned long cminflt;
-    unsigned long majflt;
-    unsigned long cmajflt;
-    unsigned long utime;
-    unsigned long stime;
-    /* ld */
-    long cutime;
-    long cstime;
-    long priority;
-    long nice;
-    long num_threads;
-    long itrealvalue;
-    /* llu */
-    long long unsigned int starttime;
-    /* lu */
-    unsigned long vsize;
-    /* ld */
-    long rss;
-    /* lu */
-    // cppcheck-suppress *
-    unsigned long rsslim;
-    // cppcheck-suppress *
-    unsigned long startcode;
-    // cppcheck-suppress *
-    unsigned long endcode;
-    // cppcheck-suppress *
-    unsigned long startstack;
-    // cppcheck-suppress *
-    unsigned long kstkesp;
-    // cppcheck-suppress *
-    unsigned long signal;
-    /* obsolete lu*/
-    // cppcheck-suppress *
-    unsigned long blocked;
-    // cppcheck-suppress *
-    unsigned long sigignore;
-    // cppcheck-suppress *
-    unsigned int sigcatch;
-    // cppcheck-suppress *
-    unsigned long wchan;
-    /* no maintained lu */
-    // cppcheck-suppress *
-    unsigned long nswap;
-    // cppcheck-suppress *
-    unsigned long cnswap;
-    /* d */
-    // cppcheck-suppress *
-    int exit_signal;
-    // cppcheck-suppress *
-    int processor;
-    /* u */
-    // cppcheck-suppress *
-    unsigned rt_priority;
-    // cppcheck-suppress *
-    unsigned policy;
-    /* llu */
-    // cppcheck-suppress *
-    long long unsigned int delayacct_blkio_ticks;
-    /* lu */
-    // cppcheck-suppress *
-    unsigned long guest_time;
-    /* ld */
-    // cppcheck-suppress *
-    long cguest_time;
-  } process_state_t;
-
   ProcessInfo result;
 
-  char fn[1024];
-  snprintf(fn, sizeof(fn), "/proc/%d/stat", pid);
+  char str[1024];
+  memset(&str, 0, sizeof(str));
 
-  int fd = open(fn, O_RDONLY);
+  // build filename /proc/<pid>/stat
+  {
+    char* p = &str[0];
+
+    // a malloc-free sprintf...
+    static constexpr char const* proc = "/proc/";
+    static constexpr char const* stat = "/stat";
+    
+    // append /proc/
+    memcpy(p, proc, strlen(proc));
+    p += strlen(proc);
+    // append pid
+    p += arangodb::basics::StringUtils::itoa(uint64_t(pid), p);
+    memcpy(p, stat, strlen(stat));
+    p += strlen(stat);
+    *p = '\0';
+  }
+
+  // open file...
+  int fd = TRI_OPEN(&str[0], O_RDONLY);
 
   if (fd >= 0) {
-    char str[1024];
-    process_state_t st;
-    size_t n;
-
     memset(&str, 0, sizeof(str));
 
-    n = read(fd, str, sizeof(str));
+    ssize_t n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
     close(fd);
 
     if (n == 0) {
       return result;
     }
+  
+    /// buffer now contains all data documented by "proc"
+    /// see man 5 proc for the state of a process
 
-    // fix process name in buffer. sadly, the process name might contain
-    // whitespace
-    // and the sscanf format '%s' will not honor that
-    char* p = &str[0];
-    char* e = p + n;
-    // first skip over the process id at the start of the string
-    while (*p != '\0' && p < e && *p != ' ') {
-      ++p;
-    }
-    // skip space
-    if (p < e && *p == ' ') {
-      ++p;
-    }
-    // check if filename is contained in parentheses
-    if (p < e && *p == '(') {
-      // yes
-      ++p;
-      // now replace all whitespace within the process name with underscores
-      // otherwise the sscanf below will happily parse the string incorrectly
-      while (p < e && *p != '0' && *p != ')') {
-        if (*p == ' ') {
-          *p = '_';
-        }
-        ++p;
-      }
-    }
-
-    // cppcheck-suppress *
-    sscanf(str,
-           "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld "
-           "%ld %ld %llu %lu %ld",
-           &st.pid, (char*)&st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr,
-           &st.tpgid, &st.flags, &st.minflt, &st.cminflt, &st.majflt, &st.cmajflt,
-           &st.utime, &st.stime, &st.cutime, &st.cstime, &st.priority, &st.nice,
-           &st.num_threads, &st.itrealvalue, &st.starttime, &st.vsize, &st.rss);
-
-    result._minorPageFaults = st.minflt;
-    result._majorPageFaults = st.majflt;
-    result._userTime = st.utime;
-    result._systemTime = st.stime;
-    result._numberThreads = st.num_threads;
-    // st.rss is measured in number of pages, we need to multiply by page size
-    // to get the actual amount
-    result._residentSize = st.rss * getpagesize();
-    result._virtualSize = st.vsize;
+    char const* p = &str[0];
+    char const* e = p + n;
+    
+    skipEntry(p, e); // process id
+    skipEntry(p, e); // process name
+    skipEntry(p, e); // process state
+    skipEntry(p, e); // ppid
+    skipEntry(p, e); // pgrp
+    skipEntry(p, e); // session
+    skipEntry(p, e); // tty nr
+    skipEntry(p, e); // tpgid
+    skipEntry(p, e); // flags
+    result._minorPageFaults = readEntry<uint64_t>(p, e); // min flt
+    skipEntry(p, e); // cmin flt
+    result._majorPageFaults = readEntry<uint64_t>(p, e); // maj flt
+    skipEntry(p, e); // cmaj flt
+    result._userTime = readEntry<uint64_t>(p, e); // utime
+    result._systemTime = readEntry<uint64_t>(p, e); // stime
+    skipEntry(p, e); // cutime
+    skipEntry(p, e); // cstime
+    skipEntry(p, e); // priority
+    skipEntry(p, e); // nice
+    result._numberThreads = readEntry<int64_t>(p, e); // num threads
+    skipEntry(p, e); // itrealvalue
+    skipEntry(p, e); // starttime
+    result._virtualSize = readEntry<uint64_t>(p, e); // vsize
+    result._residentSize = readEntry<int64_t>(p, e) * PageSize::getValue(); // rss
     result._scClkTck = sysconf(_SC_CLK_TCK);
   }
 
@@ -1474,61 +1424,6 @@ bool TRI_ContinueExternalProcess(ExternalId pid) {
   return rc;
 #endif
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the physical memory
-////////////////////////////////////////////////////////////////////////////////
-
-#if defined(TRI_HAVE_MACOS_MEM_STATS)
-
-static uint64_t GetPhysicalMemory() {
-  int mib[2];
-  int64_t physicalMemory;
-  size_t length;
-
-  // Get the Physical memory size
-  mib[0] = CTL_HW;
-#ifdef TRI_HAVE_MACOS_MEM_STATS
-  mib[1] = HW_MEMSIZE;
-#else
-  mib[1] = HW_PHYSMEM;  // The bytes of physical memory. (kenel + user space)
-#endif
-  length = sizeof(int64_t);
-  sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
-
-  return (uint64_t)physicalMemory;
-}
-
-#else
-#ifdef TRI_HAVE_SC_PHYS_PAGES
-
-static uint64_t GetPhysicalMemory() {
-  long pages = sysconf(_SC_PHYS_PAGES);
-  long page_size = sysconf(_SC_PAGE_SIZE);
-
-  return (uint64_t)(pages * page_size);
-}
-
-#else
-#ifdef TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
-
-static uint64_t GetPhysicalMemory() {
-  MEMORYSTATUSEX status;
-  status.dwLength = sizeof(status);
-  GlobalMemoryStatusEx(&status);
-
-  return (uint64_t)status.ullTotalPhys;
-}
-
-#endif  // TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
-#endif
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the process components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitializeProcess() { TRI_PhysicalMemory = GetPhysicalMemory(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the process components

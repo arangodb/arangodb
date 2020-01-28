@@ -38,7 +38,6 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -214,7 +213,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
-    server.addFeature<PageSizeFeature>();
     server.addFeature<PrivilegeFeature>();
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();

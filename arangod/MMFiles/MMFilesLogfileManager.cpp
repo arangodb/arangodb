@@ -24,10 +24,10 @@
 #include "MMFilesLogfileManager.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/PageSize.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -298,7 +298,7 @@ void MMFilesLogfileManager::start() {
 #endif
 
   // needs server initialized
-  size_t pageSize = PageSizeFeature::getPageSize();
+  size_t pageSize = PageSize::getValue();
   _filesize = static_cast<uint32_t>(((_filesize + pageSize - 1) / pageSize) * pageSize);
 
   if (_directory.empty()) {

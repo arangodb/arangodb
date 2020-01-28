@@ -20,39 +20,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PageSizeFeature.h"
+#ifndef ARANGODB_BASICS_PHYSICAL_MEMORY_H
+#define ARANGODB_BASICS_PHYSICAL_MEMORY_H 1
 
-#include "Basics/operating-system.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
-
-using namespace arangodb::basics;
+#include <cstdint>
 
 namespace arangodb {
+namespace PhysicalMemory {
 
-size_t PageSizeFeature::PageSize = 0;
+/// @brief return system's physical memory
+uint64_t getValue();
 
-PageSizeFeature::PageSizeFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "PageSize") {
-  setOptional(false);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-}
-
-void PageSizeFeature::prepare() {
-  PageSize = static_cast<size_t>(getpagesize());
-  LOG_TOPIC("c6b86", TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
-}
-
+} 
 }  // namespace arangodb
+
+#endif

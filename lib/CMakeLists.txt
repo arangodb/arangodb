@@ -102,7 +102,6 @@ add_library(arango STATIC
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
-  ApplicationFeatures/PageSizeFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
@@ -123,6 +122,8 @@ add_library(arango STATIC
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
   Basics/Nonce.cpp
+  Basics/PageSize.cpp
+  Basics/PhysicalMemory.cpp
   Basics/ReadWriteLock.cpp
   Basics/ReadWriteSpinLock.cpp
   Basics/Result.cpp
@@ -204,7 +205,6 @@ add_library(arango STATIC
   Rest/VstResponse.cpp
   Rest/HttpRequest.cpp
   Rest/HttpResponse.cpp
-  Rest/InitializeRest.cpp
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/Communicator.cpp

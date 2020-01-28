@@ -20,29 +20,45 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_PAGE_SIZE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_PAGE_SIZE_FEATURE_H 1
+#include "Basics/operating-system.h"
 
-#include <stddef.h>
+#include "Basics/PageSize.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
-namespace arangodb {
-namespace application_features {
-class ApplicationServer;
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
+using namespace arangodb;
+
+namespace {
+
+// Windows variant for getpagesize()
+#ifdef _WIN32
+int pageSizeImpl() {
+  SYSTEM_INFO systemInfo;
+  GetSystemInfo(&systemInfo);
+  return systemInfo.dwPageSize;
 }
+#else
+int pageSizeImpl() {
+  return getpagesize();
+}
+#endif
 
-class PageSizeFeature final : public application_features::ApplicationFeature {
- public:
-  explicit PageSizeFeature(application_features::ApplicationServer& server);
-
-  void prepare() override final;
-  static size_t getPageSize() { return PageSize; }
-
- private:
-  static size_t PageSize;
+struct PageSizeCache {
+  PageSizeCache() : cachedValue(pageSizeImpl()) {}
+  int cachedValue;
 };
 
-}  // namespace arangodb
+PageSizeCache const cache;
 
-#endif
+} // namespace
+
+/// @brief return page size from cache
+int arangodb::PageSize::getValue() {
+  return ::cache.cachedValue;
+}

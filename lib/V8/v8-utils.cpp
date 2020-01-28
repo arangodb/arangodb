@@ -65,6 +65,7 @@
 #include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -2832,8 +2833,8 @@ static void ProcessStatisticsToV8(v8::FunctionCallbackInfo<v8::Value> const& arg
   double rss = (double)info._residentSize;
   double rssp = 0;
 
-  if (TRI_PhysicalMemory != 0) {
-    rssp = rss / TRI_PhysicalMemory;
+  if (PhysicalMemory::getValue() != 0) {
+    rssp = rss / PhysicalMemory::getValue();
   }
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),

@@ -27,6 +27,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
+#include "Basics/process-utils.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -45,13 +46,16 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Rest/InitializeRest.h"
+#include "Random/RandomGenerator.h"
+#include "Rest/Version.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -169,7 +173,17 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const*
   // SetUnhandledExceptionFilter(unhandledExceptionHandler);
 #endif
 
-  arangodb::rest::InitializeRest();
+  // global initialization
+  TRI_InitializeError();
+  TRI_InitializeFiles();
+
+  // use the rng so the linker does not remove it from the executable
+  // we might need it later because .so files might refer to the symbols
+  RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
+
+  arangodb::rest::Version::initialize();
+  VelocyPackHelper::initialize();
+
   CONTEXT = this;
 }
 
@@ -180,7 +194,9 @@ ArangoGlobalContext::~ArangoGlobalContext() {
   signal(SIGHUP, SIG_IGN);
 #endif
 
-  arangodb::rest::ShutdownRest();
+  RandomGenerator::shutdown();
+  TRI_ShutdownProcess();
+
   ADB_WindowsExitFunction(_ret, nullptr);
 }
 

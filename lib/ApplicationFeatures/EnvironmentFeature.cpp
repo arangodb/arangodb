@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/operating-system.h"
@@ -220,7 +221,7 @@ void EnvironmentFeature::prepare() {
           int res = sysinfo(&info);
           if (res == 0) {
             double swapSpace = static_cast<double>(info.totalswap);
-            double ram = static_cast<double>(TRI_PhysicalMemory);
+            double ram = static_cast<double>(PhysicalMemory::getValue());
             double rr = (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
             if (static_cast<double>(r) < 0.99 * rr) {
               LOG_TOPIC("b0a75", WARN, Logger::MEMORY)

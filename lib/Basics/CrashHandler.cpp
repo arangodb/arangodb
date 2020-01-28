@@ -39,8 +39,10 @@
 #endif
 
 #include "CrashHandler.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/process-utils.h"
 #include "Basics/signals.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LogMacros.h"
@@ -97,7 +99,7 @@ size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize
   appendNullTerminatedString(")", p);
   
   if (signal == SIGSEGV || signal == SIGBUS) {
-    // dump address that was accessed when the failure occurred (this is very likely
+    // dump address that was accessed when the failure occurred (this is somewhat likely
     // a nullptr)
     appendNullTerminatedString(" accessing address 0x", p);
     char chars[] = "0123456789abcdef";
@@ -129,8 +131,9 @@ void crashHandler(int signal, siginfo_t* info, void*) {
   sigaction(signal, &act, nullptr);
   
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // prints a backtrace just in maintainer mode, and only if ARANGODB_ENABLE_BACKTRACE
-  // is defined. Will do nothing in production
+  // prints a backtrace in maintainer mode, if and only if ARANGODB_ENABLE_BACKTRACE
+  // is defined. Will call malloc and other async-unsafe ops. But will not do anything
+  // in production.
   TRI_PrintBacktrace();
 #endif
 
@@ -144,7 +147,7 @@ void crashHandler(int signal, siginfo_t* info, void*) {
     void* traces[maxFrames];
     int skipFrames = 2;
     int numFrames = backtrace(traces, maxFrames);
-    
+ 
     char* p = &buffer[0];
     size_t length = buildLogMessage(p, signal, info, numFrames - skipFrames);
     // note: LOG_TOPIC() will allocate memory
@@ -159,16 +162,34 @@ void crashHandler(int signal, siginfo_t* info, void*) {
         appendNullTerminatedString("- frame #", p);
         p += arangodb::basics::StringUtils::itoa(uint64_t(i), p);
         appendNullTerminatedString(": ", p);
-        if (strlen(stack[i]) <= 256) {
+        if (strlen(stack[i]) <= sizeof(buffer) / 2) {
+          // only append stack trace to buffer if it is safe (i.e. short enough to append it)
           appendNullTerminatedString(stack[i], p);
 
           LOG_TOPIC("308c2", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
         }
       }
       free(stack);
+      arangodb::Logger::flush();
     }
-    
-    arangodb::Logger::flush();
+   
+    {
+      auto processInfo = TRI_ProcessInfoSelf();
+      memset(&buffer[0], 0, sizeof(buffer));
+      p = &buffer[0];
+      appendNullTerminatedString("physical memory: ", p);
+      p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(), p);
+      appendNullTerminatedString(", rss usage: ", p);
+      p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize), p);
+      appendNullTerminatedString(", vsz usage: ", p);
+      p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize), p);
+      appendNullTerminatedString(" threads: ", p);
+      p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
+      
+      LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+      arangodb::Logger::flush();
+    }
+
     arangodb::Logger::shutdown();
   } catch (...) {
     // we better not throw an exception from inside a signal handler

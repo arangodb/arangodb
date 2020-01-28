@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Rest/GeneralRequest.h"
@@ -108,7 +109,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   result->Set(TRI_V8_ASCII_STRING(isolate, "uptime"),
               v8::Number::New(isolate, (double)info._uptime));
   result->Set(TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
-              v8::Number::New(isolate, (double)TRI_PhysicalMemory));
+              v8::Number::New(isolate, (double)PhysicalMemory::getValue()));
 
   // transaction info
   auto const& ts = info._transactionsStatistics;
