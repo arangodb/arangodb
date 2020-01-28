@@ -15,6 +15,8 @@ devel
   and do not have proper support for integer numbers requiring more than 4 byte
   storage.
 
+* added `REPLACE_NTH` AQL function to replace a member inside an array.
+
 * Added JWT secret rotation (Enterprise only).
 
 * The `--dump-options` command for arangod now also provides the "components"

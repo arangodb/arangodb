@@ -310,6 +310,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"REMOVE_VALUE", ".,.|.", flags, &Functions::RemoveValue});
   add({"REMOVE_VALUES", ".,.", flags, &Functions::RemoveValues});
   add({"REMOVE_NTH", ".,.", flags, &Functions::RemoveNth});
+  add({"REPLACE_NTH", ".,.,.|.", flags, &Functions::ReplaceNth});
 
   // special flags:
   // CALL and APPLY will always run on the coordinator and are not deterministic
