@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed issue #10949: k shortest paths behaviour wrong with zero weights.
+
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
 
 * Added JWT secret rotation (Enterprise only).
