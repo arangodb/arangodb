@@ -1098,6 +1098,8 @@ struct BaseCallAsserter {
     }
   }
 
+  auto getNumberCalls() const -> size_t { return call; }
+
   virtual auto gotCalledWithoutTrace(AqlCall const& got) -> void = 0;
 };
 
@@ -1338,6 +1340,39 @@ class ExecutionBlockImplExecuteIntegrationTest
   bool doesWaiting() const {
     auto const [call, waits] = GetParam();
     return waits;
+  }
+
+  /**
+   * @brief Assert that the given value is equal to the given number
+   *
+   * @param block The AqlItemBlock the value is stored in
+   * @param row The row number of the value
+   * @param reg The register number of the value
+   * @param expected the expected number
+   */
+  auto AssertValueEquals(SharedAqlItemBlockPtr const& block, size_t row,
+                         RegisterId reg, size_t expected) const -> void {
+    ASSERT_NE(block, nullptr);
+    ASSERT_GT(block->size(), row);
+    ASSERT_GE(block->getNrRegs(), reg);
+    auto const& value = block->getValueReference(row, reg);
+    ASSERT_TRUE(value.isNumber());
+    EXPECT_EQ(static_cast<size_t>(value.toInt64()), expected);
+  }
+
+  /**
+   * @brief Assert that the given row in the block, is a shadow row of the expected depth
+   *
+   * @param block The AqlItemBlock the row is stored in
+   * @param row The shadow row number
+   * @param expected The expected depth
+   */
+  auto AssertIsShadowRowOfDepth(SharedAqlItemBlockPtr const& block, size_t row,
+                                size_t expected) -> void {
+    ASSERT_NE(block, nullptr);
+    ASSERT_GT(block->size(), row);
+    ASSERT_TRUE(block->isShadowRow(row));
+    EXPECT_EQ(block->getShadowRowDepth(row), expected);
   }
 
   /**
@@ -2321,6 +2356,121 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, multiple_subqueries) {
       ValidateShadowRow(block, block->size() - 2, 0);
       ValidateShadowRow(block, block->size() - 1, 1);
     }
+  }
+}
+
+// Test empty subquery.
+// We cannot do a passthrough test here, as the UpstreamBlock does not
+// support shadow rows and would create errors, if an offset is forwarded to it.
+TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  {
+    // Here we prepare the following:
+    // 1 query with 1 row + 2 ShadowRows (depth 0, depth 1)
+    // 1 query with 0 row + 1 ShadowRows (depth 0)
+    // 1 query with 0 row + 2 ShadowRow (depth 0, depth 1)
+    SharedAqlItemBlockPtr block =
+        buildBlock<1>(fakedQuery->engine()->itemBlockManager(),
+                      {{1}, {2}, {3}, {4}, {5}, {6}},
+                      {{1, 0}, {2, 1}, {3, 0}, {4, 0}, {5, 1}});
+    blockDeque.push_back(std::move(block));
+  }
+  auto singleton = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      doesWaiting() ? WaitingExecutionBlockMock::WaitingBehaviour::ONCE
+                    : WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  RegisterId outReg = 0;
+  CallAsserter getAsserter{getCall()};
+  SkipCallAsserter skipAsserter{getCall()};
+  auto testee = forwardBlock(getAsserter, skipAsserter, singleton.get(), outReg);
+
+  AqlCallStack stack{getCall()};
+  if (doesWaiting()) {
+    // we only wait exactly once, only one block upstream that is not sliced.
+    auto const& [state, skipped, block] = testee.execute();
+    EXPECT_EQ(state, ExecutionState::WAITING);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+  }
+  auto call = getCall();
+  bool skip = call.offset() > 0;
+  {
+    // First subquery
+    auto const& [state, skipped, block] = testee.execute();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_NE(block, nullptr);
+    if (skip) {
+      EXPECT_EQ(skipped, 1);
+      EXPECT_EQ(block->size(), 2);
+    } else {
+      EXPECT_EQ(skipped, 0);
+      EXPECT_EQ(block->size(), 3);
+    }
+    size_t row = 0;
+    if (!skip) {
+      ASSERT_FALSE(block->isShadowRow(row));
+      AssertValueEquals(block, row, outReg, 1);
+      row++;
+    }
+    AssertIsShadowRowOfDepth(block, row, 0);
+    AssertValueEquals(block, row, outReg, 2);
+    row++;
+    AssertIsShadowRowOfDepth(block, row, 1);
+    AssertValueEquals(block, row, outReg, 3);
+    if (skip) {
+      // first empty input, then we skip input
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 2);
+      // we need to call getSome never
+      EXPECT_EQ(getAsserter.getNumberCalls(), 0);
+    } else {
+      // we do not skip
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 0);
+      // first empty input, then we produce input
+      EXPECT_EQ(getAsserter.getNumberCalls(), 2);
+    }
+    getAsserter.reset();
+    skipAsserter.reset();
+  }
+
+  {
+    // Second subquery
+    auto const& [state, skipped, block] = testee.execute();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_NE(block, nullptr);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block->size(), 1);
+    size_t row = 0;
+    AssertIsShadowRowOfDepth(block, row, 0);
+    AssertValueEquals(block, row, outReg, 4);
+    if (skip) {
+      // wo do not have empty input, we can skip
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 1);
+      // we need to call getSome never
+      EXPECT_EQ(getAsserter.getNumberCalls(), 0);
+    } else {
+      // we do not skip
+      EXPECT_EQ(skipAsserter.getNumberCalls(), 0);
+      // wo do not have empty input, we can produce
+      EXPECT_EQ(getAsserter.getNumberCalls(), 1);
+    }
+    getAsserter.reset();
+    skipAsserter.reset();
+  }
+
+  {
+    // Third subquery
+    auto const& [state, skipped, block] = testee.execute();
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    ASSERT_NE(block, nullptr);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block->size(), 1);
+    size_t row = 0;
+    AssertIsShadowRowOfDepth(block, row, 0);
+    AssertValueEquals(block, row, outReg, 4);
+    // TODO assert that the asserters are called exactly.
+    getAsserter.reset();
+    skipAsserter.reset();
   }
 }
 
