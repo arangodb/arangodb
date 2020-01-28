@@ -1,6 +1,11 @@
 devel
 -----
 
+* remove unused REST API /_admin/aql/reload, and make the JavaScript bindings
+  for `internal.reloadAqlFunctions()` do nothing. The reason for this is that 
+  AQL functions are automatically reloaded when functions are changed, and
+  there is no need to call these APIs manually.
+
 * Fixed issue #10949: k shortest paths behavior wrong with zero weights.
 
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
