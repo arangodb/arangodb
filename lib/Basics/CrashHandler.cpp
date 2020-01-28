@@ -177,13 +177,13 @@ void crashHandler(int signal, siginfo_t* info, void*) {
       auto processInfo = TRI_ProcessInfoSelf();
       memset(&buffer[0], 0, sizeof(buffer));
       p = &buffer[0];
-      appendNullTerminatedString("physical memory: ", p);
+      appendNullTerminatedString("available physical memory: ", p);
       p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(), p);
       appendNullTerminatedString(", rss usage: ", p);
       p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize), p);
       appendNullTerminatedString(", vsz usage: ", p);
       p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize), p);
-      appendNullTerminatedString(" threads: ", p);
+      appendNullTerminatedString(", threads: ", p);
       p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
       
       LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
