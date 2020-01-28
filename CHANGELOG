@@ -6,7 +6,7 @@ devel
   AQL functions are automatically reloaded when functions are changed, and
   there is no need to call these APIs manually.
 
-* Fixed issue #10949: k shortest paths behaviour wrong with negative weights.
+* Fixed issue #10949: k shortest paths behavior wrong with zero weights.
 
 * added `REPLACE_NTH` AQL function to replace a member inside an array.
 
