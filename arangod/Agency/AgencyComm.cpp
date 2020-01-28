@@ -102,7 +102,7 @@ void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
         case AgencyPrecondition::Type::VALUE:
           builder.add("old", value);
           break;
-        case AgencyPrecondition::Type::IN:
+        case AgencyPrecondition::Type::TYPEIN:
           builder.add("in", value);
           break;
         case AgencyPrecondition::Type::NOTIN:
