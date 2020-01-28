@@ -187,6 +187,7 @@ static void EnvDeleter(v8::Local<v8::Name> property,
 static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 #ifndef _WIN32
   int size = 0;
   while (environ[size]) {
@@ -194,7 +195,6 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   }
 
   v8::Local<v8::Array> envarr = v8::Array::New(isolate);
-  auto context = TRI_IGETC;
   int j = 0;
   for (int i = 0; i < size; ++i) {
     char const* var = environ[i];
