@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
 #define ARANGOD_AQL_SUBQUERY_START_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 
@@ -49,7 +51,7 @@ class SubqueryStartExecutor {
   using Infos = ExecutorInfos;
   using Stats = NoStats;
   SubqueryStartExecutor(Fetcher& fetcher, Infos& infos);
-  ~SubqueryStartExecutor();
+  ~SubqueryStartExecutor() = default;
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -58,6 +60,10 @@ class SubqueryStartExecutor {
    *         if something was written output.hasValue() == true
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
 
   /**
    * @brief Estimate of expected number of rows.
@@ -79,14 +85,11 @@ class SubqueryStartExecutor {
   auto static stateToString(State state) -> std::string;
 
  private:
-  // Fetcher to get data.
-  Fetcher& _fetcher;
-
   // Upstream state, used to determine if we are done with all subqueries
-  ExecutionState _upstreamState{ExecutionState::HASMORE};
+  ExecutorState _upstreamState{ExecutorState::HASMORE};
 
   // Cache for the input row we are currently working on
-  InputAqlItemRow _input{CreateInvalidInputRowHint{}};
+  InputAqlItemRow _inputRow{CreateInvalidInputRowHint{}};
 
   // Internal state
   State _internalState{State::READ_DATA_ROW};

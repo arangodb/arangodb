@@ -30,100 +30,122 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher) {}
-SubqueryStartExecutor::~SubqueryStartExecutor() = default;
+SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos) {}
 
 std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_ASSERT(false);
+}
+
+auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (!output.isFull()) {
     switch (_internalState) {
       case State::READ_DATA_ROW: {
-        TRI_ASSERT(!_input.isInitialized());
-        if (_upstreamState == ExecutionState::DONE) {
-          return {ExecutionState::DONE, NoStats{}};
-        }
-        // We need to round the number of rows, otherwise this might be called
-        // with atMost == 0 Note that we must not set _upstreamState to DONE
-        // here, as fetchRow will report DONE when encountering a shadow row.
-        auto rowWithStates =
-            _fetcher.fetchRowWithGlobalState((output.numRowsLeft() + 1) / 2);
-        _input = std::move(rowWithStates.row);
-        if (rowWithStates.localState == ExecutionState::WAITING) {
-          return {ExecutionState::WAITING, NoStats{}};
-        }
-        TRI_ASSERT(_upstreamState == ExecutionState::HASMORE);
-        TRI_ASSERT(rowWithStates.globalState == ExecutionState::HASMORE ||
-                   rowWithStates.globalState == ExecutionState::DONE);
-        // This can only switch from HASMORE to DONE
-        _upstreamState = rowWithStates.globalState;
-        if (!_input.isInitialized()) {
-          TRI_ASSERT(rowWithStates.localState == ExecutionState::DONE);
-          _internalState = State::PASS_SHADOW_ROW;
-        } else {
+        TRI_ASSERT(!_inputRow.isInitialized());
+
+        if (input.hasDataRow()) {
+          std::tie(_upstreamState, _inputRow) = input.nextDataRow();
           _internalState = State::PRODUCE_DATA_ROW;
+        } else {
+          // might have shadow rows we need to pass through
+          _internalState = State::PASS_SHADOW_ROW;
         }
       } break;
       case State::PRODUCE_DATA_ROW: {
         TRI_ASSERT(!output.isFull());
-        TRI_ASSERT(_input.isInitialized());
-        output.copyRow(_input);
+        TRI_ASSERT(_inputRow.isInitialized());
+        output.copyRow(_inputRow);
         output.advanceRow();
         _internalState = State::PRODUCE_SHADOW_ROW;
       } break;
       case State::PRODUCE_SHADOW_ROW: {
-        TRI_ASSERT(_input.isInitialized());
-        output.createShadowRow(_input);
+        TRI_ASSERT(_inputRow.isInitialized());
+        output.createShadowRow(_inputRow);
         output.advanceRow();
-        _input = InputAqlItemRow(CreateInvalidInputRowHint{});
+        _inputRow = InputAqlItemRow(CreateInvalidInputRowHint{});
         _internalState = State::READ_DATA_ROW;
       } break;
       case State::PASS_SHADOW_ROW: {
-        if (_upstreamState == ExecutionState::DONE) {
-          return {ExecutionState::DONE, NoStats{}};
-        }
         // We need to handle shadowRows now. It is the job of this node to
         // increase the shadow row depth
-        auto const [state, shadowRow] = _fetcher.fetchShadowRow();
-        if (state == ExecutionState::WAITING) {
-          return {ExecutionState::WAITING, NoStats{}};
-        }
-        TRI_ASSERT(_upstreamState == ExecutionState::HASMORE);
-        TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
-        // This can only switch from HASMORE to DONE
-        _upstreamState = state;
-        if (shadowRow.isInitialized()) {
+        if (input.hasShadowRow()) {
+          ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
+          std::tie(_upstreamState, shadowRow) = input.nextShadowRow();
           output.increaseShadowRowDepth(shadowRow);
           output.advanceRow();
-          // stay in state PASS_SHADOW_ROW
         } else {
-          _internalState = State::READ_DATA_ROW;
+          if (_upstreamState == ExecutorState::DONE) {
+            return {ExecutorState::DONE, NoStats{}, AqlCall{}};
+          } else {
+            _internalState = State::READ_DATA_ROW;
+          }
         }
       } break;
     }
   }
 
+  // When we reach here, then output is full
   if (_internalState == State::READ_DATA_ROW || _internalState == State::PASS_SHADOW_ROW) {
-    TRI_ASSERT(!_input.isInitialized());
-    return {_upstreamState, NoStats{}};
+    TRI_ASSERT(!_inputRow.isInitialized());
+    return {_upstreamState, NoStats{}, AqlCall{}};
   }
   // PRODUCE_DATA_ROW should always immediately be processed without leaving the
   // loop
   TRI_ASSERT(_internalState == State::PRODUCE_SHADOW_ROW);
-  TRI_ASSERT(_input.isInitialized());
-  return {ExecutionState::HASMORE, NoStats{}};
+  TRI_ASSERT(_inputRow.isInitialized());
+  return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
 }
 
-std::pair<ExecutionState, size_t> SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const {
-  auto const [state, upstreamRows] = _fetcher.preFetchNumberOfRows(atMost);
+auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, size_t, AqlCall> {
+  auto skipped = size_t{0};
+  while (call.shouldSkip()) {
+    switch (_internalState) {
+      case State::READ_DATA_ROW: {
+        TRI_ASSERT(!_inputRow.isInitialized());
+
+        if (input.hasDataRow()) {
+          std::tie(_upstreamState, _inputRow) = input.nextDataRow();
+        } else {
+          // might have shadow rows we need to pass through
+          _internalState = State::PASS_SHADOW_ROW;
+        }
+      } break;
+      case State::PRODUCE_DATA_ROW: {
+        call.didSkip(1);
+        skipped++;
+        _internalState = State::READ_DATA_ROW;
+      } break;
+      case State::PRODUCE_SHADOW_ROW: {
+        TRI_ASSERT(false);
+      } break;
+      case State::PASS_SHADOW_ROW: {
+        TRI_ASSERT(false);
+      } break;
+    }
+  }
+
+  return {_upstreamState, skipped, AqlCall{}};
+}
+
+// FIXME: we cannot prefetch anything
+//        because we dont' have a fetcher
+auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
+    -> std::pair<ExecutionState, size_t> {
+  TRI_ASSERT(false);
+
+  auto state = ExecutionState{ExecutionState::HASMORE};
+  auto upstreamRows = size_t{2 * atMost};
+  //   auto const [state, upstreamRows] = _fetcher.preFetchNumberOfRows(atMost);
   // We will write one shadow row per input data row.
   // We might write less on all shadow rows in input, right now we do not figure this out yes.
-  TRI_ASSERT( _input.isInitialized() == (_internalState == State::PRODUCE_SHADOW_ROW));
+  TRI_ASSERT(_inputRow.isInitialized() == (_internalState == State::PRODUCE_SHADOW_ROW));
   TRI_ASSERT(_internalState != State::PRODUCE_DATA_ROW);
 
-  // Return 1 if _input.isInitialized(), and 0 otherwise. Looks more complicated
-  // than it is.
+  // Return 1 if _input.isInitialized(), and 0 otherwise. Looks more
+  // complicated than it is.
   auto const localRows = [this]() {
-    if (_input.isInitialized()) {
+    if (_inputRow.isInitialized()) {
       switch (_internalState) {
         case State::PRODUCE_SHADOW_ROW:
           return 1;

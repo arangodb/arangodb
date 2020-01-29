@@ -158,7 +158,9 @@ static bool constexpr isNewStyleExecutor() {
       std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
       std::is_same_v<Executor, FilterExecutor> ||
-      std::is_same_v<Executor, ShortestPathExecutor>;
+      std::is_same_v<Executor, ShortestPathExecutor> ||
+      std::is_same_v<Executor, SubqueryStartExecutor> ||
+      std::is_same_v<Executor, SubqueryEndExecutor>;
 }
 
 template <class Executor>
@@ -1126,7 +1128,9 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                                    (std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
 #endif
                                    std::is_same_v<Executor, FilterExecutor> ||
-                                   std::is_same_v<Executor, ShortestPathExecutor>),
+                                   std::is_same_v<Executor, ShortestPathExecutor> ||
+                                   std::is_same_v<Executor, SubqueryStartExecutor> ||
+                                   std::is_same_v<Executor, SubqueryEndExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
