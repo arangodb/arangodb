@@ -549,7 +549,7 @@ void H2Connection<T>::queueHttp2Requests() {
     if (req.acceptType() != ContentType::Custom) {
       accept = to_string(req.acceptType());
       nva.push_back({(uint8_t*)"accept", (uint8_t*)accept.c_str(), 6,
-                     type.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
+                     accept.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
     }
 
     bool haveAuth = false;
@@ -581,7 +581,7 @@ void H2Connection<T>::queueHttp2Requests() {
         req.header.restVerb != RestVerb::Head) {
       len = std::to_string(req.payloadSize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
-                     len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
+                     len.size(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
       
       if (req.payloadSize() > 0) {
         prd.source.ptr = strm.get();

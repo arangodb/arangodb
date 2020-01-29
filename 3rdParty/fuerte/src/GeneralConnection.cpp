@@ -107,7 +107,6 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
   _receiveBuffer.consume(_receiveBuffer.size());
   abortOngoingRequests(err);
 
-  std::cout << "shutting down stream\n";
   _proto.shutdown([=, self(shared_from_this())](auto const& ec) {
     if (mayRestart && requestsLeft() > 0) {
       startConnection();
