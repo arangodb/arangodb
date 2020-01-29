@@ -951,7 +951,7 @@ class SortedCollectExecutorTestSplit : public ::testing::Test {
 
   SortedCollectExecutorTestSplit()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        fakedQuery(server.createFakeQuery(true)),
+        fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         readableInputRegisters({0}),
@@ -979,7 +979,7 @@ TEST_F(SortedCollectExecutorTestSplit, split_1) {
       .setInputSplit({2, 3})
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
       .expectOutputValueList(3, 4)
-      .expectSkipped(5)
+      .expectSkipped(3)
       .expectedState(ExecutionState::DONE)
       .run(std::move(infos));
 }
@@ -994,6 +994,7 @@ TEST_F(SortedCollectExecutorTestSplit, split_2) {
       .expectedState(ExecutionState::HASMORE)
       .run(std::move(infos));
 }
+
 /*
 newTest <SortedCollectExecutor> ()
     .setValues(1, 1, 1, 2, 3, 4, 4, 5)
