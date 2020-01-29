@@ -185,9 +185,9 @@ struct ExecutorTestHelper {
     SharedAqlItemBlockPtr inputBlock =
         buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
     blockDeque.emplace_back(inputBlock);
-    return std::make_unique<WaitingExecutionBlockMock>(_query.engine(),
-                                                       _dummyNode.get(),
-                                                       std::move(blockDeque));
+    return std::make_unique<WaitingExecutionBlockMock>(
+        _query.engine(), _dummyNode.get(), std::move(blockDeque),
+        WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   }
 
   AqlCall call;
