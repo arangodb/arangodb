@@ -6534,6 +6534,63 @@ AqlValue Functions::RemoveNth(ExpressionContext* expressionContext,
   return AqlValue(builder.get());
 }
 
+/// @brief function ReplaceNth
+AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction::Methods* trx,
+                               VPackFunctionParameters const& parameters) {
+  // cppcheck-suppress variableScope
+  static char const* AFN = "REPLACE_NTH";
+
+  AqlValue const& baseArray = extractFunctionParameterValue(parameters, 0);
+  AqlValue const& offset = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& newValue = extractFunctionParameterValue(parameters, 2);
+  AqlValue const& paddValue = extractFunctionParameterValue(parameters, 3);
+
+  bool havePadValue = parameters.size() == 4;
+
+  if (offset.isNull(true) || offset.toInt64() < 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+  uint64_t replaceOffset = static_cast<uint64_t>(offset.toInt64());
+
+  if (!baseArray.isArray()) {
+    registerInvalidArgumentWarning(expressionContext, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  if (baseArray.length() < replaceOffset && !havePadValue) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice arraySlice = materializer.slice(baseArray, false);
+  VPackSlice replaceValue = materializer.slice(newValue, false);
+  
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+
+  VPackArrayIterator it(arraySlice);
+  while (it.valid()) {
+    if (it.index() != replaceOffset) {
+      builder->add(it.value());
+    } else {
+      builder->add(replaceValue);
+    }
+    it.next();
+  }
+
+  uint64_t pos = arraySlice.length();
+  if (replaceOffset >= baseArray.length()) {
+    VPackSlice paddVpValue = materializer.slice(paddValue, false);
+    while (pos < replaceOffset) {
+      builder->add(paddVpValue);
+      ++pos;
+    }
+    builder->add(replaceValue);
+  }
+  builder->close();
+  return AqlValue(builder.get());
+}
+
 /// @brief function NOT_NULL
 AqlValue Functions::NotNull(ExpressionContext*, transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
