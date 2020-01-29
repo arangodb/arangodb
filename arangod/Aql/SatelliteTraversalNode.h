@@ -29,6 +29,7 @@
 namespace arangodb::aql {
 
 class SatelliteTraversalNode : public TraversalNode, public CollectionAccessingNode {
+ public:
   SatelliteTraversalNode(TraversalNode&& traversalNode, aql::Collection const& collection);
 };
 

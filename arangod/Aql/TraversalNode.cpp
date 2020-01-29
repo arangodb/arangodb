@@ -820,7 +820,7 @@ void TraversalNode::checkConditionsDefined() const {
   TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 }
 
-bool TraversalNode::isEligibleAsSatelliteTraversal() {
+bool TraversalNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
 

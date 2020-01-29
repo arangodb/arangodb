@@ -1523,7 +1523,13 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
   }
   graph::GraphManager graphManager{_vocbase, _contextOwnedByExterior};
 
+#ifdef USE_ENTERPRISE
+  // TODO: create with proper constructor
   auto g = graphManager.lookupGraphByName(name);
+#else
+  auto g = graphManager.lookupGraphByName(name);
+#endif
+
 
   if (g.fail()) {
     return nullptr;

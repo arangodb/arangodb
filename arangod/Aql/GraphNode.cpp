@@ -291,6 +291,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     if (base.hasKey("graph") && (base.get("graph").isString())) {
       graphName = base.get("graph").copyString();
       if (base.hasKey("graphDefinition")) {
+        // load graph and store pointer
         _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
 
         if (_graphObj == nullptr) {

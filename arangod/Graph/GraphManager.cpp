@@ -563,7 +563,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
 #ifdef USE_ENTERPRISE
   {
-    Result res = ensureSmartCollectionSharding(graph, waitForSync, documentCollectionsToCreate);
+    Result res = ensureEnterpriseCollectionSharding(graph, waitForSync, documentCollectionsToCreate);
     if (res.fail()) {
       return res;
     }

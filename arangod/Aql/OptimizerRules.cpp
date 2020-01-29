@@ -3614,7 +3614,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, false);
 }
 
-static void arangodb::aql::createScatterGatherSnippet(
+void arangodb::aql::createScatterGatherSnippet(
     ExecutionPlan& plan, TRI_vocbase_t* vocbase,
     ExecutionNode* node, SortElementVector& elements, size_t numberOfShards,
     std::unordered_map<ExecutionNode*, ExecutionNode*>& subqueries) {
