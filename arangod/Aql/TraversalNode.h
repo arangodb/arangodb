@@ -94,9 +94,11 @@ class TraversalNode : public GraphNode {
                 std::unique_ptr<graph::BaseOptions> options);
 
  protected:
-  /// @brief Move from another traversal node. Used to create a
-  /// SatelliteTraversalNode from a TraversalNode, see the constructor there.
-  TraversalNode(TraversalNode&& other);
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  TraversalNode(ExecutionPlan& plan, TraversalNode const& other);
 
  public:
   /// @brief return the type of the node
@@ -200,6 +202,10 @@ class TraversalNode : public GraphNode {
   // @brief Get reference to the Prune expression.
   //        You are not responsible for it!
   Expression* pruneExpression() const { return _pruneExpression.get(); }
+
+  /// @brief Overrides GraphNode::Options with a more specific return type
+  ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
+  auto options() const -> traverser::TraverserOptions*;
 
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

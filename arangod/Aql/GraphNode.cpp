@@ -401,12 +401,17 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       _options(std::move(options)),
       _optionsBuilt(false),
       _isSmart(false) {
+  setGraphInfoAndCopyColls(edgeColls, vertexColls);
+}
+
+void GraphNode::setGraphInfoAndCopyColls(std::vector<std::unique_ptr<Collection>> const& edgeColls,
+                                         std::vector<std::unique_ptr<Collection>> const& vertexColls) {
   _graphInfo.openArray();
   for (auto& it : edgeColls) {
     // Collections cannot be copied. So we need to create new ones to prevent
     // leaks
-    _edgeColls.emplace_back(std::make_unique<aql::Collection>(it->name(), _vocbase,
-                                                              AccessMode::Type::READ));
+    _edgeColls.emplace_back(std::make_unique<Collection>(it->name(), _vocbase,
+                                                         AccessMode::Type::READ));
     _graphInfo.add(VPackValue(it->name()));
   }
   _graphInfo.close();
@@ -415,8 +420,25 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     // Collections cannot be copied. So we need to create new ones to prevent
     // leaks
     _vertexColls.emplace_back(
-        std::make_unique<aql::Collection>(it->name(), _vocbase, AccessMode::Type::READ));
+        std::make_unique<Collection>(it->name(), _vocbase, AccessMode::Type::READ));
   }
+}
+
+GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
+                     std::unique_ptr<graph::BaseOptions> options)
+    : ExecutionNode(plan, other),
+      _vocbase(other._vocbase),
+      _vertexOutVariable(nullptr),
+      _edgeOutVariable(nullptr),
+      _graphObj(nullptr),
+      _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
+      _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
+      _tmpIdNode(_plan->getAst()->createNodeValueString("", 0)),
+      _directions(other._directions),
+      _options(std::move(options)),
+      _optionsBuilt(false),
+      _isSmart(false) {
+  setGraphInfoAndCopyColls(other.edgeColls(), other.vertexColls());
 }
 
 std::string const& GraphNode::collectionToShardName(std::string const& collName) const {

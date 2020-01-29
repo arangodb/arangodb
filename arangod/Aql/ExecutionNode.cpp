@@ -463,6 +463,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   _isInSplicedSubquery = VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
 }
 
+ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
+    : ExecutionNode(&plan, other.id()) {
+  TRI_ASSERT(&plan == other.plan());
+  other.cloneWithoutRegisteringAndDependencies(plan, *this, false);
+}
+
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
 void ExecutionNode::toVelocyPack(VPackBuilder& builder, unsigned flags,
                                  bool keepTopLevelOpen) const {
@@ -485,51 +491,7 @@ ExecutionNode* ExecutionNode::cloneHelper(std::unique_ptr<ExecutionNode> other,
                                           bool withDependencies, bool withProperties) const {
   ExecutionPlan* plan = other->plan();
 
-  if (plan == _plan) {
-    // same execution plan for source and target
-    // now assign a new id to the cloned node, otherwise it will fail
-    // upon node registration and/or its meaning is ambiguous
-    other->setId(plan->nextId());
-
-    // cloning with properties will only work if we clone a node into
-    // a different plan
-    TRI_ASSERT(!withProperties);
-  }
-
-  other->_regsToClear = _regsToClear;
-  other->_depth = _depth;
-  other->_varUsageValid = _varUsageValid;
-  other->_isInSplicedSubquery = _isInSplicedSubquery;
-
-  if (withProperties) {
-    auto allVars = plan->getAst()->variables();
-    // Create new structures on the new AST...
-    other->_varsUsedLater.reserve(_varsUsedLater.size());
-    for (auto const& orgVar : _varsUsedLater) {
-      auto var = allVars->getVariable(orgVar->id);
-      TRI_ASSERT(var != nullptr);
-      other->_varsUsedLater.insert(var);
-    }
-
-    other->_varsValid.reserve(_varsValid.size());
-
-    for (auto const& orgVar : _varsValid) {
-      auto var = allVars->getVariable(orgVar->id);
-      TRI_ASSERT(var != nullptr);
-      other->_varsValid.insert(var);
-    }
-
-    if (_registerPlan.get() != nullptr) {
-      auto otherRegisterPlan =
-          std::shared_ptr<RegisterPlan>(_registerPlan->clone(plan, _plan));
-      other->_registerPlan = otherRegisterPlan;
-    }
-  } else {
-    // point to current AST -> don't do deep copies.
-    other->_varsUsedLater = _varsUsedLater;
-    other->_varsValid = _varsValid;
-    other->_registerPlan = _registerPlan;
-  }
+  cloneWithoutRegisteringAndDependencies(*plan, *other, withProperties);
 
   auto* registeredNode = plan->registerNode(std::move(other));
 
@@ -538,6 +500,55 @@ ExecutionNode* ExecutionNode::cloneHelper(std::unique_ptr<ExecutionNode> other,
   }
 
   return registeredNode;
+}
+
+void ExecutionNode::cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan, ExecutionNode& other, bool withProperties) const {
+
+  if (&plan == _plan) {
+    // same execution plan for source and target
+    // now assign a new id to the cloned node, otherwise it will fail
+    // upon node registration and/or its meaning is ambiguous
+    other.setId(plan.nextId());
+
+    // cloning with properties will only work if we clone a node into
+    // a different plan
+    TRI_ASSERT(!withProperties);
+  }
+
+  other._regsToClear = _regsToClear;
+  other._depth = _depth;
+  other._varUsageValid = _varUsageValid;
+  other._isInSplicedSubquery = _isInSplicedSubquery;
+
+  if (withProperties) {
+    auto allVars = plan.getAst()->variables();
+    // Create new structures on the new AST...
+    other._varsUsedLater.reserve(_varsUsedLater.size());
+    for (auto const& orgVar : _varsUsedLater) {
+      auto var = allVars->getVariable(orgVar->id);
+      TRI_ASSERT(var != nullptr);
+      other._varsUsedLater.insert(var);
+    }
+
+    other._varsValid.reserve(_varsValid.size());
+
+    for (auto const& orgVar : _varsValid) {
+      auto var = allVars->getVariable(orgVar->id);
+      TRI_ASSERT(var != nullptr);
+      other._varsValid.insert(var);
+    }
+
+    if (_registerPlan.get() != nullptr) {
+      auto otherRegisterPlan =
+          std::shared_ptr<RegisterPlan>(_registerPlan->clone(&plan, _plan));
+      other._registerPlan = otherRegisterPlan;
+    }
+  } else {
+    // point to current AST -> don't do deep copies.
+    other._varsUsedLater = _varsUsedLater;
+    other._varsValid = _varsValid;
+    other._registerPlan = _registerPlan;
+  }
 }
 
 /// @brief helper for cloning, use virtual clone methods for dependencies
@@ -1067,8 +1078,6 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, size_t id)
     : _id(id), _depth(0), _varUsageValid(false), _plan(plan), _isInSplicedSubquery(false) {}
-
-ExecutionNode::~ExecutionNode() = default;
 
 size_t ExecutionNode::id() const { return _id; }
 

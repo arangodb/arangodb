@@ -67,6 +67,13 @@ class GraphNode : public ExecutionNode {
             std::vector<TRI_edge_direction_e> directions,
             std::unique_ptr<graph::BaseOptions> options);
 
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  GraphNode(ExecutionPlan& plan, GraphNode const& other,
+            std::unique_ptr<graph::BaseOptions> options);
+
   std::string const& collectionToShardName(std::string const& collName) const;
 
  public:
@@ -150,6 +157,9 @@ class GraphNode : public ExecutionNode {
 
  private:
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
+
+  void setGraphInfoAndCopyColls(std::vector<std::unique_ptr<Collection>> const& edgeColls,
+                                std::vector<std::unique_ptr<Collection>> const& vertexColls);
 
  protected:
   /// @brief the database
