@@ -86,10 +86,6 @@ MMFilesPersistentIndexFeature::~MMFilesPersistentIndexFeature() {
   }
 }
 
-void MMFilesPersistentIndexFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
-
-void MMFilesPersistentIndexFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {}
-
 void MMFilesPersistentIndexFeature::start() {
   Instance = this;
 

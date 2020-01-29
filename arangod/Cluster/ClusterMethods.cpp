@@ -760,7 +760,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   for (auto& it : *otherShardsMap) {
     otherShards.push_back(it.first);
   }
-  std::sort(otherShards.begin(), otherShards.end());
+  ShardingInfo::sortShardNamesNumerically(otherShards);
 
   TRI_ASSERT(numberOfShards == otherShards.size());
 
@@ -3091,7 +3091,7 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
   auto const& nf = feature.server().getFeature<NetworkFeature>();
   auto* pool = nf.pool();
   if (pool) {
-    pool->drainConnections();
+    pool->shutdownConnections();
   }
 
   auto startTime = std::chrono::steady_clock::now();

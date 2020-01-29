@@ -29,8 +29,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
@@ -58,8 +56,10 @@ RestStatus RestAdminServerHandler::execute() {
     handleDatabaseDefaults();
   } else if (suffixes.size() == 1 && suffixes[0] == "tls") {
     handleTLS();
+  } else if (suffixes.size() == 1 && suffixes[0] == "jwt") {
+    handleJWTSecretsReload();
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND, 404);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
   return RestStatus::DONE;
 }
@@ -214,7 +214,6 @@ void RestAdminServerHandler::handleMode() {
   }
 }
 
-
 void RestAdminServerHandler::handleDatabaseDefaults() {
   auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
   VPackBuilder builder;
@@ -244,3 +243,9 @@ void RestAdminServerHandler::handleTLS() {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
   }
 }
+
+#ifndef USE_ENTERPRISE
+void RestAdminServerHandler::handleJWTSecretsReload() {
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+}
+#endif
