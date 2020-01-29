@@ -612,7 +612,7 @@ function agencyTestSuite () {
       res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
                                     {"a":{"instersectionEmpty":[]}}]]);
       assertEqual(res.statusCode, 412);
-      
+
     },
 
   ////////////////////////////////////////////////////////////////////////////////
