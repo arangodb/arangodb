@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
@@ -275,15 +276,11 @@ ClusterComm::ClusterComm(application_features::ApplicationServer& server)
     : _server(server),
       _roundRobin(0),
       _logConnectionErrors(false),
-      _authenticationEnabled(false),
-      _jwtAuthorization("") {
+      _tokenCache(nullptr) {
   TRI_ASSERT(server.hasFeature<AuthenticationFeature>());
   AuthenticationFeature& af = server.getFeature<AuthenticationFeature>();
   if (af.isActive()) {
-    std::string token = af.tokenCache().jwtToken();
-    TRI_ASSERT(!token.empty());
-    _authenticationEnabled = true;
-    _jwtAuthorization = "bearer " + token;
+    _tokenCache = &(af.tokenCache());
   }
 }
 
@@ -292,8 +289,7 @@ ClusterComm::ClusterComm(application_features::ApplicationServer& server, bool i
     : _server(server),
       _roundRobin(0),
       _logConnectionErrors(false),
-      _authenticationEnabled(false),
-      _jwtAuthorization("") {}  // ClusterComm::ClusterComm(bool)
+      _tokenCache(nullptr) {}  // ClusterComm::ClusterComm(bool)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm destructor
@@ -306,6 +302,21 @@ ClusterComm::~ClusterComm() { deleteBackgroundThreads(); }
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<ClusterComm> ClusterComm::instance() {
+  // We want to achieve by other means that nobody requests a copy of the
+  // shared_ptr when the singleton is already destroyed. Therefore we put
+  // an assertion despite the fact that we have checks for nullptr in
+  // all places that call this method. Assertions have no effect in released
+  // code at the customer's site.
+  TRI_ASSERT(_theInstanceInit == 2);
+  TRI_ASSERT(_theInstance != nullptr);
+  return _theInstance;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief initialize the cluster comm singleton object
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterComm::initialize(application_features::ApplicationServer& server) {
   int state = _theInstanceInit;
   if (state < 2) {
     // Try to set from 0 to 1:
@@ -321,7 +332,6 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
     if (state == 0) {
       // we must initialize (cannot use std::make_shared here because
       // constructor is private), if we throw here, everything is broken:
-      auto& server = application_features::ApplicationServer::server();
       ClusterComm* cc = new ClusterComm(server);
       _theInstance = std::shared_ptr<ClusterComm>(cc);
       _theInstanceInit = 2;
@@ -331,23 +341,9 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
       }
     }
   }
-  // We want to achieve by other means that nobody requests a copy of the
-  // shared_ptr when the singleton is already destroyed. Therefore we put
-  // an assertion despite the fact that we have checks for nullptr in
-  // all places that call this method. Assertions have no effect in released
-  // code at the customer's site.
-  TRI_ASSERT(_theInstance != nullptr);
-  return _theInstance;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the cluster comm singleton object
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterComm::initialize() {
-  auto i = instance();  // this will create the static instance
-  i->startBackgroundThreads();
-}
+void ClusterComm::start() { instance()->startBackgroundThreads(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
@@ -1118,10 +1114,11 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
   return std::make_pair(result.release(), request);
 }
 
-void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {
-  if (_authenticationEnabled &&
+void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) const {
+  if (_tokenCache != nullptr &&
       headers->find(StaticStrings::Authorization) == headers->end()) {
-    headers->try_emplace(StaticStrings::Authorization, _jwtAuthorization);
+    headers->try_emplace(StaticStrings::Authorization,
+                         std::string("bearer ") + _tokenCache->jwtToken());
   }
 }
 

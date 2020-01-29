@@ -23,6 +23,7 @@
 
 #include <algorithm>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"

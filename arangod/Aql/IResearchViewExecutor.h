@@ -291,8 +291,15 @@ class IResearchViewExecutorBase {
 
   void reset();
 
-  bool writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues, int columnNum,
-                        std::map<size_t, iresearch::IResearchViewNode::ViewVariableRegister> const& fieldsRegs);
+  bool writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues, size_t columnNum,
+                        std::map<size_t, RegisterId> const& fieldsRegs);
+
+  void getStoredValue(irs::document const& doc, std::vector<irs::bytes_ref>& storedValue, size_t index,
+                      std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders);
+
+  void pushStoredValues(irs::document const& doc, std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders);
+
+  bool getStoredValuesReaders(irs::sub_reader const& segmentReader, std::vector<irs::columnstore_reader::values_reader_f>& storedValuesReaders);
 
  private:
   bool next(ReadContext& ctx);
@@ -343,8 +350,6 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
 
   void reset();
 
-  void getStoredValue(std::vector<irs::bytes_ref>& storedValues, int max);
-
  private:
   // Returns true unless the iterator is exhausted. documentId will always be
   // written. It will always be unset when readPK returns false, but may also be
@@ -352,11 +357,11 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   bool readPK(LocalDocumentId& documentId);
 
   irs::columnstore_reader::values_reader_f _pkReader;   // current primary key reader
-  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders; // current stored values readers
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
   LogicalCollection const* _collection{};
+  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders; // current stored values readers
 
   // case ordered only:
   irs::score const* _scr;
@@ -391,20 +396,21 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
-            irs::columnstore_reader::values_reader_f&& sortReader,
-            irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
+            irs::columnstore_reader::values_reader_f&& pkReader,
+            std::vector<irs::columnstore_reader::values_reader_f>&& storedValuesReaders) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;
-    Segment& operator=(Segment&&) = default;
+    Segment& operator=(Segment&&) = delete;
 
     irs::doc_iterator::ptr docs;
     irs::document const* doc{};
     irs::score const* score{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
     irs::bytes_ref sortValue{irs::bytes_ref::NIL};        // sort column value
-    irs::columnstore_reader::values_reader_f sortReader;  // sort column reader
     irs::columnstore_reader::values_reader_f pkReader;    // primary key reader
+    std::vector<irs::columnstore_reader::values_reader_f> storedValuesReaders; // current stored values readers
+    irs::columnstore_reader::values_reader_f& sortReader; // sort column reader
   };
 
   class MinHeapContext {

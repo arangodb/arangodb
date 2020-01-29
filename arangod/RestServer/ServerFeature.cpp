@@ -82,7 +82,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--server.rest-server", "start a rest-server",
                      new BooleanParameter(&_restServer),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addObsoleteOption(
       "--server.session-timeout",
@@ -102,7 +102,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.code-page",
                      "Windows code page to use; defaults to UTF8",
                      new UInt16Parameter(&_codePage),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 #endif
 }
 

@@ -58,11 +58,11 @@ using namespace arangodb::basics;
   return;
 
 static void onlyInCluster() {
-  if (ServerState::instance()->isRunningInCluster()) { 
+  if (ServerState::instance()->isRunningInCluster()) {
     return;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ArangoDB is not running in cluster mode");     
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "ArangoDB is not running in cluster mode");
 }
 
 static void onlyInClusterOrActiveFailover() {
@@ -155,7 +155,8 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     shouldThrow = TRI_ObjectToBoolean(isolate, args[5]);
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
 
@@ -187,7 +188,8 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.createDirectory(key);
 
   if (!result.successful()) {
@@ -234,7 +236,8 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   if (!comm.increaseVersion(key)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to increase version");
@@ -259,7 +262,8 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.getValues(key);
 
   if (!result.successful()) {
@@ -307,7 +311,8 @@ static void JS_APIAgency(std::string const& envelope,
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot convert query to JSON");
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.sendWithFailover(arangodb::rest::RequestType::POST,
                             AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
@@ -372,7 +377,8 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     recursive = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.removeValues(key, recursive);
 
   if (!result.successful()) {
@@ -411,7 +417,8 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ttl = TRI_ObjectToDouble(isolate, args[2]);
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.setValue(key, builder.slice(), ttl);
 
   if (!result.successful()) {
@@ -438,7 +445,8 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder builder;
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.sendWithFailover(arangodb::rest::RequestType::GET,
                             AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
@@ -538,7 +546,8 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     timeout = TRI_ObjectToDouble(isolate, args[1]);
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   uint64_t result = comm.uniqid(count, timeout);
 
   std::string const value = StringUtils::itoa(result);
@@ -561,7 +570,8 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("version()");
   }
 
-  AgencyComm comm;
+  TRI_GET_GLOBALS();
+  AgencyComm comm(v8g->_server);
   std::string const version = comm.version();
 
   TRI_V8_RETURN_STD_STRING(version);
@@ -582,8 +592,8 @@ static void JS_DoesDatabaseExistClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
     TRI_V8_THROW_EXCEPTION_USAGE("doesDatabaseExist(<database-id>)");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   bool const result = ci.doesDatabaseExist(TRI_ObjectToString(isolate, args[0]), true);
 
   if (result) {
@@ -600,15 +610,15 @@ static void JS_DoesDatabaseExistClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
 static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   onlyInCluster();
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("databases()");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   std::vector<DatabaseID> res = ci.databases(true);
   v8::Handle<v8::Array> a = v8::Array::New(isolate, (int)res.size());
   std::vector<DatabaseID>::iterator it;
@@ -629,13 +639,13 @@ static void JS_FlushClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("flush()");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   ci.flush();
 
   TRI_V8_RETURN_TRUE();
@@ -651,7 +661,7 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getCollectionInfo(<database-id>, <collection-id>)");
@@ -659,8 +669,8 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
 
   auto databaseID = TRI_ObjectToString(isolate, args[0]);
   auto collectionID = TRI_ObjectToString(isolate, args[1]);
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col = ci.getCollectionNT(databaseID, collectionID);
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -724,7 +734,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getCollectionInfoCurrent(<database-id>, <collection-id>, <shardID>)");
@@ -734,8 +744,8 @@ static void JS_GetCollectionInfoCurrentClusterInfo(v8::FunctionCallbackInfo<v8::
 
   auto databaseID = TRI_ObjectToString(isolate, args[0]);
   auto collectionID = TRI_ObjectToString(isolate, args[1]);
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col = ci.getCollectionNT(databaseID, collectionID);
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -802,13 +812,13 @@ static void JS_GetResponsibleServerClusterInfo(v8::FunctionCallbackInfo<v8::Valu
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServer(<shard-id>)");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   auto result = ci.getResponsibleServer(TRI_ObjectToString(isolate, args[0]));
   v8::Handle<v8::Array> list = v8::Array::New(isolate, (int)result->size());
   uint32_t count = 0;
@@ -829,11 +839,11 @@ static void JS_GetResponsibleServersClusterInfo(v8::FunctionCallbackInfo<v8::Val
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 1 || !args[0]->IsArray()) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
-    
+
   std::unordered_set<std::string> shardIds;
   v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(args[0]);
 
@@ -846,8 +856,8 @@ static void JS_GetResponsibleServersClusterInfo(v8::FunctionCallbackInfo<v8::Val
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleServers(<shard-ids>)");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   auto result = ci.getResponsibleServers(shardIds);
 
   v8::Handle<v8::Object> responsible = v8::Object::New(isolate);
@@ -868,7 +878,7 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() < 2 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "getResponsibleShard(<collection-id>, <document>, "
@@ -898,8 +908,8 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
   ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(isolate, args[0]);
   auto& vocbase = GetContextVocBase(isolate);
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   auto collInfo = ci.getCollectionNT(vocbase.name(), collectionId);
   if (collInfo == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -933,13 +943,13 @@ static void JS_GetServerEndpointClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getServerEndpoint(<server-id>)");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   std::string const result = ci.getServerEndpoint(TRI_ObjectToString(isolate, args[0]));
 
   TRI_V8_RETURN_STD_STRING(result);
@@ -955,13 +965,13 @@ static void JS_GetServerNameClusterInfo(v8::FunctionCallbackInfo<v8::Value> cons
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("getServerName(<endpoint>)");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   std::string const result = ci.getServerName(TRI_ObjectToString(isolate, args[0]));
 
   TRI_V8_RETURN_STD_STRING(result);
@@ -977,13 +987,13 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
-  
+
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("getDBServers()");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   auto DBServers = ci.getCurrentDBServers();
   auto serverAliases = ci.getServerAliases();
 
@@ -1026,8 +1036,8 @@ static void JS_GetCoordinators(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("getCoordinators()");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   std::vector<std::string> coordinators = ci.getCurrentCoordinators();
 
   v8::Handle<v8::Array> l = v8::Array::New(isolate);
@@ -1063,8 +1073,8 @@ static void JS_UniqidClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  TRI_GET_GLOBALS();
+  auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   uint64_t value = ci.uniqid(count);
 
   if (value == 0) {
@@ -1104,7 +1114,7 @@ static void JS_IdServerState(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   onlyInClusterOrActiveFailover();
-  
+
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("id()");
   }
@@ -1158,16 +1168,16 @@ static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> cons
   ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
 
   if (AgencyCommManager::isEnabled()) {
-    AgencyComm comm;
+    TRI_GET_GLOBALS();
+    AgencyComm comm(v8g->_server);
     std::string key = "Current/FoxxmasterQueueupdate";
     VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     AgencyCommResult result = comm.setValue(key, val, 0.0);
     if (result.successful()) {
       result = comm.increment("Current/Version");
     }
-    auto& server = application_features::ApplicationServer::server();
     if (!result.successful() && result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
-        !server.isStopping()) {
+        !v8g->_server.isStopping()) {
       // gracefully ignore any shutdown errors here
       THROW_AGENCY_EXCEPTION(result);
     }
@@ -1542,7 +1552,7 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
 static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   onlyInClusterOrActiveFailover();
 
   if (args.Length() < 4 || args.Length() > 7) {
@@ -1569,8 +1579,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string path;
   auto body = std::make_shared<std::string>();
   std::unordered_map<std::string, std::string> headerFields;
-  CoordTransactionID coordTransactionID;
-  double timeout;
+  CoordTransactionID coordTransactionID = 0;
+  double timeout = 0.0;
   double initTimeout = -1.0;
   bool singleRequest = false;
 
@@ -1594,75 +1604,13 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief send a synchronous request
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  
-  onlyInCluster();
-
-  if (args.Length() < 4 || args.Length() > 7) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "syncRequest("
-        "reqType, destination, dbname, path, body, headers, options)");
-  }
-  // Possible options:
-  //   - coordTransactionID   (number)
-  //   - timeout              (number)
-
-  // Disabled to allow communication originating in a DBserver:
-  // 31.7.2014 Max
-
-  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-  //  TRI_V8_THROW_EXCEPTION_INTERNAL(scope,"request works only in coordinator
-  //  role");
-  //}
-
-  auto cc = ClusterComm::instance();
-
-  if (cc == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
-                                   "clustercomm object not found");
-  }
-
-  arangodb::rest::RequestType reqType;
-  std::string destination;
-  std::string path;
-  std::string body;
-  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  double timeout;
-  double initTimeout = -1.0;
-  bool singleRequest = false;  // of no relevance here
-
-  PrepareClusterCommRequest(args, reqType, destination, path, body, *headerFields,
-                            coordTransactionID, timeout, singleRequest, initTimeout);
-
-  std::unique_ptr<ClusterCommResult> res =
-      cc->syncRequest(coordTransactionID, destination, reqType, path, body,
-                      *headerFields, timeout);
-
-  if (res.get() == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "couldn't do sync request");
-  }
-
-  LOG_TOPIC("0f902", DEBUG, Logger::CLUSTER) << "JS_SyncRequest: request has been done";
-
-  Return_PrepareClusterCommResultForJS(args, *res);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief enquire information about an asynchronous request
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   onlyInCluster();
 
   if (args.Length() != 1) {
@@ -1695,7 +1643,7 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  
+
   onlyInClusterOrActiveFailover();
 
   if (args.Length() != 1) {
@@ -1761,7 +1709,7 @@ static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  
+
   onlyInCluster();
 
   if (args.Length() != 1) {
@@ -1863,7 +1811,7 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
 static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  
+
   onlyInCluster();
 
   v8::HandleScope scope(isolate);
@@ -1883,7 +1831,7 @@ static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& a
 
 static void JS_GetCollectionShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  
+
   onlyInCluster();
 
   if (args.Length() != 1) {
@@ -2074,7 +2022,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "asyncRequest"), JS_AsyncRequest);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "syncRequest"), JS_SyncRequest);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enquire"), JS_Enquire);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "wait"), JS_Wait);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_Drop);

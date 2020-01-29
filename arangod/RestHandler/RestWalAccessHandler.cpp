@@ -23,6 +23,7 @@
 
 #include "RestWalAccessHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"

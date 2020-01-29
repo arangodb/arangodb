@@ -638,14 +638,10 @@
         queryData = this.readQueryData();
       }
 
-      if (queryData === 'false') {
-        return;
-      }
-
-      $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
-      this.execPending = false;
-
       if (queryData) {
+        $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
+        this.execPending = false;
+
         var afterResult = function () {
           $('#outputEditorWrapper' + counter + ' #spinner').remove();
           $('#outputEditor' + counter).css('opacity', '1');
@@ -663,7 +659,7 @@
         $.ajax({
           type: 'POST',
           url: url,
-          data: queryData,
+          data: JSON.stringify(queryData),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -1756,7 +1752,6 @@
     },
 
     readQueryData: function (selected, forExecute, forProfile) {
-      // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
       var data = {};
 
       if (!forProfile) {
@@ -1774,7 +1769,7 @@
         } else {
           arangoHelper.arangoError('Query', 'Your query is empty!');
         }
-        data = false;
+        return false;
       } else {
         var bindVars = {};
         if (Object.keys(this.bindParamTableObj).length > 0) {
@@ -1797,17 +1792,13 @@
         }
       }
 
-      return JSON.stringify(data);
+      return data;
     },
 
     fillResult: function (counter, selected) {
       var self = this;
 
       var queryData = this.readQueryData(selected, true);
-
-      if (queryData === 'false') {
-        return;
-      }
 
       if (queryData) {
         $.ajax({
@@ -1816,7 +1807,7 @@
           headers: {
             'x-arango-async': 'store'
           },
-          data: queryData,
+          data: JSON.stringify(queryData),
           contentType: 'application/json',
           processData: false,
           success: function (data, textStatus, xhr) {
@@ -2145,13 +2136,6 @@
             url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id));
           }
         }
-
-        /*
-        if (!data.complete) {
-          // TODO notify user?
-          // console.log('result was cutted down - more result avail - change limit');
-        }
-        */
 
         if (url) {
           $.ajax({

@@ -79,7 +79,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
   REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
-  REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document identifier");
   REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
@@ -87,7 +87,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
-  REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
+  REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index identifier");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");

@@ -22,6 +22,7 @@
 
 #include "NetworkFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
@@ -166,7 +167,7 @@ void NetworkFeature::beginShutdown() {
   }
   _poolPtr.store(nullptr, std::memory_order_release);
   if (_pool) {  // first cancel all connections
-    _pool->drainConnections();
+    _pool->shutdownConnections();
   }
 }
 
@@ -176,7 +177,7 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _pool->drainConnections();
+  _pool->shutdownConnections();
 }
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {
