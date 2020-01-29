@@ -124,7 +124,6 @@ void GeneralConnection<ST>::tryConnect(unsigned retries, std::chrono::steady_clo
   if (retries == 0) {
     _state.store(Connection::State::Failed, std::memory_order_release);
     drainQueue(Error::CouldNotConnect);
-    abortOngoingRequests(Error::CouldNotConnect);
     shutdownConnection(Error::CouldNotConnect, "connecting failed");
     return;
   }

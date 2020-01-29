@@ -445,6 +445,16 @@ void H2Connection<T>::readSwitchingProtocolsResponse() {
 // socket connection is up (with optional SSL), now initiate the VST protocol.
 template <>
 void H2Connection<SocketType::Ssl>::finishConnect() {
+  const unsigned char *alpn = NULL;
+  unsigned int alpnlen = 0;
+  SSL_get0_alpn_selected(this->_proto.socket.native_handle(), &alpn, &alpnlen);
+
+  if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
+    this->_state.store(Connection::State::Failed);
+    shutdownConnection(Error::ProtocolError, "h2 is not negotiated");
+    return;
+  }
+  
   this->_state.store(Connection::State::Connected);
 
   initNgHttp2Session();
