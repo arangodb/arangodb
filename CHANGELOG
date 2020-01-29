@@ -1,6 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Clean out server job checks preconditions plan version unchanged for start.
+
 * Added HotBackup events into auditing.
 
 * Include collections "_queues" and "_jobs" in dumps created by arangodump
