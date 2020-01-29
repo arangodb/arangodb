@@ -329,7 +329,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/RemoteExecutor.cpp
   Aql/RestAqlHandler.cpp
   Aql/ReturnExecutor.cpp
-  Aql/SatelliteTraversalNode.cpp
   Aql/ScatterExecutor.cpp
   Aql/Scopes.cpp
   Aql/ShadowAqlItemRow.cpp
