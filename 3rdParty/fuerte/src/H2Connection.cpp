@@ -392,7 +392,6 @@ void H2Connection<T>::finishConnect() {
                                              std::size_t nsend) {
         auto& me = static_cast<H2Connection<T>&>(*self);
         if (ec) {
-          FUERTE_ASSERT(false);
           me.shutdownConnection(Error::WriteError, ec.message());
         } else {
           me.readSwitchingProtocolsResponse();
@@ -662,9 +661,7 @@ void H2Connection<T>::doWrite() {
       break;
     }
 
-    _outbuffer.reserve(nread);  // reserves extra bytes
-    std::copy_n(data, nread, _outbuffer.data() + _outbuffer.size());
-    _outbuffer.advance(nread);
+    _outbuffer.append(data, nread);
   }
   outBuffers[0] = asio_ns::buffer(_outbuffer.data(), _outbuffer.size());
 

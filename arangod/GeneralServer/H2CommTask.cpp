@@ -335,7 +335,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
 
 template <SocketType T>
 void H2CommTask<T>::start() {
-  LOG_TOPIC("db5ab", INFO, Logger::REQUESTS)
+  LOG_TOPIC("db5ab", DEBUG, Logger::REQUESTS)
       << "<http2> opened connection \"" << (void*)this << "\"";
 
   asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
@@ -661,9 +661,7 @@ void H2CommTask<T>::doWrite() {
       break;
     }
 
-    _outbuffer.reserve(nread); // reserves extra bytes
-    std::copy_n(data, nread, _outbuffer.data() + _outbuffer.size());
-    _outbuffer.advance(nread);
+    _outbuffer.append(data, nread);
   }
   outBuffers[0] = asio_ns::buffer(_outbuffer.data(), _outbuffer.size());
   

@@ -833,9 +833,6 @@ function findEndpoint(options, instanceInfo) {
 
 function runInArangosh (options, instanceInfo, file, addArgs) {
   let args = pu.makeArgs.arangosh(options);
-  // let endpoint = (options.vst && instanceInfo.hasOwnProperty('vstEndpoint')) ?
-  //     instanceInfo.vstEndpoint : 
-  //     instanceInfo.endpoint ;
   args['server.endpoint'] = findEndpoint(options, instanceInfo);
 
   args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
