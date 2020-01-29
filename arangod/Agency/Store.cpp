@@ -530,12 +530,14 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
             }
           }
         } else {
-          // Objects without any of the above cases are not considered to
-          // be a precondition:
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
           LOG_TOPIC("44419", WARN, Logger::AGENCY)
-              << "Malformed object-type precondition was ignored: "
-              << "key: " << precond.key.toJson()
-              << " value: " << precond.value.toJson();
+            << "Malformed object-type precondition was failed: "
+            << "key: " << precond.key.toJson()
+            << " value: " << precond.value.toJson();
         }
       }
     } else {
