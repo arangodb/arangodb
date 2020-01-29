@@ -212,15 +212,15 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 }
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-asio_ns::ssl::context SslServerFeature::createSslContext() {
+std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
   try {
     std::string keyfileContent = FileUtils::slurp(_keyfile);
     // create context
-    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    std::shared_ptr<asio_ns::ssl::context> sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
     _keyfileContent = std::move(keyfileContent);
 
     // and use this native handle
-    asio_ns::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
+    asio_ns::ssl::context::native_handle_type nativeContext = sslContext->native_handle();
 
     // set cache mode
     SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache ? SSL_SESS_CACHE_SERVER
@@ -232,7 +232,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() {
     }
 
     // set options
-    sslContext.set_options(static_cast<long>(_sslOptions));
+    sslContext->set_options(static_cast<long>(_sslOptions));
 
     if (!_cipherList.empty()) {
       if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
@@ -335,10 +335,10 @@ asio_ns::ssl::context SslServerFeature::createSslContext() {
       SSL_CTX_set_client_CA_list(nativeContext, certNames);
     }
 
-    sslContext.set_verify_mode(SSL_VERIFY_NONE);
+    sslContext->set_verify_mode(SSL_VERIFY_NONE);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
+    SSL_CTX_set_alpn_select_cb(sslContext->native_handle(), alpn_select_proto_cb, NULL);
 #endif  // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     return sslContext;

@@ -188,7 +188,7 @@ IoContext& GeneralServer::selectIoContext() {
 std::shared_ptr<asio_ns::ssl::context> GeneralServer::sslContext() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContext) {
-    _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
+    _sslContext = SslServerFeature::SSL->createSslContext();
   }
   return _sslContext;
 }
@@ -196,7 +196,7 @@ std::shared_ptr<asio_ns::ssl::context> GeneralServer::sslContext() {
 Result GeneralServer::reloadTLS() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   try {
-    _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
+    _sslContext = SslServerFeature::SSL->createSslContext();
     // Now cancel every acceptor once, such that a new AsioSocket is generated which will
     // use the new context. Otherwise, the first connection will still use the old certs:
     for (auto& a : _acceptors) {

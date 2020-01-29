@@ -59,7 +59,7 @@ class SslServerFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
   virtual void verifySslOptions();
 
-  virtual asio_ns::ssl::context createSslContext();
+  virtual std::shared_ptr<asio_ns::ssl::context> createSslContext();
 
   // Dump all SSL related data into a builder, private keys
   // are hashed.
