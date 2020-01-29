@@ -22,24 +22,23 @@
 
 #include "SatelliteTraversalNode.h"
 
+#include "Aql/Collection.h"
 #include "Basics/Exceptions.h"
 #include "Graph/Graph.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SatelliteTraversalNode::SatelliteTraversalNode(TraversalNode&& traversalNode,
+SatelliteTraversalNode::SatelliteTraversalNode(ExecutionPlan& plan,
+                                               TraversalNode const& traversalNode,
                                                aql::Collection const& collection)
-    : TraversalNode(std::move(traversalNode)), CollectionAccessingNode(&collection) {
-  // TODO Replace the following checks with a check on traversalNode->isEligibleAsSatelliteTraversal().
-  if (graph() == nullptr) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Logic error: satellite traversals currently only supported on named graphs");
+    : TraversalNode(plan, traversalNode), CollectionAccessingNode(&collection) {
+  TRI_ASSERT(&plan == traversalNode.plan());
+  TRI_ASSERT(collection.vocbase() == traversalNode.vocbase());
+  TRI_ASSERT(traversalNode.isEligibleAsSatelliteTraversal());
+  if (ADB_UNLIKELY(!traversalNode.isEligibleAsSatelliteTraversal())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        "Logic error: traversal not eligible for satellite traversal");
   }
-
-  if (!graph()->isSatellite()) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "Logic error: satellite traversals on non-satellite graph");
-  }
-
 }

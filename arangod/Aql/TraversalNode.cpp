@@ -174,47 +174,6 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocb
       _fromCondition(nullptr),
       _toCondition(nullptr) {}
 
-TraversalNode::TraversalNode(TraversalNode&& other)
-    : GraphNode(other._plan, other._id, other._vocbase, other._edgeColls, other._vertexColls,
-                std::move(other._directions), std::move(other._options)),
-      _pathOutVariable(other._pathOutVariable),
-      _inVariable(other._inVariable),
-      _vertexId(std::move(other._vertexId)),
-      _condition(std::move(other._condition)),
-      _conditionVariables(std::move(other._conditionVariables)),
-      _fromCondition(other._fromCondition),
-      _toCondition(other._toCondition),
-      _pruneExpression(std::move(other._pruneExpression)),
-      _globalEdgeConditions(std::move(other._globalEdgeConditions)),
-      _globalVertexConditions(std::move(other._globalVertexConditions)),
-      _edgeConditions(std::move(other._edgeConditions)),
-      _vertexConditions(std::move(other._vertexConditions)),
-      _pruneVariables(std::move(other._pruneVariables)) {
-  // TODO Maybe we need to copy/move members of ExecutionNode as well!
-
-  // Copy remaining members of GraphNode
-  _vertexOutVariable = other._vertexOutVariable;
-  _edgeOutVariable = other._edgeOutVariable;
-  _graphObj = other._graphObj;
-  _defaultDirection = other._defaultDirection;
-  _isSmart = other._isSmart;
-
-  // Clear everything that's not moved, especially everything involving manual
-  // memory management.
-  other._plan = nullptr;
-  other._id = -1;
-  other._vocbase = nullptr;
-  other._edgeColls.clear();
-  other._vertexColls.clear();
-  other._pathOutVariable = nullptr;
-  other._inVariable = nullptr;
-  other._fromCondition = nullptr;
-  other._toCondition = nullptr;
-  other._vertexOutVariable = nullptr;
-  other._edgeOutVariable = nullptr;
-  other._graphObj = nullptr;
-}
-
 TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : GraphNode(plan, base),
       _pathOutVariable(nullptr),
@@ -313,6 +272,14 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
   checkConditionsDefined();
 #endif
 }
+
+TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other)
+    : GraphNode(plan, other, std::make_unique<traverser::TraverserOptions>(*options())),
+      _pathOutVariable(nullptr),
+      _inVariable(other._inVariable),
+      _vertexId(other._vertexId),
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {}
 
 TraversalNode::~TraversalNode() = default;
 
@@ -568,7 +535,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   TRI_ASSERT(!_optionsBuilt);
-  auto oldOpts = static_cast<TraverserOptions*>(options());
+  auto oldOpts = options();
   std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(*oldOpts);
   auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls,
                                            _vertexColls, _inVariable, _vertexId,
@@ -822,6 +789,16 @@ void TraversalNode::checkConditionsDefined() const {
 
 bool TraversalNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
+}
+
+auto TraversalNode::options() const -> TraverserOptions* {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* opts = dynamic_cast<TraverserOptions*>(GraphNode::options());
+  TRI_ASSERT((GraphNode::options() == nullptr) == (opts == nullptr));
+#else
+  auto* opts = static_cast<TraverserOptions*>(GraphNode::options());
+#endif
+  return opts;
 }
 
 #endif
