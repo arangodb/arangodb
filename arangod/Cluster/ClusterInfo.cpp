@@ -972,7 +972,7 @@ void ClusterInfo::loadPlan() {
           }
 
           // Sort by the number in the shard ID ("s0000001" for example):
-          ShardingInfo::sortShardNamesNumerically(*shard);
+          ShardingInfo::sortShardNamesNumerically(*shards);
           newShards.emplace(collectionId, std::move(shards));
         } catch (std::exception const& ex) {
           // The plan contains invalid collection information.
