@@ -345,18 +345,6 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
   return applied;
 }
 
-struct slice_equals {
-  bool operator()(VPackSlice s1, VPackSlice s2) const {
-    return s1.binaryEquals(s2);
-  }
-};
-
-struct slice_hash {
-  size_t operator()(VPackSlice s) const {
-    return s.hash();
-  }
-};
-
 /// Check precodition object
 check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
   TRI_ASSERT(slice.isObject());
