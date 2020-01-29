@@ -39,10 +39,7 @@
 #include <Logger/LogMacros.h>
 #include <utility>
 
-<<<<<<< HEAD
-=======
 // Set this to true to activate devel logging
->>>>>>> c10dcc4d6718a241c267140ce27a0f64589b49a2
 #define LOG_DEVEL_SORTED_COLLECT_ENABLED false
 #define LOG_DEVEL_SC LOG_DEVEL_IF(LOG_DEVEL_SORTED_COLLECT_ENABLED)
 
