@@ -240,6 +240,11 @@ Cursor* CursorRepository::find(CursorId id, Cursor::CursorType type, bool& busy)
       busy = true;
       return nullptr;
     }
+    
+    if (cursor->expires() < TRI_microtime()) {
+      // cursor has expired already
+      return nullptr;
+    }
 
     cursor->use();
   }

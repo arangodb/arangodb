@@ -52,7 +52,6 @@ class GeneralConnection : public fuerte::Connection {
   void start() override;
 
  protected:
-  
   void startConnection();
   // shutdown connection, cancel async operations
   void shutdownConnection(const fuerte::Error, std::string const& msg = "",
@@ -63,12 +62,6 @@ class GeneralConnection : public fuerte::Connection {
   // Call on IO-Thread: read from socket
   void asyncReadSome();
   
-private:
-  
-  // Connect with a given number of retries
-  void tryConnect(unsigned retries);
-
- protected:
   virtual void finishConnect() = 0;
 
   /// begin writing
@@ -82,6 +75,11 @@ private:
 
   /// abort all requests lingering in the queue
   virtual void drainQueue(const fuerte::Error) = 0;
+ 
+ private:
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries, std::chrono::steady_clock::time_point start);
+
 
  protected:
   /// @brief io context to use
