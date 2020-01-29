@@ -912,7 +912,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
               }
-            
+
               if (V8PlatformFeature::isOutOfMemory(isolate)) {
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
               }
@@ -1016,19 +1016,21 @@ ExecutionState Query::finalize(QueryResult& result) {
     if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
       if (ServerState::instance()->isCoordinator()) {
         std::vector<arangodb::aql::ExecutionNode::NodeType> const collectionNodeTypes{
-          arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
-          arangodb::aql::ExecutionNode::INDEX,
-          arangodb::aql::ExecutionNode::REMOVE, arangodb::aql::ExecutionNode::INSERT,
-          arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE,
-          arangodb::aql::ExecutionNode::UPSERT};
+            arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+            arangodb::aql::ExecutionNode::INDEX,
+            arangodb::aql::ExecutionNode::REMOVE,
+            arangodb::aql::ExecutionNode::INSERT,
+            arangodb::aql::ExecutionNode::UPDATE,
+            arangodb::aql::ExecutionNode::REPLACE,
+            arangodb::aql::ExecutionNode::UPSERT};
 
         ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
         ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
         _plan->findNodesOfType(nodes, collectionNodeTypes, true);
 
         for (auto& n : nodes) {
-          // clear shards so we get back the full collection name when serializing
-          // the plan
+          // clear shards so we get back the full collection name when
+          // serializing the plan
           auto cn = dynamic_cast<CollectionAccessingNode*>(n);
           if (cn) {
             cn->setUsedShard("");
@@ -1522,14 +1524,7 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
     return it->second.get();
   }
   graph::GraphManager graphManager{_vocbase, _contextOwnedByExterior};
-
-#ifdef USE_ENTERPRISE
-  // TODO: create with proper constructor
   auto g = graphManager.lookupGraphByName(name);
-#else
-  auto g = graphManager.lookupGraphByName(name);
-#endif
-
 
   if (g.fail()) {
     return nullptr;
