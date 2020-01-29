@@ -480,7 +480,9 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
             }
             if (nslice.isArray()) {
               bool found_ = false;
-              std::unordered_set<VPackSlice, slice_hash, slice_equals> elems;
+              std::unordered_set<
+                VPackSlice, arangodb::velocypack::NormalizedCompare::Hash,
+                arangodb::velocypack::NormalizedCompare::Equal> elems;
               Slice shorter, longer;
 
               if (nslice.length() <= op.value.length()) {
