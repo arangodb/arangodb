@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix a bug in collection creation with `distributeShardsLike`.
+
 * Added load-balancing support for listing currently running and slow AQL queries,
   killing running AQL queries and clearing the list of slow AQL queries.
 
