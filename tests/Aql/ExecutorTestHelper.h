@@ -82,6 +82,11 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto setInputSplitType(SplitType split) -> ExecutorTestHelper& {
+    _inputSplit = split;
+    return *this;
+  }
+
   template <typename T>
   auto setOutputSplit(T&& list) -> ExecutorTestHelper& {
     ASSERT_FALSE(true);
@@ -193,12 +198,16 @@ struct ExecutorTestHelper {
         SharedAqlItemBlockPtr inputBlock =
             buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
         blockDeque.emplace_back(inputBlock);
+        matrix.clear();
       }
     }
 
-    SharedAqlItemBlockPtr inputBlock =
-        buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
-    blockDeque.emplace_back(inputBlock);
+    if (!matrix.empty()) {
+      SharedAqlItemBlockPtr inputBlock =
+          buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
+      blockDeque.emplace_back(inputBlock);
+    }
+
     return std::make_unique<WaitingExecutionBlockMock>(
         _query.engine(), _dummyNode.get(), std::move(blockDeque),
         WaitingExecutionBlockMock::WaitingBehaviour::NEVER);

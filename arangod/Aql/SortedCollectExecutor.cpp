@@ -504,8 +504,6 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  TRI_ASSERT(clientCall.offset > 0);
-
   while (clientCall.needSkipMore()) {
     LOG_DEVEL_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
     LOG_DEVEL_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
