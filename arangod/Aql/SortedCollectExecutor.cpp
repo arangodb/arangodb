@@ -39,7 +39,7 @@
 #include <Logger/LogMacros.h>
 #include <utility>
 
-#define LOG_DEVEL_SORTED_COLLECT_ENABLED true
+#define LOG_DEVEL_SORTED_COLLECT_ENABLED false
 #define LOG_DEVEL_SC LOG_DEVEL_IF(LOG_DEVEL_SORTED_COLLECT_ENABLED)
 
 using namespace arangodb;
@@ -400,14 +400,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
   AqlCall clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.offset == 0);
-
-  /*
-   * While the output is not full, read more input ranges and put them into
-   *  the groups.
-   *  If a row does not belong to a group generate a output row.
-   * If the state is DONE generate the last group.
-   * If nothing was generated and we have to write at least one row, write that row.
-   */
 
   size_t rowsProduces = 0;
   bool pendingGroup = false;

@@ -955,7 +955,7 @@ class SortedCollectExecutorTestSplit
 
   SortedCollectExecutorTestSplit()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        fakedQuery(server.createFakeQuery(true)),
+        fakedQuery(server.createFakeQuery()),
         trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         readableInputRegisters({0}),
