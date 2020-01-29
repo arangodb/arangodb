@@ -516,11 +516,17 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
 
     if (enforceReplicationFactor) {
       auto enforceSlice = slice.get("enforceReplicationFactor");
-      if (!enforceSlice.isBool() || enforceSlice.getBool()) { 
+      if (!enforceSlice.isBool() || enforceSlice.getBool()) {
         auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
         if (replicationFactorSlice.isNumber()) {
           int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
-          if (replicationFactorProbe <= 0) {
+          if (replicationFactorProbe == 0) {
+            // TODO: Which configuration for satellites are valid regarding minRepl and writeConcern
+            LOG_DEVEL << "will create satellite collection - remove me after cleanup";
+            // valid for creating a satellite collection
+            return Result();
+          }
+          if (replicationFactorProbe < 0) {
             return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
           }
 
