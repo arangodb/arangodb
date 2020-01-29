@@ -184,8 +184,8 @@ TEST_P(IdExecutorTestCombiner, test_produce_datarange_singleRowFetcher) {
  *   DoCopy  << This is to assert that copying is performaed
  */
 
-auto inputs = testing::Values(std::vector<int>{},        // Test empty input
-                              std::vector<int>{1, 2, 3}  // Test input data
+static auto inputs = testing::Values(std::vector<int>{},  // Test empty input
+                                     std::vector<int>{1, 2, 3}  // Test input data
 );
 auto upstreamStates = testing::Values(ExecutorState::HASMORE, ExecutorState::DONE);
 auto clientCalls = testing::Values(AqlCall{},  // unlimited call
