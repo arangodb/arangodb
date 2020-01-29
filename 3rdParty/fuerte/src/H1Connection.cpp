@@ -532,9 +532,11 @@ template <SocketType ST>
 void H1Connection<ST>::drainQueue(const fuerte::Error ec) {
   RequestItem* item = nullptr;
   while (_queue.pop(item)) {
-    std::unique_ptr<RequestItem> guard(item);
-    this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
-    guard->invokeOnError(ec);
+    if (item) {
+      std::unique_ptr<RequestItem> guard(item);
+      this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+      guard->invokeOnError(ec);
+    }
   }
 }
 
