@@ -468,47 +468,56 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
             break;
           }
         } else if (oper == "intersectionEmpty") {  // in
-          if (!found) {
-            continue;
-          }
           auto const nslice = node->slice();
-          if (nslice.isArray() && op.value.isArray()) {
-            bool found_ = false;
-            std::unordered_set<VPackSlice, slice_hash, slice_equals> elems;
-            Slice shorter, longer;
-
-            if (nslice.length() <= op.value.length()) {
-              longer = op.value;
-              shorter = nslice;
-            } else {
-              shorter = nslice;
-              longer = op.value;
-            }
-
-            for (auto const i : VPackArrayIterator(shorter)) {
-              elems.emplace(i);
-            }
-            for (auto const i : VPackArrayIterator(longer)) {
-              if (elems.find(i) != elems.end()) {
-                found_ = true;
-                break;
-              }
-            }
-            if (!found_) {
-              continue;
-            }
+          if (!op.value.isArray()) { // right hand side must be array will
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
             }
+          } else {
+            if (!found) {
+              continue;
+            }
+            if (nslice.isArray()) {
+              bool found_ = false;
+              std::unordered_set<VPackSlice, slice_hash, slice_equals> elems;
+              Slice shorter, longer;
+
+              if (nslice.length() <= op.value.length()) {
+                longer = op.value;
+                shorter = nslice;
+              } else {
+                shorter = nslice;
+                longer = op.value;
+              }
+
+              for (auto const i : VPackArrayIterator(shorter)) {
+                elems.emplace(i);
+              }
+              for (auto const i : VPackArrayIterator(longer)) {
+                if (elems.find(i) != elems.end()) {
+                  found_ = true;
+                  break;
+                }
+              }
+              if (!found_) {
+                continue;
+              }
+              ret.push_back(precond.key);
+              if (mode == FIRST_FAIL) {
+                break;
+              }
+            }
           }
         } else {
-          // Objects without any of the above cases are not considered to
-          // be a precondition:
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
           LOG_TOPIC("44419", WARN, Logger::AGENCY)
-              << "Malformed object-type precondition was ignored: "
-              << "key: " << precond.key.toJson()
-              << " value: " << precond.value.toJson();
+            << "Malformed object-type precondition was failed: "
+            << "key: " << precond.key.toJson()
+            << " value: " << precond.value.toJson();
         }
       }
     } else {
