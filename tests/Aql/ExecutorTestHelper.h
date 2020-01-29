@@ -51,58 +51,66 @@ struct ExecutorTestHelper {
   ExecutorTestHelper(ExecutorTestHelper const&) = delete;
   ExecutorTestHelper(ExecutorTestHelper&&) = delete;
   explicit ExecutorTestHelper(arangodb::aql::Query& query)
-      : _query(query), _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
+      : _expectedSkip{0},
+        _expectedState{ExecutionState::HASMORE},
+        _query(query),
+        _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
   auto setCall(AqlCall c) -> ExecutorTestHelper& {
-    call = c;
+    _call = c;
     return *this;
   }
 
   auto setInputValue(MatrixBuilder<inputColumns> in) -> ExecutorTestHelper& {
-    input = std::move(in);
+    _input = std::move(in);
     return *this;
   }
 
   template <typename... Ts>
   auto setInputValueList(Ts&&... ts) -> ExecutorTestHelper& {
-    input = MatrixBuilder<inputColumns>{{ts}...};
+    _input = MatrixBuilder<inputColumns>{{ts}...};
     return *this;
   }
 
   auto setInputSplit(std::vector<std::size_t> const& list) -> ExecutorTestHelper& {
-    inputSplit = list;
+    _inputSplit = list;
     return *this;
   }
 
   auto setInputSplitStep(std::size_t step) -> ExecutorTestHelper& {
-    inputSplit = step;
+    _inputSplit = step;
     return *this;
   }
 
   template <typename T>
   auto setOutputSplit(T&& list) -> ExecutorTestHelper& {
     ASSERT_FALSE(true);
-    outputSplit = std::forward<T>(list);
+    _outputSplit = std::forward<T>(list);
     return *this;
   }
 
   auto expectOutput(std::array<std::size_t, outputColumns> const& regs,
                     MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
-    outputRegisters = regs;
-    output = out;
+    _outputRegisters = regs;
+    _output = out;
     return *this;
   }
 
   template <typename... Ts>
   auto expectOutputValueList(Ts&&... ts) -> ExecutorTestHelper& {
     static_assert(outputColumns == 1);
-    outputRegisters[0] = 1;
-    output = MatrixBuilder<outputColumns>{{ts}...};
+    _outputRegisters[0] = 1;
+    _output = MatrixBuilder<outputColumns>{{ts}...};
     return *this;
   }
 
-  auto expectFullCount(std::size_t count) -> ExecutorTestHelper& {
-    fullCount = count;
+  auto expectSkipped(std::size_t skip) -> ExecutorTestHelper& {
+    _expectedSkip = skip;
+    return *this;
+  }
+
+  auto expectedState(ExecutionState state) -> ExecutorTestHelper& {
+    _expectedState = state;
     return *this;
   }
 
@@ -117,12 +125,18 @@ struct ExecutorTestHelper {
     ExecutionBlockImpl<E> testee{_query.engine(), testeeNode.get(), std::move(infos)};
     testee.addDependency(inputBlock.get());
 
-    AqlCallStack stack{call};
+    AqlCallStack stack{_call};
     auto const [state, skipped, result] = testee.execute(stack);
+    EXPECT_EQ(skipped, _expectedSkip);
+
+    EXPECT_EQ(state, _expectedState);
 
     SharedAqlItemBlockPtr expectedOutputBlock =
-        buildBlock<outputColumns>(itemBlockManager, std::move(output));
+        buildBlock<outputColumns>(itemBlockManager, std::move(_output));
     testOutputBlock(result, expectedOutputBlock);
+
+    // ToDo:
+    // Test stats
   };
 
  private:
@@ -133,11 +147,11 @@ struct ExecutorTestHelper {
     EXPECT_EQ(outputBlock->size(), expectedOutputBlock->size());
     for (size_t i = 0; i < outputBlock->size(); i++) {
       for (size_t j = 0; j < outputColumns; j++) {
-        AqlValue const& x = outputBlock->getValueReference(i, outputRegisters[j]);
+        AqlValue const& x = outputBlock->getValueReference(i, _outputRegisters[j]);
         AqlValue const& y = expectedOutputBlock->getValueReference(i, j);
 
         EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
-            << "Row " << i << " Column " << j << " (Reg " << outputRegisters[j]
+            << "Row " << i << " Column " << j << " (Reg " << _outputRegisters[j]
             << ") do not agree";
       }
     }
@@ -153,16 +167,16 @@ struct ExecutorTestHelper {
 
     std::optional<VectorSizeT::iterator> iter, end;
 
-    if (std::holds_alternative<VectorSizeT>(inputSplit)) {
-      iter = std::get<VectorSizeT>(inputSplit).begin();
-      end = std::get<VectorSizeT>(inputSplit).end();
+    if (std::holds_alternative<VectorSizeT>(_inputSplit)) {
+      iter = std::get<VectorSizeT>(_inputSplit).begin();
+      end = std::get<VectorSizeT>(_inputSplit).end();
     }
 
-    for (auto const& value : input) {
+    for (auto const& value : _input) {
       matrix.push_back(value);
 
       bool openNewBlock =
-          std::visit(overload{[&](std::vector<std::size_t>& list) {
+          std::visit(overload{[&](VectorSizeT& list) {
                                 if (*iter != *end && matrix.size() == **iter) {
                                   iter->operator++();
                                   return true;
@@ -174,7 +188,7 @@ struct ExecutorTestHelper {
                                 return matrix.size() == size;
                               },
                               [](auto) { return false; }},
-                     inputSplit);
+                     _inputSplit);
       if (openNewBlock) {
         SharedAqlItemBlockPtr inputBlock =
             buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
@@ -190,14 +204,15 @@ struct ExecutorTestHelper {
         WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   }
 
-  AqlCall call;
-  MatrixBuilder<inputColumns> input;
-  MatrixBuilder<outputColumns> output;
-  std::array<std::size_t, outputColumns> outputRegisters;
-  std::optional<std::size_t> fullCount;
+  AqlCall _call;
+  MatrixBuilder<inputColumns> _input;
+  MatrixBuilder<outputColumns> _output;
+  std::array<std::size_t, outputColumns> _outputRegisters;
+  size_t _expectedSkip;
+  ExecutionState _expectedState;
 
-  SplitType inputSplit = {std::monostate()};
-  SplitType outputSplit = {std::monostate()};
+  SplitType _inputSplit = {std::monostate()};
+  SplitType _outputSplit = {std::monostate()};
 
   arangodb::aql::Query& _query;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;

@@ -979,17 +979,28 @@ TEST_F(SortedCollectExecutorTestSplit, split_1) {
       .setInputSplit({2, 3})
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
       .expectOutputValueList(3, 4)
-      .expectFullCount(5)
+      .expectSkipped(5)
+      .expectedState(ExecutionState::DONE)
       .run(std::move(infos));
-
-  /*
-  newTest <SortedCollectExecutor> ()
-      .setValues(1, 1, 1, 2, 3, 4, 4, 5)
-      .setSplit(2, 3)
-      .setLimit(2, 2)
-      .expectOutput(3, 4)
-      .run();*/
 }
+
+TEST_F(SortedCollectExecutorTestSplit, split_2) {
+  ExecutorTestHelper<SortedCollectExecutor>(*fakedQuery)
+      .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
+      .setInputSplit({2, 3})
+      .setCall(AqlCall{2, 2, AqlCall::Infinity{}, false})
+      .expectOutputValueList(3, 4)
+      .expectSkipped(2)
+      .expectedState(ExecutionState::HASMORE)
+      .run(std::move(infos));
+}
+/*
+newTest <SortedCollectExecutor> ()
+    .setValues(1, 1, 1, 2, 3, 4, 4, 5)
+    .setSplit(2, 3)
+    .setLimit(2, 2)
+    .expectOutput(3, 4)
+    .run();*/
 
 /*
 TEST_F(SortedCollectExecutorTestSplit, split_2) {
