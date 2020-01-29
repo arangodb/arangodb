@@ -246,10 +246,6 @@ void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPl
 void removeTraversalPathVariable(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                  OptimizerRule const&);
 
-/// @brief prepares traversals for execution (hidden rule)
-void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                           OptimizerRule const&);
-
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 

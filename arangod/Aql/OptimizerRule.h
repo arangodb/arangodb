@@ -217,7 +217,6 @@ struct OptimizerRule {
 
     // remove now obsolete path variables
     removeTraversalPathVariable,
-    prepareTraversalsRule,
 
     // when we have single document operations, fill in special cluster
     // handling.

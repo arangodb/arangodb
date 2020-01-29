@@ -87,9 +87,10 @@ class TraversalNode : public GraphNode {
 
   /// @brief Internal constructor to clone the node.
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
-                std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
+                std::vector<std::unique_ptr<Collection>> const& edgeColls,
+                std::vector<std::unique_ptr<Collection>> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,
+                TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
                 std::unique_ptr<graph::BaseOptions> options);
 
@@ -211,6 +212,8 @@ class TraversalNode : public GraphNode {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
+
+  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c, bool withProperties) const;
 
  private:
   /// @brief vertex output variable

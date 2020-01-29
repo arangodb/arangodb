@@ -2462,4 +2462,27 @@ void ExecutionPlan::show() const {
   _root->walk(shower);
 }
 
+void ExecutionPlan::prepareTraversalOptions() {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  findNodesOfType(nodes,
+                  {arangodb::aql::ExecutionNode::TRAVERSAL,
+                   arangodb::aql::ExecutionNode::SHORTEST_PATH,
+                   arangodb::aql::ExecutionNode::K_SHORTEST_PATHS},
+                  true);
+  for (auto& node : nodes) {
+    switch (node->getType()) {
+      case ExecutionNode::TRAVERSAL:
+      case ExecutionNode::SHORTEST_PATH:
+      case ExecutionNode::K_SHORTEST_PATHS: {
+        auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
+        graphNode->prepareOptions();
+      } break;
+      default:
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+    }
+  }
+}
+
 #endif

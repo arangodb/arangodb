@@ -1159,6 +1159,8 @@ QueryResult Query::explain() {
 
           plan->findVarUsage();
           plan->planRegisters();
+          plan->prepareTraversalOptions();
+
           plan->toVelocyPack(*result.data.get(), parser.ast(), _queryOptions.verbosePlans);
         }
       }
@@ -1171,6 +1173,7 @@ QueryResult Query::explain() {
 
       bestPlan->findVarUsage();
       bestPlan->planRegisters();
+      bestPlan->prepareTraversalOptions();
 
       result.data = bestPlan->toVelocyPack(parser.ast(), _queryOptions.verbosePlans);
 
