@@ -77,7 +77,9 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   }
 
   VPackSlice distributeShardsLike = info.get(StaticStrings::DistributeShardsLike);
-  if (!distributeShardsLike.isNone() && !distributeShardsLike.isString()) {
+  if (!distributeShardsLike.isNone() && 
+      !distributeShardsLike.isString() &&
+      !distributeShardsLike.isNull()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "invalid non-string value for 'distributeShardsLike'");
@@ -501,6 +503,16 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
 
       TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) || !cl.forceOneShard()); 
     }
+          
+    auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
+    auto minReplicationFactorSlice = slice.get(StaticStrings::MinReplicationFactor);
+          
+    if (writeConcernSlice.isNumber() && minReplicationFactorSlice.isNumber()) {
+      // both attributes set. now check if they have different values
+      if (basics::VelocyPackHelper::compare(writeConcernSlice, minReplicationFactorSlice, false) != 0) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "got ambiguous values for writeConcern and minReplicationFactor");
+      }
+    }
 
     if (enforceReplicationFactor) {
       auto enforceSlice = slice.get("enforceReplicationFactor");
@@ -536,9 +548,8 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
 
         if (!replicationFactorSlice.isString()) {
           // beware: "satellite" replicationFactor
-          auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
           if (writeConcernSlice.isNone()) {
-            writeConcernSlice = slice.get(StaticStrings::MinReplicationFactor);
+            writeConcernSlice = minReplicationFactorSlice;
           }
 
           if (writeConcernSlice.isNumber()) {

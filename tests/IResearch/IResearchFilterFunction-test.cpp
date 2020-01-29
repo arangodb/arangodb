@@ -2122,14 +2122,36 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
                      "FOR d IN myView FILTER analYzER(phrase(false, 'quick'), "
                      "'test_analyzer') RETURN d");
 
+    // empty phrase
+    irs::Or expectedEmpty;
+    auto& phraseEmpty = expectedEmpty.add<irs::by_phrase>();
+    phraseEmpty.field(mangleString("name", "test_analyzer"));
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(phrase(d.name, [ ]), 'test_analyzer') "
+      "RETURN d",
+      expectedEmpty);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(phrase(d['name'], [ ]), "
+      "'test_analyzer') RETURN d",
+      expectedEmpty);
+
+    // accumulating offsets
+    irs::Or expectedAccumulated;
+    auto& phraseAccumulated = expectedAccumulated.add<irs::by_phrase>();
+    phraseAccumulated.field(mangleString("name", "test_analyzer"));
+    phraseAccumulated.push_back("q").push_back("u", 7).push_back("i", 3).push_back("c", 4).push_back(
+      "k",5);
+    assertFilterSuccess(
+      vocbase(),
+      "FOR d IN myView FILTER ANALYZER(phrase(d.name, "
+      " 'q', 0, [], 3, [], 4, 'u', 3, [], 0, 'i', 0, [], 4, 'c', 1, [], 1, [], 2, [], 1, 'k'), "
+      " 'test_analyzer') "
+      "RETURN d",
+      expectedAccumulated);
+
     // invalid input
-    assertFilterFail(
-        vocbase(),
-        "FOR d IN myView FILTER ANALYZER(phrase(d.name, [ ]), 'test_analyzer') "
-        "RETURN d");
-    assertFilterFail(vocbase(),
-                     "FOR d IN myView FILTER ANALYZER(phrase(d['name'], [ ]), "
-                     "'test_analyzer') RETURN d");
     assertFilterFail(
         vocbase(),
         "FOR d IN myView FILTER ANALYZER(phrase(d.name, [ 1, \"abc\" ]), "

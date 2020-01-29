@@ -79,6 +79,8 @@ arangodb::Result HotBackup::executeRocksDB(
     operation->execute();
   } // if
 
+  operation->doAuditLog();
+
   // if !valid() then !success() already set
   if (!operation->success()) {
     return arangodb::Result(

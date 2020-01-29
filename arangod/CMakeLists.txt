@@ -639,6 +639,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
+  RestHandler/RestSystemReportHandler.cpp
   RestHandler/RestTasksHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
@@ -782,7 +783,6 @@ add_library(arango_agency STATIC
 add_library(arangoserver STATIC 
   ${LIB_ARANGOSERVER_SOURCES}
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
-  ${ProductVersionFiles}
 )
 
 add_library(arango_network STATIC
@@ -972,6 +972,7 @@ endif()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
+  ${ProductVersionFiles}
 )
 
 target_link_libraries(${BIN_ARANGOD}
