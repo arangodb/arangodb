@@ -146,11 +146,7 @@ std::vector<std::pair<Variable const*, RegisterId>> const& TraversalExecutorInfo
 }
 
 TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos),
-      _fetcher(fetcher),
-      _input{CreateInvalidInputRowHint{}},
-      _rowState(ExecutionState::HASMORE),
-      _traverser(infos.traverser()) {}
+    : _infos(infos), _inputRow{CreateInvalidInputRowHint{}}, _traverser(infos.traverser()) {}
 
 TraversalExecutor::~TraversalExecutor() {
   auto opts = _traverser.options();
@@ -175,133 +171,157 @@ std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
 }
 
 std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputAqlItemRow& output) {
-  TraversalStats s;
+  // TODO: Remove me!
+  TRI_ASSERT(false);
+}
+
+auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
+  // TODO check whether _traverser.hasMore is obsolete here
+  while (!output.isFull() && _traverser.hasMore() && _traverser.next()) {
+    TRI_ASSERT(_inputRow.isInitialized());
+
+    // traverser now has next v, e, p values
+    if (_infos.useVertexOutput()) {
+      AqlValue vertex = _traverser.lastVertexToAqlValue();
+      output.cloneValueInto(_infos.vertexRegister(), _inputRow, vertex);
+    }
+    if (_infos.useEdgeOutput()) {
+      AqlValue edge = _traverser.lastEdgeToAqlValue();
+      output.cloneValueInto(_infos.edgeRegister(), _inputRow, edge);
+    }
+    if (_infos.usePathOutput()) {
+      transaction::BuilderLeaser tmp(_traverser.trx());
+      AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
+      output.cloneValueInto(_infos.pathRegister(), _inputRow, path);
+    }
+    output.advanceRow();
+  }
+}
+
+auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
+  auto skip = size_t{0};
+
+  while (call.shouldSkip() && _traverser.next()) {
+    skip++;
+    call.didSkip(1);
+  }
+
+  return skip;
+}
+
+auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  TraversalStats stats;
 
   while (true) {
-    if (!_input.isInitialized()) {
-      if (_rowState == ExecutionState::DONE) {
-        // we are done
-        s.addFiltered(_traverser.getAndResetFilteredPaths());
-        s.addScannedIndex(_traverser.getAndResetReadDocuments());
-        s.addHttpRequests(_traverser.getAndResetHttpRequests());
-        return {_rowState, s};
+    if (_traverser.hasMore()) {
+      TRI_ASSERT(_inputRow.isInitialized());
+      doOutput(output);
+      if (output.isFull()) {
+        if (_traverser.hasMore()) {
+          return {ExecutorState::HASMORE, stats, AqlCall{}};
+        } else {
+          return {input.upstreamState(), stats, AqlCall{}};
+        }
       }
-      std::tie(_rowState, _input) = _fetcher.fetchRow();
-      if (_rowState == ExecutionState::WAITING) {
-        TRI_ASSERT(!_input.isInitialized());
-        s.addFiltered(_traverser.getAndResetFilteredPaths());
-        s.addScannedIndex(_traverser.getAndResetReadDocuments());
-        s.addHttpRequests(_traverser.getAndResetHttpRequests());
-        return {_rowState, s};
-      }
-
-      if (!_input.isInitialized()) {
-        // We tried to fetch, but no upstream
-        TRI_ASSERT(_rowState == ExecutionState::DONE);
-        s.addFiltered(_traverser.getAndResetFilteredPaths());
-        s.addScannedIndex(_traverser.getAndResetReadDocuments());
-        s.addHttpRequests(_traverser.getAndResetHttpRequests());
-        return {_rowState, s};
-      }
-      if (!resetTraverser()) {
-        // Could not start here, (invalid)
-        // Go to next
-        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        continue;
-      }
-    }
-    if (!_traverser.hasMore() || !_traverser.next()) {
-      // Nothing more to read, reset input to refetch
-      _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
     } else {
-      // traverser now has next v, e, p values
-      if (_infos.useVertexOutput()) {
-        AqlValue vertex = _traverser.lastVertexToAqlValue();
-        AqlValueGuard guard{vertex, true};
-        output.moveValueInto(_infos.vertexRegister(), _input, guard);
+      if (!initTraverser(input)) {
+        return {input.upstreamState(), stats, AqlCall{}};
       }
-      if (_infos.useEdgeOutput()) {
-        AqlValue edge = _traverser.lastEdgeToAqlValue();
-        AqlValueGuard guard{edge, true};
-        output.moveValueInto(_infos.edgeRegister(), _input, guard);
-      }
-      if (_infos.usePathOutput()) {
-        transaction::BuilderLeaser tmp(_traverser.trx());
-        AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
-        AqlValueGuard guard{path, true};
-        output.moveValueInto(_infos.pathRegister(), _input, guard);
-      }
-      s.addFiltered(_traverser.getAndResetFilteredPaths());
-      s.addScannedIndex(_traverser.getAndResetReadDocuments());
-      s.addHttpRequests(_traverser.getAndResetHttpRequests());
-      return {computeState(), s};
+      TRI_ASSERT(_inputRow.isInitialized());
     }
   }
 
-  s.addFiltered(_traverser.getAndResetFilteredPaths());
-  s.addScannedIndex(_traverser.getAndResetReadDocuments());
-  return {ExecutionState::DONE, s};
+  stats.addFiltered(_traverser.getAndResetFilteredPaths());
+  stats.addScannedIndex(_traverser.getAndResetReadDocuments());
+  stats.addHttpRequests(_traverser.getAndResetHttpRequests());
+  return {ExecutorState::DONE, stats, AqlCall{}};
 }
 
-ExecutionState TraversalExecutor::computeState() const {
-  if (_rowState == ExecutionState::DONE && !_traverser.hasMore()) {
-    return ExecutionState::DONE;
+auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, size_t, AqlCall> {
+  auto skipped = size_t{0};
+
+  while (true) {
+    skipped += doSkip(call);
+
+    if (!_traverser.hasMore()) {
+      if (!initTraverser(input)) {
+        return {input.upstreamState(), skipped, AqlCall{}};
+      }
+    } else {
+      TRI_ASSERT(call.getOffset() == 0);
+      return {ExecutorState::HASMORE, skipped, AqlCall{}};
+    }
   }
-  return ExecutionState::HASMORE;
 }
 
-bool TraversalExecutor::resetTraverser() {
+//
+// Set a new start vertex for traversal, for this fetch inputs
+// from input until we are either successful or input is unwilling
+// to give us more.
+//
+// TODO: this is quite a big function, refactor
+bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   _traverser.clear();
-
-  // Initialize the Expressions within the options.
-  // We need to find the variable and read its value here. Everything is
-  // computed right now.
   auto opts = _traverser.options();
   opts->clearVariableValues();
-  for (auto const& pair : _infos.filterConditionVariables()) {
-    opts->setVariableValue(pair.first, _input.getValue(pair.second));
-  }
-  if (opts->usesPrune()) {
-    auto* evaluator = opts->getPruneEvaluator();
-    // Replace by inputRow
-    evaluator->prepareContext(_input);
-  }
+
   // Now reset the traverser
-  if (_infos.usesFixedSource()) {
-    auto pos = _infos.getFixedSource().find('/');
-    if (pos == std::string::npos) {
-      _traverser.options()->query()->registerWarning(
-          TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for traversal: "
-          "Only id strings or objects with "
-          "_id are allowed");
-      return false;
-    } else {
-      // Use constant value
-      _traverser.setStartVertex(_infos.getFixedSource());
-      return true;
+  // NOTE: It is correct to ask for whether there is a data row here
+  //       even if we're using a constant start vertex, as we expect
+  //       to provide output for every input row
+  while (input.hasDataRow()) {
+    // Try to acquire a starting vertex
+    std::tie(std::ignore, _inputRow) = input.nextDataRow();
+    TRI_ASSERT(_inputRow.isInitialized());
+
+    if (opts->usesPrune()) {
+      auto* evaluator = opts->getPruneEvaluator();
+      // Replace by inputRow
+      evaluator->prepareContext(_inputRow);
+      TRI_ASSERT(_inputRow.isInitialized());
     }
-  } else {
-    AqlValue const& in = _input.getValue(_infos.getInputRegister());
-    if (in.isObject()) {
-      try {
-        _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));
+
+    TRI_ASSERT(_inputRow.isInitialized());
+    if (_infos.usesFixedSource()) {
+      auto pos = _infos.getFixedSource().find('/');
+      if (pos == std::string::npos) {
+        _traverser.options()->query()->registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for traversal: "
+            "Only id strings or objects with "
+            "_id are allowed");
+      } else {
+        // Use constant value
+        _traverser.setStartVertex(_infos.getFixedSource());
+        TRI_ASSERT(_inputRow.isInitialized());
         return true;
-      } catch (...) {
-        // on purpose ignore this error.
-        return false;
       }
-      // _id or _key not present we cannot start here, register warning take next
-    } else if (in.isString()) {
-      _traverser.setStartVertex(in.slice().copyString());
-      return true;
     } else {
-      _traverser.options()->query()->registerWarning(
-          TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for traversal: Only "
-          "id strings or objects with _id are "
-          "allowed");
-      return false;
+      AqlValue const& in = _inputRow.getValue(_infos.getInputRegister());
+      if (in.isObject()) {
+        try {
+          _traverser.setStartVertex(
+              _traverser.options()->trx()->extractIdString(in.slice()));
+          TRI_ASSERT(_inputRow.isInitialized());
+          return true;
+        } catch (...) {
+          // on purpose ignore this error.
+        }
+      } else if (in.isString()) {
+        _traverser.setStartVertex(in.slice().copyString());
+        TRI_ASSERT(_inputRow.isInitialized());
+        return true;
+      } else {
+        // _id or _key not present we cannot start here, register warning take next
+        _traverser.options()->query()->registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for traversal: Only "
+            "id strings or objects with _id are "
+            "allowed");
+      }
     }
   }
+  return false;
 }

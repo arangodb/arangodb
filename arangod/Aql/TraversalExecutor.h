@@ -147,19 +147,15 @@ class TraversalExecutor {
       -> std::tuple<ExecutorState, size_t, AqlCall>;
 
  private:
-  /**
-   * @brief compute the return state
-   * @return DONE if traverser and remote are both done, HASMORE otherwise
-   */
-  ExecutionState computeState() const;
+  auto doOutput(OutputAqlItemRow& output) -> void;
+  [[nodiscard]] auto doSkip(AqlCall& call) -> size_t;
 
-  bool resetTraverser();
+  [[nodiscard]] bool initTraverser(AqlItemBlockInputRange& input);
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
-  InputAqlItemRow _input;
-  ExecutionState _rowState;
+  InputAqlItemRow _inputRow;
+
   traverser::Traverser& _traverser;
 };
 
