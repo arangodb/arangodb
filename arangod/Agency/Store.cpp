@@ -35,6 +35,7 @@
 #include "Network/NetworkFeature.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
