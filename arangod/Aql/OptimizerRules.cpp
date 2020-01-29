@@ -3615,15 +3615,18 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(Optimizer* opt,
 }
 
 void arangodb::aql::createScatterGatherSnippet(
-    ExecutionPlan& plan, TRI_vocbase_t* vocbase,
-    ExecutionNode* node, SortElementVector& elements, size_t numberOfShards,
-    std::unordered_map<ExecutionNode*, ExecutionNode*>& subqueries) {
+    ExecutionPlan& plan, TRI_vocbase_t* vocbase, ExecutionNode* node,
+    bool const isRootNode, std::vector<ExecutionNode*> const& nodeDependencies,
+    std::vector<ExecutionNode*> const& nodeParents,
+    SortElementVector const& elements, size_t const numberOfShards,
+    std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries) {
   // insert a scatter node
   auto* scatterNode =
       new ScatterNode(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD);
   plan.registerNode(scatterNode);
   TRI_ASSERT(node->getDependencies().empty());
-  scatterNode->addDependency(node->getDependencies()[0]);
+  TRI_ASSERT(!nodeDependencies.empty());
+  scatterNode->addDependency(nodeDependencies[0]);
 
   // insert a remote node
   ExecutionNode* remoteNode =
@@ -3657,10 +3660,9 @@ void arangodb::aql::createScatterGatherSnippet(
     gatherNode->elements(elements);
   }
 
-  auto const& parents = node->getParents();
   // and now link the gather node with the rest of the plan
-  if (parents.size() == 1) {
-    parents[0]->replaceDependency(node->getDependencies()[0], gatherNode);
+  if (nodeParents.size() == 1) {
+    nodeParents[0]->replaceDependency(nodeDependencies[0], gatherNode);
   }
 
   // check if the node that we modified was at the end of a subquery
@@ -3670,7 +3672,7 @@ void arangodb::aql::createScatterGatherSnippet(
     ExecutionNode::castTo<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
   }
 
-  if (plan.isRoot(node)) {
+  if (isRootNode) {
     // if we replaced the root node, set a new root node
     plan.root(gatherNode);
   }
@@ -3710,8 +3712,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
   for (auto& node : nodes) {
     // found a node we need to replace in the plan
 
-    // intentional copy of the dependencies, as we will be modifying
-    // dependencies later on
+    // intentional copy of the parents and dependencies, as we will be modifying
+    // them later on
+    auto const parents = node->getParents();
     auto const deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
@@ -3725,6 +3728,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       continue;
     }
 
+    auto const isRootNode = plan->isRoot(node);
     plan->unlinkNode(node, true);
 
     auto const nodeType = node->getType();
@@ -3782,7 +3786,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
     TRI_ASSERT(collection != nullptr);
 
     size_t numberOfShards = collection->numberOfShards();
-    createScatterGatherSnippet(*plan, vocbase, node, elements, numberOfShards, subqueries);
+    createScatterGatherSnippet(*plan, vocbase, node, isRootNode, deps, parents,
+                               elements, numberOfShards, subqueries);
     wasModified = true;
   }
 
