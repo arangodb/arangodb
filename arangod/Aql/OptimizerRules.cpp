@@ -5944,42 +5944,6 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-/// @brief prepares traversals for execution (hidden rule)
-void arangodb::aql::prepareTraversalsRule(Optimizer* opt,
-                                          std::unique_ptr<ExecutionPlan> plan,
-                                          OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> tNodes{a};
-  plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
-  plan->findNodesOfType(tNodes, EN::K_SHORTEST_PATHS, true);
-  plan->findNodesOfType(tNodes, EN::SHORTEST_PATH, true);
-
-  if (tNodes.empty()) {
-    // no traversals present
-    opt->addPlan(std::move(plan), rule, false);
-    return;
-  }
-
-  // first make a pass over all traversal nodes and remove unused
-  // variables from them
-  for (auto const& n : tNodes) {
-    if (n->getType() == EN::TRAVERSAL) {
-      TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
-      traversal->prepareOptions();
-    } else if (n->getType() == EN::K_SHORTEST_PATHS) {
-      TRI_ASSERT(n->getType() == EN::K_SHORTEST_PATHS);
-      KShortestPathsNode* spn = ExecutionNode::castTo<KShortestPathsNode*>(n);
-      spn->prepareOptions();
-    } else {
-      TRI_ASSERT(n->getType() == EN::SHORTEST_PATH);
-      ShortestPathNode* spn = ExecutionNode::castTo<ShortestPathNode*>(n);
-      spn->prepareOptions();
-    }
-  }
-
-  opt->addPlan(std::move(plan), rule, true);
-}
-
 /// @brief pulls out simple subqueries and merges them with the level above
 ///
 /// For example, if we have the input query

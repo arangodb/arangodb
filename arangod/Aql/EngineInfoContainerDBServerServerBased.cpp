@@ -226,7 +226,9 @@ void EngineInfoContainerDBServerServerBased::addNode(ExecutionNode* node) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS: {
-      injectVertexColletions(static_cast<GraphNode*>(node));
+      auto* const graphNode = ExecutionNode::castTo<GraphNode*>(node);
+      graphNode->prepareOptions();
+      injectVertexColletions(graphNode);
       break;
     }
     default:
