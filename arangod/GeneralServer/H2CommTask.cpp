@@ -244,9 +244,10 @@ ssize_t data_source_read_length_callback(
 nghttp2_session *session, uint8_t frame_type, int32_t stream_id,
 int32_t session_remote_window_size, int32_t stream_remote_window_size,
                                          uint32_t remote_max_frame_size, void *user_data) {
-  LOG_DEVEL << "session_remote_window_size: " << session_remote_window_size << ", stream_remote_window_size: " << stream_remote_window_size
+  LOG_TOPIC("b5de2", TRACE, Logger::REQUESTS) << "session_remote_window_size: " <<
+  session_remote_window_size << ", stream_remote_window_size: " << stream_remote_window_size
   << ", remote_max_frame_size: " << remote_max_frame_size;
-  return (1 << 14); // 64kB
+  return (1 << 16); // 64kB
 }
 }
 
@@ -353,7 +354,6 @@ template <SocketType T>
 bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
   if (ec) {
     this->close(ec);
-    LOG_DEVEL << "closing stream in readCallback: " << ec.message();
     return false;  // stop read loop
   }
 
@@ -367,7 +367,6 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
         << "HTTP2 parsing error: \"" << nghttp2_strerror((int)rv)
         << "\" (" << rv << ")";
       this->close(ec);
-      LOG_DEVEL << "stop reading";
       return false;  // stop read loop
     }
 
@@ -382,7 +381,6 @@ bool H2CommTask<T>::readCallback(asio_ns::error_code ec) {
 
   if (!_writing && shouldStop()) {
     this->close();
-    LOG_DEVEL << "stop reading";
     return false;  // stop read loop
   }
 
@@ -580,14 +578,12 @@ void H2CommTask<T>::queueHttp2Responses() {
                      len.length(), NGHTTP2_NV_FLAG_NO_COPY_NAME});
 
       if (res.bodySize() > 0) {
-        LOG_DEVEL << "body size " << res.bodySize();
         
         prd.source.ptr = strm;
         prd.read_callback = [](nghttp2_session* session, int32_t stream_id,
                                uint8_t* buf, size_t length, uint32_t* data_flags,
                                nghttp2_data_source* source, void* user_data) -> ssize_t {
           auto strm = static_cast<H2CommTask<T>::Stream*>(source->ptr);
-          LOG_DEVEL << "read_callback len = " << length;
 
           basics::StringBuffer& body = strm->response->body();
 
@@ -599,24 +595,21 @@ void H2CommTask<T>::queueHttp2Responses() {
           const char* src = body.data() + strm->responseOffset;
           std::copy_n(src, nread, buf);
           strm->responseOffset += nread;
-          LOG_DEVEL << "wrote " << nread << " data bytes for " << stream_id;
           
           if (strm->responseOffset == body.size()) {
-            LOG_DEVEL << "done writing data frame for " << stream_id;
             *data_flags |= NGHTTP2_DATA_FLAG_EOF;
           }
           
           // simon: might be needed if NGHTTP2_DATA_FLAG_NO_COPY is used
-  //        if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
-  //            nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id, NGHTTP2_NO_ERROR);
-  //        }
+//        if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
+//            nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id, NGHTTP2_NO_ERROR);
+//        }
           return static_cast<ssize_t>(nread);
         };
         prd_ptr = &prd;
       }
     }
 
-    LOG_DEVEL << "submitting response " << streamId;
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
                                      nva.size(), prd_ptr);
     if (rv != 0) {
@@ -679,16 +672,13 @@ void H2CommTask<T>::doWrite() {
   this->setTimeout(this->DefaultTimeout);
 
   if (asio_ns::buffer_size(outBuffers) == 0) {
-    LOG_DEVEL << "nothing more to send";
     this->_writing = false;
-//    if (shouldStop()) {
-//      LOG_DEVEL << "closing stream in doWrite";
-//      this->close();
-//    }
+    if (shouldStop()) {
+      this->close();
+    }
     return;
   }
 
-  LOG_DEVEL << "about to write " << asio_ns::buffer_size(outBuffers) << " bytes";
   asio_ns::async_write(this->_protocol->socket, outBuffers,
                        [self = this->shared_from_this()](const asio_ns::error_code& ec,
                                                          std::size_t nwrite) {
@@ -699,7 +689,6 @@ void H2CommTask<T>::doWrite() {
                            return;
                          }
 
-    LOG_DEVEL << "did write " << nwrite << " bytes";
                          me.doWrite();
                        });
 }

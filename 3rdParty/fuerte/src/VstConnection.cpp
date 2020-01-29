@@ -94,7 +94,7 @@ void VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
 
   } else if (state == Connection::State::Disconnected) {
     FUERTE_LOG_VSTTRACE << "sendRequest (vst): not connected\n";
-    this->startConnection();
+    this->start(); // <- thread-safe connection start
   } else if (state == Connection::State::Failed) {
     FUERTE_LOG_ERROR << "queued request on failed connection\n";
     drainQueue(fuerte::Error::ConnectionClosed);

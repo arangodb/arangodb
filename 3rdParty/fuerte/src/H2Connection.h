@@ -88,8 +88,6 @@ class H2Connection final : public fuerte::GeneralConnection<T> {
                                 size_t len, void* user_data);
   static int on_stream_close(nghttp2_session* session, int32_t stream_id,
                              uint32_t error_code, void* user_data);
-  static int on_frame_send(nghttp2_session *session,
-                           const nghttp2_frame *frame, void *user_data);
   static int on_frame_not_send(nghttp2_session* session,
                                const nghttp2_frame* frame, int lib_error_code,
                                void* user_data);

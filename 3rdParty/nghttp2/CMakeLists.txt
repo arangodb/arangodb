@@ -47,6 +47,5 @@ endif()
 
 # we always build it statically
 target_compile_definitions(nghttp2 PUBLIC "-DNGHTTP2_STATICLIB")
-target_compile_definitions(nghttp2 PUBLIC "-DDEBUGBUILD")
 
 target_include_directories(nghttp2 PUBLIC ${NGHTTP2_INCLUDES})

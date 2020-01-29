@@ -203,7 +203,7 @@ void H1Connection<ST>::sendRequest(std::unique_ptr<Request> req,
     startWriting();
   } else if (state == Connection::State::Disconnected) {
     FUERTE_LOG_HTTPTRACE << "sendRequest: not connected\n";
-    this->startConnection();
+    this->start();  // <- thread-safe connection start
   } else if (state == Connection::State::Failed) {
     FUERTE_LOG_ERROR << "queued request on failed connection\n";
     drainQueue(fuerte::Error::ConnectionClosed);
