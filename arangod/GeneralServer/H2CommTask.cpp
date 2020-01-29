@@ -244,7 +244,7 @@ ssize_t data_source_read_length_callback(
 nghttp2_session *session, uint8_t frame_type, int32_t stream_id,
 int32_t session_remote_window_size, int32_t stream_remote_window_size,
                                          uint32_t remote_max_frame_size, void *user_data) {
-  LOG_TOPIC("b5de2", TRACE, Logger::REQUESTS) << "session_remote_window_size: " <<
+  LOG_TOPIC("b6f34", TRACE, Logger::REQUESTS) << "session_remote_window_size: " <<
   session_remote_window_size << ", stream_remote_window_size: " << stream_remote_window_size
   << ", remote_max_frame_size: " << remote_max_frame_size;
   return (1 << 16); // 64kB
