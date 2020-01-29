@@ -153,7 +153,7 @@ function server_secrets(options) {
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
   pu.cleanupDBDirectoriesAppend(secretsDir);
-  
+
   fs.write(fs.join(secretsDir, 'secret1'), 'jwtsecret-1');
   fs.write(fs.join(secretsDir, 'secret2'), 'jwtsecret-2');
 
@@ -171,11 +171,33 @@ function server_secrets(options) {
   });
 }
 
+function tls_rotation(options) {
+  console.error("Hugo Honk meldet sich zum Dienst");
+  let keyfileDir = fs.join(fs.getTempPath(), 'arango_tls_keyfile');
+  let keyfileName = fs.join(keyfileDir, "server.pem");
+  fs.makeDirectory(keyfileDir);
+  pu.cleanupDBDirectoriesAppend(keyfileDir);
+
+  fs.copyFile("./UnitTests/server.pem", keyfileName);
+
+  process.env["tls-keyfile"] = keyfileName;
+
+  let copyOptions = _.clone(options);
+  // copyOptions['protocol'] = "ssl";
+
+  const testCases = tu.scanTestPaths([tu.pathForTesting('client/tls_rotation')], copyOptions);
+  console.error("Hugo Honk meldet sich zum Dienst und will dies machen: ", JSON.stringify(testCases));
+  return tu.performTests(copyOptions, testCases, 'tls_rotation', tu.runInLocalArangosh, {
+    'ssl.keyfile': keyfileName
+  });
+}
+
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['server_permissions'] = server_permissions;
   testFns['server_parameters'] = server_parameters;
   testFns['server_secrets'] = server_secrets;
+  testFns['tls_rotation'] = tls_rotation;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
 };
