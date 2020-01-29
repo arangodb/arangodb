@@ -39,6 +39,10 @@
 #include <Logger/LogMacros.h>
 #include <utility>
 
+<<<<<<< HEAD
+=======
+// Set this to true to activate devel logging
+>>>>>>> c10dcc4d6718a241c267140ce27a0f64589b49a2
 #define LOG_DEVEL_SORTED_COLLECT_ENABLED false
 #define LOG_DEVEL_SC LOG_DEVEL_IF(LOG_DEVEL_SORTED_COLLECT_ENABLED)
 
@@ -408,7 +412,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     auto [state, input] = inputRange.peekDataRow();
 
     LOG_DEVEL_SC << "SortedCollectExecutor::produceRows " << state << " "
-              << input.isInitialized();
+                 << input.isInitialized();
 
     // TODO store in member if we have not been called with data before
     if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
@@ -491,11 +495,11 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
 auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
     -> std::tuple<ExecutorState, size_t, AqlCall> {
-
   TRI_IF_FAILURE("SortedCollectExecutor::skipRowsRange") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  TRI_ASSERT(clientCall.needSkipMore());
   while (clientCall.needSkipMore()) {
     LOG_DEVEL_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
     LOG_DEVEL_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
@@ -504,7 +508,7 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
       auto [state, input] = inputRange.peekDataRow();
 
       LOG_DEVEL_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
-                << std::boolalpha << input.isInitialized();
+                   << std::boolalpha << input.isInitialized();
 
       if (input.isInitialized()) {
         // we received data
@@ -549,7 +553,7 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
           _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
         }
         break;
-      } else if(!input.isInitialized()) {
+      } else if (!input.isInitialized()) {
         TRI_ASSERT(state == ExecutorState::HASMORE);
         LOG_DEVEL_SC << "waiting for more data to skip";
         break;
