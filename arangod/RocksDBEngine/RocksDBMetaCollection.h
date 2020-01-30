@@ -80,9 +80,13 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void estimateSize(velocypack::Builder& builder);
 
   void setRevisionTree(std::unique_ptr<containers::RevisionTree>&& tree, uint64_t seq);
-  containers::RevisionTree& revisionTree();
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx) override;
   std::unique_ptr<containers::RevisionTree> revisionTree(uint64_t batchId) override;
+
+  bool needToPersistRevisionTree(rocksdb::SequenceNumber maxCommitSeq) const;
+  rocksdb::SequenceNumber serializeRevisionTree(std::string& output,
+                                                rocksdb::SequenceNumber commitSeq,
+                                                std::chrono::milliseconds maxWorkTime);
 
   Result rebuildRevisionTree() override;
 
@@ -107,8 +111,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   Result bufferTruncate(rocksdb::SequenceNumber seq);
 
-  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq);
-
  public:
   
   /// return bounds for all documents
@@ -118,6 +120,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
   
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
+
+  rocksdb::SequenceNumber applyUpdates(rocksdb::SequenceNumber commitSeq,
+                                       std::chrono::milliseconds maxWorkTime);
 
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq) const;
@@ -130,11 +135,12 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   /// @revision tree management for replication
   std::unique_ptr<containers::RevisionTree> _revisionTree;
-  rocksdb::SequenceNumber _revisionTreeApplied;
+  std::atomic<rocksdb::SequenceNumber> _revisionTreeApplied;
+  mutable std::mutex _revisionTreeLock;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionInsertBuffers;
   std::multimap<rocksdb::SequenceNumber, std::vector<std::size_t>> _revisionRemovalBuffers;
   std::set<rocksdb::SequenceNumber> _revisionTruncateBuffer;
-  mutable std::shared_mutex _revisionBufferLock;
+  mutable std::mutex _revisionBufferLock;
 };
 
 } // namespace arangodb

@@ -229,8 +229,8 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 /// @brief serialize the collection metadata
 Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                       LogicalCollection& coll, bool force,
-                                      VPackBuilder& tmp,
-                                      rocksdb::SequenceNumber& appliedSeq) {
+                                      VPackBuilder& tmp, rocksdb::SequenceNumber& appliedSeq,
+                                      std::chrono::milliseconds maxWorkTime) {
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   TRI_ASSERT(appliedSeq > 0);
 
@@ -324,11 +324,12 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 4. store the revision tree
-  if (coll.syncByRevision()) {
-    rcoll->applyUpdates(maxCommitSeq);
-    auto& tree = rcoll->revisionTree();
-    output = tree.serialize();
-    rocksutils::uint64ToPersistent(output, maxCommitSeq);
+  if (coll.syncByRevision() && rcoll->needToPersistRevisionTree(maxCommitSeq)) {
+    rocksdb::SequenceNumber seq =
+        rcoll->serializeRevisionTree(output, maxCommitSeq, maxWorkTime);
+    appliedSeq = std::min(appliedSeq, seq);
+
+    rocksutils::uint64ToPersistent(output, seq);
 
     key.constructRevisionTreeValue(rcoll->objectId());
     rocksdb::Slice value(output);

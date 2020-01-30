@@ -166,6 +166,9 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto dbfeature = arangodb::DatabaseFeature::DATABASE;
   TRI_ASSERT(!engine->inRecovery()); // just don't
 
+  // amount of time to allow for applying revision tree updates
+  std::chrono::milliseconds workTime(500);
+
   bool didWork = false;
   auto mappings = engine->collectionMappings();
   for (auto const& pair : mappings) {
@@ -191,7 +194,11 @@ Result RocksDBSettingsManager::sync(bool force) {
 
     auto* rcoll = static_cast<RocksDBCollection*>(coll->getPhysical());
     rocksdb::SequenceNumber appliedSeq = maxSeqNr;
-    Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder, appliedSeq);
+    auto start = std::chrono::high_resolution_clock::now();
+    Result res = rcoll->meta().serializeMeta(batch, *coll, force, _tmpBuilder,
+                                             appliedSeq, workTime / 2);
+    workTime = workTime - std::chrono::duration_cast<std::chrono::milliseconds>(
+                              std::chrono::high_resolution_clock::now() - start);
     minSeqNr = std::min(minSeqNr, appliedSeq);
 
     const std::string err = "could not sync metadata for collection '";
