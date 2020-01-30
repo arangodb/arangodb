@@ -1,6 +1,9 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
+  confusing error messages.
+
 * Internal statistics API now uses integer timestamps instead of doubles. The
   old behavior sometimes leads to failed requests because of parse errors
   which occurred in the internally used JavaScript joi library.
@@ -27,6 +30,7 @@ v3.5.5 (XXXX-XX-XX)
 
 v3.5.4 (2020-01-22)
 -------------------
+
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
   while.
 
