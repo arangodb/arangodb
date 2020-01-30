@@ -33,13 +33,16 @@ namespace aql {
 
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
-class ScatterExecutor {};
+class ScatterExecutor {
+ public:
+  class ClientBlockData {};
+};
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl {
+class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<ScatterExecutor> {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard argument (shardIds) should probably be moved into some

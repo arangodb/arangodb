@@ -34,7 +34,10 @@ class DistributeNode;
 
 // The DistributeBlock is actually implemented by specializing
 // ExecutionBlockImpl, so this class only exists to identify the specialization.
-class DistributeExecutor {};
+class DistributeExecutor {
+ public:
+  class ClientBlockData {};
+};
 
 class Query;
 
@@ -42,7 +45,8 @@ class Query;
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClientsImpl {
+class ExecutionBlockImpl<DistributeExecutor>
+    : public BlocksWithClientsImpl<DistributeExecutor> {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (shardIds, collection) should probably be moved into

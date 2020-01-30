@@ -92,7 +92,7 @@ class BlocksWithClients {
  *
  */
 
-// template <class ClientBlockData>
+template <class Executor>
 class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
  public:
   BlocksWithClientsImpl(ExecutionEngine* engine, ExecutionNode const* ep,
@@ -161,7 +161,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 
   /// @brief A map of clientId to the data this client should receive.
   ///        This map will be filled as the execution progresses.
-  // std::unordered_map<std::string, ClientBlockData> _clientBlockData;
+  std::unordered_map<std::string, typename Executor::ClientBlockData> _clientBlockData;
 
  private:
   bool _wasShutdown;
