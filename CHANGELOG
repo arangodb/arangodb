@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed a bug, where a single host agency logged too early.
+* Fixed a bug where a single host agency could log too early.
 
 * Fix a bug in collection creation with `distributeShardsLike`.
 
