@@ -2,7 +2,7 @@ v3.5.5 (XXXX-XX-XX)
 -------------------
 
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
-  confusing error messages
+  confusing error messages.
 
 * Added HotBackup events into auditing.
 
