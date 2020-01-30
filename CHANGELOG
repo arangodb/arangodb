@@ -1,6 +1,8 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Make active failover integration tests more stable.
+
 * Include collections "_queues" and "_jobs" in dumps created by arangodump
   in case the option `--include-system-collections` was set to true. Previously
   these collections were always excluded from dumps.
