@@ -207,7 +207,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
-
   if (!inputRange.hasDataRow()) {
     return {inputRange.upstreamState(), NoStats{}, upstreamCall};
   }
