@@ -117,6 +117,7 @@ void TRI_gmtime(time_t tt, struct tm* tb) {
   struct tm* tp = gmtime(&tt);
 
   if (tp != nullptr) {
+    // cppcheck-suppress uninitvar
     memcpy(tb, tp, sizeof(struct tm));
   }
 #endif
@@ -177,6 +178,7 @@ size_t TRI_numberProcessors() {
 
 std::string arangodb::utilities::timeString(char sep, char fin) {
   time_t tt = time(nullptr);
+  // cppcheck-suppress uninitvar
   struct tm tb;
   TRI_gmtime(tt, &tb);
   char buffer[32];

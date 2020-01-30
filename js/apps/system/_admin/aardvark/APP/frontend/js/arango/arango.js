@@ -635,7 +635,7 @@
     },
 
     arangoMessage: function (title, content, info) {
-      window.App.notificationList.add({title: title, content: content, info: info, type: 'message'});
+      window.App.notificationList.add({title: title, content: content, info: info, type: 'info'});
     },
 
     hideArangoNotifications: function () {

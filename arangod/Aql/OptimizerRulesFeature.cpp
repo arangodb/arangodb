@@ -62,7 +62,7 @@ void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::Pr
   options->addOption("--query.optimizer-rules",
                      "enable or disable specific optimizer rules (use rule name prefixed with '-' for disabling, '+' for enabling)",
                      new arangodb::options::VectorParameter<arangodb::options::StringParameter>(&_optimizerRules),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
 
   options->addOption("--query.parallelize-gather-writes",
@@ -510,7 +510,7 @@ void OptimizerRulesFeature::enableOrDisableRules() {
         }
       } else {
         int id = translateRule(n);
-        if (id == -1) {
+        if (id != -1) {
           auto& rule = ruleByLevel(id);
           if (rule.hasFlag(OptimizerRule::Flags::CanBeDisabled)) {
             rule.flags |= OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);

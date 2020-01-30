@@ -29,6 +29,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -676,7 +677,7 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "operation to perform (may be specified as positional "
                      "argument without '--operation')",
                      new DiscreteValuesParameter<StringParameter>(&_options.operation, ::Operations),
-                     static_cast<std::underlying_type<Flags>::type>(Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--allow-inconsistent",
                      "whether to attempt to continue in face of errors; "
@@ -684,8 +685,8 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_options.allowInconsistent));
 
   options->addOption("--ignore-version",
-                     "ignore stored version of a backup"
-                     "restore may not work if version mismatch (restore operation)",
+                     "ignore stored version of a backup. "
+                     "Restore may not work if versions mismatch (restore operation)",
                      new BooleanParameter(&_options.ignoreVersion));
 
   options->addOption("--identifier",
@@ -693,16 +694,13 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "(restore/upload/download operation)",
                      new StringParameter(&_options.identifier));
 
-  //  options->addOption("--include-search", "whether to include ArangoSearch data",
-  //                     new BooleanParameter(&_options.includeSearch));
-
   options->addOption(
       "--label",
       "an additional label to add to the backup identifier (create operation)",
       new StringParameter(&_options.label));
 
   options->addOption("--max-wait-for-lock",
-                     "maximum time to wait in seconds to aquire a lock on "
+                     "maximum time to wait in seconds to acquire a lock on "
                      "all necessary resources (create operation)",
                      new DoubleParameter(&_options.maxWaitForLock));
 
@@ -718,27 +716,34 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--status-id",
                      "returns the status of a transfer process "
                      "(upload/download operation)",
-                     new StringParameter(&_options.statusId));
+                     new StringParameter(&_options.statusId),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise, arangodb::options::Flags::Command));
 
   options->addOption("--rclone-config-file",
-                     "filename of the rclone configuration file used for"
+                     "filename of the Rclone configuration file used for"
                      "file transfer (upload/download operation)",
-                     new StringParameter(&_options.rcloneConfigFile));
+                     new StringParameter(&_options.rcloneConfigFile),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
 
   options->addOption("--remote-path",
-                     "remote rclone path of directory used to store or "
+                     "remote Rclone path of directory used to store or "
                      "receive backups (upload/download operation)",
-                     new StringParameter(&_options.remoteDirectory));
+                     new StringParameter(&_options.remoteDirectory),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
 
   options->addOption("--abort",
                      "abort transfer with given status-id "
                      "(upload/download operation)",
-                     new BooleanParameter(&_options.abort));
+                     new BooleanParameter(&_options.abort),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise, arangodb::options::Flags::Command));
 
   options->addOption("--force",
-                     "abort transactions if needed to ensure a consistent snapshot"
-                     "(create operation)",
-                     new BooleanParameter(&_options.abortTransactionsIfNeeded));
+                     "abort transactions if needed to ensure a consistent snapshot. "
+                     "This option can destroy the atomicity of your transactions in the "
+                     "presence of intermediate commits! Use it with great care and only "
+                     "if you really need a consistent backup at all costs (create operation)",
+                     new BooleanParameter(&_options.abortTransactionsIfNeeded),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
 #endif
   /*
     options->addSection(

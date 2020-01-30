@@ -23,8 +23,10 @@
 
 #include "RestHandler.h"
 
+#include <fuerte/jwt.h>
 #include <velocypack/Exception.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -34,6 +36,7 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
+#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
@@ -159,20 +162,14 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     // request is coming in with VelocyStream, where the authentication happens
     // once at the beginning of the connection and not with every request.
     // In this case, we have to produce a proper JWT token as authorization:
-      auto auth = AuthenticationFeature::instance();
+    auto auth = AuthenticationFeature::instance();
     if (auth != nullptr && auth->isActive()) {
       // when in superuser mode, username is empty
       // in this case ClusterComm will add the default superuser token
       std::string const& username = _request->user();
       if (!username.empty()) {
-        VPackBuilder builder;
-        {
-          VPackObjectBuilder payload{&builder};
-          payload->add("preferred_username", VPackValue(username));
-        }
-        VPackSlice slice = builder.slice();
         headers.emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().generateJwt(slice));
+                        "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
       }
     }
   }

@@ -208,9 +208,9 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
             .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  auto& server = application_features::ApplicationServer::server();
+  TRI_GET_GLOBALS();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(server, builder.slice(), databaseName);
+      ReplicationApplierConfiguration::fromVelocyPack(v8g->_server, builder.slice(), databaseName);
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -360,9 +360,9 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
     TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
   }
 
-  auto& server = application_features::ApplicationServer::server();
+  TRI_GET_GLOBALS();
   ReplicationApplierConfiguration configuration =
-      ReplicationApplierConfiguration::fromVelocyPack(server, builder.slice(), database);
+      ReplicationApplierConfiguration::fromVelocyPack(v8g->_server, builder.slice(), database);
   // will throw if invalid
   configuration.validate();
 
@@ -425,8 +425,8 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate, ApplierTyp
     applier = vocbase.replicationApplier();
   } else {
     // applier type global
-    auto& server = application_features::ApplicationServer::server();
-    auto& replicationFeature = server.getFeature<ReplicationFeature>();
+    TRI_GET_GLOBALS();
+    auto& replicationFeature = v8g->_server.getFeature<ReplicationFeature>();
     applier = replicationFeature.globalReplicationApplier();
   }
 
@@ -622,8 +622,8 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
     TRI_V8_THROW_EXCEPTION_USAGE("stateAll()");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  DatabaseFeature& databaseFeature = server.getFeature<DatabaseFeature>();
+  TRI_GET_GLOBALS();
+  DatabaseFeature& databaseFeature = v8g->_server.getFeature<DatabaseFeature>();
 
   VPackBuilder builder;
   builder.openObject();

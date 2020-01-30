@@ -30,6 +30,9 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class LogicalCollection;  // forward declaration
 class LogicalView;        // forward declaration
@@ -46,6 +49,7 @@ namespace iresearch {
 class IResearchLink;  // forward declaration
 struct IResearchLinkMeta;
 class IResearchViewSort;
+class IResearchViewStoredValues;
 
 struct IResearchLinkHelper {
  public:
@@ -59,9 +63,10 @@ struct IResearchLinkHelper {
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal( // equal definition
-    arangodb::velocypack::Slice const& lhs, // left hand side
-    arangodb::velocypack::Slice const& rhs // right hand side
+  static bool equal(  // equal definition
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& lhs,  // left hand side
+      arangodb::velocypack::Slice const& rhs   // right hand side
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -92,7 +97,9 @@ struct IResearchLinkHelper {
     arangodb::velocypack::Slice definition, // source definition
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
-    IResearchViewSort const* primarySort = nullptr
+    IResearchViewSort const* primarySort = nullptr,
+    IResearchViewStoredValues const* storedValues = nullptr,
+    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
   );
 
   ////////////////////////////////////////////////////////////////////////////////

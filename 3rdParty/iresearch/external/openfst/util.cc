@@ -4,9 +4,11 @@
 // FST utility definitions.
 
 #include <fst/util.h>
+
 #include <cctype>
 #include <sstream>
 #include <string>
+
 #include <fst/flags.h>
 #include <fst/log.h>
 #include <fst/mapped-file.h>
@@ -31,7 +33,7 @@ void SplitString(char *full, const char *delim, std::vector<char *> *vec,
   }
 }
 
-int64 StrToInt64(const string &s, const string &src, size_t nline,
+int64 StrToInt64(const std::string &s, const std::string &src, size_t nline,
                  bool allow_negative, bool *error) {
   int64 n;
   const char *cs = s.c_str();
@@ -47,7 +49,7 @@ int64 StrToInt64(const string &s, const string &src, size_t nline,
   return n;
 }
 
-void ConvertToLegalCSymbol(string *s) {
+void ConvertToLegalCSymbol(std::string *s) {
   for (auto it = s->begin(); it != s->end(); ++it) {
     if (!isalnum(*it)) {
       *it = '_';
@@ -84,6 +86,18 @@ bool AlignOutput(std::ostream &strm) {
     strm.write("", 1);
   }
   return true;
+}
+
+int AlignBufferWithOutputStream(std::ostream &strm,
+                                std::ostringstream &buffer) {
+  const auto strm_pos = strm.tellp();
+  if (strm_pos == -1) {
+    LOG(ERROR) << "Cannot determine stream position";
+    return -1;
+  }
+  const int stream_offset = strm_pos % MappedFile::kArchAlignment;
+  for (int i = 0; i < stream_offset; ++i) buffer.write("", 1);
+  return stream_offset;
 }
 
 }  // namespace fst

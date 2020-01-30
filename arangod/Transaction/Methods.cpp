@@ -498,9 +498,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
   TRI_ASSERT(parts.size() == conditionData.size());
 
   // clean up
-  while (root->numMembers()) {
-    root->removeMemberUnchecked(0);
-  }
+  root->clearMembers();
 
   usedIndexes.clear();
   std::unordered_set<std::string> seenIndexConditions;
@@ -588,13 +586,13 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      Index::SortCosts costs =
+      Index::SortCosts sc =
           idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
-      if (costs.supportsCondition) {
+      if (sc.supportsCondition) {
         supportsSort = true;
       }
-      sortCost = costs.estimatedCosts;
-      coveredAttributes = costs.coveredAttributes;
+      sortCost = sc.estimatedCosts;
+      coveredAttributes = sc.coveredAttributes;
     }
 
     if (!supportsSort && isOnlyAttributeAccess && node->isOnlyEqualityMatch()) {
@@ -1621,8 +1619,13 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       TRI_ASSERT(!needsLock);
       TRI_ASSERT(!needsToGetFollowersUnderLock);
       TRI_ASSERT(updateFollowers == nullptr);
-      res = collection->replace(this, value, docResult, options,
-                                /*lock*/ false, prevDocResult);
+      if (options.overwriteModeUpdate) {
+        res = collection->update(this, value, docResult, options,
+                                 /*lock*/ false, prevDocResult);
+      } else {
+        res = collection->replace(this, value, docResult, options,
+                                  /*lock*/ false, prevDocResult);
+      }
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
       didReplace = true;
     }
@@ -1631,7 +1634,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       // Error reporting in the babies case is done outside of here,
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies && prevDocResult.revisionId() != 0) {
         TRI_ASSERT(didReplace);
-        
+
         arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key, prevDocResult.revisionId(),
                               0, nullptr, nullptr);
@@ -2463,7 +2466,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // Now prepare the requests:
       std::vector<network::FutureRes> futures;
       futures.reserve(followers->size());
-      
+
       network::RequestOptions reqOpts;
       reqOpts.database = vocbase().name();
       reqOpts.timeout = network::Timeout(600);
@@ -3019,7 +3022,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
-    
+
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
                                  return x->isHidden();
@@ -3056,7 +3059,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
   }
 
   std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
-    
+
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
                                  return x->isHidden();
@@ -3069,7 +3072,7 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
 ///        return a valid index. nullptr is impossible.
 transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
     std::string const& collectionName, std::string const& idxId) {
-  
+
   if (idxId.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The index id cannot be empty.");
@@ -3078,7 +3081,7 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
   if (!arangodb::Index::validateId(idxId.c_str())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
   }
-  
+
   if (_state->isCoordinator()) {
     std::shared_ptr<Index> idx = indexForCollectionCoordinator(collectionName, idxId);
     if (idx == nullptr) {
@@ -3148,7 +3151,7 @@ Future<Result> Methods::replicateOperations(
   }
 
   // path and requestType are different for insert/remove/modify.
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
@@ -3170,6 +3173,13 @@ Future<Result> Methods::replicateOperations(
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
       reqOpts.param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
+      if(options.overwrite) {
+        reqOpts.param(StaticStrings::OverWriteMode, (options.overwriteModeUpdate ? "update" : "replace"));
+        if(options.overwriteModeUpdate) {
+          reqOpts.param(StaticStrings::KeepNullString, options.keepNull ? "true" : "false");
+          reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
+        }
+      }
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;
@@ -3221,9 +3231,9 @@ Future<Result> Methods::replicateOperations(
     // nothing to do
     return Result();
   }
-  
+
   reqOpts.timeout = network::Timeout(chooseTimeout(count, payload->size()));
-  
+
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());

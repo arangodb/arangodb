@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDocumentHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -36,32 +38,13 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {
-  
-  if (!ServerState::instance()->isClusterRole()) {
-    // in the cluster we will have (blocking) communication, so we only
-    // want the request to be executed directly when we are on a single server.
-    auto const type = _request->requestType();
-    if ((type == rest::RequestType::GET ||
-         type == rest::RequestType::POST ||
-         type == rest::RequestType::PUT ||
-         type == rest::RequestType::PATCH ||
-         type == rest::RequestType::DELETE_REQ) &&
-        request->contentLength() <= 1024) {
-      // only allow direct execution if we don't have huge payload
-      _allowDirectExecution = true;
-    }
-  }
-}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestDocumentHandler::~RestDocumentHandler() = default;
 
@@ -170,7 +153,7 @@ RestStatus RestDocumentHandler::insertDocument() {
   if (!found || cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
                   "'collection' is missing, expecting " + DOCUMENT_PATH +
-                      "/<collectionname> or query parameter 'collection'");
+                  " POST /_api/document/<collection> or query parameter 'collection'");
     return RestStatus::DONE;
   }
 
@@ -185,7 +168,21 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
-  opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
+
+  std::string const& mode = _request->value(StaticStrings::OverWriteMode);
+  using namespace std::literals::string_literals;
+  if (mode == "update"s) {
+    opOptions.overwrite = true;
+    opOptions.overwriteModeUpdate = true;
+    opOptions.mergeObjects = _request->parsedValue(StaticStrings::MergeObjectsString, true);
+    opOptions.keepNull = _request->parsedValue(StaticStrings::KeepNullString, false);
+  } else if (mode == "replace"s) {
+    opOptions.overwrite = true;
+  }
+  if (!opOptions.overwrite) {
+    opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
+  }
+
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) &&
                         opOptions.overwrite;
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
@@ -242,14 +239,14 @@ RestStatus RestDocumentHandler::readDocument() {
     case 0:
     case 1:
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                    "expecting GET /_api/document/<document-handle>");
+                    "expecting GET /_api/document/<collection>/<key>");
       return RestStatus::DONE;
     case 2:
       return readSingleDocument(true);
 
     default:
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "expecting GET /_api/document/<document-handle>");
+                    "expecting GET /_api/document/<collection>/<key>");
       return RestStatus::DONE;
   }
 }
@@ -352,7 +349,7 @@ RestStatus RestDocumentHandler::checkDocument() {
 
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting URI /_api/document/<document-handle>");
+                  "expecting HEAD /_api/document/<collection>/<key>");
     return RestStatus::DONE;
   }
 
@@ -389,9 +386,9 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     std::string msg("expecting ");
     msg.append(isPatch ? "PATCH" : "PUT");
     msg.append(
-        " /_api/document/<collectionname> or "
-        "/_api/document/<document-handle> "
-        "or /_api/document and query parameter 'collection'");
+        " /_api/document/<collection> or"
+        " /_api/document/<collection>/<key> or"
+        " /_api/document and query parameter 'collection'");
 
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, msg);
     return RestStatus::DONE;
@@ -506,24 +503,24 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   } else {
     f = _activeTrx->replaceAsync(cname, body, opOptions);
   }
-  
+
   return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
     auto res = _activeTrx->finish(opRes.result);
 
     // ...........................................................................
     // outside write transaction
     // ...........................................................................
-    
+
     if (opRes.fail()) {
       generateTransactionError(opRes);
       return;
     }
-    
+
     if (!res.ok()) {
       generateTransactionError(cname, res, key, 0);
       return;
     }
-    
+
     generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
                   _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isArrayCase);
   }));
@@ -538,8 +535,8 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   if (suffixes.size() < 1 || suffixes.size() > 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting DELETE /_api/document/<document-handle> or "
-                  "/_api/document/<collection> with a BODY");
+                  "expecting DELETE /_api/document/<collection>/<key> or "
+                  "/_api/document/<collection> with a body");
     return RestStatus::DONE;
   }
 
@@ -613,25 +610,25 @@ RestStatus RestDocumentHandler::removeDocument() {
   }
 
   bool const isMultiple = search.isArray();
-  
+
   return waitForFuture(_activeTrx->removeAsync(cname, search, opOptions)
                        .thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
     auto res = _activeTrx->finish(opRes.result);
-    
+
     // ...........................................................................
     // outside write transaction
     // ...........................................................................
-    
+
     if (opRes.fail()) {
       generateTransactionError(opRes);
       return;
     }
-    
+
     if (!res.ok()) {
       generateTransactionError(cname, res, key);
       return;
     }
-    
+
     generateDeleted(opRes, cname,
                     TRI_col_type_e(_activeTrx->getCollectionType(cname)),
                     _activeTrx->transactionContextPtr()->getVPackOptionsForDump(), isMultiple);
@@ -647,7 +644,7 @@ RestStatus RestDocumentHandler::readManyDocuments() {
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting PUT /_api/document/<collection> with a BODY");
+                  "expecting PUT /_api/document/<collection> with a body");
     return RestStatus::DONE;
   }
 
@@ -675,21 +672,21 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   if (!success) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
-  
+
   return waitForFuture(_activeTrx->documentAsync(cname, search, opOptions)
                        .thenValue([=](OperationResult opRes) {
     auto res = _activeTrx->finish(opRes.result);
-    
+
     if (opRes.fail()) {
       generateTransactionError(opRes);
       return;
     }
-    
+
     if (!res.ok()) {
       generateTransactionError(cname, res, "");
       return;
     }
-    
+
     generateDocument(opRes.slice(), true,
                      _activeTrx->transactionContextPtr()->getVPackOptionsForDump());
   }));

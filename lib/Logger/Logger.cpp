@@ -317,13 +317,16 @@ void Logger::log(char const* function, char const* file, int line,
   }
 #endif
 
-  std::stringstream out;
+  std::string out;
+  out.reserve(64 + message.size());
+
   LogTimeFormats::writeTime(out, _timeFormat);
-  out << ' ';
+  out.push_back(' ');
 
   // output prefix
   if (!_outputPrefix.empty()) {
-    out << _outputPrefix << ' ';
+    out.append(_outputPrefix);
+    out.push_back(' ');
   }
 
   // append the process / thread identifier
@@ -337,10 +340,12 @@ void Logger::log(char const* function, char const* file, int line,
     _cachedPid = Thread::currentProcessId();
   }
   TRI_ASSERT(_cachedPid != 0);
-  out << '[' << _cachedPid;
+  out.push_back('[');
+  StringUtils::itoa(uint64_t(_cachedPid), out);
 
   if (_showThreadIdentifier) {
-    out << '-' << Thread::currentThreadNumber();
+    out.push_back('-');
+    StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
   }
 
   // log thread name
@@ -350,17 +355,20 @@ void Logger::log(char const* function, char const* file, int line,
       threadName = "main";
     }
 
-    out << '-' << threadName;
+    out.push_back('-');
+    out.append(threadName);
   }
 
-  out << "] ";
+  out.append("] ", 2);
 
   if (_showRole && _role != '\0') {
-    out << _role << ' ';
+    out.push_back(_role);
+    out.push_back(' ');
   }
 
   // log level
-  out << Logger::translateLogLevel(level) << ' ';
+  out.append(Logger::translateLogLevel(level));
+  out.push_back(' ');
 
   // check if we must display the line number
   if (_showLineNumber && file != nullptr && function != nullptr) {
@@ -373,21 +381,26 @@ void Logger::log(char const* function, char const* file, int line,
         filename = shortened + 1;
       }
     }
-    out << '[' << function << "@" << filename << ':' << line << "] ";
+    out.push_back('[');
+    out.append(function);
+    out.push_back('@');
+    out.append(filename);
+    out.push_back(':');
+    StringUtils::itoa(uint64_t(line), out);
+    out.append("] ", 2);
   }
 
   // generate the complete message
-  out << message;
-  std::string ostreamContent = out.str();
+  out.append(message);
  
   if (!_active.load(std::memory_order_relaxed)) {
     LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, ostreamContent.data(), ostreamContent.size(), true);
+                                          level, out.data(), out.size(), true);
     return;
   }
 
-  size_t offset = ostreamContent.size() - message.size();
-  auto msg = std::make_unique<LogMessage>(level, topicId, std::move(ostreamContent), offset);
+  size_t offset = out.size() - message.size();
+  auto msg = std::make_unique<LogMessage>(level, topicId, std::move(out), offset);
 
   // now either queue or output the message
   bool handled = false;

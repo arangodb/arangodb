@@ -85,7 +85,7 @@ option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from .
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "6")
+set(ARANGODB_VERSION_MINOR "7")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -496,6 +496,8 @@ set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 # to find those files the NO_DEFAULT_PATH
 # argument is passed
 if (NOT WINDOWS)
+  find_program (MAKE make gmake)
+
   find_program(
     CHMOD_EXECUTABLE chmod
     PATHS "/bin/" "/usr/bin/"
@@ -764,7 +766,7 @@ option(USE_MAINTAINER_MODE
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
-  if (CMAKE_COMPILER_IS_GNUCC)
+  if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
   endif()
 
@@ -833,7 +835,7 @@ endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
-  
+
 if (IPO_ENABLED)
   add_definitions("-DARANGODB_USE_IPO=1")
 endif()
@@ -1170,10 +1172,11 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb ${SNAPPY_LIB})
+add_dependencies(rocksdb snappy-static)
 
 if (USE_JEMALLOC)
-  add_dependencies(rocksdb jemalloc)
+  add_dependencies(rocksdb jemalloc_build)
+  link_directories("${JEMALLOC_HOME}/lib")
 endif ()
 
 ################################################################################

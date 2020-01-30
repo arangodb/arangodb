@@ -10,7 +10,7 @@ cache of the selected database. Each result is a JSON object with the following 
 
 - *hash*: the query result's hash
 
-- *query*: the query string 
+- *query*: the query string
 
 - *bindVars*: the query's bind parameters. this attribute is only shown if tracking for
   bind variables was enabled at server start
@@ -21,13 +21,13 @@ cache of the selected database. Each result is a JSON object with the following 
 
 - *started*: the date and time when the query was stored in the cache
 
-- *hits*: number of times the result was served from the cache (can be 
+- *hits*: number of times the result was served from the cache (can be
   *0* for queries that were only stored in the cache but were never accessed
   again afterwards)
 
 - *runTime*: the query's run time
 
-- *dataSources*: an array of collections/views the query was using
+- *dataSources*: an array of collections/Views the query was using
 
 @RESTRETURNCODES
 
@@ -38,4 +38,3 @@ Is returned when the list of results can be retrieved successfully.
 The server will respond with *HTTP 400* in case of a malformed request,
 
 @endDocuBlock
-

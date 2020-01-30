@@ -77,7 +77,9 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   }
 
   VPackSlice distributeShardsLike = info.get(StaticStrings::DistributeShardsLike);
-  if (!distributeShardsLike.isNone() && !distributeShardsLike.isString()) {
+  if (!distributeShardsLike.isNone() && 
+      !distributeShardsLike.isString() &&
+      !distributeShardsLike.isNull()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "invalid non-string value for 'distributeShardsLike'");
@@ -275,7 +277,7 @@ LogicalCollection* ShardingInfo::collection() const {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
+void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
   result.add(VPackValue("shards"));
@@ -449,7 +451,7 @@ std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
   for (auto const& mapElement : *_shardIds) {
     vector->emplace_back(mapElement.first);
   }
-  std::sort(vector->begin(), vector->end());
+  sortShardNamesNumerically(*vector);
   return vector;
 }
 
@@ -484,9 +486,10 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
 }
 
 Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
-                                                        application_features::ApplicationServer const& server) {
+                                                        application_features::ApplicationServer const& server,
+                                                        bool enforceReplicationFactor) {
   if (slice.isObject()) {
-    auto const& cl = server.getFeature<ClusterFeature>();
+    auto& cl = server.getFeature<ClusterFeature>();
 
     auto numberOfShardsSlice = slice.get(StaticStrings::NumberOfShards);
     if (numberOfShardsSlice.isNumber()) {
@@ -500,29 +503,80 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
 
       TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) || !cl.forceOneShard()); 
     }
-
-    auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
-    if (replicationFactorSlice.isNumber()) {
-      int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
-      if (replicationFactorProbe <= 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
+          
+    auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
+    auto minReplicationFactorSlice = slice.get(StaticStrings::MinReplicationFactor);
+          
+    if (writeConcernSlice.isNumber() && minReplicationFactorSlice.isNumber()) {
+      // both attributes set. now check if they have different values
+      if (basics::VelocyPackHelper::compare(writeConcernSlice, minReplicationFactorSlice, false) != 0) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "got ambiguous values for writeConcern and minReplicationFactor");
       }
+    }
 
-      uint32_t const minReplicationFactor = cl.minReplicationFactor();
-      uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
-      uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+    if (enforceReplicationFactor) {
+      auto enforceSlice = slice.get("enforceReplicationFactor");
+      if (!enforceSlice.isBool() || enforceSlice.getBool()) { 
+        auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
+        if (replicationFactorSlice.isNumber()) {
+          int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
+          if (replicationFactorProbe <= 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
+          }
 
-      if (replicationFactor > maxReplicationFactor &&
-          maxReplicationFactor > 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
-      } else if (replicationFactor < minReplicationFactor &&
-          minReplicationFactor > 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER,
-                      std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+          uint32_t const minReplicationFactor = cl.minReplicationFactor();
+          uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
+          uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+
+          // make sure the replicationFactor value is between the configured min and max values
+          if (replicationFactor > maxReplicationFactor &&
+              maxReplicationFactor > 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER,
+                          std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+          } else if (replicationFactor < minReplicationFactor &&
+              minReplicationFactor > 0) {
+            return Result(TRI_ERROR_BAD_PARAMETER,
+                          std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+          }
+        
+          // make sure we have enough servers available for the replication factor
+          if (ServerState::instance()->isCoordinator() &&
+              replicationFactor > cl.clusterInfo().getCurrentDBServers().size()) { 
+            return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+          }
+        }
+
+        if (!replicationFactorSlice.isString()) {
+          // beware: "satellite" replicationFactor
+          if (writeConcernSlice.isNone()) {
+            writeConcernSlice = minReplicationFactorSlice;
+          }
+
+          if (writeConcernSlice.isNumber()) {
+            int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
+            if (writeConcern <= 0) {
+              return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for writeConcern");
+            }
+            if (ServerState::instance()->isCoordinator() &&
+                static_cast<size_t>(writeConcern) > cl.clusterInfo().getCurrentDBServers().size()) { 
+              return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+            }
+          }
+        }
       }
     }
   }
 
   return Result();
+}
+
+void ShardingInfo::sortShardNamesNumerically(std::vector<ShardID>& list) {
+  // We need to sort numerically, so s99 is before s100:
+  std::sort(list.begin(), list.end(), [](ShardID const& lhs, ShardID const& rhs) {
+    TRI_ASSERT(lhs.size() > 1 && lhs[0] == 's');
+    uint64_t l = basics::StringUtils::uint64(lhs.c_str() + 1, lhs.size() - 1);
+    TRI_ASSERT(rhs.size() > 1 && rhs[0] == 's');
+    uint64_t r = basics::StringUtils::uint64(rhs.c_str() + 1, rhs.size() - 1);
+    return l < r;
+  });
 }

@@ -218,6 +218,10 @@ void VelocyPackHelper::initialize() {
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
   
+  // disallow tagged values and BCDs. they are not used in ArangoDB as of now
+  VPackOptions::Defaults.disallowTags = true;
+  VPackOptions::Defaults.disallowBCD = true;
+  
   ::optionsWithUniquenessCheck = VPackOptions::Defaults;
   ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
@@ -818,6 +822,7 @@ double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
     case VPackValueType::Binary:
     case VPackValueType::BCD:
     case VPackValueType::Custom:
+    case VPackValueType::Tagged:
       break;
   }
 
