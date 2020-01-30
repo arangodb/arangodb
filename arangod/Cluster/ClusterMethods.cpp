@@ -42,6 +42,7 @@
 #include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "RestServer/TtlFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/HotBackupCommon.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -49,6 +50,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -672,7 +674,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   for (auto& it : *otherShardsMap) {
     otherShards.push_back(it.first);
   }
-  std::sort(otherShards.begin(), otherShards.end());
+  ShardingInfo::sortShardNamesNumerically(otherShards);
 
   TRI_ASSERT(numberOfShards == otherShards.size());
 
@@ -3496,6 +3498,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   //    - fail if not
 
   if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
+    events::RestoreHotbackup("", TRI_ERROR_BAD_PARAMETER);
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         "restore payload must be an object with string attribute 'id'");
@@ -3515,9 +3518,11 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
     LOG_TOPIC("ed4dd", ERR, Logger::BACKUP)
         << "failed to find backup " << backupId
         << " on all db servers: " << result.errorMessage();
+    events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
-  if (list.size() == 0) {
+  if (list.empty()) {
+    events::RestoreHotbackup(backupId, TRI_ERROR_HTTP_NOT_FOUND);
     return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
                             "result is missing backup list");
   }
@@ -3526,13 +3531,16 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
     LOG_TOPIC("54b9a", ERR, Logger::BACKUP)
         << "failed to find agency dump for " << backupId
         << " on any db server: " << result.errorMessage();
+    events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
 
   TRI_ASSERT(list.size() == 1);
   BackupMeta& meta = list.begin()->second;
   if (!meta._isAvailable) {
-    LOG_TOPIC("ed4df", ERR, Logger::BACKUP) << "backup not available" << backupId;
+    LOG_TOPIC("ed4df", ERR, Logger::BACKUP)
+        << "backup not available" << backupId;
+    events::RestoreHotbackup(backupId, TRI_ERROR_HOT_RESTORE_INTERNAL);
     return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                             "backup not available for restore");
   }
@@ -3543,6 +3551,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
     using arangodb::methods::VersionResult;
 #ifdef USE_ENTERPRISE  // Will never be called in community
     if (!RocksDBHotBackup::versionTestRestore(meta._version)) {
+      events::RestoreHotbackup(backupId, TRI_ERROR_HOT_RESTORE_INTERNAL);
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Version mismatch");
     }
@@ -3555,6 +3564,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   if (!result.ok()) {
     LOG_TOPIC("5a746", ERR, Logger::BACKUP)
         << "failed to match db servers: " << result.errorMessage();
+    events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
 
@@ -3564,6 +3574,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   if (!matches.empty()) {
     result = applyDBServerMatchesToPlan(plan.slice(), matches, newPlan);
     if (!result.ok()) {
+      events::RestoreHotbackup(backupId, result.errorNumber());
       return result;
     }
   }
@@ -3571,6 +3582,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   // Pause maintenance feature everywhere, fail, if not succeeded everywhere
   result = controlMaintenanceFeature("pause", backupId, dbServers);
   if (!result.ok()) {
+    events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
 
@@ -3579,6 +3591,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
                              : ci->agencyReplan(newPlan.slice());
   if (!result.ok()) {
     result = controlMaintenanceFeature("proceed", backupId, dbServers);
+    events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
 
@@ -3594,6 +3607,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   std::string previous;
   result = restoreOnDBServers(backupId, dbServers, previous, ignoreVersion);
   if (!result.ok()) {  // This is disaster!
+    events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
 
@@ -3601,10 +3615,12 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   while (true) {  // will be left by a timeout
     std::this_thread::sleep_for(std::chrono::seconds(1));
     if (application_features::ApplicationServer::isStopping()) {
+      events::RestoreHotbackup(backupId, TRI_ERROR_HOT_RESTORE_INTERNAL);
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Shutdown of coordinator!");
     }
     if (std::chrono::steady_clock::now() - startTime > std::chrono::minutes(15)) {
+      events::RestoreHotbackup(backupId, TRI_ERROR_HOT_RESTORE_INTERNAL);
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Not all DBservers came back in time!");
     }
@@ -3636,6 +3652,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
     report.add("previous", VPackValue(previous));
     report.add("isCluster", VPackValue(true));
   }
+  events::RestoreHotbackup(backupId, TRI_ERROR_NO_ERROR);
   return arangodb::Result();
 }
 
@@ -4018,6 +4035,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
          (payload.hasKey("timeout") && !payload.get("timeout").isNumber()) ||
          (payload.hasKey("allowInconsistent") &&
           !payload.get("allowInconsistent").isBoolean()))) {
+      events::CreateHotbackup("", TRI_ERROR_BAD_PARAMETER);
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
@@ -4054,6 +4072,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("agency lock operation resulted in ") + result.errorMessage());
       LOG_TOPIC("6c73d", ERR, Logger::BACKUP) << result.errorMessage();
+      events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_HOT_BACKUP_INTERNAL);
       return result;
     }
 
@@ -4062,6 +4081,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
           << "hot backup didn't get to locking phase within " << timeout << "s.";
       auto hlRes = ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
 
+      events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_CLUSTER_TIMEOUT);
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
                               "hot backup timeout before locking phase");
     }
@@ -4074,6 +4094,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump: ") + result.errorMessage());
       LOG_TOPIC("c014d", ERR, Logger::BACKUP) << result.errorMessage();
+      events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_HOT_BACKUP_INTERNAL);
       return result;
     }
 
@@ -4081,6 +4102,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     auto cc = ClusterComm::instance();
     if (cc == nullptr) {
       // nullptr happens only during controlled shutdown
+      events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_SHUTTING_DOWN);
       return Result(TRI_ERROR_SHUTTING_DOWN, "server is shutting down");
     }
     std::vector<ServerID> dbServers = ci->getCurrentDBServers();
@@ -4093,6 +4115,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         lockedServers.clear();
         if (result.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {  // Unrecoverable
           ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+          events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_LOCAL_LOCK_FAILED);
           return result;
         }
       } else {
@@ -4117,6 +4140,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
               "failed to acquire global transaction lock on all db servers: ") +
               result.errorMessage());
       LOG_TOPIC("b7d09", ERR, Logger::BACKUP) << result.errorMessage();
+      events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
     }
 
@@ -4133,6 +4157,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       LOG_TOPIC("6b333", ERR, Logger::BACKUP) << result.errorMessage();
       std::vector<std::string> dummy;
       removeLocalBackups(backupId, dbServers, dummy);
+      events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
     }
 
@@ -4148,6 +4173,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
                        result.errorMessage() +
                        " backup's consistency is not guaranteed");
       LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
+      events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
     }
 
@@ -4158,12 +4184,14 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
                      "data definition of cluster was changed during hot "
                      "backup: backup's consistency is not guaranteed");
         LOG_TOPIC("0ad21", ERR, Logger::BACKUP) << result.errorMessage();
+        events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
         return result;
       }
     } catch (std::exception const& e) {
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("invalid agency state: ") + e.what());
       LOG_TOPIC("037eb", ERR, Logger::BACKUP) << result.errorMessage();
+      events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
     }
 
@@ -4180,9 +4208,11 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       }
     }
 
+    events::CreateHotbackup(timeStamp + "_" + backupId, TRI_ERROR_NO_ERROR);
     return arangodb::Result();
 
   } catch (std::exception const& e) {
+    events::CreateHotbackup("", TRI_ERROR_HOT_BACKUP_INTERNAL);
     return arangodb::Result(
         TRI_ERROR_HOT_BACKUP_INTERNAL,
         std::string("caught exception creating cluster backup: ") + e.what());
@@ -4287,6 +4317,7 @@ arangodb::Result deleteHotBackupsOnCoordinator(VPackSlice const payload, VPackBu
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
 
   if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
+    events::DeleteHotbackup("", TRI_ERROR_HTTP_BAD_PARAMETER);
     return arangodb::Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                             "Expecting object with key `id` set to backup id.");
   }
@@ -4295,6 +4326,7 @@ arangodb::Result deleteHotBackupsOnCoordinator(VPackSlice const payload, VPackBu
 
   result = removeLocalBackups(id, dbServers, deleted);
   if (!result.ok()) {
+    events::DeleteHotbackup(id, result.errorNumber());
     return result;
   }
 
@@ -4310,6 +4342,7 @@ arangodb::Result deleteHotBackupsOnCoordinator(VPackSlice const payload, VPackBu
   }
 
   result.reset();
+  events::DeleteHotbackup(id, TRI_ERROR_NO_ERROR);
   return result;
 }
 
