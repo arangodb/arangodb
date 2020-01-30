@@ -146,11 +146,6 @@ class Slice {
     return SliceStaticData::TypeMap[head()];
   }
   
-  // get the type for the slice
-  constexpr inline ValueType type(uint8_t h) const noexcept {
-    return SliceStaticData::TypeMap[h];
-  }
-
   char const* typeName() const { return valueTypeName(type()); }
 
   // Set new memory position
@@ -980,6 +975,11 @@ class Slice {
   int64_t getSmallIntUnchecked() const noexcept;
   
  private:
+  // get the type for the slice (including tags)
+  static constexpr inline ValueType type(uint8_t h) {
+    return SliceStaticData::TypeMap[h];
+  }
+
   // return the number of members for an Array
   // must only be called for Slices that have been validated to be of type Array
   ValueLength arrayLength() const {
