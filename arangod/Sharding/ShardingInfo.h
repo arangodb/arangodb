@@ -97,6 +97,8 @@ class ShardingInfo {
                           ShardID& shardID, bool& usesDefaultShardKeys,
                           std::string const& key = "");
 
+  static void sortShardNamesNumerically(std::vector<ShardID>& list);
+
  private:
   // @brief the logical collection we are working for
   LogicalCollection* _collection;

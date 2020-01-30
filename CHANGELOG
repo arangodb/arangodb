@@ -4,6 +4,14 @@ v3.5.5 (XXXX-XX-XX)
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
   confusing error messages.
 
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behavior sometimes leads to failed requests because of parse errors
+  which occurred in the internally used JavaScript joi library.
+
+* Make active failover integration tests more stable.
+
+* Fix bug in collection creation with distributeShardsLike.
+
 * Added HotBackup events into auditing.
 
 * Include collections "_queues" and "_jobs" in dumps created by arangodump
