@@ -8,8 +8,8 @@
   no-unused-expressions:0,
   no-unused-vars:0
   */
-/*jshint ignore:start */
-/*eslint-disable */
+/* jshint ignore:start */
+/* eslint-disable */
 /* global BYTELENGTH */
 global.DEFINE_MODULE('buffer', (function () {
   'use strict'
