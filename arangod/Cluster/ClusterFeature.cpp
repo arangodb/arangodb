@@ -490,7 +490,7 @@ void ClusterFeature::start() {
 
   // the agency about our state
   AgencyComm comm;
-  comm.sendServerState(0.0);
+  comm.sendServerState();
 
   std::string const version = comm.version();
 
@@ -563,7 +563,7 @@ void ClusterFeature::unprepare() {
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
 
   AgencyComm comm;
-  comm.sendServerState(0.0);
+  comm.sendServerState();
 
   if (_heartbeatThread != nullptr) {
     int counter = 0;
@@ -581,7 +581,7 @@ void ClusterFeature::unprepare() {
     ServerState::instance()->unregister();
   }
 
-  comm.sendServerState(0.0);
+  comm.sendServerState();
 
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...

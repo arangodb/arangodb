@@ -1,10 +1,23 @@
-v3.6.2 (2020-XX-XX)
+v3.6.2 (XXXX-XX-XX)
 -------------------
 
 * Clean out server job checks preconditions plan version unchanged for start.
 
-v3.6.1 (2020-XX-XX)
+* Make sure heartbeats are actually sent out and received once per second.
+
+* Make active failover integration tests more stable.
+
+* Include collections "_queues" and "_jobs" in dumps created by arangodump
+  in case the option `--include-system-collections` was set to true. Previously
+  these collections were always excluded from dumps.
+
+* Fix bug in collection creation with distributeShardsLike.
+
+
+v3.6.1 (2020-01-29)
 -------------------
+
+* Fixed issue #10949: k shortest paths behaviour wrong with zero weights.
 
 * Updated ArangoDB Starter to 0.14.13.
 
@@ -88,8 +101,6 @@ v3.6.1 (2020-XX-XX)
 * Updated arangosync to 0.7.2.
 
 * Fix Windows client package JS installation paths.
-
-* Added option that makes ArangoDB write logfiles in the Windows installer.
 
 
 v3.6.0 (2020-01-08)
