@@ -4,6 +4,10 @@ devel
 * Cluster collection creation preconditioned on involved db servers not
   in process of being cleaned and Fixed.
 
+* Add acquisition of system report to arangod instances.
+
+* JS `query` helper function can now be used with options.
+  
 * Fix a bug in collection creation with `distributeShardsLike`.
 
 * Added load-balancing support for listing currently running and slow AQL queries,
@@ -153,6 +157,8 @@ devel
 
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
+
+* Add acquisition of system report to arangod instances.
 
 * Fix execution ability in CentOS 6 regarding newer boost.
 
