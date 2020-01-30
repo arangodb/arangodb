@@ -59,7 +59,7 @@ class GraphNode : public ExecutionNode {
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
-  bool useAsSatellite() const;
+  bool isUsedAsSatellite() const;
 
  protected:
   /// @brief Internal constructor to clone the node.

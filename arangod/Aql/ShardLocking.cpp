@@ -60,7 +60,7 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to GraphNode");
       }
-      auto const useAsSatellite = graphNode->useAsSatellite();
+      auto const useAsSatellite = graphNode->isUsedAsSatellite();
       // Add all Edge Collections to the Transactions, Traversals do never write
       for (auto const& col : graphNode->edgeColls()) {
         updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, useAsSatellite);

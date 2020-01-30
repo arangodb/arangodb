@@ -64,7 +64,7 @@ void QuerySnippet::addNode(ExecutionNode* node) {
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS: {
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
-      auto const isSatellite = graphNode->useAsSatellite();
+      auto const isSatellite = graphNode->isUsedAsSatellite();
       _expansions.emplace_back(node, false, isSatellite);
       break;
     }
@@ -345,7 +345,7 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(exp.node);
       graphNode->setCollectionToShard({}); //clear previous information
 
-      TRI_ASSERT(graphNode->useAsSatellite() == exp.isSatellite);
+      TRI_ASSERT(graphNode->isUsedAsSatellite() == exp.isSatellite);
 
       if (!exp.isSatellite) {
         for (auto* aqlCollection : graphNode->collections()) {

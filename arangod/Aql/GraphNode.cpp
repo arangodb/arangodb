@@ -688,12 +688,12 @@ graph::Graph const* GraphNode::graph() const noexcept {
   return _graphObj;
 }
 
-bool GraphNode::useAsSatellite() const {
+bool GraphNode::isUsedAsSatellite() const {
 #ifndef USE_ENTERPRISE
   return false;
 #else
   auto const* traversalNode = dynamic_cast<SatelliteTraversalNode const*>(this);
   // TODO do this for shortest path and k-shortest paths as well
-  return traversalNode != nullptr;
+  return traversalNode != nullptr && traversalNode->isUsedAsSatellite();
 #endif
 }
