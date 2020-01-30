@@ -39,6 +39,10 @@ class ScatterExecutor {
    public:
     auto clear() -> void;
     auto addBlock(SharedAqlItemBlockPtr block) -> void;
+    auto hasDataFor(AqlCall const& call) -> bool;
+
+    auto execute(AqlCall call, ExecutionState upstreamState)
+        -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
    private:
     std::deque<SharedAqlItemBlockPtr> _queue;

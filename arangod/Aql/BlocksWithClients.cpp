@@ -192,7 +192,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
     -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
   TRI_ASSERT(!clientId.empty());
   if (clientId.empty()) {
-    // Security bailout to avaoid UB
+    // Security bailout to avoid UB
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "got empty distribution id");
   }
@@ -200,14 +200,33 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
   auto it = _clientBlockData.find(clientId);
   TRI_ASSERT(it != _clientBlockData.end());
   if (it == _clientBlockData.end()) {
-    // Security bailout to avaoid UB
+    // Security bailout to avoid UB
     std::string message("AQL: unknown distribution id ");
     message.append(clientId);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  // TODO check non-relevant cases.
+  auto call = stack.popCall();
+
+  // We do not have anymore data locally.
+  // Need to fetch more from upstream
+  auto& dataContainer = it->second;
+
+  while (!dataContainer.hasDataFor(call)) {
+    if (_upstreamState == ExecutionState::DONE) {
+      // We are done, with everything, we will not be able to fetch any more rows
+      return {_upstreamState, 0, nullptr};
+    }
+
+    auto state = fetchMore(stack);
+    if (state == ExecutionState::WAITING) {
+      return {state, 0, nullptr};
+    }
+    _upstreamState = state;
+  }
+  // If we get here we have data and can return it.
+  return dataContainer.execute(call, _upstreamState);
 }
 
 template <class Executor>

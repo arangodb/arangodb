@@ -34,6 +34,33 @@ auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> 
   _queue.emplace_back(block);
 }
 
+auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
+  return !_queue.empty();
+}
+
+auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  // Make sure we actually have data before you call execute
+  TRI_ASSERT(hasDataFor(call));
+  if (_queue.empty()) {
+    // Unlikely, security bailout
+    return {upstreamState, 0, nullptr};
+  }
+
+  auto block = _queue.front();
+  if (!block->hasShadowRows()) {
+    _queue.pop_front();
+    if (_queue.empty()) {
+      return {upstreamState, 0, block};
+    } else {
+      return {ExecutionState::HASMORE, 0, block};
+    }
+  }
+
+  // TODO IMPLEMENT ME
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 ScatterExecutor::ScatterExecutor(){};
 
 auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr block,

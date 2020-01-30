@@ -36,10 +36,22 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+// TODO
+// This section is not implemented yet
 auto DistributeExecutor::ClientBlockData::clear() -> void { _queue.clear(); }
 
 auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> void {
   _queue.emplace_back(block);
+}
+
+auto DistributeExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
+  return !_queue.empty();
+}
+
+auto DistributeExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  // TODO IMPLEMENT ME
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 DistributeExecutor::DistributeExecutor(){};
