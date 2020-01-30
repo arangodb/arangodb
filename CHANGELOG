@@ -1,9 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
-<<<<<<< HEAD
 * Clean out server job checks preconditions plan version unchanged for start.
-=======
+
 * Fixed issue #10949: k shortest paths behaviour wrong with zero weights.
 
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
@@ -16,7 +15,6 @@ v3.5.5 (XXXX-XX-XX)
 * Make active failover integration tests more stable.
 
 * Fix bug in collection creation with distributeShardsLike.
->>>>>>> d6b15d7ded168b4973649970a8fcb7529684d019
 
 * Added HotBackup events into auditing.
 
