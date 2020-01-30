@@ -1,4 +1,4 @@
-v3.4.9 (XXXX-XX-XX)
+v3.4.10 (XXXX-XX-XX)
 -------------------
 
 * Internal statistics API now uses integer timestamps instead of doubles. The
