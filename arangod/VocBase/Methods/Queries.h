@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,22 +20,35 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AQL_RELOAD_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AQL_RELOAD_HANDLER_H 1
+#ifndef ARANGOD_VOC_BASE_API_QUERIES_H
+#define ARANGOD_VOC_BASE_API_QUERIES_H 1
 
-#include "RestHandler/RestBaseHandler.h"
+#include "VocBase/vocbase.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
-class RestAqlReloadHandler : public arangodb::RestBaseHandler {
- public:
-  RestAqlReloadHandler(application_features::ApplicationServer&,
-                       GeneralRequest*, GeneralResponse*);
+namespace velocypack {
+class Builder;
+}
 
- public:
-  char const* name() const override final { return "RestAqlReloadHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
+namespace methods {
+
+struct Queries {
+  /// @brief return the list of slow queries
+  static void listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool fanout = false);
+  
+  /// @brief return the list of currently running queries
+  static void listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool fanout = false);
+  
+  /// @brief clears the list of slow queries
+  static void clearSlow(TRI_vocbase_t& vocbase, bool fanout = false);
+  
+  /// @brief kills the given query
+  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id); 
+
 };
+
+}  // namespace methods
 }  // namespace arangodb
 
 #endif
