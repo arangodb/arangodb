@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/encoding.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
