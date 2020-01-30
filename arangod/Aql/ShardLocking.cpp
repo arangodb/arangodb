@@ -55,20 +55,21 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId) {
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::TRAVERSAL: {
       // Add GraphNode
-      auto node = ExecutionNode::castTo<GraphNode const*>(baseNode);
-      if (node == nullptr) {
+      auto* graphNode = ExecutionNode::castTo<GraphNode const*>(baseNode);
+      if (graphNode == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to GraphNode");
       }
+      auto const useAsSatellite = graphNode->useAsSatellite();
       // Add all Edge Collections to the Transactions, Traversals do never write
-      for (auto const& col : node->edgeColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, false);
+      for (auto const& col : graphNode->edgeColls()) {
+        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, useAsSatellite);
       }
 
       // Add all Vertex Collections to the Transactions, Traversals do never
       // write, the collections have been adjusted already
-      for (auto const& col : node->vertexColls()) {
-        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, false);
+      for (auto const& col : graphNode->vertexColls()) {
+        updateLocking(col.get(), AccessMode::Type::READ, snippetId, {}, useAsSatellite);
       }
       break;
     }

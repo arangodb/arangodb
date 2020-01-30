@@ -34,7 +34,6 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -64,7 +63,9 @@ void QuerySnippet::addNode(ExecutionNode* node) {
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS: {
-      _expansions.emplace_back(node, false, false);
+      auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
+      auto const isSatellite = graphNode->useAsSatellite();
+      _expansions.emplace_back(node, false, isSatellite);
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -341,25 +342,48 @@ ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> QuerySnippet::pre
       // the same translation is copied to all servers
       // there are no local expansions
 
-      GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(exp.node);
+      auto* graphNode = ExecutionNode::castTo<GraphNode*>(exp.node);
       graphNode->setCollectionToShard({}); //clear previous information
 
-      for(auto* aqlCollection : graphNode->collections()) {
-        auto const& shards = aqlCollection->shardIds();
-        TRI_ASSERT(!shards->empty());
-        for (std::string const& shard : *shards) {
-          auto found = shardMapping.find(shard);
-          if (found != shardMapping.end() && found->second == server) {
-            // provide a correct translation from collection to shard
-            // to be used in toVelocyPack methods of classes derived
-            // from GraphNode
+      TRI_ASSERT(graphNode->useAsSatellite() == exp.isSatellite);
+
+      if (!exp.isSatellite) {
+        for (auto* aqlCollection : graphNode->collections()) {
+          auto const& shards = aqlCollection->shardIds();
+          TRI_ASSERT(!shards->empty());
+          for (std::string const& shard : *shards) {
+            auto found = shardMapping.find(shard);
+            if (found != shardMapping.end() && found->second == server) {
+              // provide a correct translation from collection to shard
+              // to be used in toVelocyPack methods of classes derived
+              // from GraphNode
+              graphNode->addCollectionToShard(aqlCollection->name(), shard);
+            }
+          }
+        }
+      } else {
+        for (auto* aqlCollection : graphNode->collections()) {
+          auto const& shards = shardLocking.shardsForSnippet(id(), aqlCollection);
+          for (auto const& shard : shards) {
+            // If we find a shard here that is not in this mapping,
+            // we have 1) a problem with locking before that should have thrown
+            // 2) a problem with shardMapping lookup that should have thrown before
+            TRI_ASSERT(shardMapping.find(shard) != shardMapping.end());
+            // Could we replace the outer if/else on isSatellite with this branch
+            // here, and remove the upper part?
+            //   if (check->second == server || exp.isSatellite) {...}
+
             graphNode->addCollectionToShard(aqlCollection->name(), shard);
+
+            // This case currently does not exist and is not handled here.
+            TRI_ASSERT(!exp.doExpand);
           }
         }
       }
 
       continue; // skip rest - there are no local expansions
     }
+    // exp.node is now either an enumerate collection, index, or modification.
 
     // It is of utmost importance that this is an ordered set of Shards.
     // We can only join identical indexes of shards for each collection

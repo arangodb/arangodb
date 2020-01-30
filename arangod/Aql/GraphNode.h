@@ -59,6 +59,8 @@ class GraphNode : public ExecutionNode {
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
+  bool useAsSatellite() const;
+
  protected:
   /// @brief Internal constructor to clone the node.
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -213,7 +215,7 @@ class GraphNode : public ExecutionNode {
   /// @brief flag, if graph is smart (enterprise edition only!)
   bool _isSmart;
 
-  /// @brief list of shards involved, requried for one-shard-databases
+  /// @brief list of shards involved, required for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
 };
 

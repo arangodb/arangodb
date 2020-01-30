@@ -35,8 +35,12 @@
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
+#include "TraversalNode.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Aql/SatelliteTraversalNode.h"
+#endif
 
 #include <utility>
 
@@ -682,4 +686,14 @@ std::vector<std::unique_ptr<aql::Collection>> const& GraphNode::vertexColls() co
 
 graph::Graph const* GraphNode::graph() const noexcept {
   return _graphObj;
+}
+
+bool GraphNode::useAsSatellite() const {
+#ifndef USE_ENTERPRISE
+  return false;
+#else
+  auto const* traversalNode = dynamic_cast<SatelliteTraversalNode const*>(this);
+  // TODO do this for shortest path and k-shortest paths as well
+  return traversalNode != nullptr;
+#endif
 }
