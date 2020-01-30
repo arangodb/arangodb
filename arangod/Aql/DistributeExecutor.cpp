@@ -36,6 +36,25 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+auto DistributeExecutor::ClientBlockData::clear() -> void { _queue.clear(); }
+
+auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> void {
+  _queue.emplace_back(block);
+}
+
+DistributeExecutor::DistributeExecutor(){};
+
+auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block,
+                                         std::unordered_map<std::string, ClientBlockData>& blockMap) const
+    -> void {
+  // TODO we might be better off here with filling fresh blocks on input
+  // instead of slicing one into very small pieces.
+  // TODO this is not implemented yet, we do not do FILTERING
+  for (auto& [id, list] : blockMap) {
+    list.addBlock(block);
+  }
+}
+
 ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
     ExecutionEngine* engine, DistributeNode const* node, ExecutorInfos&& infos,
     std::vector<std::string> const& shardIds, Collection const* collection,

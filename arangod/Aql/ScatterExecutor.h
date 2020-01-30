@@ -35,7 +35,21 @@ namespace aql {
 // so this class only exists to identify the specialization.
 class ScatterExecutor {
  public:
-  class ClientBlockData {};
+  class ClientBlockData {
+   public:
+    auto clear() -> void;
+    auto addBlock(SharedAqlItemBlockPtr block) -> void;
+
+   private:
+    std::deque<SharedAqlItemBlockPtr> _queue;
+  };
+
+  ScatterExecutor();
+  ~ScatterExecutor() = default;
+
+  auto distributeBlock(SharedAqlItemBlockPtr block,
+                       std::unordered_map<std::string, ClientBlockData>& blockMap) const
+      -> void;
 };
 
 /**

@@ -28,6 +28,23 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+auto ScatterExecutor::ClientBlockData::clear() -> void { _queue.clear(); }
+
+auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> void {
+  _queue.emplace_back(block);
+}
+
+ScatterExecutor::ScatterExecutor(){};
+
+auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr block,
+                                      std::unordered_map<std::string, ClientBlockData>& blockMap) const
+    -> void {
+  // Scatter returns every block on every client as is.
+  for (auto& [id, list] : blockMap) {
+    list.addBlock(block);
+  }
+}
+
 ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                         ScatterNode const* node,
                                                         ExecutorInfos&& infos,
@@ -48,6 +65,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ScatterExecu
   auto result = getSomeForShardWithoutTrace(atMost, shardId);
   return traceGetSomeEnd(result.first, std::move(result.second));
 }
+
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ScatterExecutor>::getSomeForShardWithoutTrace(
     size_t atMost, std::string const& shardId) {
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!

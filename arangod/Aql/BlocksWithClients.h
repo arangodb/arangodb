@@ -142,7 +142,11 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   auto executeWithoutTraceForClient(AqlCallStack stack, std::string const& clientId)
       -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
-  auto fetchMore() -> void;
+  /**
+   * @brief Load more data from upstream and distribute it into _clientBlockData
+   *
+   */
+  auto fetchMore(AqlCallStack stack) -> ExecutionState;
 
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
@@ -159,11 +163,13 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   /// @brief type of distribution that this nodes follows.
   ScatterNode::ScatterType _type;
 
+ private:
+  Executor _executor;
+
   /// @brief A map of clientId to the data this client should receive.
   ///        This map will be filled as the execution progresses.
   std::unordered_map<std::string, typename Executor::ClientBlockData> _clientBlockData;
 
- private:
   bool _wasShutdown;
 };
 

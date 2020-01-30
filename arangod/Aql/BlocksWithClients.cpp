@@ -71,21 +71,31 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
       BlocksWithClients(),
       _nrClients(shardIds.size()),
       _type(ScatterNode::ScatterType::SHARD),
+      _executor{},
+      _clientBlockData{},
       _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.try_emplace(shardIds[i], i);
   }
+
   auto scatter = ExecutionNode::castTo<ScatterNode const*>(ep);
   TRI_ASSERT(scatter != nullptr);
   _type = scatter->getScatterType();
+
+  _clientBlockData.reserve(shardIds.size());
+  for (auto const& id : shardIds) {
+    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{});
+  }
 }
 
 /// @brief initializeCursor
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::initializeCursor(InputAqlItemRow const& input)
     -> std::pair<ExecutionState, Result> {
-  _clientBlockData.clear();
+  for (auto [key, list] : _clientBlockData) {
+    list.clear();
+  }
   return ExecutionBlock::initializeCursor(input);
 }
 
@@ -180,9 +190,56 @@ template <class Executor>
 auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack stack,
                                                                    std::string const& clientId)
     -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
-  // TODO
+  TRI_ASSERT(!clientId.empty());
+  if (clientId.empty()) {
+    // Security bailout to avaoid UB
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "got empty distribution id");
+  }
+
+  auto it = _clientBlockData.find(clientId);
+  TRI_ASSERT(it != _clientBlockData.end());
+  if (it == _clientBlockData.end()) {
+    // Security bailout to avaoid UB
+    std::string message("AQL: unknown distribution id ");
+    message.append(clientId);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+  }
+
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class Executor>
+auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> ExecutionState {
+  // TODO check is relevant behaviour
+  if (_engine->getQuery()->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
+  // TODO handle limits.
+  AqlCall call{};
+  stack.pushCall(std::move(call));
+
+  TRI_ASSERT(_dependencies.size() == 1);
+  auto [state, skipped, block] = _dependencies[0]->execute(stack);
+
+  // We can never ever forward skip!
+  // We could need the row in a different block, and once skipped
+  // we cannot get it back.
+  TRI_ASSERT(skipped == 0);
+
+  TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  // Waiting -> no block
+  TRI_ASSERT(state != ExecutionState::WAITING || block == nullptr);
+  if (block != nullptr) {
+    _executor.distributeBlock(block, _clientBlockData);
+  }
+
+  return state;
 }
 
 template class ::arangodb::aql::BlocksWithClientsImpl<ScatterExecutor>;
