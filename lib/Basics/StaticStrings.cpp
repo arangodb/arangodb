@@ -63,6 +63,7 @@ std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::ReplaceExisting("replaceExisting");
 std::string const StaticStrings::OverWrite("overwrite");
+std::string const StaticStrings::OverWriteMode("overwriteMode");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -251,6 +252,17 @@ std::string const StaticStrings::GraphOrphans("orphanCollections");
 std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
+
+// Query Strings
+std::string const StaticStrings::QuerySortASC("ASC");
+std::string const StaticStrings::QuerySortDESC("DESC");
+
+// Graph Query Strings
+std::string const StaticStrings::GraphQueryEdges("edges");
+std::string const StaticStrings::GraphQueryVertices("vertices");
+std::string const StaticStrings::GraphQueryPath("path");
+std::string const StaticStrings::GraphQueryGlobal("global");
+std::string const StaticStrings::GraphQueryNone("none");
 
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");

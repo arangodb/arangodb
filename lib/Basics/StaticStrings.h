@@ -68,6 +68,7 @@ class StaticStrings {
   static std::string const ReplaceExisting;
   static std::string const Prefix;
   static std::string const OverWrite;
+  static std::string const OverWriteMode;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -237,6 +238,17 @@ class StaticStrings {
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
   static std::string const GraphName;
+
+  // Query Strings
+  static std::string const QuerySortASC;
+  static std::string const QuerySortDESC;
+
+  // Graph Query Strings
+  static std::string const GraphQueryEdges;
+  static std::string const GraphQueryVertices;
+  static std::string const GraphQueryPath;
+  static std::string const GraphQueryGlobal;
+  static std::string const GraphQueryNone;
 
   // Replication
   static std::string const ReplicationSoftLockOnly;

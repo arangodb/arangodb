@@ -361,6 +361,14 @@ IRESEARCH_API size_t hash(const string_ref& value) noexcept;
 
 NS_END // hash_utils
 
+NS_BEGIN(literals)
+
+FORCE_INLINE irs::string_ref operator "" _sr(const char* src, size_t size) noexcept {
+  return irs::string_ref(src, size);
+}
+
+NS_END // literars
+
 NS_END // NS_ROOT
 
 // ----------------------------------------------------------------------------

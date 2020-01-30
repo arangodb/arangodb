@@ -23,6 +23,7 @@
 
 #include "ExecutionEngine.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlResult.h"
 #include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
@@ -573,7 +574,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
       return {res.first, nullptr};
     }
   }
-  return _root->getSome((std::min)(atMost, ExecutionBlock::DefaultBatchSize()));
+  return _root->getSome((std::min)(atMost, ExecutionBlock::DefaultBatchSize));
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {

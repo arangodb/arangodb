@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include "GeneralServer/RequestLane.h"
-#include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
 
 #include <Cluster/ResultT.h>
@@ -108,9 +107,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
-
-  // return true if direct handler execution is allowed
-  bool allowDirectExecution() const { return _allowDirectExecution; }
 
   RequestLane getRequestLane() {
     bool found;
@@ -219,8 +215,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  protected:
   std::atomic<bool> _canceled;
-
-  bool _allowDirectExecution = false;
 };
 
 }  // namespace rest

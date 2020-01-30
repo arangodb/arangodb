@@ -67,16 +67,16 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   // variable!
   options->addOption("--config", "the configuration file or 'none'",
                      new StringParameter(&_file),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--define,-D",
                      "define key=value for a @key@ entry in config file",
                      new VectorParameter<StringParameter>(&_defines),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--check-configuration", "check the configuration and exit",
                      new BooleanParameter(&_checkConfiguration),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                   arangodb::options::Flags::Command));
 }
 
@@ -101,9 +101,8 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   bool fatal = true;
 
-  auto& server = application_features::ApplicationServer::server();
-  if (server.hasFeature<VersionFeature>()) {
-    fatal = !server.getFeature<VersionFeature>().printVersion();
+  if (server().hasFeature<VersionFeature>()) {
+    fatal = !server().getFeature<VersionFeature>().printVersion();
   }
 
   // always prefer an explicitly given config file

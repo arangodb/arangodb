@@ -85,7 +85,7 @@ struct VPackHashedSlice {
     return *this;
   }
 
-  ~VPackHashedSlice() {}
+  ~VPackHashedSlice() = default;
 };
 
 class VelocyPackHelper {

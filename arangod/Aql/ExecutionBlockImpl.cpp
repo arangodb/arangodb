@@ -55,6 +55,7 @@
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/ShortestPathExecutor.h"
+#include "Aql/SimpleModifier.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
@@ -65,9 +66,9 @@
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
-
-#include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
+
+#include <boost/core/demangle.hpp>
 
 #include <type_traits>
 
@@ -134,7 +135,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
-  TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize());
+  TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -258,8 +259,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     // according to its heap size, thus resulting in a smaller allocated output
     // block. However, it won't report DONE after, because a LIMIT block with
     // fullCount must continue to count after the sorted output.
-    if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable &&
-                        !std::is_same<Executor, ConstrainedSortExecutor>::value) {
+    if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable &&
+                  !std::is_same_v<Executor, ConstrainedSortExecutor>) {
       TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
     }
   }
@@ -435,7 +436,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWith
   constexpr SkipVariants customSkipType = skipType<Executor>();
 
   if (customSkipType == SkipVariants::GET_SOME) {
-    atMost = std::min(atMost, DefaultBatchSize());
+    atMost = std::min(atMost, DefaultBatchSize);
     auto res = getSomeWithoutTrace(atMost);
 
     size_t skipped = 0;
@@ -769,6 +770,12 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);
+      if (state != ExecutionState::DONE) {
+        auto const executorName = boost::core::demangle(typeid(Executor).name());
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_INTERNAL_AQL,
+            "Unexpected result of expectedNumberOfRows in %s", executorName.c_str());
+      }
       return {state, nullptr};
     }
     block = engine.itemBlockManager().requestBlock(nrItems, nrRegs);

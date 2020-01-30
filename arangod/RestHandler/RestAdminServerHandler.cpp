@@ -24,10 +24,9 @@
 #include "RestAdminServerHandler.h"
 
 #include "Actions/RestActionHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Replication/ReplicationFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
@@ -39,9 +38,7 @@ using namespace arangodb::rest;
 RestAdminServerHandler::RestAdminServerHandler(application_features::ApplicationServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -55,8 +52,10 @@ RestStatus RestAdminServerHandler::execute() {
     handleAvailability();
   } else if (suffixes.size() == 1 && suffixes[0] == "databaseDefaults") {
     handleDatabaseDefaults();
+  } else if (suffixes.size() == 1 && suffixes[0] == "jwt") {
+    handleJWTSecretsReload();
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND, 404);
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
   return RestStatus::DONE;
 }
@@ -123,11 +122,10 @@ void RestAdminServerHandler::handleAvailability() {
     return;
   }
 
-  auto& server = application_features::ApplicationServer::server();
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
-      available = !server.isStopping();
+      available = !server().isStopping();
       break;
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
@@ -212,7 +210,6 @@ void RestAdminServerHandler::handleMode() {
   }
 }
 
-
 void RestAdminServerHandler::handleDatabaseDefaults() {
   auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice());
   VPackBuilder builder;
@@ -221,3 +218,9 @@ void RestAdminServerHandler::handleDatabaseDefaults() {
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
+
+#ifndef USE_ENTERPRISE
+void RestAdminServerHandler::handleJWTSecretsReload() {
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+}
+#endif

@@ -80,6 +80,7 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, Register
   TRI_ASSERT(block->getNrRegs() == nrRegs);
   TRI_ASSERT(block->numEntries() == targetSize);
   TRI_ASSERT(block->getRefCount() == 0);
+  TRI_ASSERT(block->hasShadowRows() == false);
 
   return SharedAqlItemBlockPtr{block};
 }

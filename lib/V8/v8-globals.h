@@ -32,6 +32,7 @@
 
 #include <v8.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
@@ -422,7 +423,8 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  explicit TRI_v8_global_t(v8::Isolate*, size_t id);
+  explicit TRI_v8_global_t(arangodb::application_features::ApplicationServer&,
+                           v8::Isolate*, size_t id);
 
   ~TRI_v8_global_t();
 
@@ -610,6 +612,9 @@ struct TRI_v8_global_t {
   /// @brief "overwrite" key
   v8::Persistent<v8::String> OverwriteKey;
 
+  /// @brief "overwriteMode" key
+  v8::Persistent<v8::String> OverwriteModeKey;
+
   /// @brief "parameters" key name
   v8::Persistent<v8::String> ParametersKey;
 
@@ -741,7 +746,9 @@ struct TRI_v8_global_t {
   std::atomic<size_t> _heapMax;
 
   std::atomic<size_t> _heapLow;
-  
+
+  arangodb::application_features::ApplicationServer& _server;
+
  private:
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8
@@ -750,7 +757,8 @@ struct TRI_v8_global_t {
 };
 
 /// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*, size_t id);
+TRI_v8_global_t* TRI_CreateV8Globals(arangodb::application_features::ApplicationServer&,
+                                     v8::Isolate*, size_t id);
 
 /// @brief gets the global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
