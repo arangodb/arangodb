@@ -295,101 +295,11 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
 }
 
 std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlItemRow& output) {
-  THROW_ARANGODB_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  ExecutionState state;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-
-  while (true) {
-    if (_fetcherDone) {
-      if (_currentGroup.isValid()) {
-        _currentGroup.writeToOutput(output, input);
-        InputAqlItemRow inputDummy{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(inputDummy);
-        TRI_ASSERT(!_currentGroup.isValid());
-        return {ExecutionState::DONE, {}};
-      }
-      return {ExecutionState::DONE, {}};
-    }
-    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    std::tie(state, input) = _fetcher.fetchRow();
-
-    if (state == ExecutionState::WAITING) {
-      return {state, {}};
-    }
-
-    if (state == ExecutionState::DONE) {
-      _fetcherDone = true;
-    }
-
-    // if we are in the same group, we need to add lines to the current group
-    if (_currentGroup.isSameGroup(input)) {
-      _currentGroup.addLine(input);
-
-      if (state == ExecutionState::DONE) {
-        TRI_ASSERT(!output.produced());
-        _currentGroup.writeToOutput(output, input);
-        // Invalidate group
-        input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(input);
-        return {ExecutionState::DONE, {}};
-      }
-    } else if (_currentGroup.isValid()) {
-      // Write the current group.
-      // Start a new group from input
-      _currentGroup.writeToOutput(output, input);
-      TRI_ASSERT(output.produced());
-      _currentGroup.reset(input);  // reset and recreate new group
-      if (input.isInitialized()) {
-        return {ExecutionState::HASMORE, {}};
-      }
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {ExecutionState::DONE, {}};
-    } else {
-      if (!input.isInitialized()) {
-        if (_infos.getGroupRegisters().empty()) {
-          // we got exactly 0 rows as input.
-          // by definition we need to emit one collect row
-          _currentGroup.writeToOutput(output, input);
-          TRI_ASSERT(output.produced());
-        }
-        TRI_ASSERT(state == ExecutionState::DONE);
-        return {ExecutionState::DONE, {}};
-      }
-      // old group was not valid, do not write it
-      _currentGroup.reset(input);  // reset and recreate new group
-    }
-  }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  THROW_ARANGODB_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  if (!_fetcherDone) {
-    ExecutionState state;
-    size_t expectedRows;
-    std::tie(state, expectedRows) = _fetcher.preFetchNumberOfRows(atMost);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(expectedRows == 0);
-      return {state, 0};
-    }
-    return {ExecutionState::HASMORE, expectedRows + 1};
-  }
-  // The fetcher will NOT send anything any more
-  // We will at most return the current open group
-  if (_currentGroup.isValid()) {
-    return {ExecutionState::HASMORE, 1};
-  }
-  return {ExecutionState::DONE, 0};
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
