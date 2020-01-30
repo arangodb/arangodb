@@ -443,21 +443,23 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     if ((type == "DBServers" && machine.first.compare(0, 4, "PRMR") == 0) ||
         (type == "Coordinators" && machine.first.compare(0, 4, "CRDN") == 0) ||
         (type == "Singles" && machine.first.compare(0, 4, "SNGL") == 0)) {
-      todelete.push_back(machine.first);
+      // Put only those on list which are no longer planned:
+      if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {
+        todelete.push_back(machine.first);
+      }
     }
   }
 
-  // Remove all machines, which are no longer planned
-  for (auto const& machine : machinesPlanned) {
-    todelete.erase(std::remove(todelete.begin(), todelete.end(), machine.first),
-                   todelete.end());
-  }
   if (!todelete.empty()) {
     _agent->write(removeTransactionBuilder(todelete));
   }
 
+  auto startTimeLoop = std::chrono::system_clock::now();
+
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
+    LOG_TOPIC(TRACE, Logger::SUPERVISION)
+      << "Checking health of server " << machine.first << " ...";
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
         lastStatus, serverID(machine.first), shortName;
 
@@ -526,7 +528,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Last change registered in sync (transient != sync)
       // Either now or value in transient
       auto lastAckedTime = (syncTime != transist.syncTime)
-                               ? std::chrono::system_clock::now()
+                               ? startTimeLoop
                                : stringToTimepoint(transist.lastAcked);
       transist.lastAcked = timepointToString(lastAckedTime);
       transist.syncTime = syncTime;
@@ -541,7 +543,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Calculate elapsed since lastAcked
       auto elapsed =
-          std::chrono::duration<double>(std::chrono::system_clock::now() - lastAckedTime);
+          std::chrono::duration<double>(startTimeLoop - lastAckedTime);
 
       if (elapsed.count() <= _okThreshold) {
         transist.status = Supervision::HEALTH_STATUS_GOOD;
@@ -557,7 +559,14 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
       if (changed) {
+        LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+            << "Status of server " << serverID << " has changed from "
+            << persist.status << " to " << transist.status;
         handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId, envelope);
+      } else {
+        LOG_TOPIC(TRACE, Logger::SUPERVISION)
+          << "Health of server " << machine.first << " remains "
+          << transist.status;
       }
 
       persist = transist;  // Now copy Status, SyncStatus from transient to persited
@@ -684,12 +693,14 @@ bool Supervision::updateSnapshot() {
   }
 
   _agent->executeLockedRead([&]() {
-    if (_agent->spearhead().has(_agencyPrefix)) {
-      _snapshot = _agent->spearhead().get(_agencyPrefix);
-    }
-    if (_agent->transient().has(_agencyPrefix)) {
-      _transient = _agent->transient().get(_agencyPrefix);
-    }
+      if (_agent->spearhead().has(_agencyPrefix)) {
+        _snapshot = _agent->spearhead().get(_agencyPrefix);
+      }
+  });
+  _agent->executeTransientLocked([&]() {
+      if (_agent->transient().has(_agencyPrefix)) {
+        _transient = _agent->transient().get(_agencyPrefix);
+      }
   });
 
   return true;
@@ -700,13 +711,17 @@ bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY) ==
              "DBServers");
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Checking dbservers...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) ==
              "Coordinators");
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Checking coordinators...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) ==
              "Singles");
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Checking single servers (active failover)...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Server checks done.";
 
   return true;
 }
@@ -1664,6 +1679,7 @@ bool Supervision::start() {
 bool Supervision::start(Agent* agent) {
   _agent = agent;
   _frequency = _agent->config().supervisionFrequency();
+  _okThreshold = _agent->config().supervisionOkThreshold();
   _gracePeriod = _agent->config().supervisionGracePeriod();
   return start();
 }
