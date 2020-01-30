@@ -3,6 +3,8 @@ v3.6.2 (XXXX-XX-XX)
 
 * Supervision maintenance mode from "on" and TTL to expiry string.
 
+* Clean out server job checks preconditions plan version unchanged for start.
+
 * Make sure heartbeats are actually sent out and received once per second.
 
 * Make active failover integration tests more stable.
