@@ -362,17 +362,13 @@ else ()
   list(APPEND V8_GYP_ARGS --format make)
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
+  set(V8_INTERNAL_INCLUDE_DIR "${V8_LIBRARY_DIR}/obj/gen/generate-bytecode-output-root;${V8_LIBRARY_DIR}/obj/gen/torque-output-root")
   if (LINUX)
-    set(V8_INTERNAL_INCLUDE_DIR "${V8_LIBRARY_DIR}/obj/gen/generate-bytecode-output-root;${V8_LIBRARY_DIR}/obj/gen/torque-output-root")
     set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/gypfiles")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
   elseif (APPLE)
-    set(V8_INTERNAL_INCLUDE_DIR "${V8_LIBRARY_DIR}/obj/gen/generate-bytecode-output-root;${V8_LIBRARY_DIR}/obj/gen/torque-output-root")
     set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/")
     set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}/")
-  elseif (SOLARIS)
-    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/gypfiles")
-    set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.host/third_party/icu")
   endif ()
 
   list(APPEND V8_GYP_ARGS
