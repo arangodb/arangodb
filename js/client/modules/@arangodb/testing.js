@@ -204,7 +204,7 @@ const optionsDefaults = {
   'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
-  'testOutputDirectory': 'out/',
+  'testOutputDirectory': 'out',
   'useReconnect': true,
   'username': 'root',
   'valgrind': false,

@@ -225,9 +225,16 @@ describe ArangoDB do
 ################################################################################
 
     context "dealing with wal access api" do
-
       api = "/_api/wal"
       prefix = "api-wal"
+      
+      before do
+        ArangoDB.drop_collection("UnitTestsReplication")
+      end
+
+      after do
+        ArangoDB.drop_collection("UnitTestsReplication")
+      end
 
 ################################################################################
 ## state
