@@ -159,7 +159,7 @@ function server_secrets(options) {
 
   process.env["jwt-secret-folder"] = secretsDir;
 
-  let copyOptions = options;
+  let copyOptions = _.clone(options);
   // necessary to fix shitty process-utils handling
   copyOptions['server.jwt-secret-folder'] = secretsDir;
 

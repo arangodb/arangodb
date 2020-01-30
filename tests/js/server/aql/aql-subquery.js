@@ -35,6 +35,7 @@ var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
 const isCoordinator = require('@arangodb/cluster').isCoordinator();
+const isEnterprise = require("internal").isEnterprise();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -457,6 +458,50 @@ function ahuacatlSubqueryTestSuite () {
         }        
       } finally {
         db._drop(colName);
+      }
+    },
+
+    testOneShardDBAndSpliceSubquery: function () {
+      const dbName = "SingleShardDB";
+      const docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({foo: i});
+      }
+      const q = `
+        FOR x IN a
+          SORT x.foo ASC
+          LET subquery = (
+            FOR y IN b
+              FILTER x.foo == y.foo
+              RETURN y
+          )
+          RETURN {x, subquery}
+      `;
+      try {
+        db._createDatabase(dbName, {sharding: "single"});
+        db._useDatabase(dbName);
+        const a = db._create("a");
+        const b = db._create("b");
+        a.save(docs);
+        b.save(docs);
+        const statement = db._createStatement(q);
+        const rules = statement.explain().plan.rules;
+        if (isEnterprise && isCoordinator) {
+          // Has one shard rule
+          assertTrue(rules.indexOf("cluster-one-shard") !== -1);
+        }
+        // Has one splice subquery rule
+        assertTrue(rules.indexOf("splice-subqueries") !== -1);
+        // Result is as expected
+        const result = statement.execute().toArray();
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(result[i].x.foo, i);
+          assertEqual(result[i].subquery.length, 1);
+          assertEqual(result[i].subquery[0].foo, i);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._drop(dbName);
       }
     }
   }; 
