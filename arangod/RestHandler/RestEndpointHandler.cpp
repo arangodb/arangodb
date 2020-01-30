@@ -23,6 +23,7 @@
 
 #include "RestEndpointHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/EndpointFeature.h"
 #include "VocBase/vocbase.h"
 

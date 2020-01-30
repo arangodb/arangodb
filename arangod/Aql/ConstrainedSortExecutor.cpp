@@ -245,7 +245,7 @@ std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(
     ExecutionState state;
     size_t expectedRows;
     std::tie(state, expectedRows) =
-        _fetcher.preFetchNumberOfRows(ExecutionBlock::DefaultBatchSize());
+        _fetcher.preFetchNumberOfRows(ExecutionBlock::DefaultBatchSize);
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(expectedRows == 0);
       return {state, 0};

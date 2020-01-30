@@ -15,4 +15,3 @@ successfully.
 @RESTRETURNCODE{400}
 The server will respond with *HTTP 400* in case of a malformed request.
 @endDocuBlock
-

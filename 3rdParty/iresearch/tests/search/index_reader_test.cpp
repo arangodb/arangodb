@@ -106,8 +106,8 @@ TEST(directory_reader_test, open_newest_index) {
   irs::format::type_id test_format1_type("test_format1");
   test_format test_codec0(test_format0_type);
   test_format test_codec1(test_format1_type);
-  irs::format_registrar test_format0_registrar(test_format0_type, &get_codec0);
-  irs::format_registrar test_format1_registrar(test_format1_type, &get_codec1);
+  irs::format_registrar test_format0_registrar(test_format0_type, irs::string_ref::NIL, &get_codec0);
+  irs::format_registrar test_format1_registrar(test_format1_type, irs::string_ref::NIL, &get_codec1);
   test_index_meta_reader& test_reader0 = test_codec0.index_meta_reader;
   test_index_meta_reader& test_reader1 = test_codec1.index_meta_reader;
   codec0 = &test_codec0;

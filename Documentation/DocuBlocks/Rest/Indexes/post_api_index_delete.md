@@ -2,15 +2,15 @@
 @startDocuBlock post_api_index_delete
 @brief deletes an index
 
-@RESTHEADER{DELETE /_api/index/{index-handle}, Delete index, dropIndex}
+@RESTHEADER{DELETE /_api/index/{index-id}, Delete index, dropIndex}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{index-handle,string,required}
-The index handle.
+@RESTURLPARAM{index-id,string,required}
+The index id.
 
 @RESTDESCRIPTION
-Deletes an index with *index-handle*.
+Deletes an index with *index-id*.
 
 @RESTRETURNCODES
 
@@ -19,7 +19,7 @@ If the index could be deleted, then an *HTTP 200* is
 returned.
 
 @RESTRETURNCODE{404}
-If the *index-handle* is unknown, then an *HTTP 404* is returned.
+If the *index-id* is unknown, then an *HTTP 404* is returned.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniqueSkiplist}
@@ -37,4 +37,3 @@ If the *index-handle* is unknown, then an *HTTP 404* is returned.
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

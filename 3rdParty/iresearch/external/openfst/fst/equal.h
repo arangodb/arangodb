@@ -14,21 +14,34 @@
 
 namespace fst {
 
-FST_CONSTEXPR const uint32 kEqualFsts = 0x0001;
-FST_CONSTEXPR const uint32 kEqualFstTypes = 0x0002;
-FST_CONSTEXPR const uint32 kEqualCompatProperties = 0x0004;
-FST_CONSTEXPR const uint32 kEqualCompatSymbols = 0x0008;
-FST_CONSTEXPR const uint32 kEqualAll =
+constexpr uint32 kEqualFsts = 0x0001;
+constexpr uint32 kEqualFstTypes = 0x0002;
+constexpr uint32 kEqualCompatProperties = 0x0004;
+constexpr uint32 kEqualCompatSymbols = 0x0008;
+constexpr uint32 kEqualAll =
     kEqualFsts | kEqualFstTypes | kEqualCompatProperties | kEqualCompatSymbols;
+
+class WeightApproxEqual {
+ public:
+  explicit WeightApproxEqual(float delta) : delta_(delta) {}
+
+  template <class Weight>
+  bool operator()(const Weight &w1, const Weight &w2) const {
+    return ApproxEqual(w1, w2, delta_);
+  }
+
+ private:
+  float delta_;
+};
 
 // Tests if two Fsts have the same states and arcs in the same order (when
 // etype & kEqualFst).
 // Also optional checks equality of Fst types (etype & kEqualFstTypes) and
 // compatibility of stored properties (etype & kEqualCompatProperties) and
 // of symbol tables (etype & kEqualCompatSymbols).
-template <class Arc>
-bool Equal(const Fst<Arc> &fst1, const Fst<Arc> &fst2, float delta = kDelta,
-           uint32 etype = kEqualFsts) {
+template <class Arc, class WeightEqual>
+bool Equal(const Fst<Arc> &fst1, const Fst<Arc> &fst2,
+           WeightEqual weight_equal, uint32 etype = kEqualFsts) {
   if ((etype & kEqualFstTypes) && (fst1.Type() != fst2.Type())) {
     VLOG(1) << "Equal: Mismatched FST types (" << fst1.Type() << " != "
             << fst2.Type() << ")";
@@ -72,7 +85,7 @@ bool Equal(const Fst<Arc> &fst1, const Fst<Arc> &fst2, float delta = kDelta,
     }
     const auto &final1 = fst1.Final(s1);
     const auto &final2 = fst2.Final(s2);
-    if (!ApproxEqual(final1, final2, delta)) {
+    if (!weight_equal(final1, final2)) {
       VLOG(1) << "Equal: Mismatched final weights at state " << s1
               << " (" << final1 << " != " << final2 << ")";
       return false;
@@ -96,7 +109,7 @@ bool Equal(const Fst<Arc> &fst1, const Fst<Arc> &fst2, float delta = kDelta,
                 << ", arc " << a << " (" << arc1.olabel << " != "
                 << arc2.olabel << ")";
         return false;
-      } else if (!ApproxEqual(arc1.weight, arc2.weight, delta)) {
+      } else if (!weight_equal(arc1.weight, arc2.weight)) {
         VLOG(1) << "Equal: Mismatched arc weights at state " << s1
                 << ", arc " << a << " (" << arc1.weight << " != "
                 << arc2.weight << ")";
@@ -133,6 +146,23 @@ bool Equal(const Fst<Arc> &fst1, const Fst<Arc> &fst2, float delta = kDelta,
   }
   return true;
 }
+
+template <class Arc>
+bool Equal(const Fst<Arc> &fst1, const Fst<Arc> &fst2,
+           float delta = kDelta, uint32 etype = kEqualFsts) {
+  return Equal(fst1, fst2, WeightApproxEqual(delta), etype);
+}
+
+// Support double deltas without forcing all clients to cast to float.
+// Without this overload, Equal<Arc, WeightEqual=double> will be chosen,
+// since it is a better match than double -> float narrowing, but
+// the instantiation will fail.
+template <class Arc>
+bool Equal(const Fst<Arc> &fst1, const Fst<Arc> &fst2,
+           double delta, uint32 etype = kEqualFsts) {
+  return Equal(fst1, fst2, WeightApproxEqual(static_cast<float>(delta)), etype);
+}
+
 
 }  // namespace fst
 

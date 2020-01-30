@@ -66,6 +66,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       RegisterId firstOutputRegister, RegisterId numScoreRegisters,
       Query& query, std::vector<iresearch::Scorer> const& scorers,
       std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
+      iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan,
       Variable const& outVariable,
       aql::AstNode const& filterCondition,
@@ -92,6 +93,8 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   // second - number of sort conditions to take into account
   std::pair<iresearch::IResearchViewSort const*, size_t> const& sort() const noexcept;
 
+  iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
+
   bool isScoreReg(RegisterId reg) const noexcept;
 
  private:
@@ -101,6 +104,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   Query& _query;
   std::vector<iresearch::Scorer> const& _scorers;
   std::pair<iresearch::IResearchViewSort const*, size_t> _sort;
+  iresearch::IResearchViewStoredValues const& _storedValues;
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   aql::AstNode const& _filterCondition;
@@ -244,9 +248,9 @@ class IResearchViewExecutorBase {
     // before and after.
     void assertSizeCoherence() const noexcept;
 
-    void pushSortValue(irs::bytes_ref&& sortValue);
+    void pushStoredValue(std::vector<irs::bytes_ref>&& storedValue);
 
-    irs::bytes_ref getSortValue(IndexReadBufferEntry bufferEntry) const noexcept;
+    std::vector<irs::bytes_ref> const& getStoredValue(IndexReadBufferEntry bufferEntry) const noexcept;
 
    private:
     // _keyBuffer, _scoreBuffer, _sortValueBuffer together hold all the
@@ -260,7 +264,7 @@ class IResearchViewExecutorBase {
     // .
     std::vector<ValueType> _keyBuffer;
     std::vector<AqlValue> _scoreBuffer;
-    std::vector<irs::bytes_ref> _sortValueBuffer;
+    std::vector<std::vector<irs::bytes_ref>> _storedValueBuffer;
     std::size_t _numScoreRegisters;
     std::size_t _keyBaseIdx;
   };
@@ -286,6 +290,16 @@ class IResearchViewExecutorBase {
                 LogicalCollection const& collection);
 
   void reset();
+
+  bool writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues, size_t columnNum,
+                        std::map<size_t, RegisterId> const& fieldsRegs);
+
+  void getStoredValue(irs::document const& doc, std::vector<irs::bytes_ref>& storedValue, size_t index,
+                      std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders);
+
+  void pushStoredValues(irs::document const& doc, std::vector<irs::columnstore_reader::values_reader_f> const& storedValuesReaders);
+
+  bool getStoredValuesReaders(irs::sub_reader const& segmentReader, std::vector<irs::columnstore_reader::values_reader_f>& storedValuesReaders);
 
  private:
   bool next(ReadContext& ctx);
@@ -343,11 +357,11 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   bool readPK(LocalDocumentId& documentId);
 
   irs::columnstore_reader::values_reader_f _pkReader;   // current primary key reader
-  irs::columnstore_reader::values_reader_f _sortReader; // current sort reader
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
   LogicalCollection const* _collection{};
+  std::vector<irs::columnstore_reader::values_reader_f> _storedValuesReaders; // current stored values readers
 
   // case ordered only:
   irs::score const* _scr;
@@ -382,20 +396,21 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
-            irs::columnstore_reader::values_reader_f&& sortReader,
-            irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
+            irs::columnstore_reader::values_reader_f&& pkReader,
+            std::vector<irs::columnstore_reader::values_reader_f>&& storedValuesReaders) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;
-    Segment& operator=(Segment&&) = default;
+    Segment& operator=(Segment&&) = delete;
 
     irs::doc_iterator::ptr docs;
     irs::document const* doc{};
     irs::score const* score{};
     arangodb::LogicalCollection const* collection{};  // collecton associated with a segment
     irs::bytes_ref sortValue{irs::bytes_ref::NIL};        // sort column value
-    irs::columnstore_reader::values_reader_f sortReader;  // sort column reader
     irs::columnstore_reader::values_reader_f pkReader;    // primary key reader
+    std::vector<irs::columnstore_reader::values_reader_f> storedValuesReaders; // current stored values readers
+    irs::columnstore_reader::values_reader_f& sortReader; // sort column reader
   };
 
   class MinHeapContext {

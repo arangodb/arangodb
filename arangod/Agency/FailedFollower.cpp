@@ -169,7 +169,7 @@ bool FailedFollower::start(bool& aborts) {
   // Get proper replacement
   _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
-    // retry later
+    finish("", _shard, false, "No server available.");
     return false;
   }
 
@@ -347,13 +347,12 @@ arangodb::Result FailedFollower::abort(std::string const& reason) {
                   "Failed aborting failedFollower job beyond pending stage");
   }
 
-  Result result;
   // Can now only be TODO
   if (_status == TODO) {
     finish("", "", false, "job aborted: " + reason);
-    return result;
+    return Result{};
   }
 
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
-  return result;
+  return Result{};
 }

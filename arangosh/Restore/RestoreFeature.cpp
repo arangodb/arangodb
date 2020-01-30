@@ -623,7 +623,7 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
                                 arangodb::RestoreFeature::JobData& jobData) {
   using arangodb::Logger;
 
-  arangodb::Result result;
+  arangodb::Result result{};
   VPackSlice const parameters = jobData.collection.get("parameters");
   VPackSlice const indexes = jobData.collection.get("indexes");
   // re-create indexes
@@ -656,6 +656,7 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
     }
   }
 
+  // cppcheck-suppress uninitvar ; false positive
   return result;
 }
 
@@ -1284,7 +1285,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
           "clean up duplicate attributes (use first specified value) in input "
           "documents instead of making the restore operation fail",
           new BooleanParameter(&_options.cleanupDuplicateAttributes),
-          arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
@@ -1332,7 +1333,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       ->addOption("--default-number-of-shards",
                   "default value for numberOfShards if not specified in dump",
                   new UInt64Parameter(&_options.defaultNumberOfShards),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 
@@ -1341,7 +1342,7 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
           "--default-replication-factor",
           "default value for replicationFactor if not specified in dump",
           new UInt64Parameter(&_options.defaultReplicationFactor),
-          arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+          arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 }

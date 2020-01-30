@@ -8,7 +8,7 @@
 The id of the task to delete.
 
 @RESTDESCRIPTION
-Deletes the task identified by *id* on the server. 
+Deletes the task identified by *id* on the server.
 
 @RESTRETURNCODES
 
@@ -71,4 +71,3 @@ Remove existing Task
 
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

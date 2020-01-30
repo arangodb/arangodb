@@ -50,6 +50,9 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
+namespace auth {
+class TokenCache;
+}
 class ClusterCommThread;
 class ClusterInfo;
 
@@ -487,7 +490,9 @@ class ClusterComm {
   /// beforehand but the background thread is only started here.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void initialize();
+  static void initialize(application_features::ApplicationServer&);
+
+  static void start();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cleanup function to call once when shutting down
@@ -594,7 +599,7 @@ class ClusterComm {
                          bool retryOnCollNotFound,
                          bool retryOnBackendUnavailable = true);
 
-  void addAuthorization(std::unordered_map<std::string, std::string>* headers);
+  void addAuthorization(std::unordered_map<std::string, std::string>* headers) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief abort and disable all communication
@@ -703,8 +708,7 @@ class ClusterComm {
 
   bool _logConnectionErrors;
 
-  bool _authenticationEnabled;
-  std::string _jwtAuthorization;
+  auth::TokenCache const* _tokenCache;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

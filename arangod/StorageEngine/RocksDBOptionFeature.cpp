@@ -151,7 +151,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "--rocksdb.total-write-buffer-size",
       "maximum total size of in-memory write buffers (0 = unbounded)",
       new UInt64Parameter(&_totalWriteBufferSize),
-      arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "
@@ -176,7 +176,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "have surpassed a certain number of level-0 files and need to slowdown "
       "writes",
       new UInt64Parameter(&_delayedWriteRate),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   options->addOldOption("rocksdb.delayed_write_rate",
                         "rocksdb.delayed-write-rate");
 
@@ -232,30 +232,30 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
       "that there are very few misses or the performance in the case of "
       "misses is not important",
       new BooleanParameter(&_optimizeFiltersForHits),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
 #ifdef __linux__
   options->addOption("--rocksdb.use-direct-reads",
                      "use O_DIRECT for reading files", new BooleanParameter(&_useDirectReads),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.use-direct-io-for-flush-and-compaction",
                      "use O_DIRECT for flush and compaction",
                      new BooleanParameter(&_useDirectIoForFlushAndCompaction),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsLinux, arangodb::options::Flags::Hidden));
 #endif
 
   options->addOption("--rocksdb.use-fsync",
                      "issue an fsync when writing to disk (set to true "
                      "for issuing fdatasync only)",
                      new BooleanParameter(&_useFSync),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--rocksdb.max-background-jobs",
       "Maximum number of concurrent background jobs (compactions and flushes)",
       new Int32Parameter(&_maxBackgroundJobs),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                    arangodb::options::Flags::Dynamic));
 
   options->addOption("--rocksdb.max-subcompactions",
@@ -287,7 +287,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 
   options->addOption("--rocksdb.block-cache-size",
                      "size of block cache in bytes", new UInt64Parameter(&_blockCacheSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption(
       "--rocksdb.block-cache-shard-bits",
@@ -306,7 +306,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--rocksdb.recycle-log-file-num",
                      "if true, keep a pool of log files around for recycling",
                      new BooleanParameter(&_recycleLogFileNum),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--rocksdb.compaction-read-ahead-size",
@@ -319,19 +319,19 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOption("--rocksdb.use-file-logging",
                      "use a file-base logger for RocksDB's own logs",
                      new BooleanParameter(&_useFileLogging),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.wal-recovery-skip-corrupted",
                      "skip corrupted records in WAL recovery",
                      new BooleanParameter(&_skipCorrupted),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options
       ->addOption("--rocksdb.limit-open-files-at-startup",
                   "limit the amount of .sst files RocksDB will inspect at "
                   "startup, in order to startup reduce IO",
                   new BooleanParameter(&_limitOpenFilesAtStartup),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30405)
       .setIntroducedIn(30500);
 
@@ -340,7 +340,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "if true, allow RocksDB to use fallocate calls. if false, "
                   "fallocate calls are bypassed",
                   new BooleanParameter(&_allowFAllocate),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30405)
       .setIntroducedIn(30500);
   options

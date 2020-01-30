@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_SAME_POSITION_FILTER_H
@@ -56,7 +55,7 @@ class IRESEARCH_API by_same_position : public filter {
     const attribute_view& ctx
   ) const override;
 
-  virtual size_t hash() const NOEXCEPT override;
+  virtual size_t hash() const noexcept override;
 
   by_same_position& push_back(const std::string& field, const bstring& term);
   by_same_position& push_back(const std::string& field, bstring&& term);
@@ -74,7 +73,7 @@ class IRESEARCH_API by_same_position : public filter {
   void clear() { terms_.clear(); }
 
  protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+  virtual bool equals(const filter& rhs) const noexcept override;
 
  private: 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
