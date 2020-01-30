@@ -66,7 +66,6 @@ OutputAqlItemRow::OutputAqlItemRow(
       _setBaseIndexNotUsed(true),
 #endif
       _allowSourceRowUninitialized(false) {
-  TRI_ASSERT(_block != nullptr);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
     for (auto const& reg : *_outputRegisters) {
