@@ -104,7 +104,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
-TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_doesnt_wait) {
+TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input->steal(), false);

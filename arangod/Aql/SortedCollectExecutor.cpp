@@ -295,7 +295,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
 }
 
 std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(false);
+  THROW_ARANGODB_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -373,7 +373,7 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlI
 }
 
 std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  TRI_ASSERT(false);
+  THROW_ARANGODB_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   if (!_fetcherDone) {
     ExecutionState state;
     size_t expectedRows;
@@ -411,7 +411,6 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
     LOG_DEVEL_SC << "SortedCollectExecutor::produceRows " << state << " "
                  << input.isInitialized();
 
-    // TODO store in member if we have not been called with data before
     if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
       // we have never been called with data
       LOG_DEVEL_SC << "never called with data";
