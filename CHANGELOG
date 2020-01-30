@@ -1,6 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Make active failover integration tests more stable.
+
 * Fix bug in collection creation with distributeShardsLike.
 
 * Added HotBackup events into auditing.
