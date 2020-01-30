@@ -56,7 +56,6 @@
 #include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAnalyzerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
-#include "RestHandler/RestAqlReloadHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
@@ -463,9 +462,6 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
-
-  _handlerFactory->addHandler("/_admin/aql/reload",
-                              RestHandlerCreator<RestAqlReloadHandler>::createNoData);
 
   if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
     _handlerFactory->addHandler("/_admin/auth/reload",

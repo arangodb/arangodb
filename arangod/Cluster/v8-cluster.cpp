@@ -1620,8 +1620,8 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string path;
   auto body = std::make_shared<std::string>();
   std::unordered_map<std::string, std::string> headerFields;
-  CoordTransactionID coordTransactionID;
-  double timeout;
+  CoordTransactionID coordTransactionID = 0;
+  double timeout = 0.0;
   double initTimeout = -1.0;
   bool singleRequest = false;
 
@@ -1641,68 +1641,6 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
       << "JS_AsyncRequest: request has been submitted";
 
   Return_PrepareClusterCommResultForJS(args, res);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief send a synchronous request
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  if (args.Length() < 4 || args.Length() > 7) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "syncRequest("
-        "reqType, destination, dbname, path, body, headers, options)");
-  }
-  // Possible options:
-  //   - coordTransactionID   (number)
-  //   - timeout              (number)
-
-  // Disabled to allow communication originating in a DBserver:
-  // 31.7.2014 Max
-
-  // if (ServerState::instance()->getRole() != ServerState::ROLE_COORDINATOR) {
-  //  TRI_V8_THROW_EXCEPTION_INTERNAL(scope,"request works only in coordinator
-  //  role");
-  //}
-
-  auto cc = ClusterComm::instance();
-
-  if (cc == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
-                                   "clustercomm object not found");
-  }
-
-  arangodb::rest::RequestType reqType;
-  std::string destination;
-  std::string path;
-  std::string body;
-  auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  double timeout;
-  double initTimeout = -1.0;
-  bool singleRequest = false;  // of no relevance here
-
-  PrepareClusterCommRequest(args, reqType, destination, path, body, *headerFields,
-                            coordTransactionID, timeout, singleRequest, initTimeout);
-
-  std::unique_ptr<ClusterCommResult> res =
-      cc->syncRequest(coordTransactionID, destination, reqType, path, body,
-                      *headerFields, timeout);
-
-  if (res.get() == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "couldn't do sync request");
-  }
-
-  LOG_TOPIC("0f902", DEBUG, Logger::CLUSTER) << "JS_SyncRequest: request has been done";
-
-  Return_PrepareClusterCommResultForJS(args, *res);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2131,7 +2069,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "asyncRequest"), JS_AsyncRequest);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "syncRequest"), JS_SyncRequest);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enquire"), JS_Enquire);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "wait"), JS_Wait);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_Drop);
