@@ -785,19 +785,6 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
   }
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void TraversalNode::checkConditionsDefined() const {
-  TRI_ASSERT(_tmpObjVariable != nullptr);
-  TRI_ASSERT(_tmpObjVarNode != nullptr);
-  TRI_ASSERT(_tmpIdNode != nullptr);
-
-  TRI_ASSERT(_fromCondition != nullptr);
-  TRI_ASSERT(_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
-
-  TRI_ASSERT(_toCondition != nullptr);
-  TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
-}
-
 bool TraversalNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
@@ -810,6 +797,19 @@ auto TraversalNode::options() const -> TraverserOptions* {
   auto* opts = static_cast<TraverserOptions*>(GraphNode::options());
 #endif
   return opts;
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+void TraversalNode::checkConditionsDefined() const {
+  TRI_ASSERT(_tmpObjVariable != nullptr);
+  TRI_ASSERT(_tmpObjVarNode != nullptr);
+  TRI_ASSERT(_tmpIdNode != nullptr);
+
+  TRI_ASSERT(_fromCondition != nullptr);
+  TRI_ASSERT(_fromCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
+
+  TRI_ASSERT(_toCondition != nullptr);
+  TRI_ASSERT(_toCondition->type == NODE_TYPE_OPERATOR_BINARY_EQ);
 }
 
 #endif
