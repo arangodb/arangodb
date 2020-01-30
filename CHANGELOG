@@ -13,6 +13,8 @@ v3.6.2 (XXXX-XX-XX)
 v3.6.1 (2020-01-29)
 -------------------
 
+* Fixed issue #10949: k shortest paths behaviour wrong with zero weights.
+
 * Updated ArangoDB Starter to 0.14.13.
 
 * Added HotBackup events into auditing.
