@@ -29,6 +29,7 @@
 
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/error.h"
 #include "Containers/details/IndexBucket.h"
 
 namespace arangodb {

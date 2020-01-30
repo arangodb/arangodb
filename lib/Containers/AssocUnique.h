@@ -37,6 +37,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/PerformanceLogScope.h"
 #include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Basics/gcd.h"
 #include "Basics/prime-numbers.h"
 #include "Containers/details/AssocHelpers.h"
