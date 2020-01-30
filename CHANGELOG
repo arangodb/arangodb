@@ -1,5 +1,49 @@
-v3.6.2 (2020-XX-XX)
+v3.6.2 (XXXX-XX-XX)
 -------------------
+
+* Supervision maintenance mode from "on" and TTL to expiry string.
+
+* Make sure heartbeats are actually sent out and received once per second.
+
+* Make active failover integration tests more stable.
+
+* Include collections "_queues" and "_jobs" in dumps created by arangodump
+  in case the option `--include-system-collections` was set to true. Previously
+  these collections were always excluded from dumps.
+
+* Fix bug in collection creation with distributeShardsLike.
+
+
+v3.6.1 (2020-01-29)
+-------------------
+
+* Fixed issue #10949: k shortest paths behaviour wrong with zero weights.
+
+* Updated ArangoDB Starter to 0.14.13.
+
+* Added HotBackup events into auditing.
+
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behavior sometimes leads to failed requests because of parse errors
+  which occurred in the internally used JavaScript joi library.
+
+* Fixed issue #10896: Variables defined inside spliced subqueries would leak
+  into following COLLECT ... INTO var operations.
+
+* Fixed COLLECT not invalidating variables for following COLLECT ... INTO var
+  operations.
+
+* Removed an unnecessary and wrong request from within the Web UI to the
+  `/_admin/cluster/health` API. This lead to unauthorized network calls.
+
+* Allowed PHRASE function to process empty arrays without generating error.
+
+* Add acquisition of system report to arangod instances.
+
+* React dev mode now supports hot reload combined with proxy for development.
+
+* Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
+  confusing error messages
 
 * Fix potential nullptr dereference in view optimizer rule, when there were was
   a LIMIT outside of a FOR loop.
@@ -58,13 +102,9 @@ v3.6.2 (2020-XX-XX)
 
 * Fix Windows client package JS installation paths.
 
-* Added option that makes ArangoDB write logfiles in the Windows installer.
-
 
 v3.6.0 (2020-01-08)
 -------------------
-
-* Supervision maintenance mode from "on" and TTL to expiry string.
 
 * Do not create a reboot tracker for empty serverId ubin sync repl.
 
