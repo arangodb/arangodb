@@ -3747,9 +3747,10 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
     // insert a gather node
     auto const sortMode = GatherNode::evaluateSortMode(collection->numberOfShards());
-    // single-sharded collections don't require any parallelism. collections with more than
-    // one shard are eligible for later parallelization (the Undefined allows this)
-    auto const parallelism = (collection->numberOfShards() <= 1 ? GatherNode::Parallelism::Serial : GatherNode::Parallelism::Undefined);
+    auto const parallelism = (((collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) || 
+                               (collection->numberOfShards() <= 1 && !collection->isSatellite())) ? 
+                              GatherNode::Parallelism::Serial : 
+                              GatherNode::Parallelism::Undefined);
     auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism); 
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
