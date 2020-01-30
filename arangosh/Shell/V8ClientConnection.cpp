@@ -56,7 +56,8 @@ using namespace arangodb::httpclient;
 using namespace arangodb::import;
 
 V8ClientConnection::V8ClientConnection()
-    : _lastHttpReturnCode(0),
+    : _requestTimeout(1200.0),
+      _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
       _mode("unknown mode"),
