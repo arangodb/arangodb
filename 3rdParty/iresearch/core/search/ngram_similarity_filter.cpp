@@ -131,26 +131,28 @@ class serial_min_match_disjunction : public doc_iterator_base, score_ctx {
 
   inline void score_impl(byte_type* lhs) {
     const irs::byte_type** pVal = scores_vals_.data();
-    const auto& winner = search_buf_.front().sequence;
+    const auto& winner = search_buf_.begin()->second.sequence;
     std::for_each(
       winner.begin(), winner.end(),
-      [this, lhs, &pVal](const score* s) {
-        if (&irs::score::no_score() != s) {
-          s->evaluate();
-          *pVal++ = s->c_str();
+      [this, lhs, &pVal](const position_t* s) {
+        if (&irs::score::no_score() != s->score) {
+          s->score->evaluate();
+          *pVal++ = s->score->c_str();
         }
       });
     ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
   struct search_state {
-    explicit search_state(uint32_t n, score* s) : len(1), next_pos(n), sequence{ s } {}
+    explicit search_state(uint32_t n, const position_t* s) : len(1), next_pos(n), sequence{ s } {}
+    search_state(search_state&&) = default;
+
     size_t len;
     uint32_t next_pos;
-    std::vector<score*> sequence;
+    std::vector<const position_t*> sequence;
   };
    
-  using search_states_t = std::vector<search_state>;
+  using search_states_t = std::map<uint32_t, search_state, std::greater<uint32_t>>;
 
   bool check_serial_positions() {
     size_t matched_iters = disjunction_.count_matched();
@@ -164,19 +166,25 @@ class serial_min_match_disjunction : public doc_iterator_base, score_ctx {
         const size_t potential = matched_iters - skipped_matched;
         while (pos.next()) {
           auto new_pos = pos.value();
-          auto found = std::find_if(search_buf_.begin(), search_buf_.end(), [new_pos](const search_state& p) {
-              return p.next_pos == new_pos;
-              });
+          
+          auto found = search_buf_.lower_bound(new_pos);
           if (found != (search_buf_.end())) {
-            ++(found->len);
-            found->sequence.emplace_back(post.score);
-            if (found->len > matched) {
-              matched = found->len;
+            if (found->second.sequence.back() != &post) {// we found ourselves
+              ++(found->second.len);
+              found->second.sequence.emplace_back(&post);
+              if (found->second.len > matched) {
+                  matched = found->second.len;
+              }
+              auto tmp(std::move(found->second));
+              search_buf_.erase(found);
+              search_buf_.emplace(new_pos, std::move(tmp));
             }
           } else  if ( potential > matched && potential >= min_match_count_) {
             // this ngram at this position  could potentially start a long enough sequence
             // so add it to candidate list
-            search_buf_.emplace_back(new_pos, post.score);
+            search_buf_.emplace(std::piecewise_construct, 
+                std::forward_as_tuple(new_pos), 
+                std::forward_as_tuple(new_pos, &post));
             if (!matched) {
               matched = 1;
             }
@@ -186,15 +194,15 @@ class serial_min_match_disjunction : public doc_iterator_base, score_ctx {
       }
       // Remove all now hopeless candidates !!Maybe not waste time there ? Let them live till next term
       const size_t potential = matched_iters - skipped_matched;
-      search_buf_.erase(
-        std::remove_if(search_buf_.begin(), search_buf_.end(), [potential, matched](search_state& p) {
-          return (p.len + potential) < matched;
-          }),
-        search_buf_.end());
+      //search_buf_.erase(
+      //  std::remove_if(search_buf_.begin(), search_buf_.end(), [potential, matched](search_state& p) {
+      //    return (p.len + potential) < matched;
+      //    }),
+      //  search_buf_.end());
       // Next term. Shift all expectations pos.
-      std::for_each(search_buf_.begin(), search_buf_.end(), [](search_state& p) {
-        ++(p.next_pos);
-      });
+      //std::for_each(search_buf_.begin(), search_buf_.end(), [](search_state& p) {
+      //  ++(p.next_pos);
+      //});
       if (!potential) {
         break; // all further terms will not add anything
       }
@@ -205,12 +213,12 @@ class serial_min_match_disjunction : public doc_iterator_base, score_ctx {
     }
     if (matched >= min_match_count_  && !ord_->empty() ) { 
       // deduplicating  longest sequences  and cleanup lesser ones
-      search_buf_.erase(
-        std::remove_if(search_buf_.begin(), search_buf_.end(), [this, matched](search_state& p) {
-          return p.len < matched || p.sequence != search_buf_.front().sequence;
-          }),
-        search_buf_.end());
-      seq_freq_.value = search_buf_.size();
+      //search_buf_.erase(
+      //  std::remove_if(search_buf_.begin(), search_buf_.end(), [this, matched](search_state& p) {
+      //    return p.len < matched || p.sequence != search_buf_.front()->second.sequence;
+      //    }),
+      //  search_buf_.end());
+      seq_freq_.value = 1; //;search_buf_.size();
       assert(!pos_.empty());
       filter_boost_.value = (boost_t)matched / (boost_t)pos_.size();
     }
@@ -273,7 +281,7 @@ class ngram_similarity_query : public filter::prepared {
       // get postings
       auto docs = term->postings(features);
       assert(docs);
-      auto& attrs = docs->attributes();
+      //auto& attrs = docs->attributes();
       //auto& score = attrs.get<irs::score>();
       //// set score
       //if (score) {
@@ -289,12 +297,15 @@ class ngram_similarity_query : public filter::prepared {
     }
 
     //!!!HACK
-    const term_reader* field = query_state->front().reader;
+    auto field = query_state->front().reader;
     for (const auto& qs : *query_state)  {
       field = qs.reader;
       if (field) {
         break;
       }
+    }
+    if (field == nullptr) {
+      return doc_iterator::empty();
     }
 
     return memory::make_shared<serial_min_match_disjunction<doc_iterator::ptr>>(

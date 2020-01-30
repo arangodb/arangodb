@@ -2253,50 +2253,12 @@ arangodb::Result fromFuncNgramMatch(
   }
 
   // 2nd argument defines a value
-  auto const* targetArg = args.getMemberUnchecked(1);
-
-  if (!targetArg) {
-    auto message = "'"s.append(funcName).append("' AQL function: 2nd argument is invalid");
-    LOG_TOPIC("6f500", WARN, arangodb::iresearch::TOPIC) << message;
-    return { TRI_ERROR_BAD_PARAMETER, message };
-  }
-
-  ScopedAqlValue targetValue(*targetArg);
-  std::vector<std::string> values;
-
-  if (filter || targetValue.isConstant()) {
-    if (!targetValue.execute(ctx)) {
-      auto message = "'"s.append(funcName).append("' AQL function: Failed to evaluate 2nd argument");
-      LOG_TOPIC("e196d", WARN, arangodb::iresearch::TOPIC) << message;
-      return { TRI_ERROR_BAD_PARAMETER, message };
-    }
-
-    if (arangodb::iresearch::SCOPED_VALUE_TYPE_ARRAY != targetValue.type()) {
-      auto message = "'"s.append(funcName).append("' AQL function: 2nd argument has invalid type '"s) 
-                     .append(ScopedAqlValue::typeString(targetValue.type()).c_str()).append("' (array expected)");
-      LOG_TOPIC("bd9c9", WARN, arangodb::iresearch::TOPIC) << message;
-      return { TRI_ERROR_BAD_PARAMETER, message };
-    }
-    size_t const n = targetValue.size();
-    for (size_t i = 0; i < n; ++i) {
-      auto val = targetValue.at(i);
-      if (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING == val.type()) {
-        irs::string_ref tmp;
-        if (!val.getString(tmp)) {
-          auto message = "'"s.append(funcName).append("' AQL function: failed to read as string value element at pos "s)
-                         .append(std::to_string(i));
-          LOG_TOPIC("bd9c9", WARN, arangodb::iresearch::TOPIC) << message;
-          return { TRI_ERROR_BAD_PARAMETER, message };
-        }
-        values.emplace_back(tmp);
-      } else {
-        auto message = "'"s.append(funcName).append("' AQL function: value element at pos "s)
-                       .append(std::to_string(i)).append(" has invalid type '"s)
-                       .append(ScopedAqlValue::typeString(val.type()).c_str())
-                       .append("' (string expected)");
-        LOG_TOPIC("bd9c9", WARN, arangodb::iresearch::TOPIC) << message;
-        return { TRI_ERROR_BAD_PARAMETER, message };
-      }
+  ScopedAqlValue matchAqlValue;
+  irs::string_ref matchValue;
+  {
+    auto res = evaluateArg(matchValue, matchAqlValue, funcName, args, 1, filter, ctx);
+    if (!res.ok()) {
+      return res;
     }
   }
 
@@ -2318,6 +2280,7 @@ arangodb::Result fromFuncNgramMatch(
     };
   }
   
+  TRI_ASSERT(filterCtx.analyzer);
   auto analyzerPool = filterCtx.analyzer;
   // 4th optional argumaent defines an analyzer
   if (argc > 3) {
@@ -2342,13 +2305,28 @@ arangodb::Result fromFuncNgramMatch(
       return { TRI_ERROR_BAD_PARAMETER, message };
     }
 
-    TRI_ASSERT(filterCtx.analyzer);
+    
+    TRI_ASSERT(analyzerPool._pool);
+    auto analyzer = analyzerPool._pool->get();
+
+    if (!analyzer) {
+      return {
+        TRI_ERROR_INTERNAL,
+        "'"s.append(funcName).append("' AQL function: Unable to instantiate analyzer '")
+            .append(analyzerPool._pool->name()).append("'")
+      };
+    }
+
+
     kludge::mangleStringField(name, analyzerPool);
 
     auto& ngramFilter = filter->add<irs::by_ngram_similarity>();
     ngramFilter.field(std::move(name)).threshold(threshold);
-    for (auto const& s : values) {
-      ngramFilter.push_back(s);
+
+    analyzer->reset(matchValue);
+    irs::term_attribute const& token = *analyzer->attributes().get<irs::term_attribute>();
+    while (analyzer->next()) {
+      ngramFilter.push_back(token.value());
     }
   }
   return {};
