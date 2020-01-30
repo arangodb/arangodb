@@ -1,6 +1,7 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Fix bug in collection creation with distributeShardsLike.
 
 
 v3.6.1 (2020-01-29)
@@ -88,8 +89,6 @@ v3.6.1 (2020-01-29)
 * Updated arangosync to 0.7.2.
 
 * Fix Windows client package JS installation paths.
-
-* Added option that makes ArangoDB write logfiles in the Windows installer.
 
 
 v3.6.0 (2020-01-08)
