@@ -55,6 +55,8 @@
 #include "Random/UniformCharacter.h"
 #include "Ssl/ssl-helper.h"
 
+#include <nghttp2/nghttp2.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -107,7 +109,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--ssl.options",
                      "ssl connection options, see OpenSSL documentation",
                      new UInt64Parameter(&_sslOptions),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--ssl.ecdh-curve",
@@ -193,6 +195,18 @@ class BIOGuard {
   BIO* _bio;
 };
 }  // namespace
+
+static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg) {
+  int rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+
+  if (rv != 1) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  return SSL_TLSEXT_ERR_OK;
+}
 
 asio_ns::ssl::context SslServerFeature::createSslContext() const {
   try {
@@ -314,6 +328,8 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
     }
 
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
+    
+    SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
 
     return sslContext;
   } catch (std::exception const& ex) {

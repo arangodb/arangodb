@@ -100,7 +100,7 @@ inline T toNumber(std::string value, T base) {
       m = 1000 * 1000 * 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "%") {
-      m = static_cast<T>(base);
+      m = static_cast<int64_t>(base);
       d = 100;
       value = value.substr(0, n - 1);
     }
@@ -169,7 +169,7 @@ inline std::string stringifyValue<std::string>(std::string const& value) {
 // abstract base parameter type struct
 struct Parameter {
   Parameter() = default;
-  virtual ~Parameter() {}
+  virtual ~Parameter() = default;
 
   virtual void flushValue() {}
 

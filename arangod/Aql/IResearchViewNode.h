@@ -24,6 +24,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
@@ -72,6 +73,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
     /// @brief try not to materialize documents
     bool noMaterialization{true};
+
+    /// @brief condition optimization Auto - condition will be transformed to DNF.
+    arangodb::aql::ConditionOptimization conditionOptimization{ arangodb::aql::ConditionOptimization::Auto };
+
   };  // Options
 
   IResearchViewNode(aql::ExecutionPlan& plan, size_t id, TRI_vocbase_t& vocbase,

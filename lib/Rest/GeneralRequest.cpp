@@ -71,9 +71,8 @@ std::string GeneralRequest::translateMethod(RequestType method) {
   return "UNKNOWN";  // in order please MSVC
 }
 
-rest::RequestType GeneralRequest::translateMethod(std::string const& method) {
-  std::string const methodString = StringUtils::toupper(method);
-
+namespace  {
+rest::RequestType translateMethod(VPackStringRef const& methodString) {
   if (methodString == "DELETE") {
     return RequestType::DELETE_REQ;
   } else if (methodString == "GET") {
@@ -89,8 +88,17 @@ rest::RequestType GeneralRequest::translateMethod(std::string const& method) {
   } else if (methodString == "PUT") {
     return RequestType::PUT;
   }
-
   return RequestType::ILLEGAL;
+}
+}
+
+rest::RequestType GeneralRequest::translateMethod(VPackStringRef const& method) {
+  auto ret = ::translateMethod(method);
+  if (RequestType::ILLEGAL == ret) {
+    std::string const methodString = StringUtils::toupper(method.toString());
+    return ::translateMethod(VPackStringRef(methodString));
+  }
+  return ret;
 }
 
 void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {

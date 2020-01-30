@@ -1,8 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Library to build up VPack documents.
+///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,25 +19,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Lauri Keel
+/// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AQL_RELOAD_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AQL_RELOAD_HANDLER_H 1
+#ifndef VELOCYPACK_MEMORY_H
+#define VELOCYPACK_MEMORY_H 1
 
-#include "RestHandler/RestBaseHandler.h"
+#include <cstdint>
+#include <memory>
 
-namespace arangodb {
-class RestAqlReloadHandler : public arangodb::RestBaseHandler {
- public:
-  RestAqlReloadHandler(application_features::ApplicationServer&,
-                       GeneralRequest*, GeneralResponse*);
+// memory management definitions
 
- public:
-  char const* name() const override final { return "RestAqlReloadHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-};
-}  // namespace arangodb
+extern "C" {
+
+extern void* velocypack_malloc(std::size_t size);
+extern void* velocypack_realloc(void* ptr, std::size_t size);
+extern void velocypack_free(void* ptr);
+
+#ifndef velocypack_malloc
+
+#define velocypack_malloc(size) malloc(size)
+#define velocypack_realloc(ptr, size) realloc(ptr, size)
+#define velocypack_free(ptr) free(ptr)
+
+#endif
+
+}
 
 #endif

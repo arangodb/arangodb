@@ -22,6 +22,7 @@
 
 #include "VocbaseInfo.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -74,7 +75,7 @@ Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& use
 #endif
 
   return checkOptions();
-};
+}
 
 Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
                                 VPackSlice const& users) {
@@ -138,7 +139,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
 #endif
 
   return checkOptions();
-};
+}
 
 void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) const {
   TRI_ASSERT(_validId);

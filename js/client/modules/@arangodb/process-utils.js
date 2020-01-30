@@ -33,6 +33,7 @@ const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/crash-utils');
 const crypto = require('@arangodb/crypto');
+const ArangoError = require('@arangodb').ArangoError;
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -436,12 +437,24 @@ function getCleanupDBDirectories () {
 // //////////////////////////////////////////////////////////////////////////////
 
 function makeAuthorizationHeaders (options) {
-  if (options['server.jwt-secret']) {
-    var jwt = crypto.jwtEncode(options['server.jwt-secret'],
+
+  let jwtSecret;
+  if (options['server.jwt-secret-folder']) {
+    let files = fs.list(options['server.jwt-secret-folder']);
+    files.sort();
+    if (files.length > 0) {
+      jwtSecret = fs.read(fs.join(options['server.jwt-secret-folder'], files[0]));
+    }
+  } else {
+    jwtSecret = options['server.jwt-secret'];
+  }
+
+  if (jwtSecret) {
+    let jwt = crypto.jwtEncode(jwtSecret,
                              {'server_id': 'none',
                               'iss': 'arangodb'}, 'HS256');
     if (options.extremeVerbosity) {
-      print(Date() + ' Using jwt token:     ' + jwt);
+      print(Date() + ' Using jw token:     ' + jwt);
     }
     return {
       'headers': {
@@ -1500,7 +1513,10 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
   instanceInfo.authOpts = _.clone(options);
   if (addArgs['server.jwt-secret'] && !instanceInfo.authOpts['server.jwt-secret']) {
     instanceInfo.authOpts['server.jwt-secret'] = addArgs['server.jwt-secret'];
+  } else if (addArgs['server.jwt-secret-folder'] && !instanceInfo.authOpts['server.jwt-secret-folder']) {
+    instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
   }
+
 
   let count = 0;
   while (true) {
@@ -1554,7 +1570,18 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
   instanceInfo.arangods.forEach(arangod => {
     // agents don't support the ID call...
     if ((arangod.role !== "agent") && (arangod.role !== "single")) {
-      const reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      let reply;
+      try {
+        reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+      } catch (e) {
+        print(RED + Date() + " error requesting server '" + JSON.stringify(arangod) + "' Error: " + JSON.stringify(e) + RESET);
+        if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
+          internal.sleep(5);
+          reply = download(arangod.url + '/_db/_system/_admin/server/id', '', makeAuthorizationHeaders(instanceInfo.authOpts));
+        } else {
+          throw e;
+        }
+      }
       if (reply.error || reply.code !== 200) {
         throw new Error("Server has no detectable ID! " + JSON.stringify(reply) + "\n" + JSON.stringify(arangod));
       }
@@ -1635,7 +1662,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
-      instanceInfo['vstEndpoint'] = 'vst://127.0.0.1:' + port;
       let coordinatorArgs = _.clone(options.extraArgs);
       coordinatorArgs['server.endpoint'] = endpoint;
       coordinatorArgs['cluster.my-address'] = endpoint;
@@ -1649,7 +1675,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
-      instanceInfo['vstEndpoint'] = 'vst://127.0.0.1:' + port;
       let singleArgs = _.clone(options.extraArgs);
       singleArgs['server.endpoint'] = endpoint;
       singleArgs['cluster.my-address'] = endpoint;
@@ -1673,7 +1698,17 @@ function startInstanceCluster (instanceInfo, protocol, options,
     instanceInfo.url = d.url;
   }
 
-  arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
+  try {
+    arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
+  } catch (e) {
+    print(RED + Date() + " error connecting '" + instanceInfo.endpoint + "' Error: " + JSON.stringify(e) + RESET);
+    if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
+      internal.sleep(5);
+      arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
+    } else {
+      throw e;
+    }
+  }
   return true;
 }
 
@@ -1927,7 +1962,7 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
-  instanceInfo.vstEndpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].url.replace(/.*\/\//, 'vst://');
+  // instanceInfo.vstEndpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].url.replace(/.*\/\//, 'vst://');
 
   return instanceInfo;
 }

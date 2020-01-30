@@ -22,6 +22,7 @@
 
 #include "HotBackup.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -78,6 +79,8 @@ arangodb::Result HotBackup::executeRocksDB(
   if (operation->valid()) {
     operation->execute();
   } // if
+
+  operation->doAuditLog();
 
   // if !valid() then !success() already set
   if (!operation->success()) {

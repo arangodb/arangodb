@@ -18,35 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestAqlReloadHandler.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/StaticStrings.h"
-#include "V8Server/V8DealerFeature.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
+#include "RestRedirectHandler.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAqlReloadHandler::RestAqlReloadHandler(application_features::ApplicationServer& server,
-                                           GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+RestStatus RestRedirectHandler::execute() {
 
-RestStatus RestAqlReloadHandler::execute() {
-  V8DealerFeature::DEALER->addGlobalContextMethod("reloadAql");
-  
-  VPackBuilder result;
-  result.openObject(true);
-  result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
-  result.close();
-  
-  generateResult(rest::ResponseCode::OK, result.slice());
+  std::string const& url = request()->fullUrl();
+  std::string prefix = request()->prefix();
+  if (prefix.empty()) {
+    prefix = request()->requestPath();
+  }
+
+  std::string newUrl = _newPrefix + url.substr(prefix.size());
+  response()->setHeader(StaticStrings::Location, newUrl);
+  response()->setResponseCode(ResponseCode::PERMANENT_REDIRECT);
   return RestStatus::DONE;
 }
+
+void RestRedirectHandler::handleError(basics::Exception const&) {}

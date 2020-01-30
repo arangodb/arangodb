@@ -726,10 +726,12 @@ function transactionInvocationSuite () {
         let tries = 0;
         while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
+
+          require("internal").wait(0.5, false);
+          
           if (result.code === 204) {
             break;
           }
-          require("internal").wait(0.5, false);
         }
         
         let trx = db._transactions();
@@ -741,10 +743,12 @@ function transactionInvocationSuite () {
         tries = 0;
         while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
+          
+          require("internal").wait(0.5, false);
+          
           if (result.code === 410) {
             break;
           }
-          require("internal").wait(0.5, false);
         }
         assertEqual(410, result.code);
       } finally {

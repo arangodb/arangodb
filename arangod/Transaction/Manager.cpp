@@ -23,6 +23,7 @@
 
 #include "Manager.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/ReadLocker.h"
@@ -53,6 +54,7 @@
 #include "Enterprise/VocBase/VirtualCollection.h"
 #endif
 
+#include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -495,7 +497,6 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 /// @brief lease the transaction, increases nesting
 std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
                                                                AccessMode::Type mode) {
-  auto& server = application_features::ApplicationServer::server();
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
@@ -545,7 +546,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     if (i++ > 32) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
-      if (server.isStopping()) {
+      if (_feature.server().isStopping()) {
         return nullptr;  // shutting down
       }
     }
@@ -914,14 +915,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder authBuilder;
-          {
-            VPackObjectBuilder payload{&authBuilder};
-            payload->add("preferred_username", VPackValue(username));
-          }
-          VPackSlice slice = authBuilder.slice();
           headers.try_emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+                          "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
@@ -1016,14 +1011,8 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder builder;
-          {
-            VPackObjectBuilder payload{&builder};
-            payload->add("preferred_username", VPackValue(username));
-          }
-          VPackSlice slice = builder.slice();
           headers.try_emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+                          "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
