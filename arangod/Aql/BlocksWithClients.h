@@ -53,14 +53,58 @@ struct Collection;
 class ExecutionEngine;
 class ExecutionNode;
 
-class BlocksWithClients : public ExecutionBlock {
+class BlocksWithClients {
  public:
-  BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
-                    std::vector<std::string> const& shardIds);
+  virtual ~BlocksWithClients() {}
 
-  ~BlocksWithClients() override = default;
+  /// @brief getSomeForShard
+  /// @deprecated
+  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
+      size_t atMost, std::string const& shardId) = 0;
+
+  /// @brief skipSomeForShard
+  /// @deprecated
+  virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
+                                                             std::string const& shardId) = 0;
+
+  /**
+   * @brief Execute for client.
+   *  Like execute, but bound to the dataset, that needs to be send to the given client ID
+   *
+   * @param stack The AqlCallStack
+   * @param clientId The requesting client Id.
+   * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+   */
+  virtual auto executeForClient(AqlCallStack stack, std::string const& clientId)
+      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> = 0;
+};
+
+/**
+ * @brief Implementation of an ExecutionBlock that has multiple clients
+ *        Data is distributed to those clients, it might be all (Scatter)
+ *        or a selected part of it (Distribute).
+ *        How data is distributed is defined by the template parameter.
+ *
+ * @tparam ClientBlockData needs to be able to hold the data to be distributed
+ *         to a single client.
+ *         It needs to implement the following methods:
+ *         canProduce(size_t limit) -> bool stating it has enough information to fill limit many rows (or more)
+ *
+ */
+
+// template <class ClientBlockData>
+class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
+ public:
+  BlocksWithClientsImpl(ExecutionEngine* engine, ExecutionNode const* ep,
+                        std::vector<std::string> const& shardIds);
+
+  ~BlocksWithClientsImpl() override = default;
 
  public:
+  /// @brief initializeCursor
+  auto initializeCursor(InputAqlItemRow const& input)
+      -> std::pair<ExecutionState, Result> override;
+
   /// @brief shutdown
   std::pair<ExecutionState, Result> shutdown(int) override;
 
@@ -72,15 +116,33 @@ class BlocksWithClients : public ExecutionBlock {
   /// @brief skipSome: shouldn't be used, use skipSomeForShard
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) final;
 
-  /// @brief getSomeForShard
-  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(
-      size_t atMost, std::string const& shardId) = 0;
-
-  /// @brief skipSomeForShard
-  virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
-                                                             std::string const& shardId) = 0;
-
+  /// @brief execute: shouldn't be used, use executeForClient
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+
+  /**
+   * @brief Execute for client.
+   *  Like execute, but bound to the dataset, that needs to be send to the given client ID
+   *
+   * @param stack The AqlCallStack
+   * @param clientId The requesting client Id.
+   * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+   */
+  auto executeForClient(AqlCallStack stack, std::string const& clientId)
+      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> override;
+
+ private:
+  /**
+   * @brief Actual implementation of Execute. Needs to be given by the specific
+   * block Tracing is handled in the generic method.
+   *
+   * @param stack The AqlCallStack
+   * @param clientId The requesting client Id.
+   * @return std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+   */
+  auto executeWithoutTraceForClient(AqlCallStack stack, std::string const& clientId)
+      -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
+
+  auto fetchMore() -> void;
 
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
@@ -88,6 +150,7 @@ class BlocksWithClients : public ExecutionBlock {
   size_t getClientId(std::string const& shardId) const;
 
   /// @brief _shardIdMap: map from shardIds to clientNrs
+  /// @deprecated
   std::unordered_map<std::string, size_t> _shardIdMap;
 
   /// @brief _nrClients: total number of clients
@@ -95,6 +158,10 @@ class BlocksWithClients : public ExecutionBlock {
 
   /// @brief type of distribution that this nodes follows.
   ScatterNode::ScatterType _type;
+
+  /// @brief A map of clientId to the data this client should receive.
+  ///        This map will be filled as the execution progresses.
+  // std::unordered_map<std::string, ClientBlockData> _clientBlockData;
 
  private:
   bool _wasShutdown;

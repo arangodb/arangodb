@@ -32,26 +32,13 @@ ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                         ScatterNode const* node,
                                                         ExecutorInfos&& infos,
                                                         std::vector<std::string> const& shardIds)
-    : BlocksWithClients(engine, node, shardIds),
+    : BlocksWithClientsImpl(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.emplace(std::make_pair(shardIds[i], i));
   }
-}
-
-/// @brief initializeCursor
-std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializeCursor(
-    InputAqlItemRow const& input) {
-  // local clean up
-  _posForClient.clear();
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    _posForClient.emplace_back(0, 0);
-  }
-
-  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief getSomeForShard
@@ -107,7 +94,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>:
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
- size_t const clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
 
   if (!hasMoreForClientId(clientId)) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};

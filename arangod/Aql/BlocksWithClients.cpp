@@ -61,9 +61,11 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
-BlocksWithClients::BlocksWithClients(ExecutionEngine* engine, ExecutionNode const* ep,
-                                     std::vector<std::string> const& shardIds)
+BlocksWithClientsImpl::BlocksWithClientsImpl(ExecutionEngine* engine,
+                                             ExecutionNode const* ep,
+                                             std::vector<std::string> const& shardIds)
     : ExecutionBlock(engine, ep),
+      BlocksWithClients(),
       _nrClients(shardIds.size()),
       _type(ScatterNode::ScatterType::SHARD),
       _wasShutdown(false) {
@@ -76,7 +78,14 @@ BlocksWithClients::BlocksWithClients(ExecutionEngine* engine, ExecutionNode cons
   _type = scatter->getScatterType();
 }
 
-std::pair<ExecutionState, bool> BlocksWithClients::getBlock(size_t atMost) {
+/// @brief initializeCursor
+auto BlocksWithClientsImpl::initializeCursor(InputAqlItemRow const& input)
+    -> std::pair<ExecutionState, Result> {
+  // _clientBlockData->clear();
+  return ExecutionBlock::initializeCursor(input);
+}
+
+std::pair<ExecutionState, bool> BlocksWithClientsImpl::getBlock(size_t atMost) {
   if (_engine->getQuery()->killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
@@ -101,7 +110,7 @@ std::pair<ExecutionState, bool> BlocksWithClients::getBlock(size_t atMost) {
 }
 
 /// @brief shutdown
-std::pair<ExecutionState, Result> BlocksWithClients::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> BlocksWithClientsImpl::shutdown(int errorCode) {
   if (_wasShutdown) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
@@ -115,7 +124,7 @@ std::pair<ExecutionState, Result> BlocksWithClients::shutdown(int errorCode) {
 
 /// @brief getClientId: get the number <clientId> (used internally)
 /// corresponding to <shardId>
-size_t BlocksWithClients::getClientId(std::string const& shardId) const {
+size_t BlocksWithClientsImpl::getClientId(std::string const& shardId) const {
   if (shardId.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "got empty distribution id");
@@ -129,18 +138,34 @@ size_t BlocksWithClients::getClientId(std::string const& shardId) const {
   return it->second;
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClients::getSome(size_t) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl::getSome(size_t) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::pair<ExecutionState, size_t> BlocksWithClients::skipSome(size_t) {
+std::pair<ExecutionState, size_t> BlocksWithClientsImpl::skipSome(size_t) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> BlocksWithClients::execute(AqlCallStack stack) {
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> BlocksWithClientsImpl::execute(AqlCallStack stack) {
   // This will not be implemented here!
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto BlocksWithClientsImpl::executeForClient(AqlCallStack stack, std::string const& clientId)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  // traceExecuteBegin(stack);
+  auto res = executeWithoutTraceForClient(stack, clientId);
+  // traceExecuteEnd(res);
+  return res;
+}
+
+auto BlocksWithClientsImpl::executeWithoutTraceForClient(AqlCallStack stack,
+                                                         std::string const& clientId)
+    -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  // TODO
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

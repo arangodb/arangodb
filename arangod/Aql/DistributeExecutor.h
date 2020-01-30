@@ -42,7 +42,7 @@ class Query;
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
+class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClientsImpl {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard arguments (shardIds, collection) should probably be moved into
@@ -54,8 +54,6 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
                      bool allowKeyConversionToObject, bool createKeys);
 
   ~ExecutionBlockImpl() override = default;
-
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief getSomeForShard
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
@@ -99,7 +97,7 @@ class ExecutionBlockImpl<DistributeExecutor> : public BlocksWithClients {
   std::string createKey(arangodb::velocypack::Slice) const;
 
   ExecutorInfos const& infos() const;
-  
+
   Query const& getQuery() const noexcept;
 
  private:

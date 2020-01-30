@@ -39,7 +39,7 @@ class ScatterExecutor {};
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClients {
+class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl {
  public:
   // TODO Even if it's not strictly necessary here, for consistency's sake the
   // non-standard argument (shardIds) should probably be moved into some
@@ -48,8 +48,6 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClients {
                      ExecutorInfos&& infos, std::vector<std::string> const& shardIds);
 
   ~ExecutionBlockImpl() override = default;
-
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   /// @brief getSomeForShard
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,

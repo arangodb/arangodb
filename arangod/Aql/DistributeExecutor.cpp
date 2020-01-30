@@ -41,7 +41,7 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
     std::vector<std::string> const& shardIds, Collection const* collection,
     RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
     bool allowKeyConversionToObject, bool createKeys)
-    : BlocksWithClients(engine, node, shardIds),
+    : BlocksWithClientsImpl(engine, node, shardIds),
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
       _collection(collection),
@@ -53,20 +53,6 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
       _allowKeyConversionToObject(allowKeyConversionToObject),
       _createKeys(createKeys) {
   _usesDefaultSharding = collection->usesDefaultSharding();
-}
-
-/// @brief initializeCursor
-std::pair<ExecutionState, Result> ExecutionBlockImpl<DistributeExecutor>::initializeCursor(
-    InputAqlItemRow const& input) {
-  // local clean up
-  _distBuffer.clear();
-  _distBuffer.reserve(_nrClients);
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    _distBuffer.emplace_back();
-  }
-
-  return ExecutionBlock::initializeCursor(input);
 }
 
 /// @brief getSomeForShard
@@ -221,7 +207,6 @@ bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForClientId(size_t clientId)
 /// current one.
 std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlockForClient(
     size_t atMost, size_t clientId) {
-  
   if (_buffer.empty()) {
     _index = 0;  // position in _buffer
     _pos = 0;    // position in _buffer.at(_index)
@@ -385,7 +370,9 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
   return getClientId(shardId);
 }
 
-Query const& ExecutionBlockImpl<DistributeExecutor>::getQuery() const noexcept { return _query; }
+Query const& ExecutionBlockImpl<DistributeExecutor>::getQuery() const noexcept {
+  return _query;
+}
 
 /// @brief create a new document key
 std::string ExecutionBlockImpl<DistributeExecutor>::createKey(VPackSlice input) const {
