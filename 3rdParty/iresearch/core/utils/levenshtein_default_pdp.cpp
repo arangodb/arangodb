@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,25 +17,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_AQL_RELOAD_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_AQL_RELOAD_HANDLER_H 1
+#include "levenshtein_default_pdp.hpp"
 
-#include "RestHandler/RestBaseHandler.h"
+#include "levenshtein_utils.hpp"
+#include "std.hpp"
 
-namespace arangodb {
-class RestAqlReloadHandler : public arangodb::RestBaseHandler {
- public:
-  RestAqlReloadHandler(application_features::ApplicationServer&,
-                       GeneralRequest*, GeneralResponse*);
+NS_ROOT
 
- public:
-  char const* name() const override final { return "RestAqlReloadHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-};
-}  // namespace arangodb
+const irs::parametric_description& default_pdp(
+    irs::byte_type distance,
+    bool with_transpositions) {
+  struct builder {
+    using type = irs::parametric_description;
 
-#endif
+    static type make(size_t idx) {
+      const auto max_distance = irs::byte_type(idx >> 1);
+      const auto with_transpositions = 0 != (idx % 2);
+      return irs::make_parametric_description(max_distance, with_transpositions);
+    }
+  };
+
+  const size_t idx = 2*size_t(distance) + size_t(with_transpositions);
+  return irs::irstd::static_lazy_array<builder, 9>::at(idx);
+}
+
+NS_END
