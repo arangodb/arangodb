@@ -4,6 +4,19 @@ v3.5.5 (XXXX-XX-XX)
 * Cluster collection creation preconditioned on involved db servers not
   in process of being cleaned and beyond.
 
+* Fixed issue #10949: k shortest paths behavior wrong with zero weights.
+
+* Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
+  confusing error messages.
+
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behavior sometimes leads to failed requests because of parse errors
+  which occurred in the internally used JavaScript joi library.
+
+* Make active failover integration tests more stable.
+
+* Fix bug in collection creation with distributeShardsLike.
+
 * Added HotBackup events into auditing.
 
 * Include collections "_queues" and "_jobs" in dumps created by arangodump
@@ -22,6 +35,7 @@ v3.5.5 (XXXX-XX-XX)
 
 v3.5.4 (2020-01-22)
 -------------------
+
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
   while.
 
