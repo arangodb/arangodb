@@ -398,6 +398,7 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("IndexBlock::readIndex") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  LOG_DEVEL << __func__;
   switch (_type) {
     case Type::NoResult:
       TRI_ASSERT(_documentNonProducer != nullptr);
@@ -733,10 +734,12 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
       // Loop here, either we have filled the output
       // Or the cursor is done, so we need to advance
     }
+
+
+    stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
+    stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
   }
 
-  stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
-  stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
 
   bool reportDone = _state == ExecutorState::DONE && !_input.isInitialized();
 
