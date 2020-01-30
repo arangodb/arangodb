@@ -40,7 +40,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
