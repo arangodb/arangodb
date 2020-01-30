@@ -56,8 +56,7 @@ void GeneralCommTask<T>::stop() {
 
 template <SocketType T>
 void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
-  if (ec && ec != asio_ns::error::misc_errors::eof &&
-      ec != asio_ns::error::operation_aborted) {
+  if (ec && ec != asio_ns::error::misc_errors::eof) {
     LOG_TOPIC("2b6b3", WARN, arangodb::Logger::REQUESTS)
     << "asio IO error: '" << ec.message() << "'";
   }
