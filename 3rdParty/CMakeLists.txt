@@ -152,31 +152,6 @@ unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
 unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
 ################################################################################
-## cURL
-################################################################################
-add_definitions(-DCURL_STATICLIB=1)
-
-set(ENABLE_MANUAL OFF CACHE BOOL "Enable manual")
-set(BUILD_CURL_EXE OFF CACHE BOOL "Build curl.exe")
-set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
-set(BUILD_TESTING OFF CACHE BOOL "Build testing")
-set(CURL_STATICLIB ON CACHE BOOL "Curl static library")
-set(HTTP_ONLY ON CACHE BOOL "HTTP only")
-set(CMAKE_USE_LIBSSH2 OFF CACHE BOOL "Use libssh2")
-set(CMAKE_USE_OPENSSL ON CACHE BOOL "Use OpenSSL")
-# mop: super important...if this is off curl will not handle request timeouts < 1000ms
-set(ENABLE_THREADED_RESOLVER ON CACHE BOOL "Enable threaded resolver")
-set(CURL_VERSION "7.66.0")
-set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
-add_subdirectory(${CURL_SRC_DIR})
-
-set(CURL_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/curl/curl-${CURL_VERSION}")
-set(CURL_BIN_DIR "${CURL_BIN_DIR}" PARENT_SCOPE)
-set(CURL_SRC_DIR "${CURL_SRC_DIR}" PARENT_SCOPE)
-
-set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
-
-################################################################################
 ## ROCKSDB
 ################################################################################
 

@@ -1213,16 +1213,6 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
-## cURL
-################################################################################
-
-add_definitions(-DCURL_STATICLIB=1)
-include_directories(SYSTEM
-  ${CURL_SRC_DIR}/include/
-  ${CURL_BIN_DIR}/include/curl/
-)
-
-################################################################################
 ## PATHS, installation, packages, frontend
 ################################################################################
 
@@ -1307,7 +1297,6 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${ZLIB_LIBS}
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
-  libcurl
   ${BASE_LIBS}
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}

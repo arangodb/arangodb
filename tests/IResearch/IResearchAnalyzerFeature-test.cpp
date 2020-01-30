@@ -27,7 +27,6 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/utf8_path.hpp"
 
-#include "IResearch/ClusterCommMock.h"
 #include "IResearch/RestHandlerMock.h"
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
@@ -378,10 +377,7 @@ class IResearchAnalyzerFeatureTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::WARN> {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-  };
-
+        
   arangodb::tests::mocks::MockV8Server server;
   arangodb::SystemDatabaseFeature* sysDatabaseFeature{};
 
@@ -1011,9 +1007,6 @@ class IResearchAnalyzerFeatureCoordinatorTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::ERR> {
  public:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-  };
 
   arangodb::tests::mocks::MockCoordinator server;
   std::string _dbName;
@@ -1112,8 +1105,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
         "\", \"isSystem\": true, \"shards\": { }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
     auto collectionId = std::to_string(42);
 
-    ClusterCommMock clusterComm(server.server());
-    auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
+//    ClusterCommMock clusterComm(server.server());
+//    auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
     auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
@@ -1152,6 +1145,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
       ci.invalidateCurrent();            // force reload of 'Current'
     }
 
+#if 0
     // insert response for expected analyzer lookup
     {
       arangodb::ClusterCommResult response;
@@ -1179,6 +1173,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
           .ensureNullTerminated();  // 'data' value must be 1 as per AqlItemBlock::AqlItemBlock(...), first 2 'raw' values ignored, 'nrRegs' must be 1 or assertion failure in ExecutionBlockImpl<Executor>::requestWrappedBlock(...)
       clusterComm._responses.emplace_back(std::move(response));
     }
+#endif
 
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Builder tmp;
@@ -1989,6 +1984,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       sysDatabase.start();  // get system database from DatabaseFeature
     }
 
+#if 0
     ClusterCommMock clusterComm(newServer);
     auto scopedClusterComm = ClusterCommMock::setInstance(
         clusterComm);  // or get SIGFPE in ClusterComm::communicator() while call to ClusterInfo::createDocumentOnCoordinator(...)
@@ -2004,6 +2000,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
           *VPackParser::fromJson("{ \"result\": [] }");  // empty initial result
       clusterComm._responses.emplace_back(std::move(response));
     }
+#endif
 
     // add analyzer
     {
@@ -2060,6 +2057,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       sysDatabase.start();  // get system database from DatabaseFeature
     }
 
+#if 0
     ClusterCommMock clusterComm(newServer);
     auto scopedClusterComm = ClusterCommMock::setInstance(
         clusterComm);  // or get SIGFPE in ClusterComm::communicator() while call to ClusterInfo::createDocumentOnCoordinator(...)
@@ -2075,6 +2073,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
           *VPackParser::fromJson("{ \"result\": [] }");  // empty initial result
       clusterComm._responses.emplace_back(std::move(response));
     }
+#endif
 
     // add analyzer
     {
