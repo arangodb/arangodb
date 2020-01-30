@@ -221,6 +221,7 @@ add_library(fuerte STATIC
 
 target_link_libraries(fuerte nghttp2)
 
+include(CheckTypeSize)
 check_type_size("ssize_t" SIZEOF_SSIZE_T)
 if(SIZEOF_SSIZE_T STREQUAL "")
   # ssize_t is a signed type in POSIX storing at least -1.
