@@ -1716,12 +1716,12 @@ function processQuery(query, explain, planIndex) {
     if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
     }
-    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
-      level = subqueries.pop();
-    }
   };
 
   var postHandle = function (node) {
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
+    }
     var isLeafNode = !parents.hasOwnProperty(node.id);
 
     if (['EnumerateCollectionNode',
