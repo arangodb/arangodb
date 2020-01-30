@@ -3,6 +3,8 @@ devel
 
 * Fixed a bug where a single host agency could log too early.
 
+* JS `query` helper function can now be used with options.
+  
 * Fix a bug in collection creation with `distributeShardsLike`.
 
 * Added load-balancing support for listing currently running and slow AQL queries,
