@@ -1,6 +1,8 @@
 v3.4.10 (XXXX-XX-XX)
 --------------------
 
+* Make sure heartbeats are actually sent out and received once per second.
+
 * Made active failover integration tests more stable.
 
 * Updated ArangoDB Starter to 0.14.13.
