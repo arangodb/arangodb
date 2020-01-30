@@ -42,6 +42,7 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
@@ -971,14 +972,7 @@ void ClusterInfo::loadPlan() {
           }
 
           // Sort by the number in the shard ID ("s0000001" for example):
-          std::sort(            // sort
-              shards->begin(),  // begin
-              shards->end(),    // end
-              [](std::string const& a, std::string const& b) -> bool {
-                return std::strtol(a.c_str() + 1, nullptr, 10) <
-                       std::strtol(b.c_str() + 1, nullptr, 10);
-              }  // comparator
-          );
+          ShardingInfo::sortShardNamesNumerically(*shards);
           newShards.emplace(collectionId, std::move(shards));
         } catch (std::exception const& ex) {
           // The plan contains invalid collection information.
