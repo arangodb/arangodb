@@ -87,8 +87,11 @@ void GeneralConnection<ST>::startConnection() {
 template <SocketType ST>
 void GeneralConnection<ST>::shutdownConnection(const Error err, std::string const& msg,
                                                bool mayRestart) {
-  FUERTE_LOG_DEBUG << "shutdownConnection: '" << msg
-                   << "' this=" << this << "\n";
+  FUERTE_LOG_DEBUG << "shutdownConnection: err = '" << to_string(err) << "' ";
+  if (!msg.empty()) {
+    FUERTE_LOG_DEBUG << ", msg = '" << msg<< "' ";
+  }
+  FUERTE_LOG_DEBUG<< "this=" << this << "\n";
 
   auto state = _state.load();
   if (state != Connection::State::Failed) {
@@ -120,7 +123,6 @@ void GeneralConnection<ST>::tryConnect(unsigned retries, std::chrono::steady_clo
   if (retries == 0) {
     _state.store(Connection::State::Failed, std::memory_order_release);
     drainQueue(Error::CouldNotConnect);
-    abortOngoingRequests(Error::CouldNotConnect);
     shutdownConnection(Error::CouldNotConnect, "connecting failed");
     return;
   }
@@ -131,29 +133,31 @@ void GeneralConnection<ST>::tryConnect(unsigned retries, std::chrono::steady_clo
   auto self = Connection::shared_from_this();
 
   _proto.timer.expires_after(relativeTimeout(_config, start));
-  _proto.timer.async_wait([self, this](asio_ns::error_code const& ec) {
+  _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
     if (!ec) {
       // the connect handler below gets 'operation_aborted' error
-      _proto.cancel();
+      static_cast<GeneralConnection<ST>&>(*self)._proto.cancel();
     }
   });
   
-  _proto.connect(_config, [=](auto const& ec) {
-    _proto.timer.cancel();
+  _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
+    GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
+    me._proto.timer.cancel();
     if (!ec) {
-      finishConnect();
+      me.finishConnect();
       return;
     }
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-      _proto.timer.expires_after(relativeTimeout(_config, start));
-      _proto.timer.async_wait([=](auto ec) {
-        if (_state.load() == Connection::State::Connecting) {
-          tryConnect(!ec ? retries - 1 : 0, start);
+      me._proto.timer.expires_after(relativeTimeout(me._config, start));
+      me._proto.timer.async_wait([self(std::move(self)), start, retries](auto ec) mutable {
+        GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
+        if (me._state.load() == Connection::State::Connecting) {
+          me.tryConnect(!ec ? retries - 1 : 0, start);
         }
       });
     } else {
-      tryConnect(0, start); // <- handles errors
+      me.tryConnect(0, start); // <- handles errors
     }
   });
 }
