@@ -14,9 +14,14 @@ operation is scheduled. In this case leave out the `downloadId`
 attribute.
 
 @RESTBODYPARAM{remoteRepository,string,required,string}
-URL of remote reporsitory. This is required when a download
-operation is scheduled. In this case leave out the `downloadId`
-attribute. Provided repository URLs are normalized and validated as follows: One single colon must appear separating the configurtion section name and the path. The URL prefix up to the colon must exist as a key in the config object below. No slashes must appear before the colon. Multiple back to back slashes are collapsed to one, as `..` and `.` are applied accordingly. Local repositories must be absolute paths and must begin with a `/`. Trailing `/` are removed.
+URL of remote repository. This is required when a download operation is
+scheduled. In this case leave out the `downloadId` attribute. Provided
+repository URLs are normalized and validated as follows: One single colon must
+appear separating the configuration section name and the path. The URL prefix
+up to the colon must exist as a key in the config object below. No slashes must
+appear before the colon. Multiple back to back slashes are collapsed to one, as
+`..` and `.` are applied accordingly. Local repositories must be absolute paths
+and must begin with a `/`. Trailing `/` are removed.
 
 @RESTBODYPARAM{config,object,required,object}
 Configuration of remote repository. This is required when a download
@@ -98,7 +103,8 @@ there is no known download operation with the given `downloadId`.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
-The `result` object of the body holds the `downloadId` string attribute which can be used to follow the download process.
+The `result` object of the body holds the `downloadId` string attribute which
+can be used to follow the download process.
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackupStarted_rocksdb}
     var hotbackup = require("@arangodb/hotbackup");

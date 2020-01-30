@@ -25,6 +25,8 @@
 // @author Max Neunhoeffer
 // /////////////////////////////////////////////////////////////////////////////
 
+const _ = require("lodash");
+
 const functionsDocumentation = {
   'resilience_move': 'resilience "move" tests',
   'resilience_move_view': 'resilience "move view" tests',
@@ -120,12 +122,13 @@ function activeFailover (options) {
       }
     };
   }
-
   let testCases = tu.scanTestPaths(testPaths.active_failover, options);
-  options.activefailover = true;
-  options.singles = 4;
-  options.disableMonitor = true;
-  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
+  let localOptions = _.clone(options);
+  localOptions.activefailover = true;
+  localOptions.singles = 4;
+  localOptions.disableMonitor = true;
+  localOptions.Agency = true;
+  return tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
     'javascript.allow-external-process-control': 'true',

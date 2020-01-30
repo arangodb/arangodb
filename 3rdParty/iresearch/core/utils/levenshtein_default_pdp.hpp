@@ -1,7 +1,7 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,35 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_CXX_DRIVER_CPU_RELAX_H
-#define ARANGO_CXX_DRIVER_CPU_RELAX_H 1
+#ifndef IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H
+#define IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H
 
-#include <thread>
+#include "shared.hpp"
 
-namespace arangodb {
-namespace fuerte {
-inline namespace v1 {
+NS_ROOT
+
+class parametric_description;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Function to let CPU relax inside spinlock.
+/// @brief default parametric description provider, returns parametric
+///        description according to specified arguments.
+/// @note supports building descriptions for distances in range of [0..4] with
+///       the exception for distance 4: can only build description wihtout
+///       transpositions
 ////////////////////////////////////////////////////////////////////////////////
-inline void cpu_relax() {
-// TODO use <boost/fiber/detail/cpu_relax.hpp> when available (>1.65.0?)
-#if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || \
-    defined(_M_X64)
-#if defined _WIN32
-  YieldProcessor();
-#else
-  asm volatile("pause" ::: "memory");
-#endif
-#else
-  std::this_thread::yield();
-#endif
-}
+IRESEARCH_API const parametric_description& default_pdp(
+  byte_type max_distance,
+  bool with_transpositions);
 
-}}}
+NS_END
 
-#endif
+#endif // IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H

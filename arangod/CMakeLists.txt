@@ -70,6 +70,7 @@ add_library(arango_iresearch
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
+  IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
   IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
@@ -86,6 +87,7 @@ target_compile_definitions(arango_iresearch
 
 target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
+  PRIVATE ${LZ4_INCLUDE_DIR}
 )
 
 if (USE_ENTERPRISE)
@@ -382,6 +384,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
+  VocBase/Methods/Queries.cpp
   VocBase/Methods/Tasks.cpp
   VocBase/Methods/Transactions.cpp
   VocBase/Methods/Ttl.cpp
@@ -601,6 +604,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
   GeneralServer/RestHandler.cpp
@@ -617,7 +621,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
-  RestHandler/RestAqlReloadHandler.cpp
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
@@ -880,6 +883,7 @@ target_link_libraries(arango_mmfiles llhttp)
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
+target_link_libraries(arango_network nghttp2)
 
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
@@ -1000,7 +1004,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangod jemalloc)
+  add_dependencies(arangod jemalloc_build)
 endif ()
   
 foreach(TARGET

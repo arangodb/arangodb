@@ -33,6 +33,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/JaccardFunctionTest.cpp
+  Aql/LevenshteinMatchFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
   Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
@@ -177,6 +179,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryOptions-test.cpp
   IResearch/IResearchQueryOr-test.cpp
   IResearch/IResearchQueryPhrase-test.cpp
+  IResearch/IResearchQueryLevenshteinMatch-test.cpp
   IResearch/IResearchQueryWildcard-test.cpp
   IResearch/IResearchQueryScorer-test.cpp
   IResearch/IResearchQuerySelectAll-test.cpp
@@ -297,10 +300,9 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 
-# older macos has no uncaught exceptions
-if (DARWIN)
-  target_compile_definitions(arangodbtests PUBLIC CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS)
-endif()
+if (USE_JEMALLOC)
+  add_dependencies(arangodbtests jemalloc_build)
+endif ()
 
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES
