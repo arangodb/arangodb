@@ -1,4 +1,4 @@
-v3.6.1 (2020-XX-XX)
+v3.6.2 (2020-XX-XX)
 -------------------
 
 * Fix potential nullptr dereference in view optimizer rule, when there were was
