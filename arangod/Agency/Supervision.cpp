@@ -184,6 +184,7 @@ Supervision::~Supervision() {
 
 static std::string const syncPrefix = "/Sync/ServerStates/";
 static std::string const supervisionPrefix = "/Supervision";
+static std::string const supervisionMaintenance = "/Supervision/Maintenance";
 static std::string const healthPrefix = "/Supervision/Health/";
 static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
@@ -289,6 +290,8 @@ void Supervision::upgradeAgency() {
     fixPrototypeChain(builder);
     upgradeOne(builder);
     upgradeHealthRecords(builder);
+    upgradeMaintenance(builder);
+    upgradeBackupKey(builder);
   }
 
   LOG_TOPIC("f7315", DEBUG, Logger::AGENCY) << "Upgrading the agency:" << builder.toJson();
@@ -299,6 +302,70 @@ void Supervision::upgradeAgency() {
 
   _upgraded = true;
 }
+
+
+void Supervision::upgradeMaintenance(VPackBuilder& builder) {
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(supervisionMaintenance)) {
+
+    TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
+    std::string maintenanceState;
+    try {
+      maintenanceState = _snapshot.get(supervisionMaintenance).getString();
+    } catch (std::exception const& e) {
+      LOG_TOPIC("cf235", ERR, Logger::SUPERVISION)
+        << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups. " << e.what();
+      return;
+    }
+
+    if (maintenanceState == "on") {
+      VPackArrayBuilder trx(&builder);
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(
+          supervisionMaintenance,
+          VPackValue(
+            timepointToString(
+              std::chrono::system_clock::now() + std::chrono::hours(1))));
+      }
+      {
+        VPackObjectBuilder o(&builder);
+        builder.add(supervisionMaintenance, VPackValue(maintenanceState));
+      }
+    }
+  }
+}
+
+
+void Supervision::upgradeBackupKey(VPackBuilder& builder) {
+
+  // Upgrade /arango/Target/HotBackup/Create from 0 to time out
+
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(HOTBACKUP_KEY)) {
+
+    Node const& tmp  = _snapshot(HOTBACKUP_KEY);
+    if (tmp.isNumber()) {
+      if (tmp.getInt() == 0) {
+
+        VPackArrayBuilder trx(&builder);
+        {
+          VPackObjectBuilder o(&builder);
+          builder.add(
+            HOTBACKUP_KEY,
+            VPackValue(
+              timepointToString(
+                std::chrono::system_clock::now() + std::chrono::hours(1))));
+        }
+        {
+          VPackObjectBuilder o(&builder);
+          builder.add(HOTBACKUP_KEY, VPackValue(0));
+        }
+      }
+    }
+  }
+}
+
 
 void handleOnStatusDBServer(Agent* agent, Node const& snapshot,
                             HealthRecord& persisted, HealthRecord& transisted,
@@ -804,6 +871,8 @@ void Supervision::run() {
                                              "initialize its data.";
   }
 
+  bool maintenanceKeyErrorReported = false;
+
   bool shutdown = false;
   {
     CONDITION_LOCKER(guard, _cv);
@@ -835,12 +904,36 @@ void Supervision::run() {
           updateSnapshot();
           LOG_TOPIC("aaabb", TRACE, Logger::SUPERVISION) << "Finished updateSnapshot";
 
-          if (!_snapshot.has("Supervision/Maintenance")) {
-            reportStatus("Normal");
 
-            if (!_upgraded) {
-              upgradeAgency();
+          if (!_upgraded) {
+            upgradeAgency();
+          }
+
+          bool maintenanceMode = false;
+          if (_snapshot.has(supervisionMaintenance)) {
+            TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
+            try {
+              auto const maintenanceExpires =
+                stringToTimepoint(_snapshot.get(supervisionMaintenance).getString());
+              if (maintenanceExpires >= std::chrono::system_clock::now()) {
+                maintenanceMode = true;
+              }
+              if (maintenanceKeyErrorReported) {
+                maintenanceKeyErrorReported = true;
+              }
+            } catch (std::exception const& e) {
+              if (!maintenanceKeyErrorReported) {
+                LOG_TOPIC("cf236", ERR, Logger::SUPERVISION)
+                  << "Supervision maintenace key in agency is not a string. This should never happen and will prevent hot backups. " << e.what();
+                maintenanceKeyErrorReported = true;
+              }
+              return;
             }
+          }
+
+          if (!maintenanceMode) {
+
+            reportStatus("Normal");
 
             _haveAborts = false;
 
@@ -1129,10 +1222,34 @@ void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* a
   }
 }
 
+
+// Remove expired hot backup lock if exists
+void Supervision::unlockHotBackup() {
+  _lock.assertLockedByCurrentThread();
+  if (_snapshot.has(HOTBACKUP_KEY)) {
+    Node tmp = _snapshot(HOTBACKUP_KEY);
+    if (tmp.isString()) {
+      if (std::chrono::system_clock::now() > stringToTimepoint(tmp.getString())) {
+        VPackBuilder unlock;
+        { VPackArrayBuilder trxs(&unlock);
+          { VPackObjectBuilder u(&unlock);
+            unlock.add(VPackValue(HOTBACKUP_KEY));
+            { VPackObjectBuilder o(&unlock);
+              unlock.add("op", VPackValue("delete")); }}}
+        write_ret_t res = singleWriteTransaction(_agent, unlock, false);
+      }
+    }
+  }
+}
+
+
 // Guarded by caller
 bool Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
+  LOG_TOPIC("67eef", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
+  unlockHotBackup();
+
   LOG_TOPIC("76ffe", TRACE, Logger::SUPERVISION) << "Begin shrinkCluster";
   shrinkCluster();
 
