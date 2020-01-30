@@ -1,8 +1,25 @@
 v3.4.10 (XXXX-XX-XX)
--------------------
+--------------------
 
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
   confusing error messages.
+
+* Internal statistics API now uses integer timestamps instead of doubles. The
+  old behaviour sometimes leads to failed requests because of parse errors
+  which occurred in the internally used JavaScript joi library.
+
+* Make sure heartbeats are actually sent out and received once per second.
+
+* Made active failover integration tests more stable.
+
+* Updated ArangoDB Starter to 0.14.13.
+
+* Fix spurious "substr index out of bounds" VelocyPack errors when accessing a
+  full substring.
+
+
+v3.4.9 (2020-01-23)
+-------------------
 
 * Fix Foxxmaster failover retry loop to not spin forever and give up after a
   while.
