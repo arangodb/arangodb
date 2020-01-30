@@ -758,7 +758,7 @@
           '-Wnon-virtual-dtor',
           '-fno-exceptions',
           '-fno-rtti',
-          '-std=gnu++14',
+          '-std=gnu++17',
         ],
         'ldflags': [ '-pthread', ],
         'conditions': [
@@ -822,7 +822,7 @@
           '-Wnon-virtual-dtor',
           '-fno-exceptions',
           '-fno-rtti',
-          '-std=gnu++14',
+          '-std=gnu++17',
         ],
         'conditions': [
           [ 'visibility=="hidden"', {
@@ -1052,14 +1052,14 @@
       },
       'target_defaults': {
         'xcode_settings': {
-            'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++14',
+            'CLANG_CXX_LANGUAGE_STANDARD': 'c++17',
           'ALWAYS_SEARCH_USER_PATHS': 'NO',
             # 'GCC_C_LANGUAGE_STANDARD': 'c99',         # -std=c99
           'GCC_CW_ASM_SYNTAX': 'NO',                # No -fasm-blocks
           'GCC_DYNAMIC_NO_PIC': 'NO',               # No -mdynamic-no-pic
                                                     # (Equivalent to -fPIC)
           'GCC_ENABLE_CPP_EXCEPTIONS': 'NO',        # -fno-exceptions
-          'GCC_ENABLE_CPP_RTTI': 'NO',              # -fno-rtti
+          'GCC_ENABLE_CPP_RTTI': 'YES',              # -fno-rtti
           'GCC_ENABLE_PASCAL_STRINGS': 'NO',        # No -mpascal-strings
           # GCC_INLINES_ARE_PRIVATE_EXTERN maps to -fvisibility-inlines-hidden
           'GCC_INLINES_ARE_PRIVATE_EXTERN': 'YES',
@@ -1092,7 +1092,7 @@
           ['clang==1', {
             'xcode_settings': {
               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
-              'CLANG_CXX_LANGUAGE_STANDARD': 'c++14',  # -std=c++14
+              'CLANG_CXX_LANGUAGE_STANDARD': 'c++17',  # -std=c++17
             },
             'conditions': [
               ['clang_xcode==0', {
@@ -1130,7 +1130,7 @@
         },  # configurations
         'cflags': [ '-Wno-abi', '-Wall', '-W', '-Wno-unused-parameter'],
         'cflags_cc': [ '-Wnon-virtual-dtor', '-fno-rtti', '-fno-exceptions',
-                       '-std=gnu++14' ],
+                       '-std=gnu++17' ],
         'target_conditions': [
           ['_toolset=="target"', {
             'cflags!': [
@@ -1325,7 +1325,7 @@
     ['clang==0 and host_clang==1 and target_arch!="ia32" and target_arch!="x64"', {
       'target_conditions': [
         ['_toolset=="host"', {
-          'cflags_cc': [ '-std=gnu++14', ],
+          'cflags_cc': [ '-std=c++17', ],
         }],
       ],
       'target_defaults': {
