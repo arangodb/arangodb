@@ -215,12 +215,9 @@ class SortedCollectExecutor {
  private:
   Infos const& _infos;
 
-  Fetcher& _fetcher;
-
   /// @brief details about the current group
   CollectGroup _currentGroup;
 
-  bool _fetcherDone;  // Flag if fetcher is done
   bool _haveSeenData = false;
 };
 
