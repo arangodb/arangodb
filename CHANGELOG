@@ -1,6 +1,8 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Make sure heartbeats are actually sent out and received once per second.
+
 * Make active failover integration tests more stable.
 
 * Include collections "_queues" and "_jobs" in dumps created by arangodump
