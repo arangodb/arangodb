@@ -1,7 +1,8 @@
-v3.6.2 (2020-XX-XX)
+v3.6.2 (XXXX-XX-XX)
 -------------------
 
 * Fix bug in collection creation with distributeShardsLike.
+
 
 v3.6.1 (2020-XX-XX)
 -------------------
