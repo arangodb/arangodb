@@ -38,23 +38,79 @@ auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
   return !_queue.empty();
 }
 
+auto ScatterExecutor::ClientBlockData::dropBlock() -> void {
+  _queue.pop_front();
+  _firstBlockPos = 0;
+}
+
+auto ScatterExecutor::ClientBlockData::firstBlockRows() -> size_t {
+  if (_queue.empty()) {
+    return 0;
+  }
+  auto& block = _queue.front();
+  TRI_ASSERT(_firstBlockPos <= block->size());
+  return block->size() - _firstBlockPos;
+}
+
 auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
     -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
   // Make sure we actually have data before you call execute
   TRI_ASSERT(hasDataFor(call));
-  if (_queue.empty()) {
-    // Unlikely, security bailout
-    return {upstreamState, 0, nullptr};
-  }
-
-  auto block = _queue.front();
-  if (!block->hasShadowRows()) {
-    _queue.pop_front();
-    if (_queue.empty()) {
-      return {upstreamState, 0, block};
-    } else {
-      return {ExecutionState::HASMORE, 0, block};
+  size_t skipped = 0;
+  SharedAqlItemBlockPtr result = nullptr;
+  while (!_queue.empty()) {
+    auto const block = _queue.front();
+    if (!block->hasShadowRows()) {
+      size_t toSkip = call.getOffset();
+      size_t toProduce = call.getLimit();
+      if (toSkip > 0) {
+        if (toSkip >= firstBlockRows()) {
+          skipped += firstBlockRows();
+          call.didSkip(firstBlockRows());
+          dropBlock();
+        } else {
+          _firstBlockPos += toSkip;
+          call.didSkip(toSkip);
+        }
+      } else if (toProduce > 0) {
+        if (result != nullptr) {
+          // we have produced a block.
+          // NOTE: we need to late break
+          // here in order to improve fullCount / hardLimit
+          // It can simply count all blocks we already have,
+          // nevertheless it is not given that we are done after
+          break;
+        }
+        if (toProduce >= firstBlockRows()) {
+          call.didProduce(firstBlockRows());
+          if (_firstBlockPos != 0) {
+            // We need to slice
+            result = block->slice(_firstBlockPos, block->size());
+          } else {
+            result = block;
+          }
+          // block fully used
+          dropBlock();
+        } else {
+          // We do not use the full block, but need to slice
+          result = block->slice(_firstBlockPos, _firstBlockPos + toProduce);
+          _firstBlockPos += toProduce;
+          call.didProduce(toProduce);
+        }
+      } else if (call.hasHardLimit()) {
+        if (call.needsFullCount()) {
+          // We need to count what we dropped.
+          skipped += firstBlockRows();
+          call.didSkip(firstBlockRows());
+        }
+        dropBlock();
+      }
     }
+  }
+  if (_queue.empty()) {
+    return {upstreamState, skipped, result};
+  } else {
+    return {ExecutionState::HASMORE, skipped, result};
   }
 
   // TODO IMPLEMENT ME

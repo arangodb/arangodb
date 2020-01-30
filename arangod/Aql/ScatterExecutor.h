@@ -45,7 +45,12 @@ class ScatterExecutor {
         -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
    private:
+    auto firstBlockRows() -> size_t;
+    auto dropBlock() -> void;
+
+   private:
     std::deque<SharedAqlItemBlockPtr> _queue;
+    size_t _firstBlockPos{0};
   };
 
   ScatterExecutor();
