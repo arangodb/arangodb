@@ -298,12 +298,8 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
 )
 
 if (USE_JEMALLOC)
-   add_dependencies(arangodbtests jemalloc_build)
+  add_dependencies(arangodbtests jemalloc_build)
 endif ()
-# older macos has no uncaught exceptions
-if (DARWIN)
-  target_compile_definitions(arangodbtests PUBLIC CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS)
-endif()
 
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES
