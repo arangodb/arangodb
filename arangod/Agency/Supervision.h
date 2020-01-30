@@ -222,7 +222,8 @@ class Supervision : public arangodb::CriticalThread {
 
   Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
-  Node _snapshot;
+  Store _spearhead;
+  std::shared_ptr<Node const> _snapshot;
   Node _transient;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
@@ -249,7 +250,6 @@ class Supervision : public arangodb::CriticalThread {
 
   std::atomic<bool> _upgraded;
 
-  Store _spearhead;
 
   std::string serverHealth(std::string const&);
 

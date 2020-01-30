@@ -115,6 +115,8 @@ Store& Store::operator=(Store&& rhs) {
 Store::~Store() = default;
 
 index_t Store::applyTransactions(std::vector<log_t> const& queries) {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+
   for (auto const& query : queries) {
     applies(Slice(query.entry->data()));
   }
@@ -1001,6 +1003,6 @@ std::vector<std::string> Store::split(std::string const& str) {
 }
 
 
-Node const& Store::node(std::string const& path) const {
-  return _node(path);
+std::shared_ptr<Node const> Store::node(std::string const& path) const {
+  return std::make_shared<Node const>(_node(path));
 }
