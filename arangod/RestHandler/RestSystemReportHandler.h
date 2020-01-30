@@ -24,6 +24,9 @@
 #define ARANGOD_REST_HANDLER_REST_SYSTEM_REPORT_HANDLER_H 1
 
 #include "RestHandler/RestBaseHandler.h"
+  
+#include <mutex>
+#include <unordered_map>
 
 namespace arangodb {
 class RestSystemReportHandler : public arangodb::RestBaseHandler {
