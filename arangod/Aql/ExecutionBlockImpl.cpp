@@ -158,6 +158,7 @@ static bool constexpr isNewStyleExecutor() {
       std::is_same_v<Executor, TestLambdaSkipExecutor> ||
 #endif
       std::is_same_v<Executor, FilterExecutor> ||
+      std::is_same_v<Executor, IndexExecutor> ||
       std::is_same_v<Executor, ShortestPathExecutor>;
 }
 
@@ -1126,6 +1127,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                                    (std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
 #endif
                                    std::is_same_v<Executor, FilterExecutor> ||
+                                   std::is_same_v<Executor, IndexExecutor> ||
                                    std::is_same_v<Executor, ShortestPathExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 

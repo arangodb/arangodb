@@ -26,6 +26,8 @@
 #ifndef ARANGOD_AQL_INDEX_EXECUTOR_H
 #define ARANGOD_AQL_INDEX_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -57,12 +59,12 @@ struct NonConstExpression;
 class IndexExecutorInfos : public ExecutorInfos {
  public:
   IndexExecutorInfos(
-      std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters, RegisterId nrInputRegisters,
-      RegisterId firstOutputRegister, RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+      std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
+      RegisterId nrInputRegisters, RegisterId firstOutputRegister,
+      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter,
-      std::vector<std::string> const& projections, 
+      Expression* filter, std::vector<std::string> const& projections,
       std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
       std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
       std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
@@ -195,9 +197,9 @@ class IndexExecutor {
     DocumentProducingFunctionContext& _context;
     Type const _type;
 
-    // Only one of _documentProducer and _documentNonProducer is set at a time, depending on _type.
-    // As std::function is not trivially destructible, it's safer not to use a
-    // union.
+    // Only one of _documentProducer and _documentNonProducer is set at a time,
+    // depending on _type. As std::function is not trivially destructible, it's
+    // safer not to use a union.
     IndexIterator::LocalDocumentIdCallback _documentNonProducer;
     IndexIterator::DocumentCallback _documentProducer;
     IndexIterator::DocumentCallback _documentSkipper;
@@ -228,6 +230,12 @@ class IndexExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
 
+  auto produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
+
  public:
   void initializeCursor();
 
@@ -244,7 +252,7 @@ class IndexExecutor {
   Infos& _infos;
   Fetcher& _fetcher;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
-  ExecutionState _state;
+  ExecutorState _state;
   InputAqlItemRow _input;
 
   /// @brief a vector of cursors for the index block
