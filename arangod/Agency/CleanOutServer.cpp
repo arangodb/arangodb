@@ -344,6 +344,7 @@ bool CleanOutServer::start(bool& aborts) {
       addPreconditionServerHealth(*pending, _server, "GOOD");
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
+      addPreconditionUnchanged(*pending, planVersion, _snapshot(planVersion).slice());
     }
   }  // array for transaction done
 

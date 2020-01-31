@@ -1,10 +1,12 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Clean out server job checks preconditions plan version unchanged for start.
+
+* Fixed issue #10949: k shortest paths behaviour wrong with zero weights.
+
 * Cluster collection creation preconditioned on involved db server not in
   process of being cleaned and beyond.
-
-* Fixed issue #10949: k shortest paths behavior wrong with zero weights.
 
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
   confusing error messages.
