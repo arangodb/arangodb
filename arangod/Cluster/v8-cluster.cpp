@@ -1032,7 +1032,7 @@ static void JS_GetDBServers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto id = DBServers[i];
 
     result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "se  rverId"),
+                TRI_V8_ASCII_STRING(isolate, "serverId"),
                 TRI_V8_STD_STRING(isolate, id)).FromMaybe(false);
 
     auto itr = serverAliases.find(id);
