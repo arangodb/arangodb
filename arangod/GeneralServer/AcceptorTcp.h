@@ -38,6 +38,7 @@ class AcceptorTcp final : public Acceptor {
  public:
   void open() override;
   void close() override;
+  void cancel() override;
   void asyncAccept() override;
 
  private:
