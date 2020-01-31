@@ -522,99 +522,6 @@ static TRI_V8_encoding_t ParseEncoding(v8::Isolate* isolate, v8::Handle<v8::Valu
   }
 }
 
-namespace {
-  /*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief object info
-////////////////////////////////////////////////////////////////////////////////
-
-class RetainedBufferInfo / * TODO : public v8::RetainedObjectInfo * / {
- public:
-  explicit RetainedBufferInfo(V8Buffer* buffer);
-
- public:
-  virtual void Dispose() override;
-  /// TODO: gone.virtual bool IsEquivalent(RetainedObjectInfo* other) override;
-  virtual intptr_t GetHash() override;
-  virtual char const* GetLabel() override;
-  virtual intptr_t GetSizeInBytes() override;
-
- private:
-  static char const _label[];
-
- private:
-  V8Buffer* _buffer;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the class
-////////////////////////////////////////////////////////////////////////////////
-
-char const RetainedBufferInfo::_label[] = "Buffer";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructors
-////////////////////////////////////////////////////////////////////////////////
-
-RetainedBufferInfo::RetainedBufferInfo(V8Buffer* buffer) : _buffer(buffer) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new wrapper info
-////////////////////////////////////////////////////////////////////////////////
-
-v8::RetainedObjectInfo* WrapperInfo(uint16_t classId, v8::Handle<v8::Value> wrapper) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  ISOLATE;
-  TRI_ASSERT(classId == TRI_V8_BUFFER_CID);
-  TRI_ASSERT(V8Buffer::hasInstance(isolate, wrapper));
-#endif
-
-  V8Buffer* buffer = V8Buffer::unwrap(wrapper.As<v8::Object>());
-  return new RetainedBufferInfo(buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes the info
-////////////////////////////////////////////////////////////////////////////////
-
-void RetainedBufferInfo::Dispose() {
-  _buffer = NULL;
-  delete this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for equivalence
-////////////////////////////////////////////////////////////////////////////////
-
-bool RetainedBufferInfo::IsEquivalent(RetainedObjectInfo* other) {
-  return _label == other->GetLabel() &&
-         _buffer == static_cast<RetainedBufferInfo*>(other)->_buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the equivalence hash
-////////////////////////////////////////////////////////////////////////////////
-
-intptr_t RetainedBufferInfo::GetHash() {
-  return reinterpret_cast<intptr_t>(_buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the label of the class
-////////////////////////////////////////////////////////////////////////////////
-
-char const* RetainedBufferInfo::GetLabel() { return _label; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the size in bytes
-////////////////////////////////////////////////////////////////////////////////
-
-intptr_t RetainedBufferInfo::GetSizeInBytes() {
-  return V8Buffer::length(_buffer->_isolate, _buffer);
-}
-  */
-}  // namespace
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new buffer from arguments
 ////////////////////////////////////////////////////////////////////////////////
@@ -1706,8 +1613,4 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "EXPORTS_SLOW_BUFFER"),
                                exports->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
-
-
-  //   v8::HeapProfiler* heap_profiler = isolate->GetHeapProfiler();
-  /// TODO  heap_profiler->SetWrapperClassInfoProvider(TRI_V8_BUFFER_CID, WrapperInfo);
 }
