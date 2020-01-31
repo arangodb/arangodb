@@ -23,7 +23,7 @@ set(GYP_FILES_DIR "${PROJECT_SOURCE_DIR}/gypfiles")
 ################################################################################
 
 set(ICU_COMPACT_VERSION
-  "54"
+  "64.2"
   CACHE INTERNAL
   "ICU: compact Version"
 )
