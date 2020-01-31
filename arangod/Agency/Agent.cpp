@@ -1158,7 +1158,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if (!loaded() || (multihost && leader != id())) {
+  if ((!loaded() && wmode != WriteMode(true,true)) || (multihost && leader != id())) {
     ++_write_no_leader;
     return write_ret_t(false, leader);
   }
