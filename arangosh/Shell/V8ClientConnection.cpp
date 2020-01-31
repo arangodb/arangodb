@@ -65,6 +65,7 @@ namespace fu = arangodb::fuerte;
 
 V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server)
     : _server(server),
+      _requestTimeout(1200.0),
       _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
