@@ -3,9 +3,7 @@ v3.6.2 (XXXX-XX-XX)
 
 * Fixed a bug where a single host agency could log too early.
 
-
-v3.6.1 (2020-XX-XX)
--------------------
+* Clean out server job checks preconditions plan version unchanged for start.
 
 * Make sure heartbeats are actually sent out and received once per second.
 
