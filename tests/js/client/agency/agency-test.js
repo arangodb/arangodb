@@ -590,6 +590,29 @@ function agencyTestSuite () {
         assertEqual(res.statusCode, 412);
       }
 
+      res = accessAgency("write", [[{"a":12},{"a":{"intersectionEmpty":""}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":12},{"a":{"intersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[false,"Pi"]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":["Pi",false]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[false,false,false]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":["pi",3.1415926535]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"instersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 412);
+
     },
 
   ////////////////////////////////////////////////////////////////////////////////
