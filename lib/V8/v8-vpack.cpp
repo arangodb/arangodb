@@ -164,7 +164,7 @@ static v8::Handle<v8::Value> ObjectVPackArray(v8::Isolate* isolate, VPackSlice c
   while (it.valid()) {
     v8::Handle<v8::Value> val = TRI_VPackToV8(isolate, it.value(), options, &slice);
     if (!val.IsEmpty()) {
-      object->Set(TRI_IGETC, j++, val).FromMaybe(false); // TODO
+      object->Set(TRI_IGETC, j++, val).FromMaybe(false);
     }
     if (arangodb::V8PlatformFeature::isOutOfMemory(isolate)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

@@ -1082,23 +1082,23 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "lines"),
-                v8::Integer::New(isolate, (int32_t)ih.getReadLines())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getReadLines())).FromMaybe(false);
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "created"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated())).FromMaybe(false);
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "errors"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors())).FromMaybe(false);
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "updated"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated())).FromMaybe(false);
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "ignored"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored())).FromMaybe(false);
 
     TRI_V8_RETURN(result);
   }
@@ -1156,23 +1156,23 @@ static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> cons
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "lines"),
-                v8::Integer::New(isolate, (int32_t)ih.getReadLines())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getReadLines())).FromMaybe(false);
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "created"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated())).FromMaybe(false);
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "errors"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors())).FromMaybe(false);
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "updated"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated())).FromMaybe(false);
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "ignored"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored())).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored())).FromMaybe(false);
 
     TRI_V8_RETURN(result);
   }
@@ -1777,13 +1777,13 @@ again:
   if (!response) {
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true)).FromMaybe(false); // TODO
+                v8::Boolean::New(isolate, true)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, _lastErrorMessage)).FromMaybe(false); // TODO
+                TRI_V8_STD_STRING(isolate, _lastErrorMessage)).FromMaybe(false);
 
     return result;
   }
@@ -1795,7 +1795,7 @@ again:
   // create raw response
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "code"),
-              v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false); // TODO
+              v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
 
   if (_lastHttpReturnCode >= 400) {
     std::string msg(GeneralResponse::responseString(
@@ -1803,17 +1803,17 @@ again:
 
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true)).FromMaybe(false); // TODO
+                v8::Boolean::New(isolate, true)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, msg)).FromMaybe(false); // TODO
+                TRI_V8_STD_STRING(isolate, msg)).FromMaybe(false);
   } else {
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, false)).FromMaybe(false); // TODO
+                v8::Boolean::New(isolate, false)).FromMaybe(false);
   }
 
   // got a body, copy it into the result
@@ -1822,7 +1822,7 @@ again:
     const char* str = reinterpret_cast<const char*>(sb.data());
     v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, str, sb.size());
     result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "body"), b).FromMaybe(false); // TODO
+                TRI_V8_ASCII_STRING(isolate, "body"), b).FromMaybe(false);
   }
 
   // copy all headers
@@ -1830,14 +1830,14 @@ again:
   for (auto const& it : response->header.meta()) {
     headers->Set(context,
                 TRI_V8_STD_STRING(isolate, it.first),
-                 TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false); // TODO
+                 TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
   }
   auto content = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
   headers->Set(context,
-               TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), content).FromMaybe(false); // TODO
+               TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), content).FromMaybe(false);
 
   result->Set(context,
-              TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false); // TODO
+              TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false);
 
   // and returns
   return result;
@@ -1855,10 +1855,10 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
     v8::Local<v8::Object> result = v8::Object::New(isolate);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true)).FromMaybe(false); // TODO
+                v8::Boolean::New(isolate, true)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "code"),
-                v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR))).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR))).FromMaybe(false);
 
     int errorNumber = 0;
     switch (ec) {
@@ -1882,10 +1882,10 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, errorNumber)).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, errorNumber)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, _lastErrorMessage)).FromMaybe(false); // TODO
+                TRI_V8_STD_STRING(isolate, _lastErrorMessage)).FromMaybe(false);
 
     return result;
   }
@@ -1936,7 +1936,7 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "code"),
-              v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false); // TODO
+              v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
 
   if (_lastHttpReturnCode >= 400) {
     std::string msg(GeneralResponse::responseString(
@@ -1944,17 +1944,17 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true)).FromMaybe(false); // TODO
+                v8::Boolean::New(isolate, true)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, msg)).FromMaybe(false); // TODO
+                TRI_V8_STD_STRING(isolate, msg)).FromMaybe(false);
   } else {
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, false)).FromMaybe(false); // TODO
+                v8::Boolean::New(isolate, false)).FromMaybe(false);
   }
 
   return result;

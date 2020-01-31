@@ -182,8 +182,8 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 
     auto context = TRI_IGETC;
     errorObject->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                     v8::Number::New(isolate, errorNumber)).FromMaybe(false);// TODO
-    errorObject->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage).FromMaybe(false);// TODO
+                     v8::Number::New(isolate, errorNumber)).FromMaybe(false);
+    errorObject->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage).FromMaybe(false);
 
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
 
@@ -478,15 +478,15 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
         exceptionObj->Set(context,
                           TRI_V8_ASCII_STRING(isolate, "lineNumber"),
                           v8::Number::New(isolate,
-                                          message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);// TODO
+                                          message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);
         exceptionObj->Set(context,
                           TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                          v8::Number::New(isolate, message->GetStartColumn())).FromMaybe(false);// TODO
+                          v8::Number::New(isolate, message->GetStartColumn())).FromMaybe(false);
       }
       exceptionObj->Set(context,
                         TRI_V8_ASCII_STRING(isolate, "fileName"),
                         filename->ToString(TRI_IGETC).FromMaybe(
-                            TRI_V8_ASCII_STRING(isolate, "unknown"))).FromMaybe(false);// TODO
+                            TRI_V8_ASCII_STRING(isolate, "unknown"))).FromMaybe(false);
       tryCatch.ReThrow();
       return;
     } else {
@@ -568,12 +568,12 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
         exceptionObj->Set(context,
                           TRI_V8_ASCII_STRING(isolate, "lineNumber"),
                           v8::Number::New(isolate,
-                                          message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);// TODO
+                                          message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);
         exceptionObj->Set(context,
                           TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                          v8::Number::New(isolate, message->GetStartColumn())).FromMaybe(false);// TODO
+                          v8::Number::New(isolate, message->GetStartColumn())).FromMaybe(false);
       }
-      exceptionObj->Set(context, TRI_V8_ASCII_STRING(isolate, "fileName"), args[0]).FromMaybe(false);// TODO
+      exceptionObj->Set(context, TRI_V8_ASCII_STRING(isolate, "fileName"), args[0]).FromMaybe(false);
       tryCatch.ReThrow();
       return;
     } else {
@@ -1045,10 +1045,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       for (auto const& it : responseHeaders) {
         headers->Set(context,
                      TRI_V8_STD_STRING(isolate, it.first),
-                     TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false); // TODO
+                     TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
       }
 
-      result->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false); // TODO
+      result->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false);
 
       if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
@@ -1080,11 +1080,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
               V8Buffer* buffer = V8Buffer::New(isolate, body.data(), body.length());
               v8::Local<v8::Object> bufferObject =
                   v8::Local<v8::Object>::New(isolate, buffer->_handle);
-              result->Set(context, TRI_V8_ASCII_STRING(isolate, "body"), bufferObject).FromMaybe(false); // TODO
+              result->Set(context, TRI_V8_ASCII_STRING(isolate, "body"), bufferObject).FromMaybe(false);
             } else {
               result->Set(context,
                           TRI_V8_ASCII_STRING(isolate, "body"),
-                          TRI_V8_STD_STRING(isolate, sb)).FromMaybe(false); // TODO
+                          TRI_V8_STD_STRING(isolate, sb)).FromMaybe(false);
             }
           }
 
@@ -1095,10 +1095,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "code"),
-                v8::Number::New(isolate, returnCode)).FromMaybe(false); // TODO
+                v8::Number::New(isolate, returnCode)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "message"),
-                TRI_V8_STD_STRING(isolate, returnMessage)).FromMaybe(false); // TODO
+                TRI_V8_STD_STRING(isolate, returnMessage)).FromMaybe(false);
 
     TRI_V8_RETURN(result);
   }
@@ -1169,7 +1169,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         value = context->Global();
       }
 
-      context->Global()->Set(context, key, value).FromMaybe(false); // TODO
+      context->Global()->Set(context, key, value).FromMaybe(false);
     }
   }
 
@@ -1198,15 +1198,15 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
           exceptionObj->Set(context,
                             TRI_V8_ASCII_STRING(isolate, "lineNumber"),
                             v8::Number::New(isolate,
-                                            message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false); // TODO;
+                                            message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);
           exceptionObj->Set(context,
                             TRI_V8_ASCII_STRING(isolate, "columnNumber"),
                             v8::Number::New(isolate,
-                                            message->GetStartColumn(TRI_IGETC).FromMaybe(-1))).FromMaybe(false); // TODO
+                                            message->GetStartColumn(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);
         }
         exceptionObj->Set(context,
                           TRI_V8_ASCII_STRING(isolate, "fileName"),
-                          TRI_ObjectToString(context, filename)).FromMaybe(false); // TODO
+                          TRI_ObjectToString(context, filename)).FromMaybe(false);
         tryCatch.ReThrow();
         return;
       } else {
@@ -1259,7 +1259,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         value = sandbox;
       }
 
-      sandbox->Set(context, key, value).FromMaybe(false); // TODO
+      sandbox->Set(context, key, value).FromMaybe(false);
     }
 
     context->DetachGlobal();
@@ -1669,7 +1669,7 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
 
   for (auto const& f : list) {
-    result->Set(context, j++, TRI_V8_STD_STRING(isolate, f)).FromMaybe(false); // TODO
+    result->Set(context, j++, TRI_V8_STD_STRING(isolate, f)).FromMaybe(false);
   }
 
   // return result
@@ -1710,7 +1710,7 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
   uint32_t i = 0;
   for (auto const& it : files) {
-    result->Set(context, i++, TRI_V8_STD_STRING(isolate, it)).FromMaybe(false); // TODO
+    result->Set(context, i++, TRI_V8_STD_STRING(isolate, it)).FromMaybe(false);
   }
 
   // return result
@@ -2029,13 +2029,13 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // save state of __dirname and __filename
   v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
   auto oldFilename = TRI_GetProperty(context, isolate, current, "__filename");
-  current->Set(context, TRI_V8_ASCII_STRING(isolate, "__filename"), filename).FromMaybe(false); // TODO
+  current->Set(context, TRI_V8_ASCII_STRING(isolate, "__filename"), filename).FromMaybe(false);
 
   auto oldDirname = TRI_GetProperty(context, isolate, current, "__dirname");
   auto dirname = TRI_Dirname(TRI_ObjectToString(isolate, filename));
   current->Set(context,
                TRI_V8_ASCII_STRING(isolate, "__dirname"),
-               TRI_V8_STD_STRING(isolate, dirname)).FromMaybe(false); // TODO
+               TRI_V8_STD_STRING(isolate, dirname)).FromMaybe(false);
 
   v8::Handle<v8::Value> result;
   {
@@ -2051,12 +2051,12 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
       TRI_DeleteProperty(context, isolate, current, "__filename");
     } else {
-      current->Set(context, TRI_V8_ASCII_STRING(isolate, "__filename"), oldFilename).FromMaybe(false); // TODO
+      current->Set(context, TRI_V8_ASCII_STRING(isolate, "__filename"), oldFilename).FromMaybe(false);
     }
     if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
       TRI_DeleteProperty(context, isolate, current, "__dirname");
     } else {
-      current->Set(context, TRI_V8_ASCII_STRING(isolate, "__dirname"), oldDirname).FromMaybe(false); // TODO
+      current->Set(context, TRI_V8_ASCII_STRING(isolate, "__dirname"), oldDirname).FromMaybe(false);
     }
     if (result.IsEmpty()) {
       if (tryCatch.CanContinue()) {
@@ -2239,7 +2239,7 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
         std::string output = level.first + "=" + Logger::translateLogLevel(level.second);
         v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, output);
 
-        object->Set(context, pos++, val).FromMaybe(false); // TODO
+        object->Set(context, pos++, val).FromMaybe(false);
       }
 
       TRI_V8_RETURN(object);
@@ -2844,20 +2844,20 @@ static void ProcessStatisticsToV8(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   auto context = TRI_IGETC;
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),
-              v8::Number::New(isolate, (double)info._minorPageFaults)).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)info._minorPageFaults)).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "majorPageFaults"),
-              v8::Number::New(isolate, (double)info._majorPageFaults)).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)info._majorPageFaults)).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "userTime"),
-              v8::Number::New(isolate, (double)info._userTime / (double)info._scClkTck)).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)info._userTime / (double)info._scClkTck)).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "systemTime"),
-              v8::Number::New(isolate, (double)info._systemTime / (double)info._scClkTck)).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)info._systemTime / (double)info._scClkTck)).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "numberOfThreads"),
-              v8::Number::New(isolate, (double)info._numberThreads)).FromMaybe(false); // TODO
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "residentSize"), v8::Number::New(isolate, rss)).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)info._numberThreads)).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "residentSize"), v8::Number::New(isolate, rss)).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "residentSizePercent"),
-              v8::Number::New(isolate, rssp)).FromMaybe(false); // TODO
+              v8::Number::New(isolate, rssp)).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "virtualSize"),
-              v8::Number::New(isolate, (double)info._virtualSize)).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)info._virtualSize)).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -4141,19 +4141,19 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
   
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "pid"),
-              v8::Number::New(isolate, external._pid)).FromMaybe(false); // TODO
+              v8::Number::New(isolate, external._pid)).FromMaybe(false);
 
   // Now report about possible stdin and stdout pipes:
 #ifndef _WIN32
   if (external._readPipe >= 0) {
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                v8::Number::New(isolate, external._readPipe)).FromMaybe(false); // TODO
+                v8::Number::New(isolate, external._readPipe)).FromMaybe(false);
   }
   if (external._writePipe >= 0) {
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                v8::Number::New(isolate, external._writePipe)).FromMaybe(false); // TODO
+                v8::Number::New(isolate, external._writePipe)).FromMaybe(false);
   }
 #else
   if (external._readPipe != INVALID_HANDLE_VALUE) {
@@ -4161,7 +4161,7 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (fn.length() > 0) {
       result->Set(context,
                   TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                  TRI_V8_STD_STRING(isolate, fn)).FromMaybe(false); // TODO
+                  TRI_V8_STD_STRING(isolate, fn)).FromMaybe(false);
     }
   }
   if (external._writePipe != INVALID_HANDLE_VALUE) {
@@ -4169,7 +4169,7 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (fn.length() > 0) {
       result->Set(context,
                   TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                  TRI_V8_STD_STRING(isolate, fn)).FromMaybe(false); // TODO
+                  TRI_V8_STD_STRING(isolate, fn)).FromMaybe(false);
     }
   }
 #endif
@@ -4187,21 +4187,21 @@ static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "status"),
               TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(
-                                               external_status._status))).FromMaybe(false); // TODO
+                                               external_status._status))).FromMaybe(false);
 
   if (external_status._status == TRI_EXT_TERMINATED) {
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "exit"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus))).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus))).FromMaybe(false);
   } else if (external_status._status == TRI_EXT_ABORTED) {
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "signal"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus))).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus))).FromMaybe(false);
   }
   if (external_status._errorMessage.length() > 0) {
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, external_status._errorMessage)).FromMaybe(false); // TODO
+                TRI_V8_STD_STRING(isolate, external_status._errorMessage)).FromMaybe(false);
   }
   TRI_V8_TRY_CATCH_END;
 }
@@ -4216,30 +4216,30 @@ static void convertProcessInfoToV8(v8::FunctionCallbackInfo<v8::Value> const& ar
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "status"),
               TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(
-                                               external_process._status))).FromMaybe(false); // TODO
+                                               external_process._status))).FromMaybe(false);
 
   if (external_process._status == TRI_EXT_TERMINATED) {
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "exit"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external_process._exitStatus))).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, static_cast<int32_t>(external_process._exitStatus))).FromMaybe(false);
   } else if (external_process._status == TRI_EXT_ABORTED) {
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "signal"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external_process._exitStatus))).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, static_cast<int32_t>(external_process._exitStatus))).FromMaybe(false);
   }
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "executable"),
-              TRI_V8_STD_STRING(isolate, external_process._executable)).FromMaybe(false); // TODO
+              TRI_V8_STD_STRING(isolate, external_process._executable)).FromMaybe(false);
 
   v8::Handle<v8::Array> arguments =
       v8::Array::New(isolate, static_cast<int>(external_process._numberArguments));
   for (uint32_t i = 0; i < external_process._numberArguments; i++) {
     arguments->Set(context,
-                   i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i])).FromMaybe(false); // TODO
+                   i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i])).FromMaybe(false);
   }
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "arguments"),
-              arguments).FromMaybe(false); // TODO
+              arguments).FromMaybe(false);
   TRI_V8_TRY_CATCH_END;
 }
 ////////////////////////////////////////////////////////////////////////////////
@@ -4272,7 +4272,7 @@ static void JS_GetExternalSpawned(v8::FunctionCallbackInfo<v8::Value> const& arg
   for (auto const& process : ExternalProcesses) {
     v8::Handle<v8::Object> oneProcess = v8::Object::New(isolate);
     convertProcessInfoToV8(args, oneProcess, *process);
-    spawnedProcesses->Set(context, i, oneProcess).FromMaybe(false); // TODO
+    spawnedProcesses->Set(context, i, oneProcess).FromMaybe(false);
     i++;
   }
 
@@ -4429,21 +4429,21 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "status"),
-              TRI_V8_STRING(isolate, convertProcessStatusToString(external._status))).FromMaybe(false); // TODO
+              TRI_V8_STRING(isolate, convertProcessStatusToString(external._status))).FromMaybe(false);
 
   if (external._status == TRI_EXT_TERMINATED) {
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "exit"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus))).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus))).FromMaybe(false);
   } else if (external._status == TRI_EXT_ABORTED) {
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "signal"),
-                v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus))).FromMaybe(false); // TODO
+                v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus))).FromMaybe(false);
   }
   if (external._errorMessage.length() > 0) {
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, external._errorMessage)).FromMaybe(false); // TODO
+                TRI_V8_STD_STRING(isolate, external._errorMessage)).FromMaybe(false);
   }
   // return the result
   TRI_V8_RETURN(result);
@@ -4790,8 +4790,8 @@ static void JS_termsize(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_TerminalSize s = TRI_DefaultTerminalSize();
   v8::Handle<v8::Array> list = v8::Array::New(isolate, 2);
-  list->Set(context, 0, v8::Integer::New(isolate, s.rows)).FromMaybe(false); // TODO
-  list->Set(context, 1, v8::Integer::New(isolate, s.columns)).FromMaybe(false); // TODO
+  list->Set(context, 0, v8::Integer::New(isolate, s.rows)).FromMaybe(false);
+  list->Set(context, 1, v8::Integer::New(isolate, s.columns)).FromMaybe(false);
 
   TRI_V8_RETURN(list);
   TRI_V8_TRY_CATCH_END
@@ -4882,8 +4882,8 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> self =
       args.Holder()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
-  self->Set(context, ErrorKey, v8::True(isolate)).FromMaybe(false); // TODO
-  self->Set(context, ErrorNumKey, v8::Integer::New(isolate, TRI_ERROR_FAILED)).FromMaybe(false); // TODO
+  self->Set(context, ErrorKey, v8::True(isolate)).FromMaybe(false);
+  self->Set(context, ErrorNumKey, v8::Integer::New(isolate, TRI_ERROR_FAILED)).FromMaybe(false);
 
   if (0 < args.Length() && args[0]->IsObject()) {
     TRI_GET_GLOBAL_STRING(CodeKey);
@@ -4892,19 +4892,19 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> data = TRI_ToObject(context, args[0]);
 
     if (TRI_HasProperty(context, isolate, data, ErrorKey)) {
-      self->Set(context, ErrorKey, TRI_GetProperty(context, isolate, data, ErrorKey)).FromMaybe(false); // TODO
+      self->Set(context, ErrorKey, TRI_GetProperty(context, isolate, data, ErrorKey)).FromMaybe(false);
     }
 
     if (TRI_HasProperty(context, isolate, data, CodeKey)) {
-      self->Set(context, CodeKey, TRI_GetProperty(context, isolate, data, CodeKey)).FromMaybe(false); // TODO
+      self->Set(context, CodeKey, TRI_GetProperty(context, isolate, data, CodeKey)).FromMaybe(false);
     }
 
     if (TRI_HasProperty(context, isolate, data, ErrorNumKey)) {
-      self->Set(context, ErrorNumKey, TRI_GetProperty(context, isolate, data, ErrorNumKey)).FromMaybe(false); // TODO
+      self->Set(context, ErrorNumKey, TRI_GetProperty(context, isolate, data, ErrorNumKey)).FromMaybe(false);
     }
 
     if (TRI_HasProperty(context, isolate, data, ErrorMessageKey)) {
-      self->Set(context, ErrorMessageKey, TRI_GetProperty(context, isolate, data, ErrorMessageKey)).FromMaybe(false); // TODO
+      self->Set(context, ErrorMessageKey, TRI_GetProperty(context, isolate, data, ErrorMessageKey)).FromMaybe(false);
     }
   }
 
@@ -4990,7 +4990,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t i = 0;
   for (std::string const& word : wordList) {
     v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(isolate, word);
-    v8WordList->Set(context, i, oneWord).FromMaybe(false); // TODO)
+    v8WordList->Set(context, i, oneWord).FromMaybe(false);
     i++;
   }
 
@@ -5342,7 +5342,7 @@ v8::Handle<v8::Array> static V8PathList(v8::Isolate* isolate, std::string const&
   v8::Handle<v8::Array> result = v8::Array::New(isolate, n);
 
   for (uint32_t i = 0; i < n; ++i) {
-    result->Set(context, i, TRI_V8_STD_STRING(isolate, paths[i])).FromMaybe(false); // TODO
+    result->Set(context, i, TRI_V8_STD_STRING(isolate, paths[i])).FromMaybe(false);
   }
 
   return scope.Escape<v8::Array>(result);
@@ -5432,7 +5432,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
     if (!cacheObject.IsEmpty()) {
       v8::Handle<v8::Array> props = cacheObject->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
       for (uint32_t i = 0; i < props->Length(); i++) {
-        v8::Handle<v8::Value> key = props->Get(context, i).FromMaybe(v8::Handle<v8::Value>()); // TODO
+        v8::Handle<v8::Value> key = props->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
         cacheObject->Delete(context, key).FromMaybe(false);  // Ignore errors.
       }
     }

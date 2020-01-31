@@ -202,7 +202,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     size_t const length = s ? s - var : strlen(var);
     v8::Local<v8::String> name = TRI_V8_PAIR_STRING(isolate, var, length);
     if (canExpose(isolate, name)) {
-      envarr->Set(context, j++, name).FromMaybe(false); // TODO
+      envarr->Set(context, j++, name).FromMaybe(false);
     }
   }
 #else  // _WIN32

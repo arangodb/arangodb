@@ -70,7 +70,7 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto context = TRI_IGETC;
   
   r->Set(context, TRI_V8_ASCII_STRING(isolate, "leading"),
-         v8::Boolean::New(isolate, agent->leading())).FromMaybe(false); // TODO
+         v8::Boolean::New(isolate, agent->leading())).FromMaybe(false);
 
   TRI_V8_RETURN(r);
   TRI_V8_TRY_CATCH_END

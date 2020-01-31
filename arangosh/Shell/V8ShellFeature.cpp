@@ -180,9 +180,9 @@ void V8ShellFeature::start() {
   v8::Context::Scope context_scope{context};
 
   v8::Handle<v8::Object> globalObj = context->Global();
-  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "GLOBAL"), globalObj).FromMaybe(false); // TODO;
-  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "global"), globalObj).FromMaybe(false); // TODO;
-  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "root"),   globalObj).FromMaybe(false); // TODO;
+  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "GLOBAL"), globalObj).FromMaybe(false);
+  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "global"), globalObj).FromMaybe(false);
+  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "root"),   globalObj).FromMaybe(false);
 
   initGlobals();
 }
@@ -531,9 +531,9 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     v8LineEditor.setExecutingCommand(false);
 
     if (v.IsEmpty()) {
-      context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v8::Undefined(_isolate)).FromMaybe(false);// TODO
+      context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v8::Undefined(_isolate)).FromMaybe(false);
     } else {
-      context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v).FromMaybe(false);// TODO
+      context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v).FromMaybe(false);
     }
 
     // command failed
@@ -619,7 +619,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       auto oldFilename =
         current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__filename")).FromMaybe(v8::Handle<v8::Value>());
 
-      current->Set(context, TRI_V8_ASCII_STRING(_isolate, "__filename"), filename).FromMaybe(false);// TODO
+      current->Set(context, TRI_V8_ASCII_STRING(_isolate, "__filename"), filename).FromMaybe(false);
 
       auto oldDirname = current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__dirname")).FromMaybe(v8::Handle<v8::Value>());
 
@@ -627,7 +627,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
 
       current->Set(context,
                    TRI_V8_ASCII_STRING(_isolate, "__dirname"),
-                   TRI_V8_STD_STRING(_isolate, dirname)).FromMaybe(false);// TODO
+                   TRI_V8_STD_STRING(_isolate, dirname)).FromMaybe(false);
 
       ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str());
 
@@ -636,13 +636,13 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         TRI_DeleteProperty(context, isolate, current, "__filename");
       } else {
         current->Set(context,
-                     TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename).FromMaybe(false);// TODO
+                     TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename).FromMaybe(false);
       }
 
       if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
         TRI_DeleteProperty(context, isolate, current, "__dirname");
       } else {
-        current->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname).FromMaybe(false);// TODO
+        current->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname).FromMaybe(false);
       }
 
       if (tryCatch.HasCaught()) {
@@ -731,14 +731,14 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
       continue;
     }
 
-    sysTestFiles->Set(context, i, TRI_V8_STD_STRING(_isolate, file)).FromMaybe(false);// TODO
+    sysTestFiles->Set(context, i, TRI_V8_STD_STRING(_isolate, file)).FromMaybe(false);
     ++i;
   }
 
-  context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles).FromMaybe(false);// TODO
+  context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles).FromMaybe(false);
 
   context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-                         v8::True(_isolate)).FromMaybe(false);// TODO
+                         v8::True(_isolate)).FromMaybe(false);
 
   // run tests
   auto input =
@@ -795,7 +795,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
       continue;
     }
 
-    sysTestFiles->Set(context, i, TRI_V8_STD_STRING(_isolate, file)).FromMaybe(false);// TODO
+    sysTestFiles->Set(context, i, TRI_V8_STD_STRING(_isolate, file)).FromMaybe(false);
     ++i;
   }
 
@@ -806,11 +806,11 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
   // variables!!
   context->Global()->Set(context,
                          TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-                         v8::True(_isolate)).FromMaybe(false);// TODO
+                         v8::True(_isolate)).FromMaybe(false);
 
   context->Global()->Set(context,
                          TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_FILTER_TEST"),
-                         TRI_V8_ASCII_STD_STRING(_isolate, testFilter)).FromMaybe(false);// TODO
+                         TRI_V8_ASCII_STD_STRING(_isolate, testFilter)).FromMaybe(false);
 
   // run tests
   auto input = TRI_V8_ASCII_STRING(
@@ -1124,7 +1124,7 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
   v8::Handle<v8::Array> p = v8::Array::New(_isolate, (int)positionals.size());
   auto context = _isolate->GetCurrentContext();
   for (uint32_t i = 0; i < positionals.size(); ++i) {
-    p->Set(context, i, TRI_V8_STD_STRING(_isolate, positionals[i])).FromMaybe(false);// TODO
+    p->Set(context, i, TRI_V8_STD_STRING(_isolate, positionals[i])).FromMaybe(false);
   }
 
   TRI_AddGlobalVariableVocbase(_isolate,
