@@ -636,12 +636,10 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   // set response code
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (TRI_HasProperty(context, isolate, res, ResponseCodeKey)) {
-    // Windows has issues with converting from a double to an enumeration type
-    code = (rest::ResponseCode)(
-                                (int)(TRI_ObjectToDouble(isolate,
-                                                         res->Get(context,
-                                                                  ResponseCodeKey
-                                                                  ).FromMaybe(v8::Local<v8::Value>()))));
+    code = (rest::ResponseCode)(TRI_ObjectToInt64(isolate,
+                                                  res->Get(context,
+                                                           ResponseCodeKey
+                                                    ).FromMaybe(v8::Local<v8::Value>())));
   }
   response->setResponseCode(code);
 

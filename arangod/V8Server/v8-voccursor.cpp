@@ -197,8 +197,6 @@ struct V8Cursor final {
 
   ~V8Cursor() {
     if (!_handle.IsEmpty()) {
-      /// TODO TRI_ASSERT(_handle.IsNearDeath());
-
       _handle.ClearWeak();
 
       _handle.Reset();
