@@ -1511,30 +1511,7 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
     } else {
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING(isolate, "ERROR"));
-
-//      if (res.result && res.result->isComplete()) {
-//        v8::Handle<v8::Object> details = v8::Object::New(isolate);
-//        details->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-//                     v8::Number::New(isolate, res.result->getHttpReturnCode()));
-//        details->Set(TRI_V8_ASCII_STRING(isolate, "message"),
-//                     TRI_V8_STD_STRING(isolate, res.result->getHttpReturnMessage()));
-//        arangodb::basics::StringBuffer& body = res.result->getBody();
-//        details->Set(TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_STD_STRING(isolate, body));
-//        V8Buffer* buffer = V8Buffer::New(isolate, body.c_str(), body.length());
-//        v8::Local<v8::Object> bufferObject =
-//            v8::Local<v8::Object>::New(isolate, buffer->_handle);
-//        details->Set(TRI_V8_ASCII_STRING(isolate, "rawBody"), bufferObject);
-//
-//        r->Set(TRI_V8_ASCII_STRING(isolate, "details"), details);
-//        TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-//        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(isolate, res.errorMessage));
-//      } else {
-//        TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-//        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(isolate, res.errorMessage));
-//      }
     }
-//  }
-
   TRI_V8_RETURN(r);
 }
 
@@ -1607,18 +1584,51 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   ::_requestCV.notify_all();
 
-//  OperationID opId = cc->asyncRequest(coordTransactionID, destination, reqType,
-//                                      path, body, headerFields, nullptr,
-//                                      timeout, singleRequest, initTimeout);
-//  ClusterCommResult res = cc->enquire(opId);
-//  if (res.status == CL_COMM_BACKEND_UNAVAILABLE) {
-//    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-//                                   "couldn't queue async request");
-//  }
-
   LOG_TOPIC("cea85", DEBUG, Logger::CLUSTER)
       << "JS_AsyncRequest: request has been submitted";
 
+  TRI_V8_TRY_CATCH_END
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enquire information about an asynchronous request
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+
+  onlyInCluster();
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("enquire(operationID)");
+  }
+
+  OperationID operationID = TRI_ObjectToUInt64(isolate, args[0], true);
+
+  LOG_TOPIC("77dbd", DEBUG, Logger::CLUSTER)
+      << "JS_Enquire: calling ClusterComm::enquire()";
+  
+  {
+    std::lock_guard<std::mutex> guard(::_requestMutex);
+    auto it = ::_requests.begin();
+    while (it != _requests.end()) {
+      std::shared_ptr<::AsyncRequest> req = *it;
+      if (req->operationID == operationID) {
+        Return_PrepareClusterCommResultForJS(args, *req);
+        return;
+      }
+      it++;
+    }
+  }
+
+  v8::Handle<v8::Object> r = v8::Object::New(isolate);
+  TRI_GET_GLOBAL_STRING(ErrorMessageKey);
+  r->Set(ErrorMessageKey,
+         TRI_V8_ASCII_STRING(isolate, "operation was dropped"));
+  TRI_V8_RETURN(r);
+  
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1696,9 +1706,6 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   LOG_TOPIC("04f61", DEBUG, Logger::CLUSTER) << "JS_Wait: calling ClusterComm::wait()";
 
-//  ClusterCommResult const res =
-//      cc->wait(mycoordTransactionID, myoperationID, myshardID, mytimeout);
-//
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(ErrorMessageKey);
   r->Set(ErrorMessageKey,
@@ -2044,6 +2051,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   rt->SetInternalFieldCount(2);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "asyncRequest"), JS_AsyncRequest);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enquire"), JS_Enquire);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "wait"), JS_Wait);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_Drop);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getId"), JS_GetId);

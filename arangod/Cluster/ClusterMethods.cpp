@@ -92,9 +92,6 @@ using namespace arangodb::rest;
 
 using Helper = arangodb::basics::VelocyPackHelper;
 
-// Timeout for read operations:
-static double const CL_DEFAULT_TIMEOUT = 120.0;
-
 // Timeout for write operations, note that these are used for communication
 // with a shard leader and we always have to assume that some follower has
 // stopped writes for some time to get in sync:
@@ -2554,7 +2551,6 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   VPackBufferUInt8 body;
   body.append(payload.begin(), payload.byteSize());
   network::RequestOptions reqOpts;
-  reqOpts.retryNotFound = false;
   reqOpts.skipScheduler = true;
   
   std::string const url = apiStr + "list";
@@ -2569,7 +2565,7 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
   size_t nrGood = 0;
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    if (r.ok()) {
+    if (!r.ok()) {
       continue;
     }
     auto status = r.response->statusCode();
@@ -3264,7 +3260,6 @@ arangodb::Result unlockDBServerTransactions(network::ConnectionPool* pool,
   }
   
   network::RequestOptions reqOpts;
-  reqOpts.retryNotFound = false;
   reqOpts.skipScheduler = true;
   
   std::vector<Future<network::Response>> futures;
@@ -3305,7 +3300,6 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   std::string const url = apiStr + "create";
 
   network::RequestOptions reqOpts;
-  reqOpts.retryNotFound = false;
   reqOpts.skipScheduler = true;
   
   std::vector<Future<network::Response>> futures;
@@ -3402,7 +3396,6 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
   std::string const url = apiStr + "delete";
   
   network::RequestOptions reqOpts;
-  reqOpts.retryNotFound = false;
   reqOpts.skipScheduler = true;
   
   std::vector<Future<network::Response>> futures;
@@ -3495,7 +3488,6 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(network::ConnectionPool
       << "Trying to acquire async global transaction locks using body " << lock.toJson();
   
   network::RequestOptions reqOpts;
-  reqOpts.retryNotFound = false;
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
   
@@ -3550,7 +3542,6 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
   // query all remaining jobs here
   
   network::RequestOptions reqOpts;
-  reqOpts.retryNotFound = false;
   reqOpts.skipScheduler = true;
   reqOpts.timeout = network::Timeout(lockWait + 5.0);
   
@@ -3644,7 +3635,6 @@ void hotbackupCancelAsyncLocks(
   
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
-  reqOpts.retryNotFound = false;
   reqOpts.timeout = network::Timeout(5.0);
   
   std::vector<Future<network::Response>> futures;
