@@ -5,6 +5,11 @@ v3.6.2 (XXXX-XX-XX)
   condition for ArangoSearch views. As this conversion might result in
   overcomplicated disjunction and heavily slowdown execution.
 
+* Fixed a bug where a single host agency could log too early.
+
+* Cluster collection creation preconditioned on involved db server not in
+  process of being cleaned and beyond.
+
 * Supervision maintenance mode from "on" and TTL to expiry string.
 
 * Clean out server job checks preconditions plan version unchanged for start.
@@ -155,8 +160,8 @@ v3.6.0-rc.2 (2019-12-23)
   The WAL file size is increased later on in the startup sequence, so
   everything should be fine if the startup works.
 
-  This fixes a problem with the disk filling up quickly when the arangodb 
-  starter tries to start an instance 100 times in a row but instantaneously 
+  This fixes a problem with the disk filling up quickly when the arangodb
+  starter tries to start an instance 100 times in a row but instantaneously
   gets a failure back from it.
 
 * Fixed a permissions bug for /_admin/cluster/rebalanceShards.
