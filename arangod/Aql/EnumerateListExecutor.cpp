@@ -223,6 +223,12 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
     processArrayElement(output);
   }
 
+  if (_inputArrayLength == _inputArrayPosition) {
+    // we reached either the end of an array
+    // or are in our first loop iteration
+    initializeNewRow(inputRange);
+  }
+
   return {ExecutorState::DONE, NoStats{}, upstreamCall};
 }
 
