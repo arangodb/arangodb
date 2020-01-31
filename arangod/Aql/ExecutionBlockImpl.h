@@ -142,7 +142,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @param node The Node used to create this ExecutionBlock
    */
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     typename Executor::Infos&&);
+                     typename Executor::Infos);
 
   ~ExecutionBlockImpl() override;
 
