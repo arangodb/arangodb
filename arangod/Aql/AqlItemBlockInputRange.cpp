@@ -133,7 +133,7 @@ ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
     }
     return ExecutorState::DONE;
   } else {
-    TRI_ASSERT(RowType::SHADOW == type);
+    static_assert(RowType::SHADOW == type);
     // We Return HASMORE, if the next shadow row is NOT relevant.
     // So we can directly fetch the next shadow row without informing
     // the executor about an empty subquery.

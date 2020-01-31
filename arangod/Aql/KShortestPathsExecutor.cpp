@@ -40,8 +40,6 @@
 
 #include <utility>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -137,7 +135,6 @@ auto KShortestPathsExecutorInfos::cache() const -> graph::TraverserCache* {
 
 KShortestPathsExecutor::KShortestPathsExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
       _inputRow{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _finder{infos.finder()},

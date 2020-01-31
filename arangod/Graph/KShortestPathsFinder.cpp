@@ -39,14 +39,12 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::graph;
 
-//
 KShortestPathsFinder::KShortestPathsFinder(ShortestPathOptions& options)
     : ShortestPathFinder(options), _pathAvailable(false) {}
+
 KShortestPathsFinder::~KShortestPathsFinder() = default;
 
 // Sets up k-shortest-paths traversal from start to end
@@ -424,7 +422,6 @@ bool KShortestPathsFinder::getNextPathAql(arangodb::velocypack::Builder& result)
 }
 
 bool KShortestPathsFinder::skipPath() {
-  LOG_DEVEL << "skip in finder";
   Path path;
   return getNextPath(path);
 }

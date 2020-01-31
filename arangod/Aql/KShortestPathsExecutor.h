@@ -192,7 +192,6 @@ class KShortestPathsExecutor {
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
   InputAqlItemRow _inputRow;
   ExecutionState _rowState;
   /// @brief the shortest path finder.
