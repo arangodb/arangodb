@@ -1,6 +1,16 @@
 devel
 -----
 
+* Implement a new API to reload TLS server key and certificates as well as
+  client certificate CA. This allows to rotate TLS certificates without
+  a restart. One can also query the currently loaded state of the TLS
+  data to decide if a reload has actually happened. The new certificates
+  will only be used for new TLS-based connections.
+
+* Add acquisition of system report to arangod instances.
+
+* JS `query` helper function can now be used with options
+  
 * Fix a bug in collection creation with `distributeShardsLike`.
 
 * Added load-balancing support for listing currently running and slow AQL queries,
@@ -150,6 +160,8 @@ devel
 
 * Fixed a bug in smart graph bfs traversals that might violate path uniqueness
   requirements in rare cases.
+
+* Add acquisition of system report to arangod instances.
 
 * Fix execution ability in CentOS 6 regarding newer boost.
 
