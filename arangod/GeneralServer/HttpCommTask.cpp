@@ -230,7 +230,7 @@ HttpCommTask<T>::~HttpCommTask() noexcept = default;
 
 template <SocketType T>
 void HttpCommTask<T>::start() {
-  LOG_TOPIC("358d4", TRACE, Logger::REQUESTS)
+  LOG_TOPIC("358d4", DEBUG, Logger::REQUESTS)
       << "<http> opened connection \"" << (void*)this << "\"";
 
   asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
