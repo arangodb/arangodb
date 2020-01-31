@@ -4,6 +4,15 @@ devel
 * Cluster collection creation preconditioned on involved db servers not
   in process of being cleaned and Fixed.
 
+* Fixed a bug, where a single host agency logged too early.
+  
+  This issue caused spurious "Could not integrate into cluster" error messages
+  when starting coordinators.
+
+* Fixed internal issue #596: Added ability to disable DNF conversion in SEARCH
+  condition for ArangoSearch views. As this conversion might result in
+  overcomplicated disjunction and heavily slowdown execution.
+
 * Implement a new API to reload TLS server key and certificates as well as
   client certificate CA. This allows to rotate TLS certificates without
   a restart. One can also query the currently loaded state of the TLS
