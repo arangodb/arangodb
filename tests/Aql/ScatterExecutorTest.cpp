@@ -571,9 +571,4 @@ TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
     }
   } while (std::next_permutation(callOrder.begin(), callOrder.end()));
 }
-
-// TODO:
-// [] Add a test that includes subqueries
-// [] Add a test that looks after non-relevant subquery forwarding.
-
 }  // namespace arangodb::tests::aql
