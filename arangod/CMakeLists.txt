@@ -552,7 +552,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
-  Cluster/ClusterComm.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
