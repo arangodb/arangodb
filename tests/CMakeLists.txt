@@ -117,7 +117,6 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
   Cluster/AgencyPathsTest.cpp
-  Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
@@ -141,7 +140,6 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
-  IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
   IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/ExpressionFilter-test.cpp
@@ -222,7 +220,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
-  SimpleHttpClient/CommunicatorTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
   Transaction/Manager-test.cpp
