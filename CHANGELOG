@@ -1,7 +1,7 @@
 devel
 -----
 
-* Implement a new API to rotate TLS server key and certificates as well as
+* Implement a new API to reload TLS server key and certificates as well as
   client certificate CA. This allows to rotate TLS certificates without
   a restart. One can also query the currently loaded state of the TLS
   data to decide if a reload has actually happened. The new certificates
