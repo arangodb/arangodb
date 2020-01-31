@@ -244,7 +244,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       RequestStatistics::SET_SUPERUSER(stat);
     }
 
-    LOG_TOPIC("92fd6", DEBUG, Logger::REQUESTS)
+    LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
     << "\"vst-request-begin\",\"" << (void*)this << "\",\""
     << this->_connectionInfo.clientAddress << "\",\""
     << VstRequest::translateMethod(req->requestType()) << "\",\""

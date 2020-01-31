@@ -130,8 +130,10 @@ void NetworkFeature::prepare() {
   config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
   config.clusterInfo = ci;
-  if (_protocol == "http2" || _protocol == "h2") {
+  if (_protocol == "http") {
     config.protocol = fuerte::ProtocolType::Http;
+  } else if (_protocol == "http2" || _protocol == "h2") {
+    config.protocol = fuerte::ProtocolType::Http2;
   } else if (_protocol == "vst") {
     config.protocol = fuerte::ProtocolType::Vst;
   } else {
