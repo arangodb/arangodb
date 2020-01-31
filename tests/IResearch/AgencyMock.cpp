@@ -106,7 +106,7 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
   State state() const override { return fuerte::Connection::State::Connected; }
 
   void cancel() override {}
-  void startConnection() override {}
+  void start() override {}
 
   AsyncAgencyStorePoolMock* _mock;
   std::string _endpoint;
@@ -168,7 +168,7 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
     return response;
   }
 
-  fuerte::MessageID sendRequest(std::unique_ptr<fuerte::Request> req,
+  void sendRequest(std::unique_ptr<fuerte::Request> req,
                                 fuerte::RequestCallback cb) override {
 
     std::unique_ptr<fuerte::Response> resp;
@@ -186,7 +186,6 @@ struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
     }
 
     cb(fuerte::Error::NoError, std::move(req), std::move(resp));
-    return 0;
   }
 };
 
