@@ -294,8 +294,10 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
                  arangodb::velocypack::Value(useRevs));
-      helper.add(arangodb::StaticStrings::MinRevision,
-                 arangodb::velocypack::Value(TRI_HybridLogicalClock()));
+      bool isSmartChild =
+          Helper::getBooleanValue(info.properties, StaticStrings::IsSmartChild, false);
+      TRI_voc_rid_t minRev = isSmartChild ? 0 : TRI_HybridLogicalClock();
+      helper.add(arangodb::StaticStrings::MinRevision, arangodb::velocypack::Value(minRev));
     }
 
     if (ServerState::instance()->isCoordinator()) {

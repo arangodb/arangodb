@@ -154,7 +154,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 #endif
       _usesRevisionsAsDocumentIds(
           Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
-      _minRevision(Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision, 0)),
+      _minRevision(isSmartChild()
+                       ? 0
+                       : Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision,
+                                                                0)),
       _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
       _syncByRevision(determineSyncByRevision()),

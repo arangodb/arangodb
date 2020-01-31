@@ -271,7 +271,9 @@ template <std::size_t const BranchingBits, std::size_t const LockStripes>
 void MerkleTree<BranchingBits, LockStripes>::insert(std::size_t key, std::size_t value) {
   std::shared_lock<std::shared_mutex> guard(_bufferLock);
   if (key < meta().rangeMin) {
-    throw std::out_of_range("Cannot insert, key out of current range.");
+    throw std::out_of_range("Cannot insert, key " + std::to_string(key) +
+                            " less than range minimum " +
+                            std::to_string(meta().rangeMin) + ".");
   }
 
   if (key >= meta().rangeMax) {
@@ -299,7 +301,9 @@ void MerkleTree<BranchingBits, LockStripes>::insert(std::vector<std::size_t> con
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
 
   if (minKey < meta().rangeMin) {
-    throw std::out_of_range("Cannot insert, key out of current range.");
+    throw std::out_of_range("Cannot insert, key " + std::to_string(minKey) +
+                            " less than range minimum " +
+                            std::to_string(meta().rangeMin) + ".");
   }
 
   if (maxKey >= meta().rangeMax) {
