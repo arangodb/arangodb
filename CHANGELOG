@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fixed a bug, where a single host agency logged too early.
+  
+  This issue caused spurious "Could not integrate into cluster" error messages
+  when starting coordinators.
+
+* Fixed internal issue #596: Added ability to disable DNF conversion in SEARCH
+  condition for ArangoSearch views. As this conversion might result in
+  overcomplicated disjunction and heavily slowdown execution.
+
 * Implement a new API to reload TLS server key and certificates as well as
   client certificate CA. This allows to rotate TLS certificates without
   a restart. One can also query the currently loaded state of the TLS
@@ -10,7 +19,7 @@ devel
 * Add acquisition of system report to arangod instances.
 
 * JS `query` helper function can now be used with options
-  
+
 * Fix a bug in collection creation with `distributeShardsLike`.
 
 * Added load-balancing support for listing currently running and slow AQL queries,
@@ -19,7 +28,7 @@ devel
   This change also will also modify the values returned in the "id" attribute of AQL
   query objects. While the values of the "id" attribute remain strings with numeric
   content, the ids will now start at arbitrary offsets after server start and are
-  supposed to have much higher numeric values than in previous ArangoDB versions. 
+  supposed to have much higher numeric values than in previous ArangoDB versions.
   In previous ArangoDB versions, query ids always started at value 1 after a server
   start/restart and were increased in increments of 1.
   This change may lead to query ids being greater than what a 4 byte integer can
@@ -28,7 +37,7 @@ devel
   storage.
 
 * remove unused REST API /_admin/aql/reload, and make the JavaScript bindings
-  for `internal.reloadAqlFunctions()` do nothing. The reason for this is that 
+  for `internal.reloadAqlFunctions()` do nothing. The reason for this is that
   AQL functions are automatically reloaded when functions are changed, and
   there is no need to call these APIs manually.
 
@@ -40,7 +49,7 @@ devel
 
 * The `--dump-options` command for arangod now also provides the "components"
   attribute that shows for which components (agent, coordinator, db server,
-  single server) an option is relevant. Additionally, each option provides an "os" 
+  single server) an option is relevant. Additionally, each option provides an "os"
   attribute that indicates on which operating systems the option is supported.
   This can be used when reading the options descriptions programmatically, e.g.
   for auto-generating the documentation.
