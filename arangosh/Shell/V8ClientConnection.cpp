@@ -67,6 +67,7 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
                                        ClientFeature& client)
     : _server(server),
       _client(client),
+      _requestTimeout(_client.requestTimeout()),
       _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
