@@ -22,6 +22,7 @@
 
 #include "NetworkFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
@@ -70,9 +71,9 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
-      _numIOThreads(config.numIOThreads),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
+      _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts) {
   setOptional(true);
   startsAfter<ClusterFeature>();
@@ -97,6 +98,13 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts))
                      .setIntroducedIn(30600);
+  
+  std::unordered_set<std::string> protos = {
+      "", "http", "http2", "h2", "vst"};
+
+  options->addOption("--network.protocol", "network protocol to use",
+                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
+                     .setIntroducedIn(30700);
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
@@ -122,6 +130,13 @@ void NetworkFeature::prepare() {
   config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
   config.clusterInfo = ci;
+  if (_protocol == "http2" || _protocol == "h2") {
+    config.protocol = fuerte::ProtocolType::Http;
+  } else if (_protocol == "vst") {
+    config.protocol = fuerte::ProtocolType::Vst;
+  } else {
+    config.protocol = fuerte::ProtocolType::Http;
+  }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
@@ -166,7 +181,7 @@ void NetworkFeature::beginShutdown() {
   }
   _poolPtr.store(nullptr, std::memory_order_release);
   if (_pool) {  // first cancel all connections
-    _pool->drainConnections();
+    _pool->shutdownConnections();
   }
 }
 
@@ -176,7 +191,7 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _pool->drainConnections();
+  _pool->shutdownConnections();
 }
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {

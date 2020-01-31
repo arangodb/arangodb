@@ -97,11 +97,11 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.startup-directory",
                      "startup paths containing the JavaScript files",
                      new StringParameter(&_startupDirectory),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.client-module",
                      "client module to use at startup", new StringParameter(&_clientModule),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.copy-directory",
@@ -112,7 +112,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.module-directory",
                      "additional paths containing JavaScript modules",
                      new VectorParameter<StringParameter>(&_moduleDirectories),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",
@@ -160,7 +160,7 @@ void V8ShellFeature::start() {
 
   auto* isolate = _isolate;
   TRI_GET_GLOBALS();
-  v8g = TRI_CreateV8Globals(isolate, 0);
+  v8g = TRI_CreateV8Globals(server(), isolate, 0);
   v8g->_securityContext = arangodb::JavaScriptSecurityContext::createAdminScriptContext();
 
   // create the global template
@@ -333,14 +333,14 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
       // clang-format off
 
-    console.printLine("");
-    console.printLine(g + "                                  "     + r + "     _     " + z);
-    console.printLine(g + "  __ _ _ __ __ _ _ __   __ _  ___ "     + r + " ___| |__  " + z);
-    console.printLine(g + " / _` | '__/ _` | '_ \\ / _` |/ _ \\"   + r + "/ __| '_ \\ " + z);
-    console.printLine(g + "| (_| | | | (_| | | | | (_| | (_) "     + r + "\\__ \\ | | |" + z);
-    console.printLine(g + " \\__,_|_|  \\__,_|_| |_|\\__, |\\___/" + r + "|___/_| |_|" + z);
-    console.printLine(g + "                       |___/      "     + r + "           " + z);
-    console.printLine("");
+      console.printLine("");
+      console.printLine(g + "                                  "     + r + "     _     " + z);
+      console.printLine(g + "  __ _ _ __ __ _ _ __   __ _  ___ "     + r + " ___| |__  " + z);
+      console.printLine(g + " / _` | '__/ _` | '_ \\ / _` |/ _ \\"   + r + "/ __| '_ \\ " + z);
+      console.printLine(g + "| (_| | | | (_| | | | | (_| | (_) "     + r + "\\__ \\ | | |" + z);
+      console.printLine(g + " \\__,_|_|  \\__,_|_| |_|\\__, |\\___/" + r + "|___/_| |_|" + z);
+      console.printLine(g + "                       |___/      "     + r + "           " + z);
+      console.printLine("");
 
       // clang-format on
 
@@ -354,6 +354,9 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
       console.printWelcomeInfo();
     }
+        
+    ClientFeature& client =
+          server().getFeature<HttpEndpointProvider, ClientFeature>();
 
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
@@ -371,11 +374,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
           }
           console.printErrorLine(msg);
         }
-      } else {
+      } else if (client.endpoint() != "none") {
         std::ostringstream is;
-
-        ClientFeature& client =
-            server().getFeature<HttpEndpointProvider, ClientFeature>();
         is << "Could not connect to endpoint '" << client.endpoint()
            << "', database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
@@ -411,9 +411,9 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     if (server().hasFeature<HttpEndpointProvider>()) {
       haveClient = true;
       ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
+      v8connection = std::make_unique<V8ClientConnection>(server(), client);
       if (client.isEnabled()) {
-        v8connection = std::make_unique<V8ClientConnection>(server());
-        v8connection->connect(&client);
+        v8connection->connect();
       }
     }
   }
@@ -421,8 +421,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
   initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
   if (createConnection && haveClient) {
-    ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
-    v8connection->initServer(_isolate, context, &client);
+    v8connection->initServer(_isolate, context);
   }
 
   bool pe = printHello(v8connection.get());
@@ -453,6 +452,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   V8LineEditor v8LineEditor(_isolate, context,
                             console.useHistory() ? "." + _name + ".history" : "");
+  
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
@@ -981,9 +981,8 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  application_features::ApplicationServer& server =
-      application_features::ApplicationServer::server();
-  ShellFeature& shell = server.getFeature<ShellFeature>();
+  TRI_GET_GLOBALS();
+  ShellFeature& shell = v8g->_server.getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));
 
@@ -1161,6 +1160,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
 
   // load all init files
   std::vector<std::string> files;
+  files.reserve(16);
 
   files.push_back("common/bootstrap/scaffolding.js");
   files.push_back("common/bootstrap/modules/internal.js");  // deps: -
@@ -1180,20 +1180,20 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
 
   files.push_back("client/" + _clientModule);  // needs internal
 
-  for (size_t i = 0; i < files.size(); ++i) {
-    switch (loader.loadScript(_isolate, context, files[i], nullptr)) {
+  for (auto const& file : files) {
+    switch (loader.loadScript(_isolate, context, file, nullptr)) {
       case JSLoader::eSuccess:
         LOG_TOPIC("edc8d", TRACE, arangodb::Logger::FIXME)
-            << "loaded JavaScript file '" << files[i] << "'";
+            << "loaded JavaScript file '" << file << "'";
         break;
       case JSLoader::eFailLoad:
         LOG_TOPIC("022a8", FATAL, arangodb::Logger::FIXME)
-            << "cannot load JavaScript file '" << files[i] << "'";
+            << "cannot load JavaScript file '" << file << "'";
         FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
         LOG_TOPIC("22385", FATAL, arangodb::Logger::FIXME)
-            << "error during execution of JavaScript file '" << files[i] << "'";
+            << "error during execution of JavaScript file '" << file << "'";
         FATAL_ERROR_EXIT();
         break;
     }

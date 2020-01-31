@@ -24,6 +24,7 @@
 
 #include "LogicalCollection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
@@ -179,7 +180,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
   // add keyOptions from slice
   VPackSlice keyOpts = info.get("keyOptions");
-  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
+  _keyGenerator.reset(KeyGenerator::factory(vocbase.server(), keyOpts));
   if (!keyOpts.isNone()) {
     _keyOptions = VPackBuilder::clone(keyOpts).steal();
   }
@@ -582,7 +583,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     if (!_sharding->distributeShardsLike().empty()) {
       CollectionNameResolver resolver(vocbase());
 
-      result.add("distributeShardsLike",
+      result.add(StaticStrings::DistributeShardsLike,
                  VPackValue(resolver.getCollectionNameCluster(static_cast<TRI_voc_cid_t>(
                      basics::StringUtils::uint64(distributeShardsLike())))));
     }

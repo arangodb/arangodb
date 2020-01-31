@@ -286,10 +286,10 @@ static void ExistsVocbaseVPack(bool useCollection,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a document idenfifier
+  // first and only argument should be a document identifier
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "exists(<document-handle> or <document-key> )");
+        "exists(<document-id> or <document-key> )");
   }
 
   TRI_vocbase_t* vocbase;
@@ -376,7 +376,7 @@ static void DocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // first and only argument should be a document handle or key or an object
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "document(<document-handle> or <document-key> or <object> or <array>)");
+        "document(<document-id> or <document-key> or <object> or <array>)");
   }
 
   OperationOptions options;
@@ -456,9 +456,9 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  // first and only argument should be a document idenfifier
+  // first and only argument should be a document identifier
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-handle>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("document(<document-id>)");
   }
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -773,7 +773,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   // first and only argument should be a document handle or key
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "binaryDocument(<document-handle> or <document-key>, <filename>)");
+        "binaryDocument(<document-id> or <document-key>, <filename>)");
   }
 
   OperationOptions options;
@@ -967,7 +967,7 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
   auto opRes = collection->figures().get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
-  
+
   if (opRes.ok()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
   } else {
@@ -1180,7 +1180,7 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-  
+
   // return the current parameter set
   TRI_V8_RETURN(
       TRI_VPackToV8(isolate, builder.slice())->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
@@ -1880,18 +1880,43 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     }
   }
 
+
   OperationOptions options;
   if (argLength > optsIdx && args[optsIdx]->IsObject()) {
     v8::Handle<v8::Object> optionsObject = args[optsIdx].As<v8::Object>();
+
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
     if (TRI_HasProperty(context, isolate, optionsObject, WaitForSyncKey)) {
       options.waitForSync =
           TRI_ObjectToBoolean(isolate, optionsObject->Get(WaitForSyncKey));
     }
+
     TRI_GET_GLOBAL_STRING(OverwriteKey);
-    if (TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
+    if (!options.overwrite && TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
       options.overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(OverwriteKey));
     }
+
+    TRI_GET_GLOBAL_STRING(OverwriteModeKey);
+    if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
+      auto mode = TRI_ObjectToString(isolate, optionsObject->Get(OverwriteModeKey));
+      if (mode == "update" ) {
+        options.overwriteModeUpdate = true;
+        options.overwrite = true;
+
+        TRI_GET_GLOBAL_STRING(KeepNullKey);
+        if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
+          options.keepNull = TRI_ObjectToBoolean(isolate, optionsObject->Get(KeepNullKey));
+        }
+        TRI_GET_GLOBAL_STRING(MergeObjectsKey);
+        if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
+          options.mergeObjects =
+              TRI_ObjectToBoolean(isolate, optionsObject->Get(MergeObjectsKey));
+        }
+      } else if (mode == "replace") {
+        options.overwrite = true;
+      }
+    }
+
     TRI_GET_GLOBAL_STRING(SilentKey);
     if (TRI_HasProperty(context, isolate, optionsObject, SilentKey)) {
       options.silent = TRI_ObjectToBoolean(isolate, optionsObject->Get(SilentKey));

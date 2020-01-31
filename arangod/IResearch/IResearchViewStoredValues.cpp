@@ -35,7 +35,7 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
               std::vector<arangodb::basics::AttributeName> const& attrs) {
   TRI_ASSERT(prefix.size() < attrs.size());
 
-  for (decltype(prefix.size()) i = 0; i < prefix.size(); ++i) {
+  for (size_t i = 0; i < prefix.size(); ++i) {
     TRI_ASSERT(!prefix[i].shouldExpand);
     if (prefix[i].name != attrs[i].name) {
       return false;
@@ -86,7 +86,7 @@ bool IResearchViewStoredValues::fromVelocyPack(
             clear();
             return false;
           }
-          auto fieldName = arangodb::iresearch::getStringRef(fieldSlice);
+          auto fieldName = getStringRef(fieldSlice);
           // skip empty field
           if (fieldName.empty()) {
             continue;
@@ -94,7 +94,7 @@ bool IResearchViewStoredValues::fromVelocyPack(
           std::vector<basics::AttributeName> field;
           try {
             // no expansions
-            arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
+            basics::TRI_ParseAttributeString(fieldName, field, false);
           } catch (...) {
             errorField = fieldName;
             clear();
@@ -103,10 +103,10 @@ bool IResearchViewStoredValues::fromVelocyPack(
           // check field uniqueness
           auto newField = true;
           auto fieldSize = field.size();
-          decltype(fieldNames.size()) i = 0;
+          size_t i = 0;
           for (auto& f : sc.fields) {
             if (f.second.size() == fieldSize) {
-              if (arangodb::basics::AttributeName::isIdentical(f.second, field, false)) {
+              if (basics::AttributeName::isIdentical(f.second, field, false)) {
                 newField = false;
                 break;
               }
@@ -143,11 +143,9 @@ bool IResearchViewStoredValues::fromVelocyPack(
         std::sort(fieldNames.begin(), fieldNames.end());
         std::string columnName;
         TRI_ASSERT(columnLength > 1);
-        columnName.reserve(columnLength - 1);
+        columnName.reserve(columnLength);
         for (auto const& fieldName : fieldNames) {
-          if (!columnName.empty()) {
-            columnName += FIELDS_DELIMITER;
-          }
+          columnName += FIELDS_DELIMITER; // a prefix for EXISTS()
           columnName += fieldName;
         }
         if (!uniqueColumns.emplace(columnName).second) {
@@ -156,7 +154,7 @@ bool IResearchViewStoredValues::fromVelocyPack(
         sc.name = std::move(columnName);
         _storedColumns.emplace_back(std::move(sc));
       } else if (columnSlice.isString()) {
-        auto fieldName = arangodb::iresearch::getStringRef(columnSlice);
+        auto fieldName = getStringRef(columnSlice);
         // skip empty field
         if (fieldName.empty()) {
           continue;
@@ -164,19 +162,22 @@ bool IResearchViewStoredValues::fromVelocyPack(
         std::vector<basics::AttributeName> field;
         try {
           // no expansions
-          arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
+          basics::TRI_ParseAttributeString(fieldName, field, false);
         } catch (...) {
           errorField = fieldName;
           clear();
           return false;
         }
-        if (uniqueColumns.find(fieldName) != uniqueColumns.cend()) {
+        if (!uniqueColumns.emplace(fieldName).second) {
           continue;
         }
-        uniqueColumns.emplace_hint(uniqueColumns.cend(), fieldName);
+        std::string columnName;
+        columnName.reserve(fieldName.size() + 1);
+        columnName += FIELDS_DELIMITER; // a prefix for EXISTS()
+        columnName += fieldName;
         StoredColumn sc;
         sc.fields.emplace_back(fieldName, std::move(field));
-        sc.name = std::move(fieldName);
+        sc.name = std::move(columnName);
         _storedColumns.emplace_back(std::move(sc));
       } else {
         clear();

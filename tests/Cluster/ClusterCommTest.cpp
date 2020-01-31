@@ -29,6 +29,7 @@
 #include <thread>
 #include "gtest/gtest.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterComm.h"

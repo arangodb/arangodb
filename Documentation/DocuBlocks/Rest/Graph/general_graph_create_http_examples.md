@@ -21,6 +21,10 @@ Name of the graph.
 An array of definitions for the relations of the graph.
 Each has the following type:
 
+@RESTBODYPARAM{orphanCollections,array,optional,string}
+An array of additional vertex collections.
+Documents within these collections do not have edges within this graph.
+
 @RESTBODYPARAM{isSmart,boolean,optional,}
 Define if the created graph should be smart.
 This only has effect in Enterprise Edition.
@@ -43,11 +47,12 @@ Cannot be modified later.
 The replication factor used when initially creating collections for this graph.
 
 @RESTSTRUCT{writeConcern,post_api_gharial_create_opts,integer,optional,}
-how many copies of each shard are required to be in sync on the different
-DBServers for every new collection in the graph. If there are less then these
-many copies in the cluster a shard will refuse to write. Writes to shards with
-enough up-to-date copies will succeed at the same time however. The value of
-*writeConcern* can not be larger than *replicationFactor*.
+Write concern for new collections in the graph.
+It determines how many copies of each shard are required to be
+in sync on the different DBServers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTRETURNCODES
 
@@ -175,6 +180,7 @@ A message created for this error.
       from: [ "startVertices" ],
       to: [ "endVertices" ]
     }],
+    orphanCollections: [ "orphanVertices" ],
     isSmart: true,
     options: {
       replicationFactor: 2,

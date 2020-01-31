@@ -30,7 +30,8 @@
 #include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb::basics;
+namespace arangodb {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a task tied to the specified queue
@@ -92,8 +93,9 @@ void LocalCallbackTask::dispatch() {
 /// @brief create a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::LocalTaskQueue(PostFn poster)
-    : _poster(poster),
+LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster)
+    : _server(server),
+      _poster(poster),
       _queue(),
       _callbackQueue(),
       _condition(),
@@ -106,7 +108,7 @@ LocalTaskQueue::LocalTaskQueue(PostFn poster)
 /// @brief destroy the queue.
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::~LocalTaskQueue() {}
+LocalTaskQueue::~LocalTaskQueue() = default;
 
 void LocalTaskQueue::startTask() {
   CONDITION_LOCKER(guard, _condition);
@@ -168,7 +170,6 @@ void LocalTaskQueue::join() {
 //////////////////////////////////////////////////////////////////////////////
 
 void LocalTaskQueue::dispatchAndWait() {
-  auto& server = application_features::ApplicationServer::server();
   // regular task loop
   if (!_queue.empty()) {
     while (true) {
@@ -191,7 +192,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 && _started == 0 && server.isStopping()) {
+      if (_missing > 0 && _started == 0 && _server.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -219,7 +220,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 && _started == 0 && server.isStopping()) {
+      if (_missing > 0 && _started == 0 && _server.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -245,3 +246,6 @@ int LocalTaskQueue::status() {
   MUTEX_LOCKER(locker, _mutex);
   return _status;
 }
+
+}  // namespace basics
+}  // namespace arangodb

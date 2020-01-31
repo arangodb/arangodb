@@ -22,6 +22,7 @@
 
 #include "StatisticsFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
@@ -30,14 +31,15 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <chrono>
@@ -150,7 +152,7 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
-      _descriptions(new stats::Descriptions()) {
+      _descriptions(new stats::Descriptions(server)) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
 }
@@ -163,11 +165,11 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--server.statistics",
                      "turn statistics gathering on or off",
                      new BooleanParameter(&_statistics),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   options->addOption("--server.statistics-history",
                      "turn storing statistics in database on or off",
                      new BooleanParameter(&_statisticsHistory),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30409)
     .setIntroducedIn(30501);
 }
