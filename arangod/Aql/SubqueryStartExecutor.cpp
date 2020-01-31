@@ -39,16 +39,18 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
 auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   while (!output.isFull()) {
-    switch (_internalState) {
+    switch (_produceState) {
       case State::READ_DATA_ROW: {
         TRI_ASSERT(!_inputRow.isInitialized());
 
         if (input.hasDataRow()) {
           std::tie(_upstreamState, _inputRow) = input.nextDataRow();
-          _internalState = State::PRODUCE_DATA_ROW;
+          _produceState = State::PRODUCE_DATA_ROW;
         } else {
           // might have shadow rows we need to pass through
-          _internalState = State::PASS_SHADOW_ROW;
+          // We don't have a data row, but upstream might still have
+          // data to process
+          return {_upstreamState, NoStats{}, AqlCall{}};
         }
       } break;
       case State::PRODUCE_DATA_ROW: {
@@ -56,42 +58,29 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
         TRI_ASSERT(_inputRow.isInitialized());
         output.copyRow(_inputRow);
         output.advanceRow();
-        _internalState = State::PRODUCE_SHADOW_ROW;
+        _produceState = State::PRODUCE_SHADOW_ROW;
       } break;
       case State::PRODUCE_SHADOW_ROW: {
         TRI_ASSERT(_inputRow.isInitialized());
         output.createShadowRow(_inputRow);
         output.advanceRow();
         _inputRow = InputAqlItemRow(CreateInvalidInputRowHint{});
-        _internalState = State::READ_DATA_ROW;
+        _produceState = State::READ_DATA_ROW;
       } break;
-      case State::PASS_SHADOW_ROW: {
-        // We need to handle shadowRows now. It is the job of this node to
-        // increase the shadow row depth
-        if (input.hasShadowRow()) {
-          ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
-          std::tie(_upstreamState, shadowRow) = input.nextShadowRow();
-          output.increaseShadowRowDepth(shadowRow);
-          output.advanceRow();
-        } else {
-          if (_upstreamState == ExecutorState::DONE) {
-            return {ExecutorState::DONE, NoStats{}, AqlCall{}};
-          } else {
-            _internalState = State::READ_DATA_ROW;
-          }
-        }
+      default: {
+        TRI_ASSERT(false);
       } break;
     }
   }
 
   // When we reach here, then output is full
-  if (_internalState == State::READ_DATA_ROW || _internalState == State::PASS_SHADOW_ROW) {
+  if (_produceState == State::READ_DATA_ROW) {
     TRI_ASSERT(!_inputRow.isInitialized());
     return {_upstreamState, NoStats{}, AqlCall{}};
   }
   // PRODUCE_DATA_ROW should always immediately be processed without leaving the
   // loop
-  TRI_ASSERT(_internalState == State::PRODUCE_SHADOW_ROW);
+  TRI_ASSERT(_produceState == State::PRODUCE_SHADOW_ROW);
   TRI_ASSERT(_inputRow.isInitialized());
   return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
 }
@@ -99,32 +88,11 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
 auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, size_t, AqlCall> {
   auto skipped = size_t{0};
-  while (call.shouldSkip()) {
-    switch (_internalState) {
-      case State::READ_DATA_ROW: {
-        TRI_ASSERT(!_inputRow.isInitialized());
-
-        if (input.hasDataRow()) {
-          std::tie(_upstreamState, _inputRow) = input.nextDataRow();
-        } else {
-          // might have shadow rows we need to pass through
-          _internalState = State::PASS_SHADOW_ROW;
-        }
-      } break;
-      case State::PRODUCE_DATA_ROW: {
-        call.didSkip(1);
-        skipped++;
-        _internalState = State::READ_DATA_ROW;
-      } break;
-      case State::PRODUCE_SHADOW_ROW: {
-        TRI_ASSERT(false);
-      } break;
-      case State::PASS_SHADOW_ROW: {
-        TRI_ASSERT(false);
-      } break;
-    }
+  while (call.shouldSkip() && input.hasDataRow()) {
+    std::tie(_upstreamState, _inputRow) = input.nextDataRow();
+    call.didSkip(1);
+    skipped++;
   }
-
   return {_upstreamState, skipped, AqlCall{}};
 }
 
@@ -139,31 +107,29 @@ auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
   //   auto const [state, upstreamRows] = _fetcher.preFetchNumberOfRows(atMost);
   // We will write one shadow row per input data row.
   // We might write less on all shadow rows in input, right now we do not figure this out yes.
-  TRI_ASSERT(_inputRow.isInitialized() == (_internalState == State::PRODUCE_SHADOW_ROW));
-  TRI_ASSERT(_internalState != State::PRODUCE_DATA_ROW);
+  TRI_ASSERT(_inputRow.isInitialized() == (_produceState == State::PRODUCE_SHADOW_ROW));
+  TRI_ASSERT(_produceState != State::PRODUCE_DATA_ROW);
 
   // Return 1 if _input.isInitialized(), and 0 otherwise. Looks more
   // complicated than it is.
   auto const localRows = [this]() {
     if (_inputRow.isInitialized()) {
-      switch (_internalState) {
+      switch (_produceState) {
         case State::PRODUCE_SHADOW_ROW:
           return 1;
         case State::PRODUCE_DATA_ROW:
-        case State::READ_DATA_ROW:
-        case State::PASS_SHADOW_ROW: {
+        case State::READ_DATA_ROW: {
           TRI_ASSERT(false);
           using namespace std::string_literals;
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL_AQL,
-              "Unexpected state "s + stateToString(_internalState) +
+              "Unexpected state "s + stateToString(_produceState) +
                   " in SubqueryStartExecutor with local row");
         }
       }
     } else {
-      switch (_internalState) {
+      switch (_produceState) {
         case State::READ_DATA_ROW:
-        case State::PASS_SHADOW_ROW:
           return 0;
         case State::PRODUCE_DATA_ROW:
         case State::PRODUCE_SHADOW_ROW:
@@ -171,7 +137,7 @@ auto SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const
           using namespace std::string_literals;
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL_AQL,
-              "Unexpected state "s + stateToString(_internalState) +
+              "Unexpected state "s + stateToString(_produceState) +
                   " in SubqueryStartExecutor with no local row");
       }
     }
@@ -190,8 +156,6 @@ auto SubqueryStartExecutor::stateToString(SubqueryStartExecutor::State state) ->
       return "PRODUCE_DATA_ROW";
     case State::PRODUCE_SHADOW_ROW:
       return "PRODUCE_SHADOW_ROW";
-    case State::PASS_SHADOW_ROW:
-      return "PASS_SHADOW_ROW";
   }
   return "unhandled state";
 }

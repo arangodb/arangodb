@@ -75,86 +75,54 @@ SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorIn
 SubqueryEndExecutor::~SubqueryEndExecutor() = default;
 
 std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlItemRow& output) {
-  ExecutionState state;
+  TRI_ASSERT(false);
+}
 
+auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  ExecutorState state;
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
-  ShadowAqlItemRow shadowRow = ShadowAqlItemRow{CreateInvalidShadowRowHint{}};
 
-  while (!output.isFull()) {
-    switch (_state) {
-      case State::ACCUMULATE_DATA_ROWS: {
-        std::tie(state, inputRow) = _fetcher.fetchRow();
+  while (input.hasDataRow()) {
+    std::tie(state, inputRow) = input.nextDataRow();
+    TRI_ASSERT(inputRow.isInitialized());
 
-        if (state == ExecutionState::WAITING) {
-          TRI_ASSERT(!inputRow.isInitialized());
-          return {state, NoStats{}};
-        }
-
-        // We got a data row, put it into the accumulator
-        if (inputRow.isInitialized() && _infos.usesInputRegister()) {
-          _accumulator.addValue(inputRow.getValue(_infos.getInputRegister()));
-        }
-
-        // We have received DONE on data rows, so now
-        // we have to read a relevant shadow row
-        if (state == ExecutionState::DONE) {
-          _state = State::PROCESS_SHADOW_ROWS;
-        }
-      } break;
-      case State::PROCESS_SHADOW_ROWS: {
-        std::tie(state, shadowRow) = _fetcher.fetchShadowRow();
-        if (state == ExecutionState::WAITING) {
-          TRI_ASSERT(!shadowRow.isInitialized());
-          return {ExecutionState::WAITING, NoStats{}};
-        }
-        TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-
-        if (!shadowRow.isInitialized()) {
-          TRI_ASSERT(_accumulator.numValues() == 0);
-          if (state == ExecutionState::HASMORE) {
-            // We did not get another shadowRow; either we
-            // are DONE or we are getting another relevant
-            // shadow row, but only after we called fetchRow
-            // again
-            _state = State::ACCUMULATE_DATA_ROWS;
-          } else {
-            TRI_ASSERT(state == ExecutionState::DONE);
-            return {ExecutionState::DONE, NoStats{}};
-          }
-        } else {
-          if (shadowRow.isRelevant()) {
-            AqlValue value;
-            AqlValueGuard guard = _accumulator.stealValue(value);
-
-            // Responsibility is handed over to output
-            output.consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
-            TRI_ASSERT(output.produced());
-            output.advanceRow();
-
-            if (state == ExecutionState::DONE) {
-              return {ExecutionState::DONE, NoStats{}};
-            }
-          } else {
-            TRI_ASSERT(_accumulator.numValues() == 0);
-            // We got a shadow row, it must be irrelevant,
-            // because to get another relevant shadowRow we must
-            // first call fetchRow again
-            output.decreaseShadowRowDepth(shadowRow);
-            output.advanceRow();
-          }
-        }
-      } break;
-
-      default: {
-        TRI_ASSERT(false);
-        break;
-      }
+    // We got a data row, put it into the accumulator,
+    // if we're getting data through an input register.
+    // If not, we just "accumulate" an empty output.
+    if (_infos.usesInputRegister()) {
+      _accumulator.addValue(inputRow.getValue(_infos.getInputRegister()));
     }
   }
+  return {state, NoStats{}, AqlCall{}};
+}
 
-  // We should *only* fall through here if output.isFull() is true.
-  TRI_ASSERT(output.isFull());
-  return {ExecutionState::HASMORE, NoStats{}};
+auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, size_t, AqlCall> {
+  ExecutorState state;
+  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
+
+  while (input.hasDataRow()) {
+    std::tie(state, inputRow) = input.nextDataRow();
+    TRI_ASSERT(inputRow.isInitialized());
+
+    // We got a data row, put it into the accumulator,
+    // if we're getting data through an input register.
+    // If not, we just "accumulate" an empty output.
+    // if (_infos.usesInputRegister()) {
+    //   _accumulator.addValue(inputRow.getValue(_infos.getInputRegister()));
+    // }
+  }
+  // This is correct since the SubqueryEndExecutor produces one output out
+  // of the accumulation of all the (relevant) inputs
+  call.didSkip(1);
+  return {state, 1, AqlCall{}};
+}
+
+auto SubqueryEndExecutor::stealValue(AqlValue& result) -> AqlValueGuard {
+  // TODO: meh
+  TRI_DEFER(_accumulator.reset());
+  return _accumulator.stealValue(result);
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {
@@ -177,8 +145,8 @@ SubqueryEndExecutor::Accumulator::Accumulator(VPackOptions const* const options)
 }
 
 AqlValueGuard SubqueryEndExecutor::Accumulator::stealValue(AqlValue& result) {
-  // Note that an AqlValueGuard holds an AqlValue&, so we cannot create it from
-  // a local AqlValue and return the Guard!
+  // Note that an AqlValueGuard holds an AqlValue&, so we cannot create it
+  // from a local AqlValue and return the Guard!
 
   TRI_ASSERT(_builder->isOpenArray());
   _builder->close();

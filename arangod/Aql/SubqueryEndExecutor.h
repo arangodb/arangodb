@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_SUBQUERY_END_EXECUTOR_H
 #define ARANGOD_AQL_SUBQUERY_END_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -82,8 +83,21 @@ class SubqueryEndExecutor {
   SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos);
   ~SubqueryEndExecutor();
 
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[deprecated]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+
+  // produceRows accumulates all input rows it can get into _accumulator, which
+  // will then be read out by ExecutionBlockImpl
+  // TODO: can the production of output be moved to produceRows again?
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  // skipRowsRange consumes all data rows available on the input and just
+  // ignores it. real skips of a subqueries will not execute the whole subquery
+  // so this might not be necessary at all (except for modifying subqueries,
+  // where we have to execute the subquery)
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
+  [[nodiscard]] auto stealValue(AqlValue& result) -> AqlValueGuard;
 
  private:
   enum class State {

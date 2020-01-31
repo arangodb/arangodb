@@ -1097,10 +1097,15 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
 //           ahead on the input range, fetching new blocks when necessary
 // EXECUTOR: the executor has a specialised skipRowsRange method
 //           that will be called to skip
-// GET_SOME: we just request rows from the executor and then discard
-//           them
+// SUBQUERY_START:
+// SUBQUERY_END:
 //
-enum class SkipRowsRangeVariant { FETCHER, EXECUTOR };
+enum class SkipRowsRangeVariant {
+  FETCHER,
+  EXECUTOR,
+  SUBQUERY_START,
+  SUBQUERY_END
+};
 
 // This function is just copy&pasted from above to decide which variant of
 // skip is used for which executor.
@@ -1237,6 +1242,26 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
     }
     AqlCall clientCall = stack.popCall();
+
+    // Callstack handling for subqueries
+    if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+      // inspect the top two calls
+      // clientCall has the "topmost" which is coming from the subquery
+      // but we need the next one as real clientCall
+      //      AqlCall subqueryCall = clientCall;
+      clientCall = stack.popCall();
+
+      // TODO: what do we do with subquery call? We know that the subquery
+      //       needs one row to produce one row; If the subquery has an offset
+      //       we might use that, too?
+    } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+      // push original call
+      auto outsideCall = clientCall;
+      stack.pushCall(std::move(outsideCall));
+
+      // special hack
+      clientCall = AqlCall{clientCall.getOffset(), 0, 0, false};
+    }
 
     // We can only have returned the following internal states
     TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
@@ -1382,14 +1407,32 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             TRI_ASSERT(_outputItemRow);
             TRI_ASSERT(_outputItemRow->isInitialized());
 
-            _outputItemRow->copyRow(shadowRow);
+            // Subquery start has to increase shadowrow depth for all shadow
+            // rows that are passed through
+            if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+              _outputItemRow->increaseShadowRowDepth(shadowRow);
+            } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+              // if SubqueryEnd, then we consume shadow row here
+              // TODO: can this be done in a less messy way?
+              if (shadowRow.isRelevant()) {
+                //
+                AqlValue value;
+                AqlValueGuard guard = _executor.stealValue(value);
+                _outputItemRow->consumeShadowRow(_infos.getOutputRegister(), shadowRow, guard);
+              } else {
+                _outputItemRow->decreaseShadowRowDepth(shadowRow);
+              }
+            } else {
+              _outputItemRow->copyRow(shadowRow);
 
-            if (shadowRow.isRelevant()) {
-              // We found a relevant shadow Row.
-              // We need to reset the Executor
-              // cppcheck-suppress unreadVariable
-              constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
-              InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+              if (shadowRow.isRelevant()) {
+                // We found a relevant shadow Row.
+                // We need to reset the Executor
+                // cppcheck-suppress unreadVariable
+                constexpr bool customInit =
+                    hasInitializeCursor<decltype(_executor)>::value;
+                InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+              }
             }
             TRI_ASSERT(_outputItemRow->produced());
             _outputItemRow->advanceRow();
