@@ -309,34 +309,39 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
                                               _directions, _inStartVariable,
                                               _startVertexId, _inTargetVariable,
                                               _targetVertexId, std::move(tmp));
+  shortestPathCloneHelper(*plan, *c, withProperties);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
+                                               bool withProperties) const {
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
-      vertexOutVariable = plan->getAst()->variables()->createVariable(vertexOutVariable);
+      vertexOutVariable = plan.getAst()->variables()->createVariable(vertexOutVariable);
     }
     TRI_ASSERT(vertexOutVariable != nullptr);
-    c->setVertexOutput(vertexOutVariable);
+    c.setVertexOutput(vertexOutVariable);
   }
 
   if (usesEdgeOutVariable()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
-      edgeOutVariable = plan->getAst()->variables()->createVariable(edgeOutVariable);
+      edgeOutVariable = plan.getAst()->variables()->createVariable(edgeOutVariable);
     }
     TRI_ASSERT(edgeOutVariable != nullptr);
-    c->setEdgeOutput(edgeOutVariable);
+    c.setEdgeOutput(edgeOutVariable);
   }
 
   // Temporary Filter Objects
-  c->_tmpObjVariable = _tmpObjVariable;
-  c->_tmpObjVarNode = _tmpObjVarNode;
-  c->_tmpIdNode = _tmpIdNode;
+  c._tmpObjVariable = _tmpObjVariable;
+  c._tmpObjVarNode = _tmpObjVarNode;
+  c._tmpIdNode = _tmpIdNode;
 
   // Filter Condition Parts
-  c->_fromCondition = _fromCondition->clone(_plan->getAst());
-  c->_toCondition = _toCondition->clone(_plan->getAst());
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  c._fromCondition = _fromCondition->clone(_plan->getAst());
+  c._toCondition = _toCondition->clone(_plan->getAst());
 }
 
 void ShortestPathNode::prepareOptions() {
@@ -380,4 +385,25 @@ void ShortestPathNode::prepareOptions() {
     _options->activateCache(false, nullptr);
   }
   _optionsBuilt = true;
+}
+
+auto ShortestPathNode::options() const -> ShortestPathOptions* {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* opts = dynamic_cast<ShortestPathOptions*>(GraphNode::options());
+  TRI_ASSERT((GraphNode::options() == nullptr) == (opts == nullptr));
+#else
+  auto* opts = static_cast<ShortestPathOptions*>(GraphNode::options());
+#endif
+  return opts;
+}
+
+ShortestPathNode::ShortestPathNode(ExecutionPlan& plan, const ShortestPathNode& other)
+    : GraphNode(plan, other, std::make_unique<ShortestPathOptions>(*other.options())),
+      _inStartVariable(other._inStartVariable),
+      _startVertexId(other._startVertexId),
+      _inTargetVariable(other._inTargetVariable),
+      _targetVertexId(other._targetVertexId),
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {
+  other.shortestPathCloneHelper(plan, *this, false);
 }

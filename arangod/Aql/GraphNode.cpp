@@ -30,18 +30,38 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
+#include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/SortCondition.h"
+#include "Aql/TraversalExecutor.h"
+#include "Aql/Variable.h"
+#include "Basics/StringUtils.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterTraverser.h"
 #include "Cluster/ServerState.h"
+#include "Enterprise/Cluster/SmartGraphTraverser.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
+#include "Graph/SingleServerTraverser.h"
+#include "Graph/TraverserOptions.h"
+#include "Indexes/Index.h"
 #include "TraversalNode.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/SatelliteTraversalNode.h"
+#include "Enterprise/Aql/SatelliteShortestPathNode.h"
 #endif
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 #include <utility>
 
 using namespace arangodb;
@@ -692,8 +712,17 @@ bool GraphNode::isUsedAsSatellite() const {
 #ifndef USE_ENTERPRISE
   return false;
 #else
-  auto const* traversalNode = dynamic_cast<SatelliteTraversalNode const*>(this);
-  // TODO do this for shortest path and k-shortest paths as well
-  return traversalNode != nullptr && traversalNode->isUsedAsSatellite();
+  auto const* collectionAccessingNode = dynamic_cast<CollectionAccessingNode const*>(this);
+  TRI_ASSERT((collectionAccessingNode != nullptr) ==
+             (nullptr != dynamic_cast<SatelliteTraversalNode const*>(this) ||
+              nullptr != dynamic_cast<SatelliteShortestPathNode const*>(this)
+              // TODO uncomment the next line when SatelliteKShortestPathsNode is implemented:
+              // || nullptr != dynamic_cast<SatelliteKShortestPathsNode const*>(this)
+              ));
+  return collectionAccessingNode != nullptr && collectionAccessingNode->isUsedAsSatellite();
 #endif
+}
+
+bool GraphNode::isEligibleAsSatelliteTraversal() const {
+  return graph() != nullptr && graph()->isSatellite();
 }

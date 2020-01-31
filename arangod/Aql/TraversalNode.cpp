@@ -33,6 +33,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/GraphNode.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -783,10 +784,6 @@ void TraversalNode::getPruneVariables(std::vector<Variable const*>& res) const {
       res.emplace_back(it);
     }
   }
-}
-
-bool TraversalNode::isEligibleAsSatelliteTraversal() const {
-  return graph() != nullptr && graph()->isSatellite();
 }
 
 auto TraversalNode::options() const -> TraverserOptions* {

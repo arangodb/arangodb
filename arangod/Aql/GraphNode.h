@@ -24,9 +24,13 @@
 #ifndef ARANGOD_AQL_GRAPH_NODE_H
 #define ARANGOD_AQL_GRAPH_NODE_H 1
 
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/GraphNode.h"
+#include "Aql/Graphs.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -60,6 +64,8 @@ class GraphNode : public ExecutionNode {
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   bool isUsedAsSatellite() const;
+
+  bool isEligibleAsSatelliteTraversal() const;
 
  protected:
   /// @brief Internal constructor to clone the node.
