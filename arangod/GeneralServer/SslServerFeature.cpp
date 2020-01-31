@@ -674,8 +674,7 @@ static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string a
 Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
   { VPackObjectBuilder guard(&builder);
     dumpPEM(_keyfileContent, builder, "keyfile");
-    dumpPEM( _cafileContent, builder, "clientCA");
+    dumpPEM(_cafileContent, builder, "clientCA");
   }
   return Result(TRI_ERROR_NO_ERROR);
 }
-
