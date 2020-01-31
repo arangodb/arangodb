@@ -70,7 +70,7 @@ void MMFilesCompactionFeature::collectOptions(std::shared_ptr<options::ProgramOp
                      new DoubleParameter(&_compactionCollectionInterval));
 
   options->addOption("--compaction.min-small-data-file-size",
-                     "minimal filesize threshhold original data files have to "
+                     "minimal filesize threshold original data files have to "
                      "be below for a compaction",
                      new UInt64Parameter(&_smallDatafileSize));
 

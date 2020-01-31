@@ -104,25 +104,25 @@ void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
       "--server.maintenance-threads",
       "maximum number of threads available for maintenance actions",
       new UInt32Parameter(&_maintenanceThreadsMax),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                    arangodb::options::Flags::Dynamic));
 
   options->addOption(
       "--server.maintenance-actions-block",
       "minimum number of seconds finished Actions block duplicates",
       new Int32Parameter(&_secondsActionsBlock),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--server.maintenance-actions-linger",
       "minimum number of seconds finished Actions remain in deque",
       new Int32Parameter(&_secondsActionsLinger),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--cluster.resign-leadership-on-shutdown",
                     "create resign leader ship job for this dbsever on shutdown",
                     new BooleanParameter(&_resignLeadershipOnShutdown),
-                    arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                    arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
 }  // MaintenanceFeature::collectOptions
 

@@ -109,7 +109,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--ssl.options",
                      "ssl connection options, see OpenSSL documentation",
                      new UInt64Parameter(&_sslOptions),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--ssl.ecdh-curve",
@@ -196,8 +196,6 @@ class BIOGuard {
 };
 }  // namespace
 
-
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg) {
@@ -209,7 +207,6 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 
   return SSL_TLSEXT_ERR_OK;
 }
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 asio_ns::ssl::context SslServerFeature::createSslContext() const {
   try {
@@ -332,9 +329,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
 
     sslContext.set_verify_mode(SSL_VERIFY_NONE);
     
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
     SSL_CTX_set_alpn_select_cb(sslContext.native_handle(), alpn_select_proto_cb, NULL);
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     return sslContext;
   } catch (std::exception const& ex) {
