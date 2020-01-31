@@ -74,6 +74,7 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _compactor(this),
       _ready(false),
       _preparing(0),
+      _loaded(false),
       _write_ok(
         _server.getFeature<arangodb::MetricsFeature>().counter(
           "agency_agent_write_ok", 0, "Agency write ok")),
@@ -450,7 +451,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  
+
   auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
@@ -650,7 +651,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
           << "Setting _earliestPackage to now + 30s for id " << followerId;
-      
+
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(150);
 
@@ -660,7 +661,7 @@ void Agent::sendAppendEntriesRPC() {
                            std::move(buffer), reqOpts).thenValue([=](network::Response r) {
         ac->operator()(r);
       });
-      
+
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
@@ -721,7 +722,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
         << " because we are no longer leading.";
     return;
   }
-  
+
   auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
@@ -737,7 +738,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
                        std::move(buffer), reqOpts).thenValue([=](network::Response r) {
     ac->operator()(r);
   });
-  
+
   _constituent.notifyHeartbeatSent(followerId);
 
   double now = TRI_microtime();
@@ -873,6 +874,9 @@ void Agent::load() {
     _spearhead = _readDB;
     activateAgency();
   }
+
+  _loaded = true;
+
 }
 
 /// Still leading? Under MUTEX from ::read or ::write
@@ -1137,6 +1141,10 @@ write_ret_t Agent::inquire(query_t const& query) {
   return ret;
 }
 
+bool Agent::loaded() const {
+  return _loaded.load();
+}
+
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
@@ -1150,7 +1158,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if (multihost && leader != id()) {
+  if ((!loaded() && wmode != WriteMode(true,true)) || (multihost && leader != id())) {
     ++_write_no_leader;
     return write_ret_t(false, leader);
   }
@@ -1247,7 +1255,7 @@ read_ret_t Agent::read(query_t const& query) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if (leader != id()) {
+  if (!loaded() || (size() > 1 && leader != id())) {
     ++_read_no_leader;
     return read_ret_t(false, leader);
   }
@@ -1267,7 +1275,7 @@ read_ret_t Agent::read(query_t const& query) {
   }
 
   leader = _constituent.leaderID();
-  
+
   auto result = std::make_shared<arangodb::velocypack::Builder>();
 
   READ_LOCKER(oLocker, _outputLock);
