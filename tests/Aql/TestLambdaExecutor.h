@@ -53,17 +53,24 @@ using SkipCall =
     std::function<std::tuple<ExecutorState, size_t, AqlCall>(AqlItemBlockInputRange& input, AqlCall& call)>;
 
 /**
+ * @brief This is a shorthand for the reset state signature
+ */
+using ResetCall = std::function<void()>;
+
+/**
  * @brief Executorinfos for the lambda executors.
  *        Contains basice RegisterPlanning information, and a ProduceCall.
  *        This produceCall will be executed whenever the LambdaExecutor is called with produceRows
  */
 class LambdaExecutorInfos : public ExecutorInfos {
  public:
-  LambdaExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                      std::unordered_set<RegisterId> registersToClear,
-                      std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda);
+  LambdaExecutorInfos(
+      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+      std::unordered_set<RegisterId> registersToClear,
+      std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
+      ResetCall reset = []() -> void {});
 
   LambdaExecutorInfos() = delete;
   LambdaExecutorInfos(LambdaExecutorInfos&&) = default;
@@ -71,9 +78,11 @@ class LambdaExecutorInfos : public ExecutorInfos {
   ~LambdaExecutorInfos() = default;
 
   auto getProduceLambda() const -> ProduceCall const&;
+  auto reset() -> void;
 
  private:
   ProduceCall _produceLambda;
+  ResetCall _resetLambda;
 };
 
 /**
@@ -84,12 +93,13 @@ class LambdaExecutorInfos : public ExecutorInfos {
  */
 class LambdaSkipExecutorInfos : public ExecutorInfos {
  public:
-  LambdaSkipExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
-                          std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
-                          RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                          std::unordered_set<RegisterId> registersToClear,
-                          std::unordered_set<RegisterId> registersToKeep,
-                          ProduceCall lambda, SkipCall skipLambda);
+  LambdaSkipExecutorInfos(
+      std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+      std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+      std::unordered_set<RegisterId> registersToClear,
+      std::unordered_set<RegisterId> registersToKeep, ProduceCall lambda,
+      SkipCall skipLambda, ResetCall reset = []() -> void {});
 
   LambdaSkipExecutorInfos() = delete;
   LambdaSkipExecutorInfos(LambdaSkipExecutorInfos&&) = default;
@@ -98,10 +108,12 @@ class LambdaSkipExecutorInfos : public ExecutorInfos {
 
   auto getProduceLambda() const -> ProduceCall const&;
   auto getSkipLambda() const -> SkipCall const&;
+  auto reset() -> void;
 
  private:
   ProduceCall _produceLambda;
   SkipCall _skipLambda;
+  ResetCall _resetLambda;
 };
 
 /**
