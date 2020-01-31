@@ -70,6 +70,7 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upst
           dropBlock();
         } else {
           _firstBlockPos += toSkip;
+          skipped += toSkip;
           call.didSkip(toSkip);
         }
       } else if (toProduce > 0) {
@@ -104,6 +105,9 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upst
           call.didSkip(firstBlockRows());
         }
         dropBlock();
+      } else {
+        // We have fulfilled this call
+        break;
       }
     }
   }
