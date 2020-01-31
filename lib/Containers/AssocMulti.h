@@ -46,6 +46,7 @@
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/prime-numbers.h"
+#include "Basics/voc-errors.h"
 #include "Containers/details/AssocHelpers.h"
 #include "Containers/details/AssocMultiHelpers.h"
 #include "Containers/details/IndexBucket.h"
