@@ -98,14 +98,6 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   LOG_TOPIC("b735e", TRACE, Logger::AGENCY)
     << "persist index=" << index << " term=" << term << " entry: " << entry.toJson();
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE // we should never get here
-  if (index == 1 && entry.length() != 1 && !entry.hasKey(RECONFIGURE)) {
-    LOG_TOPIC("cba44", FATAL, Logger::AGENCY)
-      << "RAFT index 1 must be an holding only a '.agency' entry, however we got " << entry.toJson();
-  }
-  TRI_ASSERT(false);
-#endif
-
   Builder body;
   {
     VPackObjectBuilder b(&body);
