@@ -3,26 +3,26 @@
 WD=$(pwd)
 if [ "x$@" = "x" ] ; then
   JAVASCRIPT_JSLINT="\
-    $(find ${WD}/js/actions -name "*.js") \
-    $(find ${WD}/js/common/bootstrap -name "*.js") \
-    $(find ${WD}/js/client/bootstrap -name "*.js") \
-    $(find ${WD}/js/server/bootstrap -name "*.js") \
+    $(find "${WD}/js/actions" -name "*.js") \
+    $(find "${WD}/js/common/bootstrap" -name "*.js") \
+    $(find "${WD}/js/client/bootstrap" -name "*.js") \
+    $(find "${WD}/js/server/bootstrap" -name "*.js") \
     \
-    $(find ${WD}/js/common/modules/@arangodb -name "*.js") \
-    $(find ${WD}/js/client/modules/@arangodb -name "*.js") \
-    $(find ${WD}/js/server/modules/@arangodb -name "*.js") \
-    $(find ${WD}/tests/js/server -name "*.js" | grep -v "ranges-combined") \
-    $(find ${WD}/tests/js/common -name "*.js" | grep -v "test-data") \
-    $(find ${WD}/tests/js/client -name "*.js") \
-    $(find ${WD}/UnitTests -name "*.js") \
+    $(find "${WD}/js/common/modules/@arangodb" -name "*.js") \
+    $(find "${WD}/js/client/modules/@arangodb" -name "*.js") \
+    $(find "${WD}/js/server/modules/@arangodb" -name "*.js") \
+    $(find "${WD}/tests/js/server" -name "*.js" | grep -v "ranges-combined") \
+    $(find "${WD}/tests/js/common" -name "*.js" | grep -v "test-data") \
+    $(find "${WD}/tests/js/client" -name "*.js") \
+    $(find "${WD}/UnitTests" -name "*.js") \
     \
-    $(find ${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/models -name "*.js") \
-    $(find ${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/views -name "*.js") \
-    $(find ${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/collections -name "*.js") \
-    $(find ${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/routers -name "*.js") \
-    $(find ${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/arango -name "*.js") \
+    $(find "${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/models" -name "*.js") \
+    $(find "${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/views" -name "*.js") \
+    $(find "${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/collections" -name "*.js") \
+    $(find "${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/routers" -name "*.js") \
+    $(find "${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/arango" -name "*.js") \
     \
-    $(find ${WD}/scripts -name "*.js") \
+    $(find "${WD}/scripts" -name "*.js") \
     \
     ${WD}/js/common/modules/jsunity.js \
     ${WD}/js/client/client.js \
@@ -32,11 +32,11 @@ if [ "x$@" = "x" ] ; then
     ${WD}/js/server/arango-dfdb.js \
     \
   "
-  if [ -d ${WD}/enterprise ] ; then
+  if [ -d "${WD}/enterprise" ] ; then
     echo Considering enterprise files...
     JAVASCRIPT_JSLINT="$JAVASCRIPT_JSLINT \
-      $(find ${WD}/enterprise/js -name "*.js") \
-      $(find ${WD}/enterprise/tests/js -name "*.js") \
+      $(find "${WD}/enterprise/js" -name "*.js") \
+      $(find "${WD}/enterprise/tests/js" -name "*.js") \
       "
   fi
 else
@@ -62,8 +62,8 @@ else
     if [ "${ARANGOSH}" = "/usr/bin/arangosh" ]; then
         # system arangosh? give it its own javascript dir, install jslint to it.
         JSDIR=$(grep startup-directory /etc/arangodb3/arangosh.conf  |sed "s;.*= *;;")
-        mkdir -p ${JSDIR}/node/node_modules/
-        cp -a js/node/node_modules/eslint ${JSDIR}/node/node_modules/
+        mkdir -p "${JSDIR}/node/node_modules/"
+        cp -a js/node/node_modules/eslint "${JSDIR}/node/node_modules/"
      fi
 fi
 
