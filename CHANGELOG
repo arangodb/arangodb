@@ -1,8 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
-* Cluster collection creation preconditioned on involved db servers not
-  in process of being cleaned and beyond.
+* Cluster collection creation preconditioned on involved db server not in
+  process of being cleaned and beyond.
 
 * Fixed issue #10949: k shortest paths behavior wrong with zero weights.
 
