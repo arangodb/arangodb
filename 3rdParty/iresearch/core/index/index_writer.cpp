@@ -2085,7 +2085,7 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
 
     // write non-empty document mask
     if (!docs_mask.empty()) {
-      if (!pending_consolidation) {
+      if (!pending_consolidation) { 
         // if this is pending consolidation, 
         // this segment is already in the mask (see assert below)
         // new version will be created. Remove old version from cache!

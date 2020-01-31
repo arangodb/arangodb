@@ -74,7 +74,7 @@ void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions
 
   options->addOption("--cache.size", "size of cache in bytes",
                      new UInt64Parameter(&_cacheSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--cache.rebalancing-interval",
                      "microseconds between rebalancing attempts",
