@@ -197,8 +197,6 @@ class BIOGuard {
 };
 }  // namespace
 
-
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg) {
@@ -210,7 +208,6 @@ static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 
   return SSL_TLSEXT_ERR_OK;
 }
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
   try {
@@ -337,9 +334,7 @@ std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
 
     sslContext->set_verify_mode(SSL_VERIFY_NONE);
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
     SSL_CTX_set_alpn_select_cb(sslContext->native_handle(), alpn_select_proto_cb, NULL);
-#endif  // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     return sslContext;
   } catch (std::exception const& ex) {
