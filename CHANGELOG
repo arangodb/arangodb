@@ -1,6 +1,10 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #596: Added ability to disable DNF conversion in 
+  SEARCH condition for ArangoSearch views. As this conversion might result
+  in overcomplicated disjunction and heavily slowdown execution.
+
 * Supervision maintenance mode from "on" and TTL to expiry string.
 
 * Clean out server job checks preconditions plan version unchanged for start.
