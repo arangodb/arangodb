@@ -26,6 +26,8 @@
 #include "Actions/RestActionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "VocBase/VocbaseInfo.h"
@@ -52,6 +54,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleAvailability();
   } else if (suffixes.size() == 1 && suffixes[0] == "databaseDefaults") {
     handleDatabaseDefaults();
+  } else if (suffixes.size() == 1 && suffixes[0] == "tls") {
+    handleTLS();
   } else if (suffixes.size() == 1 && suffixes[0] == "jwt") {
     handleJWTSecretsReload();
   } else {
@@ -217,6 +221,35 @@ void RestAdminServerHandler::handleDatabaseDefaults() {
   addClusterOptions(builder, defaults);
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
+void RestAdminServerHandler::handleTLS() {
+  auto const requestType = _request->requestType();
+  VPackBuilder builder;
+  auto* sslServerFeature = arangodb::SslServerFeature::SSL;
+  if (requestType == rest::RequestType::GET) {
+    // Put together a TLS-based cocktail:
+    sslServerFeature->dumpTLSData(builder);
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  } else if (requestType == rest::RequestType::POST) {
+
+    // Only the superuser may reload TLS data:
+    if (!_request->authenticated() || !_request->user().empty()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "only superusers may reload TLS data");
+      return;
+    }
+
+    Result res = GeneralServerFeature::reloadTLS();
+    if (res.fail()) {
+      generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
+      return;
+    }
+    sslServerFeature->dumpTLSData(builder);
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  } else {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+  }
 }
 
 #ifndef USE_ENTERPRISE

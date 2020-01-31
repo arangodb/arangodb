@@ -38,6 +38,7 @@ add_library(nghttp2 STATIC
   ${NGHTTP2_SOURCES}
 )
 
+include(CheckTypeSize)
 check_type_size("ssize_t" SIZEOF_SSIZE_T)
 if(SIZEOF_SSIZE_T STREQUAL "")
   # ssize_t is a signed type in POSIX storing at least -1.

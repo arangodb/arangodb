@@ -29,7 +29,6 @@
 
 #include <sstream>
 
-#include <curl/curl.h>
 #include <openssl/ssl.h>
 
 #include <rocksdb/convenience.h>
@@ -162,7 +161,7 @@ void Version::initialize() {
   Values["build-repository"] = getBuildRepository();
 #endif
 
-  Values["curl-version"] = curl_version();
+  Values["curl-version"] = "none";
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["assertions"] = "true";

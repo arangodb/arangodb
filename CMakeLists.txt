@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.9)
+message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -1213,16 +1214,6 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
-## cURL
-################################################################################
-
-add_definitions(-DCURL_STATICLIB=1)
-include_directories(SYSTEM
-  ${CURL_SRC_DIR}/include/
-  ${CURL_BIN_DIR}/include/curl/
-)
-
-################################################################################
 ## PATHS, installation, packages, frontend
 ################################################################################
 
@@ -1307,7 +1298,6 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${ZLIB_LIBS}
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
-  libcurl
   ${BASE_LIBS}
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}
