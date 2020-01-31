@@ -188,7 +188,7 @@ auto KShortestPathsExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCal
     -> std::tuple<ExecutorState, size_t, AqlCall> {
   auto skipped = size_t{0};
 
-  while (call.getOffset() > 0 || (call.getOffset() == 0 && call.getLimit() == 0)) {
+  while (call.shouldSkip()) {
     if (_finder.isPathAvailable()) {
       skipped++;
       call.didSkip(1);
