@@ -41,7 +41,7 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 
-class ScatterExecutionBlockTest : public ::testing::Test {
+class SharedScatterExecutionBlockTest {
  protected:
   mocks::MockAqlServer server{};
   ResourceMonitor monitor{};
@@ -51,7 +51,7 @@ class ScatterExecutionBlockTest : public ::testing::Test {
   velocypack::Options vpackOptions;
   std::vector<std::string> clientIds{"a", "b", "c"};
 
-  ScatterExecutionBlockTest() {
+  SharedScatterExecutionBlockTest() {
     auto engine =
         std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
     fakedQuery->setEngine(engine.release());
@@ -116,7 +116,36 @@ class ScatterExecutionBlockTest : public ::testing::Test {
   }
 };
 
-TEST_F(ScatterExecutionBlockTest, all_clients_should_get_the_block) {
+class ScatterExecutionBlockTest : public SharedScatterExecutionBlockTest,
+                                  public ::testing::Test {};
+
+class RandomOrderTest : public SharedScatterExecutionBlockTest,
+                        public ::testing::TestWithParam<std::vector<std::string>> {
+ protected:
+  std::vector<std::string> const& getCallOrder() { return GetParam(); }
+
+  RandomOrderTest() {}
+};
+
+namespace {
+template <typename T>
+auto ArrayPermutations(std::vector<T> base) -> std::vector<std::vector<T>> {
+  std::vector<std::vector<T>> res;
+  // This is not corect we would need faculity of base, but we are in a test...
+  res.reserve(base.size());
+  do {
+    res.emplace_back(base);
+  } while (std::next_permutation(base.begin(), base.end()));
+  return res;
+};
+
+auto randomOrderCalls = ArrayPermutations<std::string>({"a", "b", "c"});
+}  // namespace
+
+INSTANTIATE_TEST_CASE_P(ScatterExecutionBlockTestRandomOrder, RandomOrderTest,
+                        ::testing::ValuesIn(randomOrderCalls));
+
+TEST_P(RandomOrderTest, all_clients_should_get_the_block) {
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
   auto producer = createProducer(inputBlock);
 
@@ -124,7 +153,7 @@ TEST_F(ScatterExecutionBlockTest, all_clients_should_get_the_block) {
                                              generateInfos(), clientIds};
   testee.addDependency(&producer);
 
-  for (auto const& client : clientIds) {
+  for (auto const& client : getCallOrder()) {
     SCOPED_TRACE("Testing client " + client);
     AqlCall call{};  // DefaultCall
     AqlCallStack stack{call};
@@ -135,7 +164,7 @@ TEST_F(ScatterExecutionBlockTest, all_clients_should_get_the_block) {
   }
 }
 
-TEST_F(ScatterExecutionBlockTest, all_clients_can_skip_the_block) {
+TEST_P(RandomOrderTest, all_clients_can_skip_the_block) {
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
   auto producer = createProducer(inputBlock);
 
@@ -143,7 +172,7 @@ TEST_F(ScatterExecutionBlockTest, all_clients_can_skip_the_block) {
                                              generateInfos(), clientIds};
   testee.addDependency(&producer);
 
-  for (auto const& client : clientIds) {
+  for (auto const& client : getCallOrder()) {
     SCOPED_TRACE("Testing client " + client);
     AqlCall call{};
     call.offset = 10;
@@ -155,7 +184,7 @@ TEST_F(ScatterExecutionBlockTest, all_clients_can_skip_the_block) {
   }
 }
 
-TEST_F(ScatterExecutionBlockTest, all_clients_can_fullcount_the_block) {
+TEST_P(RandomOrderTest, all_clients_can_fullcount_the_block) {
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
   auto expectedBlock = buildBlock<1>(itemBlockManager, {{0}});
   auto producer = createProducer(inputBlock);
@@ -164,7 +193,7 @@ TEST_F(ScatterExecutionBlockTest, all_clients_can_fullcount_the_block) {
                                              generateInfos(), clientIds};
   testee.addDependency(&producer);
 
-  for (auto const& client : clientIds) {
+  for (auto const& client : getCallOrder()) {
     SCOPED_TRACE("Testing client " + client);
     AqlCall call{};
     call.hardLimit = 1;
@@ -176,6 +205,64 @@ TEST_F(ScatterExecutionBlockTest, all_clients_can_fullcount_the_block) {
     ValidateBlocksAreEqual(block, expectedBlock);
   }
 }
+
+TEST_F(RandomOrderTest, all_clients_can_have_different_calls) {
+  auto inputBlock =
+      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}});
+  auto producer = createProducer(inputBlock);
+
+  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(), generateScatterNode(),
+                                             generateInfos(), clientIds};
+  testee.addDependency(&producer);
+
+  for (auto const& client : getCallOrder()) {
+    SCOPED_TRACE("Testing client " + client);
+    if (client == "a") {
+      // Just produce all
+      AqlCall call{};
+      AqlCallStack stack{call};
+      auto const [state, skipped, block] = testee.executeForClient(stack, client);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 0);
+      ValidateBlocksAreEqual(block, inputBlock);
+    } else if (client == "b") {
+      AqlCall call{};
+      call.offset = 2;
+      call.hardLimit = 2;
+      AqlCallStack stack{call};
+      auto const [state, skipped, block] = testee.executeForClient(stack, client);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 2);
+      auto expectedBlock = buildBlock<1>(itemBlockManager, {{2}, {3}});
+      ValidateBlocksAreEqual(block, expectedBlock);
+    } else if (client == "c") {
+      {
+        AqlCall call{};
+        call.softLimit = 2;
+        AqlCallStack stack{call};
+        auto const [state, skipped, block] = testee.executeForClient(stack, client);
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+        EXPECT_EQ(skipped, 0);
+        auto expectedBlock = buildBlock<1>(itemBlockManager, {{0}, {1}});
+        ValidateBlocksAreEqual(block, expectedBlock);
+      }
+      {
+        // As we have softLimit we can simply call again
+        AqlCall call{};
+        call.offset = 1;
+        call.softLimit = 2;
+        AqlCallStack stack{call};
+        auto const [state, skipped, block] = testee.executeForClient(stack, client);
+        EXPECT_EQ(state, ExecutionState::HASMORE);
+        EXPECT_EQ(skipped, 1);
+        auto expectedBlock = buildBlock<1>(itemBlockManager, {{3}, {4}});
+        ValidateBlocksAreEqual(block, expectedBlock);
+      }
+    }
+  }
+}
+
+// Here we do a more specific ordering of calls, as we need to rearange multidepthCalls
 
 TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
@@ -243,71 +330,6 @@ TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
       ASSERT_TRUE(callNr < blocks.size());
       ValidateBlocksAreEqual(blocks[callNr], block);
       callNr++;
-    }
-  } while (std::next_permutation(callOrder.begin(), callOrder.end()));
-}
-
-TEST_F(ScatterExecutionBlockTest, all_clients_can_have_different_calls) {
-  auto inputBlock =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}});
-  auto producer = createProducer(inputBlock);
-
-  ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(), generateScatterNode(),
-                                             generateInfos(), clientIds};
-  testee.addDependency(&producer);
-
-  std::vector<std::string> callOrder = clientIds;
-  do {
-    auto producer = createProducer(inputBlock);
-
-    ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(), generateScatterNode(),
-                                               generateInfos(), clientIds};
-    testee.addDependency(&producer);
-
-    for (auto const& client : callOrder) {
-      SCOPED_TRACE("Testing client " + client);
-      if (client == "a") {
-        // Just produce all
-        AqlCall call{};
-        AqlCallStack stack{call};
-        auto const [state, skipped, block] = testee.executeForClient(stack, client);
-        EXPECT_EQ(state, ExecutionState::DONE);
-        EXPECT_EQ(skipped, 0);
-        ValidateBlocksAreEqual(block, inputBlock);
-      } else if (client == "b") {
-        AqlCall call{};
-        call.offset = 2;
-        call.hardLimit = 2;
-        AqlCallStack stack{call};
-        auto const [state, skipped, block] = testee.executeForClient(stack, client);
-        EXPECT_EQ(state, ExecutionState::DONE);
-        EXPECT_EQ(skipped, 2);
-        auto expectedBlock = buildBlock<1>(itemBlockManager, {{2}, {3}});
-        ValidateBlocksAreEqual(block, expectedBlock);
-      } else if (client == "c") {
-        {
-          AqlCall call{};
-          call.softLimit = 2;
-          AqlCallStack stack{call};
-          auto const [state, skipped, block] = testee.executeForClient(stack, client);
-          EXPECT_EQ(state, ExecutionState::HASMORE);
-          EXPECT_EQ(skipped, 0);
-          auto expectedBlock = buildBlock<1>(itemBlockManager, {{0}, {1}});
-          ValidateBlocksAreEqual(block, expectedBlock);
-        }
-        {
-          // As we have softLimit we can simply call again
-          AqlCall call{};
-          call.offset = 1;
-          call.softLimit = 2;
-          AqlCallStack stack{call};
-          auto const [state, skipped, block] = testee.executeForClient(stack, client);
-          EXPECT_EQ(state, ExecutionState::HASMORE);
-          EXPECT_EQ(skipped, 1);
-          auto expectedBlock = buildBlock<1>(itemBlockManager, {{3}, {4}});
-          ValidateBlocksAreEqual(block, expectedBlock);
-        }
-      }
     }
   } while (std::next_permutation(callOrder.begin(), callOrder.end()));
 }
