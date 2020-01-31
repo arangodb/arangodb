@@ -232,6 +232,14 @@ void RestAdminServerHandler::handleTLS() {
     sslServerFeature->dumpTLSData(builder);
     generateOk(rest::ResponseCode::OK, builder.slice());
   } else if (requestType == rest::RequestType::POST) {
+
+    // Only the superuser may reload TLS data:
+    if (!_request->authenticated() || !_request->user().empty()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "only superusers may reload TLS data");
+      return;
+    }
+
     Result res = GeneralServerFeature::reloadTLS();
     if (res.fail()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(), res.errorMessage());
