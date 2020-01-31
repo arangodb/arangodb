@@ -196,10 +196,19 @@ void EnumerateListExecutor::processArrayElement(OutputAqlItemRow& output) {
   _inputArrayPosition++;
 }
 
-size_t EnumerateListExecutor::skipArrayElement() {
-  // set position to +1 for next iteration after new fetchRow
-  _inputArrayPosition++;
-  return 1;
+size_t EnumerateListExecutor::skipArrayElement(size_t toSkip) {
+  size_t skipped = 0;
+
+  if (toSkip <= _inputArrayLength - _inputArrayPosition) {
+    // if we're skipping less or exact the amount of elements we can skip with toSkip
+    _inputArrayPosition += toSkip;
+    skipped = toSkip;
+  } else if (toSkip > _inputArrayLength - _inputArrayPosition) {
+    // we can only skip the max amount of values we've in our array
+    skipped = _inputArrayLength - _inputArrayPosition;
+    _inputArrayPosition = _inputArrayLength;
+  }
+  return skipped;
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
@@ -258,14 +267,14 @@ std::tuple<ExecutorState, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
     if (offsetPhase) {
       if (skipped < call.getOffset()) {
         // we still need to skip offset entries
-        skipped += skipArrayElement();
+        skipped += skipArrayElement(call.getOffset() - skipped);
       } else {
         // we skipped enough in our offset phase
         break;
       }
     } else {
       // fullCount phase - skippen bis zum ende
-      skipped += skipArrayElement();
+      skipped += skipArrayElement(_inputArrayLength - _inputArrayPosition);
     }
   }
   call.didSkip(skipped);

@@ -110,9 +110,9 @@ class EnumerateListExecutor {
   void processArrayElement(OutputAqlItemRow& output);
 
   /**
-   * @brief Will process an found array element
+   * @brief Will skip a maximum of n-elements inside the current array
    */
-  size_t skipArrayElement();
+  size_t skipArrayElement(size_t skip);
 
   /**
    * @brief produce the next Row of Aql Values.
