@@ -114,29 +114,29 @@ static void JS_DatafilesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   // journals
   v8::Handle<v8::Array> journals = v8::Array::New(isolate);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "journals"), journals).FromMaybe(false); // TODO
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "journals"), journals).FromMaybe(false);
 
   uint32_t i = 0;
   for (auto& it : structure.journals) {
-    journals->Set(context, i++, TRI_V8_STD_STRING(isolate, it)).FromMaybe(false); // TODO
+    journals->Set(context, i++, TRI_V8_STD_STRING(isolate, it)).FromMaybe(false);
   }
 
   // compactors
   v8::Handle<v8::Array> compactors = v8::Array::New(isolate);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "compactors"), compactors).FromMaybe(false); // TODO
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "compactors"), compactors).FromMaybe(false);
 
   i = 0;
   for (auto& it : structure.compactors) {
-    compactors->Set(context, i++, TRI_V8_STD_STRING(isolate, it)).FromMaybe(false); // TODO
+    compactors->Set(context, i++, TRI_V8_STD_STRING(isolate, it)).FromMaybe(false);
   }
 
   // datafiles
   v8::Handle<v8::Array> datafiles = v8::Array::New(isolate);
-  result->Set(context, TRI_V8_ASCII_STRING(isolate, "datafiles"), datafiles).FromMaybe(false); // TODO
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "datafiles"), datafiles).FromMaybe(false);
 
   i = 0;
   for (auto& it : structure.datafiles) {
-    datafiles->Set(context, i++, TRI_V8_STD_STRING(isolate, it)).FromMaybe(false); // TODO
+    datafiles->Set(context, i++, TRI_V8_STD_STRING(isolate, it)).FromMaybe(false);
   }
 
   TRI_V8_RETURN(result);
@@ -176,26 +176,26 @@ static void JS_DatafileScanVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const&
 
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "currentSize"),
-                v8::Number::New(isolate, scan.currentSize)).FromMaybe(false); // TODO
+                v8::Number::New(isolate, scan.currentSize)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "maximalSize"),
-                v8::Number::New(isolate, scan.maximalSize)).FromMaybe(false); // TODO
+                v8::Number::New(isolate, scan.maximalSize)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "endPosition"),
-                v8::Number::New(isolate, scan.endPosition)).FromMaybe(false); // TODO
+                v8::Number::New(isolate, scan.endPosition)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "numberMarkers"),
-                v8::Number::New(isolate, scan.numberMarkers)).FromMaybe(false); // TODO
+                v8::Number::New(isolate, scan.numberMarkers)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "status"),
-                v8::Number::New(isolate, scan.status)).FromMaybe(false); // TODO
+                v8::Number::New(isolate, scan.status)).FromMaybe(false);
     result->Set(context,
                 TRI_V8_ASCII_STRING(isolate, "isSealed"),
-                v8::Boolean::New(isolate, scan.isSealed)).FromMaybe(false); // TODO
+                v8::Boolean::New(isolate, scan.isSealed)).FromMaybe(false);
 
     v8::Handle<v8::Array> entries = v8::Array::New(isolate);
     result->Set(context,
-                TRI_V8_ASCII_STRING(isolate, "entries"), entries).FromMaybe(false); // TODO
+                TRI_V8_ASCII_STRING(isolate, "entries"), entries).FromMaybe(false);
 
     uint32_t i = 0;
     for (auto const& entry : scan.entries) {
@@ -203,42 +203,42 @@ static void JS_DatafileScanVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const&
 
       o->Set(context,
              TRI_V8_ASCII_STRING(isolate, "position"),
-             v8::Number::New(isolate, entry.position)).FromMaybe(false); // TODO
+             v8::Number::New(isolate, entry.position)).FromMaybe(false);
       o->Set(context,
              TRI_V8_ASCII_STRING(isolate, "size"),
-             v8::Number::New(isolate, entry.size)).FromMaybe(false); // TODO
+             v8::Number::New(isolate, entry.size)).FromMaybe(false);
       o->Set(context,
              TRI_V8_ASCII_STRING(isolate, "realSize"),
-             v8::Number::New(isolate, entry.realSize)).FromMaybe(false); // TODO
+             v8::Number::New(isolate, entry.realSize)).FromMaybe(false);
       o->Set(context,
              TRI_V8_ASCII_STRING(isolate, "tick"),
-             TRI_V8UInt64String<TRI_voc_tick_t>(isolate, entry.tick)).FromMaybe(false); // TODO
+             TRI_V8UInt64String<TRI_voc_tick_t>(isolate, entry.tick)).FromMaybe(false);
       o->Set(context,
              TRI_V8_ASCII_STRING(isolate, "type"),
-             v8::Number::New(isolate, static_cast<int>(entry.type))).FromMaybe(false); // TODO
+             v8::Number::New(isolate, static_cast<int>(entry.type))).FromMaybe(false);
       o->Set(context,
              TRI_V8_ASCII_STRING(isolate, "status"),
-             v8::Number::New(isolate, static_cast<int>(entry.status))).FromMaybe(false); // TODO
+             v8::Number::New(isolate, static_cast<int>(entry.status))).FromMaybe(false);
 
       if (!entry.key.empty()) {
         o->Set(context,
                TRI_V8_ASCII_STRING(isolate, "key"),
-               TRI_V8_STD_STRING(isolate, entry.key)).FromMaybe(false); // TODO
+               TRI_V8_STD_STRING(isolate, entry.key)).FromMaybe(false);
       }
 
       if (entry.typeName != nullptr) {
         o->Set(context,
                TRI_V8_ASCII_STRING(isolate, "typeName"),
-               TRI_V8_ASCII_STRING(isolate, entry.typeName)).FromMaybe(false); // TODO
+               TRI_V8_ASCII_STRING(isolate, entry.typeName)).FromMaybe(false);
       }
 
       if (!entry.diagnosis.empty()) {
         o->Set(context,
                TRI_V8_ASCII_STRING(isolate, "diagnosis"),
-               TRI_V8_STD_STRING(isolate, entry.diagnosis)).FromMaybe(false); // TODO
+               TRI_V8_STD_STRING(isolate, entry.diagnosis)).FromMaybe(false);
       }
 
-      entries->Set(context, i++, o).FromMaybe(false); // TODO
+      entries->Set(context, i++, o).FromMaybe(false);
     }
   }
 
@@ -386,25 +386,25 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "allowOversizeEntries"),
-              v8::Boolean::New(isolate, l->allowOversizeEntries())).FromMaybe(false); // TODO
+              v8::Boolean::New(isolate, l->allowOversizeEntries())).FromMaybe(false);
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "logfileSize"),
-              v8::Number::New(isolate, l->filesize())).FromMaybe(false); // TODO
+              v8::Number::New(isolate, l->filesize())).FromMaybe(false);
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "historicLogfiles"),
-              v8::Number::New(isolate, l->historicLogfiles())).FromMaybe(false); // TODO
+              v8::Number::New(isolate, l->historicLogfiles())).FromMaybe(false);
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "reserveLogfiles"),
-              v8::Number::New(isolate, l->reserveLogfiles())).FromMaybe(false); // TODO
+              v8::Number::New(isolate, l->reserveLogfiles())).FromMaybe(false);
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "syncInterval"),
-              v8::Number::New(isolate, (double)l->syncInterval())).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)l->syncInterval())).FromMaybe(false);
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "throttleWait"),
-              v8::Number::New(isolate, (double)l->maxThrottleWait())).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)l->maxThrottleWait())).FromMaybe(false);
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "throttleWhenPending"),
-              v8::Number::New(isolate, (double)l->throttleWhenPending())).FromMaybe(false); // TODO
+              v8::Number::New(isolate, (double)l->throttleWhenPending())).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -545,16 +545,16 @@ static void JS_TransactionsWal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "runningTransactions"),
-              v8::Number::New(isolate, static_cast<double>(std::get<0>(info)))).FromMaybe(false); // TODO
+              v8::Number::New(isolate, static_cast<double>(std::get<0>(info)))).FromMaybe(false);
 
   // lastCollectedId
   {
     auto value = std::get<1>(info);
     if (value == UINT64_MAX) {
-      result->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastCollected"), v8::Null(isolate)).FromMaybe(false); // TODO
+      result->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastCollected"), v8::Null(isolate)).FromMaybe(false);
     } else {
       result->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value))).FromMaybe(false); // TODO
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value))).FromMaybe(false);
     }
   }
 
@@ -562,11 +562,11 @@ static void JS_TransactionsWal(v8::FunctionCallbackInfo<v8::Value> const& args) 
   {
     auto value = std::get<2>(info);
     if (value == UINT64_MAX) {
-      result->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastSealed"), v8::Null(isolate)).FromMaybe(false); // TODO
+      result->Set(context, TRI_V8_ASCII_STRING(isolate, "minLastSealed"), v8::Null(isolate)).FromMaybe(false);
     } else {
       result->Set(context,
                   TRI_V8_ASCII_STRING(isolate, "minLastSealed"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value))).FromMaybe(false); // TODO
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value))).FromMaybe(false);
     }
   }
 
