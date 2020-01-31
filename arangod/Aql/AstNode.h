@@ -458,6 +458,12 @@ struct AstNode {
   /// @brief remove a member from the node
   void removeMemberUnchecked(size_t i);
 
+  /// @brief remove a member from the node while breaking members ordering. Faster than removeMemberUnchecked
+  void removeMemberUncheckedUnordered(size_t i);
+
+  /// @brief remove all members from the node at once
+  void removeMembers();
+
   /// @brief return a member of the node
   AstNode* getMember(size_t i) const;
 
