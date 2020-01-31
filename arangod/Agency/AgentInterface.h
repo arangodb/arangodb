@@ -40,7 +40,12 @@ class AgentInterface {
         : _discardStartup(d), _privileged(p) {}
     bool privileged() const { return _privileged; }
     bool discardStartup() const { return _discardStartup; }
-  };
+    bool operator==(WriteMode const& other) const {
+      return other._discardStartup == _discardStartup && other._privileged == _privileged;
+    }
+    bool operator!=(WriteMode const& other) const {
+      return other._discardStartup != _discardStartup || other._privileged != _privileged;
+    }  };
 
   /// @brief Attempt write
   virtual write_ret_t write(query_t const&, WriteMode const& mode = WriteMode()) = 0;
