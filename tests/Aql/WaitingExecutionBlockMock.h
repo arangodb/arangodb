@@ -46,15 +46,26 @@ namespace aql {
 class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
  public:
   /**
+   * @brief Define how often this Block should return "WAITING"
+   */
+  enum WaitingBehaviour {
+    NEVER,  // Never return WAITING
+    ONCE,  // Return WAITING on the first execute call, afterwards return all blocks
+    ALWAYS  // Return Waiting once for every execute Call.
+  };
+
+  /**
    * @brief Create a WAITING ExecutionBlockMock
    *
    * @param engine Required by API.
    * @param node Required by API.
    * @param data Must be a shared_ptr to an VPackArray.
+   * @param variant The waiting behaviour of this block (default ONCE), see WaitingBehaviour
    */
   WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
                             arangodb::aql::ExecutionNode const* node,
-                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data);
+                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
+                            WaitingBehaviour variant = WaitingBehaviour::ALWAYS);
 
   virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
 
@@ -95,9 +106,11 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
    */
   std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  // TODO: Document and implement me!
   std::tuple<arangodb::aql::ExecutionState, size_t, arangodb::aql::SharedAqlItemBlockPtr> execute(
       arangodb::aql::AqlCallStack stack) override;
+
+ private:
+  void dropBlock();
 
  private:
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
@@ -105,6 +118,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   size_t _inflight;
   bool _returnedDone = false;
   bool _hasWaited;
+  WaitingBehaviour _variant;
 };
 }  // namespace aql
 
