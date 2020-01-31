@@ -22,7 +22,6 @@
 
 #include <algorithm>
 
-#include "Servers.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -36,6 +35,7 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -62,6 +62,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Servers.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -70,8 +71,10 @@
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
-#include "../IResearch/AgencyMock.h"
-#include "../IResearch/common.h"
+#include "Servers.h"
+
+#include "IResearch/AgencyMock.h"
+#include "IResearch/common.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -324,7 +327,8 @@ void MockServer::startFeatures() {
   if (_server.hasFeature<arangodb::SchedulerFeature>()) {
     auto& sched = _server.getFeature<arangodb::SchedulerFeature>();
     // Needed to set nrMaximalThreads
-    sched.validateOptions(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr));
+    sched.validateOptions(
+        std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr));
   }
 
   for (ApplicationFeature& f : orderedFeatures) {
@@ -448,12 +452,15 @@ std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransac
                                                           noCollections, opts);
 }
 
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
+std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activateTracing) const {
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
   auto queryOptions = std::make_shared<VPackBuilder>();
   queryOptions->openObject();
+  if (activateTracing) {
+    queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
+  }
   queryOptions->close();
   aql::QueryString fakeQueryString("");
   auto query =
@@ -475,11 +482,11 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
 
 MockClusterServer::MockClusterServer()
     : MockServer(), _agencyStore(_server, nullptr, "arango") {
-  auto* agencyCommManager = new AgencyCommManagerMock("arango");
+  auto* agencyCommManager = new AgencyCommManagerMock(_server, "arango");
   std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-      _agencyStore);  // need 2 connections or Agency callbacks will fail
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);
+  std::ignore =
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);  // need 2 connections or Agency callbacks will fail
   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
   _oldRole = arangodb::ServerState::instance()->getRole();
 
@@ -504,12 +511,13 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
   arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-  arangodb::ServerState::instance()->setRebootId(1);
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers
   auto& indexFactory = const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
-  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-                       arangodb::iresearch::IResearchLinkCoordinator::factory());
+  auto& factory =
+      getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
+  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
 }
 
 void MockClusterServer::agencyTrx(std::string const& key, std::string const& value) {
@@ -553,8 +561,8 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
 
 MockDBServer::MockDBServer(bool start) : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
-  addFeature<arangodb::FlushFeature>(false);       // do not start the thread
-  addFeature<arangodb::MaintenanceFeature>(false); // do not start the thread
+  addFeature<arangodb::FlushFeature>(false);        // do not start the thread
+  addFeature<arangodb::MaintenanceFeature>(false);  // do not start the thread
   if (start) {
     startFeatures();
     createDatabase("_system");
@@ -575,10 +583,10 @@ TRI_vocbase_t* MockDBServer::createDatabase(std::string const& name) {
     maintenance::ActionDescription ad(
         {{std::string(maintenance::NAME), std::string(maintenance::CREATE_DATABASE)},
          {std::string(maintenance::DATABASE), std::string(name)}},
-         maintenance::HIGHER_PRIORITY);
+        maintenance::HIGHER_PRIORITY);
     auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
     maintenance::CreateDatabase cd(mf, ad);
-    cd.first();   // Does the job
+    cd.first();  // Does the job
   }
 
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
@@ -600,10 +608,10 @@ void MockDBServer::dropDatabase(std::string const& name) {
   maintenance::ActionDescription ad(
       {{std::string(maintenance::NAME), std::string(maintenance::DROP_DATABASE)},
        {std::string(maintenance::DATABASE), std::string(name)}},
-       maintenance::HIGHER_PRIORITY);
+      maintenance::HIGHER_PRIORITY);
   auto& mf = _server.getFeature<arangodb::MaintenanceFeature>();
   maintenance::DropDatabase dd(mf, ad);
-  dd.first();   // Does the job
+  dd.first();  // Does the job
 }
 
 MockCoordinator::MockCoordinator(bool start) : MockClusterServer() {

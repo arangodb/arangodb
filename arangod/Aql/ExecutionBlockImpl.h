@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
+#include "Aql/AqlCall.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -106,7 +107,29 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       "allowsBlockPassthrough must imply preservesOrder, but does not!");
 
  private:
+  // Used in getSome/skipSome implementation. deprecated
   enum class InternalState { FETCH_DATA, FETCH_SHADOWROWS, DONE };
+
+  // Used in execute implmentation
+  // Defines the internal state this executor is in.
+  enum class ExecState {
+    // We need to check the client call to define the next state (inital state)
+    CHECKCALL,
+    // We are skipping rows in offset
+    SKIP,
+    // We are producing rows
+    PRODUCE,
+    // We are done producing (limit reached) and drop all rows that are unneeded
+    FASTFORWARD,
+    // We are done producing (limit reached), but we count all rows that could be used on higher limit
+    FULLCOUNT,
+    // We need more information from dependency
+    UPSTREAM,
+    // We are done with a subquery, we need to pass forward ShadowRows
+    SHADOWROWS,
+    // Locally done, ready to return, will set state to resetted
+    DONE
+  };
 
  public:
   /**
@@ -119,7 +142,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @param node The Node used to create this ExecutionBlock
    */
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     typename Executor::Infos&&);
+                     typename Executor::Infos);
 
   ~ExecutionBlockImpl() override;
 
@@ -258,6 +281,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // Will as a side effect modify _outputItemRow
   void ensureOutputBlock(AqlCall&& call);
 
+  // Compute the next state based on the given call.
+  // Can only be one of Skip/Produce/FullCount/FastForward/Done
+  [[nodiscard]] auto nextState(AqlCall const& call) const -> ExecState;
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
@@ -289,6 +316,18 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   size_t _skipped{};
 
   DataRange _lastRange;
+
+  ExecState _execState;
+
+  AqlCall _upstreamRequest;
+
+  AqlCall _clientRequest;
+
+  // Only used in passthrough variant.
+  // We track if we have reference the range's block
+  // into an output block.
+  // If so we are not allowed to reuse it.
+  bool _hasUsedDataRangeBlock;
 };
 
 }  // namespace arangodb::aql

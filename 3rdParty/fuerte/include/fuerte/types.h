@@ -44,6 +44,7 @@ StatusCode constexpr StatusCreated = 201;
 StatusCode constexpr StatusAccepted = 202;
 StatusCode constexpr StatusPartial = 203;
 StatusCode constexpr StatusNoContent = 204;
+StatusCode constexpr StatusTemporaryRedirect = 307;
 StatusCode constexpr StatusBadRequest = 400;
 StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;
@@ -53,7 +54,7 @@ StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
 StatusCode constexpr StatusInternalError = 500;
-StatusCode constexpr StatusUnavailable = 503;
+StatusCode constexpr StatusServiceUnavailable = 503;
 StatusCode constexpr StatusVersionNotSupported = 505;
 
 // -----------------------------------------------------------------------------
@@ -73,7 +74,7 @@ enum class Error : uint16_t {
   WriteError = 1103,
 
   Canceled = 1104,
-  
+
   VstUnauthorized = 2000,
 
   ProtocolError = 3000,
@@ -139,7 +140,7 @@ std::string to_string(SocketType type);
 // --SECTION--                                                     ProtocolType
 // -----------------------------------------------------------------------------
 
-enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Vst = 2 };
+enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Http2 = 2, Vst = 3 };
 std::string to_string(ProtocolType type);
 
 // -----------------------------------------------------------------------------
@@ -179,7 +180,7 @@ struct ConnectionConfiguration {
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-        _connectTimeout(10000),
+        _connectTimeout(15000),
         _idleTimeout(300000),
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),

@@ -81,6 +81,7 @@ class ClusterTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   void destroyEngines() override;
+  void clear() override;
 
  private:
   void fetchVertices();

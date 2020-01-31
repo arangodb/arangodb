@@ -55,7 +55,7 @@ class OutputAqlItemRow {
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
-                            AqlCall&& clientCall = AqlCall{},
+                            AqlCall clientCall = AqlCall{},
                             CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   ~OutputAqlItemRow() = default;
@@ -63,6 +63,8 @@ class OutputAqlItemRow {
   OutputAqlItemRow& operator=(OutputAqlItemRow const&) = delete;
   OutputAqlItemRow(OutputAqlItemRow&&) = delete;
   OutputAqlItemRow& operator=(OutputAqlItemRow&&) = delete;
+
+  bool isInitialized() const noexcept;
 
   // Clones the given AqlValue
   template <class ItemRowType>
@@ -137,7 +139,7 @@ class OutputAqlItemRow {
    *        the left-over space for ShadowRows.
    */
   [[nodiscard]] bool allRowsUsed() const {
-    return block().size() <= _baseIndex;
+    return _block == nullptr || block().size() <= _baseIndex;
   }
 
   /**
@@ -152,6 +154,9 @@ class OutputAqlItemRow {
    *        passed from ExecutionBlockImpl.
    */
   [[nodiscard]] size_t numRowsLeft() const {
+    if (_block == nullptr) {
+      return 0;
+    }
     return (std::min)(block().size() - _baseIndex, _call.getLimit());
   }
 

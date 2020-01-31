@@ -52,6 +52,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "Logger/LogMacros.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -304,7 +305,7 @@ bool upgradeSingleServerArangoSearchView0_1(
 
     irs::utf8_path dataPath;
 
-    auto& server = ApplicationServer::server();
+    auto& server = vocbase.server();
     if (!server.hasFeature<arangodb::DatabasePathFeature>()) {
       LOG_TOPIC("67c7e", WARN, arangodb::iresearch::TOPIC)
           << "failure to find feature 'DatabasePath' while upgrading "
@@ -409,8 +410,11 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 
 namespace {
 template <typename T>
-void registerSingleFactory(arangodb::application_features::ApplicationServer& server,
-                           arangodb::IndexTypeFactory const& factory) {
+void registerSingleFactory(
+    std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>> const& m,
+    arangodb::application_features::ApplicationServer& server) {
+  TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
+  arangodb::IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
   if (server.hasFeature<T>()) {
     auto& engine = server.getFeature<T>();
@@ -427,13 +431,17 @@ void registerSingleFactory(arangodb::application_features::ApplicationServer& se
 }
 }  // namespace
 
-void registerIndexFactory(arangodb::application_features::ApplicationServer& server) {
-  registerSingleFactory<arangodb::ClusterEngine>(
-      server, arangodb::iresearch::IResearchLinkCoordinator::factory());
-  registerSingleFactory<arangodb::MMFilesEngine>(
-      server, arangodb::iresearch::IResearchMMFilesLink::factory());
-  registerSingleFactory<arangodb::RocksDBEngine>(
-      server, arangodb::iresearch::IResearchRocksDBLink::factory());
+void registerIndexFactory(std::map<std::type_index, std::shared_ptr<arangodb::IndexTypeFactory>>& m,
+                          arangodb::application_features::ApplicationServer& server) {
+  m.emplace(std::type_index(typeid(arangodb::ClusterEngine)),
+            arangodb::iresearch::IResearchLinkCoordinator::createFactory(server));
+  registerSingleFactory<arangodb::ClusterEngine>(m, server);
+  m.emplace(std::type_index(typeid(arangodb::MMFilesEngine)),
+            arangodb::iresearch::IResearchMMFilesLink::createFactory(server));
+  registerSingleFactory<arangodb::MMFilesEngine>(m, server);
+  m.emplace(std::type_index(typeid(arangodb::RocksDBEngine)),
+            arangodb::iresearch::IResearchRocksDBLink::createFactory(server));
+  registerSingleFactory<arangodb::RocksDBEngine>(m, server);
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
@@ -476,8 +484,7 @@ void registerRecoveryHelper() {
   }
 }
 
-void registerUpgradeTasks() {
-  auto& server = arangodb::application_features::ApplicationServer::server();
+void registerUpgradeTasks(arangodb::application_features::ApplicationServer& server) {
   if (!server.hasFeature<arangodb::UpgradeFeature>()) {
     return;  // nothing to register with (OK if no tasks actually need to be applied)
   }
@@ -499,9 +506,8 @@ void registerUpgradeTasks() {
   }
 }
 
-void registerViewFactory() {
+void registerViewFactory(arangodb::application_features::ApplicationServer& server) {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
-  auto& server = arangodb::application_features::ApplicationServer::server();
   auto& viewTypes = server.getFeature<arangodb::ViewTypesFeature>();
 
   arangodb::Result res;
@@ -940,10 +946,10 @@ void IResearchFeature::prepare() {
   ::iresearch::scorers::init();
 
   // register 'arangosearch' index
-  registerIndexFactory(server());
+  registerIndexFactory(_factories, server());
 
   // register 'arangosearch' view
-  registerViewFactory();
+  registerViewFactory(server());
 
   // register 'arangosearch' Transaction DataSource registration callback
   registerTransactionDataSourceRegistrationCallback();
@@ -981,7 +987,7 @@ void IResearchFeature::start() {
     }
   }
 
-  registerUpgradeTasks();  // register tasks after UpgradeFeature::prepare() has finished
+  registerUpgradeTasks(server());  // register tasks after UpgradeFeature::prepare() has finished
 
   _running.store(true);
 }
@@ -1002,6 +1008,15 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
   _running.store(false);
   ApplicationFeature::validateOptions(options);
 }
+
+template <typename Engine, typename std::enable_if<std::is_base_of<StorageEngine, Engine>::value, int>::type>
+IndexTypeFactory& IResearchFeature::factory() {
+  TRI_ASSERT(_factories.find(std::type_index(typeid(Engine))) != _factories.end());
+  return *_factories.find(std::type_index(typeid(Engine)))->second;
+}
+template IndexTypeFactory& IResearchFeature::factory<arangodb::ClusterEngine>();
+template IndexTypeFactory& IResearchFeature::factory<arangodb::MMFilesEngine>();
+template IndexTypeFactory& IResearchFeature::factory<arangodb::RocksDBEngine>();
 
 }  // namespace iresearch
 }  // namespace arangodb

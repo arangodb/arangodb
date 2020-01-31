@@ -37,7 +37,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 class AgencyCommManagerMock: public arangodb::AgencyCommManager {
 public:
- explicit AgencyCommManagerMock(std::string const& prefix = "");
+ explicit AgencyCommManagerMock(arangodb::application_features::ApplicationServer& server,
+                                std::string const& prefix = "");
 
  void addConnection(
    std::unique_ptr<arangodb::httpclient::GeneralClientConnection>&& connection
@@ -86,21 +87,19 @@ class GeneralClientConnectionMock
     irs::file_utils::handle_t nil;
   #endif
 
-  GeneralClientConnectionMock();
-  ~GeneralClientConnectionMock();
-  virtual bool connectSocket() override;
-  virtual void disconnectSocket() override;
-  virtual bool readable() override;
-  virtual bool readClientConnection(
-    arangodb::basics::StringBuffer& buffer, bool& connectionClosed
-  ) override;
-  virtual bool writeClientConnection(
-    void const* buffer, size_t length, size_t* bytesWritten
-  ) override;
+    GeneralClientConnectionMock(arangodb::application_features::ApplicationServer&);
+    ~GeneralClientConnectionMock();
+    virtual bool connectSocket() override;
+    virtual void disconnectSocket() override;
+    virtual bool readable() override;
+    virtual bool readClientConnection(arangodb::basics::StringBuffer& buffer,
+                                      bool& connectionClosed) override;
+    virtual bool writeClientConnection(void const* buffer, size_t length,
+                                       size_t* bytesWritten) override;
 
- protected:
-  virtual void request(char const* data, size_t length); // override by specializations
-  virtual void response(arangodb::basics::StringBuffer& buffer); // override by specializations
+   protected:
+    virtual void request(char const* data, size_t length);  // override by specializations
+    virtual void response(arangodb::basics::StringBuffer& buffer);  // override by specializations
 };
 
 ////////////////////////////////////////////////////////////////////////////////

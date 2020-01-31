@@ -49,6 +49,10 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
   TRI_ASSERT(index <= _block->size());
 }
 
+SharedAqlItemBlockPtr AqlItemBlockInputRange::getBlock() const noexcept {
+  return _block;
+}
+
 bool AqlItemBlockInputRange::hasDataRow() const noexcept {
   return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }
@@ -129,7 +133,7 @@ ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
     }
     return ExecutorState::DONE;
   } else {
-    TRI_ASSERT(RowType::SHADOW == type);
+    static_assert(RowType::SHADOW == type);
     // We Return HASMORE, if the next shadow row is NOT relevant.
     // So we can directly fetch the next shadow row without informing
     // the executor about an empty subquery.
