@@ -159,20 +159,7 @@ function server_secrets(options) {
 
   process.env["jwt-secret-folder"] = secretsDir;
 
-  let copyOptions = options;
-  // necessary to fix shitty process-utils handling
-  copyOptions['server.jwt-secret-folder'] = secretsDir;
-
-  const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], copyOptions);
-  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, {
-    'server.authentication': 'true',
-    'server.jwt-secret-folder': secretsDir,
-    'cluster.create-waits-for-sync-replication': false
-  });
-}
-
-function tls_rotation(options) {
-  console.error("Hugo Honk meldet sich zum Dienst");
+  // Now set up TLS with the first server key:
   let keyfileDir = fs.join(fs.getTempPath(), 'arango_tls_keyfile');
   let keyfileName = fs.join(keyfileDir, "server.pem");
   fs.makeDirectory(keyfileDir);
@@ -183,11 +170,15 @@ function tls_rotation(options) {
   process.env["tls-keyfile"] = keyfileName;
 
   let copyOptions = _.clone(options);
-  // copyOptions['protocol'] = "ssl";
+  // necessary to fix shitty process-utils handling
+  copyOptions['server.jwt-secret-folder'] = secretsDir;
+  copyOptions['protocol'] = "ssl";
 
-  const testCases = tu.scanTestPaths([tu.pathForTesting('client/tls_rotation')], copyOptions);
-  console.error("Hugo Honk meldet sich zum Dienst und will dies machen: ", JSON.stringify(testCases));
-  return tu.performTests(copyOptions, testCases, 'tls_rotation', tu.runInLocalArangosh, {
+  const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], copyOptions);
+  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, {
+    'server.authentication': 'true',
+    'server.jwt-secret-folder': secretsDir,
+    'cluster.create-waits-for-sync-replication': false,
     'ssl.keyfile': keyfileName
   });
 }
@@ -197,7 +188,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['server_permissions'] = server_permissions;
   testFns['server_parameters'] = server_parameters;
   testFns['server_secrets'] = server_secrets;
-  testFns['tls_rotation'] = tls_rotation;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
 };

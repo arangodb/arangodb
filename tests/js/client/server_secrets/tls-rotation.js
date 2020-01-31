@@ -33,6 +33,9 @@ const db = require("internal").db;
 const request = require('@arangodb/request');
 const expect = require('chai').expect;
 const fs = require('fs');
+const print = require('internal').print;
+const crypto = require('@arangodb/crypto');
+const sha256 = require('internal').sha256;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -43,6 +46,12 @@ function TLSRotation() {
   var baseUrl = function () {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
+
+  const jwtSecret1 = 'jwtsecret-1';
+  const jwt1 = crypto.jwtEncode(jwtSecret1, {
+    "server_id": "ABCD",
+    "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+  }, 'HS256');
 
   //   const user = 'hackers@arangodb.com';
   const keyfileName = process.env["tls-keyfile"];
@@ -66,9 +75,11 @@ function TLSRotation() {
     },
 
     testCheckGETTLS: function() {
-      console.error("Hugo Honk kanns testCheckGETTLS");
       let res = request.get({
         url: baseUrl() + "/_admin/server/tls",
+        auth: {
+          bearer: jwt1,
+        }
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
@@ -76,44 +87,71 @@ function TLSRotation() {
       expect(res.json.error).to.eq(false);
       expect(res.json.code).to.eq(200);
       expect(res.json).to.have.property('result');
-      console.log("Hugo Honk kriegt:", JSON.stringify(res));
+      expect(res.json.result).to.have.property('keyfile');
+      expect(res.json.result.keyfile).to.have.property('SHA256');
+      let keyfileDB = res.json.result.keyfile;
+      let keyfileDisk = fs.readFileSync(keyfileName).toString();
+      let keyfileDiskSHA = sha256(keyfileDisk);
+      expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
     },
 
     testChangeTLS: function () {
-      let res1 = request.get({
+      let res = request.get({
         url: baseUrl() + "/_admin/server/tls",
+        auth: {
+          bearer: jwt1,
+        }
       });
-      expect(res1).to.be.an.instanceof(request.Response);
-      expect(res1).to.have.property('statusCode', 200);
-      expect(res1.json).to.have.property('error', false);
-      expect(res1.json.code).to.eq(200);
-      expect(res1.json).to.have.property('result');
-      console.log("Hugo Honk kriegt:", JSON.stringify(res1));
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+      expect(res.json).to.have.property('error', false);
+      expect(res.json.code).to.eq(200);
+      expect(res.json).to.have.property('result');
+      expect(res.json.result).to.have.property('keyfile');
+      expect(res.json.result.keyfile).to.have.property('SHA256');
+      let keyfileDB = res.json.result.keyfile;
+      let keyfileDisk = fs.readFileSync(keyfileName).toString();
+      let keyfileDiskSHA = sha256(keyfileDisk);
+      expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
 
       // Exchange server key on disk:
+      fs.remove(keyfileName);
       fs.copyFile("./UnitTests/server2.pem", keyfileName);
+      keyfileDisk = fs.readFileSync(keyfileName).toString();
+      keyfileDiskSHA = sha256(keyfileDisk);
 
       // reload TLS stuff:
-      let res2 = request.put({
+      res = request.post({
         url: baseUrl() + "/_admin/server/tls",
+        auth: {
+          bearer: jwt1,
+        }
       });
-      expect(res2).to.be.an.instanceof(request.Response);
-      expect(res2).to.have.property('statusCode', 200);
-      expect(res2.json).to.have.property('error', false);
-      expect(res2.json.code).to.eq(200);
-      expect(res2.json).to.have.property('result');
-      console.log("Hugo Honk kriegt 2:", JSON.stringify(res2));
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+      expect(res.json).to.have.property('error', false);
+      expect(res.json.code).to.eq(200);
+      expect(res.json).to.have.property('result');
+      expect(res.json.result).to.have.property('keyfile');
+      expect(res.json.result.keyfile).to.have.property('SHA256');
+      keyfileDB = res.json.result.keyfile;
+      expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
 
-      let res3 = request.get({
+      res = request.get({
         url: baseUrl() + "/_admin/server/tls",
+        auth: {
+          bearer: jwt1,
+        }
       });
 
-      expect(res3).to.be.an.instanceof(request.Response);
-      expect(res3).to.have.property('statusCode', 200);
-      expect(res3.json).to.have.property('error', false);
-      expect(res3.json.code).to.eq(200);
-      expect(res3.json).to.have.property('result');
-      console.log("Hugo Honk kriegt 3:", JSON.stringify(res3));
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 200);
+      expect(res.json).to.have.property('error', false);
+      expect(res.json.code).to.eq(200);
+      expect(res.json).to.have.property('result');
+      expect(res.json.result).to.have.property('keyfile');
+      expect(res.json.result.keyfile).to.have.property('SHA256');
+      expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
     }
   };
 }
@@ -123,9 +161,7 @@ function TLSRotation() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-console.error("Hugo Honk kanns");
 jsunity.run(TLSRotation);
-console.error("Hugo Honk kanns nicht");
 
 return jsunity.done();
 
