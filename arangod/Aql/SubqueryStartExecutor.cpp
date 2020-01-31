@@ -27,6 +27,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -50,7 +52,7 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
           // might have shadow rows we need to pass through
           // We don't have a data row, but upstream might still have
           // data to process
-          return {_upstreamState, NoStats{}, AqlCall{}};
+          return {input.upstreamState(), NoStats{}, AqlCall{}};
         }
       } break;
       case State::PRODUCE_DATA_ROW: {
@@ -76,7 +78,7 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
   // When we reach here, then output is full
   if (_produceState == State::READ_DATA_ROW) {
     TRI_ASSERT(!_inputRow.isInitialized());
-    return {_upstreamState, NoStats{}, AqlCall{}};
+    return {input.upstreamState(), NoStats{}, AqlCall{}};
   }
   // PRODUCE_DATA_ROW should always immediately be processed without leaving the
   // loop
