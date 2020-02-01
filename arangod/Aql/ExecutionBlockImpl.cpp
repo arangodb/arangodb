@@ -723,14 +723,10 @@ void ExecutionBlockImpl<Executor>::traceExecuteEnd(
   }
 }
 
-// Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
-// Without the namespaces it fails with
-// error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
-namespace arangodb::aql {
-// TODO -- remove this specialization when cpp 17 becomes available
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    InputAqlItemRow const& input) {
+template <>
+auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block)
+    -> void {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -746,16 +742,28 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   // Reset state of execute
   _lastRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
   _hasUsedDataRangeBlock = false;
-
-  SharedAqlItemBlockPtr block =
-      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
-                         infos().numberOfOutputRegisters());
+  _upstreamState = ExecutionState::HASMORE;
 
   _rowFetcher.injectBlock(block);
 
   // cppcheck-suppress unreadVariable
   constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+}
+
+// Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
+// Without the namespaces it fails with
+// error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
+namespace arangodb::aql {
+// TODO -- remove this specialization when cpp 17 becomes available
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
+    InputAqlItemRow const& input) {
+  SharedAqlItemBlockPtr block =
+      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
+                         infos().numberOfOutputRegisters());
+
+  injectConstantBlock(block);
 
   // end of default initializeCursor
   return ExecutionBlock::initializeCursor(input);

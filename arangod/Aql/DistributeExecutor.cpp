@@ -38,6 +38,11 @@ using namespace arangodb::aql;
 
 // TODO
 // This section is not implemented yet
+
+DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
+                                                     ScatterNode const* node,
+                                                     ExecutorInfos const& scatterInfos) {}
+
 auto DistributeExecutor::ClientBlockData::clear() -> void { _queue.clear(); }
 
 auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> void {

@@ -22,103 +22,80 @@
 
 #include "ScatterExecutor.h"
 
+#include "Aql/AqlCallStack.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/IdExecutor.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-auto ScatterExecutor::ClientBlockData::clear() -> void { _queue.clear(); }
+ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
+                                                  ScatterNode const* node,
+                                                  ExecutorInfos const& scatterInfos)
+    : _queue{}, _executor(nullptr), _executorHasMore{false} {
+  // We only get shared ptrs to const data. so we need to copy here...
+  IdExecutorInfos infos{scatterInfos.numberOfInputRegisters(),
+                        *scatterInfos.registersToKeep(),
+                        *scatterInfos.registersToClear(), "", false};
+  // NOTE: Do never change this type! The execute logic below requires this and only this type.
+  _executor =
+      std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, node,
+                                                                     std::move(infos));
+}
+
+auto ScatterExecutor::ClientBlockData::clear() -> void {
+  _queue.clear();
+  _executorHasMore = false;
+}
 
 auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> void {
   _queue.emplace_back(block);
 }
 
 auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
-  return !_queue.empty();
-}
-
-auto ScatterExecutor::ClientBlockData::dropBlock() -> void {
-  _queue.pop_front();
-  _firstBlockPos = 0;
-}
-
-auto ScatterExecutor::ClientBlockData::firstBlockRows() -> size_t {
-  if (_queue.empty()) {
-    return 0;
-  }
-  auto& block = _queue.front();
-  TRI_ASSERT(_firstBlockPos <= block->size());
-  return block->size() - _firstBlockPos;
+  return _executorHasMore || !_queue.empty();
 }
 
 auto ScatterExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
     -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  TRI_ASSERT(_executor != nullptr);
   // Make sure we actually have data before you call execute
   TRI_ASSERT(hasDataFor(call));
-  size_t skipped = 0;
-  SharedAqlItemBlockPtr result = nullptr;
-  while (!_queue.empty()) {
-    auto const block = _queue.front();
-    if (!block->hasShadowRows()) {
-      size_t toSkip = call.getOffset();
-      size_t toProduce = call.getLimit();
-      if (toSkip > 0) {
-        if (toSkip >= firstBlockRows()) {
-          skipped += firstBlockRows();
-          call.didSkip(firstBlockRows());
-          dropBlock();
-        } else {
-          _firstBlockPos += toSkip;
-          skipped += toSkip;
-          call.didSkip(toSkip);
-        }
-      } else if (toProduce > 0) {
-        if (result != nullptr) {
-          // we have produced a block.
-          // NOTE: we need to late break
-          // here in order to improve fullCount / hardLimit
-          // It can simply count all blocks we already have,
-          // nevertheless it is not given that we are done after
-          break;
-        }
-        if (toProduce >= firstBlockRows()) {
-          call.didProduce(firstBlockRows());
-          if (_firstBlockPos != 0) {
-            // We need to slice
-            result = block->slice(_firstBlockPos, block->size());
-          } else {
-            result = block;
-          }
-          // block fully used
-          dropBlock();
-        } else {
-          // We do not use the full block, but need to slice
-          result = block->slice(_firstBlockPos, _firstBlockPos + toProduce);
-          _firstBlockPos += toProduce;
-          call.didProduce(toProduce);
-        }
-      } else if (call.hasHardLimit()) {
-        if (call.needsFullCount()) {
-          // We need to count what we dropped.
-          skipped += firstBlockRows();
-          call.didSkip(firstBlockRows());
-        }
-        dropBlock();
-      } else {
-        // We have fulfilled this call
-        break;
-      }
+  if (!_executorHasMore) {
+    auto const& block = _queue.front();
+    // This cast is guaranteed, we create this a couple lines above and only
+    // this executor is used here.
+    // Unfortunately i did not get a version compiled were i could only forward
+    // declare the teplates in header.
+    auto casted =
+        static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
+    TRI_ASSERT(casted != nullptr);
+    casted->injectConstantBlock(block);
+    _executorHasMore = true;
+    _queue.pop_front();
+  }
+  AqlCallStack stack{call};
+  auto [state, skipped, result] = _executor->execute(stack);
+
+  // We have all data locally cannot wait here.
+  TRI_ASSERT(state != ExecutionState::WAITING);
+
+  if (state == ExecutionState::DONE) {
+    // This executor is finished, including shadowrows
+    // We are going to reset it on next call
+    _executorHasMore = false;
+
+    // Also we need to adjust the return states
+    // as this state only represents one single block
+    if (!_queue.empty()) {
+      state = ExecutionState::HASMORE;
+    } else {
+      state = upstreamState;
     }
   }
-  if (_queue.empty()) {
-    return {upstreamState, skipped, result};
-  } else {
-    return {ExecutionState::HASMORE, skipped, result};
-  }
-
-  // TODO IMPLEMENT ME
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return {state, skipped, result};
 }
 
 ScatterExecutor::ScatterExecutor(){};

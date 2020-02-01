@@ -31,12 +31,18 @@
 namespace arangodb {
 namespace aql {
 
+class ExecutionEngine;
+class ScatterNode;
+
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
 class ScatterExecutor {
  public:
   class ClientBlockData {
    public:
+    ClientBlockData(ExecutionEngine& engine, ScatterNode const* node,
+                    ExecutorInfos const& scatterInfos);
+
     auto clear() -> void;
     auto addBlock(SharedAqlItemBlockPtr block) -> void;
     auto hasDataFor(AqlCall const& call) -> bool;
@@ -45,12 +51,10 @@ class ScatterExecutor {
         -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
    private:
-    auto firstBlockRows() -> size_t;
-    auto dropBlock() -> void;
-
-   private:
     std::deque<SharedAqlItemBlockPtr> _queue;
-    size_t _firstBlockPos{0};
+    // This is unique_ptr to get away with everything beeing forward declared...
+    std::unique_ptr<ExecutionBlock> _executor;
+    bool _executorHasMore;
   };
 
   ScatterExecutor();

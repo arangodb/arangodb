@@ -38,6 +38,9 @@ class DistributeExecutor {
  public:
   class ClientBlockData {
    public:
+    ClientBlockData(ExecutionEngine& engine, ScatterNode const* node,
+                    ExecutorInfos const& scatterInfos);
+
     auto clear() -> void;
     auto addBlock(SharedAqlItemBlockPtr block) -> void;
     auto hasDataFor(AqlCall const& call) -> bool;

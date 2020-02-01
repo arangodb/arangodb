@@ -100,7 +100,7 @@ class SharedScatterExecutionBlockTest {
                                      WaitingExecutionBlockMock::WaitingBehaviour::NEVER};
   }
 
-  auto ValidateBlocksAreEqual(SharedAqlItemBlockPtr expected, SharedAqlItemBlockPtr actual) {
+  auto ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected) {
     ASSERT_NE(expected, nullptr);
     ASSERT_NE(actual, nullptr);
     EXPECT_EQ(actual->size(), expected->size());
@@ -160,7 +160,7 @@ TEST_P(RandomOrderTest, all_clients_should_get_the_block) {
     auto const [state, skipped, block] = testee.executeForClient(stack, client);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped, 0);
-    ValidateBlocksAreEqual(inputBlock, block);
+    ValidateBlocksAreEqual(block, inputBlock);
   }
 }
 
@@ -267,7 +267,7 @@ TEST_P(RandomOrderTest, get_does_not_jump_over_shadowrows) {
                                   {{3, 0}, {5, 0}});
   auto firstExpectedBlock =
       buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}}, {{3, 0}});
-  auto secondExpectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{2, 0}});
+  auto secondExpectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{0, 0}});
   auto producer = createProducer(inputBlock);
 
   ExecutionBlockImpl<ScatterExecutor> testee{fakedQuery->engine(), generateScatterNode(),
@@ -342,7 +342,7 @@ TEST_P(RandomOrderTest, handling_of_higher_depth_shadowrows_skip) {
   auto inputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}},
                                   {{2, 0}, {3, 1}, {5, 0}});
   auto firstExpectedBlock =
-      buildBlock<1>(itemBlockManager, {{2}, {3}}, {{2, 0}, {3, 1}});
+      buildBlock<1>(itemBlockManager, {{2}, {3}}, {{0, 0}, {1, 1}});
   auto secondExpectedBlock = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{1, 0}});
   auto producer = createProducer(inputBlock);
 
@@ -431,7 +431,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
       auto const [state, skipped, block] = testee.executeForClient(stack, client);
       EXPECT_EQ(state, ExecutionState::HASMORE);
       EXPECT_EQ(skipped, 2);
-      auto expectedBlock = buildBlock<1>(itemBlockManager, {{2}, {3}}, {{3, 0}});
+      auto expectedBlock = buildBlock<1>(itemBlockManager, {{2}, {3}}, {{1, 0}});
       ValidateBlocksAreEqual(block, expectedBlock);
     } else if (client == "c") {
       {
@@ -453,7 +453,7 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
         EXPECT_EQ(state, ExecutionState::HASMORE);
         EXPECT_EQ(skipped, 1);
-        auto expectedBlock = buildBlock<1>(itemBlockManager, {{3}}, {{3, 0}});
+        auto expectedBlock = buildBlock<1>(itemBlockManager, {{3}}, {{0, 0}});
         ValidateBlocksAreEqual(block, expectedBlock);
       }
     }
@@ -566,9 +566,12 @@ TEST_F(ScatterExecutionBlockTest, any_ordering_of_calls_is_fine) {
       }
       EXPECT_EQ(skipped, 0);
       ASSERT_TRUE(callNr < blocks.size());
-      ValidateBlocksAreEqual(blocks[callNr], block);
+      ValidateBlocksAreEqual(block, blocks[callNr]);
       callNr++;
     }
   } while (std::next_permutation(callOrder.begin(), callOrder.end()));
 }
+
+// TODO add test for initilaize cursor
+
 }  // namespace arangodb::tests::aql

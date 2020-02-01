@@ -84,8 +84,13 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
   _type = scatter->getScatterType();
 
   _clientBlockData.reserve(shardIds.size());
+
+  auto readAble = make_shared_unordered_set();
+  auto writeAble = make_shared_unordered_set();
+  // TODO this needs to be handed in properly!
+  ExecutorInfos infos{readAble, writeAble, 1, 1, {}, {}};
   for (auto const& id : shardIds) {
-    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{});
+    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, infos});
   }
 }
 
@@ -93,7 +98,7 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::initializeCursor(InputAqlItemRow const& input)
     -> std::pair<ExecutionState, Result> {
-  for (auto [key, list] : _clientBlockData) {
+  for (auto& [key, list] : _clientBlockData) {
     list.clear();
   }
   return ExecutionBlock::initializeCursor(input);
