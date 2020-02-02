@@ -30,10 +30,11 @@
 #include <atomic>
 #include <boost/lockfree/queue.hpp>
 #include <chrono>
+#include <llhttp.h>
 
 #include "GeneralConnection.h"
 #include "http.h"
-#include "http_parser/http_parser.h"
+
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
@@ -94,17 +95,16 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   void asyncWriteNextRequest();
 
   // called by the async_write handler (called from IO thread)
-  void asyncWriteCallback(asio_ns::error_code const&,
-                          std::unique_ptr<RequestItem>, size_t nwrite);
+  void asyncWriteCallback(asio_ns::error_code const&, size_t nwrite);
 
  private:
-  static int on_message_begin(http_parser* parser);
-  static int on_status(http_parser* parser, const char* at, size_t len);
-  static int on_header_field(http_parser* parser, const char* at, size_t len);
-  static int on_header_value(http_parser* parser, const char* at, size_t len);
-  static int on_header_complete(http_parser* parser);
-  static int on_body(http_parser* parser, const char* at, size_t len);
-  static int on_message_complete(http_parser* parser);
+  static int on_message_begin(llhttp_t* p);
+  static int on_status(llhttp_t* p, const char* at, size_t len);
+  static int on_header_field(llhttp_t* p, const char* at, size_t len);
+  static int on_header_value(llhttp_t* p, const char* at, size_t len);
+  static int on_header_complete(llhttp_t* p);
+  static int on_body(llhttp_t* p, const char* at, size_t len);
+  static int on_message_complete(llhttp_t* p);
 
  private:
   /// elements to send out
@@ -114,8 +114,8 @@ class H1Connection final : public fuerte::GeneralConnection<ST> {
   std::string _authHeader;
 
   /// the node http-parser
-  http_parser _parser;
-  http_parser_settings _parserSettings;
+  llhttp_t _parser;
+  llhttp_settings_t _parserSettings;
 
   std::atomic<bool> _active;  /// is loop active
 

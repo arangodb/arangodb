@@ -273,6 +273,10 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
 template<SocketType T>
 void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, RequestStatistics* stat) {
   using namespace fuerte;
+  
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VstResponse& response = dynamic_cast<VstResponse&>(*baseRes);

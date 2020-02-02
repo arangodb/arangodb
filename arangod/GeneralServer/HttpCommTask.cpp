@@ -419,6 +419,10 @@ void HttpCommTask<T>::processRequest() {
 template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
                                    RequestStatistics* stat) {
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
+  }
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(*baseRes);
 #else

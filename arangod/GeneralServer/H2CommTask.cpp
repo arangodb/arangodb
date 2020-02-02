@@ -472,6 +472,10 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
   if (stat) {
     stat->release();
   }
+  
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
+  }
 
    // and give some request information
    LOG_TOPIC("924cc", DEBUG, Logger::REQUESTS)
