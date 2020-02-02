@@ -23,7 +23,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
-#include "Mocks/Servers.h"
+#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
@@ -53,11 +53,9 @@ using TestParam = std::tuple<std::vector<int>,  // The input data
                              OutputAqlItemRow::CopyRowBehavior  // How the data is handled within outputRow
                              >;
 
-class IdExecutorTestCombiner : public ::testing::TestWithParam<TestParam> {
+class IdExecutorTestCombiner : public AqlExecutorTestCase<false>,
+                               public ::testing::TestWithParam<TestParam> {
  protected:
-  ResourceMonitor monitor{};
-  AqlItemBlockManager manager{&monitor, SerializationFormat::SHADOWROWS};
-
   IdExecutorTestCombiner() {}
 
   auto prepareInputRange() -> AqlItemBlockInputRange {
@@ -70,7 +68,7 @@ class IdExecutorTestCombiner : public ::testing::TestWithParam<TestParam> {
     for (auto const& it : input) {
       matrix.emplace_back(RowBuilder<1>{{it}});
     }
-    SharedAqlItemBlockPtr block = buildBlock<1>(manager, std::move(matrix));
+    SharedAqlItemBlockPtr block = buildBlock<1>(manager(), std::move(matrix));
     return AqlItemBlockInputRange{upstreamState, block, 0, input.size()};
   }
 
@@ -92,7 +90,7 @@ class IdExecutorTestCombiner : public ::testing::TestWithParam<TestParam> {
                               std::move(callCopy), copyBehaviour);
     }
     SharedAqlItemBlockPtr outBlock{
-        new AqlItemBlock(manager, input->size(), input->getNrRegs())};
+        new AqlItemBlock(manager(), input->size(), input->getNrRegs())};
     return OutputAqlItemRow(outBlock, toWrite, toKeep, toClear,
                             std::move(callCopy), copyBehaviour);
   }
@@ -146,7 +144,7 @@ class IdExecutorTestCombiner : public ::testing::TestWithParam<TestParam> {
 
 TEST_P(IdExecutorTestCombiner, test_produce_datarange_constFetcher) {
   std::shared_ptr<VPackBuilder> fakeFetcherInput{VPackParser::fromJson("[ ]")};
-  ConstFetcher cFetcher = ConstFetcherHelper{manager, fakeFetcherInput->buffer()};
+  ConstFetcher cFetcher = ConstFetcherHelper{manager(), fakeFetcherInput->buffer()};
   runTest(cFetcher);
 }
 
@@ -154,7 +152,7 @@ TEST_P(IdExecutorTestCombiner, test_produce_datarange_singleRowFetcher) {
   std::shared_ptr<VPackBuilder> fakeFetcherInput{VPackParser::fromJson("[ ]")};
   SingleRowFetcher<::arangodb::aql::BlockPassthrough::Enable> srFetcher =
       SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable>{
-          manager, fakeFetcherInput->buffer(), false};
+          manager(), fakeFetcherInput->buffer(), false};
   runTest(srFetcher);
 }
 
@@ -187,6 +185,7 @@ TEST_P(IdExecutorTestCombiner, test_produce_datarange_singleRowFetcher) {
 static auto inputs = testing::Values(std::vector<int>{},  // Test empty input
                                      std::vector<int>{1, 2, 3}  // Test input data
 );
+
 auto upstreamStates = testing::Values(ExecutorState::HASMORE, ExecutorState::DONE);
 auto clientCalls = testing::Values(AqlCall{},  // unlimited call
                                    AqlCall{0, 3, AqlCall::Infinity{}, false},  // softlimit call (note this is equal to length of input data)
@@ -204,34 +203,7 @@ auto copyBehaviours = testing::Values(OutputAqlItemRow::CopyRowBehavior::CopyInp
 INSTANTIATE_TEST_CASE_P(IdExecutorTest, IdExecutorTestCombiner,
                         ::testing::Combine(inputs, upstreamStates, clientCalls, copyBehaviours));
 
-class IdExecutionBlockTest : public ::testing::Test {
- protected:
-  mocks::MockAqlServer server{};
-  ResourceMonitor monitor{};
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
-  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
-
-  IdExecutionBlockTest() {
-    auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
-  }
-
-  /**
-   * @brief Creates and manages a ExecutionNode.
-   *        These nodes can be used to create the Executors
-   *        Caller does not need to manage the memory.
-   *
-   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
-   */
-  ExecutionNode* generateNodeDummy() {
-    auto dummy = std::make_unique<SingletonNode>(fakedQuery->plan(), _execNodes.size());
-    auto res = dummy.get();
-    _execNodes.emplace_back(std::move(dummy));
-    return res;
-  }
-};
+class IdExecutionBlockTest : public AqlExecutorTestCase<false>, public ::testing::Test {};
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
@@ -316,7 +288,7 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_skip) {
 }
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
-TEST_F(IdExecutionBlockTest, test_initialize_cursor_fulCount) {
+TEST_F(IdExecutionBlockTest, test_initialize_cursor_fullCount) {
   IdExecutorInfos infos{1, {0}, {}};
   ExecutionBlockImpl<IdExecutor<ConstFetcher>> testee{fakedQuery->engine(),
                                                       generateNodeDummy(),
@@ -356,4 +328,193 @@ TEST_F(IdExecutionBlockTest, test_initialize_cursor_fulCount) {
     }
   }
 }
+
+TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
+  IdExecutorInfos infos{1, {0}, {}};
+  ExecutorTestHelper<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(*fakedQuery)
+      .setInputValueList(1, 2, 3, 4, 5, 6)
+      .setCall(AqlCall{0, AqlCall::Infinity{}, 2, false})
+      .expectOutput({0}, {{1}, {2}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+/*
+
+ */
+
+/**
+ * @brief This are special tests, the ConstFetcher is overloaded
+ *  with data rows, now the IdExecutor which is passthrough
+ *  asks for a much lower hard limit.
+ *  Used in ScatterExecutor logic.
+ *  param: useFullCount
+ */
+class BlockOverloadTest : public AqlExecutorTestCase<false>,
+                          public ::testing::TestWithParam<bool> {
+ protected:
+  auto getTestee() -> ExecutionBlockImpl<IdExecutor<ConstFetcher>> {
+    IdExecutorInfos infos{1, {0}, {}};
+    return ExecutionBlockImpl<IdExecutor<ConstFetcher>>{fakedQuery->engine(),
+                                                        generateNodeDummy(),
+                                                        std::move(infos)};
+  }
+
+  auto useFullCount() -> bool { return GetParam(); }
+};
+
+INSTANTIATE_TEST_CASE_P(IdExecutionBlock, BlockOverloadTest, ::testing::Bool());
+
+TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher) {
+  auto testee = getTestee();
+  {
+    // Inject block
+    auto inputBlock =
+        buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}});
+    testee.injectConstantBlock(inputBlock);
+  }
+  {
+    // Now call with too small hardLimit
+    auto expectedOutputBlock = buildBlock<1>(itemBlockManager, {{0}, {1}, {2}});
+    AqlCall call{};
+    call.hardLimit = 3;
+    call.fullCount = useFullCount();
+    AqlCallStack stack(std::move(call));
+    auto const& [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    if (useFullCount()) {
+      EXPECT_EQ(skipped, 4);
+    } else {
+      EXPECT_EQ(skipped, 0);
+    }
+
+    ValidateBlocksAreEqual(block, expectedOutputBlock);
+  }
+  {
+    // Validate that additional upstream-rows are gone.
+    AqlCall call{};
+    AqlCallStack stack(std::move(call));
+    auto const& [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+  }
+}
+
+TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_at_end) {
+  auto testee = getTestee();
+  {
+    // Inject block
+    auto inputBlock =
+        buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
+                      {{5, 0}, {6, 1}});
+    testee.injectConstantBlock(inputBlock);
+  }
+  {
+    // Now call with too small hardLimit
+    auto expectedOutputBlock =
+        buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {5}, {6}}, {{3, 0}, {4, 1}});
+    AqlCall call{};
+    call.hardLimit = 3;
+    call.fullCount = useFullCount();
+    AqlCallStack stack(std::move(call));
+    auto const& [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    if (useFullCount()) {
+      EXPECT_EQ(skipped, 2);
+    } else {
+      EXPECT_EQ(skipped, 0);
+    }
+    ValidateBlocksAreEqual(block, expectedOutputBlock);
+  }
+  {
+    // Validate that additional upstream-rows are gone.
+    AqlCall call{};
+    AqlCallStack stack(std::move(call));
+    auto const& [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+  }
+}
+
+TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
+  auto testee = getTestee();
+  {
+    // Inject block
+    auto inputBlock =
+        buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
+                      {{3, 0}, {4, 1}, {6, 0}});
+    testee.injectConstantBlock(inputBlock);
+  }
+  {
+    // Now call with too small hardLimit
+    auto expectedOutputBlock =
+        buildBlock<1>(itemBlockManager, {{0}, {1}, {3}, {4}}, {{3, 0}, {4, 1}});
+    AqlCall call{};
+    call.hardLimit = 2;
+    call.fullCount = useFullCount();
+    AqlCallStack stack(std::move(call));
+    auto const& [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    if (useFullCount()) {
+      EXPECT_EQ(skipped, 1);
+    } else {
+      EXPECT_EQ(skipped, 0);
+    }
+    ValidateBlocksAreEqual(block, expectedOutputBlock);
+  }
+  {
+    // Validate that next call will give remaining rows
+    // Now call with too small hardLimit
+    auto expectedOutputBlock = buildBlock<1>(itemBlockManager, {{5}, {6}}, {{1, 0}});
+    AqlCall call{};
+    AqlCallStack stack(std::move(call));
+    auto const& [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    ValidateBlocksAreEqual(block, expectedOutputBlock);
+  }
+}
+
+// Consecutive ShadowRows can be returned within the same block.
+TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) {
+  auto testee = getTestee();
+  {
+    // Inject block
+    auto inputBlock =
+        buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}},
+                      {{3, 0}, {4, 1}, {5, 0}, {6, 0}});
+    testee.injectConstantBlock(inputBlock);
+  }
+  {
+    // Now call with too small hardLimit
+    auto expectedOutputBlock =
+        buildBlock<1>(itemBlockManager, {{0}, {1}, {3}, {4}, {5}, {6}},
+                      {{2, 0}, {3, 1}, {4, 0}, {5, 0}});
+    AqlCall call{};
+    call.hardLimit = 2;
+    call.fullCount = useFullCount();
+    AqlCallStack stack(std::move(call));
+    auto const& [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    if (useFullCount()) {
+      EXPECT_EQ(skipped, 1);
+    } else {
+      EXPECT_EQ(skipped, 0);
+    }
+    ValidateBlocksAreEqual(block, expectedOutputBlock);
+  }
+  {
+    // Validate that additional upstream-rows are gone.
+    AqlCall call{};
+    AqlCallStack stack(std::move(call));
+    auto const& [state, skipped, block] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(block, nullptr);
+  }
+}
+
 }  // namespace arangodb::tests::aql
