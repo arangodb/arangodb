@@ -232,22 +232,19 @@ template <SocketType ST>
 void H1Connection<ST>::startWriting() {
   FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
   if (!_active) {
-    this->_io_context->post([self(Connection::shared_from_this())] {
-      auto& me = static_cast<H1Connection&>(*self);
-      FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << &me << "\n";
-      if (!me._active.exchange(true)) {  // we are the only ones here now
-        // we might get in a race with shutdownConnection()
-        Connection::State state = me._state.load();
-        if (state != Connection::State::Connected) {
-          me._active.store(false);
-          if (state == Connection::State::Disconnected) {
-            me.startConnection();
-          }
-        } else {
-          me.asyncWriteNextRequest();
+    FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
+    if (!this->_active.exchange(true)) {  // we are the only ones here now
+      // we might get in a race with shutdownConnection()
+      Connection::State state = this->_state.load();
+      if (state != Connection::State::Connected) {
+        this->_active.store(false);
+        if (state == Connection::State::Disconnected) {
+          this->startConnection();
         }
+      } else {
+        asyncWriteNextRequest();
       }
-    });
+    }
   }
 }
 
@@ -332,7 +329,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
     _active.store(false);
-    if (!_queue.pop(ptr)) {
+    if (_queue.empty()) {
       FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this="
                            << this << "\n";
       if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
@@ -342,9 +339,10 @@ void H1Connection<ST>::asyncWriteNextRequest() {
       } else {
         this->shutdownConnection(Error::CloseRequested);
       }
-      return;
+    } else {
+      startWriting();
     }
-    _active.store(true);
+    return;
   }
   this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
   FUERTE_ASSERT(_item.get() == nullptr);
