@@ -966,6 +966,9 @@ function processQuery(query, explain, planIndex) {
       case 'logical and':
         return '(' + binaryOperator(node, '&&') + ')';
       case 'ternary':
+        if (node.subNodes.length === 2) {
+          return '(' + buildExpression(node.subNodes[0]) + ' ?: ' + buildExpression(node.subNodes[1]) + ')';
+        }
         return '(' + buildExpression(node.subNodes[0]) + ' ? ' + buildExpression(node.subNodes[1]) + ' : ' + buildExpression(node.subNodes[2]) + ')';
       case 'n-ary or':
         if (node.hasOwnProperty('subNodes')) {
