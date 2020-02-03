@@ -153,21 +153,33 @@ function server_secrets(options) {
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
   pu.cleanupDBDirectoriesAppend(secretsDir);
-  
+
   fs.write(fs.join(secretsDir, 'secret1'), 'jwtsecret-1');
   fs.write(fs.join(secretsDir, 'secret2'), 'jwtsecret-2');
 
   process.env["jwt-secret-folder"] = secretsDir;
 
+  // Now set up TLS with the first server key:
+  let keyfileDir = fs.join(fs.getTempPath(), 'arango_tls_keyfile');
+  let keyfileName = fs.join(keyfileDir, "server.pem");
+  fs.makeDirectory(keyfileDir);
+  pu.cleanupDBDirectoriesAppend(keyfileDir);
+
+  fs.copyFile("./UnitTests/server.pem", keyfileName);
+
+  process.env["tls-keyfile"] = keyfileName;
+
   let copyOptions = _.clone(options);
   // necessary to fix shitty process-utils handling
   copyOptions['server.jwt-secret-folder'] = secretsDir;
+  copyOptions['protocol'] = "ssl";
 
   const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], copyOptions);
   return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret-folder': secretsDir,
-    'cluster.create-waits-for-sync-replication': false
+    'cluster.create-waits-for-sync-replication': false,
+    'ssl.keyfile': keyfileName
   });
 }
 

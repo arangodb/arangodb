@@ -35,7 +35,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/DBServerAgencySync.h"
@@ -1267,13 +1266,6 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   // invalidate our local cache
   auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
   ci.flush();
-
-  // turn on error logging now
-  auto cc = ClusterComm::instance();
-  if (cc != nullptr && cc->enableConnectionErrorLogging(true)) {
-    LOG_TOPIC("12083", DEBUG, Logger::HEARTBEAT)
-        << "created coordinator databases for the first time";
-  }
 
   return true;
 }

@@ -39,7 +39,6 @@
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -83,9 +82,6 @@ class IResearchFeatureTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-  };
 
   arangodb::tests::mocks::MockV8Server server;
 
@@ -99,7 +95,7 @@ class IResearchFeatureTest
     server.startFeatures();
   }
 
-  ~IResearchFeatureTest() { ClusterCommControl::reset(); }
+  ~IResearchFeatureTest() {}
 
   // version 0 data-source path
   irs::utf8_path getPersistedPath0(arangodb::LogicalView const& view) {
@@ -663,7 +659,7 @@ TEST_F(IResearchFeatureTest, test_async_multiple_tasks_with_same_resource_mutex)
   // expectation is currently deactivated as it is causing sporadic test failures:
   // EXPECT_TRUE(deallocated1);
   //
-  // the reason is that the read_write_mutex::unlock() function in 3rdParty/iresearch/core/utils/async_utils.cpp 
+  // the reason is that the read_write_mutex::unlock() function in 3rdParty/iresearch/core/utils/async_utils.cpp
   // does not acquire a mutex reproducibly.
   // excerpt from that code:
   //
@@ -731,10 +727,6 @@ class IResearchFeatureTestCoordinator
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-  };
-
   arangodb::tests::mocks::MockV8Server server;
 
  private:
@@ -777,8 +769,6 @@ class IResearchFeatureTestCoordinator
 
   ~IResearchFeatureTestCoordinator() {
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
-
-    ClusterCommControl::reset();
   }
 };
 
@@ -913,10 +903,6 @@ class IResearchFeatureTestDBServer
       public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-  };
-
   arangodb::tests::mocks::MockV8Server server;
 
  private:
@@ -961,8 +947,6 @@ class IResearchFeatureTestDBServer
 
   ~IResearchFeatureTestDBServer() {
     arangodb::ServerState::instance()->setRole(_serverRoleBefore);
-
-    ClusterCommControl::reset();
   }
 
   // version 0 data-source path
