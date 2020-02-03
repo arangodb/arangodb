@@ -207,7 +207,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
     }
 
     while (true) {
-      int result = unzReadCurrentFile(uf, buffer, (unsigned int)bufferSize);
+      TRI_read_reply_t result = unzReadCurrentFile(uf, buffer, (unsigned int)bufferSize);
 
       if (result < 0) {
         errorMessage = std::string("failed to read from zip file: ") + strerror(errno);
@@ -419,7 +419,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  TRI_read_t chunkRemain = static_cast<TRI_read_t>(statbuf.st_size);
+  TRI_read_t chunkRemain = static_cast<TRI_read_reply_t>(statbuf.st_size);
   char* buf = static_cast<char*>(TRI_Allocate(131072));
 
   if (buf == nullptr) {
@@ -435,7 +435,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
       readChunk = chunkRemain;
     }
 
-    TRI_read_t nRead = TRI_READ(fd, buf, readChunk);
+    TRI_read_reply_t nRead = TRI_READ(fd, buf, readChunk);
 
     if (nRead < 0) {
       TRI_Free(buf);

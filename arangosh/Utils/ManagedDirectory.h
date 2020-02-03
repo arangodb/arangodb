@@ -111,7 +111,7 @@ class ManagedDirectory {
      * @param  length Maximum amount of data to read (no more than buffer
      *                length)
      */
-    ssize_t read(char* buffer, size_t length);
+    TRI_read_reply_t read(char* buffer, size_t length);
 
     /**
      * @brief Read file contents into string
@@ -141,7 +141,7 @@ class ManagedDirectory {
      * @brief Count of bytes read from regular or gzip file, not amount returned by read
      */
 
-    ssize_t offset() const;
+    TRI_read_reply_t offset() const;
 
    private:
     ManagedDirectory const& _directory;

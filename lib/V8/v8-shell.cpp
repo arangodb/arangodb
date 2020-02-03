@@ -217,7 +217,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   char buffer[10240];
 
   while (true) {
-    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+    TRI_read_reply_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
