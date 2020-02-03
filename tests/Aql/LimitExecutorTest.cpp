@@ -27,6 +27,7 @@
 #include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
+#include "Mocks/Servers.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutorInfos.h"
@@ -1134,6 +1135,9 @@ class LimitExecutorExecuteApiTest
     : public LimitExecutorTestBase,
       public ::testing::TestWithParam<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> {
  protected:
+  mocks::MockAqlServer server{};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery{};
+
   ExecutionState state;
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
@@ -1152,7 +1156,9 @@ class LimitExecutorExecuteApiTest
             std::initializer_list<RegisterId>{})),
         registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
             std::initializer_list<RegisterId>{0})),
-        dummyFetcher(itemBlockManager, 1, false, nullptr) {}
+        dummyFetcher(itemBlockManager, 1, false, nullptr) {
+    fakedQuery = server.createFakeQuery();
+  }
 
 
   auto buildBlockRange(size_t const begin, size_t const end) -> SharedAqlItemBlockPtr {
@@ -1238,38 +1244,45 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   // Expected output, though the expectedPassedBlocks are also the input.
   // Note that structured bindings are *not* captured by lambdas, at least in C++17.
   // So we must explicity capture them.
-  auto const [expectedSkipped, expectedPassedBlocks, expectedStats] =
-      std::invoke([&, offset = offset, limit = limit, fullCount = fullCount,
-                   &inputLengths = inputLengths, clientCall = clientCall]() {
-        std::vector<SharedAqlItemBlockPtr> blocks;
-        auto const effectiveOffset = clientCall.getOffset() + offset;
-    // The combined limit of a call and a LimitExecutor:
-    auto const effectiveLimit =
-        std::min(clientCall.getLimit(),
-                 nonNegativeSubtraction(limit, clientCall.getOffset()));
-    auto i = size_t{0};
-    for (auto const length : inputLengths) {
-      // In each iteration, we calculate a range (begin, end) ~= (i, i+length),
-      // but potentially restricted by both offset and limit.
-      auto const localLimit = nonNegativeSubtraction(effectiveLimit, i);
-      auto const localOffset = nonNegativeSubtraction(effectiveOffset, i);
-      auto const limitedLength = std::min(length, localLimit);
-      auto const skip = std::min(limitedLength, localOffset);
-      auto const begin = i + skip;
-      auto const end = i + limitedLength;
-      // Both during the offset, and after the limit, begin equals end.
-      if (begin < end) {
-        blocks.emplace_back(buildBlockRange(begin, end));
+  auto const[expectedSkipped, expectedPassedBlocks, expectedOutput, expectedStats] =
+  std::invoke(
+    [&, offset = offset, limit = limit, fullCount = fullCount,
+      &inputLengths = inputLengths, clientCall = clientCall]() {
+      std::vector<SharedAqlItemBlockPtr> blocks;
+      auto output = MatrixBuilder<1>{};
+      auto const effectiveOffset = clientCall.getOffset() + offset;
+      // The combined limit of a call and a LimitExecutor:
+      auto const effectiveLimit =
+        std::min(
+          clientCall.getLimit(),
+          nonNegativeSubtraction(limit, clientCall.getOffset()));
+      auto i = size_t{0};
+      for (auto const length : inputLengths) {
+        // In each iteration, we calculate a range (begin, end) ~= (i, i+length),
+        // but potentially restricted by both offset and limit.
+        auto const localLimit = nonNegativeSubtraction(effectiveLimit, i);
+        auto const localOffset = nonNegativeSubtraction(effectiveOffset, i);
+        auto const limitedLength = std::min(length, localLimit);
+        auto const skip = std::min(limitedLength, localOffset);
+        auto const begin = i + skip;
+        auto const end = i + limitedLength;
+        for (auto k = begin; k < end; ++k) {
+          output.emplace_back(RowBuilder<1>{k});
+        }
+        // Both during the offset, and after the limit, begin equals end.
+        if (begin < end) {
+          blocks.emplace_back(buildBlockRange(begin, end));
+        }
+        i += length;
       }
-      i += length;
+      auto const skipped = std::min(numInputRows, effectiveOffset);
+      auto stats = LimitStats{};
+      if (fullCount) {
+        stats.incrFullCountBy(numInputRows);
+      }
+      return std::make_tuple(skipped, blocks, output, stats);
     }
-    auto const skipped = std::min(numInputRows, effectiveOffset);
-    auto stats = LimitStats{};
-    if (fullCount) {
-      stats.incrFullCountBy(numInputRows);
-    }
-    return std::make_tuple(skipped, blocks, stats);
-  });
+  );
   {
     auto const numReturnedRows =
         std::accumulate(expectedPassedBlocks.begin(), expectedPassedBlocks.end(),
@@ -1281,102 +1294,129 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   }
 
   auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
-  auto testee = LimitExecutor{dummyFetcher, infos};
+  // auto testee = LimitExecutor{dummyFetcher, infos};
 
 
-  auto inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
-  auto output =
-      std::make_unique<OutputAqlItemRow>(nullptr, outputRegisters, registersToKeep,
-                                         infos.registersToClear(), AqlCall{clientCall},
-                                         OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
+  // auto output =
+  //     std::make_unique<OutputAqlItemRow>(nullptr, outputRegisters, registersToKeep,
+  //                                        infos.registersToClear(), AqlCall{clientCall},
+  //                                        OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
 
-  auto executorState = ExecutorState::HASMORE;
-  auto skippedUpstream = size_t{0};
-  auto nextInputBlockIt = expectedPassedBlocks.begin();
+  auto&& testHelper = ExecutorTestHelper<LimitExecutor>{*fakedQuery}
+    .setInputFromRowNum(numInputRows)
+    .setInputSplitType(inputLengths)
+    .setCall(clientCall)
+    .expectOutput({0}, expectedOutput)
+    .expectSkipped(expectedSkipped)
+    .expectedState(ExecutionState::DONE)
+    //.run(std::move(infos))
+  ;
+  testHelper.run(std::move(infos));
+  // TODO run()
 
-  auto accumulatedStats = LimitStats{};
-  auto skipped = size_t{0};
-  auto outputBlocks = std::vector<SharedAqlItemBlockPtr>{};
-
+  //
+  // // auto skippedUpstream = size_t{0};
+  // auto outputBlocks = std::vector<SharedAqlItemBlockPtr>{};
+  //
   // auto simulateUpstreamCall =
-  //     [&](AqlCall call) -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  //     [this, &infos = std::as_const(infos), &expectedPassedBlocks,
+  //         &outputBlocks, nextInputBlockIt = expectedPassedBlocks.begin(), &testHelper]
+  //         (
+  //             AqlCall upstreamCall, std::unique_ptr<OutputAqlItemRow> &&oldOutput,
+  //             AqlItemBlockInputRange const &oldInputRange
+  //         ) mutable -> std::tuple<AqlItemBlockInputRange, std::unique_ptr<OutputAqlItemRow>> {
+  //       auto output = std::unique_ptr<OutputAqlItemRow>{std::move(oldOutput)};
+  //       auto const wantsMore = upstreamCall.getLimit() > 0;
+  //       auto const hasMore = nextInputBlockIt != expectedPassedBlocks.end();
+  //       auto const fastForward = upstreamCall.hasHardLimit() && upstreamCall.getLimit() == 0;
+  //       auto inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
+  //       if (wantsMore && hasMore) {
+  //         EXPECT_FALSE(oldInputRange.hasDataRow());
+  //         auto const nextBlock = *nextInputBlockIt;
+  //         ++nextInputBlockIt;
+  //         inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE, upstreamCall.getOffset(), nextBlock, 0};
+  //         auto call = output->stealClientCall();
+  //         if (output->isInitialized()) {
+  //           EXPECT_TRUE(output->isFull());
+  //           outputBlocks.emplace_back(output->stealBlock());
+  //         }
+  //         output = std::make_unique<OutputAqlItemRow>(
+  //             nextBlock, outputRegisters, registersToKeep, infos.registersToClear(),
+  //             std::move(call), OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows
+  //         );
+  //       } else if (!hasMore || fastForward) {
+  //         // TODO Add rows skipped due to fullCount
+  //         inputRange = AqlItemBlockInputRange{ExecutorState::DONE, upstreamCall.getOffset()};
+  //       } else {
+  //         TRI_ASSERT(hasMore && !fastForward && !wantsMore);
+  //         TRI_ASSERT(upstreamCall.getLimit() == 0 && !upstreamCall.hasHardLimit());
+  //         // We got a soft limit of 0.
+  //         inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE, upstreamCall.getOffset()};
+  //         // I don't think this should happen:
+  //         EXPECT_TRUE(false);
+  //       }
+  //       return {inputRange, std::move(output)};
+  //     };
   //
+  // auto callExecutor = [&offset](
+  //     LimitExecutor &testee, OutputAqlItemRow &output, AqlItemBlockInputRange inputRange
+  // ) -> std::tuple<ExecutorState, LimitStats, size_t, AqlCall> {
+  //   auto executorState = ExecutorState::HASMORE;
+  //   auto stats = LimitStats{};
+  //   auto skippedLocal = size_t{};
+  //   auto upstreamCall = AqlCall{};
+  //   if (output.getClientCall().skipNow()) {
+  //     TRI_ASSERT(!inputRange.hasDataRow());
+  //     auto const originalCall = output.getClientCall();
+  //     auto const originalRange = inputRange;
+  //     auto call = output.stealClientCall();
+  //     std::tie(executorState, stats, skippedLocal, upstreamCall) = testee.skipRowsRange(inputRange, call);
+  //     EXPECT_EQ(inputRange.getRowIndex(), originalRange.getRowIndex());
+  //     if (originalCall.getOffset() > 0) {
+  //       // TODO are these correct?
+  //       EXPECT_EQ(originalCall.getOffset() + offset, upstreamCall.getOffset());
+  //       EXPECT_GE(originalCall.getOffset(), call.getOffset());
+  //       EXPECT_EQ(originalCall.getOffset() - call.getOffset(), skippedLocal);
+  //       EXPECT_GE(originalRange.skippedInFlight(), inputRange.skippedInFlight());
+  //       EXPECT_EQ(inputRange.skippedInFlight() - originalRange.skippedInFlight(), skippedLocal);
+  //     }
+  //     output.setCall(std::move(call));
+  //   } else {
+  //     std::tie(executorState, stats, upstreamCall) = testee.produceRows(inputRange, output);
+  //     if (output.numRowsWritten() > 0) {
+  //       EXPECT_TRUE(output.isFull());
+  //     }
+  //     // TODO add assertions
+  //   }
+  //
+  //   return {executorState, stats, skippedLocal, upstreamCall};
   // };
   //
-  // auto callExecutor = [&]() -> std::tuple<ExecutorState, LimitStats, size_t, AqlCall> {
+  // auto inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
+  // auto executorState = ExecutorState::HASMORE;
+  // auto accumulatedStats = LimitStats{};
+  // auto skipped = size_t{0};
   //
-  // };
-
-  // TODO If the clientCall contained a softLimit, call again afterwards with a
-  //  new AqlCall{}.
-  while (executorState != ExecutorState::DONE) {
-    auto upstreamCall = AqlCall{};
-    auto stats = LimitStats{};
-    if (output->getClientCall().skipNow()) {
-      TRI_ASSERT(!inputRange.hasDataRow());
-      auto const originalCall = output->getClientCall();
-      auto const originalRange = inputRange;
-      auto call = output->stealClientCall();
-      auto skippedLocal = size_t{};
-      std::tie(executorState, stats, skippedLocal, upstreamCall) = testee.skipRowsRange(inputRange,  call);
-      accumulatedStats += stats;
-      skipped += skippedLocal;
-      EXPECT_EQ(inputRange.getRowIndex(), originalRange.getRowIndex());
-      if (originalCall.getOffset() > 0) {
-        // TODO are these correct?
-        EXPECT_EQ(originalCall.getOffset() + offset, upstreamCall.getOffset());
-        EXPECT_GE(originalCall.getOffset(), call.getOffset());
-        EXPECT_EQ(originalCall.getOffset() - call.getOffset(), skippedLocal);
-        EXPECT_GE(originalRange.skippedInFlight(), inputRange.skippedInFlight());
-        EXPECT_EQ(inputRange.skippedInFlight() - originalRange.skippedInFlight(), skippedLocal);
-      }
-      output->setCall(std::move(call));
-    } else {
-      std::tie(executorState, stats, upstreamCall) = testee.produceRows(inputRange, *output);
-      accumulatedStats += stats;
-      if (output->numRowsWritten() > 0) {
-        EXPECT_TRUE(output->isFull());
-      }
-      // TODO add assertions
-    }
-    EXPECT_LE(upstreamCall.getOffset() + skippedUpstream, expectedSkipped);
-    skippedUpstream += upstreamCall.getOffset();
-
-    {
-      auto const wantsMore = upstreamCall.getLimit() > 0;
-      auto const hasMore = nextInputBlockIt != expectedPassedBlocks.end();
-      auto const fastForward = upstreamCall.hasHardLimit() && upstreamCall.getLimit() == 0;
-      if (wantsMore && hasMore) {
-        EXPECT_FALSE(inputRange.hasDataRow());
-        auto const nextBlock = *nextInputBlockIt;
-        ++nextInputBlockIt;
-        inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE, upstreamCall.getOffset(), nextBlock, 0};
-        auto call = output->stealClientCall();
-        if (output->isInitialized()) {
-          outputBlocks.emplace_back(output->stealBlock());
-        }
-        output = std::make_unique<OutputAqlItemRow>(
-            nextBlock, outputRegisters, registersToKeep, infos.registersToClear(),
-            std::move(call), OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
-      } else if (!hasMore || fastForward) {
-        // TODO Add rows skipped due to fullCount
-        inputRange = AqlItemBlockInputRange{ExecutorState::DONE, upstreamCall.getOffset()};
-      } else {
-        TRI_ASSERT(hasMore && !fastForward && !wantsMore);
-        TRI_ASSERT(upstreamCall.getLimit() == 0 && !upstreamCall.hasHardLimit());
-        // We got a soft limit of 0.
-        inputRange = AqlItemBlockInputRange{ExecutorState::HASMORE, upstreamCall.getOffset()};
-        // I don't think this should happen:
-        ASSERT_TRUE(false);
-      }
-    }
-  }
-  if (output->isInitialized()) {
-    outputBlocks.emplace_back(output->stealBlock());
-  }
-  EXPECT_EQ(expectedSkipped, skipped);
-  EXPECT_EQ(expectedStats, accumulatedStats);
-  EXPECT_EQ(expectedPassedBlocks, outputBlocks);
+  // // TODO If the clientCall contained a softLimit, call again afterwards with a
+  // //  new AqlCall{}.
+  // while (executorState != ExecutorState::DONE) {
+  //   auto stats = LimitStats{};
+  //   auto skippedLocal = size_t{};
+  //   auto upstreamCall = AqlCall{};
+  //   std::tie(executorState, stats, skippedLocal, upstreamCall) = callExecutor(testee, *output, inputRange);
+  //   // EXPECT_LE(upstreamCall.getOffset() + skippedUpstream, expectedSkipped);
+  //   accumulatedStats += stats;
+  //   skipped += skippedLocal;
+  //   // skippedUpstream += upstreamCall.getOffset();
+  //   std::tie(inputRange, output) = simulateUpstreamCall(upstreamCall, std::move(output), inputRange);
+  // }
+  // if (output->isInitialized()) {
+  //   EXPECT_TRUE(output->isFull());
+  //   outputBlocks.emplace_back(output->stealBlock());
+  // }
+  // EXPECT_EQ(expectedSkipped, skipped);
+  // EXPECT_EQ(expectedStats, accumulatedStats);
+  // EXPECT_EQ(expectedPassedBlocks, outputBlocks);
 }
 
 auto printTestCase = [](testing::TestParamInfo<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> const& paramInfo) -> std::string {

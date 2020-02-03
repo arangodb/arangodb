@@ -72,6 +72,15 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto setInputFromRowNum(size_t rows) -> ExecutorTestHelper& {
+    static_assert(inputColumns == 1);
+    _input.clear();
+    for (auto i = size_t{0}; i < rows; ++i) {
+      _input.emplace_back(RowBuilder<1>{i});
+    }
+    return *this;
+  }
+
   auto setInputSplit(std::vector<std::size_t> const& list) -> ExecutorTestHelper& {
     _inputSplit = list;
     return *this;
@@ -149,6 +158,10 @@ struct ExecutorTestHelper {
                        SharedAqlItemBlockPtr const& expectedOutputBlock) {
     velocypack::Options vpackOptions;
 
+    EXPECT_EQ(outputBlock == nullptr, expectedOutputBlock == nullptr);
+    if (expectedOutputBlock == nullptr) {
+      return;
+    }
     EXPECT_EQ(outputBlock->size(), expectedOutputBlock->size());
     for (size_t i = 0; i < outputBlock->size(); i++) {
       for (size_t j = 0; j < outputColumns; j++) {
@@ -179,6 +192,9 @@ struct ExecutorTestHelper {
 
     for (auto const& value : _input) {
       matrix.push_back(value);
+
+      TRI_ASSERT(!_inputSplit.valueless_by_exception());
+      TRI_ASSERT(!std::holds_alternative<std::monostate>(_inputSplit));
 
       bool openNewBlock =
           std::visit(overload{[&](VectorSizeT& list) {
