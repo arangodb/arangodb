@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,38 +17,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_ACCEPTORTCP_H
-#define ARANGOD_SCHEDULER_ACCEPTORTCP_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_SYSTEM_REPORT_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_SYSTEM_REPORT_HANDLER_H 1
 
-#include "GeneralServer/Acceptor.h"
-#include "GeneralServer/AsioSocket.h"
+#include "RestHandler/RestBaseHandler.h"
+  
+#include <mutex>
+#include <unordered_map>
 
 namespace arangodb {
-namespace rest {
-
-template <SocketType T>
-class AcceptorTcp final : public Acceptor {
+class RestSystemReportHandler : public arangodb::RestBaseHandler {
  public:
-  AcceptorTcp(rest::GeneralServer& server, rest::IoContext& ctx, Endpoint* endpoint)
-      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
+  RestSystemReportHandler(
+    application_features::ApplicationServer&, GeneralRequest*,
+    GeneralResponse*);
+  char const* name() const override final { return "RestSystemReportHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RestStatus execute() override;
+private:
+  bool isAdminUser() const;
 
- public:
-  void open() override;
-  void close() override;
-  void cancel() override;
-  void asyncAccept() override;
+  static std::mutex _exclusive;
+  std::unordered_map<std::string, std::string> const cmds;
 
- private:
-  void performHandshake(std::unique_ptr<AsioSocket<T>>);
-
- private:
-  asio_ns::ip::tcp::acceptor _acceptor;
-  std::unique_ptr<AsioSocket<T>> _asioSocket;
 };
-}  // namespace rest
 }  // namespace arangodb
 
 #endif

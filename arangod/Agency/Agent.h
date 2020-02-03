@@ -342,6 +342,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   void updateSomeConfigValues(VPackSlice);
 
  private:
+
+  /// @brief load() has run
+  bool loaded() const;
+
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
@@ -488,6 +492,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// since the epoch of the steady clock.
   std::atomic<int64_t> _leaderSince;
 
+  /// @brief load() has completed
+  std::atomic<bool> _loaded;
+
   /// @brief Container for callbacks for removal
   std::unordered_map<std::string, std::unordered_set<std::string>> _callbackTrashBin;
   std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
@@ -503,10 +510,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Counter& _read_ok;
   Counter& _read_no_leader;
   Histogram<double>& _write_hist_msec;
-  
+
 };
 }  // namespace consensus
 }  // namespace arangodb
 
 #endif
- 

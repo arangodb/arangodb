@@ -31,7 +31,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterComm.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -58,11 +57,6 @@ class FlushFeatureTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::ENGINES, arangodb::LogLevel::FATAL> {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() {
-      arangodb::ClusterComm::_theInstanceInit.store(0);
-    }
-  };
 
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
@@ -107,8 +101,6 @@ class FlushFeatureTest
     for (auto& f : features) {
       f.first.unprepare();
     }
-
-    ClusterCommControl::reset();
 
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }

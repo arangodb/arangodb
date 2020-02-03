@@ -69,7 +69,7 @@ function waitForCompaction(collection, initialFigures, nrTries, wait) {
         return true;
       }
     }
-    internal.wait(wait);
+    internal.wait(wait, false);
     tries++;
   }
   return false;
@@ -816,7 +816,7 @@ function CompactionSuite () {
       maxWait = 10000;
       console.log("Waiting for dead.deletion === 0 and dead.count === 0");
       while (waited < maxWait) {
-        internal.wait(2);
+        internal.wait(2, false);
         waited += 2;
 
         fig = c1.figures();
@@ -826,13 +826,13 @@ function CompactionSuite () {
       }
 
       fig = c1.figures();
-      assertEqual(0, c1.count());
-      assertEqual(0, fig['alive']['count']);
-      assertEqual(0, fig['dead']['count']);
-      assertEqual(0, fig['dead']['size']);
-      assertEqual(0, fig['dead']['deletion']);
-      assertEqual(0, fig['journals']['count']);
-      assertEqual(0, fig['datafiles']['count']);
+      assertEqual(0, c1.count(), fig);
+      assertEqual(0, fig['alive']['count'], fig);
+      assertEqual(0, fig['dead']['count'], fig);
+      assertEqual(0, fig['dead']['size'], fig);
+      assertEqual(0, fig['dead']['deletion'], fig);
+      assertEqual(0, fig['journals']['count'], fig);
+      assertEqual(0, fig['datafiles']['count'], fig);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -876,11 +876,11 @@ function CompactionSuite () {
       }
 
       assertEqual(n, c1.count());
-      assertEqual(n, fig['alive']['count']);
-      assertEqual(0, fig['dead']['count']);
-      assertEqual(0, fig['dead']['deletion']);
-      assertEqual(1, fig['journals']['count']);
-      assertTrue(fig['datafiles']['count'] > 0);
+      assertEqual(n, fig['alive']['count'], fig);
+      assertEqual(0, fig['dead']['count'], fig);
+      assertEqual(0, fig['dead']['deletion'], fig);
+      assertEqual(1, fig['journals']['count'], fig);
+      assertTrue(fig['datafiles']['count'] > 0, fig);
 
       // truncation will go fully into the journal...
       internal.wal.flush(true, true);
@@ -900,9 +900,9 @@ function CompactionSuite () {
         internal.wait(1, false);
       }
 
-      assertEqual(0, c1.count());
-      assertEqual(0, fig['alive']['count']);
-      assertEqual(n, fig['dead']['deletion']);
+      assertEqual(0, c1.count(), fig);
+      assertEqual(0, fig['alive']['count'], fig);
+      assertEqual(n, fig['dead']['deletion'], fig);
 
       if (waitForCompaction(c1, initialFigures, 100, 1) === false) {
         throw "No compaction occurred!";
@@ -910,12 +910,12 @@ function CompactionSuite () {
 
       fig = c1.figures();
 
-      assertEqual(0, c1.count());
+      assertEqual(0, c1.count(), fig);
       // all alive & dead markers should be gone
-      assertEqual(0, fig['alive']['count']);
-      assertEqual(0, fig['dead']['count']);
+      assertEqual(0, fig['alive']['count'], fig);
+      assertEqual(0, fig['dead']['count'], fig);
       // we should still have all the deletion markers
-      assertTrue(n >= fig['dead']['deletion']);
+      assertTrue(n >= fig['dead']['deletion'], fig);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -957,7 +957,7 @@ function CompactionSuite () {
       }
 
       fig = c1.figures();
-      assertTrue(fig.dead.count > 0);
+      assertTrue(fig.dead.count > 0, fig);
 
       internal.wal.flush(true, true);
       internal.wal.waitForCollector(cn);
