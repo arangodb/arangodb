@@ -49,7 +49,7 @@ p = os.path.dirname(path).replace('/cygdrive/c/', 'c:/')
 sys.path.insert(0, p)
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '..'))
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../gypfiles'))
-sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../v7.1.302.28/third_party/binutils'))
+sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../v7.9.317/third_party/binutils'))
 #print(sys.path)
 sys.argv.append("-DPYTHON_EXECUTABLE=" + sys.executable)
 os.environ['PYTHON_EXECUTABLE'] = sys.executable
