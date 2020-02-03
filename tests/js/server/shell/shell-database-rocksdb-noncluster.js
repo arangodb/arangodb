@@ -86,7 +86,7 @@ function DatabaseSuite () {
       ];
 
       keys.forEach(function(k) {
-        assertTrue(result.hasOwnProperty(k));
+        assertTrue(result.hasOwnProperty(k), k);
       });
     },
 

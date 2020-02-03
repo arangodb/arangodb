@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ceb{
+    Version{"2.1.48.67"}
+    collations{
+        standard{
+            Sequence{"&N<ñ<<<Ñ<ng<<<Ng<<<NG"}
+            Version{"35.1"}
+        }
+    }
+}

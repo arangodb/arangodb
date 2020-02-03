@@ -59,7 +59,7 @@ option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 
 set(V8_VERSION
-  "7.1.302.28"
+  "7.9.317"
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
@@ -234,3 +234,4 @@ target_include_directories(fuerte SYSTEM PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
 
+set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
