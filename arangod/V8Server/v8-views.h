@@ -32,8 +32,7 @@
 struct TRI_vocbase_t;
 
 void TRI_InitV8Views( // init views
-  TRI_v8_global_t& v8g, // V8 globals
-  v8::Isolate* isolate, // V8 isolate
-                     v8::Handle<v8::ObjectTemplate> ArangoDBNS);
+                     TRI_v8_global_t& v8g, // V8 globals
+                     v8::Isolate* isolate);
 
 #endif
