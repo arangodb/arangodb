@@ -59,7 +59,8 @@ if(PythonInterp_FIND_VERSION)
         set(_PYTHON_FIND_MAJ_MIN "${PythonInterp_FIND_VERSION_MAJOR}.${PythonInterp_FIND_VERSION_MINOR}")
         list(APPEND _Python_NAMES
              python${_PYTHON_FIND_MAJ_MIN}
-             python${PythonInterp_FIND_VERSION_MAJOR})
+             python${PythonInterp_FIND_VERSION_MAJOR}
+             python)
         unset(_PYTHON_FIND_OTHER_VERSIONS)
         if(NOT PythonInterp_FIND_VERSION_EXACT)
             foreach(_PYTHON_V ${_PYTHON${PythonInterp_FIND_VERSION_MAJOR}_VERSIONS})
@@ -70,13 +71,15 @@ if(PythonInterp_FIND_VERSION)
         endif()
         unset(_PYTHON_FIND_MAJ_MIN)
     else()
-        list(APPEND _Python_NAMES python${PythonInterp_FIND_VERSION_MAJOR})
+        list(APPEND _Python_NAMES python${PythonInterp_FIND_VERSION_MAJOR} python)
         set(_PYTHON_FIND_OTHER_VERSIONS ${_PYTHON${PythonInterp_FIND_VERSION_MAJOR}_VERSIONS})
     endif()
 else()
     set(_PYTHON_FIND_OTHER_VERSIONS ${_PYTHON3_VERSIONS} ${_PYTHON2_VERSIONS} ${_PYTHON1_VERSIONS})
 endif()
-find_program(PYTHON_EXECUTABLE NAMES ${_Python_NAMES})
+set(PATHLIST $ENV{PATH})
+LIST(FILTER PATHLIST INCLUDE REGEX ".*on3.*")
+find_program(PYTHON_EXECUTABLE NAMES ${_Python_NAMES} HINTS ${PATHLIST} CMAKE_FIND_ROOT_PATH_BOTH)
 
 # Set up the versions we know about, in the order we will search. Always add
 # the user supplied additional versions to the front.

@@ -406,12 +406,16 @@ void v8Init() {
   struct init_t {
     std::shared_ptr<v8::Platform> platform;
     init_t() {
-      platform = std::shared_ptr<v8::Platform>(v8::platform::CreateDefaultPlatform(),
-                                               [](v8::Platform* p) -> void {
-                                                 v8::V8::Dispose();
-                                                 v8::V8::ShutdownPlatform();
-                                                 delete p;
-                                               });
+      auto uniquePlatform = v8::platform::NewDefaultPlatform();
+      platform = std::shared_ptr<v8::Platform>(
+        uniquePlatform.get(),
+        [](v8::Platform* p) -> void {
+          v8::V8::Dispose();
+          v8::V8::ShutdownPlatform();
+          delete p;
+        }
+      );
+      uniquePlatform.release();
       v8::V8::InitializePlatform(platform.get());  // avoid SIGSEGV duing 8::Isolate::New(...)
       v8::V8::Initialize();  // avoid error: "Check failed: thread_data_table_"
     }

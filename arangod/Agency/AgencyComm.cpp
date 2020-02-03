@@ -105,7 +105,15 @@ void AgencyPrecondition::toVelocyPack(VPackBuilder& builder) const {
         case AgencyPrecondition::Type::VALUE:
           builder.add("old", value);
           break;
-          // mop: useless compiler warning :S
+        case AgencyPrecondition::Type::TIN:
+          builder.add("in", value);
+          break;
+        case AgencyPrecondition::Type::NOTIN:
+          builder.add("notin", value);
+          break;
+        case AgencyPrecondition::Type::INTERSECTION_EMPTY:
+          builder.add("intersectionEmpty", value);
+          break;
         case AgencyPrecondition::Type::NONE:
           break;
       }
@@ -126,7 +134,15 @@ void AgencyPrecondition::toGeneralBuilder(VPackBuilder& builder) const {
         case AgencyPrecondition::Type::VALUE:
           builder.add("old", value);
           break;
-          // mop: useless compiler warning :S
+        case AgencyPrecondition::Type::TIN:
+          builder.add("in", value);
+          break;
+        case AgencyPrecondition::Type::NOTIN:
+          builder.add("notin", value);
+          break;
+        case AgencyPrecondition::Type::INTERSECTION_EMPTY:
+          builder.add("intersectionEmpty", value);
+          break;
         case AgencyPrecondition::Type::NONE:
           break;
       }

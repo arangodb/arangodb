@@ -1,0 +1,95 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ceb{
+    Currencies{
+        BRL{
+            "R$",
+            "BRL",
+        }
+        CNY{
+            "CN¥",
+            "Intsik nga Yuan",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        GBP{
+            "£",
+            "Inglatera nga Libra",
+        }
+        INR{
+            "₹",
+            "Rupee sa India",
+        }
+        JPY{
+            "JP¥",
+            "Hapon nga Yen",
+        }
+        PHP{
+            "₱",
+            "PHP",
+        }
+        RUB{
+            "RUB",
+            "Rusong ruble",
+        }
+        USD{
+            "US $",
+            "Dolyar sa US",
+        }
+        XXX{
+            "¤",
+            "XXX",
+        }
+    }
+    Currencies%narrow{
+        BRL{"R$"}
+        EUR{"€"}
+        INR{"₹"}
+        USD{"$"}
+    }
+    CurrencyPlurals{
+        BRL{
+            one{"BRL"}
+            other{"BRL"}
+        }
+        CNY{
+            one{"Intsik ng yuan"}
+            other{"Intsik ng yuan"}
+        }
+        EUR{
+            one{"euro"}
+            other{"mga euro"}
+        }
+        GBP{
+            one{"Inglatera nga libra"}
+            other{"Inglatera nga libra"}
+        }
+        INR{
+            one{"rupee sa India"}
+            other{"Mga rupee sa India"}
+        }
+        JPY{
+            one{"Hapon nga yen"}
+            other{"Hapon nga yen"}
+        }
+        RUB{
+            one{"Rusong ruble"}
+            other{"Rusong ruble"}
+        }
+        USD{
+            one{"dolyar sa US"}
+            other{"dolyares sa US"}
+        }
+        XXX{
+            one{"XXX"}
+            other{"XXX"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{1} {0}"}
+        other{"{1} {0}"}
+    }
+    Version{"2.1.49.82"}
+}
