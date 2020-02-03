@@ -165,69 +165,83 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
   options->addOption("--wal.allow-oversize-entries",
                      "allow entries that are bigger than '--wal.logfile-size'",
                      new BooleanParameter(&_allowOversizeEntries),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30700);
 
   options->addOption(
       "--wal.use-mlock",
       "mlock WAL logfiles in memory (may require elevated privileges or "
       "limits)",
       new BooleanParameter(&_useMLock),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30700);
 
   options->addOption("--wal.directory", "logfile directory",
-                     new StringParameter(&_directory));
+                     new StringParameter(&_directory))
+                     .setDeprecatedIn(30700);
 
   options->addOption(
       "--wal.historic-logfiles",
       "maximum number of historic logfiles to keep after collection",
-      new UInt32Parameter(&_historicLogfiles));
+      new UInt32Parameter(&_historicLogfiles))
+      .setDeprecatedIn(30700);
 
   options->addOption(
       "--wal.ignore-logfile-errors",
       "ignore logfile errors. this will read recoverable data from corrupted "
       "logfiles but ignore any unrecoverable data",
-      new BooleanParameter(&_ignoreLogfileErrors));
+      new BooleanParameter(&_ignoreLogfileErrors))
+      .setDeprecatedIn(30700);
 
   options->addOption("--wal.ignore-recovery-errors",
                      "continue recovery even if re-applying operations fails",
-                     new BooleanParameter(&_ignoreRecoveryErrors));
+                     new BooleanParameter(&_ignoreRecoveryErrors))
+                     .setDeprecatedIn(30700);
 
   options->addOption("--wal.flush-timeout", "flush timeout (in milliseconds)",
                      new UInt64Parameter(&_flushTimeout),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30700);
 
   options->addOption("--wal.logfile-size", "size of each logfile (in bytes)",
-                     new UInt32Parameter(&_filesize));
+                     new UInt32Parameter(&_filesize))
+                     .setDeprecatedIn(30700);
 
   options->addOption("--wal.open-logfiles",
                      "maximum number of parallel open logfiles",
-                     new UInt32Parameter(&_maxOpenLogfiles));
+                     new UInt32Parameter(&_maxOpenLogfiles))
+                     .setDeprecatedIn(30700);
 
   options->addOption("--wal.reserve-logfiles",
                      "maximum number of reserve logfiles to maintain",
-                     new UInt32Parameter(&_reserveLogfiles));
+                     new UInt32Parameter(&_reserveLogfiles))
+                     .setDeprecatedIn(30700);
 
   options->addOption("--wal.slots", "number of logfile slots to use",
                      new UInt32Parameter(&_numberOfSlots),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setDeprecatedIn(30700);
 
   options->addOption(
       "--wal.sync-interval",
       "interval for automatic, non-requested disk syncs (in milliseconds)",
-      new UInt64Parameter(&_syncInterval));
+      new UInt64Parameter(&_syncInterval))
+      .setDeprecatedIn(30700);
 
   options->addOption(
       "--wal.throttle-when-pending",
       "throttle writes when at least this many operations are waiting for "
       "collection (set to 0 to deactivate write-throttling)",
       new UInt64Parameter(&_throttleWhenPending),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30700);
 
   options->addOption(
       "--wal.throttle-wait",
       "maximum wait time per operation when write-throttled (in milliseconds)",
       new UInt64Parameter(&_maxThrottleWait),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30700);
 }
 
 void MMFilesLogfileManager::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
