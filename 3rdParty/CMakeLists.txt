@@ -218,7 +218,6 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
   )
 
-target_link_libraries(fuerte llhttp)
 target_link_libraries(fuerte nghttp2)
 
 include(CheckTypeSize)
