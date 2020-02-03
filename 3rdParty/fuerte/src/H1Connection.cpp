@@ -344,6 +344,8 @@ void H1Connection<ST>::asyncWriteNextRequest() {
     if (_active.exchange(true)) {
       return; // someone else restarted
     }
+    bool success = _queue.pop(ptr);
+    FUERTE_ASSERT(success);
   }
   this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
   FUERTE_ASSERT(_item.get() == nullptr);
