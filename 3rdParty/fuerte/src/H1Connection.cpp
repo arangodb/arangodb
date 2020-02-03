@@ -329,18 +329,19 @@ void H1Connection<ST>::asyncWriteNextRequest() {
   RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
     _active.store(false);
-    if (_queue.empty()) {
-      FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this="
-                           << this << "\n";
-      if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
-        FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
-                             << "\n";
-        setTimeout(this->_config._idleTimeout);
-      } else {
-        this->shutdownConnection(Error::CloseRequested);
-      }
-    } else {
+    if (!_queue.empty()) {
       startWriting();
+      return;
+    }
+  
+    FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this="
+                         << this << "\n";
+    if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
+      FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
+                           << "\n";
+      setTimeout(this->_config._idleTimeout);
+    } else {
+      this->shutdownConnection(Error::CloseRequested);
     }
     return;
   }
