@@ -287,8 +287,7 @@ class ShortestPathExecutorTest
               std::move(parameters._source), std::move(parameters._target)),
         finder(static_cast<FakePathFinder&>(infos.finder())),
         inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
-        input(AqlItemBlockInputRange(ExecutorState::DONE, inputBlock, 0,
-                                     inputBlock->size())),
+        input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
         fakeUnusedBlock(VPackParser::fromJson("[]")),
         fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
         testee(fetcher, infos) {
@@ -430,7 +429,7 @@ class ShortestPathExecutorTest
 
     // If an offset is requested, skip
     if (ourCall.getOffset() > 0) {
-      std::tie(state, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, std::ignore /* stats */, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
     }
 
     // Produce rows
@@ -453,7 +452,7 @@ class ShortestPathExecutorTest
       // Emulate being called with a full count
       ourCall.hardLimit = 0;
       ourCall.softLimit = 0;
-      std::tie(state, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, std::ignore /* stats */, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
     }
 
     ValidateCalledWith();

@@ -206,8 +206,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
   AqlCall clientCall;
 
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(2, infos.numberOfOutputRegisters());
@@ -253,8 +252,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_2) {
   AqlCall clientCall;
 
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
@@ -305,8 +303,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_3) {
   AqlCall clientCall;
 
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
@@ -356,8 +353,7 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
   AqlCall clientCall;
 
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
@@ -431,8 +427,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
   AqlCall clientCall;
 
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
@@ -533,8 +528,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
   AqlCall clientCall;
 
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr outputBlock =
       itemBlockManager.requestBlock(inputBlock->size(), infos.numberOfOutputRegisters());
@@ -653,8 +647,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_1) {
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, infos);
 
@@ -662,7 +655,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_1) {
   clientCall.offset = 2;
 
   {
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
     ASSERT_EQ(ExecutorState::HASMORE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
     ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
@@ -672,7 +665,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_1) {
   }
 
   {
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
     ASSERT_EQ(ExecutorState::DONE, state);
     ASSERT_FALSE(upstreamCall.hasHardLimit());
     ASSERT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
@@ -688,8 +681,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {2}});
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, infos);
 
@@ -697,7 +689,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
   clientCall.offset = 1;
 
   {
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
     EXPECT_EQ(ExecutorState::HASMORE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
@@ -707,7 +699,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_2) {
   }
 
   {
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
@@ -746,8 +738,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {1}});
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, 0, inputBlock, 0);
   AqlItemBlockInputRange emptyInputRangeDone(ExecutorState::DONE);
 
   SortedCollectExecutor testee(fetcher, infos);
@@ -756,7 +747,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
   clientCall.offset = 1;
 
   {
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
     EXPECT_EQ(ExecutorState::HASMORE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
@@ -766,7 +757,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
   }
 
   {
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
@@ -774,7 +765,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_3) {
   }
 
   {
-    auto [state, skipped, upstreamCall] =
+    auto [state, stats, skipped, upstreamCall] =
         testee.skipRowsRange(emptyInputRangeDone, clientCall);
     EXPECT_EQ(state, ExecutorState::DONE);
     EXPECT_EQ(0, upstreamCall.offset);
@@ -789,12 +780,10 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {1}});
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::HASMORE, 0, inputBlock, 0);
 
   SharedAqlItemBlockPtr inputBlock2 = buildBlock<1>(itemBlockManager, {{2}});
-  AqlItemBlockInputRange inputRange2(ExecutorState::HASMORE, inputBlock2, 0,
-                                     inputBlock2->size());
+  AqlItemBlockInputRange inputRange2(ExecutorState::HASMORE, 0, inputBlock2, 0);
   AqlItemBlockInputRange emptyInputRangeDone(ExecutorState::DONE);
 
   SortedCollectExecutor testee(fetcher, infos);
@@ -803,7 +792,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
   clientCall.offset = 1;
 
   {
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
     EXPECT_EQ(ExecutorState::HASMORE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
@@ -814,7 +803,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   {
     // 1, 1
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 0);
@@ -823,7 +812,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_4) {
 
   {
     // 2
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(inputRange2, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(inputRange2, clientCall);
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_EQ(0, upstreamCall.offset);
     EXPECT_EQ(skipped, 1);
@@ -867,8 +856,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
 
   SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}, {1}, {2}});
   AqlItemBlockInputRange emptyInputRange(ExecutorState::HASMORE);
-  AqlItemBlockInputRange inputRange(ExecutorState::DONE, inputBlock, 0,
-                                    inputBlock->size());
+  AqlItemBlockInputRange inputRange(ExecutorState::DONE, 0, inputBlock, 0);
 
   SortedCollectExecutor testee(fetcher, infos);
 
@@ -876,7 +864,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
   clientCall.offset = 1;
 
   {
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(emptyInputRange, clientCall);
     EXPECT_EQ(ExecutorState::HASMORE, state);
     EXPECT_FALSE(upstreamCall.hasHardLimit());
     EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(upstreamCall.softLimit));
@@ -887,7 +875,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
 
   {
     // 1, 1, 2
-    auto [state, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
+    auto [state, stats, skipped, upstreamCall] = testee.skipRowsRange(inputRange, clientCall);
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_EQ(clientCall.fullCount, upstreamCall.fullCount);
     EXPECT_EQ(skipped, 1);

@@ -1541,7 +1541,7 @@ class ExecutionBlockImplExecuteIntegrationTest
     };
 
     auto skipData = [&skipAsserter](AqlItemBlockInputRange& inputRange,
-                                    AqlCall& call) -> std::tuple<ExecutorState, size_t, AqlCall> {
+                                    AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       skipAsserter.gotCalled(call);
 
       size_t skipped = 0;
@@ -1558,7 +1558,7 @@ class ExecutionBlockImplExecuteIntegrationTest
         request.softLimit = call.getOffset();
       }  // else fullCount case, simple get UNLIMITED from above
 
-      return {inputRange.upstreamState(), skipped, request};
+      return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
         fakedQuery->engine(), generateNodeDummy(),
