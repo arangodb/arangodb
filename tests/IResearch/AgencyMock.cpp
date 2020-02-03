@@ -23,6 +23,9 @@
 
 #include "AgencyMock.h"
 
+#include <fuerte/connection.h>
+#include <fuerte/requests.h>
+
 #include "Agency/Store.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"

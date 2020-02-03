@@ -24,10 +24,14 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H
 #define ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H 1
 
-#include <fuerte/connection.h>
-#include <fuerte/requests.h>
 #include "Basics/debugging.h"
 #include "Network/ConnectionPool.h"
+
+namespace arangodb::fuerte {
+inline namespace v1 {
+  class ConnectionBuilder;
+}
+}
 
 namespace arangodb::consensus {
 class Store;
