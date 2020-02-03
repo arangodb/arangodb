@@ -26,6 +26,8 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/files.h"
@@ -468,6 +470,10 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
                                              fakeQueryString, bindParams, queryOptions,
                                              arangodb::aql::QueryPart::PART_DEPENDENT);
   query->injectTransaction(createFakeTransaction());
+
+  auto engine = std::make_unique<aql::ExecutionEngine>(*query, aql::SerializationFormat::SHADOWROWS);
+  query->setEngine(std::move(engine));
+
   return query;
 }
 

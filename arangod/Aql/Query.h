@@ -252,6 +252,7 @@ class Query {
 
   /// @brief inject the engine
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
+  TEST_VIRTUAL void setEngine(std::unique_ptr<ExecutionEngine>&& engine);
 
   /// @brief return the transaction, if prepared
   TEST_VIRTUAL inline transaction::Methods* trx() const { return _trx.get(); }

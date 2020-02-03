@@ -119,14 +119,16 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   // Section: Mock Functions
   // ------------------------------
 
-  fakeit::When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
-    // We expect that the snippet injects a new engine into our
-    // query.
-    // However we have to return a mocked engine later
-    ASSERT_NE(eng, nullptr);
-    // Throw it away
-    delete eng;
-  });
+  fakeit::When(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine * ))).Do(
+    [](ExecutionEngine *eng) -> void {
+      // We expect that the snippet injects a new engine into our
+      // query.
+      // However we have to return a mocked engine later
+      ASSERT_NE(eng, nullptr);
+      // Throw it away
+      delete eng;
+    }
+  );
 
   fakeit::When(Method(mockQuery, trx)).Return(&trx);
   fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
@@ -154,7 +156,7 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   ASSERT_TRUE(queryIds.empty());
 
   // Validate that the query is wired up with the engine
-  fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine *))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 }
@@ -223,7 +225,7 @@ TEST(EngineInfoContainerTest,
   // Section: Mock Functions
   // ------------------------------
 
-  fakeit::When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+  fakeit::When(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine*))).Do([&](ExecutionEngine* eng) -> void {
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
@@ -250,7 +252,8 @@ TEST(EngineInfoContainerTest,
     return &queryClone;
   });
 
-  fakeit::When(Method(mockQueryClone, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+  fakeit::When(OverloadedMethod(mockQueryClone, setEngine, void(ExecutionEngine * ))).Do(
+    [&](ExecutionEngine *eng) -> void {
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
@@ -314,12 +317,12 @@ TEST(EngineInfoContainerTest,
   ASSERT_TRUE(queryIds.empty());
 
   // Validate that the query is wired up with the engine
-  fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
   // Validate that the second query is wired up with the second engine
-  fakeit::Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQueryClone, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
   fakeit::Verify(Method(mockRegistry, insert)).Exactly(1);
@@ -440,7 +443,7 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   // Section: Mock Functions
   // ------------------------------
 
-  fakeit::When(Method(mockQuery, setEngine)).Do(setEngineCallback);
+  fakeit::When(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine*))).Do(setEngineCallback);
   fakeit::When(Method(mockQuery, trx)).Return(&trx);
   fakeit::When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
   fakeit::When(Method(mockEngine, createBlocks))
@@ -467,7 +470,7 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
       });
 
   // Mock first clone
-  fakeit::When(Method(mockQueryClone, setEngine)).Do(setEngineCallback);
+  fakeit::When(OverloadedMethod(mockQueryClone, setEngine, void(ExecutionEngine*))).Do(setEngineCallback);
   fakeit::When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
   fakeit::When(Method(mockQueryClone, trx)).Return(&secondTrx);
   fakeit::When(Method(mockSecondEngine, createBlocks))
@@ -481,7 +484,7 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
       .AlwaysReturn(&block);
 
   // Mock second clone
-  fakeit::When(Method(mockQuerySecondClone, setEngine)).Do(setEngineCallback);
+  fakeit::When(OverloadedMethod(mockQuerySecondClone, setEngine, void(ExecutionEngine*))).Do(setEngineCallback);
   fakeit::When(Method(mockQuerySecondClone, engine)).Return(&myThirdEngine);
   fakeit::When(Method(mockQuerySecondClone, trx)).Return(&thirdTrx);
   fakeit::When(Method(mockThirdEngine, createBlocks))
@@ -550,17 +553,17 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   ASSERT_TRUE(queryIds.empty());
 
   // Validate that the query is wired up with the engine
-  fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
   // Validate that the second query is wired up with the second engine
-  fakeit::Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQueryClone, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
 
   // Validate that the second query is wired up with the second engine
-  fakeit::Verify(Method(mockQuerySecondClone, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQuerySecondClone, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockThirdEngine, createBlocks)).Exactly(1);
 
@@ -627,7 +630,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   // Section: Mock Functions
   // ------------------------------
 
-  fakeit::When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+  fakeit::When(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine*))).Do([&](ExecutionEngine* eng) -> void {
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
@@ -640,7 +643,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   fakeit::When(Method(mockEngine, createBlocks)).AlwaysReturn(Result{TRI_ERROR_NO_ERROR});
   fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&block);
 
-  fakeit::When(Method(mockQueryClone, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+  fakeit::When(OverloadedMethod(mockQueryClone, setEngine, void(ExecutionEngine*))).Do([&](ExecutionEngine* eng) -> void {
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
@@ -717,12 +720,12 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   // Validate that the path up to intended error was taken
 
   // Validate that the query is wired up with the engine
-  fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
   // Validate that the second query is wired up with the second engine
-  fakeit::Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQueryClone, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
   fakeit::Verify(Method(mockRegistry, insert)).Exactly(1);
@@ -792,7 +795,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
   // Section: Mock Functions
   // ------------------------------
 
-  fakeit::When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+  fakeit::When(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine*))).Do([&](ExecutionEngine* eng) -> void {
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
@@ -805,7 +808,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
   fakeit::When(Method(mockEngine, createBlocks)).AlwaysReturn(Result{TRI_ERROR_NO_ERROR});
   fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&block);
 
-  fakeit::When(Method(mockQueryClone, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+  fakeit::When(OverloadedMethod(mockQueryClone, setEngine, void(ExecutionEngine*))).Do([&](ExecutionEngine* eng) -> void {
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
@@ -886,12 +889,12 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
   // Validate that the path up to intended error was taken
 
   // Validate that the query is wired up with the engine
-  fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQuery, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockEngine, createBlocks)).Exactly(1);
 
   // Validate that the second query is wired up with the second engine
-  fakeit::Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+  fakeit::Verify(OverloadedMethod(mockQueryClone, setEngine, void(ExecutionEngine*))).Exactly(1);
   // Validate that createBlocks has been called!
   fakeit::Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
   fakeit::Verify(Method(mockRegistry, insert)).Exactly(1);

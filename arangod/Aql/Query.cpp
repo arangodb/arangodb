@@ -1217,6 +1217,11 @@ void Query::setEngine(ExecutionEngine* engine) {
   _engine.reset(engine);
 }
 
+void Query::setEngine(std::unique_ptr<ExecutionEngine>&& engine) {
+  TRI_ASSERT(engine != nullptr);
+  _engine = std::move(engine);
+}
+
 /// @brief prepare a V8 context for execution for this expression
 /// this needs to be called once before executing any V8 function in this
 /// expression

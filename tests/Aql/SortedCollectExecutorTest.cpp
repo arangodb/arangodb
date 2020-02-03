@@ -959,9 +959,6 @@ class SortedCollectExecutorTestSplit
               expressionVariable, std::move(aggregateTypes),
               std::move(variables), std::move(aggregateRegisters), trx, count),
         block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {
-    auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
   }
 };
 
