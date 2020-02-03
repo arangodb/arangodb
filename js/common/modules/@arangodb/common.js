@@ -557,7 +557,7 @@ exports.checkAvailableVersions = function(version) {
       version +
       '&os=' +
       internal.platform;
-    var d = internal.download(u, '', {timeout: 5});
+    var d = internal.download(u, '', {timeout: 3});
     var v = JSON.parse(d.body);
 
     if (v.hasOwnProperty('bugfix')) {
@@ -591,5 +591,12 @@ exports.checkAvailableVersions = function(version) {
 };
 
 exports.query = function query (strings, ...args) {
+  if (!Array.isArray(strings)) {
+    const options = strings;
+    const extra = args;
+    return function queryWithOptions(strings, ...args) {
+      return internal.db._query(exports.aql(strings, ...args), options, ...extra);
+    };
+  }
   return internal.db._query(exports.aql(strings, ...args));
 };

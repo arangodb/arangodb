@@ -52,7 +52,6 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -236,11 +235,6 @@ class IResearchViewTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL>,
       public arangodb::tests::LogSuppressor<arangodb::Logger::FIXME, arangodb::LogLevel::FATAL> {
  protected:
-  struct ClusterCommControl : arangodb::ClusterComm {
-    static void reset() {
-      arangodb::ClusterComm::_theInstanceInit.store(0);
-    }
-  };
 
   arangodb::tests::mocks::MockAqlServer server;
   std::unique_ptr<TRI_vocbase_t> system;
@@ -267,7 +261,6 @@ class IResearchViewTest
 
   ~IResearchViewTest() {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
-    ClusterCommControl::reset();
   }
 };
 

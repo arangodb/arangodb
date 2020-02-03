@@ -547,165 +547,181 @@ describe ArangoDB do
       end
 
       it "includes a single attribute" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"count\" : true, \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"include\", \"fields\" : [ \"b\" ] }, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-include-single", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_nil
-        doc.parsed_response['count'].should eq(2000)
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(2000)
+        if RSpec.configuration.STORAGE_ENGINE == "rocksdb"
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"count\" : true, \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"include\", \"fields\" : [ \"b\" ] }, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-include-single", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_nil
+          doc.parsed_response['count'].should eq(2000)
+          doc.parsed_response['hasMore'].should eq(false)
+          doc.parsed_response['result'].length.should eq(2000)
 
-        doc.parsed_response['result'].each{|oneDoc|
-          oneDoc.size.should eq(1)
-          oneDoc.should have_key('b')
-        }
+          doc.parsed_response['result'].each{|oneDoc|
+            oneDoc.size.should eq(1)
+            oneDoc.should have_key('b')
+          }
+        end
       end
 
       it "includes a few attributes" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"include\", \"fields\" : [ \"b\", \"_id\", \"_rev\", \"a\" ] }, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-include-few", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_nil
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(2000)
+        if RSpec.configuration.STORAGE_ENGINE == "rocksdb"
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"include\", \"fields\" : [ \"b\", \"_id\", \"_rev\", \"a\" ] }, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-include-few", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_nil
+          doc.parsed_response['hasMore'].should eq(false)
+          doc.parsed_response['result'].length.should eq(2000)
 
-        doc.parsed_response['result'].each{|oneDoc|
-          oneDoc.size.should eq(4)
-          oneDoc.should have_key('a')
-          oneDoc.should have_key('b')
-          oneDoc.should_not have_key('c')
-          oneDoc.should_not have_key('_key')
-          oneDoc.should have_key('_id')
-          oneDoc.should have_key('_rev')
-        }
+          doc.parsed_response['result'].each{|oneDoc|
+            oneDoc.size.should eq(4)
+            oneDoc.should have_key('a')
+            oneDoc.should have_key('b')
+            oneDoc.should_not have_key('c')
+            oneDoc.should_not have_key('_key')
+            oneDoc.should have_key('_id')
+            oneDoc.should have_key('_rev')
+          }
+        end
       end
 
       it "includes non-existing attributes" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"include\", \"fields\" : [ \"c\", \"xxxx\", \"A\" ] }, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-include-non-existing", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_nil
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(2000)
+        if RSpec.configuration.STORAGE_ENGINE == "rocksdb"
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"include\", \"fields\" : [ \"c\", \"xxxx\", \"A\" ] }, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-include-non-existing", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_nil
+          doc.parsed_response['hasMore'].should eq(false)
+          doc.parsed_response['result'].length.should eq(2000)
 
-        doc.parsed_response['result'].each{|oneDoc|
-          oneDoc.size.should eq(1)
-          oneDoc.should have_key('c')
-        }
+          doc.parsed_response['result'].each{|oneDoc|
+            oneDoc.size.should eq(1)
+            oneDoc.should have_key('c')
+          }
+        end
       end
 
       it "includes no attributes" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"include\", \"fields\" : [ ] }, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-include-none", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_nil
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(2000)
+        if RSpec.configuration.STORAGE_ENGINE == "rocksdb"
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"include\", \"fields\" : [ ] }, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-include-none", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_nil
+          doc.parsed_response['hasMore'].should eq(false)
+          doc.parsed_response['result'].length.should eq(2000)
 
-        doc.parsed_response['result'].each{|oneDoc|
-          oneDoc.size.should eq(0)
-        }
+          doc.parsed_response['result'].each{|oneDoc|
+            oneDoc.size.should eq(0)
+          }
+        end
       end
 
       it "excludes a single attribute" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"exclude\", \"fields\" : [ \"b\" ] }, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-exclude-single", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_nil
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(2000)
+        if RSpec.configuration.STORAGE_ENGINE == "rocksdb"
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"exclude\", \"fields\" : [ \"b\" ] }, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-exclude-single", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_nil
+          doc.parsed_response['hasMore'].should eq(false)
+          doc.parsed_response['result'].length.should eq(2000)
 
-        doc.parsed_response['result'].each{|oneDoc|
-          oneDoc.size.should eq(5)
-          oneDoc.should_not have_key('b')
-          oneDoc.should have_key('a')
-          oneDoc.should have_key('c')
-          oneDoc.should have_key('_id')
-          oneDoc.should have_key('_key')
-          oneDoc.should have_key('_rev')
-        }
+          doc.parsed_response['result'].each{|oneDoc|
+            oneDoc.size.should eq(5)
+            oneDoc.should_not have_key('b')
+            oneDoc.should have_key('a')
+            oneDoc.should have_key('c')
+            oneDoc.should have_key('_id')
+            oneDoc.should have_key('_key')
+            oneDoc.should have_key('_rev')
+          }
+        end
       end
 
       it "excludes a few attributes" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"exclude\", \"fields\" : [ \"b\", \"_id\", \"_rev\", \"a\" ] }, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-exclude-few", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_nil
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(2000)
+        if RSpec.configuration.STORAGE_ENGINE == "rocksdb"
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"exclude\", \"fields\" : [ \"b\", \"_id\", \"_rev\", \"a\" ] }, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-exclude-few", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_nil
+          doc.parsed_response['hasMore'].should eq(false)
+          doc.parsed_response['result'].length.should eq(2000)
 
-        doc.parsed_response['result'].each{|oneDoc|
-          oneDoc.size.should eq(2)
-          oneDoc.should have_key('c')
-          oneDoc.should have_key('_key')
-        }
+          doc.parsed_response['result'].each{|oneDoc|
+            oneDoc.size.should eq(2)
+            oneDoc.should have_key('c')
+            oneDoc.should have_key('_key')
+          }
+        end
       end
 
       it "excludes non-existing attributes" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"exclude\", \"fields\" : [ \"c\", \"xxxx\", \"A\" ] }, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-exclude-non-existing", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_nil
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(2000)
+        if RSpec.configuration.STORAGE_ENGINE == "rocksdb"
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"exclude\", \"fields\" : [ \"c\", \"xxxx\", \"A\" ] }, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-exclude-non-existing", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_nil
+          doc.parsed_response['hasMore'].should eq(false)
+          doc.parsed_response['result'].length.should eq(2000)
 
-        doc.parsed_response['result'].each{|oneDoc|
-          oneDoc.size.should eq(5)
-          oneDoc.should_not have_key('c')
-        }
+          doc.parsed_response['result'].each{|oneDoc|
+            oneDoc.size.should eq(5)
+            oneDoc.should_not have_key('c')
+          }
+        end
       end
 
       it "excludes no attributes" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"exclude\", \"fields\" : [ ] }, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-exclude-none", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_nil
-        doc.parsed_response['hasMore'].should eq(false)
-        doc.parsed_response['result'].length.should eq(2000)
+        if RSpec.configuration.STORAGE_ENGINE == "rocksdb"
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"batchSize\" : 2000, \"restrict\" : { \"type\" : \"exclude\", \"fields\" : [ ] }, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-exclude-none", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_nil
+          doc.parsed_response['hasMore'].should eq(false)
+          doc.parsed_response['result'].length.should eq(2000)
 
-        doc.parsed_response['result'].each{|oneDoc|
-          oneDoc.size.should eq(6)
-        }
+          doc.parsed_response['result'].each{|oneDoc|
+            oneDoc.size.should eq(6)
+          }
+        end
       end
 
     end

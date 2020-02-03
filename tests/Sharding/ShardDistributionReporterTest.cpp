@@ -41,7 +41,7 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"

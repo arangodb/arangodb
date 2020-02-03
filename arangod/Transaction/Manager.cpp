@@ -54,6 +54,7 @@
 #include "Enterprise/VocBase/VirtualCollection.h"
 #endif
 
+#include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -914,14 +915,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder authBuilder;
-          {
-            VPackObjectBuilder payload{&authBuilder};
-            payload->add("preferred_username", VPackValue(username));
-          }
-          VPackSlice slice = authBuilder.slice();
           headers.try_emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+                          "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
@@ -1016,14 +1011,8 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder builder;
-          {
-            VPackObjectBuilder payload{&builder};
-            payload->add("preferred_username", VPackValue(username));
-          }
-          VPackSlice slice = builder.slice();
           headers.try_emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+                          "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());

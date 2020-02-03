@@ -1,0 +1,125 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_MX{
+    %%Parent{"es_419"}
+    Keys{
+        calendar{"Calendario"}
+        collation{"Orden"}
+        currency{"Moneda"}
+    }
+    Languages{
+        ace{"acehnés"}
+        arp{"arapaho"}
+        bas{"basa"}
+        bax{"bamun"}
+        bho{"bhoshpuri"}
+        bla{"siksika"}
+        bua{"buriat"}
+        de_AT{"alemán austriaco"}
+        dum{"neerlandés medieval"}
+        enm{"inglés medieval"}
+        eu{"euskera"}
+        frm{"francés medieval"}
+        gan{"gan (China)"}
+        gmh{"alemán de la alta edad media"}
+        grc{"griego antiguo"}
+        hak{"kejia (China)"}
+        hil{"hiligainón"}
+        hsn{"xiang (China)"}
+        inh{"ingusetio"}
+        kbd{"kabardiano"}
+        krc{"karachái bálkaro"}
+        kum{"cumuco"}
+        lo{"lao"}
+        lus{"lushai"}
+        mga{"irlandés medieval"}
+        nan{"min nan (Chino)"}
+        nr{"ndebele meridional"}
+        nso{"sotho septentrional"}
+        pa{"punyabí"}
+        pcm{"pcm"}
+        rn{"kiroundi"}
+        shu{"árabe chadiano"}
+        ss{"siswati"}
+        st{"sesotho meridional"}
+        sw{"suajili"}
+        sw_CD{"suajili del Congo"}
+        syr{"siriaco"}
+        tet{"tetún"}
+        tn{"setswana"}
+        tyv{"tuviniano"}
+        wo{"wolof"}
+        wuu{"wuu"}
+        xal{"kalmyk"}
+        zgh{"tamazight marroquí estándar"}
+    }
+    Languages%short{
+        en_GB{"inglés (R. U.)"}
+    }
+    Languages%variant{
+        ug{"uyghur"}
+    }
+    Scripts{
+        Hanb{"hanb"}
+        Mlym{"malayálam"}
+        Telu{"telegu"}
+    }
+    Types{
+        calendar{
+            gregorian{"Calendario gregoriano"}
+            roc{"calendario minguo"}
+        }
+        collation{
+            ducet{"orden de clasificación de Unicode predeterminado"}
+            standard{"Orden estándar"}
+            traditional{"Orden tradicional"}
+        }
+        d0{
+            fwidth{"Ancho completo"}
+            hwidth{"Ancho medio"}
+        }
+        lb{
+            normal{"salto de línea normal"}
+        }
+        m0{
+            bgn{"BGN"}
+            ungegn{"UNGEGN"}
+        }
+        ms{
+            metric{"sistema métrico"}
+            uksystem{"sistema imperial"}
+            ussystem{"sistema estadounidense"}
+        }
+        numbers{
+            arab{"Dígitos en arábigo-índico"}
+            arabext{"Dígitos en árabigo-índico extendido"}
+            armn{"Números en armenio"}
+            armnlow{"Números en armenio en minúscula"}
+            ethi{"Números en etíope"}
+            geor{"Números en georgiano"}
+            grek{"Números en griego"}
+            greklow{"Números en griego en minúscula"}
+            gujr{"dígitos en gujarati"}
+            guru{"Dígitos en gurmuji"}
+            hanidec{"Numeros decimales en chino"}
+            hans{"Números en chino simplificado"}
+            hansfin{"Números financieros en chino simplificado"}
+            hant{"Números en chino tradicional"}
+            hantfin{"Números financieros en chino tradicional"}
+            hebr{"Números en hebreo"}
+            jpanfin{"Números financieros en japonés"}
+            knda{"números en kannada"}
+            laoo{"Dígitos en lao"}
+            mlym{"Dígitos en malabar"}
+            taml{"Números en tamil"}
+            tamldec{"Dígitos en tamil"}
+            telu{"Dígitos en telugú"}
+            tibt{"Dígitos en tibetano"}
+        }
+    }
+    Version{"2.1.47.96"}
+    characterLabelPattern{
+        historic{"{0} — Históricos"}
+        miscellaneous{"{0} — Varios"}
+    }
+}

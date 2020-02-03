@@ -47,11 +47,6 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  global variables
-// -----------------------------------------------------------------------------
-
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 MetricsFeature
 // -----------------------------------------------------------------------------
 
@@ -69,7 +64,8 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.export-metrics-api",
                      "turn metrics API on or off",
                      new BooleanParameter(&_export),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30600);
 }
 
 bool MetricsFeature::exportAPI() const {
