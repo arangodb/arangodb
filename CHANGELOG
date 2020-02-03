@@ -1,6 +1,8 @@
 devel
 -----
 
+* Clean out server job checks preconditions plan version unchanged for start.
+
 * Cluster collection creation preconditioned on involved db servers not
   in process of being cleaned and Fixed.
 
