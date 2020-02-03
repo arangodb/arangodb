@@ -226,7 +226,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///  and write lock for _readDB
   void executeLockedWrite(std::function<void()> const& cb);
 
-  /// @brief Get read store and compaction index
+  /// @brief execute a callback while holding _transientLock
+  void executeTransientLocked(std::function<void()> const& cb);
+
+    /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
 
   /// @brief Get read store and compaction index
@@ -245,9 +248,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Store const& spearhead() const;
 
   /// @brief Get transient store
-  ///  WARNING: this assumes caller holds appropriate
-  ///  locks or will use executeLockedRead() or
-  ///  executeLockedWrite() with a lambda function
+  /// WARNING: this assumes caller holds _transientLock
   Store const& transient() const;
 
   /// @brief Serve active agent interface
@@ -326,7 +327,15 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief add agent to configuration (from State after successful local persistence)
   void updateConfiguration(VPackSlice const&);
 
+  /// @brief patch some configuration values, this is for manual interaction with
+  /// the agency leader.
+  void updateSomeConfigValues(VPackSlice);
+
  private:
+
+  /// @brief load() has run
+  bool loaded() const;
+
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
 
@@ -365,7 +374,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Committed (read) kv-store
   Store _readDB;
 
-  /// @brief Committed (read) kv-store for transient data
+  /// @brief Committed (read) kv-store for transient data. This is
+  /// protected by the _transientLock mutex.
   Store _transient;
 
   /// @brief Condition variable for appending to the log and for
@@ -421,6 +431,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// Writing requires this held first, then _waitForCV's mutex
   mutable arangodb::basics::ReadWriteLock _outputLock;
 
+  /// @brief The following mutex protects the _transient store. It is
+  /// needed for all accesses to _transient.
+  mutable arangodb::Mutex _transientLock;
+
   /// @brief RAFT consistency lock and update notifier:
   ///   _readDB and _commitIndex
   /// _waitForCV's mutex held alone, allows reads from _readDB or _commitIndex.
@@ -468,6 +482,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// since the epoch of the steady clock.
   std::atomic<int64_t> _leaderSince;
 
+  /// @brief load() has completed
+  std::atomic<bool> _loaded;
+
   /// @brief Container for callbacks for removal
   std::unordered_map<std::string, std::unordered_set<std::string>> _callbackTrashBin;
   std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
@@ -483,10 +500,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   Counter& _read_ok;
   Counter& _read_no_leader;
   Histogram<double>& _write_hist_msec;
-  
+
 };
 }  // namespace consensus
 }  // namespace arangodb
 
 #endif
- 

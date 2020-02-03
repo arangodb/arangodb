@@ -331,6 +331,17 @@ TEST_F(IResearchQueryNoMaterializationTest, storedFieldExistence) {
   executeAndCheck(queryString, expectedValues, 2, {{arangodb::iresearch::IResearchViewNode::SortColumnNumber, 0}, {4, 0}});
 }
 
+TEST_F(IResearchQueryNoMaterializationTest, emptyField) {
+  auto const queryString = std::string("FOR d IN ") + viewName +
+      " SORT d.exist DESC LIMIT 1 RETURN d.exist";
+
+  std::vector<VPackValue> expectedValues{
+    VPackValue("ex2")
+  };
+
+  executeAndCheck(queryString, expectedValues, 1, {{4, 0}});
+}
+
 TEST_F(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   static std::vector<std::string> const EMPTY;
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"str\": \"abc\", \"value\": 10 }");

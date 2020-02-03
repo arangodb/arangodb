@@ -68,9 +68,9 @@ void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   LOG_TOPIC("29da9", TRACE, Logger::REQUESTS)
       << "registering CommTask with ptr " << t;
   {
-    auto* t = task.get();
+    auto* ptr = task.get();
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-    _commTasks.try_emplace(t, std::move(task));
+    _commTasks.try_emplace(ptr, std::move(task));
   }
   t->start();
 }
@@ -137,19 +137,21 @@ void GeneralServer::stopConnections() {
 }
 
 void GeneralServer::stopWorking() {
-  _acceptors.clear();
-  std::unique_lock<std::recursive_mutex> guard(_tasksLock);
   auto now = std::chrono::system_clock::now();
-  while (!_commTasks.empty()) {  // CommTasks should deregister themselves
+  do {
+    std::unique_lock<std::recursive_mutex> guard(_tasksLock);
+    bool done = _commTasks.empty();
     guard.unlock();
-    std::this_thread::yield();
-    if ((std::chrono::system_clock::now() - now) > std::chrono::seconds(5)) {
-      guard.lock();
+    if (done) {
       break;
     }
-    guard.lock();
+    std::this_thread::yield();
+  } while((std::chrono::system_clock::now() - now) < std::chrono::seconds(5));
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    _commTasks.clear();
   }
-  _commTasks.clear();
+  _acceptors.clear();
   _contexts.clear();  // stops threads
 }
 
@@ -169,11 +171,11 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
 }
 
 IoContext& GeneralServer::selectIoContext() {
-  uint64_t low = _contexts[0].clients();
+  unsigned low = _contexts[0].clients();
   size_t lowpos = 0;
 
   for (size_t i = 1; i < _contexts.size(); ++i) {
-    uint64_t x = _contexts[i].clients();
+    unsigned x = _contexts[i].clients();
     if (x < low) {
       low = x;
       lowpos = i;
@@ -183,12 +185,28 @@ IoContext& GeneralServer::selectIoContext() {
   return _contexts[lowpos];
 }
 
-asio_ns::ssl::context& GeneralServer::sslContext() {
+std::shared_ptr<asio_ns::ssl::context> GeneralServer::sslContext() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContext) {
-    _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
+    _sslContext = SslServerFeature::SSL->createSslContext();
   }
-  return *_sslContext;
+  return _sslContext;
+}
+
+Result GeneralServer::reloadTLS() {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  try {
+    _sslContext = SslServerFeature::SSL->createSslContext();
+    // Now cancel every acceptor once, such that a new AsioSocket is generated which will
+    // use the new context. Otherwise, the first connection will still use the old certs:
+    for (auto& a : _acceptors) {
+      a->cancel();
+    }
+    return TRI_ERROR_NO_ERROR;
+  } catch(std::exception& e) {
+    LOG_TOPIC("feffe", ERR, Logger::SSL) << "Could not reload TLS context from files, got exception with this error: " << e.what();
+    return Result(TRI_ERROR_CANNOT_READ_FILE, "Could not reload TLS context from files.");
+  }
 }
 
 application_features::ApplicationServer& GeneralServer::server() const {

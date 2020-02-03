@@ -29,14 +29,6 @@
 * License Name: MIT License
 * License Id: MIT
 
-### Curl 7.66.0
-
-* Name: Curl
-* Version: 7.66.0
-* Project Home: https://curl.haxx.se/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/curl/curl-7.66.0/COPYING
-* License Comment: free as-is license
-
 ### date 2.4
 
 * Name: date
@@ -245,6 +237,14 @@ exception from the GPL license:
 * License Name: MIT License
 * License Id: MIT
 
+###  nghttp2 
+
+* Name:  nghttp2 
+* Version: 1.40.0
+* GitHub: https://github.com/nghttp2/nghttp2
+* License: https://github.com/nghttp2/nghttp2/blob/master/COPYING
+* License Name: MIT License
+* License Id: MIT
 
 ## Programs
 

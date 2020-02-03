@@ -1351,9 +1351,7 @@ std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
       getRegisterPlan()->nrRegs[previousNode->getDepth()],
       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
       &engine, this->_collection, _outVariable, (this->isVarUsedLater(_outVariable) || this->_filter != nullptr),
-      this->_filter.get(),
-      this->projections(), this->coveringIndexAttributePositions(),
-      EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
+      this->_filter.get(), this->projections(), EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
   return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
                                                                            std::move(infos));
 }
