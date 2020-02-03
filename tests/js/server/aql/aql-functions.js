@@ -918,6 +918,25 @@ function ahuacatlFunctionsTestSuite () {
           assertEqual(actual[0][replaceIndex], testArray[replaceValue], msg);
         }
       }
+      for (let replaceIndex = 0;  replaceIndex <= testArray.length; replaceIndex ++) {
+        for (let replaceValue = 0;  replaceValue < testArray.length; replaceValue ++) {
+          let actualReplaceIndex = testArray.length - replaceIndex -1 ;
+          let replaceIndexValue = -(replaceIndex) - 1;
+          if (actualReplaceIndex < 0) {
+            actualReplaceIndex = 0;
+          }
+          const msg = `Index: ${replaceIndexValue} => ${actualReplaceIndex} ReplaceValue: ${replaceValue}`;
+          let actual = getQueryResults("RETURN NOOPT(REPLACE_NTH(@testArray, @which, @replaceValue, @defaultValue))",
+                                   {
+                                     testArray: testArray,
+                                     which: replaceIndexValue,
+                                     replaceValue: testArray[replaceValue],
+                                     defaultValue: testArray[replaceValue]
+                                   }
+                                      );
+          assertEqual(actual[0][actualReplaceIndex], testArray[replaceValue], msg);
+        }
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
