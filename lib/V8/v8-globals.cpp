@@ -322,14 +322,14 @@ bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
     return isolate->GetCurrentContext()
         ->Global()
         ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()),
                             static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
         .FromMaybe(false);
   } else {
     return isolate->GetCurrentContext()
         ->Global()
         ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()),
                             v8::ReadOnly)
         .FromMaybe(false);
   }

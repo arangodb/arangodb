@@ -821,16 +821,19 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
                                       v8::Handle<v8::Value>* args, bool& mustDestroy) {
   ISOLATE;
   auto current = isolate->GetCurrentContext()->Global();
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Value> module =
-      current->Get(TRI_V8_ASCII_STRING(isolate, "_AQL"));
+    current->Get(context, TRI_V8_ASCII_STRING(isolate, "_AQL")).FromMaybe(v8::Local<v8::Value>());
   if (module.IsEmpty() || !module->IsObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to find global _AQL module");
   }
 
   v8::Handle<v8::Value> function =
-      v8::Handle<v8::Object>::Cast(module)->Get(TRI_V8_STD_STRING(isolate, jsName));
+    v8::Handle<v8::Object>::Cast(module)->Get(context,
+                                              TRI_V8_STD_STRING(isolate, jsName)
+                                              ).FromMaybe(v8::Local<v8::Value>());
   if (function.IsEmpty() || !function->IsFunction()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -840,7 +843,7 @@ AqlValue Expression::invokeV8Function(ExpressionContext* expressionContext,
   // actually call the V8 function
   v8::TryCatch tryCatch(isolate);
   v8::Handle<v8::Value> result =
-      v8::Handle<v8::Function>::Cast(function)->Call(current, static_cast<int>(callArgs), args);
+    v8::Handle<v8::Function>::Cast(function)->Call(context, current, static_cast<int>(callArgs), args).FromMaybe(v8::Local<v8::Value>());
 
   try {
     V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
@@ -882,6 +885,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
     ISOLATE;
     TRI_ASSERT(isolate != nullptr);
     v8::HandleScope scope(isolate);                                   \
+    auto context = TRI_IGETC;
     _ast->query()->prepareV8Context();
 
     std::string jsName;
@@ -901,7 +905,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(AstNode const* node,
         AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
         AqlValueGuard guard(a, localMustDestroy);
 
-        params->Set(static_cast<uint32_t>(i), a.toV8(isolate, trx));
+        params->Set(context, static_cast<uint32_t>(i), a.toV8(isolate, trx)).FromMaybe(false);
       }
 
       // function name
