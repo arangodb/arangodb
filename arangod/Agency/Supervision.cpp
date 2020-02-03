@@ -892,6 +892,11 @@ void Supervision::run() {
           } else {
             reportStatus("Maintenance");
           }
+        } else {
+          // Once we lose leadership, we need to restart building our snapshot
+          if (_lastUpdateIndex > 0) {
+            _lastUpdateIndex = 0;
+          }
         }
       }
 
