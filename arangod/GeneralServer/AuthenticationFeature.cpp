@@ -129,7 +129,7 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       .setIntroducedIn(30700);
 }
 
-void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_jwtSecretKeyfileProgramOption.empty() && !_jwtSecretKeyfileProgramOption.empty()) {
     LOG_TOPIC("d3515", FATAL, Logger::STARTUP)
         << "specifiy either '--server.jwt-"
@@ -150,6 +150,12 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }
+  }
+
+  if (options->processingResult().touched("server.jwt-secret")) {
+    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
+        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
+           "instead.";
   }
 }
 
@@ -199,15 +205,6 @@ void AuthenticationFeature::prepare() {
 
 void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
-
-  // If this is empty here, --server.jwt-secret was used
-  if (!_jwtSecretProgramOption.empty() && _jwtSecretKeyfileProgramOption.empty() &&
-      _jwtSecretFolderProgramOption.empty()) {
-    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
-        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
-           "instead.";
-  }
-
   std::ostringstream out;
 
   out << "Authentication is turned " << (_active ? "on" : "off");

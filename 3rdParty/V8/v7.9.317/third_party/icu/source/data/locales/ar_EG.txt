@@ -1,0 +1,20 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ar_EG{
+    NumberElements{
+        arab{
+            symbols{
+                decimal{"٫"}
+                group{"٬"}
+            }
+        }
+        default{"arab"}
+        latn{
+            symbols{
+                decimal{"."}
+                group{","}
+            }
+        }
+    }
+    Version{"2.1.49.36"}
+}

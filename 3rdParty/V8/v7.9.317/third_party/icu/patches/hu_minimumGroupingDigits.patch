@@ -1,0 +1,13 @@
+diff --git a/source/data/locales/hu.txt b/source/data/locales/hu.txt
+index ab73ac6b..b95228c2 100644
+--- a/source/data/locales/hu.txt
++++ b/source/data/locales/hu.txt
+@@ -216,7 +216,7 @@ hu{
+                 other{"A kosár tartalma: {0} X. Megveszi őket?"}
+             }
+         }
+-        minimumGroupingDigits{"4"}
++        minimumGroupingDigits{"1"}
+         native{"latn"}
+     }
+     Version{"2.1.48.42"}

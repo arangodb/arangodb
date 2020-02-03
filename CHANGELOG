@@ -1,6 +1,9 @@
 devel
 -----
 
+* Cluster collection creation preconditioned on involved db servers not
+  in process of being cleaned and Fixed.
+
 * Fixed a bug, where a single host agency logged too early.
   
   This issue caused spurious "Could not integrate into cluster" error messages
@@ -18,8 +21,8 @@ devel
 
 * Add acquisition of system report to arangod instances.
 
-* JS `query` helper function can now be used with options
-
+* JS `query` helper function can now be used with options.
+  
 * Fix a bug in collection creation with `distributeShardsLike`.
 
 * Added load-balancing support for listing currently running and slow AQL queries,

@@ -87,8 +87,8 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
 static void EdgesQuery(TRI_edge_direction_e direction,
                        v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   // first and only argument should be a list of document identifier
   if (args.Length() != 1) {
@@ -159,7 +159,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
     v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(args[0]);
     uint32_t n = arr->Length();
     for (uint32_t i = 0; i < n; ++i) {
-      addOne(bindVars.get(), arr->Get(i));
+      addOne(bindVars.get(), arr->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
     }
     bindVars->close();
   } else {
@@ -193,6 +193,7 @@ static void EdgesQuery(TRI_edge_direction_e direction,
 static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
@@ -240,11 +241,11 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto documents = TRI_VPackToV8(isolate, docs, &resultOptions);
-  result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), documents);
-  result->Set(TRI_V8_ASCII_STRING(isolate, "total"),
-              v8::Number::New(isolate, static_cast<double>(docs.length())));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "count"),
-              v8::Number::New(isolate, static_cast<double>(docs.length())));
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "documents"), documents).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "total"),
+              v8::Number::New(isolate, static_cast<double>(docs.length()))).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "count"),
+              v8::Number::New(isolate, static_cast<double>(docs.length()))).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -314,6 +315,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   auto* col = UnwrapCollection(isolate, args.Holder());
 
@@ -344,10 +346,10 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
   }
   
   v8::Local<v8::Object> obj = v8::Object::New(isolate);
-  obj->Set(TRI_V8_ASCII_STRING(isolate, "checksum"),
-           TRI_V8_ASCII_STD_STRING(isolate, std::to_string(checksum)));
-  obj->Set(TRI_V8_ASCII_STRING(isolate, "revision"),
-           TRI_V8_ASCII_STD_STRING(isolate, TRI_RidToString(revId)));
+  obj->Set(context, TRI_V8_ASCII_STRING(isolate, "checksum"),
+           TRI_V8_ASCII_STD_STRING(isolate, std::to_string(checksum))).FromMaybe(false);
+  obj->Set(context, TRI_V8_ASCII_STRING(isolate, "revision"),
+           TRI_V8_ASCII_STD_STRING(isolate, TRI_RidToString(revId))).FromMaybe(false);
 
   TRI_V8_RETURN(obj);
   TRI_V8_TRY_CATCH_END
@@ -393,6 +395,7 @@ static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
@@ -427,7 +430,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   if (!queryResult.v8Data.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.v8Data);
+    result->Set(context, TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.v8Data).FromMaybe(false);
   }
 
   TRI_V8_RETURN(result);
@@ -441,6 +444,7 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   auto* collection = UnwrapCollection(isolate, args.Holder());
 
@@ -489,10 +493,10 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING(isolate, "removed"),
-              v8::Number::New(isolate, static_cast<double>(removed)));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "ignored"),
-              v8::Number::New(isolate, static_cast<double>(ignored)));
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "removed"),
+              v8::Number::New(isolate, static_cast<double>(removed))).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "ignored"),
+              v8::Number::New(isolate, static_cast<double>(ignored))).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
