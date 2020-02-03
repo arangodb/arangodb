@@ -832,7 +832,7 @@ function CompactionSuite () {
       assertEqual(0, fig['dead']['size'], fig);
       assertEqual(0, fig['dead']['deletion'], fig);
       assertEqual(0, fig['journals']['count'], fig);
-      assertEqual(0, fig['datafiles']['count'], fig);
+      assertTrue(fig['datafiles']['count'] <= 1, fig);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
