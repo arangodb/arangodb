@@ -216,6 +216,7 @@ add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/vst.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/VstConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
   )
 
 target_link_libraries(fuerte nghttp2)
