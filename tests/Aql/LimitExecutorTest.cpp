@@ -42,9 +42,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace tests {
-namespace aql {
+namespace arangodb::aql {
+void PrintTo(LimitStats const &stats, std::ostream *os) {
+  *os << "LimitStats{" << stats.getFullCount() << "}";
+}
+}
+
+namespace arangodb::tests::aql {
 
 class LimitExecutorTest : public ::testing::Test {
  protected:
@@ -1294,6 +1298,15 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   auto skipped = size_t{0};
   auto outputBlocks = std::vector<SharedAqlItemBlockPtr>{};
 
+  // auto simulateUpstreamCall =
+  //     [&](AqlCall call) -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
+  //
+  // };
+  //
+  // auto callExecutor = [&]() -> std::tuple<ExecutorState, LimitStats, size_t, AqlCall> {
+  //
+  // };
+
   // TODO If the clientCall contained a softLimit, call again afterwards with a
   //  new AqlCall{}.
   while (executorState != ExecutorState::DONE) {
@@ -1366,8 +1379,37 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   EXPECT_EQ(expectedPassedBlocks, outputBlocks);
 }
 
-INSTANTIATE_TEST_CASE_P(LimitExecutorExecuteApiVariations, LimitExecutorExecuteApiTest, limitTestCases);
+auto printTestCase = [](testing::TestParamInfo<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> const& paramInfo) -> std::string {
+  auto const& [offset, limit, fullCount, inputLengths, clientCall, doneResultIsEmpty] = paramInfo.param;
 
-}  // namespace aql
-}  // namespace tests
-}  // namespace arangodb
+  std::stringstream out;
+
+  out << "offset" << offset;
+  out << "limit" << limit;
+  out << "fullCount" << (fullCount ? "True" : "False");
+  out << "inputLengths";
+  for (auto const &it : inputLengths) {
+    out << it << "_";
+  }
+  out << "clientCall";
+  {
+    if (clientCall.getOffset() > 0) {
+      out << "_offset" << clientCall;
+    }
+    if (clientCall.hasHardLimit() || clientCall.hasSoftLimit()) {
+      auto const clientLimit = std::get<std::size_t>(std::min(clientCall.softLimit, clientCall.hardLimit));
+      out << "_limit" << clientLimit;
+    }
+    if (clientCall.needsFullCount()) {
+      out << "_fullCount";
+    }
+  }
+  out << "doneResultIsEmpty" << (doneResultIsEmpty ? "True" : "False");
+
+  return out.str();
+};
+
+INSTANTIATE_TEST_CASE_P(LimitExecutorExecuteApiVariations, LimitExecutorExecuteApiTest,
+    limitTestCases, printTestCase);
+
+}  // namespace arangodb::tests::aql

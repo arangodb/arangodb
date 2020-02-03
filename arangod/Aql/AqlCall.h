@@ -78,6 +78,9 @@ struct AqlCall {
 
   std::size_t getOffset() const { return offset; }
 
+  // TODO I think this should return the actual limit without regards to the batch size,
+  //      so we can use it to calculate upstream calls. The batch size should be applied
+  //      when allocating blocks only!
   std::size_t getLimit() const {
     // By default we use batchsize
     std::size_t limit = ExecutionBlock::DefaultBatchSize;
