@@ -945,8 +945,7 @@ function ahuacatlFunctionsTestSuite () {
 
     testReplaceNthInvalidCxx : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH(null, null))"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH(null, null, { }))");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH([], -1, { }))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH(['x'], null, { }))");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(REPLACE_NTH([], null, { }))");
       assertEqual([ null ], getQueryResults("RETURN NOOPT(REPLACE_NTH(null, 1, 1))")); 
     },
