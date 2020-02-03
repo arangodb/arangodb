@@ -487,7 +487,7 @@ else ()
   set(MAKE make)
 endif ()
 
-find_package(PythonInterp 2 EXACT REQUIRED)
+find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
