@@ -254,9 +254,11 @@ function ahuacatlTernaryCollectionTestSuite () {
     setUp : function () {
       db._drop(cn);
       c = db._create(cn);
-      for (var i = 0; i < 100; ++i) {
-        c.insert({_key: "test" + i, value: i});
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({_key: "test" + i, value: i});
       }
+      c.insert(docs);
     },
 
     tearDown : function () {
