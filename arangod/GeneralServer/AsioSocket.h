@@ -87,8 +87,8 @@ struct AsioSocket<SocketType::Tcp> {
 
 template <>
 struct AsioSocket<SocketType::Ssl> {
-  AsioSocket(arangodb::rest::IoContext& ctx, asio_ns::ssl::context& sslContext)
-      : context(ctx), socket(ctx.io_context, sslContext), timer(ctx.io_context) {
+  AsioSocket(arangodb::rest::IoContext& ctx, std::shared_ptr<asio_ns::ssl::context> sslContext)
+      : context(ctx), storedSslContext(std::move(sslContext)), socket(ctx.io_context, *storedSslContext), timer(ctx.io_context) {
     context.incClients();
   }
 
@@ -143,6 +143,7 @@ struct AsioSocket<SocketType::Ssl> {
   }
 
   arangodb::rest::IoContext& context;
+  std::shared_ptr<asio_ns::ssl::context> storedSslContext;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::ip::tcp::acceptor::endpoint_type peer;
   asio_ns::steady_timer timer;
