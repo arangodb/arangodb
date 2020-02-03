@@ -17,6 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lars Maier
 /// @author Tobias Goedderz
 /// @author Michael Hackstein
 /// @author Heiko Kernbach
@@ -35,7 +36,12 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Logger/LogMacros.h>
 #include <utility>
+
+// Set this to true to activate devel logging
+#define LOG_DEVEL_SORTED_COLLECT_ENABLED false
+#define LOG_DEVEL_SC LOG_DEVEL_IF(LOG_DEVEL_SORTED_COLLECT_ENABLED)
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -79,7 +85,7 @@ void SortedCollectExecutor::CollectGroup::initialize(size_t capacity) {
   }
 }
 
-void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
+void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
   _shouldDeleteBuilderBuffer = true;
   ConditionalDeleter<VPackBuffer<uint8_t>> deleter(_shouldDeleteBuilderBuffer);
   std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
@@ -143,11 +149,9 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _count(count),
       _trxPtr(trxPtr) {}
 
-SortedCollectExecutor::SortedCollectExecutor(Fetcher& fetcher, Infos& infos)
+SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
-      _currentGroup(infos.getCount(), infos),
-      _fetcherDone(false) {
+      _currentGroup(infos.getCount(), infos) {
   // reserve space for the current row
   _currentGroup.initialize(_infos.getGroupRegisters().size());
   // reset and recreate new group
@@ -156,7 +160,7 @@ SortedCollectExecutor::SortedCollectExecutor(Fetcher& fetcher, Infos& infos)
   _currentGroup.reset(emptyInput);
 };
 
-void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
+void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) {
   // remember the last valid row we had
   _lastInputRow = input;
 
@@ -203,7 +207,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
   }
 }
 
-bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow& input) {
+bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& input) const {
   // if we do not have valid input, return false
   if (!input.isInitialized()) {
     return false;
@@ -239,7 +243,7 @@ void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& build
 }
 
 void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output,
-                                                        InputAqlItemRow& input) {
+                                                        InputAqlItemRow const& input) {
   // Thanks to the edge case that we have to emit a row even if we have no
   // input We cannot assert here that the input row is valid ;(
 
@@ -284,27 +288,55 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
       output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
     }
   }
+
+  output.advanceRow();
 }
 
 std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                        OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
   TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  ExecutionState state;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  AqlCall clientCall = output.getClientCall();
+  TRI_ASSERT(clientCall.offset == 0);
 
-  while (true) {
-    if (_fetcherDone) {
-      if (_currentGroup.isValid()) {
-        _currentGroup.writeToOutput(output, input);
-        InputAqlItemRow input{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(input);
-        TRI_ASSERT(!_currentGroup.isValid());
-        return {ExecutionState::DONE, {}};
+  size_t rowsProduces = 0;
+  bool pendingGroup = false;
+
+  while (!output.isFull()) {
+    auto [state, input] = inputRange.peekDataRow();
+
+    LOG_DEVEL_SC << "SortedCollectExecutor::produceRows " << state << " "
+                 << input.isInitialized();
+
+    if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
+      // we have never been called with data
+      LOG_DEVEL_SC << "never called with data";
+      if (_infos.getGroupRegisters().empty()) {
+        // by definition we need to emit one collect row
+        _currentGroup.writeToOutput(output, InputAqlItemRow{CreateInvalidInputRowHint{}});
+        rowsProduces += 1;
       }
-      return {ExecutionState::DONE, {}};
+      break;
     }
+
+    // either state != DONE or we have an input row
+    TRI_ASSERT(state == ExecutorState::HASMORE || state == ExecutorState::DONE);
+    if (!input.isInitialized() && state != ExecutorState::DONE) {
+      LOG_DEVEL_SC << "need more input rows";
+      break;
+    }
+
     TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -313,73 +345,128 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlI
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    std::tie(state, input) = _fetcher.fetchRow();
+    if (input.isInitialized()) {
+      _haveSeenData = true;
 
-    if (state == ExecutionState::WAITING) {
-      return {state, {}};
-    }
+      // if we are in the same group, we need to add lines to the current group
+      if (_currentGroup.isSameGroup(input)) {
+        LOG_DEVEL_SC << "input is same group";
+        _currentGroup.addLine(input);
 
-    if (state == ExecutionState::DONE) {
-      _fetcherDone = true;
-    }
-
-    // if we are in the same group, we need to add lines to the current group
-    if (_currentGroup.isSameGroup(input)) {
-      _currentGroup.addLine(input);
-
-      if (state == ExecutionState::DONE) {
-        TRI_ASSERT(!output.produced());
-        _currentGroup.writeToOutput(output, input);
-        // Invalidate group
-        input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(input);
-        return {ExecutionState::DONE, {}};
-      }
-    } else {
-      if (_currentGroup.isValid()) {
+      } else if (_currentGroup.isValid()) {
+        LOG_DEVEL_SC << "input is new group, writing old group";
         // Write the current group.
         // Start a new group from input
+        rowsProduces += 1;
         _currentGroup.writeToOutput(output, input);
-        TRI_ASSERT(output.produced());
+
+        if (output.isFull()) {
+          LOG_DEVEL_SC << "now output is full, exit early";
+          pendingGroup = true;
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          break;
+        }
         _currentGroup.reset(input);  // reset and recreate new group
-        if (input.isInitialized()) {
-          return {ExecutionState::HASMORE, {}};
-        }
-        TRI_ASSERT(state == ExecutionState::DONE);
-        return {ExecutionState::DONE, {}};
+
       } else {
-        if (!input.isInitialized()) {
-          if (_infos.getGroupRegisters().empty()) {
-            // we got exactly 0 rows as input.
-            // by definition we need to emit one collect row
-            _currentGroup.writeToOutput(output, input);
-            TRI_ASSERT(output.produced());
-          }
-          TRI_ASSERT(state == ExecutionState::DONE);
-          return {ExecutionState::DONE, {}};
-        }
+        LOG_DEVEL_SC << "generating new group";
         // old group was not valid, do not write it
         _currentGroup.reset(input);  // reset and recreate new group
       }
     }
+
+    inputRange.nextDataRow();
+
+    bool produceMore = !output.isFull();
+    if (!produceMore) {
+      pendingGroup = true;
+      break;
+    }
+
+    if (state == ExecutorState::DONE) {
+      rowsProduces += 1;
+      _currentGroup.writeToOutput(output, input);
+      _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+      break;
+    }
   }
+
+  auto newState = pendingGroup ? ExecutorState::HASMORE : inputRange.upstreamState();
+
+  LOG_DEVEL_SC << "reporting state: " << newState;
+  return {newState, Stats{}, AqlCall{}};
 }
 
-std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  if (!_fetcherDone) {
-    ExecutionState state;
-    size_t expectedRows;
-    std::tie(state, expectedRows) = _fetcher.preFetchNumberOfRows(atMost);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(expectedRows == 0);
-      return {state, 0};
+auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+    -> std::tuple<ExecutorState, size_t, AqlCall> {
+  TRI_IF_FAILURE("SortedCollectExecutor::skipRowsRange") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  TRI_ASSERT(clientCall.needSkipMore());
+  while (clientCall.needSkipMore()) {
+    LOG_DEVEL_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
+    LOG_DEVEL_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
+
+    {
+      auto [state, input] = inputRange.peekDataRow();
+
+      LOG_DEVEL_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
+                   << std::boolalpha << input.isInitialized();
+
+      if (input.isInitialized()) {
+        // we received data
+        _haveSeenData = true;
+
+        // if we are in the same group, we can skip this line
+        if (_currentGroup.isSameGroup(input)) {
+          LOG_DEVEL_SC << "input is same group";
+          std::ignore = inputRange.nextDataRow();
+          /* do nothing */
+        } else {
+          if (_currentGroup.isValid()) {
+            LOG_DEVEL_SC << "input is new group, skipping current group";
+            // The current group is completed, skip it and create a new one
+            clientCall.didSkip(1);
+            _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+            continue;
+          }
+
+          LOG_DEVEL_SC << "group is invalid, creating new group";
+          _currentGroup.reset(input);
+          std::ignore = inputRange.nextDataRow();
+        }
+      }
+
+      if (!clientCall.needSkipMore()) {
+        LOG_DEVEL_SC << "stop skipping early, there could be a pending group";
+        break;
+      }
+
+      if (state == ExecutorState::DONE) {
+        if (!_haveSeenData) {
+          // we have never been called with data
+          LOG_DEVEL_SC << "never called with data";
+          if (_infos.getGroupRegisters().empty()) {
+            // by definition we need to emit one collect row
+            clientCall.didSkip(1);
+          }
+        } else {
+          LOG_DEVEL_SC << "skipping final group";
+          clientCall.didSkip(1);
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+        }
+        break;
+      } else if (!input.isInitialized()) {
+        TRI_ASSERT(state == ExecutorState::HASMORE);
+        LOG_DEVEL_SC << "waiting for more data to skip";
+        break;
+      }
     }
-    return {ExecutionState::HASMORE, expectedRows + 1};
   }
-  // The fetcher will NOT send anything any more
-  // We will at most return the current oepn group
-  if (_currentGroup.isValid()) {
-    return {ExecutionState::HASMORE, 1};
-  }
-  return {ExecutionState::DONE, 0};
+
+  LOG_DEVEL_SC << " skipped rows: " << clientCall.getSkipCount();
+  LOG_DEVEL_SC << "reporting state: " << inputRange.upstreamState();
+
+  return {inputRange.upstreamState(), clientCall.getSkipCount(), AqlCall{}};
 }

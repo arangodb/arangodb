@@ -67,6 +67,10 @@ class AqlCallStack {
   // Can be savely called on every subquery Start.
   void pop();
 
+  // Increase the subquery by one, not placing another call on the stack
+  // This is used to bypass all executors until we reach the next subquery start.
+  void increaseSubqueryDepth();
+
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main query)
   std::stack<AqlCall> _operations;

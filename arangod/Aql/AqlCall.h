@@ -75,6 +75,7 @@ struct AqlCall {
   Limit softLimit{Infinity{}};
   Limit hardLimit{Infinity{}};
   bool fullCount{false};
+  std::size_t skippedRows{0};
 
   std::size_t getOffset() const { return offset; }
 
@@ -82,8 +83,10 @@ struct AqlCall {
   //      so we can use it to calculate upstream calls. The batch size should be applied
   //      when allocating blocks only!
   std::size_t getLimit() const {
-    // By default we use batchsize
-    std::size_t limit = ExecutionBlock::DefaultBatchSize;
+    return clampToLimit(ExecutionBlock::DefaultBatchSize);
+  }
+
+  std::size_t clampToLimit(size_t limit) const {  // By default we use batchsize
     // We are not allowed to go above softLimit
     if (std::holds_alternative<std::size_t>(softLimit)) {
       limit = (std::min)(std::get<std::size_t>(softLimit), limit);
@@ -99,9 +102,8 @@ struct AqlCall {
     return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
   }
 
-  void didSkip(std::size_t n) {
+  void didSkip(std::size_t n) noexcept {
     if (n <= offset) {
-      // TRI_ASSERT(n <= offset);
       offset -= n;
     } else {
       TRI_ASSERT(fullCount);
@@ -109,6 +111,15 @@ struct AqlCall {
       // in a single call here.
       offset = 0;
     }
+    skippedRows += n;
+  }
+
+  [[nodiscard]] std::size_t getSkipCount() const noexcept {
+    return skippedRows;
+  }
+
+  [[nodiscard]] bool needSkipMore() const noexcept {
+    return (0 < getOffset()) || (getLimit() == 0 && needsFullCount());
   }
 
   void didProduce(std::size_t n) {
@@ -132,6 +143,18 @@ struct AqlCall {
   }
 
   bool needsFullCount() const { return fullCount; }
+
+  bool shouldSkip() const {
+    if (getOffset() > 0) {
+      // Still need to skip.
+      return true;
+    }
+    if (getLimit() > 0) {
+      // Still need to produce.
+      return false;
+    }
+    return needsFullCount();
+  }
 };
 
 constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
