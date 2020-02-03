@@ -6,6 +6,34 @@ require 'arangodb.rb'
 describe ArangoDB do
   prefix = "api-async"
 
+  def wait_for_get (cmd, code, maxWait)
+    while true
+      doc = ArangoDB.get(cmd)
+      if doc.code == code
+        return doc
+      end
+      maxWait -= 1
+      if maxWait == 0
+        return false
+      end
+      sleep 1
+    end
+  end
+  
+  def wait_for_put (cmd, code, maxWait)
+    while true
+      doc = ArangoDB.put(cmd)
+      if doc.code == code
+        return doc
+      end
+      maxWait -= 1
+      if maxWait == 0
+        return false
+      end
+      sleep 1
+    end
+  end
+
   context "dealing with async requests:" do
 
 ################################################################################
@@ -108,15 +136,13 @@ describe ArangoDB do
       id.should match(/^\d+$/)
       doc.response.body.should eq ""
 
-      sleep 2
-
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_get("#{prefix}-get-check-status-200", cmd)
+      doc = wait_for_get cmd, 200, 20
       doc.code.should eq(200)
       doc.response.body.should eq ""
 
       # should be able to query the status again
-      doc = ArangoDB.log_get("#{prefix}-get-check-status-200", cmd)
+      doc = wait_for_get cmd, 200, 20
       doc.code.should eq(200)
       doc.response.body.should eq ""
 
@@ -142,7 +168,7 @@ describe ArangoDB do
       doc.response.body.should eq ""
 
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_get("#{prefix}-get-check-status-204", cmd)
+      doc = wait_for_get cmd, 204, 20
       doc.code.should eq(204)
       doc.response.body.should be_nil
     end
@@ -225,10 +251,8 @@ describe ArangoDB do
       doc = ArangoDB.log_put("#{prefix}-create-cursor-cancel", cmd)
       doc.code.should eq(200)
 
-      sleep 5
-
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-410", cmd)
+      doc = wait_for_put cmd, 410, 20
       doc.code.should eq(410)
     end
 
@@ -244,19 +268,15 @@ describe ArangoDB do
       doc.response.body.should eq ""
 
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-204", cmd)
+      doc = wait_for_put cmd, 204, 20
       doc.code.should eq(204)
-
-      sleep 2
 
       cmd = "/_api/job/" + id + "/cancel"
       doc = ArangoDB.log_put("#{prefix}-create-cursor-cancel", cmd)
       doc.code.should eq(200)
 
-      sleep 5
-
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-410", cmd)
+      doc = wait_for_put cmd, 410, 20
       doc.code.should eq(410)
     end
 
@@ -272,17 +292,15 @@ describe ArangoDB do
       doc.response.body.should eq ""
 
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-204", cmd)
+      doc = wait_for_put cmd, 204, 20
       doc.code.should eq(204)
 
       cmd = "/_api/job/" + id + "/cancel"
       doc = ArangoDB.log_put("#{prefix}-create-cursor-cancel", cmd)
       doc.code.should eq(200)
 
-      sleep 5
-
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-cursor-check-status-410", cmd)
+      doc = wait_for_put cmd, 410, 20
       doc.code.should eq(410)
     end
 
@@ -297,22 +315,16 @@ describe ArangoDB do
       id.should match(/^\d+$/)
       doc.response.body.should eq ""
 
-      sleep 1
-
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-transaction-check-status-204", cmd)
+      doc = wait_for_put cmd, 204, 20
       doc.code.should eq(204)
-
-      sleep 1
 
       cmd = "/_api/job/" + id + "/cancel"
       doc = ArangoDB.log_put("#{prefix}-create-transaction-cancel", cmd)
       doc.code.should eq(200)
 
-      sleep 5
-
       cmd = "/_api/job/" + id
-      doc = ArangoDB.log_put("#{prefix}-create-transaction-check-status-410", cmd)
+      doc = wait_for_put cmd, 410, 20
       doc.code.should eq(410)
     end
   end
