@@ -289,7 +289,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--database.maximal-journal-size",
                      "default maximal journal size, can be overwritten when "
                      "creating a collection",
-                     new UInt64Parameter(&_maximalJournalSize));
+                     new UInt64Parameter(&_maximalJournalSize))
+                    .setDeprecatedIn(30700);
 
   options->addOption("--database.wait-for-sync",
                      "default wait-for-sync behavior, can be overwritten "
@@ -313,7 +314,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading",
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30700);
 
   // the following option was removed in 3.2
   // index-creation is now automatically parallelized via the Boost ASIO thread

@@ -1306,6 +1306,20 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(AstNode const* node,
 AqlValue Expression::executeSimpleExpressionTernary(AstNode const* node,
                                                     transaction::Methods* trx,
                                                     bool& mustDestroy) {
+  if (node->numMembers() == 2) {
+    AqlValue condition =
+      executeSimpleExpression(node->getMember(0), trx, mustDestroy, true);
+    AqlValueGuard guard(condition, mustDestroy);
+
+    if (condition.toBoolean()) {
+      guard.steal();
+      return condition;
+    }
+    return executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
+  }
+  
+  TRI_ASSERT(node->numMembers() == 3);
+
   AqlValue condition =
       executeSimpleExpression(node->getMember(0), trx, mustDestroy, false);
 
