@@ -60,8 +60,6 @@
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);

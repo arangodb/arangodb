@@ -2063,7 +2063,6 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_LOG_THROW_EXCEPTION(tryCatch);
       } else {
         tryCatch.ReThrow();
-        TRI_GET_GLOBALS();
         v8g->_canceled = true;
         TRI_V8_RETURN_UNDEFINED();
       }

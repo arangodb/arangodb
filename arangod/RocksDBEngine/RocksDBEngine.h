@@ -350,11 +350,18 @@ class RocksDBEngine final : public StorageEngine {
   void startEnterprise();
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
   void validateJournalFiles() const;
+  
+  Result readUserEncryptionIV(std::string& out);
 
   enterprise::RocksDBEngineEEData _eeData;
 
 public:
   std::string const& getEncryptionKey();
+  
+  std::string const& getEncryptedIVFile();
+  
+  Result rotateEncryptionKey();
+  
 #endif
 private:
   // activate generation of SHA256 files to parallel .sst files

@@ -165,7 +165,7 @@ static inline char tolower(char c) {
 }
 
 static inline unsigned char tolower(unsigned char c) {
-  return c + ((c - 65U < 26U) << 5);
+  return static_cast<unsigned char>(c + ((c - 65U < 26U) << 5));
 }
 
 static inline char toupper(char c) {

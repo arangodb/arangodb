@@ -712,7 +712,8 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
       memcpy(_data, data, _length);
     }
 
-    isolate->AdjustAmountOfExternalAllocatedMemory(sizeof(V8Buffer) + _length + SAFETY_OVERHEAD);
+    int64_t bytesToChange = (int64_t)(sizeof(V8Buffer) + _length + SAFETY_OVERHEAD);
+    isolate->AdjustAmountOfExternalAllocatedMemory(bytesToChange);
   } else {
     _data = NULL;
   }
@@ -808,9 +809,12 @@ static void JS_Ucs2Slice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!sliceArgs(isolate, args[0], args[1], parent, start, end)) {
     return;
   }
+  
+  std::vector<uint16_t> buffer;
+  buffer.resize((end - start) / 2);
+  memcpy(buffer.data(), parent->_data + start, (end - start));
 
-  uint16_t* data = (uint16_t*)(parent->_data + start);
-  TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, data, (end - start) / 2));
+  TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, buffer.data(), buffer.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -829,7 +833,7 @@ static void JS_HexSlice(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   char* src = parent->_data + start;
-  uint32_t dstlen = (end - start) * 2;
+  uint32_t dstlen = static_cast<size_t>(end - start) * 2;
 
   if (dstlen == 0) {
     TRI_V8_RETURN(v8::String::Empty(isolate));
@@ -948,7 +952,7 @@ static void JS_Fill(v8::FunctionCallbackInfo<v8::Value> const& args) {
     return;
   }
 
-  memset((void*)(parent->_data + start), value, end - start);
+  memset((void*)(parent->_data + start), value, static_cast<size_t>(end - start));
 
   TRI_V8_RETURN_UNDEFINED();
 }
@@ -1079,11 +1083,13 @@ static void JS_Ucs2Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                              : TRI_GET_UINT32(args[2]);
 
   max_length = MIN(buffer->_length - offset, max_length) / 2;
-
-  uint16_t* p = (uint16_t*)(buffer->_data + offset);
+  
+  std::vector<uint16_t> ucs2;
+  ucs2.resize(max_length);
+  memcpy(ucs2.data(), buffer->_data + offset, max_length);
 
   int written =
-      s->Write(isolate, p, 0, (int)max_length,
+      s->Write(isolate, ucs2.data(), 0, (int)max_length,
                (v8::String::HINT_MANY_WRITES_EXPECTED | v8::String::NO_NULL_TERMINATION));
 
   TRI_V8_RETURN(v8::Integer::New(isolate, written * 2));

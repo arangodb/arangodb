@@ -58,6 +58,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleTLS();
   } else if (suffixes.size() == 1 && suffixes[0] == "jwt") {
     handleJWTSecretsReload();
+  } else if (suffixes.size() == 1 && suffixes[0] == "encryption") {
+    handleEncryptionKeyRotation();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -254,6 +256,10 @@ void RestAdminServerHandler::handleTLS() {
 
 #ifndef USE_ENTERPRISE
 void RestAdminServerHandler::handleJWTSecretsReload() {
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+}
+
+void RestAdminServerHandler::handleEncryptionKeyRotation() {
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
 }
 #endif
