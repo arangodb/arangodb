@@ -31,6 +31,7 @@
 namespace arangodb {
 namespace aql {
 
+class AqlItemBlockManager;
 class DistributeNode;
 
 class DistributeExecutorInfos : public ExecutorInfos, public ClientsExecutorInfos {
@@ -97,7 +98,27 @@ class DistributeExecutor {
         -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>;
 
    private:
+    /**
+     * @brief This call will join as many blocks as available from the queue
+     *        and return them in a SingleBlock. We then use the IdExecutor
+     *        to hand out the data contained in these blocks
+     *        We do on purpose not give any kind of guarantees on the sizing of
+     *        this block to be flexible with the implementation, and find a good
+     *        trade-off between blocksize and block copy operations.
+     *
+     * @return SharedAqlItemBlockPtr a joind block from the queue.
+     */
+    auto popJoinedBlock() -> SharedAqlItemBlockPtr;
+
+   private:
+    AqlItemBlockManager& _blockManager;
+    ExecutorInfos const& _infos;
+
     std::deque<std::pair<SharedAqlItemBlockPtr, std::vector<size_t>>> _queue;
+
+    // This is unique_ptr to get away with everything beeing forward declared...
+    std::unique_ptr<ExecutionBlock> _executor;
+    bool _executorHasMore;
   };
 
   DistributeExecutor(DistributeExecutorInfos const& infos);

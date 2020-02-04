@@ -22,11 +22,15 @@
 
 #include "DistributeExecutor.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/IdExecutor.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/ShadowAqlItemRow.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -122,9 +126,22 @@ auto DistributeExecutorInfos::createKey(VPackSlice input) const -> std::string {
 
 DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                      ScatterNode const* node,
-                                                     ExecutorInfos const& scatterInfos) {}
+                                                     ExecutorInfos const& scatterInfos)
+    : _blockManager(engine.itemBlockManager()), _infos(scatterInfos) {
+  // We only get shared ptrs to const data. so we need to copy here...
+  IdExecutorInfos infos{scatterInfos.numberOfInputRegisters(),
+                        *scatterInfos.registersToKeep(),
+                        *scatterInfos.registersToClear(), "", false};
+  // NOTE: Do never change this type! The execute logic below requires this and only this type.
+  _executor =
+      std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, node,
+                                                                     std::move(infos));
+}
 
-auto DistributeExecutor::ClientBlockData::clear() -> void { _queue.clear(); }
+auto DistributeExecutor::ClientBlockData::clear() -> void {
+  _queue.clear();
+  _executorHasMore = false;
+}
 
 auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
                                                    std::vector<size_t> usedIndexes) -> void {
@@ -132,13 +149,107 @@ auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
 }
 
 auto DistributeExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
-  return !_queue.empty();
+  return _executorHasMore || !_queue.empty();
+}
+
+/**
+ * @brief This call will join as many blocks as available from the queue
+ *        and return them in a SingleBlock. We then use the IdExecutor
+ *        to hand out the data contained in these blocks
+ *        We do on purpose not give any kind of guarantees on the sizing of
+ *        this block to be flexible with the implementation, and find a good
+ *        trade-off between blocksize and block copy operations.
+ *
+ * @return SharedAqlItemBlockPtr a joind block from the queue.
+ */
+auto DistributeExecutor::ClientBlockData::popJoinedBlock() -> SharedAqlItemBlockPtr {
+  // There are some optimizations available in this implementation.
+  // Namely we could apply good logic to cut the blocks at shadow rows
+  // in order to allow the IDexecutor to hand them out en-block.
+  // However we might leverage the restriction to stop at ShadowRows
+  // at one point anyways, and this Executor has no business with ShadowRows.
+  size_t numRows = 0;
+  for (auto const& [block, choosen] : _queue) {
+    numRows += choosen.size();
+    if (numRows >= ExecutionBlock::DefaultBatchSize) {
+      // Avoid to put too many rows into this block.
+      break;
+    }
+  }
+
+  SharedAqlItemBlockPtr newBlock =
+      _blockManager.requestBlock(numRows, _infos.numberOfOutputRegisters());
+  // No Rows written
+  TRI_ASSERT(newBlock->size() == 0);
+  OutputAqlItemRow output{newBlock, _infos.getOutputRegisters(),
+                          _infos.registersToKeep(), _infos.registersToClear()};
+  while (!output.isFull()) {
+    // If the queue is empty our sizing above would not be correct
+    TRI_ASSERT(!_queue.empty());
+    auto const& [block, choosen] = _queue.front();
+    TRI_ASSERT(output.numRowsLeft() >= choosen.size());
+    for (auto const& i : choosen) {
+      // We do not really care what we copy. However
+      // the API requires to know what it is.
+      if (block->isShadowRow(i)) {
+        ShadowAqlItemRow toCopy{block, i};
+        output.copyRow(toCopy);
+      } else {
+        InputAqlItemRow toCopy{block, i};
+        output.copyRow(toCopy);
+      }
+      output.advanceRow();
+    }
+    // All required rows copied.
+    // Drop block form queue.
+    _queue.pop_front();
+  }
+  // newBlock now is full
+  TRI_ASSERT(newBlock->size() == numRows);
+  return newBlock;
 }
 
 auto DistributeExecutor::ClientBlockData::execute(AqlCall call, ExecutionState upstreamState)
     -> std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> {
-  // TODO IMPLEMENT ME
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  TRI_ASSERT(_executor != nullptr);
+  // Make sure we actually have data before you call execute
+  TRI_ASSERT(hasDataFor(call));
+  if (!_executorHasMore) {
+    // This cast is guaranteed, we create this a couple lines above and only
+    // this executor is used here.
+    // Unfortunately i did not get a version compiled were i could only forward
+    // declare the templates in header.
+    auto casted =
+        static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
+    TRI_ASSERT(casted != nullptr);
+    auto block = popJoinedBlock();
+    // We will at least get one block, otherwise the hasDataFor would
+    // be required to return false!
+    TRI_ASSERT(block != nullptr);
+
+    casted->injectConstantBlock(block);
+    _executorHasMore = true;
+  }
+  AqlCallStack stack{call};
+  auto [state, skipped, result] = _executor->execute(stack);
+
+  // We have all data locally cannot wait here.
+  TRI_ASSERT(state != ExecutionState::WAITING);
+
+  if (state == ExecutionState::DONE) {
+    // This executor is finished, including shadowrows
+    // We are going to reset it on next call
+    _executorHasMore = false;
+
+    // Also we need to adjust the return states
+    // as this state only represents one single block
+    if (!_queue.empty()) {
+      state = ExecutionState::HASMORE;
+    } else {
+      state = upstreamState;
+    }
+  }
+  return {state, skipped, result};
 }
 
 DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
