@@ -39,10 +39,6 @@
 
 namespace arangodb {
 
-namespace httpclient {
-class SimpleHttpResult;
-}
-
 namespace transaction {
 class Methods;
 }
@@ -52,6 +48,21 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
 class ExecutionNode;
+
+class ClientsExecutorInfos {
+ public:
+  ClientsExecutorInfos(std::vector<std::string> clientIds);
+
+  ClientsExecutorInfos(ClientsExecutorInfos&&) = default;
+  ClientsExecutorInfos(ClientsExecutorInfos const&) = delete;
+  ~ClientsExecutorInfos() = default;
+
+  auto nrClients() const noexcept -> size_t;
+  auto clientIds() const noexcept -> std::vector<std::string> const&;
+
+ private:
+  std::vector<std::string> _clientIds;
+};
 
 class BlocksWithClients {
  public:
@@ -94,9 +105,11 @@ class BlocksWithClients {
 
 template <class Executor>
 class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
+  using Infos = typename Executor::Infos;
+
  public:
   BlocksWithClientsImpl(ExecutionEngine* engine, ExecutionNode const* ep,
-                        std::vector<std::string> const& shardIds);
+                        typename Executor::Infos infos);
 
   ~BlocksWithClientsImpl() override = default;
 
@@ -132,8 +145,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
 
  private:
   /**
-   * @brief Actual implementation of Execute. Needs to be given by the specific
-   * block Tracing is handled in the generic method.
+   * @brief Actual implementation of Execute.
    *
    * @param stack The AqlCallStack
    * @param clientId The requesting client Id.
@@ -147,6 +159,16 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
    *
    */
   auto fetchMore(AqlCallStack stack) -> ExecutionState;
+
+  /// @brief getSomeForShard
+  /// @deprecated
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
+                                                                   std::string const& shardId) override;
+
+  /// @brief skipSomeForShard
+  /// @deprecated
+  std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
+                                                     std::string const& shardId) override;
 
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
@@ -164,6 +186,13 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   ScatterNode::ScatterType _type;
 
  private:
+  /**
+   * @brief This is the working party of this implementation
+   *        the template class needs to implement the logic
+   *        to produce a single row from the upstream information.
+   */
+  Infos _infos;
+
   Executor _executor;
 
   /// @brief A map of clientId to the data this client should receive.

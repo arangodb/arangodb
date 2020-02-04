@@ -36,6 +36,87 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+DistributeExecutorInfos::DistributeExecutorInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    std::unordered_set<RegisterId> registersToClear,
+    std::unordered_set<RegisterId> registersToKeep,
+    std::vector<std::string> clientIds, Collection const* collection,
+    RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
+    bool allowKeyConversionToObject, bool createKeys, ScatterNode::ScatterType type)
+    : ExecutorInfos(readableInputRegisters, writeableOutputRegisters, nrInputRegisters,
+                    nrOutputRegisters, registersToClear, registersToKeep),
+      ClientsExecutorInfos(std::move(clientIds)),
+      _regId(regId),
+      _alternativeRegId(alternativeRegId),
+      _allowKeyConversionToObject(allowKeyConversionToObject),
+      _createKeys(createKeys),
+      _usesDefaultSharding(collection->usesDefaultSharding()),
+      _allowSpecifiedKeys(allowSpecifiedKeys),
+      _collection(collection),
+      _logCol(collection->getCollection()),
+      _type(type) {
+  TRI_ASSERT(readableInputRegisters->find(_regId) != readableInputRegisters->end());
+  if (hasAlternativeRegister()) {
+    TRI_ASSERT(readableInputRegisters->find(_alternativeRegId) !=
+               readableInputRegisters->end());
+  }
+}
+
+auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
+  TRI_ASSERT(_regId != RegisterPlan::MaxRegisterId);
+  return _regId;
+}
+auto DistributeExecutorInfos::hasAlternativeRegister() const noexcept -> bool {
+  return _alternativeRegId != RegisterPlan::MaxRegisterId;
+}
+auto DistributeExecutorInfos::alternativeRegisterId() const noexcept -> RegisterId {
+  TRI_ASSERT(_alternativeRegId != RegisterPlan::MaxRegisterId);
+  return _alternativeRegId;
+}
+
+auto DistributeExecutorInfos::allowKeyConversionToObject() const noexcept -> bool {
+  return _allowKeyConversionToObject;
+}
+
+auto DistributeExecutorInfos::createKeys() const noexcept -> bool {
+  return _createKeys;
+}
+auto DistributeExecutorInfos::usesDefaultSharding() const noexcept -> bool {
+  return _usesDefaultSharding;
+}
+auto DistributeExecutorInfos::allowSpecifiedKeys() const noexcept -> bool {
+  return _allowSpecifiedKeys;
+}
+
+auto DistributeExecutorInfos::scatterType() const noexcept -> ScatterNode::ScatterType {
+  return _type;
+}
+
+auto DistributeExecutorInfos::getResponsibleClient(arangodb::velocypack::Slice value) const
+    -> ResultT<std::string> {
+  std::string shardId;
+  int res = _logCol->getResponsibleShard(value, true, shardId);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return Result{res};
+  }
+
+  TRI_ASSERT(!shardId.empty());
+  if (_type == ScatterNode::ScatterType::SERVER) {
+    // Special case for server based distribution.
+    shardId = _collection->getServerForShard(shardId);
+    TRI_ASSERT(!shardId.empty());
+  }
+  return shardId;
+}
+
+/// @brief create a new document key
+auto DistributeExecutorInfos::createKey(VPackSlice input) const -> std::string {
+  return _logCol->createKey(input);
+}
+
 // TODO
 // This section is not implemented yet
 
@@ -45,8 +126,9 @@ DistributeExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
 
 auto DistributeExecutor::ClientBlockData::clear() -> void { _queue.clear(); }
 
-auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> void {
-  _queue.emplace_back(block);
+auto DistributeExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
+                                                   std::vector<size_t> usedIndexes) -> void {
+  _queue.emplace_back(block, std::move(usedIndexes));
 }
 
 auto DistributeExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
@@ -59,91 +141,138 @@ auto DistributeExecutor::ClientBlockData::execute(AqlCall call, ExecutionState u
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-DistributeExecutor::DistributeExecutor(){};
+DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
+    : _infos(infos){};
 
 auto DistributeExecutor::distributeBlock(SharedAqlItemBlockPtr block,
-                                         std::unordered_map<std::string, ClientBlockData>& blockMap) const
+                                         std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
-  // TODO we might be better off here with filling fresh blocks on input
-  // instead of slicing one into very small pieces.
-  // TODO this is not implemented yet, we do not do FILTERING
-  for (auto& [id, list] : blockMap) {
-    list.addBlock(block);
+  std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
+  choosenMap.reserve(blockMap.size());
+  for (size_t i = 0; i < block->size(); ++i) {
+    if (block->isShadowRow(i)) {
+      // ShadowRows need to be added to all Clients
+      for (auto const& [key, value] : blockMap) {
+        choosenMap[key].emplace_back(i);
+      }
+    } else {
+      auto client = getClient(block, i);
+      // We can only have clients we are prepared for
+      TRI_ASSERT(blockMap.find(client) != blockMap.end());
+      choosenMap[client].emplace_back(i);
+    }
+  }
+  // We cannot have more in choosen than we have blocks
+  TRI_ASSERT(choosenMap.size() <= blockMap.size());
+  for (auto const& [key, value] : choosenMap) {
+    TRI_ASSERT(blockMap.find(key) != blockMap.end());
+    auto target = blockMap.find(key);
+    if (target == blockMap.end()) {
+      // Impossible, just avoid UB.
+      LOG_TOPIC("7bae6", ERR, Logger::AQL)
+          << "Tried to distribute data to shard " << key
+          << " which is not part of the query. Ignoring.";
+      continue;
+    }
+    target->second.addBlock(block, std::move(value));
   }
 }
 
-ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
-    ExecutionEngine* engine, DistributeNode const* node, ExecutorInfos&& infos,
-    std::vector<std::string> const& shardIds, Collection const* collection,
-    RegisterId regId, RegisterId alternativeRegId, bool allowSpecifiedKeys,
-    bool allowKeyConversionToObject, bool createKeys)
-    : BlocksWithClientsImpl(engine, node, shardIds),
-      _infos(std::move(infos)),
-      _query(*engine->getQuery()),
-      _collection(collection),
-      _logCol(_collection->getCollection()),
-      _index(0),
-      _regId(regId),
-      _alternativeRegId(alternativeRegId),
-      _allowSpecifiedKeys(allowSpecifiedKeys),
-      _allowKeyConversionToObject(allowKeyConversionToObject),
-      _createKeys(createKeys) {
-  _usesDefaultSharding = collection->usesDefaultSharding();
+auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
+    -> std::string {
+  InputAqlItemRow row{block, rowIndex};
+  AqlValue val = row.getValue(_infos.registerId());
+
+  VPackSlice input = val.slice();  // will throw when wrong type
+
+  bool usedAlternativeRegId = false;
+
+  if (input.isNull() && _infos.hasAlternativeRegister()) {
+    // value is set, but null
+    // check if there is a second input register available (UPSERT makes use of
+    // two input registers,
+    // one for the search document, the other for the insert document)
+    val = row.getValue(_infos.alternativeRegisterId());
+
+    input = val.slice();  // will throw when wrong type
+    usedAlternativeRegId = true;
+  }
+
+  VPackSlice value = input;
+  bool hasCreatedKeyAttribute = false;
+
+  if (input.isString() && _infos.allowKeyConversionToObject()) {
+    _keyBuilder.clear();
+    _keyBuilder.openObject(true);
+    _keyBuilder.add(StaticStrings::KeyString, input);
+    _keyBuilder.close();
+
+    // clear the previous value
+    block->destroyValue(rowIndex, _infos.registerId());
+
+    // overwrite with new value
+    block->emplaceValue(rowIndex, _infos.registerId(), _keyBuilder.slice());
+
+    value = _keyBuilder.slice();
+    hasCreatedKeyAttribute = true;
+  } else if (!input.isObject()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  TRI_ASSERT(value.isObject());
+
+  if (_infos.createKeys()) {
+    bool buildNewObject = false;
+    // we are responsible for creating keys if none present
+
+    if (_infos.usesDefaultSharding()) {
+      // the collection is sharded by _key...
+      if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
+        // there is no _key attribute present, so we are responsible for
+        // creating one
+        buildNewObject = true;
+      }
+    } else {
+      // the collection is not sharded by _key
+      if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
+        // a _key was given, but user is not allowed to specify _key
+        if (usedAlternativeRegId || !_infos.allowSpecifiedKeys()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+        }
+      } else {
+        buildNewObject = true;
+      }
+    }
+
+    if (buildNewObject) {
+      _keyBuilder.clear();
+      _keyBuilder.openObject(true);
+      _keyBuilder.add(StaticStrings::KeyString, VPackValue(_infos.createKey(value)));
+      _keyBuilder.close();
+
+      _objectBuilder.clear();
+      VPackCollection::merge(_objectBuilder, input, _keyBuilder.slice(), true);
+
+      // clear the previous value and overwrite with new value:
+      auto reg = usedAlternativeRegId ? _infos.alternativeRegisterId()
+                                      : _infos.registerId();
+
+      block->destroyValue(rowIndex, reg);
+      block->emplaceValue(rowIndex, reg, _objectBuilder.slice());
+      value = _objectBuilder.slice();
+    }
+  }
+  auto res = _infos.getResponsibleClient(value);
+  THROW_ARANGO_EXCEPTION_IF_FAIL(res.result());
+  return res.get();
 }
 
-/// @brief getSomeForShard
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<DistributeExecutor>::getSomeForShard(
-    size_t atMost, std::string const& shardId) {
-  traceGetSomeBegin(atMost);
-  auto result = getSomeForShardWithoutTrace(atMost, shardId);
-  return traceGetSomeEnd(result.first, std::move(result.second));
-}
+ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
+                                                           DistributeNode const* node,
+                                                           DistributeExecutorInfos&& infos)
+    : BlocksWithClientsImpl(engine, node, std::move(infos)) {}
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<DistributeExecutor>::getSomeForShardWithoutTrace(
-    size_t atMost, std::string const& shardId) {
-  if (getQuery().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-  // NOTE: We do not need to retain these, the getOrSkipSome is required to!
-  size_t skipped = 0;
-  SharedAqlItemBlockPtr result = nullptr;
-  auto out = getOrSkipSomeForShard(atMost, false, result, skipped, shardId);
-  if (out.first == ExecutionState::WAITING) {
-    return {out.first, nullptr};
-  }
-  if (!out.second.ok()) {
-    THROW_ARANGO_EXCEPTION(out.second);
-  }
-  return {out.first, std::move(result)};
-}
-
-/// @brief skipSomeForShard
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSomeForShard(
-    size_t atMost, std::string const& shardId) {
-  traceSkipSomeBegin(atMost);
-  auto result = skipSomeForShardWithoutTrace(atMost, shardId);
-  return traceSkipSomeEnd(result.first, result.second);
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSomeForShardWithoutTrace(
-    size_t atMost, std::string const& shardId) {
-  if (getQuery().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-  // NOTE: We do not need to retain these, the getOrSkipSome is required to!
-  size_t skipped = 0;
-  SharedAqlItemBlockPtr result = nullptr;
-  auto out = getOrSkipSomeForShard(atMost, true, result, skipped, shardId);
-  if (out.first == ExecutionState::WAITING) {
-    return {out.first, 0};
-  }
-  TRI_ASSERT(result == nullptr);
-  if (!out.second.ok()) {
-    THROW_ARANGO_EXCEPTION(out.second);
-  }
-  return {out.first, skipped};
-}
-
+/*
 /// @brief getOrSkipSomeForShard
 std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecutor>::getOrSkipSomeForShard(
     size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
@@ -211,210 +340,4 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<DistributeExecuto
 
   return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 }
-
-/// @brief hasMore: any more for any shard?
-bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForShard(std::string const& shardId) const {
-  return hasMoreForClientId(getClientId(shardId));
-}
-
-ExecutionState ExecutionBlockImpl<DistributeExecutor>::getHasMoreStateForClientId(size_t clientId) const {
-  if (hasMoreForClientId(clientId)) {
-    return ExecutionState::HASMORE;
-  }
-  return ExecutionState::DONE;
-}
-
-bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForClientId(size_t clientId) const {
-  // We have more for a client ID if
-  // we still have some information in the local buffer
-  // or if there is still some information from upstream
-
-  TRI_ASSERT(_distBuffer.size() > clientId);
-  if (!_distBuffer[clientId].empty()) {
-    return true;
-  }
-  return _upstreamState == ExecutionState::HASMORE;
-}
-
-/// @brief getBlockForClient: try to get atMost pairs into
-/// _distBuffer.at(clientId), this means we have to look at every row in the
-/// incoming blocks until they run out or we find enough rows for clientId. We
-/// also keep track of blocks which should be sent to other clients than the
-/// current one.
-std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlockForClient(
-    size_t atMost, size_t clientId) {
-  if (_buffer.empty()) {
-    _index = 0;  // position in _buffer
-    _pos = 0;    // position in _buffer.at(_index)
-  }
-
-  // it should be the case that buf.at(clientId) is empty
-  auto& buf = _distBuffer[clientId];
-
-  while (buf.size() < atMost) {
-    if (_index == _buffer.size()) {
-      if (getQuery().killed()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-      }
-      auto res = getBlock(atMost);
-      if (res.first == ExecutionState::WAITING) {
-        return {res.first, false};
-      }
-      if (!res.second) {
-        TRI_ASSERT(res.first == ExecutionState::DONE);
-        if (buf.empty()) {
-          TRI_ASSERT(getHasMoreStateForClientId(clientId) == ExecutionState::DONE);
-          return {ExecutionState::DONE, false};
-        }
-        break;
-      }
-    }
-
-    SharedAqlItemBlockPtr cur = _buffer[_index];
-
-    for (; _pos < cur->size(); ++_pos) {
-      if (!cur->isShadowRow(_pos)) {
-        // this may modify the input item buffer in place
-        size_t const id = sendToClient(cur);
-
-        _distBuffer[id].emplace_back(_index, _pos);
-      } else {
-        // A shadow row must always be distributed to all clients.
-        for (auto& dist : _distBuffer) {
-          dist.emplace_back(_index, _pos);
-        }
-      }
-    }
-
-    if (_pos == cur->size()) {
-      _pos = 0;
-      _index++;
-    } else {
-      break;
-    }
-  }
-
-  return {getHasMoreStateForClientId(clientId), true};
-}
-
-/// @brief sendToClient: for each row of the incoming AqlItemBlock use the
-/// attributes <shardKeys> of the Aql value <val> to determine to which shard
-/// the row should be sent and return its clientId
-size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPtr cur) {
-  if (getQuery().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-
-  // inspect cur in row _pos and check to which shard it should be sent . .
-  AqlValue val = cur->getValueReference(_pos, _regId);
-
-  VPackSlice input = val.slice();  // will throw when wrong type
-
-  bool usedAlternativeRegId = false;
-
-  if (input.isNull() && _alternativeRegId != RegisterPlan::MaxRegisterId) {
-    // value is set, but null
-    // check if there is a second input register available (UPSERT makes use of
-    // two input registers,
-    // one for the search document, the other for the insert document)
-    val = cur->getValueReference(_pos, _alternativeRegId);
-
-    input = val.slice();  // will throw when wrong type
-    usedAlternativeRegId = true;
-  }
-
-  VPackSlice value = input;
-  bool hasCreatedKeyAttribute = false;
-
-  if (input.isString() && _allowKeyConversionToObject) {
-    _keyBuilder.clear();
-    _keyBuilder.openObject(true);
-    _keyBuilder.add(StaticStrings::KeyString, input);
-    _keyBuilder.close();
-
-    // clear the previous value
-    cur->destroyValue(_pos, _regId);
-
-    // overwrite with new value
-    cur->emplaceValue(_pos, _regId, _keyBuilder.slice());
-
-    value = _keyBuilder.slice();
-    hasCreatedKeyAttribute = true;
-  } else if (!input.isObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  TRI_ASSERT(value.isObject());
-
-  if (_createKeys) {
-    bool buildNewObject = false;
-    // we are responsible for creating keys if none present
-
-    if (_usesDefaultSharding) {
-      // the collection is sharded by _key...
-      if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
-        // there is no _key attribute present, so we are responsible for
-        // creating one
-        buildNewObject = true;
-      }
-    } else {
-      // the collection is not sharded by _key
-      if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
-        // a _key was given, but user is not allowed to specify _key
-        if (usedAlternativeRegId || !_allowSpecifiedKeys) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
-        }
-      } else {
-        buildNewObject = true;
-      }
-    }
-
-    if (buildNewObject) {
-      _keyBuilder.clear();
-      _keyBuilder.openObject(true);
-      _keyBuilder.add(StaticStrings::KeyString, VPackValue(createKey(value)));
-      _keyBuilder.close();
-
-      _objectBuilder.clear();
-      VPackCollection::merge(_objectBuilder, input, _keyBuilder.slice(), true);
-
-      // clear the previous value and overwrite with new value:
-      if (usedAlternativeRegId) {
-        cur->destroyValue(_pos, _alternativeRegId);
-        cur->emplaceValue(_pos, _alternativeRegId, _objectBuilder.slice());
-      } else {
-        cur->destroyValue(_pos, _regId);
-        cur->emplaceValue(_pos, _regId, _objectBuilder.slice());
-      }
-      value = _objectBuilder.slice();
-    }
-  }
-
-  std::string shardId;
-  int res = _logCol->getResponsibleShard(value, true, shardId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  TRI_ASSERT(!shardId.empty());
-  if (_type == ScatterNode::ScatterType::SERVER) {
-    // Special case for server based distribution.
-    shardId = _collection->getServerForShard(shardId);
-    TRI_ASSERT(!shardId.empty());
-  }
-  return getClientId(shardId);
-}
-
-Query const& ExecutionBlockImpl<DistributeExecutor>::getQuery() const noexcept {
-  return _query;
-}
-
-/// @brief create a new document key
-std::string ExecutionBlockImpl<DistributeExecutor>::createKey(VPackSlice input) const {
-  return _logCol->createKey(input);
-}
-
-ExecutorInfos const& ExecutionBlockImpl<DistributeExecutor>::infos() const {
-  return _infos;
-}
+*/

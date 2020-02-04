@@ -63,18 +63,32 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
+ClientsExecutorInfos::ClientsExecutorInfos(std::vector<std::string> clientIds)
+    : _clientIds(std::move(clientIds)) {
+  TRI_ASSERT(!_clientIds.empty());
+};
+
+auto ClientsExecutorInfos::nrClients() const noexcept -> size_t {
+  return _clientIds.size();
+}
+auto ClientsExecutorInfos::clientIds() const noexcept -> std::vector<std::string> const& {
+  return _clientIds;
+}
+
 template <class Executor>
 BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
                                                        ExecutionNode const* ep,
-                                                       std::vector<std::string> const& shardIds)
+                                                       typename Executor::Infos infos)
     : ExecutionBlock(engine, ep),
       BlocksWithClients(),
-      _nrClients(shardIds.size()),
+      _nrClients(infos.nrClients()),
       _type(ScatterNode::ScatterType::SHARD),
-      _executor{},
+      _infos(std::move(infos)),
+      _executor{_infos},
       _clientBlockData{},
       _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
+  auto const& shardIds = _infos.clientIds();
   for (size_t i = 0; i < _nrClients; i++) {
     _shardIdMap.try_emplace(shardIds[i], i);
   }
@@ -87,10 +101,9 @@ BlocksWithClientsImpl<Executor>::BlocksWithClientsImpl(ExecutionEngine* engine,
 
   auto readAble = make_shared_unordered_set();
   auto writeAble = make_shared_unordered_set();
-  // TODO this needs to be handed in properly!
-  ExecutorInfos infos{readAble, writeAble, 1, 1, {}, {}};
+
   for (auto const& id : shardIds) {
-    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, infos});
+    _clientBlockData.try_emplace(id, typename Executor::ClientBlockData{*engine, scatter, _infos});
   }
 }
 
@@ -264,6 +277,28 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
   }
 
   return state;
+}
+
+/// @brief getSomeForShard
+/// @deprecated
+template <class Executor>
+std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>::getSomeForShard(
+    size_t atMost, std::string const& shardId) {
+  AqlCallStack stack(AqlCall::SimulateGetSome(atMost));
+  auto [state, skipped, block] = executeForClient(stack, shardId);
+  TRI_ASSERT(skipped == 0);
+  return {state, block};
+}
+
+/// @brief skipSomeForShard
+/// @deprecated
+template <class Executor>
+std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForShard(
+    size_t atMost, std::string const& shardId) {
+  AqlCallStack stack(AqlCall::SimulateSkipSome(atMost));
+  auto [state, skipped, block] = executeForClient(stack, shardId);
+  TRI_ASSERT(block == nullptr);
+  return {state, skipped};
 }
 
 template class ::arangodb::aql::BlocksWithClientsImpl<ScatterExecutor>;

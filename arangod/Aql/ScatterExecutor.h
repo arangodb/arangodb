@@ -34,10 +34,22 @@ namespace aql {
 class ExecutionEngine;
 class ScatterNode;
 
+class ScatterExecutorInfos : public ExecutorInfos, public ClientsExecutorInfos {
+ public:
+  ScatterExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
+                       std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
+                       RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                       std::unordered_set<RegisterId> registersToClear,
+                       std::unordered_set<RegisterId> registersToKeep,
+                       std::vector<std::string> clientIds);
+};
+
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
 class ScatterExecutor {
  public:
+  using Infos = ScatterExecutorInfos;
+
   class ClientBlockData {
    public:
     ClientBlockData(ExecutionEngine& engine, ScatterNode const* node,
@@ -57,7 +69,7 @@ class ScatterExecutor {
     bool _executorHasMore;
   };
 
-  ScatterExecutor();
+  ScatterExecutor(ExecutorInfos const&);
   ~ScatterExecutor() = default;
 
   auto distributeBlock(SharedAqlItemBlockPtr block,
@@ -75,45 +87,9 @@ class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<Scatter
   // non-standard argument (shardIds) should probably be moved into some
   // ScatterExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, ScatterNode const* node,
-                     ExecutorInfos&& infos, std::vector<std::string> const& shardIds);
+                     ScatterExecutorInfos&& infos);
 
   ~ExecutionBlockImpl() override = default;
-
-  /// @brief getSomeForShard
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
-                                                                   std::string const& shardId) override;
-
-  /// @brief skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
-                                                     std::string const& shardId) override;
-
- private:
-  /// @brief getSomeForShard
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShardWithoutTrace(
-      size_t atMost, std::string const& shardId);
-
-  /// @brief skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSomeForShardWithoutTrace(size_t atMost,
-                                                                 std::string const& shardId);
-
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
-      size_t& skipped, std::string const& shardId);
-
-  bool hasMoreForClientId(size_t clientId) const;
-
-  /// @brief getHasMoreStateForClientId: State for client <clientId>?
-  ExecutionState getHasMoreStateForClientId(size_t clientId) const;
-
-  ExecutorInfos const& infos() const { return _infos; }
-
- private:
-  ExecutorInfos _infos;
-
-  Query const& _query;
-
-  /// @brief _posForClient:
-  std::vector<std::pair<size_t, size_t>> _posForClient;
 };
 
 }  // namespace aql
