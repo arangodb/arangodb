@@ -185,7 +185,7 @@ bool ClientConnection::readClientConnection(StringBuffer& stringBuffer, bool& co
       return true;
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    _read += static_cast<TRI_read_t>(lenRead);
+    _read += static_cast<uint64_t>(lenRead);
 #endif
     stringBuffer.increaseLength(lenRead);
   } while (readable());
