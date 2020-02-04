@@ -452,7 +452,7 @@ void Constituent::callElection() {
     _leaderID = NO_LEADER;
   }
 
-  std::stringstream path;
+//  std::stringstream path;
 
   int64_t electionEventCount = countRecentElectionEvents(3600);
   if (electionEventCount <= 0) {
@@ -467,16 +467,20 @@ void Constituent::callElection() {
                                     << electionEventCount << " for next term...";
   }
 
-  path << "/_api/agency_priv/requestVote?term=" << savedTerm
-       << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
-       << "&prevLogTerm=" << _agent->lastLog().term
-       << "&timeoutMult=" << electionEventCount;
+//  path << "/_api/agency_priv/requestVote?term=" << savedTerm
+//       << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
+//       << "&prevLogTerm=" << _agent->lastLog().term
+//       << "&timeoutMult=" << electionEventCount;
 
   auto const& nf = _agent->server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
   
   network::RequestOptions reqOpts;
   reqOpts.timeout = timeout;
+  reqOpts.param("term", std::to_string(savedTerm)).param("candidateId", _id)
+         .param("prevLogIndex", std::to_string(_agent->lastLog().index))
+         .param("prevLogTerm", std::to_string(_agent->lastLog().term))
+         .param("timeoutMult", std::to_string(electionEventCount));
   
   // Ask everyone for their vote
   // Collect ballots. I vote for myself.
@@ -489,7 +493,7 @@ void Constituent::callElection() {
     if (i == _id) {
       continue;
     }
-    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, path.str(),
+    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, "/_api/agency_priv/requestVote",
                          VPackBuffer<uint8_t>(), reqOpts).thenValue([=](network::Response r) {
       if (r.ok() && r.response->statusCode() == 200) {
         VPackSlice slc = r.slice();
