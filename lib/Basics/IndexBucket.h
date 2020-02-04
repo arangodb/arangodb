@@ -66,18 +66,19 @@ struct IndexBucket {
   }
 
   IndexBucket& operator=(IndexBucket&& other) {
-    deallocate();  // free own resources first
+    if (this != &other) {
+      deallocate();  // free own resources first
 
-    _nrAlloc = other._nrAlloc;
-    _nrUsed = other._nrUsed;
-    _nrCollisions = other._nrCollisions;
-    _table = other._table;
+      _nrAlloc = other._nrAlloc;
+      _nrUsed = other._nrUsed;
+      _nrCollisions = other._nrCollisions;
+      _table = other._table;
 
-    other._nrAlloc = 0;
-    other._nrUsed = 0;
-    other._nrCollisions = 0;
-    other._table = nullptr;
-
+      other._nrAlloc = 0;
+      other._nrUsed = 0;
+      other._nrCollisions = 0;
+      other._table = nullptr;
+    }
     return *this;
   }
 

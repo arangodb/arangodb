@@ -37,6 +37,7 @@
 #include "Basics/encoding.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionWriteLocker.h"
@@ -71,7 +72,10 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
@@ -126,7 +130,8 @@ class MMFilesIndexFillerTask : public basics::LocalTask {
 
     try {
       _idx->batchInsert(_trx, *_documents.get(), _queue);
-    } catch (std::exception const&) {
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("c8240", ERR, Logger::ENGINES) << "caught exception in IndexFillerTask: " << ex.what(); 
       _queue->setStatus(TRI_ERROR_INTERNAL);
     }
 
@@ -671,6 +676,45 @@ size_t MMFilesCollection::journalSize() const { return _journalSize; };
 
 bool MMFilesCollection::isVolatile() const { return _isVolatile; }
 
+void MMFilesCollection::drop() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    READ_LOCKER(guard, _indexesLock);
+    for (auto& idx : _indexes) {
+      auto primIdx = primaryIndex();
+      auto idxSize = primIdx->size();
+      // validate index contents when closing a collection
+      if (!idx->hasExpansion() && !idx->sparse()) {
+        VPackBuilder b;
+        b.openObject();
+        idx->toVelocyPackFigures(b);
+        b.close();
+       
+        if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX || idx->type() == Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+          VPackSlice s = b.slice().get("totalUsed");
+          TRI_ASSERT(s.isNumber());
+          if (idx->unique()) {
+            TRI_ASSERT(idxSize == s.getNumber<size_t>());
+          } else {
+            TRI_ASSERT(idxSize <= s.getNumber<size_t>());
+          }
+        } else if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+          VPackSlice s = b.slice().get("from").get("totalUsed");
+          TRI_ASSERT(s.isNumber());
+          TRI_ASSERT(idxSize <= s.getNumber<size_t>());
+          
+          s = b.slice().get("to").get("totalUsed");
+          TRI_ASSERT(s.isNumber());
+          TRI_ASSERT(idxSize <= s.getNumber<size_t>());
+        }
+      }
+    }
+  }
+#endif
+  
+  PhysicalCollection::drop();
+}
+
 /// @brief closes an open collection
 int MMFilesCollection::close() {
   LOG_TOPIC("2408b", DEBUG, Logger::ENGINES)
@@ -698,6 +742,40 @@ int MMFilesCollection::close() {
     WRITE_LOCKER(writeLocker, _dataLock);
 
     READ_LOCKER_EVENTUAL(guard, _indexesLock);
+    
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!_logicalCollection.deleted() && !_logicalCollection.vocbase().isDropped()) {
+      for (auto& idx : _indexes) {
+        auto primIdx = primaryIndex();
+        auto idxSize = primIdx->size();
+        // validate index contents when closing a collection
+        if (!idx->hasExpansion() && !idx->sparse()) {
+          VPackBuilder b;
+          b.openObject();
+          idx->toVelocyPackFigures(b);
+          b.close();
+         
+          if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX || idx->type() == Index::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+            VPackSlice s = b.slice().get("totalUsed");
+            TRI_ASSERT(s.isNumber());
+            if (idx->unique()) {
+              TRI_ASSERT(idxSize == s.getNumber<size_t>());
+            } else {
+              TRI_ASSERT(idxSize <= s.getNumber<size_t>());
+            }
+          } else if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
+            VPackSlice s = b.slice().get("from").get("totalUsed");
+            TRI_ASSERT(s.isNumber());
+            TRI_ASSERT(idxSize <= s.getNumber<size_t>());
+            
+            s = b.slice().get("to").get("totalUsed");
+            TRI_ASSERT(s.isNumber());
+            TRI_ASSERT(idxSize <= s.getNumber<size_t>());
+          }
+        }
+      }
+    }
+#endif
 
     for (auto& idx : _indexes) {
       idx->unload();
@@ -2797,10 +2875,13 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
   try {
     primaryIdx->invokeOnAllElementsForRemoval(callback);
   } catch (basics::Exception const& e) {
+    LOG_TOPIC("7b023", ERR, Logger::CLUSTER) << "caught exception in truncate: " << e.what();
     return Result(e.code(), e.message());
   } catch (std::exception const& e) {
+    LOG_TOPIC("6a17a", ERR, Logger::CLUSTER) << "caught exception in truncate: " << e.what();
     return Result(TRI_ERROR_INTERNAL, e.what());
   } catch (...) {
+    LOG_TOPIC("926fa", ERR, Logger::CLUSTER) << "caught unknown exception in truncate";
     return Result(TRI_ERROR_INTERNAL, "unknown error during truncate");
   }
 
@@ -2928,12 +3009,17 @@ Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice
     insertLocalDocumentId(documentId, marker->vpack(), 0, true, true);
     // and go on with the insertion...
   } catch (basics::Exception const& ex) {
+    LOG_TOPIC("3bf57", ERR, Logger::ENGINES) << "caught exception in insert: " << ex.what(); 
     return Result(ex.code());
-  } catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const& ex) {
+    LOG_TOPIC("9f84b", ERR, Logger::ENGINES) << "caught exception in insert: " << ex.what(); 
     return Result(TRI_ERROR_OUT_OF_MEMORY);
+    LOG_TOPIC("893f4", ERR, Logger::ENGINES) << "caught exception in insert: " << ex.what(); 
   } catch (std::exception const& ex) {
+    LOG_TOPIC("3fdc3", ERR, Logger::ENGINES) << "caught exception in insert: " << ex.what(); 
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC("dc748", ERR, Logger::ENGINES) << "caught unknown exception in insert";
     return Result(TRI_ERROR_INTERNAL);
   }
 
@@ -3505,12 +3591,16 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
     res = updateDocument(*trx, revisionId, oldDocumentId, oldDoc, documentId,
                          newDoc, operation, marker, options, options.waitForSync);
   } catch (basics::Exception const& ex) {
+    LOG_TOPIC("205b6", ERR, Logger::ENGINES) << "caught exception in update: " << ex.what(); 
     res = Result(ex.code());
-  } catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const& ex) {
+    LOG_TOPIC("5bfb8", ERR, Logger::ENGINES) << "caught exception in update: " << ex.what(); 
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
+    LOG_TOPIC("82d17", ERR, Logger::ENGINES) << "caught exception in update: " << ex.what(); 
     res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC("d211c", ERR, Logger::ENGINES) << "caught unknown exception in update"; 
     res = Result(TRI_ERROR_INTERNAL);
   }
 
@@ -3631,12 +3721,16 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
     res = updateDocument(*trx, revisionId, oldDocumentId, oldDoc, documentId,
                          newDoc, operation, marker, options, options.waitForSync);
   } catch (basics::Exception const& ex) {
+    LOG_TOPIC("8cd16", ERR, Logger::ENGINES) << "caught exception in replace: " << ex.what(); 
     res = Result(ex.code());
-  } catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const& ex) {
+    LOG_TOPIC("f2d3e", ERR, Logger::ENGINES) << "caught exception in replace: " << ex.what(); 
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
+    LOG_TOPIC("57c16", ERR, Logger::ENGINES) << "caught exception in replace: " << ex.what(); 
     res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC("0968d", ERR, Logger::ENGINES) << "caught unknown exception in replace"; 
     res = Result(TRI_ERROR_INTERNAL);
   }
 
@@ -3777,12 +3871,16 @@ Result MMFilesCollection::remove(transaction::Methods& trx, velocypack::Slice sl
       callbackDuringLock();
     }
   } catch (basics::Exception const& ex) {
+    LOG_TOPIC("53678", ERR, Logger::ENGINES) << "caught exception in remove: " << ex.what(); 
     res = Result(ex.code(), ex.what());
-  } catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const& ex) {
+    LOG_TOPIC("83837", ERR, Logger::ENGINES) << "caught exception in remove: " << ex.what(); 
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
+    LOG_TOPIC("1b526", ERR, Logger::ENGINES) << "caught exception in remove: " << ex.what(); 
     res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC("df113", ERR, Logger::ENGINES) << "caught unknown exception in remove"; 
     res = Result(TRI_ERROR_INTERNAL);
   }
 
@@ -3850,15 +3948,13 @@ Result MMFilesCollection::rollbackOperation(transaction::Methods& trx,
       res = insertSecondaryIndexes(trx, oldDocumentId, oldDoc, Index::OperationMode::rollback);
     } else {
       LOG_TOPIC("fccac", ERR, arangodb::Logger::ENGINES)
-          << "error rolling back remove operation";
+          << "error rolling back remove operation: " << res.errorMessage();
     }
     return res;
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC("c5060", ERR, arangodb::Logger::ENGINES)
-      << "logic error. invalid operation type on rollback";
-#endif
+      << "logic error. invalid operation type on index rollback operation: " << static_cast<int>(type);
   return TRI_ERROR_INTERNAL;
 }
 
@@ -3935,12 +4031,16 @@ Result MMFilesCollection::removeFastPath(transaction::Methods& trx, TRI_voc_rid_
     res = static_cast<MMFilesTransactionState*>(trx.state())
               ->addOperation(documentId, revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
+    LOG_TOPIC("90d2c", ERR, Logger::ENGINES) << "caught exception in removeFastPath: " << ex.what(); 
     res = Result(ex.code());
-  } catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const& ex) {
+    LOG_TOPIC("69f8a", ERR, Logger::ENGINES) << "caught exception in removeFastPath: " << ex.what(); 
     res = Result(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& ex) {
+    LOG_TOPIC("5110f", ERR, Logger::ENGINES) << "caught exception in removeFastPath: " << ex.what(); 
     res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    LOG_TOPIC("c264c2", ERR, Logger::ENGINES) << "caught unknown exception in removeFastPath"; 
     res = Result(TRI_ERROR_INTERNAL);
   }
 

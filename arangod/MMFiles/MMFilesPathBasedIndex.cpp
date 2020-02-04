@@ -130,8 +130,21 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
     try {
       buildIndexValues(doc, 0, toInsert, sliceStack);
     } catch (basics::Exception const& ex) {
+      if (ex.code() != TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+        LOG_TOPIC("9c0f9", ERR, arangodb::Logger::ENGINES)
+          << "caught exception in fillElement: " << ex.what();
+      }
       return ex.code();
+    } catch (std::bad_alloc const& ex) {
+      LOG_TOPIC("bdfe3", ERR, arangodb::Logger::ENGINES)
+        << "caught exception in fillElement: " << ex.what();
+      return TRI_ERROR_OUT_OF_MEMORY;
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("3fca6", ERR, arangodb::Logger::ENGINES)
+        << "caught exception in fillElement: " << ex.what();
     } catch (...) {
+      LOG_TOPIC("e60f5", ERR, arangodb::Logger::ENGINES)
+        << "caught unknown exception in fillElement";
       return TRI_ERROR_INTERNAL;
     }
 

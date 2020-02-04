@@ -202,8 +202,11 @@ class AssocMulti {
   //////////////////////////////////////////////////////////////////////////////
 
   void appendToVelocyPack(VPackBuilder& builder) {
+    size_t nrUsed = 0;
+    TRI_ASSERT(builder.isOpenObject());
     builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
+      nrUsed += b._nrUsed;
       builder.openObject();
       builder.add("nrAlloc", VPackValue(b._nrAlloc));
       builder.add("nrUsed", VPackValue(b._nrUsed));
@@ -212,6 +215,9 @@ class AssocMulti {
     builder.close();  // buckets
     builder.add("nrBuckets", VPackValue(_buckets.size()));
     builder.add("totalUsed", VPackValue(size()));
+
+    // sum of items in buckets should equal the total number of items
+    TRI_ASSERT(nrUsed == size());
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -407,9 +413,13 @@ class AssocMulti {
     // for sure no duplicate elements will be inserted
 
     // if we were adding and the table is more than 2/3 full, extend it
+    if (b._table == nullptr) {
+      b.allocate(128);
+    }
+
     if (2 * b._nrAlloc < 3 * b._nrUsed) {
       resizeInternal(userData, b, 2 * b._nrAlloc + 1);
-    }
+    } 
 
 #ifdef TRI_INTERNAL_STATS
     // update statistics
@@ -998,7 +1008,9 @@ class AssocMulti {
   void resizeInternal(UserData* userData, Bucket& b, size_t targetSize) {
     std::string const cb(_contextCallback());
 
+    size_t originalTargetSize = targetSize;
     targetSize = TRI_NearPrime(targetSize);
+    TRI_ASSERT(targetSize >= originalTargetSize);
 
     PerformanceLogScope logScope(std::string("multi hash-resize ") + cb +
                                  ", target size: " + std::to_string(targetSize));

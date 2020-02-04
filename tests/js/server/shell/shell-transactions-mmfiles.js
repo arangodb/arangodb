@@ -74,7 +74,7 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of starting a transaction fails
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testBeginTransactionFailure : function () {
       internal.debugClearFailAt();
       db._drop(cn);
@@ -94,8 +94,7 @@ function transactionServerFailuresSuite () {
         });
 
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_OUT_OF_MEMORY.code, err.errorNum);
       }
     },
@@ -103,9 +102,9 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testInsertUniqueHashIndexServerFailures : function () {
-      var failures = [ "InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
+      var failures = ["InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -119,19 +118,23 @@ function transactionServerFailuresSuite () {
         try {
           c.save({ value: 1 });
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
         assertEqual(0, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(0, idx.figures.totalUsed);
+        });
       });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testInsertUniqueHashIndexServerFailuresTrx : function () {
       var failures = [ "InsertPrimaryIndex", "InsertSecondaryIndexes", "InsertHashIndex" ];
 
@@ -153,8 +156,7 @@ function transactionServerFailuresSuite () {
             try {
               c.save({ value: 2 });
               fail();
-            }
-            catch (err) {
+            } catch (err) {
               assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
             }
 
@@ -162,9 +164,16 @@ function transactionServerFailuresSuite () {
             internal.debugClearFailAt();
           }
         });
+        
+        assertEqual(1, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(1, idx.figures.totalUsed);
+        });
       });
     },
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: rollback in case of a server-side fail
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,13 +201,18 @@ function transactionServerFailuresSuite () {
             }
           });
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
-        assertEqual(0, c.count());
         internal.debugClearFailAt();
+        
+        assertEqual(0, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(0, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -221,12 +235,16 @@ function transactionServerFailuresSuite () {
         try {
           c.save({ value: 1 });
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
         assertEqual(0, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(0, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -255,14 +273,20 @@ function transactionServerFailuresSuite () {
             try {
               c.save({ value: 2 });
               fail();
-            }
-            catch (err) {
+            } catch (err) {
               assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
             }
 
             assertEqual(1, c.count());
             internal.debugClearFailAt();
           }
+        });
+        
+        assertEqual(1, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(1, idx.figures.totalUsed);
         });
       });
     },
@@ -294,13 +318,18 @@ function transactionServerFailuresSuite () {
             }
           });
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
-        assertEqual(0, c.count());
         internal.debugClearFailAt();
+        
+        assertEqual(0, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(0, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -326,12 +355,16 @@ function transactionServerFailuresSuite () {
         try {
           c.truncate();
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
         assertEqual(1000, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(1000, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -357,12 +390,16 @@ function transactionServerFailuresSuite () {
         try {
           c.truncate();
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
         assertEqual(1000, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(1000, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -397,15 +434,20 @@ function transactionServerFailuresSuite () {
             try {
               c.remove("test10");
               fail();
-            }
-            catch (err) {
+            } catch (err) {
               assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
             }
           }
         });
 
-        assertEqual(990, c.count());
         internal.debugClearFailAt();
+        
+        assertEqual(990, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(990, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -442,13 +484,18 @@ function transactionServerFailuresSuite () {
             }
           });
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
-        assertEqual(1000, c.count());
         internal.debugClearFailAt();
+        
+        assertEqual(1000, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(1000, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -474,12 +521,16 @@ function transactionServerFailuresSuite () {
         try {
           c.truncate();
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
         assertEqual(1000, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'skiplist'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(1000, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -505,12 +556,16 @@ function transactionServerFailuresSuite () {
         try {
           c.truncate();
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
         assertEqual(1000, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'skiplist'; });
+        assertEqual(2, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(1000, idx.figures.totalUsed);
+        });
       });
     },
 
@@ -537,12 +592,16 @@ function transactionServerFailuresSuite () {
         try {
           c.truncate();
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
         }
 
         assertEqual(1000, c.count());
+        let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash' || idx.type === 'skiplist'; });
+        assertEqual(3, indexes.length);
+        indexes.forEach(function(idx) {
+          assertEqual(1000, idx.figures.totalUsed);
+        });
       });
     },
 

@@ -564,9 +564,17 @@ int MMFilesHashIndex::lookup(transaction::Methods* trx, VPackSlice key,
   documents.clear();
   try {
     _multiArray->_hashArray->lookupByKey(&context, &key, documents);
-  } catch (std::bad_alloc const&) {
+  } catch (std::bad_alloc const& ex) {
+    LOG_TOPIC("5c5b5", ERR, arangodb::Logger::ENGINES)
+      << "caught exception in lookup: " << ex.what();
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("15d36", ERR, arangodb::Logger::ENGINES)
+      << "caught exception in lookup: " << ex.what();
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
+    LOG_TOPIC("0d79e", ERR, arangodb::Logger::ENGINES)
+      << "caught unknown exception in lookup";
     return TRI_ERROR_INTERNAL;
   }
   return TRI_ERROR_NO_ERROR;
@@ -727,10 +735,20 @@ Result MMFilesHashIndex::insertMulti(transaction::Methods* trx,
     try {
       work(hashElement, mode);
     } catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC("f137e", ERR, arangodb::Logger::ENGINES)
+        << "caught exception in insertMulti: " << ex.what();
       r = ex.code();
-    } catch (std::bad_alloc const&) {
+    } catch (std::bad_alloc const& ex) {
+      LOG_TOPIC("f447f", ERR, arangodb::Logger::ENGINES)
+        << "caught exception in insertMulti: " << ex.what();
       r = TRI_ERROR_OUT_OF_MEMORY;
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("9f987", ERR, arangodb::Logger::ENGINES)
+        << "caught exception in insertMulti: " << ex.what();
+      r = TRI_ERROR_INTERNAL;
     } catch (...) {
+      LOG_TOPIC("ceacd", ERR, arangodb::Logger::ENGINES)
+        << "caught unknown exception in insertMulti";
       r = TRI_ERROR_INTERNAL;
     }
 
@@ -821,6 +839,7 @@ int MMFilesHashIndex::removeUniqueElement(transaction::Methods* trx,
       return TRI_ERROR_NO_ERROR;
     }
 
+    LOG_TOPIC("e1a5e", ERR, arangodb::Logger::ENGINES) << "caught error in removeUniqueElement";
     return TRI_ERROR_INTERNAL;
   }
 
@@ -843,6 +862,7 @@ int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
       return TRI_ERROR_NO_ERROR;
     }
 
+    LOG_TOPIC("f9036", ERR, arangodb::Logger::ENGINES) << "caught error in removeMultiElement";
     return TRI_ERROR_INTERNAL;
   }
 

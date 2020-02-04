@@ -78,7 +78,7 @@ class PhysicalCollection {
   /// @brief opens an existing collection
   virtual void open(bool ignoreErrors) = 0;
 
-  void drop();
+  virtual void drop();
 
   ////////////////////////////////////
   // -- SECTION Indexes --

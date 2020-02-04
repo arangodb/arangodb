@@ -332,9 +332,11 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   void appendToVelocyPack(VPackBuilder& builder) {
+    size_t nrUsed = 0;
     TRI_ASSERT(builder.isOpenObject());
     builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
+      nrUsed += b._nrUsed;
       builder.openObject();
       builder.add("nrAlloc", VPackValue(b._nrAlloc));
       builder.add("nrUsed", VPackValue(b._nrUsed));
@@ -343,6 +345,9 @@ class AssocUnique {
     builder.close();  // buckets
     builder.add("nrBuckets", VPackValue(_buckets.size()));
     builder.add("totalUsed", VPackValue(size()));
+    
+    // sum of items in buckets should equal the total number of items
+    TRI_ASSERT(nrUsed == size());
   }
 
   //////////////////////////////////////////////////////////////////////////////

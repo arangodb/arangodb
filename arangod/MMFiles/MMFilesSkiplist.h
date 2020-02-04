@@ -390,6 +390,7 @@ class MMFilesSkiplist {
 
   void appendToVelocyPack(VPackBuilder& builder) {
     builder.add("nrUsed", VPackValue(_nrUsed));
+    builder.add("totalUsed", VPackValue(_nrUsed));
   }
 
   //////////////////////////////////////////////////////////////////////////////
