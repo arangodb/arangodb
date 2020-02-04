@@ -249,7 +249,7 @@ class RandomDeviceDirect : public RandomDevice {
     char* ptr = reinterpret_cast<char*>(&buffer);
 
     while (0 < n) {
-      TRI_read_reply_t r = TRI_READ(fd, ptr, n);
+      TRI_read_return_t r = TRI_READ(fd, ptr, n);
 
       if (r == 0) {
         LOG_TOPIC("7153b", FATAL, arangodb::Logger::FIXME)
@@ -334,7 +334,7 @@ class RandomDeviceCombined : public RandomDevice {
     char* ptr = reinterpret_cast<char*>(&buffer);
 
     while (0 < n) {
-      TRI_read_reply_t r = TRI_READ(fd, ptr, n);
+      TRI_read_return_t r = TRI_READ(fd, ptr, n);
 
       if (r == 0) {
         LOG_TOPIC("71bae", FATAL, arangodb::Logger::FIXME)

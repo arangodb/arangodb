@@ -184,7 +184,7 @@ static void fillStringBuffer(int fd, std::string const& filename,
     if (result.reserve(chunkSize) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-    TRI_read_reply_t n = TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
+    TRI_read_return_t n = TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
 
     if (n == 0) {
       break;

@@ -923,7 +923,7 @@ bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
   char* ptr = static_cast<char*>(buffer);
 
   while (0 < length) {
-    TRI_read_reply_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
+    TRI_read_return_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1041,7 +1041,7 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
       return nullptr;
     }
 
-    TRI_read_reply_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -1098,7 +1098,7 @@ bool TRI_ProcessFile(char const* filename,
       return false;
     }
 
-    TRI_read_reply_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -1150,7 +1150,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
         return nullptr;
       }
 
-      TRI_read_reply_t n = gzread(gzFd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+      TRI_read_return_t n = gzread(gzFd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
       if (n == 0) {
         break;
@@ -1218,7 +1218,7 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
       return nullptr;
     }
 
-    TRI_read_reply_t n = encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n = encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -1427,7 +1427,7 @@ int TRI_VerifyLockFile(char const* filename) {
   char buffer[128];
   memset(buffer, 0,
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
-  TRI_read_reply_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
+  TRI_read_return_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
   TRI_DEFER(TRI_CLOSE(fd));
 
@@ -1847,7 +1847,7 @@ static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize, std::str
   TRI_read_t chunkRemain = fileSize;
   while (rc && (chunkRemain > 0)) {
     auto readChunk = static_cast<TRI_read_t>((std::min)(C128, static_cast<size_t>(chunkRemain)));
-    TRI_read_reply_t nRead = TRI_READ(srcFD, buf, readChunk);
+    TRI_read_return_t nRead = TRI_READ(srcFD, buf, readChunk);
 
     if (nRead < 0) {
       error = std::string("failed to read a chunk: ") + strerror(errno);
