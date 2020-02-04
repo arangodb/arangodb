@@ -1,0 +1,30 @@
+diff --git a/source/data/brkitr/ja.txt b/source/data/brkitr/ja.txt
+index 71f090da..b7b4b377 100644
+--- a/source/data/brkitr/ja.txt
++++ b/source/data/brkitr/ja.txt
+@@ -4,9 +4,6 @@ ja{
+     Version{"2.1.44.56"}
+     boundaries{
+         line:process(dependency){"line_normal.brk"}
+-        line_loose:process(dependency){"line_loose_cj.brk"}
+-        line_normal:process(dependency){"line_normal_cj.brk"}
+-        line_strict:process(dependency){"line.brk"}
+ 	word:process(dependency){"word_ja.brk"}
+     }
+ }
+diff --git a/source/data/brkitr/root.txt b/source/data/brkitr/root.txt
+index ef60ab6f..91697a40 100644
+--- a/source/data/brkitr/root.txt
++++ b/source/data/brkitr/root.txt
+@@ -5,11 +5,6 @@ root{
+     boundaries{
+         grapheme:process(dependency){"char.brk"}
+         line:process(dependency){"line_normal.brk"}
+-        line_loose:process(dependency){"line_loose.brk"}
+-        line_normal:process(dependency){"line_normal.brk"}
+-        line_strict:process(dependency){"line.brk"}
+-        sentence:process(dependency){"sent.brk"}
+-        title:process(dependency){"title.brk"}
+         word:process(dependency){"word.brk"}
+     }
+     dictionaries{

@@ -51,6 +51,8 @@ function dfdb (options) {
     args.push('--server.storage-engine');
     args.push(options.storageEngine);
   }
+  args.push('--server.allow-deprecated-storage-engine');
+  args.push('true');
 
   fs.makeDirectoryRecursive(dataDir);
   pu.cleanupDBDirectoriesAppend(dataDir);

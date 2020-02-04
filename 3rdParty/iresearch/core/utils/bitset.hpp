@@ -152,6 +152,11 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   const word_t* begin() const noexcept { return data(); }
   const word_t* end() const noexcept { return data() + words_; }
 
+  word_t operator[](size_t i) const noexcept {
+    assert(i < words_);
+    return data_[i];
+  }
+
   template<typename T>
   void memset(const T& value) noexcept {
     memset(&value, sizeof(value));
