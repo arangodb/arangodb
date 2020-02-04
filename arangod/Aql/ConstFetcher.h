@@ -129,6 +129,8 @@ class ConstFetcher {
   auto indexIsValid() const noexcept -> bool;
   auto isLastRowInBlock() const noexcept -> bool;
   auto numRowsLeft() const noexcept -> size_t;
+  auto canUseFullBlock(std::vector<std::pair<size_t, size_t>> const& ranges) const
+      noexcept -> bool;
 };
 
 }  // namespace aql
