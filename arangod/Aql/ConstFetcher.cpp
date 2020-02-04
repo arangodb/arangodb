@@ -59,12 +59,18 @@ auto ConstFetcher::execute(AqlCallStack& stack)
       size_t toShadowRow = *shadowRow + 1;
       for (++shadowRow; shadowRow != shadowIndexes.end(); ++shadowRow) {
         if (*shadowRow == toShadowRow) {
+          ShadowAqlItemRow srow{_blockForPassThrough, toShadowRow};
+          TRI_ASSERT(srow.isInitialized());
+          if (srow.isRelevant()) {
+            // we cannot jump over relveant shadow rows.
+            // Unfortunately we need to stop including rows here.
+            // NOTE: As all blocks have this behaviour anyway
+            // this is not cirtical.
+            break;
+          }
           toShadowRow++;
         }
       }
-      // The shadowRow is one after the last row in the shadowrowsequence (either end of block, or first dataRow)
-      TRI_ASSERT(toShadowRow == _blockForPassThrough->size() ||
-                 !_blockForPassThrough->isShadowRow(toShadowRow));
       TRI_ASSERT(fromShadowRow < toShadowRow);
       // We cannot go past the first shadowRow
       sliceIndexes.emplace_back(fromShadowRow, toShadowRow);
