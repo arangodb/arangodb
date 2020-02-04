@@ -48,7 +48,6 @@ Var START_MENU
 Var ADD_DESKTOP_ICON           ; x bool: add desktop icon
 Var IS_DEFAULT_INSTALLDIR
 
-Var STORAGE_ENGINE            ; x string auto/mmfiles/rocksdb
 Var PASSWORD                  ; x string
 Var PASSWORD_AGAIN            ; x string / only for comparison
 
@@ -662,7 +661,6 @@ continueUI:
       MessageBox MB_ICONEXCLAMATION "Please clean up the previously existing incomplete database directory $\r$\n$DATADIR$\r$\n before continuing with the installation!"
     startDialog:
   ${Else}
-    StrCpy $STORAGE_ENGINE "auto"
     Return
   ${EndIf}
   nsDialogs::Create 1018
@@ -685,16 +683,6 @@ continueUI:
   ${NSD_CreateLabel} 35% 50 40% 6% "Password (Again)"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the storage engine to use for this ArangoDB installation"
-  Pop $0 ; Don't care...
-
-  ${NSD_CreateDropList} 5, 110, 30% 6% ""
-  Pop $DLG2_droplist
-  ${NSD_CB_AddString} $DLG2_droplist "auto"
-  ${NSD_CB_AddString} $DLG2_droplist "mmfiles"
-  ${NSD_CB_AddString} $DLG2_droplist "rocksdb"
-
-  ${NSD_CB_SelectString} $DLG2_droplist "auto"
   nsDialogs::Show
 
   Return
@@ -708,7 +696,6 @@ Function InstallOptionsPage2_results
   Push $R0
   Push $R1
   Push $R2
-  ${NSD_GetText} $DLG2_droplist $STORAGE_ENGINE
 
   ${NSD_GetText} $Dlg2_PW_2 $PASSWORD_AGAIN
   ${NSD_GetText} $Dlg2_PW_1 $PASSWORD
@@ -965,7 +952,7 @@ Section "-Core installation"
   ${If} $LOGDIR != ""
     StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGDIR\arangod.log$\r$\n"
   ${EndIf}
-  StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR$ini_LOGFILE[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
+  StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR$ini_LOGFILE"
   ${AnsiToUtf8} $newCfgValues $newCfgValuesUtf8
   StrCpy $newCfgValuesFile "$INSTDIR\etc\arangodb3\newValues.ini"
   FileOpen $4  "$newCfgValuesFile" w
@@ -1312,12 +1299,6 @@ noInstDir:
   ${GetOptions} $R0 "/DATABASEDIR="        $CMDINSTDIR
   IfErrors +2 0
   StrCpy $DATADIR "$CMDINSTDIR"
-
-  ${GetParameters} $R0
-  ClearErrors
-  ${GetOptions} $R0 "/STORAGE_ENGINE=" $STORAGE_ENGINE
-  IfErrors 0 +2
-  StrCpy $STORAGE_ENGINE "auto"
 
   ${GetParameters} $R0
   ${GetOptions} $R0 "/DESKTOPICON="    $ADD_DESKTOP_ICON
