@@ -1846,7 +1846,7 @@ static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize, std::str
 
   TRI_read_t chunkRemain = fileSize;
   while (rc && (chunkRemain > 0)) {
-    TRI_read_t readChunk = (std::min)(C128, chunkRemain);
+    auto readChunk = static_cast<TRI_read_t>((std::min)(C128, static_cast<size_t>(chunkRemain)));
     TRI_read_reply_t nRead = TRI_READ(srcFD, buf, readChunk);
 
     if (nRead < 0) {
