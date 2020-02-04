@@ -207,7 +207,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
     }
 
     while (true) {
-      TRI_read_return_t result = unzReadCurrentFile(uf, buffer, (unsigned int)bufferSize);
+      int result = unzReadCurrentFile(uf, buffer, (unsigned int)bufferSize);
 
       if (result < 0) {
         errorMessage = std::string("failed to read from zip file: ") + strerror(errno);
