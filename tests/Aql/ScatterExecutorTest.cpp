@@ -388,16 +388,31 @@ TEST_P(RandomOrderTest, handling_of_consecutive_shadow_rows) {
   testee.addDependency(&producer);
 
   // First call. actually there are only shadowRows following, we would be able
-  // to plainly forward everything.
+  // to plainly forward everything, however this is not suppoert yet
+  // so we need to ask once for every relevant shadow row (depth 0)
   for (auto const& client : getCallOrder()) {
     SCOPED_TRACE("Testing client " + client);
-    // Produce all until shadow row
-    AqlCall call{};
-    AqlCallStack stack{call};
-    auto const [state, skipped, block] = testee.executeForClient(stack, client);
-    EXPECT_EQ(state, ExecutionState::DONE);
-    EXPECT_EQ(skipped, 0);
-    ValidateBlocksAreEqual(block, inputBlock);
+    {
+      // Produce all until second relevant shadow row
+      AqlCall call{};
+      AqlCallStack stack{call};
+      auto const [state, skipped, block] = testee.executeForClient(stack, client);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      EXPECT_EQ(skipped, 0);
+      auto expected =
+          buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}}, {{2, 0}, {3, 1}});
+      ValidateBlocksAreEqual(block, expected);
+    }
+    {
+      // Produce the last shadow rows
+      AqlCall call{};
+      AqlCallStack stack{call};
+      auto const [state, skipped, block] = testee.executeForClient(stack, client);
+      EXPECT_EQ(state, ExecutionState::DONE);
+      EXPECT_EQ(skipped, 0);
+      auto expected = buildBlock<1>(itemBlockManager, {{4}, {5}}, {{0, 0}, {1, 1}});
+      ValidateBlocksAreEqual(block, expected);
+    }
   }
 }
 
@@ -487,8 +502,8 @@ TEST_P(RandomOrderTest, shadowrows_with_different_call_types) {
         call.offset = 10;
         AqlCallStack stack{call};
         auto const [state, skipped, block] = testee.executeForClient(stack, client);
-        EXPECT_EQ(state, ExecutionState::HASMORE);
-        EXPECT_EQ(skipped, 0);
+        EXPECT_EQ(state, ExecutionState::DONE);
+        EXPECT_EQ(skipped, 1);
         auto expectedBlock = buildBlock<1>(itemBlockManager, {{5}}, {{0, 0}});
         ValidateBlocksAreEqual(block, expectedBlock);
       }
