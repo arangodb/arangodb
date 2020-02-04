@@ -137,7 +137,7 @@ void NetworkFeature::prepare() {
   } else if (_protocol == "vst") {
     config.protocol = fuerte::ProtocolType::Vst;
   } else {
-    config.protocol = fuerte::ProtocolType::Http;
+    config.protocol = fuerte::ProtocolType::Vst;
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
