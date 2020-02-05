@@ -30,9 +30,7 @@ in the ArangoDB source tree:
 
 ### Style Guide
 
-See
-[Documentation/StyleGuide/StyleGuide.pdf](Documentation/StyleGuide/StyleGuide.pdf)
-for code formatting rules and naming conventions.
+We use `clang-format`.
 
 ### Unique Log Ids
 
