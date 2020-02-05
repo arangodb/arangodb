@@ -85,8 +85,8 @@ compiler is for C/C++. You can invoke it like this:
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
 Please refer to the documentation of Oskar for deteils.
 
-For building the ArangoDB starter checkout
-[Starter](hub.com/arangodb-helper/arangodb).
+For building the ArangoDB starter checkout the
+[ArangoDB Starter](hitts://github.com/arangodb-helper/arangodb).
 
 ### Building the Web Interface
 
