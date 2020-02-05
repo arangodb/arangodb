@@ -199,7 +199,7 @@ that:
     };
     print = internal.print;
 
-HINT: You shouldn't lean on these variables in your Foxx services.
+*Hint*: You shouldn't lean on these variables in your Foxx services.
 
 ### Debugging AQL execution blocks
 
@@ -231,7 +231,7 @@ You should then see:
 
 for each shell and its subsequent processes.
 
-Hint: on Ubuntu the `apport` package may interfere with this; however you may
+*Hint*: on Ubuntu the `apport` package may interfere with this; however you may
 use the `systemd-coredump` package which automates much of the following:
 
 So that the unit testing framework can autorun gdb it needs to reliably find the
