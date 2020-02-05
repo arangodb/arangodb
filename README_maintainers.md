@@ -83,7 +83,7 @@ compiler is for C/C++. You can invoke it like this:
 ### Building the binaries
 
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
-Please refer to the documentation of Oskar for deteils.
+Please refer to the documentation of Oskar for details.
 
 For building the ArangoDB starter checkout the
 [ArangoDB Starter](https://github.com/arangodb-helper/arangodb).
