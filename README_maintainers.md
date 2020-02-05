@@ -433,7 +433,7 @@ offers you its proper handler by renaming it to .cab; click on the now named
 
 ##### Windows Core Dump Analysis
 
-While Visual studio may cary a nice shiny GUI, the concept of GUI fails
+While Visual studio may carry a nice shiny GUI, the concept of GUI fails
 miserably e.g. in test automation. Getting an overview over all running threads
 is a tedious task with it. Here the commandline version of
 [WinDbg](http://www.windbg.org/) cdb comes to the aid. `testing.js` utilizes it
