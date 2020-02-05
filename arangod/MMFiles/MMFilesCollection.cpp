@@ -4040,7 +4040,7 @@ Result MMFilesCollection::removeFastPath(transaction::Methods& trx, TRI_voc_rid_
     LOG_TOPIC("5110f", ERR, Logger::ENGINES) << "caught exception in removeFastPath: " << ex.what(); 
     res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    LOG_TOPIC("c264c2", ERR, Logger::ENGINES) << "caught unknown exception in removeFastPath"; 
+    LOG_TOPIC("d3dd9", ERR, Logger::ENGINES) << "caught unknown exception in removeFastPath"; 
     res = Result(TRI_ERROR_INTERNAL);
   }
 
