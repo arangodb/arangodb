@@ -118,7 +118,8 @@ if (CROSS_COMPILING)
   )
 endif()
 
-
+option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
+  
 ################################################################################
 ## WINDOWS with msbuild; Gyp now does TrackFileAccess too.
 ################################################################################
@@ -167,8 +168,12 @@ if (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ../gypfiles/all.gyp)
 
-  list(APPEND V8_TARGET_ARCHS # "Debug"
-    "Release")
+  list(APPEND V8_TARGET_ARCHS "Release")
+  
+  if (USE_DEBUG_V8)
+    list(APPEND V8_TARGET_ARCHS "Debug")
+  endif()
+  
   set(GYP_GENERATORS "msvs")
   set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
@@ -331,8 +336,6 @@ else ()
 ################################################################################
 ## UNIX
 ################################################################################
-
-  option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
 
   set(V8_CFLAGS   "$ENV{V8_CFLAGS}")
   set(V8_CXXFLAGS "$ENV{V8_CXXFLAGS}")
