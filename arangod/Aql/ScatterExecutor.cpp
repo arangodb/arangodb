@@ -61,7 +61,17 @@ auto ScatterExecutor::ClientBlockData::clear() -> void {
 }
 
 auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block) -> void {
-  _queue.emplace_back(block);
+  // NOTE:
+  // There given ItemBlock will be reused in all requesting blocks.
+  // However, the next followwing block could be passthrough.
+  // If it is, it will modify that data stored in block.
+  // If now anther client requests the same block, it is not
+  // the original any more, but a modified version.
+  // For Instance in calculation we assert that the place we write to
+  // is empty. If another peer-calculation has written to this value
+  // this assertion does not hold true anymore.
+  // Hence we are required to do an indepth cloning here.
+  _queue.emplace_back(block->slice(0, block->size()));
 }
 
 auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
