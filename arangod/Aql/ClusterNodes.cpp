@@ -345,8 +345,11 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
-
-  DistributeExecutorInfos infos({}, {}, nrInRegs, nrOutRegs,
+  auto inAndOutRegs = make_shared_unordered_set({regId});
+  if (alternativeRegId != RegisterPlan::MaxRegisterId) {
+    inAndOutRegs->emplace(alternativeRegId);
+  }
+  DistributeExecutorInfos infos(inAndOutRegs, inAndOutRegs, nrInRegs, nrOutRegs,
                                 std::move(regsToClear), std::move(regsToKeep),
                                 clients(), collection(), regId, alternativeRegId,
                                 _allowSpecifiedKeys, _allowKeyConversionToObject,

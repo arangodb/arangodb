@@ -179,9 +179,9 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock() -> SharedAqlItemBlock
 
   SharedAqlItemBlockPtr newBlock =
       _blockManager.requestBlock(numRows, _infos.numberOfOutputRegisters());
-  // No Rows written
-  TRI_ASSERT(newBlock->size() == 0);
-  OutputAqlItemRow output{newBlock, _infos.getOutputRegisters(),
+  // We create a block, with correct register information
+  // but we do not allow outputs to be written.
+  OutputAqlItemRow output{newBlock, make_shared_unordered_set(),
                           _infos.registersToKeep(), _infos.registersToClear()};
   while (!output.isFull()) {
     // If the queue is empty our sizing above would not be correct
@@ -204,8 +204,6 @@ auto DistributeExecutor::ClientBlockData::popJoinedBlock() -> SharedAqlItemBlock
     // Drop block form queue.
     _queue.pop_front();
   }
-  // newBlock now is full
-  TRI_ASSERT(newBlock->size() == numRows);
   return newBlock;
 }
 
