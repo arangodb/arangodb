@@ -170,9 +170,6 @@ template <>
 class ExecutionBlockImpl<DistributeExecutor>
     : public BlocksWithClientsImpl<DistributeExecutor> {
  public:
-  // TODO Even if it's not strictly necessary here, for consistency's sake the
-  // non-standard arguments (shardIds, collection) should probably be moved into
-  // some DistributeExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, DistributeNode const* node,
                      DistributeExecutorInfos&& infos);
 

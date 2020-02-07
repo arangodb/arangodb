@@ -224,8 +224,8 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
-  // TODO check non-relevant cases.
-  auto call = stack.popCall();
+  // This call is only used internally.
+  auto call = stack.isRelevant() ? stack.popCall() : AqlCall{};
 
   // We do not have anymore data locally.
   // Need to fetch more from upstream
@@ -249,12 +249,13 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(AqlCallStack 
 
 template <class Executor>
 auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> ExecutionState {
-  // TODO check is relevant behaviour
   if (_engine->getQuery()->killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
-  // TODO handle limits.
+  // NOTE: We do not handle limits / skip here
+  // They can differ between different calls to this executor.
+  // We may need to revisit this for performance reasons.
   AqlCall call{};
   stack.pushCall(std::move(call));
 
