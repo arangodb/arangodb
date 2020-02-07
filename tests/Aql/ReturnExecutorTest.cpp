@@ -20,11 +20,16 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
+
+#include "ExecutorTestHelper.h"
+#include "RowFetcherHelper.h"
+
+#include "Mocks/Servers.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
@@ -41,7 +46,71 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-class ReturnExecutorTest : public ::testing::Test {
+// This is only to get a split-type. The Type is independent of actual template parameters
+using ReturnExecutorTestHelper = ExecutorTestHelper<ReturnExecutor, 1, 1>;
+using ReturnExecutorSplitType = ReturnExecutorTestHelper::SplitType;
+
+class ReturnExecutorTest : public ::testing::TestWithParam<ReturnExecutorSplitType> {
+ protected:
+  // ExecutionState state;
+  ResourceMonitor monitor{};
+  mocks::MockAqlServer server{};
+  AqlItemBlockManager itemBlockManager;
+
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+
+  ReturnExecutorTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        fakedQuery(server.createFakeQuery()) {
+    auto engine =
+        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
+    fakedQuery->setEngine(engine.release());
+  }
+
+  auto getSplit() -> ReturnExecutorSplitType {
+    auto split = GetParam();
+    return split;
+  }
+};
+
+template <size_t... vs>
+const ReturnExecutorSplitType splitIntoBlocks =
+    ReturnExecutorSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const ReturnExecutorSplitType splitStep = ReturnExecutorSplitType{step};
+
+INSTANTIATE_TEST_CASE_P(ReturnExecutor, ReturnExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<1>, splitStep<2>));
+
+/*******
+ *  Start test suite
+ ******/
+
+/**
+ * @brief Test the most basic query.
+ *        We have an unlimited produce call
+ *        And the data is in register 0 => we expect it to
+ *        be passed through.
+ */
+
+TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(AqlCall{})  // unlimited produce
+      .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+/*******
+ *  Section old Test suite. obsolete.
+ ******/
+
+class ReturnExecutorOldTest : public ::testing::Test {
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
@@ -50,18 +119,19 @@ class ReturnExecutorTest : public ::testing::Test {
   std::shared_ptr<std::unordered_set<RegisterId>> registersToKeep;
   RegisterId inputRegister;
 
-  ReturnExecutorTest()
+  ReturnExecutorOldTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         registersToKeep(make_shared_unordered_set()),
         inputRegister(0) {}
 };
 
-TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerDoesNotWait) {
+TEST_F(ReturnExecutorOldTest, NoRowsUpstreamProducerDoesNotWait) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto const& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), false);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
@@ -72,11 +142,12 @@ TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerDoesNotWait) {
   ASSERT_FALSE(result.produced());
 }
 
-TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
+TEST_F(ReturnExecutorOldTest, NoRowsUpstreamProducerWaits) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto const& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), true);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
@@ -91,11 +162,12 @@ TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
   ASSERT_FALSE(result.produced());
 }
 
-TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
+TEST_F(ReturnExecutorOldTest, RowsUpstreamProducerDoesNotWait) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto const& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->buffer(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->buffer(), false);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
@@ -131,11 +203,12 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
   }
 }
 
-TEST_F(ReturnExecutorTest, RowsUpstreamProducerWaits) {
+TEST_F(ReturnExecutorOldTest, RowsUpstreamProducerWaits) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto const& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), true);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
