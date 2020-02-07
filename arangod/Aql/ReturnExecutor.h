@@ -97,6 +97,14 @@ class ReturnExecutor {
   auto produceRows(OutputAqlItemRow& output) -> std::pair<ExecutionState, Stats>;
 
   /**
+   * @brief skip the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
+
+  /**
    * @brief produce the next Rows of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream

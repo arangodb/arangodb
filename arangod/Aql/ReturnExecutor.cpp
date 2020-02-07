@@ -84,6 +84,34 @@ auto ReturnExecutor::produceRows(OutputAqlItemRow& output)
   return {state, stats};
 }
 
+auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, size_t, AqlCall> {
+  TRI_IF_FAILURE("ReturnExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
+    // I do not think that this is actually called.
+    // It will be called first to get the upstream-Call
+    // but this executor will always delegate the skipping
+    // to upstream.
+    TRI_ASSERT(false);
+    auto [state, input] = inputRange.nextDataRow();
+    TRI_ASSERT(input.isInitialized());
+    TRI_IF_FAILURE("ReturnBlock::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    call.didSkip(1);
+    // TODO: do we need to include counted here?
+    /*
+    if (_infos.doCount()) {
+      stats.incrCounted();
+    }
+    */
+  }
+  return {inputRange.upstreamState(), call.getSkipCount(), call};
+}
+
 auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   TRI_IF_FAILURE("ReturnExecutor::produceRows") {
@@ -103,9 +131,9 @@ auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
     }
     output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
     output.advanceRow();
-  if (_infos.doCount()) {
-    stats.incrCounted();
-  }
+    if (_infos.doCount()) {
+      stats.incrCounted();
+    }
   }
 
   return {inputRange.upstreamState(), stats, output.getClientCall()};
