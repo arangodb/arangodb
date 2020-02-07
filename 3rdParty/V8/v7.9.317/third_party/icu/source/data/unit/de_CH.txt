@@ -1,0 +1,53 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+de_CH{
+    Version{"2.1.47.86"}
+    units{
+        area{
+            square-foot{
+                dnam{"Quadratfuss"}
+                one{"{0} Quadratfuss"}
+                other{"{0} Quadratfuss"}
+            }
+        }
+        concentr{
+            milligram-per-deciliter{
+                dnam{"mg/dL"}
+            }
+        }
+        length{
+            foot{
+                dnam{"Fuss"}
+                one{"{0} Fuss"}
+                other{"{0} Fuss"}
+                per{"{0} pro Fuss"}
+            }
+        }
+        volume{
+            cubic-foot{
+                dnam{"Kubikfuss"}
+                one{"{0} Kubikfuss"}
+                other{"{0} Kubikfuss"}
+            }
+            gallon-imperial{
+                one{"{0} gal Imp."}
+                other{"{0} gal Imp."}
+                per{"{0}/gal Imp."}
+            }
+        }
+    }
+    unitsShort{
+        length{
+            foot{
+                dnam{"Fuss"}
+            }
+        }
+        volume{
+            gallon-imperial{
+                one{"{0} gal Imp."}
+                other{"{0} gal Imp."}
+                per{"{0}/gal Imp."}
+            }
+        }
+    }
+}

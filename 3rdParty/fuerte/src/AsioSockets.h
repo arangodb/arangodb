@@ -191,11 +191,10 @@ struct Socket<fuerte::SocketType::Unix> {
       : socket(ctx), timer(ctx) {}
   ~Socket() { this->cancel(); }
 
-  template <typename CallbackT>
-  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
+  template <typename F>
+  void connect(detail::ConnectionConfiguration const& config, F&& done) {
     asio_ns::local::stream_protocol::endpoint ep(config._host);
-    socket.async_connect(ep,
-                         [done](asio_ns::error_code const& ec) { done(ec); });
+    socket.async_connect(ep, std::forward<F>(done));
   }
 
   void cancel() {

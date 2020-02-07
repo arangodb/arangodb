@@ -77,6 +77,10 @@ class TraverserDocumentCache final : public TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   cache::Finding lookup(arangodb::velocypack::StringRef idString);
 
+ private:
+  void insertIntoCache(arangodb::velocypack::StringRef id,
+                       arangodb::velocypack::Slice const& document);
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The hash-cache that saves documents found in the Database
