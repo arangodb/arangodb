@@ -60,7 +60,7 @@
 #include <cstring>
 
 // lets keep this experimental until we make it faster
-#define VPACK_DUMP 1
+#define VPACK_DUMP 0
 
 namespace {
 

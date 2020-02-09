@@ -516,10 +516,11 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
   }
   
   if (key == StaticStrings::Accept) {
-    _contentTypeResponse = rest::stringToContentType(value);
+    _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
     return;
-  } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
-    _contentType = rest::stringToContentType(value);
+  } else if ((_contentType == ContentType::UNSET) &&
+             (key == StaticStrings::ContentTypeHeader)) {
+    _contentType = rest::stringToContentType(value, /*default*/ContentType::UNSET);
     return;
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings

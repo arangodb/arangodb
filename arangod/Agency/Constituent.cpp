@@ -452,8 +452,6 @@ void Constituent::callElection() {
     _leaderID = NO_LEADER;
   }
 
-//  std::stringstream path;
-
   int64_t electionEventCount = countRecentElectionEvents(3600);
   if (electionEventCount <= 0) {
     electionEventCount = 1;
@@ -466,11 +464,6 @@ void Constituent::callElection() {
                                        "to "
                                     << electionEventCount << " for next term...";
   }
-
-//  path << "/_api/agency_priv/requestVote?term=" << savedTerm
-//       << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
-//       << "&prevLogTerm=" << _agent->lastLog().term
-//       << "&timeoutMult=" << electionEventCount;
 
   auto const& nf = _agent->server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();

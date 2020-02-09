@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
 #include "Meta/conversion.h"
 #include "Transaction/Context.h"
 
@@ -54,8 +55,10 @@ arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
     return _request->payload(&optionsWithUniquenessCheck);
   } catch (VPackException const& e) {
-    std::string errmsg("VPackError parsing error: '");
-    errmsg.append(e.what()).append("'");
+    // simon: do not mess with the error message format, tests break
+    std::string errmsg("VPackError error: ");
+    errmsg.append(e.what());
+    LOG_TOPIC("414a9", DEBUG, arangodb::Logger::REQUESTS) << errmsg;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
   } catch (...) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, "unknown exception");

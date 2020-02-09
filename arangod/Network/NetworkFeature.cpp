@@ -142,7 +142,7 @@ void NetworkFeature::prepare() {
     config.protocol = fuerte::ProtocolType::Vst;
   }
   
-  // mmfiles replication is hardcoded for http
+  // simon: mmfiles replication is hardcoded for http
   if (EngineSelectorFeature::isMMFiles()) {
     config.protocol = fuerte::ProtocolType::Http;
   }

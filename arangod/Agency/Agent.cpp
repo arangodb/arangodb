@@ -578,6 +578,13 @@ void Agent::sendAppendEntriesRPC() {
           needSnapshot = false;
         }
       }
+      
+      index_t prevLogIndex = unconfirmed.front().index;
+      index_t prevLogTerm = unconfirmed.front().term;
+      if (needSnapshot) {
+        prevLogIndex = snapshotIndex;
+        prevLogTerm = snapshotTerm;
+      }
 
       // Body
       VPackBufferUInt8 buffer;
@@ -636,13 +643,6 @@ void Agent::sendAppendEntriesRPC() {
       }
       LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
           << "Setting _earliestPackage to now + 30s for id " << followerId;
-      
-      index_t prevLogIndex = unconfirmed.front().index;
-      index_t prevLogTerm = unconfirmed.front().term;
-      if (needSnapshot) {
-        prevLogIndex = snapshotIndex;
-        prevLogTerm = snapshotTerm;
-      }
 
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(150);
@@ -702,15 +702,6 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
     READ_LOCKER(oLocker, _outputLock);
     commitIndex = _commitIndex;
   }
-
-//  // RPC path
-//  std::stringstream path;
-//  {
-//    path << "/_api/agency_priv/appendEntries?term=" << _constituent.term()
-//         << "&leaderId=" << id() << "&prevLogIndex=0"
-//         << "&prevLogTerm=0&leaderCommit=" << commitIndex
-//         << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
-//  }
   
   // Just check once more:
   if (!leading()) {

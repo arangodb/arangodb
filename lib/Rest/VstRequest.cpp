@@ -125,12 +125,12 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
     
   if (key == StaticStrings::Accept) {
     StringUtils::tolowerInPlace(value);
-    _contentTypeResponse = rest::stringToContentType(value);
+    _contentTypeResponse = rest::stringToContentType(value, ContentType::VPACK);
     return;  // don't insert this header!!
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
     StringUtils::tolowerInPlace(value);
-    _contentType = rest::stringToContentType(value);
+    _contentType = rest::stringToContentType(value, ContentType::UNSET);
     return;  // don't insert this header!!
   }
 
