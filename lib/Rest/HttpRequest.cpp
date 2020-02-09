@@ -515,20 +515,12 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     return;
   }
   
-  if (key == StaticStrings::Accept && value == StaticStrings::MimeTypeVPack) {
-    _contentTypeResponse = ContentType::VPACK;
+  if (key == StaticStrings::Accept) {
+    _contentTypeResponse = rest::stringToContentType(value);
+    return;
   } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
-    if (value == StaticStrings::MimeTypeVPack) {
-      _contentType = ContentType::VPACK; // don't insert this header!!
-      return;
-    }
-    else if ((value.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-             (memcmp(value.c_str(),
-                     StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-                     StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
-      _contentType = ContentType::JSON; // don't insert this header!!
-      return;
-    }
+    _contentType = rest::stringToContentType(value);
+    return;
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested

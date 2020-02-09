@@ -79,6 +79,7 @@ enum class ContentType {
 };
 
 std::string contentTypeToString(ContentType type);
+ContentType stringToContentType(std::string const& input);
 
 enum class EncodingType {
   DEFLATE,

@@ -50,5 +50,26 @@ std::string contentTypeToString(ContentType type) {
   }
 }
 
+ContentType stringToContentType(std::string const& val) {
+  if (val.size() >= StaticStrings::MimeTypeJsonNoEncoding.size() &&
+      val.compare(0, StaticStrings::MimeTypeJsonNoEncoding.size(),
+                  StaticStrings::MimeTypeJsonNoEncoding) == 0) {
+    return ContentType::JSON;
+  }
+  if (val == StaticStrings::MimeTypeVPack) {
+    return ContentType::VPACK;
+  }
+  if (val.size() >= 25 && val.compare(0, 25, "application/x-arango-dump") == 0) {
+    return ContentType::DUMP;
+  }
+  if (val.size() >= 10 && val.compare(0, 10, "text/plain") == 0) {
+    return ContentType::TEXT;
+  }
+  if (val.size() >= 9 && val.compare(0, 9, "text/html") == 0) {
+    return ContentType::HTML;
+  }
+  return ContentType::UNSET;
+}
+
 }  // namespace rest
 }  // namespace arangodb

@@ -1434,14 +1434,17 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
 
   allMarkers.clear();
 
-  if (_request->transportType() != Endpoint::TransportType::HTTP) {
+  // simon: original VST was not allowed here, but in 3.7 the content-type
+  // is properly set, so we can use it
+  if (_request->transportType() != Endpoint::TransportType::HTTP &&
+      _request->contentType() != ContentType::DUMP) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
   }
-
+  
   VPackStringRef bodyStr = _request->rawPayload();
   char const* ptr = bodyStr.data();
   char const* end = ptr + bodyStr.size();
-
+  
   VPackValueLength currentPos = 0;
 
   // First parse and collect all markers, we assemble everything in one

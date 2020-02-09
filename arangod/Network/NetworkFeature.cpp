@@ -33,6 +33,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
@@ -79,6 +80,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
+  startsAfter<EngineSelectorFeature>();
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -138,6 +140,11 @@ void NetworkFeature::prepare() {
     config.protocol = fuerte::ProtocolType::Vst;
   } else {
     config.protocol = fuerte::ProtocolType::Vst;
+  }
+  
+  // mmfiles replication is hardcoded for http
+  if (EngineSelectorFeature::isMMFiles()) {
+    config.protocol = fuerte::ProtocolType::Http;
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);

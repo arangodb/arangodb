@@ -43,8 +43,6 @@
 #include "Basics/debugging.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Meta/conversion.h"
 #include "Rest/CommonDefines.h"
 
@@ -58,7 +56,7 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
     : GeneralRequest(connectionInfo, messageId),
       _payloadOffset(payloadOffset),
       _validatedPayload(false) {
-  _contentType = ContentType::UNSET;
+  _contentType = ContentType::UNSET; // intentional
   _contentTypeResponse = ContentType::VPACK;
   _payload = std::move(buffer),
   parseHeaderInformation();
@@ -75,10 +73,9 @@ size_t VstRequest::contentLength() const {
 arangodb::velocypack::StringRef VstRequest::rawPayload() const {
   if (_payload.size() <= _payloadOffset) {
     return arangodb::velocypack::StringRef();
-  } else {
-    return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_payload.data() + _payloadOffset),
-                                           _payload.size() - _payloadOffset);
   }
+  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_payload.data() + _payloadOffset),
+                                         _payload.size() - _payloadOffset);
 }
 
 VPackSlice VstRequest::payload(VPackOptions const* options) {
@@ -121,29 +118,20 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   if (!keySlice.isString() || !valSlice.isString()) {
     return;
   }
-
+  
+  std::string key = keySlice.copyString();
+  StringUtils::tolowerInPlace(key);
   std::string value = valSlice.copyString();
-  std::string key = StringUtils::tolower(keySlice.copyString());
-  std::string val = StringUtils::tolower(value);
-  if (key == StaticStrings::Accept &&
-      val.length() == StaticStrings::MimeTypeJsonNoEncoding.length() &&
-      (val == StaticStrings::MimeTypeJsonNoEncoding)) {
-    _contentTypeResponse = ContentType::JSON;
+    
+  if (key == StaticStrings::Accept) {
+    StringUtils::tolowerInPlace(value);
+    _contentTypeResponse = rest::stringToContentType(value);
     return;  // don't insert this header!!
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
-    if ((val.length() == StaticStrings::MimeTypeVPack.length()) &&
-        (val == StaticStrings::MimeTypeVPack)) {
-      _contentType = ContentType::VPACK;
-      return;  // don't insert this header!!
-    }
-    if (val.length() >= StaticStrings::MimeTypeJsonNoEncoding.length() &&
-        memcmp(value.c_str(), StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-               StaticStrings::MimeTypeJsonNoEncoding.length()) == 0) {
-      _contentType = ContentType::JSON;
-      // don't insert this header!!
-      return;
-    }
+    StringUtils::tolowerInPlace(value);
+    _contentType = rest::stringToContentType(value);
+    return;  // don't insert this header!!
   }
 
   // must lower-case the header key

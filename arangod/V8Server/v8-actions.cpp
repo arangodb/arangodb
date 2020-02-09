@@ -946,6 +946,9 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
+  if (request->transportType() != arangodb::Endpoint::TransportType::HTTP) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "only http requests are supported");
+  }
 
   TRI_GET_GLOBALS();
 
@@ -1015,10 +1018,9 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       LOG_TOPIC("b8286", WARN, arangodb::Logger::V8)
           << "Caught an error while executing an action: " << jsError;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // TODO how to generalize this?
-      if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
-        ((HttpResponse*)response)->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
-      }
+      VPackBuilder b;
+      b.add(VPackValue(TRI_StringifyV8Exception(isolate, &tryCatch)));
+      response->addPayload(b.slice());
 #endif
     } else {
       v8g->_canceled = true;

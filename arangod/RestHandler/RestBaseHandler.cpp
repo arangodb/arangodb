@@ -54,9 +54,11 @@ arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
     return _request->payload(&optionsWithUniquenessCheck);
   } catch (VPackException const& e) {
-    std::string errmsg("VPackError error: ");
-    errmsg.append(e.what());
+    std::string errmsg("VPackError parsing error: '");
+    errmsg.append(e.what()).append("'");
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
+  } catch (...) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, "unknown exception");
   }
   success = false;
   return VPackSlice::noneSlice();

@@ -377,7 +377,6 @@ void H1Connection<ST>::asyncWriteNextRequest() {
 template <SocketType ST>
 void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                           size_t nwrite) {
-  FUERTE_ASSERT(_item != nullptr);
   if (ec) {
     // Send failed
     FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error '" << ec.message()
@@ -397,6 +396,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     this->restartConnection(err);
     return;
   }
+  FUERTE_ASSERT(_item != nullptr);
 
   // Send succeeded
   FUERTE_LOG_HTTPTRACE << "asyncWriteCallback: send succeeded "

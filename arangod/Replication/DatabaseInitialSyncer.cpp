@@ -60,7 +60,7 @@
 #include <cstring>
 
 // lets keep this experimental until we make it faster
-#define VPACK_DUMP 0
+#define VPACK_DUMP 1
 
 namespace {
 
@@ -391,6 +391,8 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   std::string const& cType =
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
+    LOG_TOPIC("b9f4d", INFO, Logger::REPLICATION) << "using vpack for chunk contents";
+    
     VPackOptions options;
     options.validateUtf8Strings = true;
     options.disallowExternals = true;
@@ -401,7 +403,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
     try {
       while (p < end) {
-        ptrdiff_t remaining = end - p;
+        size_t remaining = static_cast<size_t>(end - p);
         // throws if the data is invalid
         validator.validate(p, remaining, /*isSubPart*/ true);
 
@@ -427,6 +429,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   } else {
     // buffer must end with a NUL byte
     TRI_ASSERT(*end == '\0');
+    LOG_TOPIC("bad5d", INFO, Logger::REPLICATION) << "using json for chunk contents";
 
     VPackBuilder builder;
     VPackParser parser(builder);
