@@ -385,11 +385,13 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
     // keepalive timeout may have expired
     auto err = translateError(ec, Error::WriteError);
-    if (ec == asio_ns::error::broken_pipe && nwrite == 0) {  // re-queue
-      sendRequest(std::move(item->request), item->callback);
-    } else {
-      // let user know that this request caused the error
-      item->callback(err, std::move(item->request), nullptr);
+    if (item) { // may be null if connection was canceled
+      if (ec == asio_ns::error::broken_pipe && nwrite == 0) {  // re-queue
+        sendRequest(std::move(item->request), item->callback);
+      } else {
+        // let user know that this request caused the error
+        item->callback(err, std::move(item->request), nullptr);
+      }
     }
 
     // Stop current connection and try to restart a new one.
