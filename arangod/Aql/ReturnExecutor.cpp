@@ -53,42 +53,16 @@ ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
 
 ReturnExecutor::~ReturnExecutor() = default;
 
+// TODO: @deprecated remove
 std::pair<ExecutionState, size_t> ReturnExecutor::expectedNumberOfRows(size_t atMost) const {
   return _fetcher.preFetchNumberOfRows(atMost);
 }
 
+// TODO: @deprecated remove
 auto ReturnExecutor::produceRows(OutputAqlItemRow& output)
     -> std::pair<ExecutionState, Stats> {
   TRI_ASSERT(false);
-  TRI_IF_FAILURE("ReturnExecutor::produceRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  ExecutionState state;
-  ReturnExecutor::Stats stats;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  std::tie(state, inputRow) = _fetcher.fetchRow();
-
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(!inputRow);
-    return {state, stats};
-  }
-
-  if (!inputRow) {
-    TRI_ASSERT(state == ExecutionState::DONE);
-    return {state, stats};
-  }
-
-  AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
-  AqlValueGuard guard(val, true);
-  TRI_IF_FAILURE("ReturnBlock::getSome") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  output.moveValueInto(_infos.getOutputRegisterId(), inputRow, guard);
-
-  if (_infos.doCount()) {
-    stats.incrCounted();
-  }
-  return {state, stats};
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
