@@ -81,29 +81,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-
-std::string const doneString = "DONE";
-std::string const hasDataRowString = "HASMORE";
-std::string const waitingString = "WAITING";
-std::string const unknownString = "UNKNOWN";
-
-std::string const& stateToString(aql::ExecutionState state) {
-  switch (state) {
-    case aql::ExecutionState::DONE:
-      return doneString;
-    case aql::ExecutionState::HASMORE:
-      return hasDataRowString;
-    case aql::ExecutionState::WAITING:
-      return waitingString;
-    default:
-      // just to suppress a warning ..
-      return unknownString;
-  }
-}
-
-}  // namespace
-
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
  * named `methodName`, used like this:
@@ -647,75 +624,6 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
   }
   // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-template <class Executor>
-void ExecutionBlockImpl<Executor>::traceExecuteBegin(AqlCallStack const& stack) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
-    }
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      auto const node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      // TODO make sure this works also if stack is non relevant, e.g. passed through by outer subquery.
-      auto const& call = stack.peek();
-      LOG_TOPIC("1e717", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "execute type=" << node->getTypeString() << " call= " << call
-          << " this=" << (uintptr_t)this << " id=" << node->id();
-    }
-  }
-}
-
-template <class Executor>
-void ExecutionBlockImpl<Executor>::traceExecuteEnd(
-    std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    auto const& [state, skipped, block] = result;
-    auto const items = block != nullptr ? block->size() : 0;
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
-    stats.calls = 1;
-    stats.items = skipped + items;
-    if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
-
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
-    }
-
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      ExecutionNode const* node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      LOG_TOPIC("60bbc", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "execute done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state)
-          << " skipped=" << skipped << " produced=" << items;
-
-      if (_profile >= PROFILE_LEVEL_TRACE_2) {
-        if (block == nullptr) {
-          LOG_TOPIC("9b3f4", INFO, Logger::QUERIES)
-              << "[query#" << queryId << "] "
-              << "execute type=" << node->getTypeString() << " result: nullptr";
-        } else {
-          VPackBuilder builder;
-          auto const options = trxVpackOptions();
-          block->toSimpleVPack(options, builder);
-          LOG_TOPIC("f12f9", INFO, Logger::QUERIES)
-              << "[query#" << queryId << "] "
-              << "execute type=" << node->getTypeString()
-              << " result: " << VPackDumper::toString(builder.slice(), options);
-        }
-      }
-    }
-  }
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
