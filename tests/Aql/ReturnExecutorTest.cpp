@@ -120,6 +120,7 @@ TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
+      .expectedStats(getCountStats(8))
       .run(std::move(infos));
 }
 
@@ -134,6 +135,7 @@ TEST_P(ReturnExecutorTest, handle_soft_limit) {
       .expectOutput({0}, {{1}, {2}, {5}})
       .expectSkipped(0)
       .expectedState(ExecutionState::HASMORE)
+      .expectedStats(getCountStats(3))
       .run(std::move(infos));
 }
 
@@ -148,6 +150,7 @@ TEST_P(ReturnExecutorTest, handle_hard_limit) {
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
+      .expectedStats(getCountStats(5))
       .run(std::move(infos));
 }
 
@@ -162,6 +165,7 @@ TEST_P(ReturnExecutorTest, handle_offset) {
       .expectOutput({0}, {{1}, {5}, {7}, {1}})
       .expectSkipped(4)
       .expectedState(ExecutionState::DONE)
+      .expectedStats(getCountStats(4))
       .run(std::move(infos));
 }
 
@@ -177,6 +181,7 @@ TEST_P(ReturnExecutorTest, handle_fullcount) {
       .expectOutput({0}, {{1}, {2}})
       .expectSkipped(6)
       .expectedState(ExecutionState::DONE)
+      .expectedStats(getCountStats(2))
       .run(std::move(infos));
 }
 
@@ -198,6 +203,7 @@ TEST_P(ReturnExecutorTest, handle_other_inputRegister) {
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}})
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
+      .expectedStats(getCountStats(5))
       .run(std::move(infos));
 }
 
