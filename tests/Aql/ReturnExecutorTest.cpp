@@ -49,8 +49,9 @@ namespace aql {
 // This is only to get a split-type. The Type is independent of actual template parameters
 using ReturnExecutorTestHelper = ExecutorTestHelper<ReturnExecutor, 1, 1>;
 using ReturnExecutorSplitType = ReturnExecutorTestHelper::SplitType;
+using ReturnExecutorParamType = std::tuple<ReturnExecutorSplitType, bool>;
 
-class ReturnExecutorTest : public ::testing::TestWithParam<ReturnExecutorSplitType> {
+class ReturnExecutorTest : public ::testing::TestWithParam<ReturnExecutorParamType> {
  protected:
   // ExecutionState state;
   ResourceMonitor monitor{};
@@ -68,8 +69,21 @@ class ReturnExecutorTest : public ::testing::TestWithParam<ReturnExecutorSplitTy
   }
 
   auto getSplit() -> ReturnExecutorSplitType {
-    auto split = GetParam();
+    auto [split, unused] = GetParam();
     return split;
+  }
+
+  auto doCount() -> bool {
+    auto [unused, doCount] = GetParam();
+    return doCount;
+  }
+
+  auto getCountStats(size_t nr) -> ExecutionStats {
+    ExecutionStats stats;
+    if (doCount()) {
+      stats.count = nr;
+    }
+    return stats;
   }
 };
 
@@ -80,8 +94,10 @@ template <size_t step>
 const ReturnExecutorSplitType splitStep = ReturnExecutorSplitType{step};
 
 INSTANTIATE_TEST_CASE_P(ReturnExecutor, ReturnExecutorTest,
-                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
-                                          splitStep<1>, splitStep<2>));
+                        ::testing::Combine(::testing::Values(splitIntoBlocks<2, 3>,
+                                                             splitIntoBlocks<3, 4>,
+                                                             splitStep<1>, splitStep<2>),
+                                           ::testing::Bool()));
 
 /*******
  *  Start test suite
@@ -95,7 +111,7 @@ INSTANTIATE_TEST_CASE_P(ReturnExecutor, ReturnExecutorTest,
  */
 
 TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
-  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};  // unlimited produce
   ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
@@ -108,7 +124,7 @@ TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
 }
 
 TEST_P(ReturnExecutorTest, handle_soft_limit) {
-  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};
   call.softLimit = 3;
   ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
@@ -122,7 +138,7 @@ TEST_P(ReturnExecutorTest, handle_soft_limit) {
 }
 
 TEST_P(ReturnExecutorTest, handle_hard_limit) {
-  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};
   call.hardLimit = 5;
   ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
@@ -136,7 +152,7 @@ TEST_P(ReturnExecutorTest, handle_hard_limit) {
 }
 
 TEST_P(ReturnExecutorTest, handle_offset) {
-  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};
   call.offset = 4;
   ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
@@ -150,7 +166,7 @@ TEST_P(ReturnExecutorTest, handle_offset) {
 }
 
 TEST_P(ReturnExecutorTest, handle_fullcount) {
-  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, doCount());
   AqlCall call{};
   call.hardLimit = 2;
   call.fullCount = true;
@@ -160,6 +176,27 @@ TEST_P(ReturnExecutorTest, handle_fullcount) {
       .setCall(call)
       .expectOutput({0}, {{1}, {2}})
       .expectSkipped(6)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+TEST_P(ReturnExecutorTest, handle_other_inputRegister) {
+  ReturnExecutorInfos infos(1 /*input register*/, 2 /*nr in*/, 1 /*nr out*/, doCount());
+  AqlCall call{};
+  call.hardLimit = 5;
+  ExecutorTestHelper<ReturnExecutor, 2, 1>(*fakedQuery)
+      .setInputValue({{R"("invalid")", 1},
+                      {R"("invalid")", 2},
+                      {R"("invalid")", 5},
+                      {R"("invalid")", 2},
+                      {R"("invalid")", 1},
+                      {R"("invalid")", 5},
+                      {R"("invalid")", 7},
+                      {R"("invalid")", 1}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}})
+      .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
       .run(std::move(infos));
 }
