@@ -39,7 +39,14 @@ ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nr
                     std::unordered_set<RegisterId>{} /*to keep*/
                     ),
       _inputRegisterId(inputRegister),
-      _doCount(doCount) {}
+      _doCount(doCount) {
+  // For the time beeing return will only write to register 0.
+  // It is defined that it can only have exactly 1 output register.
+  // We can easily replace this by a different register, if we
+  // modify the caller within the ExecutionEngine to ask for the
+  // output register from outside.
+  TRI_ASSERT(nrOutputRegisters == 1);
+}
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher) {}
