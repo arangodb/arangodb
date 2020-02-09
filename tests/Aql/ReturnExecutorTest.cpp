@@ -96,12 +96,70 @@ INSTANTIATE_TEST_CASE_P(ReturnExecutor, ReturnExecutorTest,
 
 TEST_P(ReturnExecutorTest, returns_all_from_upstream) {
   ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  AqlCall call{};  // unlimited produce
   ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
       .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
       .setInputSplitType(getSplit())
-      .setCall(AqlCall{})  // unlimited produce
+      .setCall(call)
       .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
       .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+TEST_P(ReturnExecutorTest, handle_soft_limit) {
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  AqlCall call{};
+  call.softLimit = 3;
+  ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0}, {{1}, {2}, {5}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::HASMORE)
+      .run(std::move(infos));
+}
+
+TEST_P(ReturnExecutorTest, handle_hard_limit) {
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  AqlCall call{};
+  call.hardLimit = 5;
+  ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+TEST_P(ReturnExecutorTest, handle_offset) {
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  AqlCall call{};
+  call.offset = 4;
+  ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0}, {{1}, {5}, {7}, {1}})
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+TEST_P(ReturnExecutorTest, handle_fullcount) {
+  ReturnExecutorInfos infos(0 /*input register*/, 1 /*nr in*/, 1 /*nr out*/, false /*do count*/);
+  AqlCall call{};
+  call.hardLimit = 2;
+  call.fullCount = true;
+  ExecutorTestHelper<ReturnExecutor>(*fakedQuery)
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0}, {{1}, {2}})
+      .expectSkipped(6)
       .expectedState(ExecutionState::DONE)
       .run(std::move(infos));
 }
