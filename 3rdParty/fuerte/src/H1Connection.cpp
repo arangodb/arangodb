@@ -377,7 +377,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
 template <SocketType ST>
 void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                           size_t nwrite) {
-  if (ec) {
+  if (ec || _item == nullptr) {
     // Send failed
     FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error '" << ec.message()
                      << "', this=" << this << "\n";
@@ -392,6 +392,8 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
         // let user know that this request caused the error
         item->callback(err, std::move(item->request), nullptr);
       }
+    } else {
+      err = Error::Canceled;
     }
 
     // Stop current connection and try to restart a new one.
