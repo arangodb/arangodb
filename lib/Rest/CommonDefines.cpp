@@ -62,17 +62,12 @@ ContentType stringToContentType(std::string const& val, ContentType def) {
   if (val.size() >= 25 && val.compare(0, 25, "application/x-arango-dump") == 0) {
     return ContentType::DUMP;
   }
-  // simon: these are intentionally unsupported, the "@arangodb/requests" module use
-  // the "text/plain" content-types for JSON in many tests. As soon as someone fixes
-  // all the tests we can enable these again.
-#if 0
   if (val.size() >= 10 && val.compare(0, 10, "text/plain") == 0) {
     return ContentType::TEXT;
   }
   if (val.size() >= 9 && val.compare(0, 9, "text/html") == 0) {
     return ContentType::HTML;
   }
-#endif
   return def;
 }
 

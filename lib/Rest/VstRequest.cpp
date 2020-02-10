@@ -129,9 +129,14 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
     return;  // don't insert this header!!
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
-    StringUtils::tolowerInPlace(value);
-    _contentType = rest::stringToContentType(value, ContentType::UNSET);
-    return;  // don't insert this header!!
+    StringUtils::tolowerInPlace(value);    
+    auto res = rest::stringToContentType(value, /*default*/ContentType::UNSET);
+    // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
+    // in most tests. As soon as someone fixes all the tests we can enable these again.
+    if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
+      _contentType = res;
+      return;  // don't insert this header!!
+    }
   }
 
   // must lower-case the header key

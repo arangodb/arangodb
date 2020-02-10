@@ -520,8 +520,13 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     return;
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
-    _contentType = rest::stringToContentType(value, /*default*/ContentType::UNSET);
-    return;
+    auto res = rest::stringToContentType(value, /*default*/ContentType::UNSET);
+    // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
+    // in most tests. As soon as someone fixes all the tests we can enable these again.
+    if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
+      _contentType = res;
+      return;
+    }
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested

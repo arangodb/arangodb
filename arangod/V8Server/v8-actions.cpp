@@ -863,7 +863,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         TRI_FreeString(content);
 
         // create vpack from file
-        response->setContentType(rest::ContentType::TEXT);
+        response->setContentType(rest::ContentType::VPACK);
         response->setPayload(std::move(buffer), true);
       }
       break;
@@ -946,9 +946,6 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
   if (response == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
-  if (request->transportType() != arangodb::Endpoint::TransportType::HTTP) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "only http requests are supported");
-  }
 
   TRI_GET_GLOBALS();
 
@@ -998,11 +995,10 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       errorMessage = TRI_errno_string(errorCode);
     }
 
-    // TODO (obi)
-    if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
-      ((HttpResponse*)response)->body().appendText(errorMessage);
-    }
-
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder b(buffer);
+    b.add(VPackValue(errorMessage));
+    response->addPayload(std::move(buffer));
   }
 
   else if (v8g->_canceled) {
