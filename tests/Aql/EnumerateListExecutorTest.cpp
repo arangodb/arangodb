@@ -25,6 +25,7 @@
 
 #include "gtest/gtest.h"
 
+#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 #include "fakeit.hpp"
 
@@ -32,10 +33,12 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/EnumerateListExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 #include "AqlItemBlockHelper.h"
+#include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -487,6 +490,137 @@ TEST_F(EnumerateListExecutorTest, test_produce_datarange) {
   ASSERT_TRUE(v.isNumber());
   ASSERT_EQ(v.toInt64(), 2);
 }
+
+// new framework tests
+using EnumerateListTestHelper = ExecutorTestHelper<EnumerateListExecutor, 1, 1>;
+using EnumerateListSplitType = EnumerateListTestHelper::SplitType;
+
+class EnumerateListExecutorTestProduce
+    : public ::testing::TestWithParam<std::tuple<EnumerateListSplitType>> {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager;
+
+  mocks::MockAqlServer server;
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+
+  RegisterId inputRegister;
+  RegisterId outputRegister;
+  RegisterId nrInputRegister;
+  RegisterId nrOutputRegister;
+  std::unordered_set<RegisterId> regToClear;
+  std::unordered_set<RegisterId> regToKeep;
+
+  EnumerateListExecutorInfos infos;
+
+  SharedAqlItemBlockPtr block;
+  NoStats stats;
+
+  EnumerateListExecutorTestProduce()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        fakedQuery(server.createFakeQuery()),
+        inputRegister(0),
+        outputRegister(1),
+        nrInputRegister(1),
+        nrOutputRegister(2),
+        regToClear({}),
+        regToKeep({0}),
+        infos(inputRegister, outputRegister, nrInputRegister, nrOutputRegister,
+              regToClear, regToKeep),
+        block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {
+    auto engine =
+        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
+    fakedQuery->setEngine(engine.release());
+  }
+};
+
+TEST_P(EnumerateListExecutorTestProduce, default_1) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+      .setInputValue({{{R"([1, 1, 2])"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
+      .expectOutput({1}, {{1}, {1}, {2}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+TEST_P(EnumerateListExecutorTestProduce, offset_1) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+      .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
+      .expectOutput({1}, {{6}, {7}, {8}, {9}, {10}})
+      .expectSkipped(5)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+TEST_P(EnumerateListExecutorTestProduce, offset_2) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+      .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{3, AqlCall::Infinity{}, 2, false})
+      .expectOutput({1}, {{4}, {5}})
+      .expectSkipped(3)
+      .expectedState(ExecutionState::HASMORE)
+      .run(std::move(infos));
+}
+
+TEST_P(EnumerateListExecutorTestProduce, offset_3) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+      .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{7, AqlCall::Infinity{}, 3, false})
+      .expectOutput({1}, {{8}, {9}, {10}})
+      .expectSkipped(7)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+TEST_P(EnumerateListExecutorTestProduce, offset_4) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+      .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{5, AqlCall::Infinity{}, 2, true})
+      .expectOutput({1}, {{6}, {7}})
+      .expectSkipped(5) // TODO: Should skipped not be 8 in case of fullCount?
+      .expectedState(ExecutionState::HASMORE)
+      .run(std::move(infos));
+}
+
+TEST_P(EnumerateListExecutorTestProduce, offset_5) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor>(*fakedQuery)
+      .setInputValue({{{R"([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{7, AqlCall::Infinity{}, 3, true})
+      .expectOutput({1}, {{8}, {9}, {10}})
+      .expectSkipped(7)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
+}
+
+template <size_t... vs>
+const EnumerateListSplitType splitIntoBlocks =
+    EnumerateListSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const EnumerateListSplitType splitStep = EnumerateListSplitType{step};
+
+INSTANTIATE_TEST_CASE_P(EnumerateListExecutor, EnumerateListExecutorTestProduce,
+                        ::testing::Values(splitIntoBlocks<2, 3>,
+                                          splitIntoBlocks<3, 4>, splitStep<2>));
 
 // namespace aql
 
