@@ -415,6 +415,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(ui
     if (!ctx) {
       return nullptr;
     }
+    auto guard = scopeGuard([manager, ctx]() -> void { manager->release(ctx); });
     rocksdb::Snapshot const* snapshot = ctx->snapshot();
     rocksdb::SequenceNumber trxSeq = snapshot->GetSequenceNumber();
     TRI_ASSERT(trxSeq != 0);

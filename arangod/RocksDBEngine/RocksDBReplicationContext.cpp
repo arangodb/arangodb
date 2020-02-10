@@ -837,10 +837,10 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
 RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {
   TRI_ASSERT(!vocbase.isDangling());
   vocbase.releaseCollection(logical.get());
-  logical.reset();
-  vocbase.release();
   LOG_TOPIC("71237", TRACE, Logger::REPLICATION)
       << "replication released iterator for collection '" << logical->name() << "'";
+  logical.reset();
+  vocbase.release();
 }
 
 void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
