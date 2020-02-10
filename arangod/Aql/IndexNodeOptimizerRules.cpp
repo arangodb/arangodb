@@ -24,6 +24,7 @@
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
@@ -117,6 +118,14 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       auto indexNode = ExecutionNode::castTo<IndexNode*>(loop);
       if (!indexNode->canApplyLateDocumentMaterializationRule() || indexNode->isLateMaterialized()) {
         continue; // loop is already optimized
+      }
+      auto producingNode = dynamic_cast<DocumentProducingNode const*>(loop);
+      if (producingNode == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast IndexNode to ProducingNode");
+      }
+      if (producingNode->hasFilter()) {
+        // IndexNode has an early pruning filter. In this case we cannot perform the optimization
+        continue;
       }
       auto current = limitNode->getFirstDependency();
       ExecutionNode* sortNode = nullptr;
