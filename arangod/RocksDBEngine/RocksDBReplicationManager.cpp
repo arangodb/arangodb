@@ -146,13 +146,11 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 
     if (context->isDeleted()) {
       // already deleted
-      LOG_DEVEL << "A";
       return false;
     }
 
     if (context->isUsed()) {
       // context is in use by someone else. now mark as deleted
-      LOG_DEVEL << "B";
       context->setDeleted();
       return true;
     }
