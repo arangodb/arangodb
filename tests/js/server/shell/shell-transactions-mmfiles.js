@@ -125,9 +125,12 @@ function transactionServerFailuresSuite () {
         assertEqual(0, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(0, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(0, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -168,9 +171,12 @@ function transactionServerFailuresSuite () {
         assertEqual(1, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(1, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(1, idx.figures.totalUsed);
+          });
+        }
       });
     },
     
@@ -210,9 +216,12 @@ function transactionServerFailuresSuite () {
         assertEqual(0, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(0, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(0, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -242,9 +251,12 @@ function transactionServerFailuresSuite () {
         assertEqual(0, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(0, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(0, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -285,9 +297,12 @@ function transactionServerFailuresSuite () {
         assertEqual(1, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(1, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(1, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -327,9 +342,12 @@ function transactionServerFailuresSuite () {
         assertEqual(0, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(0, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(0, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -362,9 +380,12 @@ function transactionServerFailuresSuite () {
         assertEqual(1000, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(1000, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(1000, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -397,9 +418,12 @@ function transactionServerFailuresSuite () {
         assertEqual(1000, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(1000, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(1000, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -445,9 +469,12 @@ function transactionServerFailuresSuite () {
         assertEqual(990, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(990, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(990, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -493,9 +520,12 @@ function transactionServerFailuresSuite () {
         assertEqual(1000, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(1000, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(1000, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -528,9 +558,12 @@ function transactionServerFailuresSuite () {
         assertEqual(1000, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'skiplist'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(1000, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(1000, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -563,9 +596,12 @@ function transactionServerFailuresSuite () {
         assertEqual(1000, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'skiplist'; });
         assertEqual(2, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(1000, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(1000, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
@@ -599,9 +635,12 @@ function transactionServerFailuresSuite () {
         assertEqual(1000, c.count());
         let indexes = c.indexes(true).filter(function(idx) { return idx.type === 'primary' || idx.type === 'hash' || idx.type === 'skiplist'; });
         assertEqual(3, indexes.length);
-        indexes.forEach(function(idx) {
-          assertEqual(1000, idx.figures.totalUsed);
-        });
+
+        if (!isCluster) {
+          indexes.forEach(function(idx) {
+            assertEqual(1000, idx.figures.totalUsed);
+          });
+        }
       });
     },
 
