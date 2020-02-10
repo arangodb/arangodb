@@ -1431,9 +1431,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
                 InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
               }
             }
+            LOG_DEVEL << "1";
             TRI_ASSERT(_outputItemRow->produced());
+            LOG_DEVEL << "2";
             _outputItemRow->advanceRow();
+            LOG_DEVEL << "3";
             clientCall = _outputItemRow->getClientCall();
+            LOG_DEVEL << "4";
             if (_outputItemRow->allRowsUsed()) {
               _execState = ExecState::DONE;
             } else if (state == ExecutorState::DONE) {

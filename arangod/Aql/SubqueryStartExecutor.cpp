@@ -64,6 +64,7 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
       } break;
       case State::PRODUCE_SHADOW_ROW: {
         TRI_ASSERT(_inputRow.isInitialized());
+
         output.createShadowRow(_inputRow);
         output.advanceRow();
         _inputRow = InputAqlItemRow(CreateInvalidInputRowHint{});

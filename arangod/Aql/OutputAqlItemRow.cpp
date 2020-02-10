@@ -42,6 +42,8 @@ The following conditions need to hold true, we need to add c++ tests for this.
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -210,18 +212,26 @@ size_t OutputAqlItemRow::numRowsWritten() const noexcept {
 }
 
 void OutputAqlItemRow::advanceRow() {
+  LOG_DEVEL << "x1";
   TRI_ASSERT(produced());
+  LOG_DEVEL << "x2";
   TRI_ASSERT(allValuesWritten());
+  LOG_DEVEL << "x3";
   TRI_ASSERT(_inputRowCopied);
+  LOG_DEVEL << "x4";
   if (!_block->isShadowRow(_baseIndex)) {
+    LOG_DEVEL << "x5";
     // We have written a data row into the output.
     // Need to count it.
     _call.didProduce(1);
   }
 
   ++_baseIndex;
+  LOG_DEVEL << "x6";
   _inputRowCopied = false;
+  LOG_DEVEL << "x7";
   _numValuesWritten = 0;
+  LOG_DEVEL << "x8";
 }
 
 void OutputAqlItemRow::toVelocyPack(velocypack::Options const* options, VPackBuilder& builder) {

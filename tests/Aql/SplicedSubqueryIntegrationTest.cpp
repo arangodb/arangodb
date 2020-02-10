@@ -135,7 +135,8 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
 
   auto createSingleton() -> std::unique_ptr<ExecutionBlock> {
     std::deque<SharedAqlItemBlockPtr> blockDeque;
-    SharedAqlItemBlockPtr block = buildBlock<0>(itemBlockManager, {{}});
+    // SharedAqlItemBlockPtr block =
+    block = buildBlock<2>(itemBlockManager, {{{{R"("v")"}, {0}}}});
     blockDeque.push_back(std::move(block));
     return std::make_unique<WaitingExecutionBlockMock>(
         &engine, generateNodeDummy(), std::move(blockDeque),
@@ -144,32 +145,43 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
 
   auto createSubqueryStartExecutor(RegisterId numRegs)
       -> ExecutionBlockImpl<SubqueryStartExecutor> {
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+    // Subquery start executor does not care about input or output registers?
+    // TODO: talk about registers & register planning
+
+    auto inRegisters = make_shared_unordered_set({0});
+    auto outRegisters = make_shared_unordered_set({});
+    // std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{});
     std::unordered_set<RegisterId> toKeep;
-    for (RegisterId r = 0; r < numRegs; ++r) {
+
+    for (RegisterId r = 0; r < inRegisters->size(); ++r) {
       toKeep.emplace(r);
     }
 
-    auto infos = SubqueryStartExecutor::Infos(emptyRegisterList, emptyRegisterList,
-                                              numRegs, numRegs, {}, toKeep);
+    auto infos =
+        SubqueryStartExecutor::Infos(inRegisters, outRegisters, inRegisters->size(),
+                                     inRegisters->size() + outRegisters->size(),
+                                     {}, toKeep);
 
     return ExecutionBlockImpl<SubqueryStartExecutor>{&engine, node, std::move(infos)};
   }
 
+  // Subquery end executor has an input and an output register,
+  // but only the output register is used, remove input reg?
   auto createSubqueryEndExecutor(RegisterId numRegs)
       -> ExecutionBlockImpl<SubqueryEndExecutor> {
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
+    auto inRegisters = make_shared_unordered_set({0});
+    auto outRegisters = make_shared_unordered_set({1});
+
     std::unordered_set<RegisterId> toKeep;
 
-    for (RegisterId r = 0; r < numRegs; ++r) {
+    for (RegisterId r = 0; r < inRegisters->size(); ++r) {
       toKeep.emplace(r);
     }
 
-    auto infos = SubqueryEndExecutor::Infos(emptyRegisterList, emptyRegisterList,
-                                            numRegs, numRegs, {}, toKeep, nullptr,
-                                            RegisterId{0}, RegisterId{1});
+    auto infos =
+        SubqueryEndExecutor::Infos(inRegisters, outRegisters, inRegisters->size(),
+                                   inRegisters->size() + outRegisters->size(), {},
+                                   toKeep, nullptr, RegisterId{0}, RegisterId{1});
 
     return ExecutionBlockImpl<SubqueryEndExecutor>{&engine, node, std::move(infos)};
   }
