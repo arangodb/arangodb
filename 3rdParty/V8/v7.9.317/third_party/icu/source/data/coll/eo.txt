@@ -1,0 +1,18 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+eo{
+    Version{"2.1.19.14"}
+    collations{
+        standard{
+            Sequence{
+                "&C<ĉ<<<Ĉ"
+                "&G<ĝ<<<Ĝ"
+                "&H<ĥ<<<Ĥ"
+                "&J<ĵ<<<Ĵ"
+                "&S<ŝ<<<Ŝ"
+                "&U<ŭ<<<Ŭ"
+            }
+            Version{"35.1"}
+        }
+    }
+}

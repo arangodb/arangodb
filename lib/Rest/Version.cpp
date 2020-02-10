@@ -29,7 +29,6 @@
 
 #include <sstream>
 
-#include <curl/curl.h>
 #include <openssl/ssl.h>
 
 #include <rocksdb/convenience.h>
@@ -162,7 +161,7 @@ void Version::initialize() {
   Values["build-repository"] = getBuildRepository();
 #endif
 
-  Values["curl-version"] = curl_version();
+  Values["curl-version"] = "none";
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["assertions"] = "true";
@@ -178,23 +177,22 @@ void Version::initialize() {
   Values["cplusplus"] = "unknown";
 #endif
 
-#if defined(__SANITIZE_ADDRESS__) || \
-    (defined(__has_feature) && __has_feature(address_sanitizer))
-  Values["asan"] = "true";
-#else
   Values["asan"] = "false";
+#if defined(__SANITIZE_ADDRESS__)
 #if defined(__has_feature)
-#if __has_feature(address_sanitizer)
+#if __has_feature(address_sanitizer))
   Values["asan"] = "true";
 #endif
 #endif
 #endif
-  
-#if defined(__SANITIZE_THREAD__) || \
-(defined(__has_feature) && __has_feature(thread_sanitizer))
-  Values["tsan"] = "true";
-#else
+
   Values["tsan"] = "false";
+#if defined(__SANITIZE_THREAD__)
+#if defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+  Values["tsan"] = "true";
+#endif
+#endif
 #endif
 
 #if defined(__SSE4_2__) && !defined(NO_SSE42)
@@ -431,10 +429,12 @@ std::string Version::getVerboseVersionString() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           << " maintainer mode"
 #endif
+    /* TODO
 #if defined(__SANITIZE_ADDRESS__) || \
     (defined(__has_feature) && __has_feature(address_sanitizer))
           << " with ASAN"
 #endif
+    */
           << ", using "
 #ifdef ARANGODB_HAVE_JEMALLOC
           << "jemalloc, "

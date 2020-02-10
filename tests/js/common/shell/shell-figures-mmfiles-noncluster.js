@@ -28,12 +28,11 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require('jsunity');
-
-var arangodb = require('@arangodb');
-var internal = require('internal');
-
-var db = arangodb.db;
+let jsunity = require('jsunity');
+let arangodb = require('@arangodb');
+let internal = require('internal');
+let db = arangodb.db;
+const cn = 'testFigures';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite: FiguresSuite
@@ -42,16 +41,20 @@ var db = arangodb.db;
 function FiguresSuite () {
   'use strict';
   return {
+    setUp : function () {
+      db._drop(cn);
+    },
+
+    tearDown : function () {
+      db._drop(cn);
+    },
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief figures
 // //////////////////////////////////////////////////////////////////////////////
 
     testFigures: function () {
-      var collection = 'testFigures';
-
-      db._drop(collection);
-      var c1 = db._create(collection);
+      var c1 = db._create(cn);
 
       c1.load();
 
@@ -154,8 +157,6 @@ function FiguresSuite () {
       assertEqual(2, f.dead.count);
       assertNotEqual(0, f.dead.size);
       assertEqual(2, f.dead.deletion);
-
-      db._drop(collection);
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -163,10 +164,7 @@ function FiguresSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testFiguresAfterOperations: function () {
-      var cnName = 'FiguresAfterOperations';
-
-      db._drop(cnName);
-      var collection = db._create(cnName);
+      var collection = db._create(cn);
 
       collection.load();
       var figures;
@@ -254,15 +252,9 @@ function FiguresSuite () {
 
       assertEqual(1, figures.alive.count);
       assertEqual(3, figures.dead.count);
-      collection.unload();
-      collection.drop();
     }
   };
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suites
-// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(FiguresSuite);
 
