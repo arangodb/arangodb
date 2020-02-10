@@ -759,13 +759,13 @@ DWORD GetProtectionFromMemoryPermission(OS::MemoryPermission access) {
     case OS::MemoryPermission::kReadWrite:
       return PAGE_READWRITE;
     case OS::MemoryPermission::kReadWriteExecute:
-#if _MSC_VER > 16
+#if _MSC_VER > 1920
       if (IsWindows10OrGreater())
         return PAGE_EXECUTE_READWRITE | PAGE_TARGETS_INVALID;
 #endif
       return PAGE_EXECUTE_READWRITE;
     case OS::MemoryPermission::kReadExecute:
-#if _MSC_VER > 16
+#if _MSC_VER > 1920
       if (IsWindows10OrGreater())
         return PAGE_EXECUTE_READ | PAGE_TARGETS_INVALID;
 #endif
