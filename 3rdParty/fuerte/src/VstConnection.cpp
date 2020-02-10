@@ -59,7 +59,7 @@ template <SocketType ST>
 void VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                     RequestCallback cb) {
   FUERTE_ASSERT(req != nullptr);
-
+  
   // it does not matter if IDs are reused on different connections
   uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   // Create RequestItem from parameters
@@ -108,6 +108,7 @@ std::size_t VstConnection<ST>::requestsLeft() const {
   if (_reading.load() || _writing.load()) {
     qd++;
   }
+  FUERTE_LOG_VSTTRACE << "requestsLeft = " << qd << "\n";
   return qd;
 }
 
@@ -265,14 +266,12 @@ void VstConnection<ST>::asyncWriteNextRequest() {
         break;  // done, someone else may restart
       }
 
-      bool expected = false;  // may fail in a race
-      if (_writing.compare_exchange_strong(expected, true)) {
-        continue;  // we re-start writing
+      if (_writing.exchange(true)) {
+        break;  // someone else restarted writing
       }
-      FUERTE_ASSERT(expected == true);
-      break;  // someone else restarted writing
+      
+      continue;  // we re-start writing
     }
-
     this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
 
     std::shared_ptr<RequestItem> item(ptr);
@@ -397,7 +396,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   // check for more messages that could arrive
   if (_messages.empty() /* && !_writing.load()*/) {
     FUERTE_LOG_VSTTRACE << "shouldStopReading: no more pending "
-                           "messages/requests, stopping read";
+                           "messages/requests, stopping read\n";
     _reading.store(false);
     return;  // write-loop restarts read-loop if necessary
   }
