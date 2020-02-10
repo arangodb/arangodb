@@ -526,6 +526,14 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
     return rocksutils::convertStatus(s);
   }
 
+  key.constructRevisionTreeValue(objectId);
+  s = db->Delete(wo, cf, key.string());
+  if (!s.ok() && !s.IsNotFound()) {
+    LOG_TOPIC("af3dd", ERR, Logger::ENGINES)
+        << "could not delete revision tree value: " << s.ToString();
+    return rocksutils::convertStatus(s);
+  }
+
   return Result();
 }
 

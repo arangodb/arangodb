@@ -63,7 +63,11 @@ void LogThread::flush() {
     }
 
     // cppcheck-suppress redundantPointerOp
+#ifdef ARANGODB_SHOW_LOCK_TIME
+    basics::ConditionLocker guard(CONDITION, __FILE__, __LINE__, false);
+#else
     CONDITION_LOCKER(guard, *CONDITION);
+#endif
     guard.signal();
   }
 }

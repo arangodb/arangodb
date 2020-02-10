@@ -158,6 +158,9 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   }
   TRI_voc_cid_t cid = logical->id();
 
+  LOG_TOPIC("71235", TRACE, Logger::REPLICATION)
+      << "binding replication context " << id() << " to collection '" << cname << "'";
+
   MUTEX_LOCKER(writeLocker, _contextLock);
 
   auto it = _iterators.find(cid);
@@ -826,6 +829,9 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   if (res != TRI_ERROR_NO_ERROR) {  // collection was deleted
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
+
+  LOG_TOPIC("71236", TRACE, Logger::REPLICATION)
+      << "replication created iterator for collection '" << coll->name() << "'";
 }
 
 RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {
@@ -833,6 +839,8 @@ RocksDBReplicationContext::CollectionIterator::~CollectionIterator() {
   vocbase.releaseCollection(logical.get());
   logical.reset();
   vocbase.release();
+  LOG_TOPIC("71237", TRACE, Logger::REPLICATION)
+      << "replication released iterator for collection '" << logical->name() << "'";
 }
 
 void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {

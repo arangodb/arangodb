@@ -218,6 +218,9 @@ RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
     return {TRI_ERROR_CURSOR_NOT_FOUND};
   }
 
+  LOG_TOPIC("71234", TRACE, Logger::REPLICATION)
+      << "extending lifetime of replication context " << id;
+
   RocksDBReplicationContext* context = it->second;
   TRI_ASSERT(context != nullptr);
 
