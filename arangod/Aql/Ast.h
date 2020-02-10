@@ -239,6 +239,7 @@ class Ast {
                                          AstNode const*, AstNode const*);
 
   /// @brief create an AST ternary operator
+  AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*);
   AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*, AstNode const*);
 
   /// @brief create an AST variable access

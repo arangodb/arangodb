@@ -1123,6 +1123,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
   {
     ISOLATE;
     v8::HandleScope scope(isolate);                                   \
+    auto context = TRI_IGETC;
 
     Query* query = expressionContext->query();
     TRI_ASSERT(query != nullptr);
@@ -1143,7 +1144,7 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext, transaction::Met
       v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
 
       for (int i = 0; i < n; ++i) {
-        params->Set(static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx));
+        params->Set(context, static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx)).FromMaybe(true);
       }
       args[1] = params;
       args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
@@ -2309,7 +2310,7 @@ AqlValue Functions::Substitute(ExpressionContext* expressionContext,
         if (it.isString()) {
           arangodb::velocypack::ValueLength length;
           char const* str = it.getStringUnchecked(length);
-          matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
+          matchPatterns.push_back(icu::UnicodeString(str, static_cast<int32_t>(length)));
         } else {
           registerInvalidArgumentWarning(expressionContext, AFN);
           return AqlValue(AqlValueHintNull());
@@ -6547,17 +6548,24 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
 
   bool havePadValue = parameters.size() == 4;
 
-  if (offset.isNull(true) || offset.toInt64() < 0) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
-  }
-  uint64_t replaceOffset = static_cast<uint64_t>(offset.toInt64());
-
   if (!baseArray.isArray()) {
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
   
-  if (baseArray.length() < replaceOffset && !havePadValue) {
+  if (offset.isNull(true)) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+  auto length = baseArray.length();
+  uint64_t replaceOffset;
+  int64_t posParam = offset.toInt64();
+  if (posParam >= 0) {
+    replaceOffset = static_cast<uint64_t>(posParam);
+  } else {
+    replaceOffset = (static_cast<int64_t>(length) + posParam < 0) ? 0: static_cast<uint64_t>(length +  posParam);
+  }
+
+  if (length < replaceOffset && !havePadValue) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
 
@@ -6578,8 +6586,8 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
     it.next();
   }
 
-  uint64_t pos = arraySlice.length();
-  if (replaceOffset >= baseArray.length()) {
+  uint64_t pos = length;
+  if (replaceOffset >= length) {
     VPackSlice paddVpValue = materializer.slice(paddValue, false);
     while (pos < replaceOffset) {
       builder->add(paddVpValue);
