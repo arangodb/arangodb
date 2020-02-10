@@ -419,7 +419,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  TRI_read_t chunkRemain = static_cast<TRI_read_return_t>(statbuf.st_size);
+  TRI_read_t chunkRemain = static_cast<TRI_read_t>(statbuf.st_size);
   char* buf = static_cast<char*>(TRI_Allocate(131072));
 
   if (buf == nullptr) {
