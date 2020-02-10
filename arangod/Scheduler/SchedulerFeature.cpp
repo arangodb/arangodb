@@ -96,12 +96,12 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                          "= use system-specific default of ") +
                          std::to_string(defaultNumberOfThreads()) + ")",
                      new UInt64Parameter(&_nrMaximalThreads),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--server.minimal-threads",
                      "minimum number of request handling threads to run",
                      new UInt64Parameter(&_nrMinimalThreads),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.maximal-queue-size",
                      "size of the priority 2 fifo", new UInt64Parameter(&_fifo2Size));
@@ -110,11 +110,11 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
       "--server.scheduler-queue-size",
       "number of simultaneously queued requests inside the scheduler",
       new UInt64Parameter(&_queueSize),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--server.prio1-size", "size of the priority 1 fifo",
                      new UInt64Parameter(&_fifo1Size),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
@@ -123,14 +123,15 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
   options->addOldOption("scheduler.threads", "server.maximal-threads");
 }
 
-void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
+void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto const N = TRI_numberProcessors();
 
   LOG_TOPIC("2ef39", DEBUG, arangodb::Logger::THREADS)
       << "Detected number of processors: " << N;
 
   TRI_ASSERT(N > 0);
-  if (_nrMaximalThreads > 8 * N) {
+  if (options->processingResult().touched("server.maximal-threads") && 
+      _nrMaximalThreads > 8 * N) {
     LOG_TOPIC("0a92a", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
         << ") is more than eight times the number of cores (" << N

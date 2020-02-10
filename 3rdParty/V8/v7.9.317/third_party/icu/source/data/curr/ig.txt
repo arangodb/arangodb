@@ -1,0 +1,93 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ig{
+    Currencies{
+        BRL{
+            "R$",
+            "Real Brazil",
+        }
+        CNY{
+            "CN¥",
+            "Yuan China",
+        }
+        CVE{
+            "CVE",
+            "Escudo Caboverdiano",
+        }
+        EUR{
+            "€",
+            "Euro",
+        }
+        GBP{
+            "£",
+            "Pound British",
+        }
+        INR{
+            "₹",
+            "Rupee India",
+        }
+        JPY{
+            "¥",
+            "Yen Japan",
+        }
+        NGN{
+            "₦",
+            "Naịra",
+        }
+        RUB{
+            "RUB",
+            "Ruble Russia",
+        }
+        USD{
+            "$",
+            "Dollar US",
+        }
+        XXX{
+            "¤",
+            "Ego Amaghị",
+        }
+    }
+    Currencies%narrow{
+        BRL{"R$"}
+        CNY{"¥"}
+        EUR{"€"}
+        GBP{"£"}
+        INR{"₹"}
+        JPY{"¥"}
+        RUB{"₽"}
+        USD{"$"}
+    }
+    CurrencyPlurals{
+        BRL{
+            other{"Real Brazil"}
+        }
+        CNY{
+            other{"Yuan China"}
+        }
+        EUR{
+            other{"euro"}
+        }
+        GBP{
+            other{"Pound British"}
+        }
+        INR{
+            other{"Rupee India"}
+        }
+        JPY{
+            other{"Yen Japan"}
+        }
+        RUB{
+            other{"Ruble Russia"}
+        }
+        USD{
+            other{"dollar US"}
+        }
+        XXX{
+            other{"(ego amaghị)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+    Version{"2.1.48.45"}
+}
