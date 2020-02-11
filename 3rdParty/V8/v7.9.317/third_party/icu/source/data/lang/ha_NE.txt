@@ -1,0 +1,106 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ha_NE{
+    Languages{
+        ak{"Akan"}
+        am{"Amharik"}
+        ar{"Larabci"}
+        be{"Belarusanci"}
+        bg{"Bulgaranci"}
+        bn{"Bengali"}
+        cs{"Harshen Cak"}
+        de{"Jamusanci"}
+        de_AT{"Jamusanci Ostiriya"}
+        de_CH{"Jamusanci Suwizalan"}
+        el{"Girkanci"}
+        en{"Turanci"}
+        en_AU{"Turanci Ostareliya"}
+        en_CA{"Turanci Kanada"}
+        en_GB{"Turanci Biritaniya"}
+        en_US{"Turanci Amirka"}
+        es{"Sifaniyanci"}
+        es_419{"Sifaniyancin Latin Amirka"}
+        es_ES{"Sifaniyanci Turai"}
+        es_MX{"Sifaniyanci Mesiko"}
+        fa{"Parisanci"}
+        fr{"Faransanci"}
+        fr_CA{"Farasanci Kanada"}
+        fr_CH{"Farasanci Suwizalan"}
+        ha{"Hausa"}
+        hi{"Harshen Hindi"}
+        hu{"Harshen Hungari"}
+        id{"Harshen Indunusiya"}
+        ig{"Inyamuranci"}
+        it{"Italiyanci"}
+        ja{"Japananci"}
+        jv{"Jabananci"}
+        km{"Harshen Kimar"}
+        ko{"Harshen Koreya"}
+        ms{"Harshen Malai"}
+        my{"Burmanci"}
+        ne{"Nepali"}
+        nl{"Holanci"}
+        pa{"Punjabi"}
+        pl{"Harshen Polan"}
+        pt{"Harshen Fotugis"}
+        pt_BR{"Fotugis Kasashen Birazil"}
+        pt_PT{"Fotugis kasashen Turai"}
+        ro{"Romaniyanci"}
+        ru{"Rashanci"}
+        rw{"Kiniyaruwanda"}
+        so{"Somali"}
+        sv{"Harshen Suwedan"}
+        ta{"Tamil"}
+        th{"Thai"}
+        tr{"Harshen Turkiyya"}
+        uk{"Harshen Yukuren"}
+        und{"Harshen da ba a sani ba"}
+        ur{"Harshen Urdu"}
+        vi{"Harshen Biyetinam"}
+        yo{"Yarbanci"}
+        zh{"Harshen Sinanci"}
+        zh_Hans{"Sauƙaƙaƙƙen Sinanci"}
+        zh_Hant{"Sinanci na gargajiya"}
+        zu{"Harshen Zulu"}
+    }
+    Languages%short{
+        en_GB{"Turanci Ingila"}
+        en_US{"Amirka Turanci"}
+    }
+    Scripts{
+        Arab{"Larabci"}
+        Cyrl{"Cyrl"}
+        Hans{"Sauƙaƙaƙƙen"}
+        Hant{"Na gargajiya"}
+        Latn{"Latin"}
+        Zxxx{"Ba rubutacce ba"}
+        Zzzz{"Rubutun da ba sani ba"}
+    }
+    Scripts%stand-alone{
+        Hans{"Sauƙaƙaƙƙen Hans"}
+        Hant{"Han na gargajiya"}
+    }
+    Types{
+        calendar{
+            gregorian{"Gregorian Kalanda"}
+        }
+        collation{
+            standard{"Daidai ta ce Kasà"}
+        }
+        numbers{
+            arab{"Lambobi na larabawan a gabas"}
+            latn{"Lambobi na yammacin"}
+        }
+    }
+    Version{"2.1.48.77"}
+    codePatterns{
+        language{"Harshe: {0}"}
+        script{"Rubutu: {0}"}
+        territory{"Yanki/Sashe: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

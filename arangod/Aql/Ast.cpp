@@ -905,6 +905,17 @@ AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs
   return node;
 }
 
+/// @brief create an AST ternary operator node, using the condition as the truth part
+AstNode* Ast::createNodeTernaryOperator(AstNode const* condition, 
+                                        AstNode const* falsePart) {
+  AstNode* node = createNode(NODE_TYPE_OPERATOR_TERNARY);
+  node->reserve(2);
+  node->addMember(condition);
+  node->addMember(falsePart);
+
+  return node;
+}
+
 /// @brief create an AST ternary operator node
 AstNode* Ast::createNodeTernaryOperator(AstNode const* condition, AstNode const* truePart,
                                         AstNode const* falsePart) {
@@ -3088,11 +3099,11 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY);
-  TRI_ASSERT(node->numMembers() == 3);
+  TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3);
 
   AstNode* condition = node->getMember(0);
-  AstNode* truePart = node->getMember(1);
-  AstNode* falsePart = node->getMember(2);
+  AstNode* truePart = (node->numMembers() == 2) ? condition : node->getMember(1);
+  AstNode* falsePart = (node->numMembers() == 2) ? node->getMember(1) : node->getMember(2);
 
   if (condition == nullptr || truePart == nullptr || falsePart == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

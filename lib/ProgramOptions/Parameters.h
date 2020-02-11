@@ -36,6 +36,7 @@
 #include <numeric>
 #include <type_traits>
 #include <unordered_set>
+#include <stdexcept>
 
 namespace arangodb {
 namespace options {

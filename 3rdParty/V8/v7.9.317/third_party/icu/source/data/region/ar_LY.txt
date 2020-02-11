@@ -1,0 +1,10 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ar_LY{
+    Countries{
+        EA{"سبتة ومليلية"}
+        MS{"مونتيسيرات"}
+        UY{"أوروغواي"}
+    }
+    Version{"2.1.47.69"}
+}
