@@ -425,9 +425,9 @@ std::string Version::getVerboseVersionString() {
   std::ostringstream version;
 
   version << "ArangoDB " << ARANGODB_VERSION_FULL << " "
-          << (sizeof(void*) == 4 ? "32" : "64") << "bit"
+          << (sizeof(void*) == 4 ? "32" : "64") << "bit";
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          << " maintainer mode";
+  version << " maintainer mode";
 #endif
 
 #if defined(__SANITIZE_ADDRESS__)
@@ -438,15 +438,15 @@ std::string Version::getVerboseVersionString() {
 #endif
 #endif
 
-  version << ", using "
+  version << ", using ";
 #ifdef ARANGODB_HAVE_JEMALLOC
-          << "jemalloc, "
+  version << "jemalloc, ";
 #endif
 
 #ifdef HAVE_ARANGODB_BUILD_REPOSITORY
-          << "build " << getBuildRepository() << ", "
+  version << "build " << getBuildRepository() << ", ";
 #endif
-          << "VPack " << getVPackVersion() << ", "
+  version << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", " << getOpenSSLVersion(false);
