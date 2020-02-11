@@ -54,6 +54,7 @@ struct ExecutorTestHelper {
       : _expectedSkip{0},
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
+        _emptyOutput{false},
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
@@ -102,6 +103,11 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto expectEmptyOutput() -> ExecutorTestHelper& {
+    _emptyOutput = true;
+    return *this;
+  }
+
   template <typename... Ts>
   auto expectOutputValueList(Ts&&... ts) -> ExecutorTestHelper& {
     static_assert(outputColumns == 1);
@@ -145,6 +151,13 @@ struct ExecutorTestHelper {
 
     SharedAqlItemBlockPtr expectedOutputBlock =
         buildBlock<outputColumns>(itemBlockManager, std::move(_output));
+
+    if (result == nullptr) {
+      EXPECT_EQ(expectedOutputBlock, nullptr);
+      EXPECT_EQ(_emptyOutput, true);
+      return;
+    }
+
     testOutputBlock(result, expectedOutputBlock);
     if (_testStats) {
       auto actualStats = _query.engine()->getStats();
@@ -229,6 +242,7 @@ struct ExecutorTestHelper {
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
   bool _testStats;
+  bool _emptyOutput;
 
   SplitType _inputSplit = {std::monostate()};
   SplitType _outputSplit = {std::monostate()};
