@@ -34,6 +34,7 @@
 #include "Utils/OperationResult.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/Validators.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -327,6 +328,9 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
+  void validators(VPackBuilder&) const;
+  Result validate(VPackSlice new_, bool validate) const; // insert
+  Result validate(VPackSlice new_, VPackSlice old_, bool validate) const; // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -339,6 +343,8 @@ class LogicalCollection : public LogicalDataSource {
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;
+
+  Result updateValidators(VPackSlice validatorArray);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
@@ -399,6 +405,11 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
+
+  using ValidatorVec = std::vector<std::unique_ptr<arangodb::ValidatorBase>>;
+  // `_validators` must be used with atomic accessors only!!
+  // We use relaxed access (load/store) as we only care about atomicity.
+  std::shared_ptr<ValidatorVec> _validators;
 };
 
 }  // namespace arangodb

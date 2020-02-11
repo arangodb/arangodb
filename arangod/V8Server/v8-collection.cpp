@@ -1897,6 +1897,12 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
           TRI_ObjectToBoolean(isolate, optionsObject->Get(context, WaitForSyncKey).FromMaybe(v8::Local<v8::Value>()));
     }
 
+    TRI_GET_GLOBAL_STRING(SkipDocumentValidationKey);
+    if (TRI_HasProperty(context, isolate, optionsObject, SkipDocumentValidationKey)) {
+      options.validate =
+          !TRI_ObjectToBoolean(isolate, optionsObject->Get(context, SkipDocumentValidationKey).FromMaybe(v8::Local<v8::Value>()));
+    }
+
     TRI_GET_GLOBAL_STRING(OverwriteKey);
     if (!options.overwrite && TRI_HasProperty(context, isolate, optionsObject, OverwriteKey)) {
       options.overwrite = TRI_ObjectToBoolean(isolate, optionsObject->Get(context, OverwriteKey).FromMaybe(v8::Local<v8::Value>()));
@@ -1948,6 +1954,12 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   } else {
     options.waitForSync = ExtractBooleanArgument(isolate, args, optsIdx + 1);
   }
+
+  LOG_DEVEL << "#################";
+  LOG_DEVEL << "v8-collection insert";
+  LOG_DEVEL << options;
+  LOG_DEVEL << "#################";
+
 
   if (!args[docIdx]->IsObject()) {
     // invalid value type. must be a document

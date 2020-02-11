@@ -196,6 +196,7 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
 
   // in.ignoreErrors;
   out.waitForSync = in.waitForSync;
+  out.validate = in.validate;
   out.keepNull = !in.nullMeansRemove;
   out.mergeObjects = in.mergeObjects;
   // in.ignoreDocumentNotFound;

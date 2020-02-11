@@ -1110,6 +1110,8 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(std::string con
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     arangodb::velocypack::Slice parameters) {
   // check that the name does not contain any strange characters
+  //
+
   if (!IsAllowedName(parameters)) {
     std::string name;
     std::string const& dbName = _info.getName();
@@ -1117,6 +1119,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
       name = VelocyPackHelper::getStringValue(parameters,
                                               StaticStrings::DataSourceName, "");
     }
+
     events::CreateCollection(dbName, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -1136,6 +1139,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: cid may be modified by this function call
+  LOG_DEVEL << "vocbase.cpp - createCollection - merge: " << parameters.toJson();
   auto collection = createCollectionWorker(parameters);
 
   if (collection == nullptr) {
@@ -1143,7 +1147,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-  auto res2 = engine->persistCollection(*this, *collection);
+
+  auto res2 = engine->persistCollection(*this, *collection); //MMFiles Only
   // API compatibility, we always return the collection,
   // even if creation failed.
 

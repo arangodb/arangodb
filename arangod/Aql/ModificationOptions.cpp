@@ -23,6 +23,7 @@
 
 #include "ModificationOptions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -32,10 +33,11 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice) {
   VPackSlice obj = slice.get("modificationFlags");
 
   ignoreErrors = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false);
-  waitForSync = basics::VelocyPackHelper::getBooleanValue(obj, "waitForSync", false);
+  waitForSync = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::WaitForSyncString, false);
+  validate = !basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::SkipDocumentValidation, false);
   nullMeansRemove =
       basics::VelocyPackHelper::getBooleanValue(obj, "nullMeansRemove", false);
-  mergeObjects = basics::VelocyPackHelper::getBooleanValue(obj, "mergeObjects", true);
+  mergeObjects = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::MergeObjectsString, true);
   ignoreDocumentNotFound =
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreDocumentNotFound", false);
   readCompleteInput =
@@ -44,23 +46,24 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice) {
   consultAqlWriteFilter =
       basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
   exclusive = basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
-  overwrite = basics::VelocyPackHelper::getBooleanValue(obj, "overwrite", false);
+  overwrite = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::OverWrite, false);
   overwriteModeUpdate = basics::VelocyPackHelper::getBooleanValue(obj, "overwriteModeUpdate", false);
-  ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreRevs", true);
+  ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IgnoreRevsString , true);
 }
 
 void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("ignoreErrors", VPackValue(ignoreErrors));
-  builder.add("waitForSync", VPackValue(waitForSync));
+  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
+  builder.add(StaticStrings::SkipDocumentValidation, VPackValue(!validate));
   builder.add("nullMeansRemove", VPackValue(nullMeansRemove));
-  builder.add("mergeObjects", VPackValue(mergeObjects));
+  builder.add(StaticStrings::MergeObjectsString, VPackValue(mergeObjects));
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
   builder.add("readCompleteInput", VPackValue(readCompleteInput));
   builder.add("useIsRestore", VPackValue(useIsRestore));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
-  builder.add("overwrite", VPackValue(overwrite));
+  builder.add(StaticStrings::OverWrite, VPackValue(overwrite));
   builder.add("overwriteModeUpdate", VPackValue(overwriteModeUpdate));
-  builder.add("ignoreRevs", VPackValue(ignoreRevs));
+  builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
 }

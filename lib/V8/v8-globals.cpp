@@ -89,6 +89,7 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
       OperationIDKey(),
       OverwriteKey(),
       OverwriteModeKey(),
+      SkipDocumentValidationKey(),
       ParametersKey(),
       PathKey(),
       PrefixKey(),
@@ -188,6 +189,7 @@ TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServ
   OperationIDKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "operationID"));
   OverwriteKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwrite"));
   OverwriteModeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwriteMode"));
+  SkipDocumentValidationKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "skipDocumentValidation"));
   ParametersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "parameters"));
   PathKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "path"));
   PrefixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "prefix"));

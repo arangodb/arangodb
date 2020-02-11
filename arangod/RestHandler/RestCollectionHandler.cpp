@@ -332,6 +332,7 @@ void RestCollectionHandler::handleCommandPost() {
     }
   }
 
+
   // for some "security" a whitelist of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
       body, std::unordered_set<std::string>{"doCompact",
@@ -354,9 +355,12 @@ void RestCollectionHandler::handleCommandPost() {
                                             StaticStrings::ReplicationFactor,
                                             StaticStrings::MinReplicationFactor, // deprecated
                                             StaticStrings::WriteConcern,
+                                            StaticStrings::Validators,
                                             "servers"
                                           });
   VPackSlice const parameters = filtered.slice();
+
+  LOG_DEVEL << "RestCollectionHandler POST - filtered params" << parameters.toJson();
 
   // now we can create the collection
   std::string const& name = nameSlice.copyString();

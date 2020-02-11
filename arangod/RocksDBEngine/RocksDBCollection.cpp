@@ -801,6 +801,17 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
 
   VPackSlice newSlice = builder->slice();
+
+  LOG_DEVEL << "#################";
+  LOG_DEVEL << "RocksDBEngine insert";
+  LOG_DEVEL << options;
+  LOG_DEVEL << "#################";
+
+  res = _logicalCollection.validate(newSlice, options.validate);
+  if (res.fail()) {
+    return res;
+  }
+
   if (options.overwrite) {
     // special optimization for the overwrite case:
     // in case the operation is a RepSert, we will first check if the specified
@@ -930,6 +941,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     return res;
   }
 
+
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
@@ -938,6 +950,11 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
     if (arangodb::smartJoinAttributeChanged(_logicalCollection, oldDoc, builder->slice(), true)) {
       return res.reset(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE);
     }
+  }
+
+  res = _logicalCollection.validate(builder->slice(), oldDoc, options.validate);
+  if (res.fail()) {
+    return res;
   }
 
   VPackSlice const newDoc(builder->slice());
@@ -1041,6 +1058,12 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   VPackSlice const newDoc(builder->slice());
+
+  res = _logicalCollection.validate(newDoc, oldDoc, options.validate);
+  if (res.fail()) {
+    return res;
+  }
+
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   auto* state = RocksDBTransactionState::toState(trx);
