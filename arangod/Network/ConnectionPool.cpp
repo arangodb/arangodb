@@ -42,7 +42,7 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
       TRI_ASSERT(_config.minOpenConnections <= _config.maxOpenConnections);
     }
 
-ConnectionPool::~ConnectionPool() { shutdown(); }
+ConnectionPool::~ConnectionPool() { shutdownConnections(); }
 
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
@@ -65,6 +65,12 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
 /// @brief drain all connections
 void ConnectionPool::drainConnections() {
   WRITE_LOCKER(guard, _lock);
+  _connections.clear();
+}
+
+/// @brief shutdown all connections
+void ConnectionPool::shutdownConnections() {
+  WRITE_LOCKER(guard, _lock);
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);
@@ -72,12 +78,6 @@ void ConnectionPool::drainConnections() {
       c.fuerte->cancel();
     }
   }
-}
-
-/// @brief shutdown all connections
-void ConnectionPool::shutdown() {
-  WRITE_LOCKER(guard, _lock);
-  _connections.clear();
 }
 
 void ConnectionPool::removeBrokenConnections(Bucket& buck) {
@@ -181,6 +181,10 @@ size_t ConnectionPool::numOpenConnections() const {
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
   auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
   builder.idleTimeout(idle);
+  builder.verifyHost(_config.verifyHosts);
+  builder.protocolType(_config.protocol); // always overwrite protocol
+  TRI_ASSERT(builder.socketType() != SocketType::Undefined);
+  
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();
@@ -229,9 +233,6 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
 
   fuerte::ConnectionBuilder builder;
   builder.endpoint(endpoint); // picks the socket type
-  builder.verifyHost(_config.verifyHosts);
-  builder.protocolType(_config.protocol); // always overwrite protocol
-  TRI_ASSERT(builder.socketType() != SocketType::Undefined);
 
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   bucket.list.push_back(Context{fuerte, std::chrono::steady_clock::now()});

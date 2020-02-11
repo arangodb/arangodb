@@ -1,0 +1,432 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ha_NE{
+    Version{"2.1.48.77"}
+    zoneStrings{
+        "America:Adak"{
+            ec{"Adak"}
+        }
+        "America:Anchorage"{
+            ec{"Anchorage"}
+        }
+        "America:Anguilla"{
+            ec{"Anguilla"}
+        }
+        "America:Antigua"{
+            ec{"Antigua"}
+        }
+        "America:Aruba"{
+            ec{"Aruba"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"Bahia Banderas"}
+        }
+        "America:Barbados"{
+            ec{"Barbados"}
+        }
+        "America:Belize"{
+            ec{"Belize"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"Blanc-Sablon"}
+        }
+        "America:Boise"{
+            ec{"Boise"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"Cambridge Bay"}
+        }
+        "America:Cancun"{
+            ec{"Cancun"}
+        }
+        "America:Cayman"{
+            ec{"Cayman"}
+        }
+        "America:Chicago"{
+            ec{"Chicago"}
+        }
+        "America:Chihuahua"{
+            ec{"Chihuahua"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
+        }
+        "America:Costa_Rica"{
+            ec{"Costa Rica"}
+        }
+        "America:Creston"{
+            ec{"Creston"}
+        }
+        "America:Curacao"{
+            ec{"Curacao"}
+        }
+        "America:Danmarkshavn"{
+            ec{"Danmarkshavn"}
+        }
+        "America:Dawson"{
+            ec{"Dawson"}
+        }
+        "America:Dawson_Creek"{
+            ec{"Dawson Creek"}
+        }
+        "America:Denver"{
+            ec{"Denver"}
+        }
+        "America:Detroit"{
+            ec{"Detroit"}
+        }
+        "America:Dominica"{
+            ec{"Dominica"}
+        }
+        "America:Edmonton"{
+            ec{"Edmonton"}
+        }
+        "America:El_Salvador"{
+            ec{"El Salvador"}
+        }
+        "America:Fort_Nelson"{
+            ec{"Fort Nelson"}
+        }
+        "America:Glace_Bay"{
+            ec{"Glace Bay"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
+        }
+        "America:Goose_Bay"{
+            ec{"Goose Bay"}
+        }
+        "America:Grand_Turk"{
+            ec{"Grand Turk"}
+        }
+        "America:Grenada"{
+            ec{"Grenada"}
+        }
+        "America:Guadeloupe"{
+            ec{"Guadeloupe"}
+        }
+        "America:Guatemala"{
+            ec{"Guatemala"}
+        }
+        "America:Halifax"{
+            ec{"Halifax"}
+        }
+        "America:Havana"{
+            ec{"Havana"}
+        }
+        "America:Hermosillo"{
+            ec{"Hermosillo"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
+        "America:Indianapolis"{
+            ec{"Indianapolis"}
+        }
+        "America:Inuvik"{
+            ec{"Inuvik"}
+        }
+        "America:Iqaluit"{
+            ec{"Iqaluit"}
+        }
+        "America:Jamaica"{
+            ec{"Jamaica"}
+        }
+        "America:Juneau"{
+            ec{"Juneau"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Kralendijk"{
+            ec{"Kralendijk"}
+        }
+        "America:Los_Angeles"{
+            ec{"Los Angeles"}
+        }
+        "America:Louisville"{
+            ec{"Louisville"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince’s Quarter"}
+        }
+        "America:Managua"{
+            ec{"Managua"}
+        }
+        "America:Marigot"{
+            ec{"Marigot"}
+        }
+        "America:Martinique"{
+            ec{"Martinique"}
+        }
+        "America:Matamoros"{
+            ec{"Matamoros"}
+        }
+        "America:Mazatlan"{
+            ec{"Mazatlan"}
+        }
+        "America:Menominee"{
+            ec{"Menominee"}
+        }
+        "America:Merida"{
+            ec{"Merida"}
+        }
+        "America:Metlakatla"{
+            ec{"Metlakatla"}
+        }
+        "America:Mexico_City"{
+            ec{"Mexico City"}
+        }
+        "America:Miquelon"{
+            ec{"Miquelon"}
+        }
+        "America:Moncton"{
+            ec{"Moncton"}
+        }
+        "America:Monterrey"{
+            ec{"Monterrey"}
+        }
+        "America:Montserrat"{
+            ec{"Montserrat"}
+        }
+        "America:Nassau"{
+            ec{"Nassau"}
+        }
+        "America:New_York"{
+            ec{"New York"}
+        }
+        "America:Nipigon"{
+            ec{"Nipigon"}
+        }
+        "America:Nome"{
+            ec{"Nome"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, North Dakota"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, North Dakota"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, North Dakota"}
+        }
+        "America:Ojinaga"{
+            ec{"Ojinaga"}
+        }
+        "America:Panama"{
+            ec{"Panama"}
+        }
+        "America:Pangnirtung"{
+            ec{"Pangnirtung"}
+        }
+        "America:Phoenix"{
+            ec{"Phoenix"}
+        }
+        "America:Port-au-Prince"{
+            ec{"Port-au-Prince"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Port of Spain"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Puerto Rico"}
+        }
+        "America:Rainy_River"{
+            ec{"Rainy River"}
+        }
+        "America:Rankin_Inlet"{
+            ec{"Rankin Inlet"}
+        }
+        "America:Regina"{
+            ec{"Regina"}
+        }
+        "America:Resolute"{
+            ec{"Resolute"}
+        }
+        "America:Santo_Domingo"{
+            ec{"Santo Domingo"}
+        }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
+        "America:Sitka"{
+            ec{"Sitka"}
+        }
+        "America:St_Barthelemy"{
+            ec{"St. Barthelemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "America:Swift_Current"{
+            ec{"Swift Current"}
+        }
+        "America:Tegucigalpa"{
+            ec{"Tegucigalpa"}
+        }
+        "America:Thule"{
+            ec{"Thule"}
+        }
+        "America:Thunder_Bay"{
+            ec{"Thunder Bay"}
+        }
+        "America:Tijuana"{
+            ec{"Tijuana"}
+        }
+        "America:Toronto"{
+            ec{"Toronto"}
+        }
+        "America:Tortola"{
+            ec{"Tortola"}
+        }
+        "America:Vancouver"{
+            ec{"Vancouver"}
+        }
+        "America:Whitehorse"{
+            ec{"Whitehorse"}
+        }
+        "America:Winnipeg"{
+            ec{"Winnipeg"}
+        }
+        "America:Yakutat"{
+            ec{"Yakutat"}
+        }
+        "America:Yellowknife"{
+            ec{"Yellowknife"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bermuda"}
+        }
+        "Etc:UTC"{
+            ls{"Hadewa duniya lokaci"}
+        }
+        "Etc:Unknown"{
+            ec{"Birni da ba a sani ba"}
+        }
+        "meta:Alaska"{
+            ld{"Lokaci rana ta Alaska"}
+            lg{"Lokaci ta Alaska"}
+            ls{"Ida Lokaci ta Alaska"}
+        }
+        "meta:America_Central"{
+            ld{"Lokaci rana dake Amurika arewa ta tsakiyar"}
+            lg{"Lokaci dake Amurika arewa ta tsakiyar"}
+            ls{"Ida Lokaci dake Amurika arewa ta tsakiyar"}
+        }
+        "meta:America_Eastern"{
+            ld{"Lokaci rana a arewacin da Amirka"}
+            lg{"Lokaci gabas a arewacin da Amirka"}
+            ls{"Lokaci daidai ta ce a arewacin da Amirka"}
+        }
+        "meta:America_Mountain"{
+            ld{"Lokaci rana tsauni a arewacin da Amirka"}
+            lg{"Lokaci tsauni a arewacin da Amirka"}
+            ls{"Lokacin daidai ta ce tsauni a arewacin da Amirka"}
+        }
+        "meta:America_Pacific"{
+            ld{"Ida Amurika da arewa a lokaci rana"}
+            lg{"Amurika da arewa a lokaci lafiya"}
+            ls{"Ida Amurika da arewa a lokaci lafiya"}
+        }
+        "meta:Atlantic"{
+            ld{"Lokaci rana da amfani da shi Kanada, Puerto rico da Virgin Islands"}
+            lg{"Lokaci da Kanada, Puerto Rico da Virgin Islands"}
+            ls{"Ida Lokaci da Kanada, Puerto Rico da Virgin Islands"}
+        }
+        "meta:Cuba"{
+            ld{"Lokaci rana ta Kuba"}
+            lg{"Lokaci ta Kuba"}
+            ls{"Ida Lokaci ta Kuba"}
+        }
+        "meta:Europe_Central"{
+            ld{"Tsakiyar bazara a lokaci turai"}
+            lg{"Tsakiyar a lokaci turai"}
+            ls{"Ida Tsakiyar a Lokaci Turai"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Gabas a lokaci turai da bazara"}
+            lg{"Lokaci a turai gabas"}
+            ls{"Ida lokaci a turai gabas"}
+        }
+        "meta:Europe_Western"{
+            ld{"Ida lokaci ta yammacin turai da bazara"}
+            lg{"Lokaci ta yammacin turai"}
+            ls{"Ida lokaci ta yammacin turai"}
+        }
+        "meta:GMT"{
+            ls{"Lokacin Greenwhich a London"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Lokaci rana a gabas ta Greeland"}
+            lg{"Lokaci a gabas ta Greeland"}
+            ls{"Ida Lokaci a gabas ta Greeland"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Lokaci rana a yammacin ta Greeland"}
+            lg{"Lokaci a yammacin ta Greeland"}
+            ls{"Ida Lokaci a yammacin ta Greeland"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Lokaci rana ta Hawaii-Aleutian"}
+            lg{"Lokaci ta Hawaii-Aleutian"}
+            ls{"Ida Lokaci ta Hawaii-Aleutian"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"Lokaci rana a arewa da yammacin ta Mesiko"}
+            lg{"Lokaci a arewa da yammacin ta Mesiko"}
+            ls{"Ida Lokaci a arewa da yammacin ta Mesiko"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Lokaci rana a lafiya ta Mesiko"}
+            lg{"Lokaci a lafiya ta Mesiko"}
+            ls{"Ida Lokaci a lafiya ta Mesiko"}
+        }
+        "meta:Newfoundland"{
+            ld{"Lokaci rana ta Newfoundland"}
+            lg{"Lokaci ta Newfoundland"}
+            ls{"Ida Lokaci ta Newfoundland"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Lokaci rana ta St. Pierre da Miquelon"}
+            lg{"Lokaci ta St. Pierre da Miquelon"}
+            ls{"Ida Lokaci ta St. Pierre da Miquelon"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0} Lokaci"}
+        regionFormatDaylight{"{0} Lokaci rana"}
+        regionFormatStandard{"{0} Daidai ta ce lokaci"}
+    }
+}

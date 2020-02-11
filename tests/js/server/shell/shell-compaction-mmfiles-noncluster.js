@@ -33,6 +33,7 @@ var internal = require('internal');
 var testHelper = require('@arangodb/test-helper').Helper;
 var ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
 const console = require('console');
+const cn = 'UnitTestsCompaction';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite: collection
@@ -68,7 +69,7 @@ function waitForCompaction(collection, initialFigures, nrTries, wait) {
         return true;
       }
     }
-    internal.wait(wait);
+    internal.wait(wait, false);
     tries++;
   }
   return false;
@@ -77,24 +78,29 @@ function waitForCompaction(collection, initialFigures, nrTries, wait) {
 function CompactionSuite () {
   'use strict';
   return {
+    setUp : function () {
+      internal.db._drop(cn);
+    },
+
+    tearDown : function () {
+      internal.db._drop(cn);
+    },
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief create movement of shapes
     // //////////////////////////////////////////////////////////////////////////////
 
     testShapesMovement: function () {
-      var collectionName = 'example';
       const ndocs = 10000;
       const nrRubbish = 250000;
 
-      internal.db._drop(collectionName);
-
-      var cn = internal.db._create(collectionName, {
+      let collection = internal.db._create(cn, {
         'journalSize': 1048576
       });
       var x, i, j, doc;
 
 
-      const initialFigures = cn.figures();
+      const initialFigures = collection.figures();
 
       for (i = 0; i < ndocs; ++i) {
         doc = {
@@ -110,12 +116,12 @@ function CompactionSuite () {
           x['foo' + i] = [ '1' ];
         }
         doc.atts.foo = x;
-        cn.save(doc);
+        collection.save(doc);
       }
 
       // now access the documents once, to build the shape accessors
       for (i = 0; i < ndocs; ++i) {
-        doc = cn.document('old' + i);
+        doc = collection.document('old' + i);
 
         assertTrue(doc.hasOwnProperty('a'));
         assertEqual(i, doc.a);
@@ -136,25 +142,25 @@ function CompactionSuite () {
 
       // fill the datafile with rubbish
       for (i = 0; i < nrRubbish; ++i) {
-        cn.save({
+        collection.save({
           _key: 'test' + i,
           value: 'thequickbrownfox'
         });
       }
 
       for (i = 0; i < nrRubbish; ++i) {
-        cn.remove('test' + i);
+        collection.remove('test' + i);
       }
 
       /* we wait for a compaction to occur */
-      if (waitForCompaction(cn, initialFigures, 100, 1) === false) {
+      if (waitForCompaction(collection, initialFigures, 100, 1) === false) {
           throw "No compaction occurred!";
       }
-      assertEqual(ndocs, cn.count());
+      assertEqual(ndocs, collection.count());
 
       // now access the 'old' documents, which were probably moved
       for (i = 0; i < ndocs; ++i) {
-        doc = cn.document('old' + i);
+        doc = collection.document('old' + i);
 
         assertTrue(doc.hasOwnProperty('a'));
         assertEqual(i, doc.a);
@@ -172,8 +178,6 @@ function CompactionSuite () {
           assertEqual([ '1' ], doc.atts.foo['foo' + i]);
         }
       }
-
-      internal.db._drop(collectionName);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -183,8 +187,6 @@ function CompactionSuite () {
     testShapes1: function () {
       const nrRubbish = 10000;
       const nrShapes = 10000;
-      var cn = 'example';
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -244,8 +246,6 @@ function CompactionSuite () {
         assertEqual('test' + (i + 1), doc['string' + i]);
         assertEqual(i % 2 !== 0, doc['bool' + i]);
       }
-
-      internal.db._drop(cn);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -253,8 +253,6 @@ function CompactionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testShapes2: function () {
-      var cn = 'example';
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -323,8 +321,6 @@ function CompactionSuite () {
         middle: 'foo'
       }, doc.name);
       assertEqual(22, doc.age);
-
-      internal.db._drop(cn);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -332,8 +328,6 @@ function CompactionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testShapesUnloadReload: function () {
-      var cn = 'example';
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, { 'journalSize': 1048576 });
       const initialFigures = c1.figures();
 
@@ -421,8 +415,6 @@ function CompactionSuite () {
         assertEqual('test' + i, doc['string' + i]);
         assertEqual(i % 2 === 0, doc['bool' + i]);
       }
-
-      internal.db._drop(cn);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -430,8 +422,6 @@ function CompactionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testJournals: function () {
-      var cn = 'example';
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -555,8 +545,6 @@ function CompactionSuite () {
       assertEqual(0, c1.count());
       assertEqual(0, fig['alive']['count']);
       assertEqual(0, fig['alive']['size']);
-
-      c1.drop();
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -566,7 +554,6 @@ function CompactionSuite () {
     testFiguresTruncate: function () {
       var i;
       var maxWait;
-      var cn = 'example';
       var n = 400;
       var payload = 'the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox. boom bang.';
 
@@ -574,7 +561,6 @@ function CompactionSuite () {
         payload += payload;
       }
 
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -629,8 +615,6 @@ function CompactionSuite () {
       assertEqual(0, fig['dead']['count']);
       assertEqual(0, fig['dead']['size']);
       assertEqual(0, fig['dead']['deletion']);
-
-      internal.db._drop(cn);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -639,7 +623,6 @@ function CompactionSuite () {
 
     testFiguresNoCompact: function () {
       var maxWait;
-      var cn = 'example';
       var n = 400;
       var i;
       var payload = 'the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox. boom bang.';
@@ -648,7 +631,6 @@ function CompactionSuite () {
         payload += payload;
       }
 
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576,
         'doCompact': false
@@ -741,8 +723,6 @@ function CompactionSuite () {
         internal.wait(1);
       }
       assertEqual(1, fig['journals']['count']);
-
-      internal.db._drop(cn);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -752,7 +732,6 @@ function CompactionSuite () {
     testDocumentPresence: function () {
       var maxWait;
       var waited;
-      var cn = 'example';
       var n = 20000;
       var i;
       var payload = 'the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox';
@@ -761,7 +740,6 @@ function CompactionSuite () {
         payload += payload;
       }
 
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -838,7 +816,7 @@ function CompactionSuite () {
       maxWait = 10000;
       console.log("Waiting for dead.deletion === 0 and dead.count === 0");
       while (waited < maxWait) {
-        internal.wait(2);
+        internal.wait(2, false);
         waited += 2;
 
         fig = c1.figures();
@@ -848,15 +826,12 @@ function CompactionSuite () {
       }
 
       fig = c1.figures();
-      assertEqual(0, c1.count());
-      assertEqual(0, fig['alive']['count']);
-      assertEqual(0, fig['dead']['count']);
-      assertEqual(0, fig['dead']['size']);
-      assertEqual(0, fig['dead']['deletion']);
-      assertEqual(0, fig['journals']['count']);
-      assertEqual(0, fig['datafiles']['count']);
-
-      internal.db._drop(cn);
+      assertEqual(0, c1.count(), fig);
+      assertEqual(0, fig['alive']['count'], fig);
+      assertEqual(0, fig['dead']['count'], fig);
+      assertEqual(0, fig['dead']['size'], fig);
+      assertEqual(0, fig['dead']['deletion'], fig);
+      assertEqual(0, fig['journals']['count'], fig);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -868,7 +843,6 @@ function CompactionSuite () {
 
     testCompactAfterTruncate: function () {
       var maxWait;
-      var cn = 'example';
       var n = 400;
       var i;
       var payload = 'the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox';
@@ -877,7 +851,6 @@ function CompactionSuite () {
         payload += payload;
       }
 
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -902,11 +875,11 @@ function CompactionSuite () {
       }
 
       assertEqual(n, c1.count());
-      assertEqual(n, fig['alive']['count']);
-      assertEqual(0, fig['dead']['count']);
-      assertEqual(0, fig['dead']['deletion']);
-      assertEqual(1, fig['journals']['count']);
-      assertTrue(fig['datafiles']['count'] > 0);
+      assertEqual(n, fig['alive']['count'], fig);
+      assertEqual(0, fig['dead']['count'], fig);
+      assertEqual(0, fig['dead']['deletion'], fig);
+      assertEqual(1, fig['journals']['count'], fig);
+      assertTrue(fig['datafiles']['count'] > 0, fig);
 
       // truncation will go fully into the journal...
       internal.wal.flush(true, true);
@@ -926,9 +899,9 @@ function CompactionSuite () {
         internal.wait(1, false);
       }
 
-      assertEqual(0, c1.count());
-      assertEqual(0, fig['alive']['count']);
-      assertEqual(n, fig['dead']['deletion']);
+      assertEqual(0, c1.count(), fig);
+      assertEqual(0, fig['alive']['count'], fig);
+      assertEqual(n, fig['dead']['deletion'], fig);
 
       if (waitForCompaction(c1, initialFigures, 100, 1) === false) {
         throw "No compaction occurred!";
@@ -936,14 +909,12 @@ function CompactionSuite () {
 
       fig = c1.figures();
 
-      assertEqual(0, c1.count());
+      assertEqual(0, c1.count(), fig);
       // all alive & dead markers should be gone
-      assertEqual(0, fig['alive']['count']);
-      assertEqual(0, fig['dead']['count']);
+      assertEqual(0, fig['alive']['count'], fig);
+      assertEqual(0, fig['dead']['count'], fig);
       // we should still have all the deletion markers
-      assertTrue(n >= fig['dead']['deletion']);
-
-      internal.db._drop(cn);
+      assertTrue(n >= fig['dead']['deletion'], fig);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -951,13 +922,11 @@ function CompactionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCompactionAfterUpdateSingleDatafile: function () {
-      var cn = 'example';
       var n = 2000;
       var i;
       var fig;
       var payload = 'the quick brown fox jumped over the lazy dog.';
 
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -987,7 +956,7 @@ function CompactionSuite () {
       }
 
       fig = c1.figures();
-      assertTrue(fig.dead.count > 0);
+      assertTrue(fig.dead.count > 0, fig);
 
       internal.wal.flush(true, true);
       internal.wal.waitForCollector(cn);
@@ -1013,8 +982,6 @@ function CompactionSuite () {
         assertEqual(payload + ', isn\'t that nice?', doc.payload);
         assertTrue(doc.updated);
       }
-
-      internal.db._drop(cn);
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1022,13 +989,11 @@ function CompactionSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCompactionAfterUpdateMultipleDatafiles: function () {
-      var cn = 'example';
       var n = 2000;
       var i;
       var fig;
       var payload = 'the quick brown fox jumped over the lazy dog.';
 
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -1098,19 +1063,14 @@ function CompactionSuite () {
       }
 
       assertEqual(0, c1.figures().dead.count);
-
-      internal.db._drop(cn);
     },
 
     testCompactionRunsAndStatistics: function () {
-      var cn = 'example';
-
       var payload = 'the quick brown fox jumped over the lazy dog.';
 
       var i = 0;
       for (i = 0; i < 5; i++) payload += payload;
 
-      internal.db._drop(cn);
       var c1 = internal.db._create(cn, {
         'journalSize': 1048576
       });
@@ -1156,8 +1116,6 @@ function CompactionSuite () {
       internal.wal.waitForCollector(cn);
 
       assertEqual(c1.figures().compactionStatus.count, fig.compactionStatus.count + 1);
-
-      internal.db._drop(cn);
     }
   };
 }

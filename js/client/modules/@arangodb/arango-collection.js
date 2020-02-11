@@ -128,6 +128,19 @@ let appendSyncParameter = function (url, waitForSync) {
   return url;
 };
 
+let appendOverwriteModeParameter = function (url, mode) {
+  if (mode) {
+    if (url.indexOf('?') === -1) {
+      url += '?';
+    }else {
+      url += '&';
+    }
+    url += 'overwriteMode=' + mode;
+  }
+  return url;
+};
+
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief append some boolean parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
@@ -964,11 +977,23 @@ ArangoCollection.prototype.save =
       url = appendBoolParameter(url, 'overwrite', options.overwrite);
     }
 
+    if (options.overwriteMode) {
+      url = appendOverwriteModeParameter(url, options.overwriteMode);
+
+      if (options.keepNull) {
+        url = appendBoolParameter(url, 'keepNull', options.keepNull);
+      }
+
+      if (options.mergeObjects !== undefined) {
+        url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects);
+      }
+    }
+
     let headers = {};
     if (options.transactionId) {
       headers['x-arango-trx-id'] = options.transactionId;
     }
-    
+
     if (data === undefined || typeof data !== 'object') {
       throw new ArangoError({
         errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
@@ -1215,7 +1240,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   if (rev !== null && !ignoreRevs) {
     headers['if-match'] = JSON.stringify(rev);
   }
-  
+
   let requestResult = this._database._connection.PUT(url, data, headers);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {

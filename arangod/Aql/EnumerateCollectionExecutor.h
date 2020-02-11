@@ -64,7 +64,6 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
       Collection const* collection, Variable const* outVariable, bool produceResult,
       Expression* filter,
       std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions,
       bool useRawDocumentPointers, bool random);
 
   EnumerateCollectionExecutorInfos() = delete;
@@ -79,7 +78,6 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   transaction::Methods* getTrxPtr() const;
   Expression* getFilter() const;
   std::vector<std::string> const& getProjections() const noexcept;
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
   bool getProduceResult() const;
   bool getUseRawDocumentPointers() const;
   bool getRandom() const;
@@ -91,7 +89,6 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   std::vector<std::string> const& _projections;
-  std::vector<size_t> const& _coveringIndexAttributePositions;
   RegisterId _outputRegisterId;
   bool _useRawDocumentPointers;
   bool _produceResult;
@@ -133,12 +130,6 @@ class EnumerateCollectionExecutor {
 
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
-
-  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
-
-  /// @brief whether or not we are allowed to use the covering index
-  /// optimization in a callback
-  bool getAllowCoveringIndexOptimization() const noexcept;
 
  private:
   Infos& _infos;

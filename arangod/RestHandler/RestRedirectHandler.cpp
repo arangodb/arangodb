@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestRedirectHandler.h"
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
