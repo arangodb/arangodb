@@ -4144,6 +4144,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       return result;
     }
 
+    std::vector<std::string> dummy;
     BackupMeta meta(backupId, "", timeStamp, 0, 0,
                     static_cast<unsigned int>(dbServers.size()), "", !gotLocks);  // Temporary
     result = hotBackupDBServers(backupId, timeStamp, dbServers, agency->slice(),
@@ -4155,7 +4156,6 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
                    std::string("failed to hot backup on all db servers: ") +
                        result.errorMessage());
       LOG_TOPIC("6b333", ERR, Logger::BACKUP) << result.errorMessage();
-      std::vector<std::string> dummy;
       removeLocalBackups(backupId, dbServers, dummy);
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
@@ -4167,11 +4167,13 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     auto agencyCheck = std::make_shared<VPackBuilder>();
     result = ci->agencyPlan(agencyCheck);
     if (!result.ok()) {
+      if (!allowInconsistent) {
+        removeLocalBackups(pool, backupId, dbServers, dummy);
+      }
       ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                    std::string("failed to acquire agency dump post backup: ") +
-                       result.errorMessage() +
-                       " backup's consistency is not guaranteed");
+                       result.errorMessage() + " backup's consistency is not guaranteed");
       LOG_TOPIC("d4229", ERR, Logger::BACKUP) << result.errorMessage();
       events::CreateHotbackup(timeStamp + "_" + backupId, result.errorNumber());
       return result;
@@ -4180,6 +4182,9 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     try {
       if (!basics::VelocyPackHelper::equal(agency->slice()[0].get(versionPath),
                                            agencyCheck->slice()[0].get(versionPath), false)) {
+        if (!allowInconsistent) {
+          removeLocalBackups(pool, backupId, dbServers, dummy);
+        }
         result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                      "data definition of cluster was changed during hot "
                      "backup: backup's consistency is not guaranteed");

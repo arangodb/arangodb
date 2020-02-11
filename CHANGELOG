@@ -1,6 +1,9 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Clear backups from DB servers and agency, when plan unchanged not
+  met and not allowing for inconsistency.
+
 * Fixed `console.log(...)` not logging when called inside arangosh.
 
   Curiously, `require("console").log(...)` still worked from arangosh. This
