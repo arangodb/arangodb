@@ -11,6 +11,14 @@ devel
   This issue caused spurious "Could not integrate into cluster" error messages
   when starting coordinators.
 
+* Fixed issue #11051: AQL query wrongfully returning no results on 3.6.1.
+
+  This change prevents the "late-document-materialization" optimizer rule from
+  kicking in in cases when an index scan also uses early pruning of index
+  entries. In this case, the late document materialization will lead to the
+  filter condition used in early pruning not being applied correctly, potentially
+  producing wrong results.
+
 * Fixed internal issue #596: Added ability to disable DNF conversion in SEARCH
   condition for ArangoSearch views. As this conversion might result in
   overcomplicated disjunction and heavily slowdown execution.
