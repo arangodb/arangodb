@@ -6548,17 +6548,24 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
 
   bool havePadValue = parameters.size() == 4;
 
-  if (offset.isNull(true) || offset.toInt64() < 0) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
-  }
-  uint64_t replaceOffset = static_cast<uint64_t>(offset.toInt64());
-
   if (!baseArray.isArray()) {
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
   
-  if (baseArray.length() < replaceOffset && !havePadValue) {
+  if (offset.isNull(true)) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
+  }
+  auto length = baseArray.length();
+  uint64_t replaceOffset;
+  int64_t posParam = offset.toInt64();
+  if (posParam >= 0) {
+    replaceOffset = static_cast<uint64_t>(posParam);
+  } else {
+    replaceOffset = (static_cast<int64_t>(length) + posParam < 0) ? 0: static_cast<uint64_t>(length +  posParam);
+  }
+
+  if (length < replaceOffset && !havePadValue) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
 
@@ -6579,8 +6586,8 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext, transaction
     it.next();
   }
 
-  uint64_t pos = arraySlice.length();
-  if (replaceOffset >= baseArray.length()) {
+  uint64_t pos = length;
+  if (replaceOffset >= length) {
     VPackSlice paddVpValue = materializer.slice(paddValue, false);
     while (pos < replaceOffset) {
       builder->add(paddVpValue);
