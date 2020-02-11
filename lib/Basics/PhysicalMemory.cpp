@@ -37,6 +37,10 @@
 #include <mach/vm_map.h>
 #endif
 
+#if defined(TRI_HAVE_MACOS_MEM_STATS)
+#include <sys/sysctl.h>
+#endif
+
 #ifdef _WIN32
 #include <windows.h>
 #endif
