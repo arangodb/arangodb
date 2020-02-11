@@ -1,6 +1,11 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Fixed `console.log(...)` not logging when called inside arangosh.
+
+  Curiously, `require("console").log(...)` still worked from arangosh. This
+  bugfix makes both versions work again.
+
 * Clean out server job checks preconditions plan version unchanged for start.
 
 * Fixed issue #10949: k shortest paths behaviour wrong with zero weights.
