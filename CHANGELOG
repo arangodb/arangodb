@@ -1,6 +1,9 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Clear backups from DB servers and agency, when plan unchanged not
+  met and not allowing for inconsistency.
+
 * Fixed issue #11051: AQL query wrongfully returning no results on 3.6.1.
 
   This change prevents the "late-document-materialization" optimizer rule from
@@ -11,7 +14,7 @@ v3.6.2 (XXXX-XX-XX)
 
 * Fixed `console.log(...)` not logging when called inside arangosh.
 
-  Curiously, `require("console").log(...)` still worked from arangosh. This 
+  Curiously, `require("console").log(...)` still worked from arangosh. This
   bugfix makes both versions work again.
 
 * Fixed internal issue #596: Added ability to disable DNF conversion in SEARCH
