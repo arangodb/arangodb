@@ -801,12 +801,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
 
   VPackSlice newSlice = builder->slice();
-
-  LOG_DEVEL << "#################";
-  LOG_DEVEL << "RocksDBEngine insert";
-  LOG_DEVEL << options;
-  LOG_DEVEL << "#################";
-
   res = _logicalCollection.validate(newSlice, options.validate);
   if (res.fail()) {
     return res;

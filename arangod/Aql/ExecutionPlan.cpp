@@ -754,9 +754,6 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
     }
   }
 
-  LOG_DEVEL << "@@@@@@@@@@@@ in AQL";
-  LOG_DEVEL << "validate: " << std::boolalpha <<options.validate;
-
   return options;
 }
 

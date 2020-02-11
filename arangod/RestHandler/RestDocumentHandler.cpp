@@ -171,12 +171,6 @@ RestStatus RestDocumentHandler::insertDocument() {
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
 
-  LOG_DEVEL << "#################";
-  LOG_DEVEL << "RestDocumentHandler insert - OperationOptions";
-  LOG_DEVEL << opOptions;
-  LOG_DEVEL << _request->arrayValues();
-  LOG_DEVEL << "#################";
-
   std::string const& mode = _request->value(StaticStrings::OverWriteMode);
   using namespace std::literals::string_literals;
   if (mode == "update"s) {
@@ -450,11 +444,6 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
-
-  LOG_DEVEL << "#################";
-  LOG_DEVEL << "RestDocumentHandler modifyDocument - OperationOptions";
-  LOG_DEVEL << opOptions;
-  LOG_DEVEL << "#################";
 
   // extract the revision, if single document variant and header given:
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;

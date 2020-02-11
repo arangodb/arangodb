@@ -1955,12 +1955,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     options.waitForSync = ExtractBooleanArgument(isolate, args, optsIdx + 1);
   }
 
-  LOG_DEVEL << "#################";
-  LOG_DEVEL << "v8-collection insert";
-  LOG_DEVEL << options;
-  LOG_DEVEL << "#################";
-
-
   if (!args[docIdx]->IsObject()) {
     // invalid value type. must be a document
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);

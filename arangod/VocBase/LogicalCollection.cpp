@@ -258,7 +258,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 }
 
 Result LogicalCollection::updateValidators(VPackSlice validatorArray) {
-  LOG_DEVEL << "LogicalCollection::LogicalCollection - validators: " << validatorArray.toJson();
   if(validatorArray.isNone()) {
     return { TRI_ERROR_NO_ERROR };
   } else if(validatorArray.isArray()) {

@@ -2329,7 +2329,6 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
   // etc. It is not used anywhere and will be cleaned up after this call.
   std::vector<std::shared_ptr<LogicalCollection>> cols;
   for (VPackSlice p : VPackArrayIterator(parameters)) {
-    LOG_DEVEL << "create collection in cluster" << p.toJson();
     cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true, 0));
   }
 
@@ -2473,8 +2472,6 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy =
           col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
-
-      LOG_DEVEL << "ClusterMethods" << velocy.slice().toJson();
 
       auto const serverState = ServerState::instance();
       infos.emplace_back(ClusterCollectionCreationInfo{

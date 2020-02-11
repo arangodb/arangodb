@@ -360,8 +360,6 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
   VPackSlice const infoSlice = builder.slice();
 
-  LOG_DEVEL << "MethodsCollections - infoSlice: " <<  infoSlice.toJson();
-
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   TRI_ASSERT(infoSlice.isArray());
   TRI_ASSERT(infoSlice.length() >= 1);

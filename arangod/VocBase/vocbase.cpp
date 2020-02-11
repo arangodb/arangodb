@@ -1110,7 +1110,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(std::string con
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     arangodb::velocypack::Slice parameters) {
   // check that the name does not contain any strange characters
-  //
 
   if (!IsAllowedName(parameters)) {
     std::string name;
@@ -1139,7 +1138,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: cid may be modified by this function call
-  LOG_DEVEL << "vocbase.cpp - createCollection - merge: " << parameters.toJson();
   auto collection = createCollectionWorker(parameters);
 
   if (collection == nullptr) {

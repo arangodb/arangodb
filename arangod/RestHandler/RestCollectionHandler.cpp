@@ -360,8 +360,6 @@ void RestCollectionHandler::handleCommandPost() {
                                           });
   VPackSlice const parameters = filtered.slice();
 
-  LOG_DEVEL << "RestCollectionHandler POST - filtered params" << parameters.toJson();
-
   // now we can create the collection
   std::string const& name = nameSlice.copyString();
   _builder.clear();
