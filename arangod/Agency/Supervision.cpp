@@ -1008,10 +1008,18 @@ void Supervision::handleShutdown() {
   }
 }
 
+std::unordered_map<ServerID, uint64_t> serverCleanUp(Node const& snapshot) {
+  std::unordered_map<ServerID, uint64_t> plannedServers;
+  for (auto const& serverId : snapshot("/arango/Plan/DBServers").children()) {
+    plannedServers.emplace(std::pair<ServerID, uint64_t>{serverId.first, 0});
+  }
+  return plannedServers;
+}
+
 void Supervision::cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
                                          uint64_t& jobId) {
   std::unordered_set<std::string> failedServers;
-
+  
   // Search for failed server
   //  Could also use `Target/FailedServers`
   auto const& health = snapshot.hasAsChildren(healthPrefix);
