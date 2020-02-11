@@ -431,7 +431,7 @@ message(${V8_GYP_ARGS})
     CONFIGURE_COMMAND
       ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
     BUILD_COMMAND
-      ${MAKE} ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
+      $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
     STEP_TARGETS
       v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot mksnapshot v8_snapshot
     INSTALL_COMMAND
