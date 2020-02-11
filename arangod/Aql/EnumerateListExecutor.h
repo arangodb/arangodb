@@ -87,7 +87,7 @@ class EnumerateListExecutor {
   using Infos = EnumerateListExecutorInfos;
   using Stats = NoStats;
 
-  EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos&);
+  EnumerateListExecutor(Fetcher&, EnumerateListExecutorInfos&);
   ~EnumerateListExecutor() = default;
 
   /**
@@ -136,9 +136,7 @@ class EnumerateListExecutor {
 
  private:
   EnumerateListExecutorInfos& _infos;
-  Fetcher& _fetcher;
   InputAqlItemRow _currentRow;
-  ExecutionState _rowState;
   ExecutorState _currentRowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;

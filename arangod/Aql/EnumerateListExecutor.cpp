@@ -24,7 +24,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateListExecutor.h"
-#include <Logger/LogMacros.h>
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
@@ -73,84 +72,11 @@ RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
 }
 
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
-    : _infos(infos),
-      _fetcher(fetcher),
-      _currentRow{CreateInvalidInputRowHint{}},
-      _rowState(ExecutionState::HASMORE),
-      _inputArrayPosition(0),
-      _inputArrayLength(0) {}
+    : _infos(infos), _currentRow{CreateInvalidInputRowHint{}}, _inputArrayPosition(0), _inputArrayLength(0) {}
 
 std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
-  while (true) {
-    // HIT in first run, because pos and length are initialized
-    // both with 0
-
-    if (_inputArrayPosition == _inputArrayLength) {
-      // we need to set position back to zero
-      // because we finished iterating over existing array
-      // element and need to refetch another row
-      // _inputArrayPosition = 0;
-      if (_rowState == ExecutionState::DONE) {
-        return {_rowState, NoStats{}};
-      }
-      initialize();
-      std::tie(_rowState, _currentRow) = _fetcher.fetchRow();
-      if (_rowState == ExecutionState::WAITING) {
-        return {_rowState, NoStats{}};
-      }
-    }
-
-    if (!_currentRow.isInitialized()) {
-      TRI_ASSERT(_rowState == ExecutionState::DONE);
-      return {_rowState, NoStats{}};
-    }
-
-    AqlValue const& inputList = _currentRow.getValue(_infos.getInputRegister());
-
-    if (_inputArrayPosition == 0) {
-      // store the length into a local variable
-      // so we don't need to calculate length every time
-      if (inputList.isDocvec()) {
-        _inputArrayLength = inputList.docvecSize();
-      } else {
-        if (!inputList.isArray()) {
-          throwArrayExpectedException(inputList);
-        }
-        _inputArrayLength = inputList.length();
-      }
-    }
-
-    if (_inputArrayLength == 0) {
-      continue;
-    } else if (_inputArrayLength == _inputArrayPosition) {
-      // we reached the end, forget all state
-      initialize();
-
-      if (_rowState == ExecutionState::HASMORE) {
-        continue;
-      } else {
-        return {_rowState, NoStats{}};
-      }
-    } else {
-      bool mustDestroy;
-      AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
-      AqlValueGuard guard(innerValue, mustDestroy);
-
-      TRI_IF_FAILURE("EnumerateListBlock::getSome") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      output.moveValueInto(_infos.getOutputRegister(), _currentRow, guard);
-
-      // set position to +1 for next iteration after new fetchRow
-      _inputArrayPosition++;
-
-      if (_inputArrayPosition < _inputArrayLength || _rowState == ExecutionState::HASMORE) {
-        return {ExecutionState::HASMORE, NoStats{}};
-      }
-      return {ExecutionState::DONE, NoStats{}};
-    }
-  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 void EnumerateListExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
