@@ -260,42 +260,36 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 Result LogicalCollection::updateValidators(VPackSlice validatorArray) {
   if(validatorArray.isNone()) {
     return { TRI_ERROR_NO_ERROR };
-  } else if(validatorArray.isArray()) {
+  } else if (!validatorArray.isArray()) {
     return { TRI_ERROR_BAD_PARAMETER, "Validators are not given in an array."};
   }
 
-  try {
-    std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
-    for(VPackSlice validatorSlice : VPackArrayIterator(validatorArray)) {
-      if(!validatorSlice.isObject()){
-        return {TRI_ERROR_BAD_PARAMETER, "Validator description is not an object."};
-      }
-
-      std::unique_ptr<ValidatorBase> validator;
-      auto typeSlice = validatorSlice.get(StaticStrings::ValidatorParameterType);
-      if(typeSlice.isNone()) {
-        validator = std::make_unique<ValidatorAQL>(validatorSlice);
-      } else if (typeSlice.isString()) {
-        if (typeSlice.compareString(StaticStrings::ValidatorTypeAQL)) {
-          validator = std::make_unique<ValidatorAQL>(validatorSlice);
-        } else if (typeSlice.compareString(StaticStrings::ValidatorTypeBool)) {
-          validator = std::make_unique<ValidatorBool>(validatorSlice);
-        } else {
-          return {TRI_ERROR_BAD_PARAMETER, "Validator type '" + typeSlice.copyString() + "' is not supported."};
-        }
-      } else {
-        return {TRI_ERROR_BAD_PARAMETER, "Validator type is not a string."};
-      }
-
-      newVec->push_back(std::move(validator));
+  std::shared_ptr<ValidatorVec> newVec = std::make_shared<ValidatorVec>();
+  for(VPackSlice validatorSlice : VPackArrayIterator(validatorArray)) {
+    if(!validatorSlice.isObject()){
+      return {TRI_ERROR_BAD_PARAMETER, "Validator description is not an object."};
     }
 
-    std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
-  } catch (arangodb::basics::Exception const& ex){
-    return {ex.code(), ex.message()};
-  } catch (std::exception const& ex){
-    return {TRI_ERROR_BAD_PARAMETER, ex.what()};
+    std::unique_ptr<ValidatorBase> validator;
+    auto typeSlice = validatorSlice.get(StaticStrings::ValidatorParameterType);
+    if(typeSlice.isNone()) {
+      validator = std::make_unique<ValidatorAQL>(validatorSlice);
+    } else if (typeSlice.isString()) {
+      if (typeSlice.compareString(StaticStrings::ValidatorTypeAQL)) {
+        validator = std::make_unique<ValidatorAQL>(validatorSlice);
+      } else if (typeSlice.compareString(StaticStrings::ValidatorTypeBool)) {
+        validator = std::make_unique<ValidatorBool>(validatorSlice);
+      } else {
+        return {TRI_ERROR_BAD_PARAMETER, "Validator type '" + typeSlice.copyString() + "' is not supported."};
+      }
+    } else {
+      return {TRI_ERROR_BAD_PARAMETER, "Validator type is not a string."};
+    }
+
+    newVec->push_back(std::move(validator));
   }
+
+  std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
 
   return { TRI_ERROR_NO_ERROR };
 };
@@ -715,7 +709,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // Validators
   {
     result.add(VPackValue(StaticStrings::Validators));
-    validators(result);
+    validatorsToVelocyPack(result);
   }
 
   // Cluster Specific
@@ -1121,7 +1115,7 @@ VPackSlice LogicalCollection::keyOptions() const {
   return VPackSlice(_keyOptions->data());
 }
 
-void LogicalCollection::validators(VPackBuilder& b) const {
+void LogicalCollection::validatorsToVelocyPack(VPackBuilder& b) const {
   VPackArrayBuilder guard(&b);
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   for(auto const& validator : *vals) {
@@ -1129,23 +1123,21 @@ void LogicalCollection::validators(VPackBuilder& b) const {
   }
 }
 
-Result LogicalCollection::validate(VPackSlice s, bool validate) const {
-  if (!validate) { return {}; }
+Result LogicalCollection::validate(VPackSlice s) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   for(auto const& validator : *vals) {
-    if(!validator->validate(s, VPackSlice::noneSlice(), ValidatorOperation::INSERT)) {
-      return {TRI_ERROR_BAD_PARAMETER, "validation failed: " + validator->message() };
+    if(!validator->validate(s, VPackSlice::noneSlice(), true)) {
+      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
     }
   }
   return {};
 }
 
-Result LogicalCollection::validate(VPackSlice new_, VPackSlice old_, bool validate) const {
-  if (!validate) { return {}; }
+Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   for(auto const& validator : *vals) {
-    if(!validator->validate(new_, old_, ValidatorOperation::UPDATE)) {
-      return {TRI_ERROR_BAD_PARAMETER, "validation failed: " + validator->message() };
+    if(!validator->validate(modifiedDoc, oldDoc, false)) {
+      return {TRI_ERROR_VALIDATION_FAILED, "validation failed: " + validator->message() };
     }
   }
   return {};

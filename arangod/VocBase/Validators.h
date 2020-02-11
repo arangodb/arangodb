@@ -33,45 +33,39 @@
 
 namespace arangodb {
 
-enum class ValidatorLevel {
-  NONE = 0,
-  NEW = 1,
-  MODERATE = 2,
-  STRICT = 3,
-};
-
-enum class ValidatorOperation {
-  INSERT = 0,
-  UPDATE = 1,
-  REPLACE = 2,
+enum class ValidationLevel {
+  None = 0,
+  New = 1,
+  Moderate = 2,
+  Strict = 3,
 };
 
 struct ValidatorBase {
-  ValidatorBase(VPackSlice params);
+  explicit ValidatorBase(VPackSlice params);
   virtual ~ValidatorBase() = default;
 
-  bool validate(VPackSlice new_, VPackSlice old_, ValidatorOperation op) const;
+  bool validate(VPackSlice new_, VPackSlice old_, bool isInsert) const;
   void toVelocyPack(VPackBuilder&) const;
   virtual std::string const& type() const = 0;
-  std::string const& message() const { return this->_message; };
+  std::string const& message() const { return this->_message; }
 
  protected:
   virtual bool validateDerived(VPackSlice slice) const = 0;
   virtual void toVelocyPackDerived(VPackBuilder&) const = 0;
 
   std::string _message;
-  ValidatorLevel _level;
+  ValidationLevel _level;
 };
 
 struct ValidatorAQL : public ValidatorBase {
-  ValidatorAQL(VPackSlice params);
+  explicit ValidatorAQL(VPackSlice params);
   bool validateDerived(VPackSlice slice) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
   std::string const& type() const override;
 };
 
 struct ValidatorBool : public ValidatorBase {
-  ValidatorBool(VPackSlice params);
+  explicit ValidatorBool(VPackSlice params);
   bool validateDerived(VPackSlice slice) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
   std::string const& type() const override;

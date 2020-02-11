@@ -1,17 +1,40 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Christoph Uhde
+////////////////////////////////////////////////////////////////////////////////
+
 #include "Validators.h"
 #include <Basics/StaticStrings.h>
 
 namespace arangodb {
 
-std::string_view to_view(ValidatorLevel level) {
+std::string_view to_view(ValidationLevel level) {
   switch (level) {
-    case ValidatorLevel::NONE:
+    case ValidationLevel::None:
       return StaticStrings::ValidatorLevelNone;
-    case ValidatorLevel::NEW:
+    case ValidationLevel::New:
       return StaticStrings::ValidatorLevelNew;
-    case ValidatorLevel::MODERATE:
+    case ValidationLevel::Moderate:
       return StaticStrings::ValidatorLevelModerate;
-    case ValidatorLevel::STRICT:
+    case ValidationLevel::Strict:
       return StaticStrings::ValidatorLevelStrict;
   }
   TRI_ASSERT(false);
@@ -20,59 +43,59 @@ std::string_view to_view(ValidatorLevel level) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-ValidatorBase::ValidatorBase(VPackSlice params) {
+ValidatorBase::ValidatorBase(VPackSlice params) : _level(ValidationLevel::Strict) {
   // parse message
-  _message = "";
   auto msgSlice = params.get(StaticStrings::ValidatorParameterMessage);
   if (msgSlice.isString()) {
     this->_message = msgSlice.copyString();
   }
 
   // parse level
-  _level = ValidatorLevel::STRICT;  // default as defined in design document
   auto levelSlice = params.get(StaticStrings::ValidatorParameterLevel);
   if (levelSlice.isString()) {
     if (levelSlice.compareString(StaticStrings::ValidatorLevelNone) == 0) {
-      this->_level = ValidatorLevel::NONE;
+      this->_level = ValidationLevel::None;
     } else if (levelSlice.compareString(StaticStrings::ValidatorLevelNew) == 0) {
-      this->_level = ValidatorLevel::NEW;
+      this->_level = ValidationLevel::New;
     } else if (levelSlice.compareString(StaticStrings::ValidatorLevelModerate) == 0) {
-      this->_level = ValidatorLevel::MODERATE;
+      this->_level = ValidationLevel::Moderate;
     } else if (levelSlice.compareString(StaticStrings::ValidatorLevelStrict) == 0) {
-      this->_level = ValidatorLevel::STRICT;
+      this->_level = ValidationLevel::Strict;
     }
   }
-};
+}
 
-bool ValidatorBase::validate(VPackSlice new_, VPackSlice old_, ValidatorOperation op) const {
-  // This function performs the validation depending on operation (insert /
-  // update / replace) and requested validation level (NONE / INSERT / NEW /
-  // STRICT / MODERATE).
-  if (this->_level == ValidatorLevel::NONE) {
+bool ValidatorBase::validate(VPackSlice new_, VPackSlice old_, bool isInsert) const {
+  // This function performs the validation depending on operation (Insert /
+  // Update / Replace) and requested validation level (None / Insert / New /
+  // Strict / Moderate).
+  if (this->_level == ValidationLevel::None) {
     return true;
   }
 
-  if (op == ValidatorOperation::INSERT) {
+  if (isInsert) {
     return this->validateDerived(new_);
-  } else /* update replace case */ {
-    if (this->_level == ValidatorLevel::NEW) {
-      // Level NEW is for insert only.
-      return true;
-    } else if (this->_level == ValidatorLevel::STRICT) {
-      // Changed document must be good!
-      return validateDerived(new_);
-    } else /* ValidatorLevel::MODERATE */ {
-      // Changed document must be good IIF the unmodified
-      // document passed validation.
-      return (this->validateDerived(new_) || !this->validateDerived(old_));
-    }
   }
 
-  return false;
+  /* update replace case */
+  if (this->_level == ValidationLevel::New) {
+    // Level NEW is for insert only.
+    return true;
+  }
+
+  if (this->_level == ValidationLevel::Strict) {
+    // Changed document must be good!
+    return validateDerived(new_);
+  }
+
+  TRI_ASSERT(this->_level == ValidationLevel::Moderate);
+  // Changed document must be good IIF the unmodified
+  // document passed validation.
+  return (this->validateDerived(new_) || !this->validateDerived(old_));
 }
 
 void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
-  VPackObjectBuilder gurad(&b);
+  VPackObjectBuilder guard(&b);
   auto view = to_view(this->_level);
   b.add(StaticStrings::ValidatorParameterLevel,
         VPackValuePair(view.data(), view.length()));
@@ -102,6 +125,6 @@ bool ValidatorAQL::validateDerived(VPackSlice slice) const { return true; }
 void ValidatorAQL::toVelocyPackDerived(VPackBuilder& b) const {}
 std::string const& ValidatorAQL::type() const {
   return StaticStrings::ValidatorTypeAQL;
-};
+}
 
 }  // namespace arangodb

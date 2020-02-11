@@ -328,9 +328,9 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
-  void validators(VPackBuilder&) const;
-  Result validate(VPackSlice new_, bool validate) const; // insert
-  Result validate(VPackSlice new_, VPackSlice old_, bool validate) const; // update / replace
+  void validatorsToVelocyPack(VPackBuilder&) const;
+  Result validate(VPackSlice newDoc) const; // insert
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc) const; // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -380,7 +380,7 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool const _isSmart;
 #endif
-  
+
   // SECTION: Properties
   bool _waitForSync;
 

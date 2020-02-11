@@ -1191,7 +1191,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
       waitForSync = options.waitForSync;
     }
 
-    if (! options.hasOwnProperty('skipDocumentValidation')) {
+    if (!options.hasOwnProperty('skipDocumentValidation')) {
       options.skipDocumentValidation = false;
     }
   } else {
@@ -1362,9 +1362,6 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = appendSyncParameter(url, waitForSync);
   }
 
-  if (options.skipDocumentValidation) {
-    url = appendBoolParameter(url, 'skipDocumentValidation', options.skipDocumentValidation);
-  }
   if (options.returnOld) {
     url = appendBoolParameter(url, 'returnOld', options.returnOld);
   }
