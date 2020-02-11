@@ -119,11 +119,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       if (!indexNode->canApplyLateDocumentMaterializationRule() || indexNode->isLateMaterialized()) {
         continue; // loop is already optimized
       }
-      auto producingNode = dynamic_cast<DocumentProducingNode const*>(loop);
-      if (producingNode == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast IndexNode to ProducingNode");
-      }
-      if (producingNode->hasFilter()) {
+      if (indexNode->hasFilter()) {
         // IndexNode has an early pruning filter. In this case we cannot perform the optimization
         continue;
       }
