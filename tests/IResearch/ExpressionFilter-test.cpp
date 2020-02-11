@@ -200,12 +200,6 @@ struct custom_sort : public irs::sort {
       score_cast(score) = irs::doc_limits::invalid();
     }
 
-    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
-      if (sort_.scorer_add) {
-        sort_.scorer_add(score_cast(dst), score_cast(src));
-      }
-    }
-
     virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
       const size_t size, size_t offset) const  override {
       auto& casted_dst = score_cast(dst + offset);

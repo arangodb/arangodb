@@ -599,7 +599,7 @@ void H2Connection<T>::queueHttp2Requests() {
                                uint8_t* buf, size_t length, uint32_t* data_flags,
                                nghttp2_data_source* source,
                                void* user_data) -> ssize_t {
-          auto strm = static_cast<H2Connection<T>::Stream*>(source->ptr);
+          auto strm = static_cast<typename H2Connection<T>::Stream*>(source->ptr);
 
           auto payload = strm->request->payload();
 
