@@ -862,7 +862,6 @@ bool H2Connection<T>::shouldStop() const {
 // ping ensures server does not close the connection
 template <SocketType T>
 void H2Connection<T>::startPing() {
-#if 0
   _ping.expires_after(std::chrono::seconds(30));
 
   _ping.async_wait([self(Connection::weak_from_this())](auto const& ec) {
@@ -881,7 +880,6 @@ void H2Connection<T>::startPing() {
     me.doWrite();   // signal write
     me.startPing(); // do again in 30s
   });
-#endif
 }
 
 template class arangodb::fuerte::v1::http::H2Connection<SocketType::Tcp>;

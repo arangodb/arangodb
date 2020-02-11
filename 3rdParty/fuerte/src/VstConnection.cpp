@@ -203,6 +203,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
                                "authorization message failed");
       this->drainQueue(Error::CouldNotConnect);
     } else {
+      _writing.store(true);
       asyncWriteCallback(ec, item, nsend);
     }
   };
@@ -235,6 +236,7 @@ void VstConnection<ST>::startWriting() {
 
   asio_ns::post(*this->_io_context,
                 [self = Connection::shared_from_this(), this] {
+                  FUERTE_ASSERT(_writing.load());
                   // we have been in a race with shutdownConnection()
                   Connection::State state = this->_state.load();
                   if (state != Connection::State::Connected) {
@@ -314,6 +316,7 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
       item->_callback(err, std::move(item->_request), nullptr);
     } catch (...) {
     }
+    
     // Stop current connection and try to restart a new one.
     this->restartConnection(err);
     return;
@@ -352,6 +355,7 @@ void VstConnection<ST>::startReading() {
 // asyncReadCallback is called when asyncReadSome is resulting in some data.
 template <SocketType ST>
 void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
+  FUERTE_ASSERT(_reading.load());
   if (ec) {
     FUERTE_LOG_VSTTRACE
         << "asyncReadCallback: Error while reading from socket: "
