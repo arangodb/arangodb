@@ -104,11 +104,9 @@ std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t at
 // TODO Remove me, we are using the getSome skip variant here.
 std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  ExecutorState state = ExecutorState::HASMORE;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
   size_t skipped = 0;
   while (inputRange.hasDataRow() && skipped < call.getOffset()) {
-    std::tie(state, input) = inputRange.nextDataRow();
+    auto const [unused, input] = inputRange.nextDataRow();
     if (!input) {
       TRI_ASSERT(!inputRange.hasDataRow());
       break;
@@ -121,7 +119,7 @@ std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
 
   AqlCall upstreamCall{};
   upstreamCall.softLimit = call.getOffset();
-  return {state, skipped, upstreamCall};
+  return {inputRange.upstreamState(), skipped, upstreamCall};
 }
 
 std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
