@@ -48,6 +48,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Rest/Version.h"
 
 #ifndef _WIN32
 namespace {
@@ -69,7 +70,9 @@ void appendNullTerminatedString(char const* src, char*& dst) {
 size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize) {
   // build a crash message
   char* p = s;
-  appendNullTerminatedString("thread ", p);
+  appendNullTerminatedString("ArangoDB ", p);
+  appendNullTerminatedString(ARANGODB_VERSION_FULL, p);
+  appendNullTerminatedString(", thread ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
   
 #ifdef __linux__

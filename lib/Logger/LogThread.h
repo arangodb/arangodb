@@ -59,7 +59,8 @@ class LogThread final : public Thread {
   // wake up the log thread from the outside
   void wakeup() noexcept;
  
- private:
+  // handle all queued messages - normally this should not be called
+  // by anyone, except from the crash handler
   void processPendingMessages();
 
  private:

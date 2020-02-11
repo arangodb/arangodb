@@ -65,6 +65,8 @@ static std::string const INFO = "INFO";
 static std::string const DEBUG = "DEBUG";
 static std::string const TRACE = "TRACE";
 static std::string const UNKNOWN = "UNKNOWN";
+
+std::string const LogThreadName("Logging");
 }  // namespace
 
 Mutex Logger::_initializeMutex;
@@ -423,7 +425,7 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
   TRI_ASSERT(_active);
   
   if (threaded) {
-    _loggingThread = std::make_unique<LogThread>(server, "Logging");
+    _loggingThread = std::make_unique<LogThread>(server, ::LogThreadName);
     if (!_loggingThread->start()) {
       LOG_TOPIC("28bd9", FATAL, arangodb::Logger::STATISTICS)
           << "could not start logging thread";
@@ -454,15 +456,24 @@ void Logger::shutdown() {
   if (_threaded) {
     _threaded = false;
 
-    // ignore all errors for now as we cannot log them anywhere...
-    int tries = 0;
-    while (_loggingThread->hasMessages() && ++tries < 1000) {
-      _loggingThread->wakeup();
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    _loggingThread->beginShutdown();
-    while (_loggingThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    char const* currentThreadName = Thread::currentThreadName();
+    if (currentThreadName != nullptr && ::LogThreadName == currentThreadName) {
+      // oops, the LogThread itself crashed...
+      // so we need to flush the log messages here ourselves - if we waited for
+      // the LogThread to flush them, we would wait forever.
+      _loggingThread->processPendingMessages();
+      _loggingThread->beginShutdown();
+    } else {
+      int tries = 0;
+      while (_loggingThread->hasMessages() && ++tries < 10) {
+        _loggingThread->wakeup();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
+      _loggingThread->beginShutdown();
+      // wait until logging thread has logged all active messages
+      while (_loggingThread->isRunning()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      }
     }
   }
 
