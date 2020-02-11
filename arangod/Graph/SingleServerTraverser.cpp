@@ -82,7 +82,7 @@ bool SingleServerTraverser::getVertex(VPackSlice edge, std::vector<arangodb::vel
   return _vertexGetter->getVertex(edge, result);
 }
 
-bool SingleServerTraverser::getSingleVertex(VPackSlice edge, arangodb::velocypack::StringRef const sourceVertexId,
+bool SingleServerTraverser::getSingleVertex(VPackSlice edge, arangodb::velocypack::StringRef sourceVertexId,
                                             uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) {
   return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
 }

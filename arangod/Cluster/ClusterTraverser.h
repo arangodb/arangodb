@@ -61,7 +61,7 @@ class ClusterTraverser final : public Traverser {
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  bool getSingleVertex(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef const sourceVertexId,
+  bool getSingleVertex(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef sourceVertexId,
                        uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) override;
 
   //////////////////////////////////////////////////////////////////////////////

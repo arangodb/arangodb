@@ -110,7 +110,6 @@ bool BreadthFirstEnumerator::next() {
     _tmpEdges.clear();
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx]->vertex;
-    arangodb::velocypack::StringRef vId;
 
     std::unique_ptr<EdgeCursor> cursor(
         _opts->nextCursor(nextVertex, _currentDepth));
@@ -136,6 +135,8 @@ bool BreadthFirstEnumerator::next() {
             return;
           }
         }
+
+        arangodb::velocypack::StringRef vId;
 
         if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
           if (_opts->uniqueVertices == TraverserOptions::UniquenessLevel::PATH) {

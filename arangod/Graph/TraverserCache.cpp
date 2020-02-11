@@ -22,11 +22,10 @@
 
 #include "TraverserCache.h"
 
-#include "Basics/StringHeap.h"
-#include "Basics/VelocyPackHelper.h"
-
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
+#include "Basics/StringHeap.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/BaseOptions.h"
@@ -51,8 +50,7 @@ TraverserCache::TraverserCache(aql::Query* query, BaseOptions const* opts)
       _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(4096), /* arbitrary block-size may be adjusted for performance */
-      _baseOptions(opts),
-      _produceVertices(_baseOptions->produceVertices()) {}
+      _baseOptions(opts) {}
 
 TraverserCache::~TraverserCache() = default;
 
@@ -87,7 +85,12 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   return VPackSlice(_mmdr.vpack());
 }
 
-VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id) {
+VPackSlice TraverserCache::lookupVertexInCollection(arangodb::velocypack::StringRef id) {
+  if (!_baseOptions->produceVertices()) {
+    // this traversal does not produce any vertices
+    return arangodb::velocypack::Slice::nullSlice();
+  }
+
   // TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
   if (pos == std::string::npos || pos + 1 == id.size()) {
@@ -96,7 +99,6 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
     TRI_ASSERT(false);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
   }
-
 
   std::string collectionName = id.substr(0, pos).toString();
 
@@ -113,19 +115,20 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
   if (res.ok()) {
     ++_insertedDocuments;
     return VPackSlice(_mmdr.vpack());
-  } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-    ++_insertedDocuments;
+  }
 
-    // Register a warning. It is okay though but helps the user
-    std::string msg = "vertex '" + id.toString() + "' not found";
-    _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
-
-    // This is expected, we may have dangling edges. Interpret as NULL
-    return arangodb::velocypack::Slice::nullSlice();
-  } else {
+  if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     // ok we are in a rather bad state. Better throw and abort.
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  ++_insertedDocuments;
+
+  // Register a warning. It is okay though but helps the user
+  std::string msg = "vertex '" + id.toString() + "' not found";
+  _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+  // This is expected, we may have dangling edges. Interpret as NULL
+  return arangodb::velocypack::Slice::nullSlice();
 }
 
 void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
@@ -135,11 +138,7 @@ void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
 }
 
 void TraverserCache::insertVertexIntoResult(arangodb::velocypack::StringRef idString, VPackBuilder& builder) {
-  if (_produceVertices) {
-    builder.add(lookupInCollection(idString));
-  } else {
-    builder.add(VPackSlice::nullSlice());
-  }
+  builder.add(lookupVertexInCollection(idString));
 }
 
 aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
@@ -148,13 +147,10 @@ aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToke
 }
 
 aql::AqlValue TraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
-  if (_produceVertices) {
-    return aql::AqlValue(lookupInCollection(idString));
-  } 
-  return aql::AqlValue(aql::AqlValueHintNull());
+  return aql::AqlValue(lookupVertexInCollection(idString));
 }
 
-arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef const idString) {
+arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef idString) {
   auto it = _persistedStrings.find(idString);
   if (it != _persistedStrings.end()) {
     return *it;

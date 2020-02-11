@@ -22,12 +22,12 @@
 
 #include "TraverserCacheFactory.h"
 
+#include "Cache/Cache.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserDocumentCache.h"
-#include "Logger/Logger.h"
-#include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -41,7 +41,14 @@ TraverserCache* cacheFactory::CreateCache(
     return new ClusterTraverserCache(query, engines, opts);
   }
   if (activateDocumentCache) {
-    return new TraverserDocumentCache(query, opts);
+    auto cacheManager = CacheManagerFeature::MANAGER;
+    if (cacheManager != nullptr) {
+      std::shared_ptr<arangodb::cache::Cache> cache = cacheManager->createCache(cache::CacheType::Plain);
+      if (cache != nullptr) {
+        return new TraverserDocumentCache(query, std::move(cache), opts);
+      }
+    }
+    // fallthrough intentional
   }
   return new TraverserCache(query, opts);
 }

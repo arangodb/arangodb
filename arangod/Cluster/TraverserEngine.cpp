@@ -59,7 +59,7 @@ static const std::string VERTICES = "vertices";
 /*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
     TRI_vocbase_t& vocbase, std::shared_ptr<transaction::Context> const& ctx,
     VPackSlice info, bool needToLock) {
-  VPackSlice type = info.get(std::vector<std::string>({"options", "type"}));
+  VPackSlice type = info.get(std::vector<std::string>({OPTIONS, TYPE}));
 
   if (!type.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -281,7 +281,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
                                          std::shared_ptr<transaction::Context> const& ctx,
                                          VPackSlice info, bool needToLock)
-    : BaseEngine(vocbase, ctx, info, needToLock), _opts(nullptr) {}
+    : BaseEngine(vocbase, ctx, info, needToLock) {}
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
@@ -360,7 +360,8 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
                                      "edge contains invalid value " + id.toString());
     }
-    ShardID shardName = id.substr(0, pos).toString();
+
+    std::string shardName = id.substr(0, pos).toString();
     auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
@@ -371,20 +372,23 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
       // Maybe handle differently
     }
 
-    arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
-    for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
-      if (res.ok()) {
-        // FOUND short circuit.
-        read++;
-        builder.add(v);
-        mmdr.addToBuilder(builder, true);
-        break;
-      } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // We are in a very bad condition here...
-        THROW_ARANGO_EXCEPTION(res);
+    if (_opts->produceVertices()) {
+      arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
+      for (std::string const& shard : shards->second) {
+        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
+        if (res.ok()) {
+          // FOUND short circuit.
+          read++;
+          builder.add(v);
+          mmdr.addToBuilder(builder, true);
+          break;
+        } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+          // We are in a very bad condition here...
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
     }
+
     // TODO FILTERING!
     // HOWTO Distinguish filtered vs NULL?
   };

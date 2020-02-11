@@ -110,7 +110,7 @@ class TraverserCache {
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef const idString);
+  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef idString);
 
   void increaseFilterCounter() { _filteredDocuments++; }
 
@@ -125,7 +125,7 @@ class TraverserCache {
   ///        The Slice returned here is only valid until the NEXT call of this
   ///        function.
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::Slice lookupInCollection(arangodb::velocypack::StringRef idString);
+  arangodb::velocypack::Slice lookupVertexInCollection(arangodb::velocypack::StringRef idString);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -167,10 +167,6 @@ class TraverserCache {
   std::unordered_set<arangodb::velocypack::StringRef> _persistedStrings;
 
   BaseOptions const* _baseOptions;
-
-  /// @brief whether or not the cache will lookup and return the actual vertices
-  /// or just Null slices
-  bool const _produceVertices;
 };
 
 }  // namespace graph

@@ -106,7 +106,7 @@ bool ClusterTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypa
 }
 
 bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge,
-                                       arangodb::velocypack::StringRef const sourceVertexId,
+                                       arangodb::velocypack::StringRef sourceVertexId,
                                        uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) {
   bool res = _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
   if (res) {
@@ -119,14 +119,20 @@ bool ClusterTraverser::getSingleVertex(arangodb::velocypack::Slice edge,
 }
 
 void ClusterTraverser::fetchVertices() {
-  auto ch = static_cast<ClusterTraverserCache*>(traverserCache());
-  ch->insertedDocuments() += _verticesToFetch.size();
-  fetchVerticesFromEngines(*_trx, _engines, _verticesToFetch, _vertices, ch->datalake(),
-                           /*forShortestPath*/ false);
-  _verticesToFetch.clear();
-  if (_enumerator != nullptr) {
-    _enumerator->incHttpRequests(_engines->size()); 
+  if (_opts->produceVertices()) {
+    auto ch = static_cast<ClusterTraverserCache*>(traverserCache());
+    ch->insertedDocuments() += _verticesToFetch.size();
+    fetchVerticesFromEngines(*_trx, _engines, _verticesToFetch, _vertices, ch->datalake(),
+                             /*forShortestPath*/ false);
+    if (_enumerator != nullptr) {
+      _enumerator->incHttpRequests(_engines->size()); 
+    }
+  } else {
+    for (auto const& it : _verticesToFetch) {
+      _vertices.emplace(it, VPackSlice::nullSlice());
+    }
   }
+  _verticesToFetch.clear();
 }
 
 aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef idString) {
