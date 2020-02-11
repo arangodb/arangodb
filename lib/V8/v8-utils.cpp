@@ -2727,7 +2727,7 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (hasData) {
     char c[3] = {0};
-    ssize_t n = TRI_READ(STDIN_FILENO, c, 3);
+    TRI_read_return_t n = TRI_READ(STDIN_FILENO, c, 3);
     if (n == 3) {  // arrow keys are garbled
       if (c[2] == 'D') {
         TRI_V8_RETURN(v8::Integer::New(isolate, 37));
