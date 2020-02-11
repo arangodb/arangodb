@@ -1115,7 +1115,7 @@ Result LogicalCollection::validate(VPackSlice s, bool validate) const {
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   for(auto const& validator : *vals) {
     if(!validator->validate(s, VPackSlice::noneSlice(), ValidatorOperation::INSERT)) {
-      return {TRI_ERROR_BAD_PARAMETER, "validation failed: " + validator->_message};
+      return {TRI_ERROR_BAD_PARAMETER, "validation failed: " + validator->message() };
     }
   }
   return {};
@@ -1126,7 +1126,7 @@ Result LogicalCollection::validate(VPackSlice new_, VPackSlice old_, bool valida
   auto vals = std::atomic_load_explicit(&_validators, std::memory_order_relaxed);
   for(auto const& validator : *vals) {
     if(!validator->validate(new_, old_, ValidatorOperation::UPDATE)) {
-      return {TRI_ERROR_BAD_PARAMETER, "validation failed: " + validator->_message};
+      return {TRI_ERROR_BAD_PARAMETER, "validation failed: " + validator->message() };
     }
   }
   return {};

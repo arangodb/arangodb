@@ -49,14 +49,18 @@ enum class ValidatorOperation {
 struct ValidatorBase {
   ValidatorBase(VPackSlice params);
   virtual ~ValidatorBase() = default;
+
   bool validate(VPackSlice new_, VPackSlice old_, ValidatorOperation op) const;
-  virtual bool validateDerived(VPackSlice slice) const = 0;
   void toVelocyPack(VPackBuilder&) const;
-  virtual void toVelocyPackDerived(VPackBuilder&) const = 0;
   virtual std::string const& type() const = 0;
+  std::string const& message() const { return this->_message; };
+
+ protected:
+  virtual bool validateDerived(VPackSlice slice) const = 0;
+  virtual void toVelocyPackDerived(VPackBuilder&) const = 0;
 
   std::string _message;
-  ValidatorLevel  _level;
+  ValidatorLevel _level;
 };
 
 struct ValidatorAQL : public ValidatorBase {
@@ -64,9 +68,6 @@ struct ValidatorAQL : public ValidatorBase {
   bool validateDerived(VPackSlice slice) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
   std::string const& type() const override;
-
-private:
-  void* _magic;
 };
 
 struct ValidatorBool : public ValidatorBase {
@@ -75,9 +76,9 @@ struct ValidatorBool : public ValidatorBase {
   void toVelocyPackDerived(VPackBuilder& b) const override;
   std::string const& type() const override;
 
-private:
+ private:
   bool _result;
 };
 
-} // namespace arangodb
+}  // namespace arangodb
 #endif
