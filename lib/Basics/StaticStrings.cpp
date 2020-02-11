@@ -304,6 +304,7 @@ std::string const StaticStrings::ValidatorLevelStrict("strict");
 
 std::string const StaticStrings::ValidatorParameterMessage("message");
 std::string const StaticStrings::ValidatorParameterLevel("level");
+std::string const StaticStrings::ValidatorParameterType("type");
 std::string const StaticStrings::ValidatorParameterRule("rule");
 
 std::string const StaticStrings::ValidatorTypeAQL("aql");

@@ -280,6 +280,7 @@ class StaticStrings {
 
   static std::string const ValidatorParameterMessage;
   static std::string const ValidatorParameterLevel;
+  static std::string const ValidatorParameterType;
   static std::string const ValidatorParameterRule;
 
   static std::string const ValidatorTypeAQL;

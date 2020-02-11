@@ -76,7 +76,8 @@ void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
   auto view = to_view(this->_level);
   b.add(StaticStrings::ValidatorParameterLevel,
         VPackValuePair(view.data(), view.length()));
-  b.add("type", VPackValuePair(this->type().data(), this->type().length()));
+  b.add(StaticStrings::ValidatorParameterType,
+        VPackValuePair(this->type().data(), this->type().length()));
   b.add(StaticStrings::ValidatorParameterMessage, VPackValue(_message));
   this->toVelocyPackDerived(b);
 }
