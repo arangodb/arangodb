@@ -23,13 +23,13 @@
 #ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_H
 #define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
 
-#include <memory>
-#include <unordered_set>
-
 #include "Basics/Common.h"
+#include "Basics/StringHeap.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/StringRef.h>
-#include <map>
+
+#include <unordered_set>
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -132,7 +132,7 @@ class TraverserCache {
   /// @brief Reusable ManagedDocumentResult that temporarily takes
   ///        responsibility for one document.
   //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
+  ManagedDocumentResult _mmdr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
@@ -158,7 +158,7 @@ class TraverserCache {
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
   ///        during the entire traversal.
   //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<arangodb::StringHeap> _stringHeap;
+  arangodb::StringHeap _stringHeap;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Set of all strings persisted in the stringHeap. So we can save some
@@ -167,6 +167,10 @@ class TraverserCache {
   std::unordered_set<arangodb::velocypack::StringRef> _persistedStrings;
 
   BaseOptions const* _baseOptions;
+
+  /// @brief whether or not the cache will lookup and return the actual vertices
+  /// or just Null slices
+  bool const _produceVertices;
 };
 
 }  // namespace graph

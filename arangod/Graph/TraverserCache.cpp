@@ -46,21 +46,20 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 TraverserCache::TraverserCache(aql::Query* query, BaseOptions const* opts)
-    : _mmdr(new ManagedDocumentResult{}),
-      _query(query),
+    : _query(query),
       _trx(query->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(new StringHeap{4096}), /* arbitrary block-size may be adjusted for performance */
-      _baseOptions(opts) {
-}
+      _stringHeap(4096), /* arbitrary block-size may be adjusted for performance */
+      _baseOptions(opts),
+      _produceVertices(_baseOptions->produceVertices()) {}
 
 TraverserCache::~TraverserCache() = default;
 
 void TraverserCache::clear() {
-  _stringHeap->clear();
+  _stringHeap.clear();
   _persistedStrings.clear();
-  _mmdr->clear();
+  _mmdr.clear();
 }
 
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
@@ -75,7 +74,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
+  if (!col->readDocument(_trx, idToken.localDocumentId(), _mmdr)) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
@@ -85,7 +84,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  return VPackSlice(_mmdr->vpack());
+  return VPackSlice(_mmdr.vpack());
 }
 
 VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id) {
@@ -110,10 +109,10 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
   }
 
   Result res = _trx->documentFastPathLocal(collectionName,
-                                           id.substr(pos + 1), *_mmdr, true);
+                                           id.substr(pos + 1), _mmdr, true);
   if (res.ok()) {
     ++_insertedDocuments;
-    return VPackSlice(_mmdr->vpack());
+    return VPackSlice(_mmdr.vpack());
   } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     ++_insertedDocuments;
 
@@ -136,7 +135,11 @@ void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
 }
 
 void TraverserCache::insertVertexIntoResult(arangodb::velocypack::StringRef idString, VPackBuilder& builder) {
-  builder.add(lookupInCollection(idString));
+  if (_produceVertices) {
+    builder.add(lookupInCollection(idString));
+  } else {
+    builder.add(VPackSlice::nullSlice());
+  }
 }
 
 aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
@@ -145,7 +148,10 @@ aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToke
 }
 
 aql::AqlValue TraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
-  return aql::AqlValue(lookupInCollection(idString));
+  if (_produceVertices) {
+    return aql::AqlValue(lookupInCollection(idString));
+  } 
+  return aql::AqlValue(aql::AqlValueHintNull());
 }
 
 arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypack::StringRef const idString) {
@@ -153,7 +159,7 @@ arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypa
   if (it != _persistedStrings.end()) {
     return *it;
   }
-  arangodb::velocypack::StringRef res = _stringHeap->registerString(idString.data(), idString.length());
+  arangodb::velocypack::StringRef res = _stringHeap.registerString(idString.data(), idString.length());
   _persistedStrings.emplace(res);
   return res;
 }

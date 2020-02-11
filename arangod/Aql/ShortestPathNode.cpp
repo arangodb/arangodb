@@ -140,12 +140,13 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t
 /// @brief Internal constructor to clone the node.
 ShortestPathNode::ShortestPathNode(
     ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+    TRI_edge_direction_e defaultDirection,
     std::vector<std::unique_ptr<Collection>> const& edgeColls,
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
     std::vector<TRI_edge_direction_e> const& directions, Variable const* inStartVariable,
     std::string const& startVertexId, Variable const* inTargetVariable,
     std::string const& targetVertexId, std::unique_ptr<BaseOptions> options)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
+    : GraphNode(plan, id, vocbase, defaultDirection, edgeColls, vertexColls, directions, std::move(options)),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
       _inTargetVariable(inTargetVariable),
@@ -302,7 +303,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls,
+  auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _defaultDirection, _edgeColls,
                                               _vertexColls, _directions, _inStartVariable,
                                               _startVertexId, _inTargetVariable,
                                               _targetVertexId, std::move(tmp));

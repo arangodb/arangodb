@@ -149,8 +149,8 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::M
     : _trx(trx),
       _startIdBuilder(),
       _done(true),
-      _opts(opts),
-      _canUseOptimizedNeighbors(false) {
+      _canUseOptimizedNeighbors(false),
+      _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {

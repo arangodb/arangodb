@@ -87,6 +87,7 @@ class TraversalNode : public GraphNode {
 
   /// @brief Internal constructor to clone the node.
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                TRI_edge_direction_e defaultDirection,
                 std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
                 std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
                 Variable const* inVariable, std::string const& vertexId,

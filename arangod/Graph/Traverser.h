@@ -317,11 +317,11 @@ class Traverser {
 
   /// @brief indicator if this traversal is done
   bool _done;
+  
+  bool _canUseOptimizedNeighbors;
 
   /// @brief options for traversal
   TraverserOptions* _opts;
-
-  bool _canUseOptimizedNeighbors;
 
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   virtual aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) = 0;

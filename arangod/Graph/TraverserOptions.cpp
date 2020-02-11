@@ -55,14 +55,7 @@ TraverserOptions::TraverserOptions(aql::Query* query)
       uniqueEdges(UniquenessLevel::PATH) {}
 
 TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
-    : BaseOptions(query),
-      _baseVertexExpression(nullptr),
-      _traverser(nullptr),
-      minDepth(1),
-      maxDepth(1),
-      useBreadthFirst(false),
-      uniqueVertices(UniquenessLevel::NONE),
-      uniqueEdges(UniquenessLevel::PATH) {
+    : TraverserOptions(query) {
   TRI_ASSERT(obj.isObject());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -244,7 +237,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& other)
-    : BaseOptions(other._query),
+    : BaseOptions(static_cast<BaseOptions const&>(other)),
       _baseVertexExpression(nullptr),
       _traverser(nullptr),
       minDepth(other.minDepth),
@@ -440,7 +433,7 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
 
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
                                               arangodb::velocypack::StringRef vertexId,
-                                              uint64_t depth, size_t cursorId) const {
+                                              uint64_t depth, size_t cursorId) {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _depthLookupInfo.find(depth);
@@ -484,7 +477,7 @@ bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
 }
 
 bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vertex,
-                                                uint64_t depth) const {
+                                                uint64_t depth) {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _vertexExpressions.find(depth);

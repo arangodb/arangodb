@@ -48,12 +48,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query)
       multiThreaded(true) {}
 
 ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice const& info)
-    : BaseOptions(query),
-      direction("outbound"),
-      weightAttribute(""),
-      defaultWeight(1),
-      bidirectional(true),
-      multiThreaded(true) {
+    : ShortestPathOptions(query) {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");

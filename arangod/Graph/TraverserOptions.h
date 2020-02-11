@@ -85,7 +85,7 @@ struct TraverserOptions : public graph::BaseOptions {
   explicit TraverserOptions(aql::Query* query);
 
   TraverserOptions(aql::Query* query, arangodb::velocypack::Slice const& definition);
-
+  
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);
 
@@ -117,9 +117,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
                               arangodb::velocypack::StringRef vertexId,
-                              uint64_t, size_t) const;
+                              uint64_t, size_t);
 
-  bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
+  bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
 
   graph::EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid, uint64_t);
 
