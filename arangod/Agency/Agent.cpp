@@ -1162,8 +1162,6 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     return write_ret_t(false, leader);
   }
 
-  LOG_DEVEL << wmode.discardStartup() << " " << wmode.privileged();
-  LOG_DEVEL << query->toJson();
   if (!wmode.discardStartup()) {
     CONDITION_LOCKER(guard, _waitForCV);
     while (getPrepareLeadership() != 0) {
