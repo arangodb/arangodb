@@ -90,6 +90,9 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
 
   SharedAqlItemBlockPtr block;
 
+  using RegisterSet = std::unordered_set<RegisterId>;
+  using SharedRegisterSet = std::shared_ptr<RegisterSet>;
+
  public:
   SplicedSubqueryIntegrationTest()
       : engine(mockEngine.get()),
@@ -135,53 +138,53 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
 
   auto createSingleton() -> std::unique_ptr<ExecutionBlock> {
     std::deque<SharedAqlItemBlockPtr> blockDeque;
-    // SharedAqlItemBlockPtr block =
-    block = buildBlock<2>(itemBlockManager, {{{{R"("v")"}, {0}}}});
+    block = buildBlock<2>(itemBlockManager, {{{{R"("v")"}, {0}}},
+                                             {{{R"("x")"}, {1}}},
+                                             {{{R"("y")"}, {2}}},
+                                             {{{R"("z")"}, {3}}},
+                                             {{{R"("a")"}, {4}}},
+                                             {{{R"("b")"}, {5}}}});
     blockDeque.push_back(std::move(block));
     return std::make_unique<WaitingExecutionBlockMock>(
         &engine, generateNodeDummy(), std::move(blockDeque),
         WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
   }
 
-  auto createSubqueryStartExecutor(RegisterId numRegs)
-      -> ExecutionBlockImpl<SubqueryStartExecutor> {
+  auto createSubqueryStartExecutor() -> ExecutionBlockImpl<SubqueryStartExecutor> {
     // Subquery start executor does not care about input or output registers?
     // TODO: talk about registers & register planning
 
-    auto inRegisters = make_shared_unordered_set({0});
-    auto outRegisters = make_shared_unordered_set({});
-    // std::make_shared<std::unordered_set<RegisterId>>(std::initializer_list<RegisterId>{});
-    std::unordered_set<RegisterId> toKeep;
+    auto inputRegisterSet =
+        std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{0});
+    auto outputRegisterSet =
+        std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{});
+    auto toKeepRegisterSet = RegisterSet{0};
 
-    for (RegisterId r = 0; r < inRegisters->size(); ++r) {
-      toKeep.emplace(r);
-    }
-
-    auto infos =
-        SubqueryStartExecutor::Infos(inRegisters, outRegisters, inRegisters->size(),
-                                     inRegisters->size() + outRegisters->size(),
-                                     {}, toKeep);
-
+    auto infos = SubqueryStartExecutor::Infos(inputRegisterSet, outputRegisterSet,
+                                              inputRegisterSet->size(),
+                                              inputRegisterSet->size() +
+                                                  outputRegisterSet->size(),
+                                              {}, toKeepRegisterSet);
     return ExecutionBlockImpl<SubqueryStartExecutor>{&engine, node, std::move(infos)};
   }
 
   // Subquery end executor has an input and an output register,
   // but only the output register is used, remove input reg?
-  auto createSubqueryEndExecutor(RegisterId numRegs)
-      -> ExecutionBlockImpl<SubqueryEndExecutor> {
-    auto inRegisters = make_shared_unordered_set({0});
-    auto outRegisters = make_shared_unordered_set({1});
-
-    std::unordered_set<RegisterId> toKeep;
-
-    for (RegisterId r = 0; r < inRegisters->size(); ++r) {
-      toKeep.emplace(r);
-    }
+  auto createSubqueryEndExecutor() -> ExecutionBlockImpl<SubqueryEndExecutor> {
+    auto const inputRegister = RegisterId{0};
+    auto const outputRegister = RegisterId{1};
+    auto inputRegisterSet =
+        std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{inputRegister});
+    auto outputRegisterSet =
+        std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{outputRegister});
+    auto toKeepRegisterSet = RegisterSet{0};
 
     auto infos =
-        SubqueryEndExecutor::Infos(inRegisters, outRegisters, inRegisters->size(),
-                                   inRegisters->size() + outRegisters->size(), {},
-                                   toKeep, nullptr, RegisterId{0}, RegisterId{1});
+        SubqueryEndExecutor::Infos(inputRegisterSet, outputRegisterSet,
+                                   inputRegisterSet->size(),
+                                   inputRegisterSet->size() + outputRegisterSet->size(),
+                                   {}, toKeepRegisterSet, nullptr,
+                                   inputRegister, outputRegister);
 
     return ExecutionBlockImpl<SubqueryEndExecutor>{&engine, node, std::move(infos)};
   }
@@ -237,8 +240,8 @@ TEST_F(SplicedSubqueryIntegrationTest, check_shadow_row_handling) {
   auto stack = AqlCallStack{AqlCall{}};
 
   auto singleton = createSingleton();
-  auto startExec = createSubqueryStartExecutor(1);
-  auto endExec = createSubqueryEndExecutor(1);
+  auto startExec = createSubqueryStartExecutor();
+  auto endExec = createSubqueryEndExecutor();
 
   startExec.addDependency(singleton.get());
   endExec.addDependency(&startExec);
@@ -247,10 +250,25 @@ TEST_F(SplicedSubqueryIntegrationTest, check_shadow_row_handling) {
 };
 
 TEST_F(SplicedSubqueryIntegrationTest, check_shadow_row_handling_2) {
-  auto startExec = createSubqueryStartExecutor(2);
-  auto middleExec = createDoNothingExecutor();
-  auto endExec = createSubqueryEndExecutor(2);
+  auto stack = AqlCallStack{AqlCall{}};
 
-  middleExec.addDependency(&startExec);
-  endExec.addDependency(&middleExec);
+  auto singleton = createSingleton();
+  auto startExecOuter = createSubqueryStartExecutor();
+  auto endExecOuter = createSubqueryEndExecutor();
+
+  auto startExecInner = createSubqueryStartExecutor();
+  auto endExecInner = createSubqueryEndExecutor();
+
+  startExecOuter.addDependency(singleton.get());
+  startExecInner.addDependency(&startExecOuter);
+  endExecInner.addDependency(&startExecInner);
+  endExecOuter.addDependency(&endExecInner);
+
+  auto const [state, num, block] = endExecOuter.execute(stack);
+
+  LOG_DEVEL << num << " " << block->size() << " " << block->getNrRegs();
+  for (auto i = size_t{0}; i < block->size(); i++) {
+    LOG_DEVEL << " " << block->getValue(i, RegisterId{0}).slice().toJson()
+              << " " << block->getValue(i, RegisterId{1}).slice().toJson();
+  }
 };

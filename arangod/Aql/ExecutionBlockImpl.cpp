@@ -1255,9 +1255,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       // push original call
       auto outsideCall = clientCall;
       stack.pushCall(std::move(outsideCall));
+      clientCall = AqlCall{};
 
       // special hack
-      clientCall = AqlCall{clientCall.getOffset(), 0, 0, false};
+      // clientCall = AqlCall{clientCall.getOffset(), 0, 0, false};
     }
 
     // We can only have returned the following internal states
@@ -1431,13 +1432,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
                 InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
               }
             }
-            LOG_DEVEL << "1";
+
             TRI_ASSERT(_outputItemRow->produced());
-            LOG_DEVEL << "2";
             _outputItemRow->advanceRow();
-            LOG_DEVEL << "3";
             clientCall = _outputItemRow->getClientCall();
-            LOG_DEVEL << "4";
             if (_outputItemRow->allRowsUsed()) {
               _execState = ExecState::DONE;
             } else if (state == ExecutorState::DONE) {
