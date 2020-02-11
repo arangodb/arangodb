@@ -1434,7 +1434,7 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
 
   allMarkers.clear();
 
-  // simon: original VST was not allowed here, but in 3.7 the content-type
+  // simon: originally VST was not allowed here, but in 3.7 the content-type
   // is properly set, so we can use it
   if (_request->transportType() != Endpoint::TransportType::HTTP &&
       _request->contentType() != ContentType::DUMP) {

@@ -348,9 +348,10 @@ void H1Connection<ST>::asyncWriteNextRequest() {
     bool success = _queue.pop(ptr);
     FUERTE_ASSERT(success);
   }
-  this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+  uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
   FUERTE_ASSERT(_item.get() == nullptr);
   FUERTE_ASSERT(ptr != nullptr);
+  FUERTE_ASSERT(q > 0);
   
   _item.reset(ptr);
   setTimeout(_item->request->timeout());
@@ -526,7 +527,8 @@ void H1Connection<ST>::drainQueue(const fuerte::Error ec) {
   while (_queue.pop(item)) {
     FUERTE_ASSERT(item);
     std::unique_ptr<RequestItem> guard(item);
-    this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
     guard->invokeOnError(ec);
   }
 }

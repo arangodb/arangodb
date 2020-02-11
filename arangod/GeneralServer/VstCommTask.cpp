@@ -156,17 +156,21 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
       VPackBuffer<uint8_t> buffer; // TODO lease buffers ?
       buffer.append(reinterpret_cast<uint8_t const*>(chunk.body.data()),
                     chunk.body.size());
+      TRI_ASSERT(_messages.find(chunk.header.messageID()) == _messages.end());
       return processMessage(std::move(buffer), chunk.header.messageID());
     }
   }
 
+  Message* msg;
   // Find stored message for this chunk.
-  auto it = _messages.try_emplace(
-    chunk.header.messageID(),
-    arangodb::lazyConstruct([&]{
-      return std::make_unique<Message>();
-    })).first;
-  Message* msg = it->second.get();
+  auto it = _messages.find(chunk.header.messageID());
+  if (it != _messages.end()) {
+    msg = it->second.get();
+  } else {
+    auto both = _messages.emplace(chunk.header.messageID(),
+                                  std::make_unique<Message>());
+    msg = both.first->second.get();
+  }
 
   // returns false if message gets too big
   if (!msg->addChunk(chunk)) {
@@ -324,65 +328,57 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   resItem.release();
 
   // start writing if necessary
-  bool expected = _writing.load();
-  if (false == expected) {
-    if (_writing.compare_exchange_strong(expected, true)) {
-      // we managed to start writing
-      if constexpr (SocketType::Ssl == T) {
-        this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
-          static_cast<VstCommTask<T>*>(self.get())->doWrite();
-        });
-      } else {
-        doWrite();
-      }
-    }
+  if (_writing.load() || _writing.exchange(true)) {
+    return;
   }
+  this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
+    static_cast<VstCommTask<T>&>(*self).doWrite();
+  });
 }
 
 template<SocketType T>
 void VstCommTask<T>::doWrite() {
   TRI_ASSERT(_writing.load() == true);
-
-  while(true) { // loop instead of using recursion
-
-    ResponseItem* tmp = nullptr;
-    if (!_writeQueue.pop(tmp)) {
-      // careful now, we need to consider that someone queues
-      // a new request item
-      _writing.store(false);
-      if (_writeQueue.empty()) {
-        break; // done, someone else may restart
-      }
-
-      bool expected = false; // may fail in a race
-      if (_writing.compare_exchange_strong(expected, true)) {
-        continue; // we re-start writing
-      }
-      TRI_ASSERT(expected == true);
-      break; // someone else restarted writing
-    }
-    TRI_ASSERT(tmp != nullptr);
-    std::unique_ptr<ResponseItem> item(tmp);
-
-    auto& buffers = item->buffers;
-    asio_ns::async_write(this->_protocol->socket, buffers,
-                         [self(CommTask::shared_from_this()), rsp(std::move(item))]
-                         (asio_ns::error_code ec, size_t transferred) {
-
-      auto* me = static_cast<VstCommTask<T>*>(self.get());
-      RequestStatistics::SET_WRITE_END(rsp->stat);
-      RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
-      if (ec) {
-        me->close(ec);
-      } else {
-        me->doWrite(); // write next one
-      }
-      if (rsp->stat != nullptr) {
-        rsp->stat->release();
-      }
-    });
-    break; // done
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
   }
+  
+  ResponseItem* tmp = nullptr;
+  if (!_writeQueue.pop(tmp)) {
+    // careful now, we need to consider that someone queues
+    // a new request item
+    _writing.store(false);
+    if (_writeQueue.empty()) {
+      return; // done, someone else may restart
+    }
+
+    if (!_writing.exchange(true)) {
+      return; // someone else restarted writing
+    }
+    
+    bool success = _writeQueue.pop(tmp);
+    TRI_ASSERT(success);
+  }
+  TRI_ASSERT(tmp != nullptr);
+  std::unique_ptr<ResponseItem> item(tmp);
+
+  auto& buffers = item->buffers;
+  asio_ns::async_write(this->_protocol->socket, buffers,
+                       [self(CommTask::shared_from_this()), rsp(std::move(item))]
+                       (asio_ns::error_code const& ec, size_t) {
+
+    auto* me = static_cast<VstCommTask<T>*>(self.get());
+    RequestStatistics::SET_WRITE_END(rsp->stat);
+    RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
+    if (ec) {
+      me->close(ec);
+    } else {
+      me->doWrite(); // write next one
+    }
+    if (rsp->stat != nullptr) {
+      rsp->stat->release();
+    }
+  });
 }
 
 template<SocketType T>

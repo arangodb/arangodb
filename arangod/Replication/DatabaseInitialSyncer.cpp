@@ -391,7 +391,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   std::string const& cType =
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
-    LOG_TOPIC("b9f4d", INFO, Logger::REPLICATION) << "using vpack for chunk contents";
+    LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
     
     VPackOptions options;
     options.validateUtf8Strings = true;
@@ -429,7 +429,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   } else {
     // buffer must end with a NUL byte
     TRI_ASSERT(*end == '\0');
-    LOG_TOPIC("bad5d", INFO, Logger::REPLICATION) << "using json for chunk contents";
+    LOG_TOPIC("bad5d", DEBUG, Logger::REPLICATION) << "using json for chunk contents";
 
     VPackBuilder builder;
     VPackParser parser(builder);

@@ -1169,7 +1169,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
       headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
     }
     
-    reqOpts.param("collection", StringUtils::urlEncode(p.first));
+    reqOpts.param("collection", p.first);
     futures.emplace_back(
         network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
                                   "/_api/index/selectivity",

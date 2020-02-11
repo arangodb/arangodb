@@ -155,6 +155,8 @@ template <SocketType T>
   if (error_code != NGHTTP2_NO_ERROR) {
     LOG_TOPIC("d04f7", DEBUG, Logger::REQUESTS) << "<http2> closing stream "
        << stream_id << " with error '" << nghttp2_http2_strerror(error_code) << "' (" << error_code << ")";
+  } else {
+    LOG_TOPIC("d04f7", DEBUG, Logger::REQUESTS) << "<http2> closing stream " << stream_id;
   }
 
   return 0;
@@ -206,6 +208,9 @@ H2CommTask<T>::~H2CommTask() noexcept {
   while (_responses.pop(res)) {
     delete res;
   }
+  
+  LOG_TOPIC("dc6bb", DEBUG, Logger::REQUESTS)
+      << "<http2> closing connection \"" << (void*)this << "\"";
 }
 
 namespace {
@@ -271,7 +276,6 @@ void H2CommTask<T>::initNgHttp2Session() {
   nghttp2_session_callbacks_set_on_frame_not_send_callback(callbacks, H2CommTask<T>::on_frame_not_send);
   nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(callbacks, on_invalid_frame_recv);
   nghttp2_session_callbacks_set_error_callback2(callbacks, on_error_callback);
-  
   nghttp2_session_callbacks_set_data_source_read_length_callback(callbacks, data_source_read_length_callback);
 
   rv = nghttp2_session_server_new(&_session, callbacks, /*args*/ this);
@@ -499,7 +503,7 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
                     [self(this->shared_from_this()), mid(res->messageId())] {
         auto& me = static_cast<H2CommTask<T>&>(*self);
         nghttp2_submit_rst_stream(me._session, NGHTTP2_FLAG_NONE,
-                                  static_cast<int32_t>(mid), NGHTTP2_INTERNAL_ERROR);
+                                  static_cast<int32_t>(mid), NGHTTP2_ENHANCE_YOUR_CALM);
       });
       return;
     }
