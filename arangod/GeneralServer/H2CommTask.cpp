@@ -155,8 +155,6 @@ template <SocketType T>
   if (error_code != NGHTTP2_NO_ERROR) {
     LOG_TOPIC("d04f7", DEBUG, Logger::REQUESTS) << "<http2> closing stream "
        << stream_id << " with error '" << nghttp2_http2_strerror(error_code) << "' (" << error_code << ")";
-  } else {
-    LOG_TOPIC("d04f8", DEBUG, Logger::REQUESTS) << "<http2> closing stream " << stream_id;
   }
 
   return 0;
