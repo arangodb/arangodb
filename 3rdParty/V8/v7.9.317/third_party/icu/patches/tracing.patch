@@ -1,0 +1,652 @@
+diff --git a/source/common/Makefile.in b/source/common/Makefile.in
+index e663cb8e..79e371b0 100644
+--- a/source/common/Makefile.in
++++ b/source/common/Makefile.in
+@@ -115,7 +115,8 @@ ulist.o uloc_tag.o icudataver.o icuplug.o \
+ sharedobject.o simpleformatter.o unifiedcache.o uloc_keytype.o \
+ ubiditransform.o \
+ pluralmap.o \
+-static_unicode_sets.o
++static_unicode_sets.o \
++restrace.o
+ 
+ ## Header files to install
+ HEADERS = $(srcdir)/unicode/*.h
+diff --git a/source/common/resource.h b/source/common/resource.h
+index 3dbff785..ee93d41a 100644
+--- a/source/common/resource.h
++++ b/source/common/resource.h
+@@ -28,6 +28,7 @@
+ #include "unicode/utypes.h"
+ #include "unicode/unistr.h"
+ #include "unicode/ures.h"
++#include "restrace.h"
+ 
+ struct ResourceData;
+ 
+@@ -47,8 +48,10 @@ public:
+     ResourceArray() : items16(NULL), items32(NULL), length(0) {}
+ 
+     /** Only for implementation use. @internal */
+-    ResourceArray(const uint16_t *i16, const uint32_t *i32, int32_t len) :
+-            items16(i16), items32(i32), length(len) {}
++    ResourceArray(const uint16_t *i16, const uint32_t *i32, int32_t len,
++                  const ResourceTracer& traceInfo) :
++            items16(i16), items32(i32), length(len),
++            fTraceInfo(traceInfo) {}
+ 
+     /**
+      * @return The number of items in the array resource.
+@@ -68,6 +71,7 @@ private:
+     const uint16_t *items16;
+     const uint32_t *items32;
+     int32_t length;
++    ResourceTracer fTraceInfo;
+ };
+ 
+ /**
+@@ -80,8 +84,10 @@ public:
+ 
+     /** Only for implementation use. @internal */
+     ResourceTable(const uint16_t *k16, const int32_t *k32,
+-                  const uint16_t *i16, const uint32_t *i32, int32_t len) :
+-            keys16(k16), keys32(k32), items16(i16), items32(i32), length(len) {}
++                  const uint16_t *i16, const uint32_t *i32, int32_t len,
++                  const ResourceTracer& traceInfo) :
++            keys16(k16), keys32(k32), items16(i16), items32(i32), length(len),
++            fTraceInfo(traceInfo) {}
+ 
+     /**
+      * @return The number of items in the array resource.
+@@ -101,6 +107,7 @@ private:
+     const uint16_t *items16;
+     const uint32_t *items32;
+     int32_t length;
++    ResourceTracer fTraceInfo;
+ };
+ 
+ /**
+diff --git a/source/common/udata.cpp b/source/common/udata.cpp
+index b62095cd..1051f18f 100644
+--- a/source/common/udata.cpp
++++ b/source/common/udata.cpp
+@@ -33,6 +33,7 @@ might have to #include some other header
+ #include "cstring.h"
+ #include "mutex.h"
+ #include "putilimp.h"
++#include "restrace.h"
+ #include "uassert.h"
+ #include "ucln_cmn.h"
+ #include "ucmndata.h"
+@@ -1168,6 +1169,9 @@ doOpenChoice(const char *path, const char *type, const char *name,
+     UBool               isICUData = FALSE;
+ 
+ 
++    FileTracer::traceOpen(path, type, name);
++
++
+     /* Is this path ICU data? */
+     if(path == NULL ||
+        !strcmp(path, U_ICUDATA_ALIAS) ||  /* "ICUDATA" */
+diff --git a/source/common/unicode/utrace.h b/source/common/unicode/utrace.h
+index 66269784..412e11ad 100644
+--- a/source/common/unicode/utrace.h
++++ b/source/common/unicode/utrace.h
+@@ -66,6 +66,7 @@ typedef enum UTraceFunctionNumber {
+     UTRACE_FUNCTION_START=0,
+     UTRACE_U_INIT=UTRACE_FUNCTION_START,
+     UTRACE_U_CLEANUP,
++
+ #ifndef U_HIDE_DEPRECATED_API
+     /**
+      * One more than the highest normal collation trace location.
+@@ -83,6 +84,7 @@ typedef enum UTraceFunctionNumber {
+     UTRACE_UCNV_FLUSH_CACHE,
+     UTRACE_UCNV_LOAD,
+     UTRACE_UCNV_UNLOAD,
++
+ #ifndef U_HIDE_DEPRECATED_API
+     /**
+      * One more than the highest normal collation trace location.
+@@ -101,13 +103,55 @@ typedef enum UTraceFunctionNumber {
+     UTRACE_UCOL_STRCOLLITER,
+     UTRACE_UCOL_OPEN_FROM_SHORT_STRING,
+     UTRACE_UCOL_STRCOLLUTF8, /**< @stable ICU 50 */
++
+ #ifndef U_HIDE_DEPRECATED_API
+     /**
+      * One more than the highest normal collation trace location.
+      * @deprecated ICU 58 The numeric value may change over time, see ICU ticket #12420.
+      */
+-    UTRACE_COLLATION_LIMIT
++    UTRACE_COLLATION_LIMIT,
+ #endif  // U_HIDE_DEPRECATED_API
++
++#ifndef U_HIDE_DRAFT_API
++
++    /**
++     * The lowest resource/data location.
++     * @draft ICU 65
++     */
++    UTRACE_RES_DATA_START=0x3000,
++
++    /**
++     * Indicates that a value was read from a resource bundle. Provides three
++     * C-style strings to UTraceData: type, file name, and resource path. The
++     * type is "string", "binary", "intvector", "int", or "uint".
++     * @draft ICU 65
++     */
++    UTRACE_UDATA_RESOURCE=UTRACE_RES_DATA_START,
++
++    /**
++     * Indicates that a value was read from a resource bundle. Provides one
++     * C-style string to UTraceData: file name.
++     * @draft ICU 65
++     */
++    UTRACE_UDATA_DATA_FILE,
++
++    /**
++     * Indicates that a value was read from a resource bundle. Provides one
++     * C-style string to UTraceData: file name.
++     * @draft ICU 65
++     */
++    UTRACE_UDATA_RES_FILE,
++
++#endif  // U_HIDE_DRAFT_API
++
++#ifndef U_HIDE_INTERNAL_API
++    /**
++     * One more than the highest normal resource/data trace location.
++     * @internal The numeric value may change over time, see ICU ticket #12420.
++     */
++    UTRACE_RES_DATA_LIMIT,
++#endif  // U_HIDE_INTERNAL_API
++
+ } UTraceFunctionNumber;
+ 
+ /**
+diff --git a/source/common/uresbund.cpp b/source/common/uresbund.cpp
+index b20e3095..585c0e5f 100644
+--- a/source/common/uresbund.cpp
++++ b/source/common/uresbund.cpp
+@@ -401,7 +401,8 @@ static UResourceDataEntry *init_entry(const char *localeID, const char *path, UE
+                 /* We'll try to get alias string from the bundle */
+                 aliasres = res_getResource(&(r->fData), "%%ALIAS");
+                 if (aliasres != RES_BOGUS) {
+-                    const UChar *alias = res_getString(&(r->fData), aliasres, &aliasLen);
++                    // No tracing: called during initial data loading
++                    const UChar *alias = res_getStringNoTrace(&(r->fData), aliasres, &aliasLen);
+                     if(alias != NULL && aliasLen > 0) { /* if there is actual alias - unload and load new data */
+                         u_UCharsToChars(alias, aliasName, aliasLen+1);
+                         r->fAlias = init_entry(aliasName, path, status);
+@@ -542,7 +543,8 @@ loadParentsExceptRoot(UResourceDataEntry *&t1,
+         Resource parentRes = res_getResource(&t1->fData, "%%Parent");
+         if (parentRes != RES_BOGUS) {  // An explicit parent was found.
+             int32_t parentLocaleLen = 0;
+-            const UChar *parentLocaleName = res_getString(&(t1->fData), parentRes, &parentLocaleLen);
++            // No tracing: called during initial data loading
++            const UChar *parentLocaleName = res_getStringNoTrace(&(t1->fData), parentRes, &parentLocaleLen);
+             if(parentLocaleName != NULL && 0 < parentLocaleLen && parentLocaleLen < nameCapacity) {
+                 u_UCharsToChars(parentLocaleName, name, parentLocaleLen + 1);
+                 if (uprv_strcmp(name, kRootLocaleName) == 0) {
+@@ -1304,7 +1306,7 @@ U_CAPI const UChar* U_EXPORT2 ures_getString(const UResourceBundle* resB, int32_
+         *status = U_ILLEGAL_ARGUMENT_ERROR;
+         return NULL;
+     }
+-    s = res_getString(&(resB->fResData), resB->fRes, len);
++    s = res_getString({resB}, &(resB->fResData), resB->fRes, len);
+     if (s == NULL) {
+         *status = U_RESOURCE_TYPE_MISMATCH;
+     }
+@@ -1393,7 +1395,7 @@ U_CAPI const uint8_t* U_EXPORT2 ures_getBinary(const UResourceBundle* resB, int3
+     *status = U_ILLEGAL_ARGUMENT_ERROR;
+     return NULL;
+   }
+-  p = res_getBinary(&(resB->fResData), resB->fRes, len);
++  p = res_getBinary({resB}, &(resB->fResData), resB->fRes, len);
+   if (p == NULL) {
+     *status = U_RESOURCE_TYPE_MISMATCH;
+   }
+@@ -1410,7 +1412,7 @@ U_CAPI const int32_t* U_EXPORT2 ures_getIntVector(const UResourceBundle* resB, i
+     *status = U_ILLEGAL_ARGUMENT_ERROR;
+     return NULL;
+   }
+-  p = res_getIntVector(&(resB->fResData), resB->fRes, len);
++  p = res_getIntVector({resB}, &(resB->fResData), resB->fRes, len);
+   if (p == NULL) {
+     *status = U_RESOURCE_TYPE_MISMATCH;
+   }
+@@ -1431,7 +1433,7 @@ U_CAPI int32_t U_EXPORT2 ures_getInt(const UResourceBundle* resB, UErrorCode *st
+     *status = U_RESOURCE_TYPE_MISMATCH;
+     return 0xffffffff;
+   }
+-  return RES_GET_INT(resB->fRes);
++  return res_getInt({resB}, resB->fRes);
+ }
+ 
+ U_CAPI uint32_t U_EXPORT2 ures_getUInt(const UResourceBundle* resB, UErrorCode *status) {
+@@ -1446,7 +1448,7 @@ U_CAPI uint32_t U_EXPORT2 ures_getUInt(const UResourceBundle* resB, UErrorCode *
+     *status = U_RESOURCE_TYPE_MISMATCH;
+     return 0xffffffff;
+   }
+-  return RES_GET_UINT(resB->fRes);
++  return res_getUInt({resB}, resB->fRes);
+ }
+ 
+ U_CAPI UResType U_EXPORT2 ures_getType(const UResourceBundle *resB) {
+@@ -1457,10 +1459,18 @@ U_CAPI UResType U_EXPORT2 ures_getType(const UResourceBundle *resB) {
+ }
+ 
+ U_CAPI const char * U_EXPORT2 ures_getKey(const UResourceBundle *resB) {
++  //
++  // TODO: Trace ures_getKey? I guess not usually.
++  //
++  // We usually get the key string to decide whether we want the value, or to
++  // make a key-value pair. Tracing the value should suffice.
++  //
++  // However, I believe we have some data (e.g., in res_index) where the key
++  // strings are the data. Tracing the enclosing table should suffice.
++  //
+   if(resB == NULL) {
+     return NULL;
+   }
+-  
+   return(resB->fKey);
+ }
+ 
+@@ -1480,7 +1490,7 @@ static const UChar* ures_getStringWithAlias(const UResourceBundle *resB, Resourc
+     ures_close(tempRes);
+     return result;
+   } else {
+-    return res_getString(&(resB->fResData), r, len); 
++    return res_getString({resB, sIndex}, &(resB->fResData), r, len); 
+   }
+ }
+ 
+@@ -1516,7 +1526,7 @@ U_CAPI const UChar* U_EXPORT2 ures_getNextString(UResourceBundle *resB, int32_t*
+     switch(RES_GET_TYPE(resB->fRes)) {
+     case URES_STRING:
+     case URES_STRING_V2:
+-      return res_getString(&(resB->fResData), resB->fRes, len); 
++      return res_getString({resB}, &(resB->fResData), resB->fRes, len);
+     case URES_TABLE:
+     case URES_TABLE16:
+     case URES_TABLE32:
+@@ -1661,7 +1671,7 @@ U_CAPI const UChar* U_EXPORT2 ures_getStringByIndex(const UResourceBundle *resB,
+         switch(RES_GET_TYPE(resB->fRes)) {
+         case URES_STRING:
+         case URES_STRING_V2:
+-            return res_getString(&(resB->fResData), resB->fRes, len);
++            return res_getString({resB}, &(resB->fResData), resB->fRes, len);
+         case URES_TABLE:
+         case URES_TABLE16:
+         case URES_TABLE32:
+@@ -1956,7 +1966,7 @@ void getAllItemsWithFallback(
+     value.pResData = &bundle->fResData;
+     UResourceDataEntry *parentEntry = bundle->fData->fParent;
+     UBool hasParent = parentEntry != NULL && U_SUCCESS(parentEntry->fBogus);
+-    value.setResource(bundle->fRes);
++    value.setResource(bundle->fRes, ResourceTracer(bundle));
+     sink.put(bundle->fKey, value, !hasParent, errorCode);
+     if (hasParent) {
+         // We might try to query the sink whether
+@@ -2108,7 +2118,7 @@ U_CAPI const UChar* U_EXPORT2 ures_getStringByKey(const UResourceBundle *resB, c
+                     switch (RES_GET_TYPE(res)) {
+                     case URES_STRING:
+                     case URES_STRING_V2:
+-                        return res_getString(rd, res, len);
++                        return res_getString({resB, key}, rd, res, len);
+                     case URES_ALIAS:
+                       {
+                         const UChar* result = 0;
+@@ -2130,7 +2140,7 @@ U_CAPI const UChar* U_EXPORT2 ures_getStringByKey(const UResourceBundle *resB, c
+             switch (RES_GET_TYPE(res)) {
+             case URES_STRING:
+             case URES_STRING_V2:
+-                return res_getString(&(resB->fResData), res, len);
++                return res_getString({resB, key}, &(resB->fResData), res, len);
+             case URES_ALIAS:
+               {
+                 const UChar* result = 0;
+@@ -2151,6 +2161,7 @@ U_CAPI const UChar* U_EXPORT2 ures_getStringByKey(const UResourceBundle *resB, c
+         /* here should go a first attempt to locate the key using index table */
+         const ResourceData *rd = getFallbackData(resB, &key, &realData, &res, status);
+         if(U_SUCCESS(*status)) {
++            // TODO: Tracing
+             return res_getString(rd, res, len);
+         } else {
+             *status = U_MISSING_RESOURCE_ERROR;
+diff --git a/source/common/uresdata.cpp b/source/common/uresdata.cpp
+index 8bcb9ab8..ce04142f 100644
+--- a/source/common/uresdata.cpp
++++ b/source/common/uresdata.cpp
+@@ -33,6 +33,7 @@
+ #include "uinvchar.h"
+ #include "uresdata.h"
+ #include "uresimp.h"
++#include "utracimp.h"
+ 
+ /*
+  * Resource access helpers
+@@ -307,7 +308,7 @@ res_getPublicType(Resource res) {
+ }
+ 
+ U_CAPI const UChar * U_EXPORT2
+-res_getString(const ResourceData *pResData, Resource res, int32_t *pLength) {
++res_getStringNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength) {
+     const UChar *p;
+     uint32_t offset=RES_GET_OFFSET(res);
+     int32_t length;
+@@ -402,7 +403,8 @@ int32_t getStringArray(const ResourceData *pResData, const icu::ResourceArray &a
+     }
+     for(int32_t i = 0; i < length; ++i) {
+         int32_t sLength;
+-        const UChar *s = res_getString(pResData, array.internalGetResource(pResData, i), &sLength);
++        // No tracing: handled by the caller
++        const UChar *s = res_getStringNoTrace(pResData, array.internalGetResource(pResData, i), &sLength);
+         if(s == NULL) {
+             errorCode = U_RESOURCE_TYPE_MISMATCH;
+             return 0;
+@@ -434,7 +436,7 @@ res_getAlias(const ResourceData *pResData, Resource res, int32_t *pLength) {
+ }
+ 
+ U_CAPI const uint8_t * U_EXPORT2
+-res_getBinary(const ResourceData *pResData, Resource res, int32_t *pLength) {
++res_getBinaryNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength) {
+     const uint8_t *p;
+     uint32_t offset=RES_GET_OFFSET(res);
+     int32_t length;
+@@ -454,7 +456,7 @@ res_getBinary(const ResourceData *pResData, Resource res, int32_t *pLength) {
+ 
+ 
+ U_CAPI const int32_t * U_EXPORT2
+-res_getIntVector(const ResourceData *pResData, Resource res, int32_t *pLength) {
++res_getIntVectorNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength) {
+     const int32_t *p;
+     uint32_t offset=RES_GET_OFFSET(res);
+     int32_t length;
+@@ -507,7 +509,7 @@ const UChar *ResourceDataValue::getString(int32_t &length, UErrorCode &errorCode
+     if(U_FAILURE(errorCode)) {
+         return NULL;
+     }
+-    const UChar *s = res_getString(pResData, res, &length);
++    const UChar *s = res_getString(fTraceInfo, pResData, res, &length);
+     if(s == NULL) {
+         errorCode = U_RESOURCE_TYPE_MISMATCH;
+     }
+@@ -532,7 +534,7 @@ int32_t ResourceDataValue::getInt(UErrorCode &errorCode) const {
+     if(RES_GET_TYPE(res) != URES_INT) {
+         errorCode = U_RESOURCE_TYPE_MISMATCH;
+     }
+-    return RES_GET_INT(res);
++    return res_getInt(fTraceInfo, res);
+ }
+ 
+ uint32_t ResourceDataValue::getUInt(UErrorCode &errorCode) const {
+@@ -542,14 +544,14 @@ uint32_t ResourceDataValue::getUInt(UErrorCode &errorCode) const {
+     if(RES_GET_TYPE(res) != URES_INT) {
+         errorCode = U_RESOURCE_TYPE_MISMATCH;
+     }
+-    return RES_GET_UINT(res);
++    return res_getUInt(fTraceInfo, res);
+ }
+ 
+ const int32_t *ResourceDataValue::getIntVector(int32_t &length, UErrorCode &errorCode) const {
+     if(U_FAILURE(errorCode)) {
+         return NULL;
+     }
+-    const int32_t *iv = res_getIntVector(pResData, res, &length);
++    const int32_t *iv = res_getIntVector(fTraceInfo, pResData, res, &length);
+     if(iv == NULL) {
+         errorCode = U_RESOURCE_TYPE_MISMATCH;
+     }
+@@ -560,7 +562,7 @@ const uint8_t *ResourceDataValue::getBinary(int32_t &length, UErrorCode &errorCo
+     if(U_FAILURE(errorCode)) {
+         return NULL;
+     }
+-    const uint8_t *b = res_getBinary(pResData, res, &length);
++    const uint8_t *b = res_getBinary(fTraceInfo, pResData, res, &length);
+     if(b == NULL) {
+         errorCode = U_RESOURCE_TYPE_MISMATCH;
+     }
+@@ -590,7 +592,7 @@ ResourceArray ResourceDataValue::getArray(UErrorCode &errorCode) const {
+         errorCode = U_RESOURCE_TYPE_MISMATCH;
+         return ResourceArray();
+     }
+-    return ResourceArray(items16, items32, length);
++    return ResourceArray(items16, items32, length, fTraceInfo);
+ }
+ 
+ ResourceTable ResourceDataValue::getTable(UErrorCode &errorCode) const {
+@@ -627,7 +629,7 @@ ResourceTable ResourceDataValue::getTable(UErrorCode &errorCode) const {
+         errorCode = U_RESOURCE_TYPE_MISMATCH;
+         return ResourceTable();
+     }
+-    return ResourceTable(keys16, keys32, items16, items32, length);
++    return ResourceTable(keys16, keys32, items16, items32, length, fTraceInfo);
+ }
+ 
+ UBool ResourceDataValue::isNoInheritanceMarker() const {
+@@ -656,7 +658,7 @@ int32_t ResourceDataValue::getStringArrayOrStringAsArray(UnicodeString *dest, in
+         return 1;
+     }
+     int32_t sLength;
+-    const UChar *s = res_getString(pResData, res, &sLength);
++    const UChar *s = res_getString(fTraceInfo, pResData, res, &sLength);
+     if(s != NULL) {
+         dest[0].setTo(TRUE, s, sLength);
+         return 1;
+@@ -671,7 +673,7 @@ UnicodeString ResourceDataValue::getStringOrFirstOfArray(UErrorCode &errorCode)
+         return us;
+     }
+     int32_t sLength;
+-    const UChar *s = res_getString(pResData, res, &sLength);
++    const UChar *s = res_getString(fTraceInfo, pResData, res, &sLength);
+     if(s != NULL) {
+         us.setTo(TRUE, s, sLength);
+         return us;
+@@ -681,7 +683,8 @@ UnicodeString ResourceDataValue::getStringOrFirstOfArray(UErrorCode &errorCode)
+         return us;
+     }
+     if(array.getSize() > 0) {
+-        s = res_getString(pResData, array.internalGetResource(pResData, 0), &sLength);
++        // Tracing is already performed above (unimportant for trace that this is an array)
++        s = res_getStringNoTrace(pResData, array.internalGetResource(pResData, 0), &sLength);
+         if(s != NULL) {
+             us.setTo(TRUE, s, sLength);
+             return us;
+@@ -829,7 +832,11 @@ UBool icu::ResourceTable::getKeyAndValue(int32_t i,
+         } else {
+             res = items32[i];
+         }
+-        rdValue.setResource(res);
++        // Note: the ResourceTracer keeps a reference to the field of this
++        // ResourceTable. This is OK because the ResourceTable should remain
++        // alive for the duration that fields are being read from it
++        // (including nested fields).
++        rdValue.setResource(res, ResourceTracer(fTraceInfo, key));
+         return TRUE;
+     }
+     return FALSE;
+@@ -875,7 +882,13 @@ uint32_t icu::ResourceArray::internalGetResource(const ResourceData *pResData, i
+ UBool icu::ResourceArray::getValue(int32_t i, icu::ResourceValue &value) const {
+     if(0 <= i && i < length) {
+         icu::ResourceDataValue &rdValue = static_cast<icu::ResourceDataValue &>(value);
+-        rdValue.setResource(internalGetResource(rdValue.pResData, i));
++        // Note: the ResourceTracer keeps a reference to the field of this
++        // ResourceArray. This is OK because the ResourceArray should remain
++        // alive for the duration that fields are being read from it
++        // (including nested fields).
++        rdValue.setResource(
++            internalGetResource(rdValue.pResData, i),
++            ResourceTracer(fTraceInfo, i));
+         return TRUE;
+     }
+     return FALSE;
+diff --git a/source/common/uresdata.h b/source/common/uresdata.h
+index 4e28ddcc..51647409 100644
+--- a/source/common/uresdata.h
++++ b/source/common/uresdata.h
+@@ -69,14 +69,16 @@ typedef uint32_t Resource;
+ #define RES_GET_OFFSET(res) ((res)&0x0fffffff)
+ #define RES_GET_POINTER(pRoot, res) ((pRoot)+RES_GET_OFFSET(res))
+ 
+-/* get signed and unsigned integer values directly from the Resource handle */
++/* get signed and unsigned integer values directly from the Resource handle
++ * NOTE: For proper logging, please use the res_getInt() constexpr
++ */
+ #if U_SIGNED_RIGHT_SHIFT_IS_ARITHMETIC
+-#   define RES_GET_INT(res) (((int32_t)((res)<<4L))>>4L)
++#   define RES_GET_INT_NO_TRACE(res) (((int32_t)((res)<<4L))>>4L)
+ #else
+-#   define RES_GET_INT(res) (int32_t)(((res)&0x08000000) ? (res)|0xf0000000 : (res)&0x07ffffff)
++#   define RES_GET_INT_NO_TRACE(res) (int32_t)(((res)&0x08000000) ? (res)|0xf0000000 : (res)&0x07ffffff)
+ #endif
+ 
+-#define RES_GET_UINT(res) ((res)&0x0fffffff)
++#define RES_GET_UINT_NO_TRACE(res) ((res)&0x0fffffff)
+ 
+ #define URES_IS_ARRAY(type) ((int32_t)(type)==URES_ARRAY || (int32_t)(type)==URES_ARRAY16)
+ #define URES_IS_TABLE(type) ((int32_t)(type)==URES_TABLE || (int32_t)(type)==URES_TABLE16 || (int32_t)(type)==URES_TABLE32)
+@@ -423,22 +425,26 @@ res_unload(ResourceData *pResData);
+ U_INTERNAL UResType U_EXPORT2
+ res_getPublicType(Resource res);
+ 
++///////////////////////////////////////////////////////////////////////////
++// To enable tracing, use the inline versions of the res_get* functions. //
++///////////////////////////////////////////////////////////////////////////
++
+ /*
+  * Return a pointer to a zero-terminated, const UChar* string
+  * and set its length in *pLength.
+  * Returns NULL if not found.
+  */
+ U_INTERNAL const UChar * U_EXPORT2
+-res_getString(const ResourceData *pResData, Resource res, int32_t *pLength);
+-
+-U_INTERNAL const UChar * U_EXPORT2
+-res_getAlias(const ResourceData *pResData, Resource res, int32_t *pLength);
++res_getStringNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength);
+ 
+ U_INTERNAL const uint8_t * U_EXPORT2
+-res_getBinary(const ResourceData *pResData, Resource res, int32_t *pLength);
++res_getBinaryNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength);
+ 
+ U_INTERNAL const int32_t * U_EXPORT2
+-res_getIntVector(const ResourceData *pResData, Resource res, int32_t *pLength);
++res_getIntVectorNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength);
++
++U_INTERNAL const UChar * U_EXPORT2
++res_getAlias(const ResourceData *pResData, Resource res, int32_t *pLength);
+ 
+ U_INTERNAL Resource U_EXPORT2
+ res_getResource(const ResourceData *pResData, const char *key);
+@@ -470,16 +476,54 @@ U_CFUNC Resource res_findResource(const ResourceData *pResData, Resource r,
+ #ifdef __cplusplus
+ 
+ #include "resource.h"
++#include "restrace.h"
+ 
+ U_NAMESPACE_BEGIN
+ 
++inline const UChar* res_getString(const ResourceTracer& traceInfo,
++        const ResourceData *pResData, Resource res, int32_t *pLength) {
++    traceInfo.trace("string");
++    return res_getStringNoTrace(pResData, res, pLength);
++}
++
++inline const uint8_t* res_getBinary(const ResourceTracer& traceInfo,
++        const ResourceData *pResData, Resource res, int32_t *pLength) {
++    traceInfo.trace("binary");
++    return res_getBinaryNoTrace(pResData, res, pLength);
++}
++
++inline const int32_t* res_getIntVector(const ResourceTracer& traceInfo,
++        const ResourceData *pResData, Resource res, int32_t *pLength) {
++    traceInfo.trace("intvector");
++    return res_getIntVectorNoTrace(pResData, res, pLength);
++}
++
++inline int32_t res_getInt(const ResourceTracer& traceInfo, Resource res) {
++    traceInfo.trace("int");
++    return RES_GET_INT_NO_TRACE(res);
++}
++
++inline uint32_t res_getUInt(const ResourceTracer& traceInfo, Resource res) {
++    traceInfo.trace("uint");
++    return RES_GET_UINT_NO_TRACE(res);
++}
++
+ class ResourceDataValue : public ResourceValue {
+ public:
+-    ResourceDataValue() : pResData(NULL), res(static_cast<Resource>(URES_NONE)) {}
++    ResourceDataValue() :
++        pResData(NULL),
++        res(static_cast<Resource>(URES_NONE)),
++        fTraceInfo() {}
+     virtual ~ResourceDataValue();
+ 
+-    void setData(const ResourceData *data) { pResData = data; }
+-    void setResource(Resource r) { res = r; }
++    void setData(const ResourceData *data) {
++        pResData = data;
++    }
++
++    void setResource(Resource r, ResourceTracer&& traceInfo) {
++        res = r;
++        fTraceInfo = traceInfo;
++    }
+ 
+     virtual UResType getType() const;
+     virtual const UChar *getString(int32_t &length, UErrorCode &errorCode) const;
+@@ -501,6 +545,7 @@ public:
+ 
+ private:
+     Resource res;
++    ResourceTracer fTraceInfo;
+ };
+ 
+ U_NAMESPACE_END
+diff --git a/source/common/utrace.cpp b/source/common/utrace.cpp
+index 2ac3d77c..eced03b8 100644
+--- a/source/common/utrace.cpp
++++ b/source/common/utrace.cpp
+@@ -476,6 +476,15 @@ trCollNames[] = {
+     NULL
+ };
+ 
++
++static const char* const
++trResDataNames[] = {
++    "ResourceTracer::trace",
++    "FileTracer::traceOpenDataFile",
++    "FileTracer::traceOpenResFile",
++    NULL
++};
++
+                 
+ U_CAPI const char * U_EXPORT2
+ utrace_functionName(int32_t fnNumber) {
+@@ -485,6 +494,8 @@ utrace_functionName(int32_t fnNumber) {
+         return trConvNames[fnNumber - UTRACE_CONVERSION_START];
+     } else if(UTRACE_COLLATION_START <= fnNumber && fnNumber < UTRACE_COLLATION_LIMIT){
+         return trCollNames[fnNumber - UTRACE_COLLATION_START];
++    } else if(UTRACE_RES_DATA_START <= fnNumber && fnNumber < UTRACE_RES_DATA_LIMIT){
++        return trResDataNames[fnNumber - UTRACE_RES_DATA_START];
+     } else {
+         return "[BOGUS Trace Function Number]";
+     }
+diff --git a/source/tools/toolutil/pkgitems.cpp b/source/tools/toolutil/pkgitems.cpp
+index cb23b45e..7b86c55f 100644
+--- a/source/tools/toolutil/pkgitems.cpp
++++ b/source/tools/toolutil/pkgitems.cpp
+@@ -305,7 +305,8 @@ ures_enumDependencies(const char *itemName,
+                 break;
+             }
+             int32_t length;
+-            const UChar *alias=res_getString(pResData, res, &length);
++            // No tracing: build tool
++            const UChar *alias=res_getStringNoTrace(pResData, res, &length);
+             checkAlias(itemName, res, alias, length, useResSuffix, check, context, pErrorCode);
+         }
+         break;

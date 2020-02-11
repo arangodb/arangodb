@@ -97,11 +97,11 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.startup-directory",
                      "startup paths containing the JavaScript files",
                      new StringParameter(&_startupDirectory),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.client-module",
                      "client module to use at startup", new StringParameter(&_clientModule),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--javascript.copy-directory",
@@ -112,7 +112,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--javascript.module-directory",
                      "additional paths containing JavaScript modules",
                      new VectorParameter<StringParameter>(&_moduleDirectories),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.current-module-directory",
                      "add current directory to module path",
@@ -180,9 +180,9 @@ void V8ShellFeature::start() {
   v8::Context::Scope context_scope{context};
 
   v8::Handle<v8::Object> globalObj = context->Global();
-  globalObj->Set(TRI_V8_ASCII_STRING(_isolate, "GLOBAL"), globalObj);
-  globalObj->Set(TRI_V8_ASCII_STRING(_isolate, "global"), globalObj);
-  globalObj->Set(TRI_V8_ASCII_STRING(_isolate, "root"), globalObj);
+  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "GLOBAL"), globalObj).FromMaybe(false);
+  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "global"), globalObj).FromMaybe(false);
+  globalObj->Set(context, TRI_V8_ASCII_STRING(_isolate, "root"),   globalObj).FromMaybe(false);
 
   initGlobals();
 }
@@ -201,10 +201,10 @@ void V8ShellFeature::unprepare() {
     // clear globals to free memory
     auto isolate = _isolate;
     auto globals = _isolate->GetCurrentContext()->Global();
-    v8::Handle<v8::Array> names = globals->GetOwnPropertyNames();
+    v8::Handle<v8::Array> names = globals->GetOwnPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
     uint32_t const n = names->Length();
     for (uint32_t i = 0; i < n; ++i) {
-      TRI_DeleteProperty(context, isolate, globals, names->Get(i));
+      TRI_DeleteProperty(context, isolate, globals, names->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
     }
 
     TRI_RunGarbageCollectionV8(_isolate, 2500.0);
@@ -333,14 +333,14 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
       // clang-format off
 
-    console.printLine("");
-    console.printLine(g + "                                  "     + r + "     _     " + z);
-    console.printLine(g + "  __ _ _ __ __ _ _ __   __ _  ___ "     + r + " ___| |__  " + z);
-    console.printLine(g + " / _` | '__/ _` | '_ \\ / _` |/ _ \\"   + r + "/ __| '_ \\ " + z);
-    console.printLine(g + "| (_| | | | (_| | | | | (_| | (_) "     + r + "\\__ \\ | | |" + z);
-    console.printLine(g + " \\__,_|_|  \\__,_|_| |_|\\__, |\\___/" + r + "|___/_| |_|" + z);
-    console.printLine(g + "                       |___/      "     + r + "           " + z);
-    console.printLine("");
+      console.printLine("");
+      console.printLine(g + "                                  "     + r + "     _     " + z);
+      console.printLine(g + "  __ _ _ __ __ _ _ __   __ _  ___ "     + r + " ___| |__  " + z);
+      console.printLine(g + " / _` | '__/ _` | '_ \\ / _` |/ _ \\"   + r + "/ __| '_ \\ " + z);
+      console.printLine(g + "| (_| | | | (_| | | | | (_| | (_) "     + r + "\\__ \\ | | |" + z);
+      console.printLine(g + " \\__,_|_|  \\__,_|_| |_|\\__, |\\___/" + r + "|___/_| |_|" + z);
+      console.printLine(g + "                       |___/      "     + r + "           " + z);
+      console.printLine("");
 
       // clang-format on
 
@@ -354,6 +354,9 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
 
       console.printWelcomeInfo();
     }
+        
+    ClientFeature& client =
+          server().getFeature<HttpEndpointProvider, ClientFeature>();
 
     if (v8connection != nullptr) {
       if (v8connection->isConnected() &&
@@ -371,11 +374,8 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
           }
           console.printErrorLine(msg);
         }
-      } else {
+      } else if (client.endpoint() != "none") {
         std::ostringstream is;
-
-        ClientFeature& client =
-            server().getFeature<HttpEndpointProvider, ClientFeature>();
         is << "Could not connect to endpoint '" << client.endpoint()
            << "', database: '" << v8connection->databaseName()
            << "', username: '" << v8connection->username() << "'";
@@ -411,9 +411,9 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     if (server().hasFeature<HttpEndpointProvider>()) {
       haveClient = true;
       ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
+      v8connection = std::make_unique<V8ClientConnection>(server(), client);
       if (client.isEnabled()) {
-        v8connection = std::make_unique<V8ClientConnection>(server());
-        v8connection->connect(&client);
+        v8connection->connect();
       }
     }
   }
@@ -421,8 +421,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
   initMode(ShellFeature::RunMode::INTERACTIVE, positionals);
 
   if (createConnection && haveClient) {
-    ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
-    v8connection->initServer(_isolate, context, &client);
+    v8connection->initServer(_isolate, context);
   }
 
   bool pe = printHello(v8connection.get());
@@ -453,6 +452,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
   V8LineEditor v8LineEditor(_isolate, context,
                             console.useHistory() ? "." + _name + ".history" : "");
+  
 
   if (v8connection != nullptr) {
     v8LineEditor.setSignalFunction(
@@ -531,9 +531,9 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     v8LineEditor.setExecutingCommand(false);
 
     if (v.IsEmpty()) {
-      context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "_last"), v8::Undefined(_isolate));
+      context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v8::Undefined(_isolate)).FromMaybe(false);
     } else {
-      context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "_last"), v);
+      context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "_last"), v).FromMaybe(false);
     }
 
     // command failed
@@ -617,31 +617,32 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
       v8::Handle<v8::Object> current = _isolate->GetCurrentContext()->Global();
 
       auto oldFilename =
-          current->Get(TRI_V8_ASCII_STRING(_isolate, "__filename"));
+        current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__filename")).FromMaybe(v8::Handle<v8::Value>());
 
-      current->Set(TRI_V8_ASCII_STRING(_isolate, "__filename"), filename);
+      current->Set(context, TRI_V8_ASCII_STRING(_isolate, "__filename"), filename).FromMaybe(false);
 
-      auto oldDirname =
-          current->Get(TRI_V8_ASCII_STRING(_isolate, "__dirname"));
+      auto oldDirname = current->Get(context, TRI_V8_ASCII_STRING(_isolate, "__dirname")).FromMaybe(v8::Handle<v8::Value>());
 
       auto dirname = FileUtils::dirname(TRI_ObjectToString(isolate, filename));
 
-      current->Set(TRI_V8_ASCII_STRING(_isolate, "__dirname"),
-                   TRI_V8_STD_STRING(_isolate, dirname));
+      current->Set(context,
+                   TRI_V8_ASCII_STRING(_isolate, "__dirname"),
+                   TRI_V8_STD_STRING(_isolate, dirname)).FromMaybe(false);
 
-      ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str(), true);
+      ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str());
 
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
         TRI_DeleteProperty(context, isolate, current, "__filename");
       } else {
-        current->Set(TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename);
+        current->Set(context,
+                     TRI_V8_ASCII_STRING(_isolate, "__filename"), oldFilename).FromMaybe(false);
       }
 
       if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
         TRI_DeleteProperty(context, isolate, current, "__dirname");
       } else {
-        current->Set(TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname);
+        current->Set(context, TRI_V8_ASCII_STRING(_isolate, "__dirname"), oldDirname).FromMaybe(false);
       }
 
       if (tryCatch.HasCaught()) {
@@ -650,7 +651,7 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         ok = false;
       }
     } else {
-      ok = TRI_ParseJavaScriptFile(_isolate, file.c_str(), true);
+      ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
     }
   }
 
@@ -730,14 +731,14 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
       continue;
     }
 
-    sysTestFiles->Set(i, TRI_V8_STD_STRING(_isolate, file));
+    sysTestFiles->Set(context, i, TRI_V8_STD_STRING(_isolate, file)).FromMaybe(false);
     ++i;
   }
 
-  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles);
+  context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"), sysTestFiles).FromMaybe(false);
 
-  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-                         v8::True(_isolate));
+  context->Global()->Set(context, TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
+                         v8::True(_isolate)).FromMaybe(false);
 
   // run tests
   auto input =
@@ -794,7 +795,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
       continue;
     }
 
-    sysTestFiles->Set(i, TRI_V8_STD_STRING(_isolate, file));
+    sysTestFiles->Set(context, i, TRI_V8_STD_STRING(_isolate, file)).FromMaybe(false);
     ++i;
   }
 
@@ -803,11 +804,13 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
 
   // do not use TRI_AddGlobalVariableVocbase because it creates read-only
   // variables!!
-  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
-                         v8::True(_isolate));
+  context->Global()->Set(context,
+                         TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
+                         v8::True(_isolate)).FromMaybe(false);
 
-  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_FILTER_TEST"),
-                         TRI_V8_ASCII_STD_STRING(_isolate, testFilter));
+  context->Global()->Set(context,
+                         TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_FILTER_TEST"),
+                         TRI_V8_ASCII_STD_STRING(_isolate, testFilter)).FromMaybe(false);
 
   // run tests
   auto input = TRI_V8_ASCII_STRING(
@@ -1002,15 +1005,15 @@ void V8ShellFeature::initGlobals() {
   // string functions
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "NORMALIZE_STRING"),
-      v8::FunctionTemplate::New(_isolate, JS_NormalizeString)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_NormalizeString)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "COMPARE_STRING"),
-      v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "ARANGODB_CLIENT_VERSION"),
-      v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
 
   // is quite
   TRI_AddGlobalVariableVocbase(_isolate,
@@ -1104,24 +1107,24 @@ void V8ShellFeature::initGlobals() {
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_OUTPUT"),
-      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, consoleWrapped)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_PagerOutput, consoleWrapped)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_START_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, consoleWrapped)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, consoleWrapped)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
 
   TRI_AddGlobalVariableVocbase(
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
-      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, consoleWrapped)->GetFunction());
+      v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, consoleWrapped)->GetFunction(context).FromMaybe(v8::Local<v8::Function>()));
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
                               std::vector<std::string> const& positionals) {
   // add positional arguments
   v8::Handle<v8::Array> p = v8::Array::New(_isolate, (int)positionals.size());
-
+  auto context = _isolate->GetCurrentContext();
   for (uint32_t i = 0; i < positionals.size(); ++i) {
-    p->Set(i, TRI_V8_STD_STRING(_isolate, positionals[i]));
+    p->Set(context, i, TRI_V8_STD_STRING(_isolate, positionals[i])).FromMaybe(false);
   }
 
   TRI_AddGlobalVariableVocbase(_isolate,
@@ -1160,6 +1163,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
 
   // load all init files
   std::vector<std::string> files;
+  files.reserve(16);
 
   files.push_back("common/bootstrap/scaffolding.js");
   files.push_back("common/bootstrap/modules/internal.js");  // deps: -
@@ -1179,20 +1183,20 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
 
   files.push_back("client/" + _clientModule);  // needs internal
 
-  for (size_t i = 0; i < files.size(); ++i) {
-    switch (loader.loadScript(_isolate, context, files[i], nullptr)) {
+  for (auto const& file : files) {
+    switch (loader.loadScript(_isolate, context, file, nullptr)) {
       case JSLoader::eSuccess:
         LOG_TOPIC("edc8d", TRACE, arangodb::Logger::FIXME)
-            << "loaded JavaScript file '" << files[i] << "'";
+            << "loaded JavaScript file '" << file << "'";
         break;
       case JSLoader::eFailLoad:
         LOG_TOPIC("022a8", FATAL, arangodb::Logger::FIXME)
-            << "cannot load JavaScript file '" << files[i] << "'";
+            << "cannot load JavaScript file '" << file << "'";
         FATAL_ERROR_EXIT();
         break;
       case JSLoader::eFailExecute:
         LOG_TOPIC("22385", FATAL, arangodb::Logger::FIXME)
-            << "error during execution of JavaScript file '" << files[i] << "'";
+            << "error during execution of JavaScript file '" << file << "'";
         FATAL_ERROR_EXIT();
         break;
     }

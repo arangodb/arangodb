@@ -80,73 +80,86 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("agency", "Configure the agency");
 
   options->addOption("--agency.activate", "Activate agency",
-                     new BooleanParameter(&_activated));
+                     new BooleanParameter(&_activated),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
-  options->addOption("--agency.size", "number of agents", new UInt64Parameter(&_size));
+  options->addOption("--agency.size", "number of agents", 
+                     new UInt64Parameter(&_size),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.pool-size", "number of agent pool",
-                     new UInt64Parameter(&_poolSize));
+                     new UInt64Parameter(&_poolSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.election-timeout-min",
       "minimum timeout before an agent calls for new election (in seconds)",
-      new DoubleParameter(&_minElectionTimeout));
+      new DoubleParameter(&_minElectionTimeout),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.election-timeout-max",
       "maximum timeout before an agent calls for new election (in seconds)",
-      new DoubleParameter(&_maxElectionTimeout));
+      new DoubleParameter(&_maxElectionTimeout),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.endpoint", "agency endpoints",
-                     new VectorParameter<StringParameter>(&_agencyEndpoints));
+                     new VectorParameter<StringParameter>(&_agencyEndpoints),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.my-address",
                      "which address to advertise to the outside",
-                     new StringParameter(&_agencyMyAddress));
+                     new StringParameter(&_agencyMyAddress),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.supervision",
                      "perform arangodb cluster supervision",
-                     new BooleanParameter(&_supervision));
+                     new BooleanParameter(&_supervision),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.supervision-frequency",
                      "arangodb cluster supervision frequency (in seconds)",
-                     new DoubleParameter(&_supervisionFrequency));
+                     new DoubleParameter(&_supervisionFrequency),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.supervision-grace-period",
       "supervision time, after which a server is considered to have failed (in seconds)",
-      new DoubleParameter(&_supervisionGracePeriod));
+      new DoubleParameter(&_supervisionGracePeriod),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption(
       "--agency.supervision-ok-threshold",
       "supervision time, after which a server is considered to be bad [s]",
-      new DoubleParameter(&_supervisionOkThreshold));
+      new DoubleParameter(&_supervisionOkThreshold),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",
                      new UInt64Parameter(&_compactionStepSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.compaction-keep-size",
                      "keep as many indices before compaction point",
-                     new UInt64Parameter(&_compactionKeepSize));
+                     new UInt64Parameter(&_compactionKeepSize),
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.wait-for-sync",
                      "wait for hard disk syncs on every persistence call "
                      "(required in production)",
                      new BooleanParameter(&_waitForSync),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.max-append-size",
                      "maximum size of appendEntries document (# log entries)",
                      new UInt64Parameter(&_maxAppendSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
 
   options->addOption("--agency.disaster-recovery-id",
                      "allows for specification of the id for this agent; "
                      "dangerous option for disaster recover only!",
                      new StringParameter(&_recoveryId),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::Hidden, arangodb::options::Flags::OnAgent));
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
