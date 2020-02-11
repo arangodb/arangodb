@@ -195,8 +195,16 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
     TRI_ASSERT(blockPtr->size() > lastSize);
     _size = blockPtr->size() - lastSize - 1;
   }
-  // Remove all but the last
-  _blocks.erase(_blocks.begin(), _blocks.end() - 1);
+  // Remove all but the last block
+  auto const first = _blocks.begin();
+  auto const last = _blocks.end() - 1;
+  // This check should be unnecessary, but is here to work around the bug
+  // https://developercommunity.visualstudio.com/content/problem/776568/vc-move-assigns-the-vector-to-itself-if-erase-is-c.html
+  // where vector::erase of the STL in MSVC 2019 calls self-move-assignments on
+  // every element from first to end() in the vector, if first == last.
+  if (first != last) {
+    _blocks.erase(first, last);
+  }
   TRI_ASSERT(_blocks.size() == 1);
   return shadowRow;
 }
