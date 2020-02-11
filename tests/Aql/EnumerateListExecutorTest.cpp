@@ -139,7 +139,7 @@ TEST_P(EnumerateListExecutorTestProduce, offset_2) {
       .setCall(AqlCall{3, AqlCall::Infinity{}, 2, false})
       .expectOutput({1}, {{4}, {5}})
       .expectSkipped(3)
-      .expectedState(ExecutionState::HASMORE)
+      .expectedState(ExecutionState::DONE)
       .run(makeInfos());
 }
 
@@ -164,8 +164,8 @@ TEST_P(EnumerateListExecutorTestProduce, offset_4) {
       .setInputSplitType(split)
       .setCall(AqlCall{5, AqlCall::Infinity{}, 2, true})
       .expectOutput({1}, {{6}, {7}})
-      .expectSkipped(8)                     // TODO: fullCount must be 8
-      .expectedState(ExecutionState::DONE)  // TODO: state must be done
+      .expectSkipped(8)
+      .expectedState(ExecutionState::DONE)
       .run(makeInfos());
 }
 
