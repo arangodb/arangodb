@@ -243,6 +243,14 @@ describe ArangoDB do
 
     context "dealing with the logger" do
 
+      before do
+        ArangoDB.drop_collection("UnitTestsReplication")
+      end
+
+      after do
+        ArangoDB.drop_collection("UnitTestsReplication")
+      end
+
 ################################################################################
 ## state
 ################################################################################
@@ -1448,6 +1456,13 @@ describe ArangoDB do
 ################################################################################
 
     context "dealing with the logger" do
+      before do
+        ArangoDB.drop_collection("UnitTestsReplication")
+      end
+
+      after do
+        ArangoDB.drop_collection("UnitTestsReplication")
+      end
 
 ################################################################################
 ## state

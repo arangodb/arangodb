@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+lkt{
+    Version{"2.1.19.14"}
+    collations{
+        standard{
+            Sequence{
+                "&C<č<<<Č"
+                "&G<ǧ<<<Ǧ"
+                "&H<ȟ<<<Ȟ"
+                "&S<š<<<Š"
+                "&Z<ž<<<Ž"
+            }
+            Version{"35.1"}
+        }
+    }
+}

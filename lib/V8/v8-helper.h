@@ -34,19 +34,22 @@
 namespace arangodb {
 
 inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
+  auto context = TRI_IGETC;
   // function converts js object to string using JSON.stringify
   if (value.IsEmpty()) {
     return std::string{};
   }
   auto ctx = isolate->GetCurrentContext();
   v8::Local<v8::Object> json = ctx->Global()
-                                   ->Get(TRI_V8_ASCII_STRING(isolate, "JSON"))
-                                   ->ToObject(ctx)
-                                   .FromMaybe(v8::Local<v8::Object>());
+    ->Get(context,
+          TRI_V8_ASCII_STRING(isolate, "JSON"))
+    .FromMaybe(v8::Local<v8::Value>())
+    ->ToObject(ctx)
+    .FromMaybe(v8::Local<v8::Object>());
   v8::Local<v8::Function> stringify =
-      json->Get(TRI_V8_ASCII_STRING(isolate, "stringify")).As<v8::Function>();
+    json->Get(context, TRI_V8_ASCII_STRING(isolate, "stringify")).FromMaybe(v8::Local<v8::Value>()).As<v8::Function>();
   v8::Local<v8::Value> args[1] = {value};
-  v8::Local<v8::Value> jsString = stringify->Call(json, 1, args);
+  v8::Local<v8::Value> jsString = stringify->Call(TRI_IGETC, json, 1, args).FromMaybe(v8::Local<v8::Value>());
   v8::String::Utf8Value const rv(isolate, jsString);
   return std::string(*rv, rv.length());
 }
@@ -144,8 +147,11 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
   int errorNum = -1;
 
   if (TRI_HasProperty(context, isolate, object, "errorNum")) {
-    errorNum = static_cast<int>(TRI_ObjectToInt64(
-        isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
+    errorNum = static_cast<
+      int>(TRI_ObjectToInt64(isolate,
+                             object->Get(context,
+                                         TRI_V8_ASCII_STRING(isolate, "errorNum"))
+                             .FromMaybe(v8::Local<v8::Value>())));
   }
 
   try {
@@ -153,15 +159,18 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
                              TRI_HasProperty(context, isolate, object, "message"))) {
       std::string errorMessage;
       if (TRI_HasProperty(context, isolate, object, "errorMessage")) {
-        v8::String::Utf8Value msg(
-            isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
+        v8::String::Utf8Value msg(isolate,
+                                  object->Get(context,
+                                              TRI_V8_ASCII_STRING(isolate, "errorMessage"))
+                                  .FromMaybe(v8::Local<v8::Value>()));
         if (*msg != nullptr) {
           errorMessage = std::string(*msg, msg.length());
         }
       } else {
         v8::String::Utf8Value msg(isolate,
-                                  object->Get(
-                                      TRI_V8_ASCII_STRING(isolate, "message")));
+                                  object->Get(context,
+                                              TRI_V8_ASCII_STRING(isolate, "message"))
+                                  .FromMaybe(v8::Local<v8::Value>()));
         if (*msg != nullptr) {
           errorMessage = std::string(*msg, msg.length());
         }
@@ -175,15 +184,19 @@ inline std::tuple<bool, bool, Result> extractArangoError(v8::Isolate* isolate,
     if (TRI_HasProperty(context, isolate, object, "name") &&
         TRI_HasProperty(context, isolate, object, "message")) {
       std::string name;
-      v8::String::Utf8Value nameString(isolate, object->Get(TRI_V8_ASCII_STRING(isolate,
-                                                                                "name")));
+      v8::String::Utf8Value nameString(isolate,
+                                       object->Get(context,
+                                                   TRI_V8_ASCII_STRING(isolate, "name"))
+                                       .FromMaybe(v8::Local<v8::Value>()));
       if (*nameString != nullptr) {
         name = std::string(*nameString, nameString.length());
       }
 
       std::string message;
-      v8::String::Utf8Value messageString(
-          isolate, object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
+      v8::String::Utf8Value messageString(isolate,
+                                          object->Get(context,
+                                                      TRI_V8_ASCII_STRING(isolate, "message"))
+                                          .FromMaybe(v8::Local<v8::Value>()));
       if (*messageString != nullptr) {
         message = std::string(*messageString, messageString.length());
       }

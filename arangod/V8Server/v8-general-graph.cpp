@@ -639,11 +639,11 @@ static void InitV8GeneralGraphClass(v8::Handle<v8::Context> context, TRI_vocbase
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoGraphCtor"));
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoGraphCtor"),
-                               ft->GetFunction(), true);
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // TODO WE DO NOT NEED THIS. Update _create to return a graph object properly
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoGraph"), aa);
@@ -687,10 +687,10 @@ static void InitV8SmartGraphClass(v8::Handle<v8::Context> context, TRI_vocbase_t
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "ArangoSmartGraphCtor"),
-                               ft->GetFunction(), true);
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoSmartGraph"), aa);
@@ -734,10 +734,10 @@ static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context, TRI_vocbas
       TRI_V8_ASCII_STRING(isolate, "ArangoGeneralGraphModuleCtor"));
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "ArangoGeneralGraphModuleCtor"),
-      ft->GetFunction(), true);
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoGeneralGraphModule"), aa);
