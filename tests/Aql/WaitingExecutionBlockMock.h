@@ -112,6 +112,10 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
  private:
   void dropBlock();
 
+  // Implementation of execute
+  std::tuple<arangodb::aql::ExecutionState, size_t, arangodb::aql::SharedAqlItemBlockPtr> executeWithoutTrace(
+      arangodb::aql::AqlCallStack stack);
+
  private:
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
   arangodb::aql::ResourceMonitor _resourceMonitor;
