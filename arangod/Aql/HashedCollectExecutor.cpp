@@ -243,8 +243,8 @@ ExecutorState HashedCollectExecutor::initRange(AqlItemBlockInputRange& inputRang
   TRI_ASSERT(!_isInitialized);
 
   // fetch & consume all input
-  while (inputRange.hasMore() && limit > 0) {
-    auto [state, input] = inputRange.next();
+  while (inputRange.hasDataRow() && limit > 0) {
+    auto [state, input] = inputRange.nextDataRow();
     TRI_ASSERT(input.isInitialized() || _upstreamState == ExecutionState::DONE);
 
     // needed to remember the last valid input aql item row
@@ -316,8 +316,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> HashedCollectExecutor::produceRows(
     TRI_ASSERT(_returnedGroups <= _allGroups.size());
   }
 
-  state = _currentGroup != _allGroups.end() ? ExecutorState::HASMORE
-                                                          : ExecutorState::DONE;
+  state = _currentGroup != _allGroups.end() ? ExecutorState::HASMORE : ExecutorState::DONE;
 
   AqlCall upstreamCall{};
   upstreamCall.softLimit = limit;
@@ -360,7 +359,8 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   }
 
   // note: aggregateValues may be a nullptr!
-  auto [result, emplaced] = _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
+  auto [result, emplaced] =
+      _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
   // emplace must not fail
   TRI_ASSERT(emplaced);
 
