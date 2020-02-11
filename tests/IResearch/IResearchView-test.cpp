@@ -103,7 +103,6 @@ struct DocIdScorer: public irs::sort {
   virtual sort::prepared::ptr prepare() const override { PTR_NAMED(Prepared, ptr); return ptr; }
 
   struct Prepared: public irs::sort::prepared_base<uint64_t, void> {
-    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override { score_cast(dst) = score_cast(src); }
     virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
       const size_t size, size_t offset) const  override {
       auto& casted_dst = score_cast(dst + offset);

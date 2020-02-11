@@ -66,8 +66,11 @@ class DocumentProducingNode {
   /// @brief remember the condition to execute for early filtering
   void setFilter(std::unique_ptr<Expression> filter);
 
-  /// @brief return the condition for the node
+  /// @brief return the early pruning condition for the node
   Expression* filter() const { return _filter.get(); }
+  
+  /// @brief whether or not the node has an early pruning filter condition
+  bool hasFilter() const { return _filter != nullptr; }
 
   void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
 

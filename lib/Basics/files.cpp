@@ -923,7 +923,7 @@ bool TRI_ReadPointer(int fd, void* buffer, size_t length) {
   char* ptr = static_cast<char*>(buffer);
 
   while (0 < length) {
-    ssize_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
+    TRI_read_return_t n = TRI_READ(fd, ptr, static_cast<TRI_read_t>(length));
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -1041,7 +1041,7 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
       return nullptr;
     }
 
-    ssize_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -1098,7 +1098,7 @@ bool TRI_ProcessFile(char const* filename,
       return false;
     }
 
-    ssize_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n = TRI_READ(fd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -1150,7 +1150,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
         return nullptr;
       }
 
-      ssize_t n = gzread(gzFd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+      TRI_read_return_t n = gzread(gzFd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
       if (n == 0) {
         break;
@@ -1218,7 +1218,7 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
       return nullptr;
     }
 
-    ssize_t n = encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+    TRI_read_return_t n = encryptionFeature.readData(*context, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
 
     if (n == 0) {
       break;
@@ -1427,7 +1427,7 @@ int TRI_VerifyLockFile(char const* filename) {
   char buffer[128];
   memset(buffer, 0,
          sizeof(buffer));  // not really necessary, but this shuts up valgrind
-  ssize_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
+  TRI_read_return_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
   TRI_DEFER(TRI_CLOSE(fd));
 
@@ -1800,7 +1800,7 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath, char const* instal
   return std::string(p, binaryPathLength - installPathLength);
 }
 
-static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string& error) {
+static bool CopyFileContents(int srcFD, int dstFD, TRI_read_t fileSize, std::string& error) {
   bool rc = true;
 #if TRI_LINUX_SPLICE
   int splicePipe[2];
@@ -1844,10 +1844,10 @@ static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string
     rc = false;
   }
 
-  size_t chunkRemain = fileSize;
+  TRI_read_t chunkRemain = fileSize;
   while (rc && (chunkRemain > 0)) {
-    size_t readChunk = (std::min)(C128, chunkRemain);
-    ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
+    auto readChunk = static_cast<TRI_read_t>((std::min)(C128, static_cast<size_t>(chunkRemain)));
+    TRI_read_return_t nRead = TRI_READ(srcFD, buf, readChunk);
 
     if (nRead < 0) {
       error = std::string("failed to read a chunk: ") + strerror(errno);
@@ -2078,8 +2078,8 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
 
   *crc = TRI_InitialCrc32();
 
-  constexpr int bufferSize = 4096;
-  buffer = TRI_Allocate((size_t)bufferSize);
+  constexpr size_t bufferSize = 4096;
+  buffer = TRI_Allocate(bufferSize);
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -2096,7 +2096,7 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
   res = TRI_ERROR_NO_ERROR;
 
   while (true) {
-    int sizeRead = (int)fread(buffer, 1, bufferSize, fin);
+    size_t sizeRead = fread(buffer, 1, bufferSize, fin);
 
     if (sizeRead < bufferSize) {
       if (feof(fin) == 0) {
