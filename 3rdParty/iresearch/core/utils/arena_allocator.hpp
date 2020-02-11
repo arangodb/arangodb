@@ -148,9 +148,7 @@ class arena_allocator {
 
   template<typename T1, typename U, typename A1, typename A2>
   friend bool operator==(const arena_allocator<T1, A1>& lhs,
-                         const arena_allocator<U, A2>& rhs) noexcept {
-    return std::is_same<A1, A2>::value && lhs.arena_ == rhs.arena_;
-  }
+                         const arena_allocator<U, A2>& rhs) noexcept;
 
   template <typename U, typename A>
   friend class arena_allocator;
@@ -165,6 +163,13 @@ template <class T, typename A1, class U, typename A2>
 inline bool operator!=(const arena_allocator<T, A1>& lhs,
                        const arena_allocator<U, A2>& rhs) noexcept {
   return !(lhs == rhs);
+}
+
+template<typename T1, typename U, typename A1, typename A2>
+inline bool operator==(const arena_allocator<T1, A1>& lhs,
+  const arena_allocator<U, A2>& rhs) noexcept {
+  return std::is_same<A1, A2>::value && 
+    lhs.arena_ == reinterpret_cast<const void*>(rhs.arena_);
 }
 
 template<typename T, size_t N>
