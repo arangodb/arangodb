@@ -760,3 +760,7 @@ RegisterId ExecutionEngine::resultRegister() const { return _resultRegister; }
 AqlItemBlockManager& ExecutionEngine::itemBlockManager() {
   return _itemBlockManager;
 }
+
+auto ExecutionEngine::getStats() const noexcept -> ExecutionStats const& {
+  return _stats;
+}

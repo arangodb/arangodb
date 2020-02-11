@@ -94,38 +94,26 @@ class ReturnExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output) {
-    ExecutionState state;
-    ReturnExecutor::Stats stats;
-    InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    std::tie(state, inputRow) = _fetcher.fetchRow();
+  auto produceRows(OutputAqlItemRow& output) -> std::pair<ExecutionState, Stats>;
 
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!inputRow);
-      return {state, stats};
-    }
+  /**
+   * @brief skip the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, size_t, AqlCall>;
 
-    if (!inputRow) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-    AqlValue val = inputRow.stealValue(_infos.getInputRegisterId());
-    AqlValueGuard guard(val, true);
-    TRI_IF_FAILURE("ReturnBlock::getSome") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    output.moveValueInto(_infos.getOutputRegisterId(), inputRow, guard);
-
-    if (_infos.doCount()) {
-      stats.incrCounted();
-    }
-    return {state, stats};
-  }
-
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
-    return _fetcher.preFetchNumberOfRows(atMost);
-  }
+  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
+      -> std::pair<ExecutionState, size_t>;
 
  private:
   ReturnExecutorInfos& _infos;
