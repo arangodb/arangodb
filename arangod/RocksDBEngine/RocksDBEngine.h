@@ -347,20 +347,28 @@ class RocksDBEngine final : public StorageEngine {
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
-  void startEnterprise();
-  void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
+  void configureEnterpriseRocksDBOptions(rocksdb::Options& options, bool createdEngineDir);
   void validateJournalFiles() const;
   
-  Result readUserEncryptionIV(std::string& out);
+  Result readUserEncryptionKey(std::string& out) const;
 
   enterprise::RocksDBEngineEEData _eeData;
 
 public:
   std::string const& getEncryptionKey();
   
-  std::string const& getEncryptedIVFile();
+  /// encryption file
+  std::string const& getEncryptionFilePath();
+  /// encrypted key file path
+  std::string const& getEncryptedKeyFilePath();
   
+  /// reload user-provided key, writes out the internal key file
   Result rotateEncryptionKey();
+  
+private:
+  
+  /// reload encryption key, using new user provided key file
+  Result loadEncryptionKey();
   
 #endif
 private:
