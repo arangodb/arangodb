@@ -512,10 +512,10 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    arangodb::velocypack::Options options = arangodb::velocypack::Options::Defaults;
+    arangodb::velocypack::Options opts = arangodb::velocypack::Options::Defaults;
     // do *not* check duplicate attributes here (because that would throw)
-    options.checkAttributeUniqueness = false;
-    arangodb::velocypack::Builder builder(&options);
+    opts.checkAttributeUniqueness = false;
+    arangodb::velocypack::Builder builder(&opts);
 
     // instead, we need to manually check for duplicate attributes...
     char const* p = buffer;
@@ -571,9 +571,13 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
 
   std::string const url = "/_api/replication/restore-data?collection=" + urlEncode(cname) +
                           "&force=" + (options.force ? "true" : "false");
-
+  
+  std::unordered_map<std::string, std::string> headers;
+  headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
+                  arangodb::StaticStrings::MimeTypeDump);
+  
   std::unique_ptr<SimpleHttpResult> response(
-      httpClient.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize));
+      httpClient.request(arangodb::rest::RequestType::PUT, url, buffer, bufferSize, headers));
   return ::checkHttpResponse(httpClient, response, "restoring data", "");
 }
 

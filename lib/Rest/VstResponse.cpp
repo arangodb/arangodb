@@ -52,6 +52,7 @@ void VstResponse::reset(ResponseCode code) {
   _headers.clear();
   _contentType = ContentType::VPACK;
   _generateBody = false;  // payload has to be set
+  _payload.clear();
 }
 
 void VstResponse::addPayload(VPackSlice const& slice,
