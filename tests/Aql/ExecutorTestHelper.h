@@ -44,7 +44,14 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-template <typename E, std::size_t inputColumns = 1, std::size_t outputColumns = 1>
+using ExecBlock = std::shared_ptr<ExecutionBlock>;
+
+// TODO: this could also just be a pair of exec blocks (front and back of the pipeline)
+//       because the deque is defined by the dependencies (and this way we can depend on
+//       more than one ExecBlock)
+using Pipeline = std::deque<ExecBlock>;
+
+template <std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {
   using SplitType = std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
 
@@ -124,9 +131,17 @@ struct ExecutorTestHelper {
     _expectedStats = stats;
     _testStats = true;
     return *this;
-  };
+  }
 
-  auto run(typename E::Infos infos) -> void {
+  template <typename E>
+  auto setExecBlock(typename E::Infos infos) -> ExecutorTestHelper& {
+    auto testeeNode = std::make_unique<SingletonNode>(_query.plan(), 1);
+    _testee = std::make_unique<ExecutionBlockImpl<E>>(_query.engine(),
+                                                      testeeNode.get(), std::move(infos));
+    return *this;
+  }
+
+  auto run() -> void {
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
 
@@ -134,11 +149,10 @@ struct ExecutorTestHelper {
 
     auto testeeNode = std::make_unique<SingletonNode>(_query.plan(), 1);
 
-    ExecutionBlockImpl<E> testee{_query.engine(), testeeNode.get(), std::move(infos)};
-    testee.addDependency(inputBlock.get());
+    _testee->addDependency(inputBlock.get());
 
     AqlCallStack stack{_call};
-    auto const [state, skipped, result] = testee.execute(stack);
+    auto const [state, skipped, result] = _testee->execute(stack);
     EXPECT_EQ(skipped, _expectedSkip);
 
     EXPECT_EQ(state, _expectedState);
@@ -235,6 +249,7 @@ struct ExecutorTestHelper {
 
   arangodb::aql::Query& _query;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
+  ExecBlock _testee;
 };
 
 enum class ExecutorCall {
@@ -256,7 +271,7 @@ using ExecutorStepResult = std::tuple<ExecutorCall, arangodb::aql::ExecutionStat
 //  somehow optional. e.g. call a templated function or so.
 // TODO Add calls to expectedNumberOfRows
 
-template <class Executor>
+template <typename Executor>
 std::tuple<arangodb::aql::SharedAqlItemBlockPtr, std::vector<ExecutorStepResult>, arangodb::aql::ExecutionStats>
 runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
             arangodb::aql::OutputAqlItemRow& outputRow, size_t const numSkip,
