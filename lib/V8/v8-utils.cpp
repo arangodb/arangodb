@@ -1139,10 +1139,10 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool useSandbox = sandboxValue->IsObject();
   v8::Handle<v8::Object> sandbox;
-  v8::Handle<v8::Context> context;
+  v8::Handle<v8::Context> context = TRI_IGETC;
 
   if (useSandbox) {
-    sandbox = sandboxValue->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+    sandbox = sandboxValue->ToObject(context).FromMaybe(v8::Local<v8::Object>());
 
     // create new context
     context = v8::Context::New(isolate);
@@ -1168,7 +1168,6 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
       if (value == sandbox) {
         value = context->Global();
       }
-
       context->Global()->Set(context, key, value).FromMaybe(false);
     }
   }
@@ -1181,7 +1180,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::TryCatch tryCatch(isolate);
 
     v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
-    script = v8::Script::Compile(TRI_IGETC, TRI_ObjectToString(context, source), &scriptOrigin)
+    script = v8::Script::Compile(context, TRI_ObjectToString(context, source), &scriptOrigin)
                  .FromMaybe(v8::Local<v8::Script>());
 
     // compilation failed, print errors that happened during compilation
@@ -1198,11 +1197,11 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
           exceptionObj->Set(context,
                             TRI_V8_ASCII_STRING(isolate, "lineNumber"),
                             v8::Number::New(isolate,
-                                            message->GetLineNumber(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);
+                                            message->GetLineNumber(context).FromMaybe(-1))).FromMaybe(false);
           exceptionObj->Set(context,
                             TRI_V8_ASCII_STRING(isolate, "columnNumber"),
                             v8::Number::New(isolate,
-                                            message->GetStartColumn(TRI_IGETC).FromMaybe(-1))).FromMaybe(false);
+                                            message->GetStartColumn(context).FromMaybe(-1))).FromMaybe(false);
         }
         exceptionObj->Set(context,
                           TRI_V8_ASCII_STRING(isolate, "fileName"),
@@ -1218,7 +1217,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     // compilation succeeded, run the script
-    result = script->Run(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+    result = script->Run(context).FromMaybe(v8::Local<v8::Value>());
 
     if (result.IsEmpty()) {
       if (useSandbox) {
@@ -1239,7 +1238,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // copy result back into the sandbox
   if (useSandbox) {
-    v8::Handle<v8::Array> keys = context->Global()->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
+    v8::Handle<v8::Array> keys = context->Global()->GetPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
 
     for (uint32_t i = 0; i < keys->Length(); i++) {
       v8::Handle<v8::String> key =
