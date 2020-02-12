@@ -179,7 +179,7 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
     }
 
     /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
-    output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
+    output.copyRow(inputRow, std::is_same_v<UsedFetcher, ConstFetcher>);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
