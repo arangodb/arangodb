@@ -411,7 +411,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     if (server().hasFeature<HttpEndpointProvider>()) {
       haveClient = true;
       ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
-      v8connection = std::make_unique<V8ClientConnection>(server(), client);
+      v8connection = std::make_shared<V8ClientConnection>(server(), client);
       if (client.isEnabled()) {
         v8connection->connect();
       }
