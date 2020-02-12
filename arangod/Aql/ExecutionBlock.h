@@ -151,6 +151,13 @@ class ExecutionBlock {
   [[nodiscard]] bool isInSplicedSubquery() const noexcept;
 
  protected:
+  // Trace the start of a execute call
+  void traceExecuteBegin(AqlCallStack const& stack);
+
+  // Trace the end of a execute call, potentially with result
+  void traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result);
+
+ protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
 

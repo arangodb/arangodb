@@ -966,6 +966,9 @@ function processQuery(query, explain, planIndex) {
       case 'logical and':
         return '(' + binaryOperator(node, '&&') + ')';
       case 'ternary':
+        if (node.subNodes.length === 2) {
+          return '(' + buildExpression(node.subNodes[0]) + ' ?: ' + buildExpression(node.subNodes[1]) + ')';
+        }
         return '(' + buildExpression(node.subNodes[0]) + ' ? ' + buildExpression(node.subNodes[1]) + ' : ' + buildExpression(node.subNodes[2]) + ')';
       case 'n-ary or':
         if (node.hasOwnProperty('subNodes')) {
@@ -1716,12 +1719,12 @@ function processQuery(query, explain, planIndex) {
     if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
     }
-    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
-      level = subqueries.pop();
-    }
   };
 
   var postHandle = function (node) {
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
+    }
     var isLeafNode = !parents.hasOwnProperty(node.id);
 
     if (['EnumerateCollectionNode',

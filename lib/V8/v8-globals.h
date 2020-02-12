@@ -347,6 +347,10 @@ inline bool TRI_HasProperty(v8::Local<v8::Context> &context, v8::Isolate* isolat
   return obj->Has(context, key).FromMaybe(false);
 }
 
+inline bool TRI_HasRealNamedProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, v8::Local<v8::String> const& key) {
+  return obj->HasRealNamedProperty(context, key).FromMaybe(false);
+}
+
 inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, char const *key) {
   return obj->Get(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(v8::Local<v8::Value>());
 }
@@ -368,6 +372,15 @@ inline v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context> &context, v8::H
 
 inline v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Handle<v8::Value> const &val) {
   return val->ToString(context).FromMaybe(v8::Local<v8::String>());
+}
+inline std::string TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::MaybeLocal<v8::Value> const&val) {
+  v8::String::Utf8Value x(isolate, val.FromMaybe(v8::Local<v8::Value>())->ToString(context).FromMaybe(v8::Local<v8::String>()));
+  return std::string(*x, x.length());
+}
+
+inline std::string TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::String> const&val) {
+  v8::String::Utf8Value x(isolate, val);
+  return std::string(*x, x.length());
 }
 
 /// @brief retrieve the instance of the TRI_v8_global_t of the current thread
@@ -489,8 +502,8 @@ struct TRI_v8_global_t {
   /// @brief stream query cursor templace
   v8::Persistent<v8::FunctionTemplate> StreamQueryCursorTempl;
 
-  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerTempl; // IResearch analyzer instance template
-  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzersTempl; // IResearch analyzers feature template
+  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerInstanceTempl;
+  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerManagerTempl;
 
   /// @brief "Buffer" constant
   v8::Persistent<v8::String> BufferConstant;
@@ -611,6 +624,9 @@ struct TRI_v8_global_t {
 
   /// @brief "overwrite" key
   v8::Persistent<v8::String> OverwriteKey;
+
+  /// @brief "overwriteMode" key
+  v8::Persistent<v8::String> OverwriteModeKey;
 
   /// @brief "parameters" key name
   v8::Persistent<v8::String> ParametersKey;
@@ -762,8 +778,11 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
 
 /// @brief adds a method to the prototype of an object
 template <typename TARGET>
-bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
-                           v8::FunctionCallback callback, bool isHidden = false) {
+bool TRI_V8_AddProtoMethod(v8::Isolate* isolate,
+                           TARGET tpl,
+                           v8::Handle<v8::String> name,
+                           v8::FunctionCallback callback,
+                           bool isHidden = false) {
   // hidden method
   if (isHidden) {
     tpl->PrototypeTemplate()->Set(name, v8::FunctionTemplate::New(isolate, callback),
@@ -778,44 +797,26 @@ bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::Stri
 }
 
 /// @brief adds a method to an object
-template <typename TARGET>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
+inline bool TRI_V8_AddMethod(v8::Isolate* isolate,
+                             v8::Function tpl,
+                             v8::Handle<v8::String> name,
                              v8::Handle<v8::FunctionTemplate> callback,
                              bool isHidden = false) {
+  auto context = TRI_IGETC;
   // hidden method
   if (isHidden) {
     return tpl
-        ->DefineOwnProperty(TRI_IGETC, name, callback->GetFunction(), v8::DontEnum)
+      .DefineOwnProperty(context,
+                         name,
+                         callback->GetFunction(context).FromMaybe(v8::Local<v8::Function>()),
+                         v8::DontEnum)
         .FromMaybe(false);
   }
   // normal method
   else {
-    return tpl->Set(name, callback->GetFunction());
+    return tpl.Set(context, name, callback->GetFunction(context).FromMaybe(v8::Local<v8::Value>())).FromMaybe(false);
   }
-}
-
-template <typename TARGET>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
-                             v8::FunctionCallback callback, bool isHidden = false) {
-  // hidden method
-  if (isHidden) {
-    return tpl
-        ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, callback)->GetFunction(),
-                            v8::DontEnum)
-        .FromMaybe(false);  // Ignore ret
-  }
-  // normal method
-  else {
-    return tpl->Set(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction());
-  }
-}
-
-template <>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, v8::Handle<v8::FunctionTemplate> tpl,
-                             v8::Handle<v8::String> name,
-                             v8::FunctionCallback callback, bool isHidden) {
-  return TRI_V8_AddMethod(isolate, tpl->GetFunction(), name, callback, isHidden);
+  return false;
 }
 
 /// @brief adds a method to an object

@@ -81,29 +81,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-
-std::string const doneString = "DONE";
-std::string const hasDataRowString = "HASMORE";
-std::string const waitingString = "WAITING";
-std::string const unknownString = "UNKNOWN";
-
-std::string const& stateToString(aql::ExecutionState state) {
-  switch (state) {
-    case aql::ExecutionState::DONE:
-      return doneString;
-    case aql::ExecutionState::HASMORE:
-      return hasDataRowString;
-    case aql::ExecutionState::WAITING:
-      return waitingString;
-    default:
-      // just to suppress a warning ..
-      return unknownString;
-  }
-}
-
-}  // namespace
-
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
  * named `methodName`, used like this:
@@ -133,11 +110,6 @@ CREATE_HAS_MEMBER_CHECK(fetchBlockForPassthrough, hasFetchBlockForPassthrough);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
 CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
 
-/*
- * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
- * TODO: This should be removed once all executors and fetchers are ported to the new style.
- */
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // Forward declaration of Test Executors.
 // only used as long as isNewStyleExecutor is required.
@@ -150,22 +122,32 @@ class TestLambdaSkipExecutor;
 }  // namespace arangodb
 #endif
 
-template <class Executor>
-static bool constexpr isNewStyleExecutor() {
-  return
+template <typename T, typename... Es>
+constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
+
+/*
+ * Determine whether we execute new style or old style skips, i.e. pre or post shadow row introduction
+ * TODO: This should be removed once all executors and fetchers are ported to the new style.
+ */
+template <typename Executor>
+constexpr bool isNewStyleExecutor = is_one_of_v < Executor,
+               FilterExecutor, SortedCollectExecutor, ReturnExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      std::is_same_v<Executor, TestLambdaExecutor> ||
-      std::is_same_v<Executor, TestLambdaSkipExecutor> ||
+               TestLambdaExecutor,
+               TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-      std::is_same_v<Executor, FilterExecutor> ||
-      std::is_same_v<Executor, IndexExecutor> ||
-      std::is_same_v<Executor, ShortestPathExecutor>;
+<<<<<<< HEAD
+    std::is_same_v<Executor, FilterExecutor> || std::is_same_v<Executor, IndexExecutor> ||
+        std::is_same_v<Executor, ShortestPathExecutor>;
 }
+=======
+                                                  ShortestPathExecutor>;
+>>>>>>> origin/feature/AqlSubqueryExecutionBlockImplExecuteImplementation
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
-                                                 typename Executor::Infos&& infos)
+                                                 typename Executor::Infos infos)
     : ExecutionBlock(engine, node),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
                        infos.getInputRegisters(),
@@ -192,7 +174,7 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
     AqlCallStack stack{AqlCall::SimulateGetSome(atMost)};
     auto const [state, skipped, block] = execute(stack);
     return {state, block};
@@ -356,13 +338,12 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
-                                              infos().registersToClear(), std::move(call),
+                                              infos().registersToClear(), call,
                                               OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   } else {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
-                                              infos().registersToClear(),
-                                              std::move(call));
+                                              infos().registersToClear(), call);
   }
 }
 
@@ -490,7 +471,7 @@ static SkipVariants constexpr skipType() {
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
     AqlCallStack stack{AqlCall::SimulateSkipSome(atMost)};
     auto const [state, skipped, block] = execute(stack);
 
@@ -626,7 +607,7 @@ template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
   // TODO remove this IF
   // These are new style executors
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
     // Only this executor is fully implemented
     traceExecuteBegin(stack);
     auto res = executeWithoutTrace(stack);
@@ -650,75 +631,6 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
   }
   // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-template <class Executor>
-void ExecutionBlockImpl<Executor>::traceExecuteBegin(AqlCallStack const& stack) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    if (_getSomeBegin <= 0.0) {
-      _getSomeBegin = TRI_microtime();
-    }
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      auto const node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      // TODO make sure this works also if stack is non relevant, e.g. passed through by outer subquery.
-      auto const& call = stack.peek();
-      LOG_TOPIC("1e717", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "execute type=" << node->getTypeString() << " call= " << call
-          << " this=" << (uintptr_t)this << " id=" << node->id();
-    }
-  }
-}
-
-template <class Executor>
-void ExecutionBlockImpl<Executor>::traceExecuteEnd(
-    std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result) {
-  if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    auto const& [state, skipped, block] = result;
-    auto const items = block != nullptr ? block->size() : 0;
-    ExecutionNode const* en = getPlanNode();
-    ExecutionStats::Node stats;
-    stats.calls = 1;
-    stats.items = skipped + items;
-    if (state != ExecutionState::WAITING) {
-      stats.runtime = TRI_microtime() - _getSomeBegin;
-      _getSomeBegin = 0.0;
-    }
-
-    auto it = _engine->_stats.nodes.find(en->id());
-    if (it != _engine->_stats.nodes.end()) {
-      it->second += stats;
-    } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
-    }
-
-    if (_profile >= PROFILE_LEVEL_TRACE_1) {
-      ExecutionNode const* node = getPlanNode();
-      auto const queryId = this->_engine->getQuery()->id();
-      LOG_TOPIC("60bbc", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "execute done type=" << node->getTypeString() << " this=" << (uintptr_t)this
-          << " id=" << node->id() << " state=" << stateToString(state)
-          << " skipped=" << skipped << " produced=" << items;
-
-      if (_profile >= PROFILE_LEVEL_TRACE_2) {
-        if (block == nullptr) {
-          LOG_TOPIC("9b3f4", INFO, Logger::QUERIES)
-              << "[query#" << queryId << "] "
-              << "execute type=" << node->getTypeString() << " result: nullptr";
-        } else {
-          VPackBuilder builder;
-          auto const options = trxVpackOptions();
-          block->toSimpleVPack(options, builder);
-          LOG_TOPIC("f12f9", INFO, Logger::QUERIES)
-              << "[query#" << queryId << "] "
-              << "execute type=" << node->getTypeString()
-              << " result: " << VPackDumper::toString(builder.slice(), options);
-        }
-      }
-    }
-  }
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -983,7 +895,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
     size_t nrItems, RegisterCount nrRegs) {
-  if constexpr (!isNewStyleExecutor<Executor>()) {
+  if constexpr (!isNewStyleExecutor<Executor>) {
     static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable ||
                       !Executor::Properties::inputSizeRestrictsOutputSize,
                   "At most one of Properties::allowsBlockPassthrough or "
@@ -1114,21 +1026,19 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
   // it may not be done for modification subqueries.
   static_assert(useFetcher ==
-                    (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
-                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>>::value &&
+                    (std::is_same_v<typename Executor::Fetcher, ConstFetcher> ||
+                     (std::is_same_v<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>> &&
                       !std::is_same<Executor, SubqueryExecutor<true>>::value)),
                 "Unexpected fetcher for SkipVariants::FETCHER");
 
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor == (
+  static_assert(useExecutor == (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                                   (std::is_same_v<Executor, TestLambdaSkipExecutor>) ||
+                                            TestLambdaSkipExecutor,
 #endif
-                                   std::is_same_v<Executor, FilterExecutor> ||
-                                   std::is_same_v<Executor, IndexExecutor> ||
-                                   std::is_same_v<Executor, ShortestPathExecutor>),
+                                            SortedCollectExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -1153,7 +1063,8 @@ struct dependent_false : std::false_type {};
 template <class Executor>
 std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::executeSkipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
+    call.skippedRows = 0;
     if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::EXECUTOR) {
       // If the executor has a method skipRowsRange, to skip outputs.
       // Every non-passthrough executor needs to implement this.
@@ -1224,7 +1135,7 @@ std::tuple<ExecutorState, size_t, AqlCall> ExecutionBlockImpl<Executor>::execute
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
-  if constexpr (isNewStyleExecutor<Executor>()) {
+  if constexpr (isNewStyleExecutor<Executor>) {
     if (!stack.isRelevant()) {
       // We are bypassing subqueries.
       // This executor is not allowed to perform actions

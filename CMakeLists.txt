@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.9)
+message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -437,14 +438,6 @@ elseif (UNIX AND NOT APPLE)
     set(FREEBSD TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
     set(SYSV5 TRUE)
-  elseif ((CMAKE_SYSTEM_NAME MATCHES "Solaris.*") OR (CMAKE_SYSTEM_NAME MATCHES "SunOS.*"))
-    set(SOLARIS TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
-    set(HPUX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "AIX.*")
-    set(AIX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "Minix.*")
-    set(MINIX TRUE)
   endif ()
 elseif (APPLE)
   if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
@@ -480,13 +473,9 @@ endif()
 ## EXTERNAL PROGRAMS
 ################################################################################
 
-if (SOLARIS)
-  set(MAKE gmake)
-else ()
-  set(MAKE make)
-endif ()
+set(MAKE make)
 
-find_package(PythonInterp 2 EXACT REQUIRED)
+find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
@@ -496,6 +485,8 @@ set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 # to find those files the NO_DEFAULT_PATH
 # argument is passed
 if (NOT WINDOWS)
+  find_program (MAKE make gmake)
+
   find_program(
     CHMOD_EXECUTABLE chmod
     PATHS "/bin/" "/usr/bin/"
@@ -513,11 +504,6 @@ endif()
 ################################################################################
 ## ARCHITECTURE
 ################################################################################
-
-if (SOLARIS OR NOT CMAKE_SIZEOF_VOID_P)
-  set(CMAKE_SIZEOF_VOID_P 8)
-  set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
-endif ()
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DARANGODB_BITS=${BITS}")
@@ -542,19 +528,6 @@ else ()
   set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
   set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
   set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
-endif ()
-
-if (SOLARIS)
-  set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
-
-  set(CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
-    /lib;/lib64;/lib64;/usr/lib;/usr/lib64;/usr/lib64
-  )
-
-  list(APPEND SYSTEM_LIBRARIES nsl socket)
-
-  # force 64bit compile
-  set(BASE_FLAGS "-I /opt/csw/include -D_REENTRANT -m64 ${BASE_FLAGS}")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -1170,10 +1143,11 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb ${SNAPPY_LIB})
+add_dependencies(rocksdb snappy-static)
 
 if (USE_JEMALLOC)
-  add_dependencies(rocksdb jemalloc)
+  add_dependencies(rocksdb jemalloc_build)
+  link_directories("${JEMALLOC_HOME}/lib")
 endif ()
 
 ################################################################################
@@ -1208,16 +1182,6 @@ endforeach()
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
-
-################################################################################
-## cURL
-################################################################################
-
-add_definitions(-DCURL_STATICLIB=1)
-include_directories(SYSTEM
-  ${CURL_SRC_DIR}/include/
-  ${CURL_BIN_DIR}/include/curl/
-)
 
 ################################################################################
 ## PATHS, installation, packages, frontend
@@ -1304,7 +1268,6 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${ZLIB_LIBS}
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
-  libcurl
   ${BASE_LIBS}
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}

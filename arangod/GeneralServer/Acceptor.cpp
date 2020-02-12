@@ -54,8 +54,12 @@ std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
 }
 
 void Acceptor::handleError(asio_ns::error_code const& ec) {
-  if (ec == asio_ns::error::operation_aborted) {
-    // this "error" is accpepted, so it doesn't justify a warning
+  // On shutdown, the _open flag will be reset first and then the
+  // acceptor is cancelled and closed, in this case we do not want
+  // to start another async_accept. In other cases, we do want to
+  // continue after an error.
+  if (!_open && ec == asio_ns::error::operation_aborted) {
+    // this "error" is accepted, so it doesn't justify a warning
     LOG_TOPIC("74339", DEBUG, arangodb::Logger::COMMUNICATION)
         << "accept failed: " << ec.message();
     return;

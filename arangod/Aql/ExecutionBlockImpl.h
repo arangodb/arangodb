@@ -142,7 +142,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @param node The Node used to create this ExecutionBlock
    */
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     typename Executor::Infos&&);
+                     typename Executor::Infos);
 
   ~ExecutionBlockImpl() override;
 
@@ -266,12 +266,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   void resetAfterShadowRow();
 
   [[nodiscard]] ExecutionState fetchShadowRowInternal();
-
-  // Trace the start of a getSome call
-  void traceExecuteBegin(AqlCallStack const& stack);
-
-  // Trace the end of a getSome call, potentially with result
-  void traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result);
 
   // Allocate an output block and install a call in it
   [[nodiscard]] auto allocateOutputBlock(AqlCall&& call)
