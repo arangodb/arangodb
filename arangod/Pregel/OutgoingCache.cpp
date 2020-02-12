@@ -43,7 +43,7 @@ using namespace arangodb::pregel;
 template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
     : _config(state), _format(format) {
-  _baseUrl = Utils::baseUrl(_config->database(), Utils::workerPrefix);
+  _baseUrl = Utils::baseUrl(Utils::workerPrefix);
 }
 
 // ================= ArrayOutCache ==================
@@ -98,6 +98,7 @@ void ArrayOutCache<M>::flushMessages() {
   network::ConnectionPool* pool = nf.pool();
   
   network::RequestOptions reqOpts;
+  reqOpts.database = this->_config->database();
   reqOpts.skipScheduler = true;
 
   std::vector<futures::Future<network::Response>> responses;
@@ -242,6 +243,7 @@ void CombiningOutCache<M>::flushMessages() {
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
     
     network::RequestOptions reqOpts;
+    reqOpts.database = this->_config->database();
     reqOpts.timeout = network::Timeout(180);
     reqOpts.skipScheduler = true;
     

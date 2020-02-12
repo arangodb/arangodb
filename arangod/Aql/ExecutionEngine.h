@@ -118,6 +118,8 @@ class ExecutionEngine {
   /// @brief accessor to the memory recyler for AqlItemBlocks
   TEST_VIRTUAL AqlItemBlockManager& itemBlockManager();
 
+  auto getStats() const noexcept -> ExecutionStats const&;
+
  public:
   /// @brief execution statistics for the query
   /// note that the statistics are modification by execution blocks

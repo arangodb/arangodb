@@ -111,8 +111,16 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   }
 }
 
-// NOTE: Does not care for shadowrows!
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
+  traceExecuteBegin(stack);
+  auto res = executeWithoutTrace(stack);
+  traceExecuteEnd(res);
+  return res;
+}
+
+// NOTE: Does not care for shadowrows!
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
+    AqlCallStack stack) {
   while (!stack.isRelevant()) {
     stack.pop();
   }
@@ -142,15 +150,16 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
       skipped += canSkip;
       continue;
     } else if (myCall.getLimit() > 0) {
+      if (result != nullptr) {
+        // Sorry we can only return one block.
+        // This means we have prepared the first block.
+        // But still need more data.
+        return {ExecutionState::HASMORE, skipped, result};
+      }
+
       size_t canReturn = _data.front()->size() - _inflight;
 
       if (canReturn <= myCall.getLimit()) {
-        if (result != nullptr) {
-          // Sorry we can only return one block.
-          // This means we have prepared the first block.
-          // But still need more data.
-          return {ExecutionState::HASMORE, skipped, result};
-        }
         // We can return the remainder of this block
         if (_inflight == 0) {
           // use full block
