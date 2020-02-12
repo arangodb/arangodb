@@ -69,6 +69,8 @@ class GeneralCommTask : public CommTask {
   static constexpr std::chrono::seconds DefaultTimeout{120};
   
   std::unique_ptr<AsioSocket<T>> _protocol;
+  
+  std::atomic<bool> _stopped;
 };
 }  // namespace rest
 }  // namespace arangodb
