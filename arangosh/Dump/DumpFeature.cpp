@@ -319,6 +319,10 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     // we are in single-server mode, we already flushed the wal
     baseUrl += "&flush=false";
   }
+  
+  std::unordered_map<std::string, std::string> headers;
+  headers.emplace(arangodb::StaticStrings::Accept, arangodb::StaticStrings::MimeTypeDump);
+
 
   while (true) {
     std::string url = baseUrl + "&from=" + itoa(fromTick) + "&chunkSize=" + itoa(chunkSize);
@@ -330,7 +334,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     // make the actual request for data
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-        client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
+        client.request(arangodb::rest::RequestType::GET, url, nullptr, 0, headers));
     auto check = ::checkHttpResponse(client, response);
     if (check.fail()) {
       LOG_TOPIC("ac972", ERR, arangodb::Logger::DUMP)
@@ -368,6 +372,12 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
               std::string("got invalid response from server: required header "
                           "is missing while dumping collection '") +
                   name + "'"};
+    }
+    
+    header = response->getHeaderField(arangodb::StaticStrings::ContentTypeHeader, headerExtracted);
+    if (!headerExtracted || header.compare(0, 25, "application/x-arango-dump") != 0) {
+      return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+        "got invalid response from server: content-type is invalid"};
     }
 
     // now actually write retrieved data to dump file

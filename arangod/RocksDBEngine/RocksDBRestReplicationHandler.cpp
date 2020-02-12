@@ -29,8 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
@@ -77,9 +75,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     bool parseSuccess = true;
     VPackSlice body = this->parseVPackBody(parseSuccess);
-    if (!parseSuccess || !body.isObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid JSON");
+    if (!parseSuccess || !body.isObject()) { // error already created
       return;
     }
     std::string patchCount =
@@ -121,16 +117,14 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // extend an existing blocker
     auto id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
-    auto input = _request->toVelocyPackBuilderPtr();
-
-    if (input == nullptr || !input->slice().isObject()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid JSON");
+    bool parseSuccess = true;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess || !body.isObject()) { // error already created
       return;
     }
 
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    auto ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
 
     auto res = _manager->extendLifetime(id, ttl);
     if (res.fail()) {
@@ -692,9 +686,12 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   size_t reserve = std::max<size_t>(chunkSize, 8192);
 
   RocksDBReplicationContext::DumpResult res(TRI_ERROR_NO_ERROR);
-  if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
+  if (_request->contentTypeResponse() == ContentType::VPACK) {
     VPackBuffer<uint8_t> buffer;
     buffer.reserve(reserve);  // avoid reallocs
+    
+    auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
+    
 
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
     // generate the result
@@ -705,7 +702,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     } else {
       resetResponse(rest::ResponseCode::OK);
       _response->setContentType(rest::ContentType::VPACK);
-      _response->setPayload(std::move(buffer), true, VPackOptions::Options::Defaults,
+      _response->setPayload(std::move(buffer), true, *trxCtx->getVPackOptions(),
                             /*resolveExternals*/ false);
     }
 
@@ -717,12 +714,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                            StringUtils::itoa(buffer.empty() ? 0 : res.includedTick));
 
   } else {
-    auto response = dynamic_cast<HttpResponse*>(_response.get());
     StringBuffer dump(reserve, false);
-    if (response == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
-    }
 
     // do the work!
     res = ctx->dumpJson(_vocbase, cname, dump, determineChunkSize());
@@ -746,17 +738,28 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       resetResponse(rest::ResponseCode::OK);
     }
 
-    response->setContentType(rest::ContentType::DUMP);
+    _response->setContentType(rest::ContentType::DUMP);
     // set headers
     _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                            (res.hasMore ? "true" : "false"));
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa((dump.length() == 0) ? 0 : res.includedTick));
+    
+    if (_request->transportType() == Endpoint::TransportType::HTTP) {
+      auto response = dynamic_cast<HttpResponse*>(_response.get());
+      if (response == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "invalid response type");
+      }
 
-    // transfer ownership of the buffer contents
-    response->body().set(dump.stringBuffer());
+      // transfer ownership of the buffer contents
+      response->body().set(dump.stringBuffer());
 
-    // avoid double freeing
-    TRI_StealStringBuffer(dump.stringBuffer());
+      // avoid double freeing
+      TRI_StealStringBuffer(dump.stringBuffer());
+    } else {
+      _response->addRawPayload(VPackStringRef(dump.data(), dump.length()));
+      _response->setGenerateBody(true);
+    }
   }
 }
