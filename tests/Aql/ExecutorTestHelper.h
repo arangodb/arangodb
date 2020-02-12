@@ -93,6 +93,7 @@ struct ExecutorTestHelper {
   explicit ExecutorTestHelper(arangodb::aql::Query& query)
       : _expectedSkip{0},
         _expectedState{ExecutionState::HASMORE},
+        _testStats{false},
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
@@ -159,6 +160,12 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto expectedStats(ExecutionStats stats) -> ExecutorTestHelper& {
+    _expectedStats = stats;
+    _testStats = true;
+    return *this;
+  };
+
   auto run(typename E::Infos infos) -> void {
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
@@ -179,9 +186,10 @@ struct ExecutorTestHelper {
     SharedAqlItemBlockPtr expectedOutputBlock =
         buildBlock<outputColumns>(itemBlockManager, std::move(_output));
     testOutputBlock(result, expectedOutputBlock);
-
-    // ToDo:
-    // Test stats
+    if (_testStats) {
+      auto actualStats = _query.engine()->getStats();
+      EXPECT_EQ(actualStats, _expectedStats);
+    }
   };
 
  private:
@@ -259,6 +267,8 @@ struct ExecutorTestHelper {
   std::array<std::size_t, outputColumns> _outputRegisters;
   size_t _expectedSkip;
   ExecutionState _expectedState;
+  ExecutionStats _expectedStats;
+  bool _testStats;
 
   SplitType _inputSplit = {std::monostate()};
   SplitType _outputSplit = {std::monostate()};
