@@ -156,9 +156,12 @@ class GeneralResponse {
 
   /// used for head
   bool generateBody() const { return _generateBody; }
-  /// used for head
-  virtual bool setGenerateBody(bool) { return _generateBody; }
 
+  /// used for head-responses
+  bool setGenerateBody(bool generateBody) {
+    return _generateBody = generateBody;
+  }
+  
   virtual int deflate(size_t size = 16384) = 0;
 
  protected:

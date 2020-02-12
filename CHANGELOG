@@ -5,6 +5,15 @@ devel
 
 * Removed old AgencyComm.
 
+* Remove misleading error messages about upgrade commands to carry out in
+  case of a database upgrade. These commands are highly platform-dependent and
+  also depend on whether ArangoDB is started manually, via the ArangoDB starter
+  or as a service.
+  In order to not confuse end users, remove the potentially misleading instructions.
+
+* Clear backups from DB servers and agency, when plan unchanged not
+  met and not allowing for inconsistency.
+
 * Clean out server job checks preconditions plan version unchanged for start.
 
 * Cluster collection creation preconditioned on involved db servers not
@@ -14,6 +23,14 @@ devel
 
   This issue caused spurious "Could not integrate into cluster" error messages
   when starting coordinators.
+
+* Fixed issue #11051: AQL query wrongfully returning no results on 3.6.1.
+
+  This change prevents the "late-document-materialization" optimizer rule from
+  kicking in in cases when an index scan also uses early pruning of index
+  entries. In this case, the late document materialization will lead to the
+  filter condition used in early pruning not being applied correctly, potentially
+  producing wrong results.
 
 * Fixed internal issue #596: Added ability to disable DNF conversion in SEARCH
   condition for ArangoSearch views. As this conversion might result in
@@ -28,7 +45,7 @@ devel
 * Add acquisition of system report to arangod instances.
 
 * JS `query` helper function can now be used with options.
-  
+
 * Fix a bug in collection creation with `distributeShardsLike`.
 
 * Added load-balancing support for listing currently running and slow AQL queries,

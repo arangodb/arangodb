@@ -157,6 +157,9 @@ template <SocketType T>
 
   auto strm = me->eraseStream(stream_id);
   if (error_code != NGHTTP2_NO_ERROR && strm != nullptr) {
+    FUERTE_LOG_ERROR << "http2 closing stream '" << stream_id
+      << "' with error " << nghttp2_http2_strerror(error_code)
+      << " (" << error_code << ")\n";
     strm->invokeOnError(fuerte::Error::ProtocolError);
   }
 
@@ -184,7 +187,7 @@ template <SocketType T>
 namespace {
 int on_error_callback(nghttp2_session* session, int lib_error_code,
                       const char* msg, size_t len, void*) {
-  FUERTE_LOG_DEBUG << "http2 error: \"" << std::string(msg, len) << "\" ("
+  FUERTE_LOG_ERROR << "http2 error: \"" << std::string(msg, len) << "\" ("
                    << lib_error_code << ")";
   return 0;
 }
@@ -503,6 +506,8 @@ void H2Connection<T>::queueHttp2Requests() {
   Stream* tmp = nullptr;
   while (numQueued++ < 4 && _queue.pop(tmp)) {
     std::unique_ptr<Stream> strm(tmp);
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
 
     FUERTE_LOG_HTTPTRACE << "queued request " << this << "\n";
 
@@ -560,6 +565,12 @@ void H2Connection<T>::queueHttp2Requests() {
       if (pair.first == fu_authorization_key) {
         haveAuth = true;
       }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto copy = pair.first;
+      toLowerInPlace(copy);
+      FUERTE_ASSERT(copy == pair.first);
+#endif
+      
       nva.push_back(
           {(uint8_t*)pair.first.data(), (uint8_t*)pair.second.data(),
            pair.first.size(), pair.second.size(),
@@ -588,7 +599,7 @@ void H2Connection<T>::queueHttp2Requests() {
                                uint8_t* buf, size_t length, uint32_t* data_flags,
                                nghttp2_data_source* source,
                                void* user_data) -> ssize_t {
-          auto strm = static_cast<H2Connection<T>::Stream*>(source->ptr);
+          auto strm = static_cast<typename H2Connection<T>::Stream*>(source->ptr);
 
           auto payload = strm->request->payload();
 
@@ -773,7 +784,9 @@ void H2Connection<T>::setTimeout() {
         }
         std::for_each(expired.begin(), expired.end(), [&](auto sid) {
           auto strm = me.eraseStream(sid);
-          strm->invokeOnError(Error::Timeout);
+          if (strm) {
+            strm->invokeOnError(Error::Timeout);
+          }
         });
 
         if (me._streams.empty()) {  // no more messages to wait on
@@ -795,6 +808,8 @@ void H2Connection<T>::abortOngoingRequests(const fuerte::Error err) {
   for (auto& pair : _streams) {
     pair.second->invokeOnError(err);
   }
+  asio_ns::error_code ec;
+  _ping.cancel(ec);
   _streams.clear();
   _streamCount.store(0);
 }
@@ -805,7 +820,8 @@ void H2Connection<T>::drainQueue(const fuerte::Error ec) {
   Stream* item = nullptr;
   while (_queue.pop(item)) {
     std::unique_ptr<Stream> guard(item);
-    this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
+    FUERTE_ASSERT(q > 0);
     guard->invokeOnError(ec);
   }
 }
@@ -847,13 +863,13 @@ bool H2Connection<T>::shouldStop() const {
 template <SocketType T>
 void H2Connection<T>::startPing() {
   _ping.expires_after(std::chrono::seconds(30));
-  
+
   _ping.async_wait([self(Connection::weak_from_this())](auto const& ec) {
     std::shared_ptr<Connection> s;
     if (ec || !(s = self.lock())) {
       return;
     }
-    
+
     auto& me = static_cast<H2Connection<T>&>(*s);
     if (me._state != Connection::State::Connected || !me._streams.empty()) {
       return;

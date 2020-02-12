@@ -373,7 +373,7 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
 
 OperationResult transaction::helpers::buildCountResult(
     std::vector<std::pair<std::string, uint64_t>> const& count,
-    transaction::CountType type, int64_t& total) {
+    transaction::CountType type, uint64_t& total) {
   total = 0;
   VPackBuilder resultBuilder;
 
