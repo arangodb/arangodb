@@ -212,7 +212,7 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache = ch->cache();
 
   std::unordered_set<arangodb::velocypack::StringRef> fetch;
-  for (auto it : vertexIds) {
+  for (auto const& it : vertexIds) {
     if (cache.find(it) == cache.end()) {
       // We do not have this vertex
       fetch.emplace(it);

@@ -59,9 +59,9 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
 
   auto it = _vertices.find(arangodb::velocypack::StringRef(vid));
   if (it == _vertices.end()) {
-    size_t firstSlash = vid.find("/");
+    size_t firstSlash = vid.find('/');
     if (firstSlash == std::string::npos ||
-        vid.find("/", firstSlash + 1) != std::string::npos) {
+        vid.find('/', firstSlash + 1) != std::string::npos) {
       // We can stop here. The start vertex is not a valid _id
       traverserCache()->increaseFilterCounter();
       _done = true;
@@ -69,12 +69,14 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  arangodb::velocypack::StringRef persId = traverserCache()->persistString(arangodb::velocypack::StringRef(vid));
-  if (!vertexMatchesConditions(persId, 0)) {
+  arangodb::velocypack::StringRef s(vid);
+  if (!vertexMatchesConditions(s, 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
+  
+  arangodb::velocypack::StringRef persId = traverserCache()->persistString(s);
 
   _vertexGetter->reset(persId);
   if (_opts->useBreadthFirst) {
@@ -124,6 +126,7 @@ void ClusterTraverser::fetchVertices() {
     ch->insertedDocuments() += _verticesToFetch.size();
     fetchVerticesFromEngines(*_trx, _engines, _verticesToFetch, _vertices, ch->datalake(),
                              /*forShortestPath*/ false);
+
     if (_enumerator != nullptr) {
       _enumerator->incHttpRequests(_engines->size()); 
     }
