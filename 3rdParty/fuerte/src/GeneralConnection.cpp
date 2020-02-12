@@ -107,6 +107,9 @@ template <SocketType ST>
 void GeneralConnection<ST>::tryConnect(unsigned retries,
                                        std::chrono::steady_clock::time_point start,
                                        asio_ns::error_code const& ec) {
+  if (_state.load() != Connection::State::Connecting) {
+    return;
+  }
 
   if (retries == 0) {
     _state.store(Connection::State::Failed, std::memory_order_release);
@@ -118,9 +121,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries,
     return;
   }
   
-  FUERTE_ASSERT(_state.load() == Connection::State::Connecting);
   FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
-
   auto self = Connection::shared_from_this();
 
   _proto.timer.expires_at(start + _config._connectTimeout);
@@ -145,9 +146,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries,
       me._proto.timer.expires_at(end);
       me._proto.timer.async_wait([self(std::move(self)), start, retries](auto ec) mutable {
         GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
-        if (me._state.load() == Connection::State::Connecting) {
-          me.tryConnect(!ec ? retries - 1 : 0, start, ec);
-        }
+        me.tryConnect(!ec ? retries - 1 : 0, start, ec);
       });
     } else {
       me.tryConnect(0, start, ec); // <- handles errors
