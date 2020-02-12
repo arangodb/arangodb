@@ -1,6 +1,16 @@
 devel
 -----
 
+* Added crash handler for Linux builds that taps into the following signals:
+  * SIGSEGV (segmentation violation)
+  * SIGBUS (bus error)
+  * SIGILL (illegal instruction)
+  * SIGFPE (floating point exception)
+
+  In case the arangod process catches one these signals, the crash handler
+  tries to log a message and a backtrace into the installation's logfile before
+  terminating the process.
+
 * Remove misleading error messages about upgrade commands to carry out in
   case of a database upgrade. These commands are highly platform-dependent and
   also depend on whether ArangoDB is started manually, via the ArangoDB starter
