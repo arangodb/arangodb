@@ -913,7 +913,7 @@ TEST_F(SortedCollectExecutorTestSkip, skip_5) {
   }
 }
 
-using SortedCollectTestHelper = ExecutorTestHelper<SortedCollectExecutor, 1, 1>;
+using SortedCollectTestHelper = ExecutorTestHelper<1, 1>;
 using SortedCollectSplitType = SortedCollectTestHelper::SplitType;
 
 class SortedCollectExecutorTestSplit
@@ -980,40 +980,43 @@ class SortedCollectExecutorTestSplit
 TEST_P(SortedCollectExecutorTestSplit, split_1) {
   auto [split] = GetParam();
 
-  ExecutorTestHelper<SortedCollectExecutor>(*fakedQuery)
+  ExecutorTestHelper(*fakedQuery)
+      .setExecBlock<SortedCollectExecutor>(std::move(infos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, AqlCall::Infinity{}, 2, true})
       .expectOutputValueList(3, 4)
       .expectSkipped(3)
       .expectedState(ExecutionState::DONE)
-      .run(std::move(infos));
+      .run();
 }
 
 TEST_P(SortedCollectExecutorTestSplit, split_2) {
   auto [split] = GetParam();
 
   ExecutorTestHelper<SortedCollectExecutor>(*fakedQuery)
+      .setExecBlock<SortedCollectExecutor>(std::move(infos))
       .setInputValueList(1, 1, 1, 2, 3, 4, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{2, 2, AqlCall::Infinity{}, false})
       .expectOutputValueList(3, 4)
       .expectSkipped(2)
       .expectedState(ExecutionState::HASMORE)
-      .run(std::move(infos));
+      .run();
 }
 
 TEST_P(SortedCollectExecutorTestSplit, split_3) {
   auto [split] = GetParam();
 
   ExecutorTestHelper<SortedCollectExecutor>(*fakedQuery)
+      .setExecBlock<SortedCollectExecutor>(std::move(infos))
       .setInputValueList(1, 2, 3, 4, 5)
       .setInputSplitType(split)
       .setCall(AqlCall{1, AqlCall::Infinity{}, 10, true})
       .expectOutputValueList(2, 3, 4, 5)
       .expectSkipped(1)
       .expectedState(ExecutionState::DONE)
-      .run(std::move(infos));
+      .run();
 }
 
 template<size_t... vs>
