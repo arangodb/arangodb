@@ -24,21 +24,6 @@
 
 #include "debugging.h"
 
-namespace {
-std::chrono::milliseconds relativeTimeout(arangodb::fuerte::detail::ConnectionConfiguration const& config, 
-                                          std::chrono::steady_clock::time_point start) {
-  if (config._connectTimeout.count() > 0) {
-    auto const now = std::chrono::steady_clock::now();
-    if ((now - start) < config._connectTimeout) {
-      return std::min(
-           std::chrono::duration_cast<std::chrono::milliseconds>(config._connectRetryPause), 
-           std::chrono::duration_cast<std::chrono::milliseconds>(config._connectTimeout - (now - start)));
-    }
-  }
-  return std::chrono::milliseconds(1);
-}
-} // namespace
-
 namespace arangodb { namespace fuerte {
 
 template <SocketType ST>
@@ -79,10 +64,10 @@ void GeneralConnection<ST>::startConnection() {
   if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
     FUERTE_ASSERT(_config._maxConnectRetries > 0);
-    tryConnect(_config._maxConnectRetries, std::chrono::steady_clock::now());
+    tryConnect(_config._maxConnectRetries, std::chrono::steady_clock::now(),
+               asio_ns::error_code());
   }
 }
-
 
 // shutdown the connection and cancel all pending messages.
 template <SocketType ST>
@@ -119,12 +104,17 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
 
 // Connect with a given number of retries
 template <SocketType ST>
-void GeneralConnection<ST>::tryConnect(unsigned retries, std::chrono::steady_clock::time_point start) {
+void GeneralConnection<ST>::tryConnect(unsigned retries,
+                                       std::chrono::steady_clock::time_point start,
+                                       asio_ns::error_code const& ec) {
 
   if (retries == 0) {
     _state.store(Connection::State::Failed, std::memory_order_release);
     drainQueue(Error::CouldNotConnect);
-    shutdownConnection(Error::CouldNotConnect, "connecting failed");
+    std::string msg("connecting failed: '");
+    msg.append((ec != asio_ns::error::operation_aborted) ? ec.message() : "timeout");
+    msg.push_back('\'');
+    shutdownConnection(Error::CouldNotConnect, msg);
     return;
   }
   
@@ -133,7 +123,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries, std::chrono::steady_clo
 
   auto self = Connection::shared_from_this();
 
-  _proto.timer.expires_after(relativeTimeout(_config, start));
+  _proto.timer.expires_at(start + _config._connectTimeout);
   _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
     if (!ec) {
       // the connect handler below gets 'operation_aborted' error
@@ -150,15 +140,17 @@ void GeneralConnection<ST>::tryConnect(unsigned retries, std::chrono::steady_clo
     }
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-      me._proto.timer.expires_after(relativeTimeout(me._config, start));
+      auto end = std::min(std::chrono::steady_clock::now() + me._config._connectRetryPause,
+                          start + me._config._connectTimeout - std::chrono::milliseconds(5));
+      me._proto.timer.expires_at(end);
       me._proto.timer.async_wait([self(std::move(self)), start, retries](auto ec) mutable {
         GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
         if (me._state.load() == Connection::State::Connecting) {
-          me.tryConnect(!ec ? retries - 1 : 0, start);
+          me.tryConnect(!ec ? retries - 1 : 0, start, ec);
         }
       });
     } else {
-      me.tryConnect(0, start); // <- handles errors
+      me.tryConnect(0, start, ec); // <- handles errors
     }
   });
 }
