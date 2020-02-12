@@ -232,6 +232,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   TRI_ASSERT(vertex.isString() || vertex.isArray());
 
+  bool const shouldProduceVertices = this->produceVertices(); 
   ManagedDocumentResult mmdr;
   builder.openObject();
   auto workOnOneDocument = [&](VPackSlice v) {
@@ -242,7 +243,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_EDGE,
                                      "edge contains invalid value " + id.toString());
     }
-    ShardID shardName = id.substr(0, pos).toString();
+    std::string shardName = id.substr(0, pos).toString();
     auto shards = _vertexShards.find(shardName);
     if (shards == _vertexShards.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
@@ -253,17 +254,19 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       // Maybe handle differently
     }
 
-    arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
-    for (std::string const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
-      if (res.ok()) {
-        // FOUND short circuit.
-        builder.add(v);
-        mmdr.addToBuilder(builder, true);
-        break;
-      } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // We are in a very bad condition here...
-        THROW_ARANGO_EXCEPTION(res);
+    if (shouldProduceVertices) {
+      arangodb::velocypack::StringRef vertex = id.substr(pos + 1);
+      for (std::string const& shard : shards->second) {
+        Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
+        if (res.ok()) {
+          // FOUND short circuit.
+          builder.add(v);
+          mmdr.addToBuilder(builder, true);
+          break;
+        } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+          // We are in a very bad condition here...
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
     }
   };
@@ -288,34 +291,13 @@ BaseTraverserEngine::~BaseTraverserEngine() = default;
 void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
   // Thanks locking
-  TRI_ASSERT(vertex.isString() || vertex.isArray());
-  builder.openObject();
-  builder.add(VPackValue("edges"));
-  builder.openArray();
-  if (vertex.isArray()) {
-    for (VPackSlice v : VPackArrayIterator(vertex)) {
-      TRI_ASSERT(v.isString());
-      // result.clear();
-      arangodb::velocypack::StringRef vertexId(v);
-      std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
-          _opts->nextCursor(vertexId, depth));
+    
+  auto outputVertex = [this, depth](VPackBuilder& builder, VPackSlice vertex) {
+    TRI_ASSERT(vertex.isString());
 
-      edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
-        if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid);
-        }
-        if (edge.isNull()) {
-          return;
-        }
-        if (_opts->evaluateEdgeExpression(edge, arangodb::velocypack::StringRef(v), depth, cursorId)) {
-          builder.add(edge);
-        }
-      });
-      // Result now contains all valid edges, probably multiples.
-    }
-  } else if (vertex.isString()) {
     std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
         _opts->nextCursor(arangodb::velocypack::StringRef(vertex), depth));
+      
     edgeCursor->readAll([&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid);
@@ -327,6 +309,18 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder
         builder.add(edge);
       }
     });
+  };
+
+  TRI_ASSERT(vertex.isString() || vertex.isArray());
+  builder.openObject();
+  builder.add(VPackValue("edges"));
+  builder.openArray();
+  if (vertex.isArray()) {
+    for (VPackSlice v : VPackArrayIterator(vertex)) {
+      outputVertex(builder, v);
+    }
+  } else if (vertex.isString()) {
+    outputVertex(builder, vertex);
     // Result now contains all valid edges, probably multiples.
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -405,6 +399,10 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   builder.add("readIndex", VPackValue(read));
   builder.add("filtered", VPackValue(0));
   builder.close();
+}
+  
+bool BaseTraverserEngine::produceVertices() const {
+  return _opts->produceVertices();
 }
 
 ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,

@@ -95,6 +95,8 @@ class BaseEngine {
 
   virtual EngineType getType() const = 0;
 
+  virtual bool produceVertices() const { return true; }
+
  protected:
   arangodb::aql::Query* _query;
   std::shared_ptr<transaction::Methods> _trx;
@@ -114,7 +116,7 @@ class BaseTraverserEngine : public BaseEngine {
                       std::shared_ptr<transaction::Context> const& ctx,
                       arangodb::velocypack::Slice info, bool needToLock);
 
-  virtual ~BaseTraverserEngine();
+  ~BaseTraverserEngine();
 
   void getEdges(arangodb::velocypack::Slice, size_t, arangodb::velocypack::Builder&);
 
@@ -126,7 +128,9 @@ class BaseTraverserEngine : public BaseEngine {
                               arangodb::velocypack::Builder&) = 0;
 
   EngineType getType() const override { return TRAVERSER; }
-
+  
+  bool produceVertices() const;
+ 
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
 };
@@ -143,12 +147,12 @@ class ShortestPathEngine : public BaseEngine {
                      std::shared_ptr<transaction::Context> const& ctx,
                      arangodb::velocypack::Slice info, bool needToLock);
 
-  virtual ~ShortestPathEngine();
+  ~ShortestPathEngine();
 
   void getEdges(arangodb::velocypack::Slice, bool backward, arangodb::velocypack::Builder&);
 
   EngineType getType() const override { return SHORTESTPATH; }
-
+ 
  protected:
   std::unique_ptr<graph::ShortestPathOptions> _opts;
 };
