@@ -180,7 +180,7 @@ void VstResponse::addRawPayload(VPackStringRef payload) {
 
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackBuilder builder(buffer);
-  builder.openArray();
+  VPackArrayBuilder array(&builder, /*unindexed*/true);
   builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
   builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
@@ -205,7 +205,7 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   };
   
   std::string currentHeader;
-  builder.openObject();  // 4 == meta
+  VPackObjectBuilder meta(&builder, /*unindexed*/true);  // 4 == meta
   for (auto& item : _headers) {
 
     if (_contentType != ContentType::CUSTOM &&
@@ -223,6 +223,4 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));
   }
-  builder.close();
-  builder.close();
 }
