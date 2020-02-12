@@ -183,10 +183,10 @@ constexpr int TRI_ERROR_DISABLED                                                
 /// Will be raised when document does not pass validation.
 constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 37;
 
-/// 37: ERROR_VALIDATION_BAD_PARAMETER
+/// 38: ERROR_VALIDATION_BAD_PARAMETER
 /// "invalid validation parameter"
 /// Will be raised when values in validator array are not valid.
-constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 37;
+constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 38;
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
