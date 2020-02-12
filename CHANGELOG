@@ -1,6 +1,13 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Improved usability in arangorestore:
+
+  * Fixed misleading error message when database creation fails for option
+    `--create-database option`. Now the correct error is displayed.
+  * Pass the specified replication factor from the `--replication-factor` 
+    option when creating a database.
+
 * Fixed issue #11051: AQL query wrongfully returning no results on 3.6.1.
 
   This change prevents the "late-document-materialization" optimizer rule from
