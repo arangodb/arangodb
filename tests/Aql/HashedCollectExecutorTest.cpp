@@ -51,6 +51,19 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+namespace {
+using InputParam = std::tuple<>
+}
+
+class HashedCollectExecutorTest : public AqlExecutorTestCase,
+                                  public ::testing::TestWithParam<::InputParam> {};
+
+/*****
+ *
+ * Section: Old Test Cases
+ * Deprecated
+ *
+ *****/
 class HashedCollectExecutorTestNoRows : public ::testing::Test {
  protected:
   ExecutionState state;
