@@ -53,7 +53,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
 
   AqlItemBlockInputRange createFromBlock(arangodb::aql::SharedAqlItemBlockPtr& block) {
     auto const [start, end] = block->getRelevantRange();
-    return AqlItemBlockInputRange(GetParam());
+    return AqlItemBlockInputRange(GetParam(), block, start, end);
   }
 
   void validateEndReached(AqlItemBlockInputRange& testee) {
