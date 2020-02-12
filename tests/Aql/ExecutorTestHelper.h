@@ -172,10 +172,16 @@ struct ExecutorTestHelper {
       return;
     }
     EXPECT_EQ(outputBlock->size(), expectedOutputBlock->size());
-    for (size_t i = 0; i < outputBlock->size(); i++) {
+    auto const size = std::max(outputBlock->size(), expectedOutputBlock->size());
+    for (size_t i = 0; i < size; i++) {
       for (size_t j = 0; j < outputColumns; j++) {
-        AqlValue const& x = outputBlock->getValueReference(i, _outputRegisters[j]);
-        AqlValue const& y = expectedOutputBlock->getValueReference(i, j);
+        auto const none = AqlValue{};
+        // Allow comparison of blocks of different sizes
+        auto const getValueOrNone = [none](auto block, auto i, auto j) -> AqlValue const& {
+          return i < block->size() ? block->getValueReference(i, j) : none;
+        };
+        AqlValue const& x = getValueOrNone(outputBlock, i, _outputRegisters[j]);
+        AqlValue const& y = getValueOrNone(expectedOutputBlock, i, j);
 
         EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
             << "Row " << i << " Column " << j << " (Reg " << _outputRegisters[j]
