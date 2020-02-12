@@ -464,10 +464,17 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
 
   // first part of the buffer contains the response buffer
   std::size_t headerLength;
-  MessageType type = parser::validateAndExtractMessageType(
-      itemCursor, itemLength, headerLength);
+  MessageType type = MessageType::Undefined;
+  
+  try {
+    type = parser::validateAndExtractMessageType(itemCursor, itemLength, headerLength);
+  } catch(std::exception const& e) {
+    FUERTE_LOG_ERROR << "invalid VST message: '" << e.what() << "'";
+  }
+  
   if (type != MessageType::Response) {
-    FUERTE_LOG_ERROR << "received unsupported vst message from server";
+    FUERTE_LOG_ERROR << "received unsupported vst message ("
+                     << static_cast<int>(type) << ") from server";
     return nullptr;
   }
 

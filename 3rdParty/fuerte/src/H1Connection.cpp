@@ -440,10 +440,10 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     size_t n = http_parser_execute(&_parser, &_parserSettings, data, buffer.size());
     if (n != buffer.size()) {
       /* Handle error. Usually just close the connection. */
-      FUERTE_LOG_ERROR << "Invalid HTTP response in parser: '"
-                       << http_errno_description(HTTP_PARSER_ERRNO(&_parser))
-                       << "', this=" << this << "\n";
-      this->shutdownConnection(Error::ProtocolError);  // will cleanup _item
+      std::string msg = "Invalid HTTP response in parser: '";
+      msg.append(http_errno_description(HTTP_PARSER_ERRNO(&_parser))).append("'");
+      FUERTE_LOG_ERROR << msg << ", this=" << this << "\n";
+      this->shutdownConnection(Error::ProtocolError, msg);  // will cleanup _item
       return;
     }
     nparsed += n;

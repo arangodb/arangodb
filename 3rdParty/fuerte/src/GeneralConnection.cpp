@@ -141,7 +141,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries,
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
       auto end = std::min(std::chrono::steady_clock::now() + me._config._connectRetryPause,
-                          start + me._config._connectTimeout - std::chrono::milliseconds(5));
+                          start + me._config._connectTimeout);
       me._proto.timer.expires_at(end);
       me._proto.timer.async_wait([self(std::move(self)), start, retries](auto ec) mutable {
         GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
