@@ -92,7 +92,16 @@ function runArangodRecovery (params) {
     });
 
     if (useEncryption) {
-      args['rocksdb.encryption-keyfile'] = tu.pathForTesting('server/recovery/encryption-keyfile');
+      const key = '01234567890123456789012345678901';
+      let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+      fs.makeDirectory(keyDir);
+      pu.cleanupDBDirectoriesAppend(keyDir);
+    
+      let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
+      fs.write(keyfile, key);
+
+      args['rocksdb.encryption-keyfile'] = keyfile;
+      process.env["rocksdb-encryption-keyfile"] = keyfile;
     }
 
     params.args = args;

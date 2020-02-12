@@ -64,6 +64,7 @@
 #include "RestServer/ConsoleThread.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1946,6 +1947,36 @@ static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef USE_ENTERPRISE
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this is rotates the encryption keys, only for testing
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_EncryptionKeyReload(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("encryptionKeyReload()");
+  }
+  
+  if (!EngineSelectorFeature::isRocksDB()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+  
+  auto* engine = EngineSelectorFeature::ENGINE;
+  auto res = static_cast<RocksDBEngine*>(engine)->rotateEncryptionKey();
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+
+  TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
@@ -2133,6 +2164,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AGENCY_DUMP"),
                                JS_AgencyDump, true);
+  
+#ifdef USE_ENTERPRISE
+  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+    TRI_AddGlobalFunctionVocbase(isolate,
+                                 TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
+                                 JS_EncryptionKeyReload, true);
+  }
+#endif
 
   // .............................................................................
   // create global variables
