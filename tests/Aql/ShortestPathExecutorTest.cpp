@@ -529,7 +529,7 @@ PathSequence const someOtherPaths = {pathBetween("vertex/a", "vertex/target", 10
 
 auto sources = testing::Values(constSource, regSource, brokenSource);
 auto targets = testing::Values(constTarget, regTarget, brokenTarget);
-auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
+static auto inputs = testing::Values(noneRow, oneRow, twoRows, threeRows, someRows);
 auto paths = testing::Values(noPath, onePath, threePaths, somePaths);
 auto calls =
     testing::Values(AqlCall{}, AqlCall{0, 0, 0, false}, AqlCall{0, 1, 0, false},

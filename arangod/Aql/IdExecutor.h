@@ -52,6 +52,9 @@ class Methods;
 }
 
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
 class ExecutionEngine;
 class ExecutionNode;
 class ExecutorInfos;
@@ -147,6 +150,15 @@ class IdExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  // Deprecated remove me
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:

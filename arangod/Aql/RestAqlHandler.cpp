@@ -674,9 +674,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    auto atMost =
-        VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                  ExecutionBlock::DefaultBatchSize);
+    auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
+                                                            ExecutionBlock::DefaultBatchSize);
     SharedAqlItemBlockPtr items;
     ExecutionState state;
     if (shardId.empty()) {
@@ -685,13 +684,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
         return RestStatus::WAITING;
       }
     } else {
+      TRI_ASSERT(_query->engine()->root()->getPlanNode()->getType() == ExecutionNode::SCATTER ||
+                 _query->engine()->root()->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
       auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
       if (block == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected node type");
       }
-      TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
-                 block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
       std::tie(state, items) = block->getSomeForShard(atMost, shardId);
       if (state == ExecutionState::WAITING) {
         return RestStatus::WAITING;
@@ -708,9 +707,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                           answerBuilder);
     }
   } else if (operation == "skipSome") {
-    auto atMost =
-        VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                  ExecutionBlock::DefaultBatchSize);
+    auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
+                                                            ExecutionBlock::DefaultBatchSize);
     size_t skipped;
     if (shardId.empty()) {
       auto tmpRes = _query->engine()->skipSome(atMost);
@@ -719,13 +717,14 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       }
       skipped = tmpRes.second;
     } else {
+      TRI_ASSERT(_query->engine()->root()->getPlanNode()->getType() == ExecutionNode::SCATTER ||
+                 _query->engine()->root()->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
+
       auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
       if (block == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected node type");
       }
-      TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
-                 block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
 
       auto tmpRes = block->skipSomeForShard(atMost, shardId);
       if (tmpRes.first == ExecutionState::WAITING) {

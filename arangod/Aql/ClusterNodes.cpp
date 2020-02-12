@@ -221,10 +221,10 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
+  ScatterExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
+                             std::move(regsToKeep), _clients);
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
-                                                               std::move(infos), _clients);
+                                                               std::move(infos));
 }
 
 /// @brief toVelocyPack, for ScatterNode
@@ -319,9 +319,6 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
   std::unordered_set<RegisterId> regsToClear = getRegsToClear();
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
-
   RegisterId regId;
   RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
 
@@ -348,10 +345,18 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
       TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
     }
   }
+  auto inAndOutRegs = make_shared_unordered_set({regId});
+  if (alternativeRegId != RegisterPlan::MaxRegisterId) {
+    inAndOutRegs->emplace(alternativeRegId);
+  }
+  DistributeExecutorInfos infos(inAndOutRegs, inAndOutRegs, nrInRegs, nrOutRegs,
+                                std::move(regsToClear), std::move(regsToKeep),
+                                clients(), collection(), regId, alternativeRegId,
+                                _allowSpecifiedKeys, _allowKeyConversionToObject,
+                                _createKeys, getScatterType());
 
-  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
-      &engine, this, std::move(infos), clients(), collection(), regId, alternativeRegId,
-      _allowSpecifiedKeys, _allowKeyConversionToObject, _createKeys);
+  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
+                                                                  std::move(infos));
 }
 
 /// @brief toVelocyPack, for DistributedNode
@@ -426,7 +431,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _vocbase(&(plan->getAst()->query()->vocbase())),
       _elements(elements),
       _sortmode(SortMode::MinElement),
-      _parallelism(Parallelism::Undefined), 
+      _parallelism(Parallelism::Undefined),
       _limit(0) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
@@ -441,14 +446,16 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
         basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
                                                                     "limit", 0);
   }
-    
-  setParallelism(parallelismFromString(VelocyPackHelper::getStringValue(base, "parellelism", "")));
+
+  setParallelism(parallelismFromString(
+      VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, Parallelism parallelism) noexcept
-    : ExecutionNode(plan, id), 
+GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode,
+                       Parallelism parallelism) noexcept
+    : ExecutionNode(plan, id),
       _vocbase(&(plan->getAst()->query()->vocbase())),
-      _sortmode(sortMode), 
+      _sortmode(sortMode),
       _parallelism(parallelism),
       _limit(0) {}
 
@@ -457,7 +464,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
- 
+
   nodes.add("parallelism", VPackValue(toString(_parallelism)));
 
   if (_elements.empty()) {
@@ -484,7 +491,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       }
     }
   }
-  
+
   // And close it:
   nodes.close();
 }
@@ -507,15 +514,15 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                             calcRegsToKeep(), getRegsToClear());
 
       return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
-                                                                           std::move(infos));
+                                                                          std::move(infos));
     }
   }
-  
+
   Parallelism p = _parallelism;
   if (ServerState::instance()->isDBServer()) {
-    p = Parallelism::Serial; // not supported in v36
+    p = Parallelism::Serial;  // not supported in v36
   }
-  
+
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
   SortingGatherExecutorInfos infos(make_shared_unordered_set(),
@@ -553,7 +560,8 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   bool _isParallelizable;
 
   explicit ParallelizableFinder(TRI_vocbase_t const& _vocbase)
-      : _parallelizeWrites(_vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()),
+      : _parallelizeWrites(
+            _vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()),
         _isParallelizable(true) {}
 
   ~ParallelizableFinder() = default;
@@ -563,8 +571,7 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
+    if (node->getType() == ExecutionNode::SCATTER || node->getType() == ExecutionNode::GATHER ||
         node->getType() == ExecutionNode::DISTRIBUTE ||
         node->getType() == ExecutionNode::TRAVERSAL ||
         node->getType() == ExecutionNode::SHORTEST_PATH ||
@@ -576,10 +583,9 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
     // can be parallelized, provided the rest of the plan
     // does not prohibit this
     if (node->isModificationNode() &&
-        (!_parallelizeWrites ||
-         (node->getType() != ExecutionNode::REMOVE &&
-          node->getType() != ExecutionNode::REPLACE && 
-          node->getType() != ExecutionNode::UPDATE))) {
+        (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
+                                 node->getType() != ExecutionNode::REPLACE &&
+                                 node->getType() != ExecutionNode::UPDATE))) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }

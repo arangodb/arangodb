@@ -193,6 +193,19 @@ class AqlItemBlock {
   /// @brief slice/clone, this does a deep copy of all entries
   SharedAqlItemBlockPtr slice(size_t from, size_t to) const;
 
+  /**
+   * @brief Slice multiple ranges out of this AqlItemBlock.
+   *        This does a deep copy of all entries
+   *
+   * @param ranges list of ranges from(included) -> to(excluded)
+   *        Every range needs to be valid from[i] < to[i]
+   *        And every range needs to be within the block to[i] <= size()
+   *        The list is required to be ordered to[i] <= from[i+1]
+   *
+   * @return SharedAqlItemBlockPtr A block where all the slices are contained in the order of the list
+   */
+  auto slice(std::vector<std::pair<size_t, size_t>> const& ranges) const -> SharedAqlItemBlockPtr;
+
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
   SharedAqlItemBlockPtr slice(size_t row, std::unordered_set<RegisterId> const& registers,
@@ -318,9 +331,9 @@ class AqlItemBlock {
   /// this ItemBlock. Used to easier split data based on them.
   std::set<size_t> _shadowRowIndexes;
 
-  /// @brief current row index we want to read from. This will be increased after
-  /// getRelevantRange function will be called, which will return a tuple of the
-  /// old _rowIndex and the newly calculated _rowIndex - 1
+  /// @brief current row index we want to read from. This will be increased
+  /// after getRelevantRange function will be called, which will return a tuple
+  /// of the old _rowIndex and the newly calculated _rowIndex - 1
   size_t _rowIndex;
 };
 

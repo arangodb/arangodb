@@ -131,7 +131,8 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  */
 template <typename Executor>
 constexpr bool isNewStyleExecutor =
-    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, ReturnExecutor,
+    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                 TestLambdaExecutor, TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
@@ -556,6 +557,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
   _lastRange = DataRange(ExecutorState::HASMORE);
+  _hasUsedDataRangeBlock = false;
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -631,9 +633,11 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
 // error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
 namespace arangodb::aql {
 // TODO -- remove this specialization when cpp 17 becomes available
+
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    InputAqlItemRow const& input) {
+template <>
+auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block)
+    -> void {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -646,15 +650,27 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
-  SharedAqlItemBlockPtr block =
-      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
-                         infos().numberOfOutputRegisters());
+  // Reset state of execute
+  _lastRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
+  _hasUsedDataRangeBlock = false;
+  _upstreamState = ExecutionState::HASMORE;
 
   _rowFetcher.injectBlock(block);
 
   // cppcheck-suppress unreadVariable
   constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+}
+
+// TODO -- remove this specialization when cpp 17 becomes available
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
+    InputAqlItemRow const& input) {
+  SharedAqlItemBlockPtr block =
+      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
+                         infos().numberOfOutputRegisters());
+
+  injectConstantBlock(block);
 
   // end of default initializeCursor
   return ExecutionBlock::initializeCursor(input);

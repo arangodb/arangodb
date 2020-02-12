@@ -22,7 +22,9 @@
 
 #include "IdExecutor.h"
 
+#include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
@@ -158,29 +160,26 @@ IdExecutor<UsedFetcher>::~IdExecutor() = default;
 
 template <class UsedFetcher>
 std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAqlItemRow& output) {
-  ExecutionState state = ExecutionState::HASMORE;
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class UsedFetcher>
+auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
+                                          OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, NoStats, AqlCall> {
   NoStats stats;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  while (!output.isFull() && state != ExecutionState::DONE) {
-    std::tie(state, inputRow) = _fetcher.fetchRow(output.numRowsLeft());
 
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!inputRow);
-      return {state, stats};
-    }
-
-    if (!inputRow) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
-    }
+  while (!output.isFull() && inputRange.hasDataRow()) {
+    auto const& [state, inputRow] = inputRange.nextDataRow();
+    TRI_ASSERT(inputRow);
 
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    TRI_ASSERT(state == ExecutionState::HASMORE || state == ExecutionState::DONE);
     /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
-    output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
+    output.copyRow(inputRow, std::is_same_v<UsedFetcher, ConstFetcher>);
     TRI_ASSERT(output.produced());
     output.advanceRow();
 
@@ -189,14 +188,14 @@ std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAq
     }
   }
 
-  return {state, stats};
+  return {inputRange.upstreamState(), stats, output.getClientCall()};
 }
 
 template <class UsedFetcher>
 std::tuple<ExecutionState, typename IdExecutor<UsedFetcher>::Stats, SharedAqlItemBlockPtr>
 IdExecutor<UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
-  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-  return {rv.first, {}, std::move(rv.second)};
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template class ::arangodb::aql::IdExecutor<ConstFetcher>;
