@@ -1165,7 +1165,18 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::SKIP: {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          size_t offsetBefore = clientCall.getOffset();
+          TRI_ASSERT(offsetBefore > 0);
+#endif
           auto [state, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          // Assertion: We did skip 'skippedLocal' documents here.
+          // This means that they have to be removed from clientCall.getOffset()
+          // This has to be done by the Executor calling call.didSkip()
+          // accordingly.
+          TRI_ASSERT(clientCall.getOffset() + skippedLocal == offsetBefore);
+#endif
           _skipped += skippedLocal;
           // The execute might have modified the client call.
           if (state == ExecutorState::DONE) {
