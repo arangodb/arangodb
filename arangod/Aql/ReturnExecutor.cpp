@@ -66,10 +66,12 @@ auto ReturnExecutor::produceRows(OutputAqlItemRow& output)
 }
 
 auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("ReturnExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  auto stats = Stats{};
 
   while (inputRange.hasDataRow() && call.needSkipMore()) {
     // I do not think that this is actually called.
@@ -83,14 +85,12 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     call.didSkip(1);
-    // TODO: do we need to include counted here?
-    /*
     if (_infos.doCount()) {
       stats.incrCounted();
     }
-    */
   }
-  return {inputRange.upstreamState(), call.getSkipCount(), call};
+
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), call};
 }
 
 auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
