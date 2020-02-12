@@ -323,8 +323,10 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
           uint64_t replicationFactor = getReplicationFactor(options, properties, isSatellite);
           if (!isSatellite) {
             object->add(key, VPackValue(replicationFactor));
+            continue;
           }
-        } else  if (!slice.isNone()) {
+        }
+        if (!slice.isNone()) {
           object->add(key, slice);
         }
       }
