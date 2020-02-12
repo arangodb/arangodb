@@ -104,6 +104,24 @@ TEST_P(EnumerateListExecutorTestProduce, empty_array_1) {
       .run(makeInfos());
 }
 
+TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
+  auto [split] = GetParam();
+
+  try {
+    ExecutorTestHelper<EnumerateListExecutor, 1, 1>(*fakedQuery)
+        .setInputValue({{1}})
+        .setInputSplitType(split)
+        .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
+        .expectEmptyOutput()
+        .expectSkipped(0)
+        .expectedState(ExecutionState::DONE)
+        .run(makeInfos());
+    FAIL();
+  } catch (const arangodb::basics::Exception& e) {
+    ASSERT_EQ(e.code(), 1563);
+  }
+}
+
 TEST_P(EnumerateListExecutorTestProduce, default_1) {
   auto [split] = GetParam();
 
@@ -212,6 +230,54 @@ TEST_P(EnumerateListExecutorTestProduce, default_multiple_2) {
                                        RowBuilder<5>{1, 2, 3, R"([4, 5, 6])", 5},
                                        RowBuilder<5>{1, 2, 3, R"([4, 5, 6])", 6}}})
       .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
+}
+
+TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor, 4, 5>(*fakedQuery)
+      .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
+                      RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{0, 3, AqlCall::Infinity{}, false})
+      .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
+                                       RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
+                                       RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::HASMORE) // hasmore because of softLimit
+      .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
+}
+
+TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor, 4, 5>(*fakedQuery)
+      .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
+                      RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{0, AqlCall::Infinity{}, 3, false})
+      .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
+                                       RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
+                                       RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE) // done because of hardLimit
+      .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
+}
+
+TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard_fullcount) {
+  auto [split] = GetParam();
+
+  ExecutorTestHelper<EnumerateListExecutor, 4, 5>(*fakedQuery)
+      .setInputValue({RowBuilder<4>{1, 2, 3, R"([1, 2, 3])"},
+                      RowBuilder<4>{1, 2, 3, R"([4, 5, 6])"}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{0, AqlCall::Infinity{}, 3, true})
+      .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
+                                       RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
+                                       RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
+      .expectSkipped(3) // skipped amount of 3 in the fullCount phase
       .expectedState(ExecutionState::DONE)
       .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
 }
