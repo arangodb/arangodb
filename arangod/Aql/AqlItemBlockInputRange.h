@@ -62,12 +62,12 @@ class AqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
   // Subtract up to this many rows from the local `_skipped` state; return
-  // the number actually skipped.
-  // TODO It would probably be useful to skip available rows as well, after
-  //  subtracting from _skipped!
-  auto skip(std::size_t) noexcept -> std::size_t;
+  // the number actually skipped. Does not skip data rows.
+  [[nodiscard]] auto skip(std::size_t) noexcept -> std::size_t;
 
-  auto skippedInFlight() const noexcept -> std::size_t;
+  [[nodiscard]] auto skipAll() noexcept -> std::size_t;
+
+  [[nodiscard]] auto skippedInFlight() const noexcept -> std::size_t;
 
  private:
   bool isIndexValid(std::size_t index) const noexcept;

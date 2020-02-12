@@ -156,3 +156,9 @@ auto AqlItemBlockInputRange::skip(std::size_t const toSkip) noexcept -> std::siz
 auto AqlItemBlockInputRange::skippedInFlight() const noexcept -> std::size_t {
   return _skipped;
 }
+
+auto AqlItemBlockInputRange::skipAll() noexcept -> std::size_t {
+  auto const skipped = _skipped;
+  _skipped = 0;
+  return skipped;
+}

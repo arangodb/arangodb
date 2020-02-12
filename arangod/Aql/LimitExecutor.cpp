@@ -326,6 +326,10 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
   auto const& clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.getOffset() == 0);
 
+  if (!infos().isFullCountEnabled()) {
+    TRI_ASSERT(input.skippedInFlight() == 0);
+  }
+
   auto upstreamCall = calculateUpstreamCall(clientCall);
 
   auto numRowsWritten = size_t{0};
@@ -337,6 +341,7 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
   }
   if (infos().isFullCountEnabled()) {
     stats.incrFullCountBy(numRowsWritten);
+    stats.incrFullCountBy(input.skipAll());
   }
 
   return {input.upstreamState(), stats, calculateUpstreamCall(clientCall)};
