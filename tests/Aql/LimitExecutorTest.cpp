@@ -1302,17 +1302,15 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   //                                        infos.registersToClear(), AqlCall{clientCall},
   //                                        OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
 
-  auto&& testHelper = ExecutorTestHelper<LimitExecutor>{*fakedQuery}
+  ExecutorTestHelper<LimitExecutor>{*fakedQuery}
     .setInputFromRowNum(numInputRows)
     .setInputSplitType(inputLengths)
     .setCall(clientCall)
     .expectOutput({0}, expectedOutput)
     .expectSkipped(expectedSkipped)
     .expectedState(ExecutionState::DONE)
-    //.run(std::move(infos))
+    .run(std::move(infos))
   ;
-  testHelper.run(std::move(infos));
-  // TODO run()
 
   //
   // // auto skippedUpstream = size_t{0};
