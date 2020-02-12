@@ -176,9 +176,11 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
   network::RequestOptions options;
   options.database = dbname;
-  options.timeout = network::Timeout(300);
+  options.timeout = network::Timeout(900);
+  // if the type is unset JSON is used
   options.contentType = rest::contentTypeToString(_request->contentType());
   options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
+    
   for (auto const& i : _request->values()) {
     options.param(i.first, i.second);
   }
@@ -203,7 +205,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
     resetResponse(static_cast<rest::ResponseCode>(response.response->statusCode()));
     _response->setContentType(fuerte::v1::to_string(response.response->contentType()));
-
+    
     if (!useVst) {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
       if (_response == nullptr) {
@@ -221,7 +223,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       _response->setHeader(it.first, it.second);
     }
     _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
-
+    
     return Result();
   };
   return std::move(future).thenValue(cb);

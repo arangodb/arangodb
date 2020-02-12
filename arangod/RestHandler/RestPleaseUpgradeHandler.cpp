@@ -41,10 +41,6 @@ RestStatus RestPleaseUpgradeHandler::execute() {
   _response->addRawPayload(StringRef(_request->databaseName()));
   _response->addRawPayload(StringRef("\r\n\r\n"));
   _response->addRawPayload(StringRef("It appears that your database must be upgraded. "));
-  _response->addRawPayload(StringRef("Normally this can be done using\r\n\r\n"));
-  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 stop\r\n"));
-  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 upgrade\r\n"));
-  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 start\r\n\r\n"));
   _response->addRawPayload(StringRef("Please check the log file for details.\r\n"));
 
   return RestStatus::DONE;

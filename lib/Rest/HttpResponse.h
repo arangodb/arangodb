@@ -88,11 +88,6 @@ class HttpResponse : public GeneralResponse {
     return _body->empty();
   }
 
-  /// used for head-responses
-  bool setGenerateBody(bool generateBody) override final {
-    return _generateBody = generateBody;
-  }
-
   int reservePayload(std::size_t size) override { return _body->reserve(size); }
 
   arangodb::Endpoint::TransportType transportType() override {
