@@ -55,7 +55,15 @@ TraverserOptions::TraverserOptions(aql::Query* query)
       uniqueEdges(UniquenessLevel::PATH) {}
 
 TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
-    : TraverserOptions(query) {
+    : BaseOptions(query),
+      _baseVertexExpression(nullptr),
+      _traverser(nullptr),
+      minDepth(1),
+      maxDepth(1),
+      useBreadthFirst(false),
+      uniqueVertices(UniquenessLevel::NONE),
+      uniqueEdges(UniquenessLevel::PATH) {
+      // TODO: call BaseOptions ctor here?
   TRI_ASSERT(obj.isObject());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -94,6 +102,8 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
   } else {
     uniqueEdges = TraverserOptions::UniquenessLevel::PATH;
   }
+  
+  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* query,
@@ -234,6 +244,8 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
   TRI_ASSERT(uniqueVertices != TraverserOptions::UniquenessLevel::GLOBAL || useBreadthFirst);
+  
+  _produceVertices = VPackHelper::getBooleanValue(info, "produceVertices", true);
 }
 
 arangodb::traverser::TraverserOptions::TraverserOptions(TraverserOptions const& other)
@@ -294,6 +306,7 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
       break;
   }
 
+  builder.add("produceVertices", VPackValue(_produceVertices));
   builder.add("type", VPackValue("traversal"));
 }
 

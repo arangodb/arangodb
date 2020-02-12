@@ -1195,7 +1195,7 @@ function processQuery(query, explain, planIndex) {
 
         rc = keyword('FOR ');
         if (node.hasOwnProperty('vertexOutVariable')) {
-          if (node.hasOwnProperty('produceVertices') && !node.produceVertices) {
+          if (node.options.hasOwnProperty('produceVertices') && !node.options.produceVertices) {
             parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex optimized away */'));
           } else {
             parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));

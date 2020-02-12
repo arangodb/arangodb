@@ -276,7 +276,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
       _tmpIdNode(nullptr),
-      _options(nullptr),
       _optionsBuilt(false),
       _isSmart(false),
       _defaultDirection(uint64ToDirection(arangodb::basics::VelocyPackHelper::stringUInt64(base.get("defaultDirection")))) {
@@ -382,10 +381,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
                                    "graph options have to be a json-object.");
   }
-
+  
   _options = BaseOptions::createOptionsFromSlice(_plan->getAst()->query(), opts);
   // set traversal-translations
   _options->setCollectionToShard(_collectionToShard); //could be moved as it will only be used here
+  
 }
 
 /// @brief Internal constructor to clone the node.
@@ -528,8 +528,6 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.add(VPackValue("restrictions"));
   _options->toVelocyPackRestrictions(nodes);
 #endif
-
-  nodes.add("produceVertices", VPackValue(_options->produceVertices()));
 }
 
 CostEstimate GraphNode::estimateCost() const {

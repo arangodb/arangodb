@@ -174,8 +174,7 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query)
       _hasEdgeRestrictions(false),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _tmpVar(nullptr),
-      _cache(nullptr) {}
+      _tmpVar(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
     : _query(other._query),
@@ -187,22 +186,13 @@ BaseOptions::BaseOptions(BaseOptions const& other)
       _hasEdgeRestrictions(other._hasEdgeRestrictions),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _tmpVar(nullptr),
-      _cache(nullptr) {
+      _tmpVar(nullptr) {
   TRI_ASSERT(other._baseLookupInfos.empty());
   TRI_ASSERT(other._tmpVar == nullptr);
 }
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
-    : _query(query),
-      _ctx(_query),
-      _trx(_query->trx()),
-      _hasVertexRestrictions(false),
-      _hasEdgeRestrictions(false),
-      _produceVertices(true),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _tmpVar(nullptr),
-      _cache(nullptr) {
+    : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
