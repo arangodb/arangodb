@@ -398,7 +398,6 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("IndexBlock::readIndex") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  LOG_DEVEL << __func__;
   switch (_type) {
     case Type::NoResult:
       TRI_ASSERT(_documentNonProducer != nullptr);
@@ -765,7 +764,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
 
   IndexStats stats{};
 
-  while (_skipped < clientCall.getOffset()) {
+  while (clientCall.needSkipMore()) {
     LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipped " << _skipped
                   << " " << clientCall.getOffset();
     // get an input row first, if necessary
@@ -801,12 +800,13 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     }
 
     LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex("
-                  << clientCall.getOffset() - _skipped << ")";
-    size_t skippedNow = getCursor().skipIndex(clientCall.getOffset() - _skipped);
+                  << clientCall.getOffset() << ")";
+    size_t skippedNow = getCursor().skipIndex(clientCall.getOffset());
     LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange skipIndex(...) == " << skippedNow;
 
     stats.incrScanned(skippedNow);
     _skipped += skippedNow;
+    clientCall.didSkip(skippedNow);
   }
 
   size_t skipped = _skipped;
@@ -815,5 +815,7 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
   AqlCall upstreamCall;
   upstreamCall.fullCount = clientCall.needsFullCount();
 
+
+  LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange returning " << _state << " " << skipped << " " << upstreamCall;
   return {_state, skipped, upstreamCall};
 }
