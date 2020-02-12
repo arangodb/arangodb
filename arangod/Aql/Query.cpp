@@ -59,6 +59,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
@@ -70,15 +71,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {
-static std::atomic<TRI_voc_tick_t> nextQueryId(1);
-}
-
 /// @brief creates a query
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-    : _id(Query::nextId()),
+    : _id(TRI_NewServerSpecificTick()),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
@@ -156,7 +153,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
              std::shared_ptr<VPackBuilder> const& queryStruct,
              std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-    : _id(Query::nextId()),
+    : _id(TRI_NewServerSpecificTick()),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
@@ -886,6 +883,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       // iterate over result and return it
       uint32_t j = 0;
       ExecutionState state = ExecutionState::HASMORE;
+      auto context = TRI_IGETC;
       while (state != ExecutionState::DONE) {
         auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize);
         state = res.first;
@@ -910,7 +908,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
             AqlValue const& val = value->getValueReference(i, resultRegister);
 
             if (!val.isEmpty()) {
-              resArray->Set(j++, val.toV8(isolate, _trx.get()));
+              resArray->Set(context, j++, val.toV8(isolate, _trx.get())).FromMaybe(false);
 
               if (useQueryCache) {
                 val.toVelocyPack(_trx.get(), *builder, true);
@@ -1541,9 +1539,4 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
   _graphs.emplace(name, std::move(g.get()));
 
   return graph;
-}
-
-/// @brief returns the next query id
-TRI_voc_tick_t Query::nextId() {
-  return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst) + 1;
 }

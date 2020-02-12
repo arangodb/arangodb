@@ -39,9 +39,83 @@ ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nr
                     std::unordered_set<RegisterId>{} /*to keep*/
                     ),
       _inputRegisterId(inputRegister),
-      _doCount(doCount) {}
+      _doCount(doCount) {
+  // For the time beeing return will only write to register 0.
+  // It is defined that it can only have exactly 1 output register.
+  // We can easily replace this by a different register, if we
+  // modify the caller within the ExecutionEngine to ask for the
+  // output register from outside.
+  TRI_ASSERT(nrOutputRegisters == 1);
+}
 
 ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher) {}
 
 ReturnExecutor::~ReturnExecutor() = default;
+
+// TODO: @deprecated remove
+std::pair<ExecutionState, size_t> ReturnExecutor::expectedNumberOfRows(size_t atMost) const {
+  return _fetcher.preFetchNumberOfRows(atMost);
+}
+
+// TODO: @deprecated remove
+auto ReturnExecutor::produceRows(OutputAqlItemRow& output)
+    -> std::pair<ExecutionState, Stats> {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, size_t, AqlCall> {
+  TRI_IF_FAILURE("ReturnExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  while (inputRange.hasDataRow() && call.needSkipMore()) {
+    // I do not think that this is actually called.
+    // It will be called first to get the upstream-Call
+    // but this executor will always delegate the skipping
+    // to upstream.
+    TRI_ASSERT(false);
+    auto [state, input] = inputRange.nextDataRow();
+    TRI_ASSERT(input.isInitialized());
+    TRI_IF_FAILURE("ReturnBlock::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    call.didSkip(1);
+    // TODO: do we need to include counted here?
+    /*
+    if (_infos.doCount()) {
+      stats.incrCounted();
+    }
+    */
+  }
+  return {inputRange.upstreamState(), call.getSkipCount(), call};
+}
+
+auto ReturnExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  TRI_IF_FAILURE("ReturnExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  Stats stats{};
+
+  while (inputRange.hasDataRow() && !output.isFull()) {
+    auto [state, input] = inputRange.nextDataRow();
+    TRI_ASSERT(input.isInitialized());
+    // REMARK: it is called `getInputRegisterId` here but FilterExecutor calls it `getInputRegister`.
+    AqlValue val = input.stealValue(_infos.getInputRegisterId());
+    AqlValueGuard guard(val, true);
+    TRI_IF_FAILURE("ReturnBlock::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
+    output.advanceRow();
+    if (_infos.doCount()) {
+      stats.incrCounted();
+    }
+  }
+
+  return {inputRange.upstreamState(), stats, output.getClientCall()};
+}

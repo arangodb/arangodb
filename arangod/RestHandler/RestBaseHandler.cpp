@@ -100,7 +100,7 @@ void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
 /// convenience function akin to generateError,
 /// renders payload in 'result' field
 /// adds proper `error`, `code` fields
-void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice const& payload) {
+void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
   resetResponse(code);
 
   try {
@@ -109,7 +109,9 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice const& payl
     tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    tmp.add("result", payload);
+    if (!payload.isNone()) {
+      tmp.add("result", payload);
+    }
     tmp.close();
 
     VPackOptions options(VPackOptions::Defaults);

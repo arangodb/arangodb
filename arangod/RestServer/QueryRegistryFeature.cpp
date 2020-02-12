@@ -133,12 +133,12 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "seconds); if <= 0, value will default to 30 for "
                      "single-server instances or 600 for cluster instances",
                      new DoubleParameter(&_queryRegistryTTL),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
   options->addOption("--query.smart-joins",
                      "enable smart joins query optimization",
                      new BooleanParameter(&_smartJoins),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
                      .setIntroducedIn(30405).setIntroducedIn(30500);
 }
 

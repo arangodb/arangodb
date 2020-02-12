@@ -128,7 +128,7 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
   builder.openObject();
 
   walk(
-      [&builder, &filter, &detailed](Section const& section, Option const& option) {
+      [this, &builder, &filter, &detailed](Section const& section, Option const& option) {
         std::string full(option.fullName());
         
         if (!filter(full)) {
@@ -154,6 +154,41 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
                       VPackValue(section.enterpriseOnly ||
                                  option.hasFlag(arangodb::options::Flags::Enterprise)));
           builder.add("requiresValue", VPackValue(option.parameter->requiresValue()));
+         
+          // OS support
+          builder.add("os", VPackValue(VPackValueType::Array));
+          if (option.hasFlag(arangodb::options::Flags::OsLinux)) {
+            builder.add(VPackValue("linux"));
+          }
+          if (option.hasFlag(arangodb::options::Flags::OsMac)) {
+            builder.add(VPackValue("macos"));
+          }
+          if (option.hasFlag(arangodb::options::Flags::OsWindows)) {
+            builder.add(VPackValue("windows"));
+          }
+          builder.close();
+          
+          // component support
+          char const* arangod = "arangod";
+          if (_progname.size() >= strlen(arangod) &&
+              _progname.compare(_progname.size() - strlen(arangod), strlen(arangod), arangod) == 0) {
+            builder.add("component", VPackValue(VPackValueType::Array));
+            if (option.hasFlag(arangodb::options::Flags::OnCoordinator)) {
+              builder.add(VPackValue("coordinator"));
+            }
+            if (option.hasFlag(arangodb::options::Flags::OnDBServer)) {
+              builder.add(VPackValue("dbserver"));
+            }
+            if (option.hasFlag(arangodb::options::Flags::OnAgent)) {
+              builder.add(VPackValue("agent"));
+            }
+            if (option.hasFlag(arangodb::options::Flags::OnSingle)) {
+              builder.add(VPackValue("single"));
+            }
+            builder.close();
+          }
+
+          // version the option was introduced in (unknown for some older options)
           builder.add(VPackValue("introducedIn"));
           if (option.hasIntroducedIn()) {
             builder.openArray();
@@ -164,6 +199,8 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           } else {
             builder.add(VPackValue(VPackValueType::Null));
           }
+
+          // version the option was deprecated in (not set for still-active options)
           builder.add(VPackValue("deprecatedIn"));
           if (option.hasDeprecatedIn()) {
             builder.openArray();
@@ -174,10 +211,12 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
           } else {
             builder.add(VPackValue(VPackValueType::Null));
           }
+
           std::string values = option.parameter->description();
           if (!values.empty()) {
             builder.add("values", VPackValue(values));
           }
+
           if (!option.hasFlag(arangodb::options::Flags::Command)) {
             // command-like options are commands, thus they shouldn't have
             // a "default" value

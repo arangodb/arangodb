@@ -70,6 +70,7 @@ add_library(arango_iresearch
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
   IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
+  IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
   IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
   IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
   IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
@@ -86,6 +87,7 @@ target_compile_definitions(arango_iresearch
 
 target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
+  PRIVATE ${LZ4_INCLUDE_DIR}
 )
 
 if (USE_ENTERPRISE)
@@ -385,6 +387,7 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
+  VocBase/Methods/Queries.cpp
   VocBase/Methods/Tasks.cpp
   VocBase/Methods/Transactions.cpp
   VocBase/Methods/Ttl.cpp
@@ -552,7 +555,6 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
-  Cluster/ClusterComm.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
@@ -621,7 +623,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
-  RestHandler/RestAqlReloadHandler.cpp
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
@@ -648,6 +649,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
   RestHandler/RestSupervisionStateHandler.cpp
+  RestHandler/RestSystemReportHandler.cpp
   RestHandler/RestTasksHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
@@ -1004,7 +1006,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangod jemalloc)
+  add_dependencies(arangod jemalloc_build)
 endif ()
   
 foreach(TARGET

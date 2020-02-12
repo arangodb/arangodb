@@ -59,5 +59,7 @@ inline std::string urlEncode(std::string const& str) {
   urlEncode(result, str.c_str(), str.size());
   return result;
 }
+
+void appendPath(Request const& req, std::string& target);
 }}}}  // namespace arangodb::fuerte::v1::http
 #endif

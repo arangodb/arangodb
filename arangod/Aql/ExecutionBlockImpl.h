@@ -267,12 +267,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
-  // Trace the start of a getSome call
-  void traceExecuteBegin(AqlCallStack const& stack);
-
-  // Trace the end of a getSome call, potentially with result
-  void traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result);
-
   // Allocate an output block and install a call in it
   [[nodiscard]] auto allocateOutputBlock(AqlCall&& call)
       -> std::unique_ptr<OutputAqlItemRow>;
