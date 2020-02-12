@@ -530,8 +530,7 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
 int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice additional) {
   _callbackMutex.assertLockedByCurrentThread();
 
-  std::string const path =
-      Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix) + suffix;
+  std::string const path = Utils::baseUrl(Utils::workerPrefix) + suffix;
 
   // int64_t vertexCount = 0, edgeCount = 0;
   std::map<CollectionID, std::string> collectionPlanIdMap;
@@ -642,6 +641,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
+      reqOpts.database = _vocbaseGuard.database().name();
       
       responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                                                   path, std::move(buffer), reqOpts));
@@ -834,13 +834,13 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
     return TRI_ERROR_FAILED;
   }
 
-  std::string base = Utils::baseUrl(_vocbaseGuard.database().name(), Utils::workerPrefix);
-  auto body = std::make_shared<std::string const>(message.toJson());
+  std::string base = Utils::baseUrl(Utils::workerPrefix);
   
   VPackBuffer<uint8_t> buffer;
-  buffer.append(message.data(), message.size());
+  buffer.append(message.slice().begin(), message.slice().byteSize());
 
   network::RequestOptions reqOpts;
+  reqOpts.database = _vocbaseGuard.database().name();
   reqOpts.timeout = network::Timeout(5.0 * 60.0);
   reqOpts.skipScheduler = true;
   
