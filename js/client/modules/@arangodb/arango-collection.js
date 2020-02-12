@@ -1293,6 +1293,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   var params = '';
   var ignoreRevs = false;
   var options;
+
   if (typeof overwrite === 'object') {
     if (typeof keepNull !== 'undefined') {
       throw 'too many arguments';
@@ -1308,9 +1309,9 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     if (! options.hasOwnProperty('keepNull')) {
       options.keepNull = true;
     }
-    params = '?keepNull=' + options.keepNull;
+    params += '&keepNull=' + options.keepNull;
 
-    if (! options.hasOwnProperty('mergeObjects')) {
+    if (!options.hasOwnProperty('mergeObjects')) {
       options.mergeObjects = true;
     }
     params += '&mergeObjects=' + options.mergeObjects;
