@@ -1336,10 +1336,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     if (_lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
-      if (clientCall.needsFullCount()) {
-        return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
-      }
-      return {ExecutionState::DONE, skipped, std::move(outputBlock)};
+      return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
     return {_upstreamState, skipped, std::move(outputBlock)};
   } else {
