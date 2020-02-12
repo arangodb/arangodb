@@ -349,17 +349,19 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
 
 auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-  if (ADB_UNLIKELY(inputRange.hasDataRow())) {
-    static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
-                  "For LIMIT with passthrough to work, there must not be input "
-                  "rows when skipping. "
-                  "The following code also assumes this.");
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
-                                   "Unexpected input while skipping");
-  }
 
   auto const skipTotal = call.offset + infos().getOffset();
+
+  if (ADB_UNLIKELY(inputRange.skippedInFlight() < skipTotal && inputRange.hasDataRow())) {
+    static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
+                  "For LIMIT with passthrough to work, there must no input "
+                  "rows before the offset was skipped.");
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "Unexpected input while skipping: got data "
+                                   "rows before offset was reached.");
+  }
+
   auto const skipped = inputRange.skip(skipTotal);
   call.didSkip(skipped);
   auto const upstreamCall = calculateUpstreamCall(call);
