@@ -164,7 +164,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
     initializeNewRow(inputRange);
   } else if (_inputArrayPosition < _inputArrayLength) {
     // if we're done producing, but still keep values in our list
-    // only valid if fullCount is true
     return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
   }
 
