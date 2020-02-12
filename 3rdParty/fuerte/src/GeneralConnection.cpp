@@ -78,6 +78,7 @@ void GeneralConnection<ST>::startConnection() {
   Connection::State exp = Connection::State::Disconnected;
   if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
+    FUERTE_ASSERT(_config._maxConnectRetries > 0);
     tryConnect(_config._maxConnectRetries, std::chrono::steady_clock::now());
   }
 }

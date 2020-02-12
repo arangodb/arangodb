@@ -515,18 +515,16 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     return;
   }
   
-  if (key == StaticStrings::Accept && value == StaticStrings::MimeTypeVPack) {
-    _contentTypeResponse = ContentType::VPACK;
-  } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
-    if (value == StaticStrings::MimeTypeVPack) {
-      _contentType = ContentType::VPACK; // don't insert this header!!
-      return;
-    }
-    else if ((value.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-             (memcmp(value.c_str(),
-                     StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-                     StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
-      _contentType = ContentType::JSON; // don't insert this header!!
+  if (key == StaticStrings::Accept) {
+    _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
+    return;
+  } else if ((_contentType == ContentType::UNSET) &&
+             (key == StaticStrings::ContentTypeHeader)) {
+    auto res = rest::stringToContentType(value, /*default*/ContentType::UNSET);
+    // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
+    // in most tests. As soon as someone fixes all the tests we can enable these again.
+    if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
+      _contentType = res;
       return;
     }
   } else if (key == StaticStrings::AcceptEncoding) {
