@@ -167,7 +167,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
     return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
   }
 
-  return {ExecutorState::DONE, NoStats{}, upstreamCall};
+  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
 }
 
 std::tuple<ExecutorState, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
@@ -209,19 +209,15 @@ std::tuple<ExecutorState, size_t, AqlCall> EnumerateListExecutor::skipRowsRange(
   call.didSkip(skipped);
 
   upstreamCall.softLimit = call.getOffset();
-  if (offsetPhase) {
-    if (skipped < call.getOffset()) {
-      return {inputRange.upstreamState(), skipped, upstreamCall};
-    } else if (_inputArrayPosition < _inputArrayLength) {
-      return {ExecutorState::HASMORE, skipped, upstreamCall};
-    }
-    return {_currentRowState, skipped, upstreamCall};
+  if (_inputArrayPosition < _inputArrayLength) {
+    // fullCount will always skip the complete array
+    TRI_ASSERT(offsetPhase);
+    return {ExecutorState::HASMORE, skipped, upstreamCall};
   }
-  return {ExecutorState::DONE, skipped, upstreamCall};
+  return {inputRange.upstreamState(), skipped, upstreamCall};
 }
 
 void EnumerateListExecutor::initialize() {
-  _skipped = 0;
   _inputArrayLength = 0;
   _inputArrayPosition = 0;
   _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};

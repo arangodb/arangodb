@@ -140,7 +140,6 @@ class EnumerateListExecutor {
   ExecutorState _currentRowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
-  size_t _skipped;
 };
 
 }  // namespace aql
