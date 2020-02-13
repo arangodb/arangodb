@@ -26,6 +26,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
+#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlCall.h"
@@ -35,6 +36,7 @@
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
@@ -51,12 +53,98 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-namespace {
-using InputParam = std::tuple<>
+// This is only to get a split-type. The Type is independent of actual template parameters
+using HashedCollectTestHelper = ExecutorTestHelper<HashedCollectExecutor, 1, 1>;
+using HashedCollectSplitType = HashedCollectTestHelper::SplitType;
+using HashedCollectInputParam = std::tuple<HashedCollectSplitType>;
+
+class HashedCollectExecutorTest
+    : public AqlExecutorTestCase<false>,
+      public ::testing::TestWithParam<HashedCollectInputParam> {
+ protected:
+  auto getSplit() -> HashedCollectSplitType {
+    auto [split] = GetParam();
+    return split;
+  }
+
+  auto buildInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters)
+      -> HashedCollectExecutorInfos {
+    std::unordered_set<RegisterId> registersToClear{};
+    std::unordered_set<RegisterId> registersToKeep{};
+    std::unordered_set<RegisterId> readableInputRegisters{};
+    std::unordered_set<RegisterId> writeableOutputRegisters{};
+
+    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
+      // All registers need to be invalidated!
+      registersToClear.emplace(i);
+    }
+
+    for (auto const& [out, in] : groupRegisters) {
+      readableInputRegisters.emplace(in);
+      writeableOutputRegisters.emplace(out);
+    }
+
+    RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+    std::vector<std::string> aggregateTypes{};
+    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{};
+    bool count = false;
+
+    return HashedCollectExecutorInfos{nrInputRegisters,
+                                      nrOutputRegisters,
+                                      registersToClear,
+                                      registersToKeep,
+                                      std::move(readableInputRegisters),
+                                      std::move(writeableOutputRegisters),
+                                      std::move(groupRegisters),
+                                      collectRegister,
+                                      std::move(aggregateTypes),
+                                      std::move(aggregateRegisters),
+                                      fakedQuery->trx(),
+                                      count};
+  };
+};
+
+template <size_t... vs>
+const HashedCollectSplitType splitIntoBlocks =
+    HashedCollectSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const HashedCollectSplitType splitStep = HashedCollectSplitType{step};
+
+INSTANTIATE_TEST_CASE_P(HashedCollect, HashedCollectExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<1>, splitStep<2>));
+
+// Note: For all of the following tests the output ordering is not guaranteed.
+// It might be deterministic, what we hope for now.
+// But we might want to add a SORT after HashedCollect to ensure correct ordering
+
+TEST_P(HashedCollectExecutorTest, collect_only) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {{1}, {2}, {6}, {R"("1")"}})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
 }
 
-class HashedCollectExecutorTest : public AqlExecutorTestCase,
-                                  public ::testing::TestWithParam<::InputParam> {};
+/***
+ * TODO List Tests:
+ *   std::unordered_set<RegisterId>&& readableInputRegisters,
+ *   std::unordered_set<RegisterId>&& writeableOutputRegisters,
+ *   std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+ *   RegisterId collectRegister,
+ *   std::vector<std::string>&& aggregateTypes,
+ *   std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
+ *   bool count
+ */
 
 /*****
  *
