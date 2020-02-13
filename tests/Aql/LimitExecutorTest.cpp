@@ -1134,8 +1134,18 @@ INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, LimitExecutorWaitingTest, testi
 class LimitExecutorExecuteApiTest
     : public LimitExecutorTestBase,
       public ::testing::TestWithParam<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> {
+ public:
+  // Creating a server instance costs a lot of time, so do it only once.
+  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
+  static void SetUpTestCase() {
+    server = std::make_unique<decltype(server)::element_type>();
+  }
+  static void TearDownTestCase() {
+    server.reset();
+  }
+
  protected:
-  mocks::MockAqlServer server{};
+  static std::unique_ptr<mocks::MockAqlServer> server;
   std::unique_ptr<arangodb::aql::Query> fakedQuery{};
 
   ExecutionState state;
@@ -1157,7 +1167,7 @@ class LimitExecutorExecuteApiTest
         registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
             std::initializer_list<RegisterId>{0})),
         dummyFetcher(itemBlockManager, 1, false, nullptr) {
-    fakedQuery = server.createFakeQuery();
+    fakedQuery = server->createFakeQuery();
   }
 
 
@@ -1170,6 +1180,8 @@ class LimitExecutorExecuteApiTest
     return buildBlock<1>(itemBlockManager, std::move(builder));
   }
 };
+
+std::unique_ptr<mocks::MockAqlServer> LimitExecutorExecuteApiTest::server{nullptr};
 
 auto const testingOffsets = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
 auto const testingLimits = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
