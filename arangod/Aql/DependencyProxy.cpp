@@ -264,7 +264,8 @@ template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
     std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-    RegisterId nrInputRegisters)
+    RegisterId nrInputRegisters,
+    velocypack::Options const* const options)
     : _dependencies(dependencies),
       _itemBlockManager(itemBlockManager),
       _inputRegisters(std::move(inputRegisters)),
@@ -273,7 +274,8 @@ DependencyProxy<blockPassthrough>::DependencyProxy(
       _blockQueue(),
       _blockPassThroughQueue(),
       _currentDependency(0),
-      _skipped(0) {}
+      _skipped(0),
+      _vpackOptions(options) {}
 
 template <BlockPassthrough blockPassthrough>
 RegisterId DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
@@ -323,6 +325,12 @@ bool DependencyProxy<blockPassthrough>::advanceDependency() {
   }
   _currentDependency++;
   return true;
+}
+
+template <BlockPassthrough allowBlockPassthrough>
+velocypack::Options const* DependencyProxy<allowBlockPassthrough>::velocypackOptions() const
+    noexcept {
+  return _vpackOptions;
 }
 
 template class ::arangodb::aql::DependencyProxy<BlockPassthrough::Enable>;

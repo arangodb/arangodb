@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, assertNotNull, fail */
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -27,7 +27,8 @@ var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var ERRORS = require("@arangodb").errors;
 var internal = require('internal');
-
+var fs = require("fs");
+var isCluster = require("internal").isCluster();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -257,6 +258,164 @@ function iResearchFeatureAqlServerSideTestSuite () {
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
       internal.debugRemoveFailAt('HashIndexAlwaysLast');
+    },
+    testViewLinkCreationHint : function() {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+      internal.debugClearFailAt();
+      let docsCollectionName = "docs";
+      let docsViewName  = "docs_view";
+      try { db._drop(docsCollectionName); } catch(e) {}
+      try { db._dropView(docsViewName); } catch(e) {}
+      internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint'); 
+      let docsCollection = db._create(docsCollectionName);
+      docsCollection.save({"some_field": "some_value"});
+      try {
+        let docsView = db._createView(docsViewName, "arangosearch", {
+          "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            } ,
+          consolidationIntervalMsec:0,
+          cleanupIntervalStep:0
+        });
+        let properties = docsView.properties();
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
+      } finally {
+        db._drop(docsCollectionName);
+        db._dropView(docsViewName);
+        internal.debugRemoveFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
+      }
+    },
+    testViewNoLinkCreationHint : function() {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+      internal.debugClearFailAt();
+      let docsCollectionName = "docs";
+      let docsViewName  = "docs_view";
+      try { db._drop(docsCollectionName); } catch(e) {}
+      try { db._dropView(docsViewName); } catch(e) {}
+      let docsCollection = db._create(docsCollectionName);
+      docsCollection.save({"some_field": "some_value"});
+      try {
+        let docsView = db._createView(docsViewName, "arangosearch", {
+          "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            } ,
+          consolidationIntervalMsec:0,
+          cleanupIntervalStep:0
+        });
+        let properties = docsView.properties();
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
+        
+        internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint'); 
+        // now regular save to collection should trigger fail on index insert
+        // as there should be no hint!
+        try {
+          docsCollection.save({"some_field": "some_value2"});
+          fail();
+        } catch (e) {
+          assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
+        }
+      } finally {
+        db._drop(docsCollectionName);
+        db._dropView(docsViewName);
+        internal.debugRemoveFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
+      }
+    },
+    testRemoveIndexOnCreationFail : function() {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+      internal.debugClearFailAt();
+      let docsCollectionName = "docs";
+      let docsViewName  = "docs_view";
+      try { db._drop(docsCollectionName); } catch(e) {}
+      try { db._dropView(docsViewName); } catch(e) {}
+      let docsCollection = db._create(docsCollectionName);
+      docsCollection.save({"some_field": "some_value"});
+
+      let getLinksCount = function() {
+        let linksCount = 0;
+        if (!isCluster) {
+          let dbPath = internal.db._path();
+          if (db._engine().name === "rocksdb") {
+            dbPath = fs.safeJoin(internal.db._path(), 'databases');
+            let databases = fs.list(dbPath);
+            assertTrue(databases.length >= 1);
+            dbPath = fs.safeJoin(dbPath, 'database-' + db._id());
+            assertTrue(fs.isDirectory(dbPath));
+          } else if (db._engine().name !== "mmfiles") {
+            fail("Unknown storage engine"); // if new engine is introduced, test should be updated
+          }          
+          let directories = fs.list(dbPath);
+          // check only arangosearch-XXXX
+          directories.forEach(function(candidate) {
+            if (candidate.startsWith("arangosearch")) {
+              linksCount++;
+            }
+          });
+        }
+        return linksCount;
+      };
+
+      try {
+        let beforeLinkCount = getLinksCount();
+        internal.debugSetFailAt('ArangoSearch::MisreportCreationInsertAsFailed'); 
+        let docsView = db._createView(docsViewName, "arangosearch", {
+          "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            } ,
+          consolidationIntervalMsec:0,
+          cleanupIntervalStep:0
+        });
+        let properties = docsView.properties();
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(0, Object.keys(properties.links).length);
+        // on Single server we could also check fs (on cluster we are on 
+        // coordinator, so nothing to do)
+        // no new arangosearch folders should be present
+        // due to race conditions in FS (on MACs specifically)
+        // we will do several attempts
+        let tryCount = 3;
+        while (tryCount > 0) {
+          let afterLinkCount = getLinksCount();
+          if (afterLinkCount === beforeLinkCount) {
+          	break; // all is ok.
+          }
+          if (tryCount > 0) {
+            tryCount--;
+            require('internal').sleep(5);
+          } else {
+            assertEqual(beforeLinkCount, afterLinkCount);
+          }
+        }
+      } finally {
+        db._drop(docsCollectionName);
+        db._dropView(docsViewName);
+        internal.debugRemoveFailAt('ArangoSearch::MisreportCreationInsertAsFailed');
+      }
     }
   };
 }

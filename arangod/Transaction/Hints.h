@@ -52,6 +52,7 @@ class Hints {
     ALLOW_RANGE_DELETE = 8192,    // enable range-delete in rocksdb
     FROM_TOPLEVEL_AQL = 16384,    // transaction is only runnning one AQL query
     GLOBAL_MANAGED = 32768,  // transaction with externally managed lifetime
+    INDEX_CREATION = 65536, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
   };
 
   Hints() : _value(0) {}

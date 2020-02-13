@@ -2,18 +2,15 @@
   "name": "aardvark",
   "description": "ArangoDB Admin Web Interface",
   "author": "ArangoDB GmbH",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "license": "Apache-2.0",
-
   "engines": {
     "arangodb": "^3.0.0-0 || ^3.0.0"
   },
-
   "repository": {
     "type": "git",
     "url": "https://github.com/arangodb/arangodb.git"
   },
-
   "contributors": [
     {
       "name": "Heiko Kernbach",
@@ -21,58 +18,32 @@
     },
     {
       "name": "Michael Hackstein",
-      "email": "m.hackstein@arangodb.com"
-    },
-    {
-      "name": "Lucas Dohmen",
-      "email": "lucas@arangodb.com"
+      "email": "michael@arangodb.com"
     }
   ],
-
   "main": "index.js",
   "defaultDocument": "index.html",
-
-  "configuration": {
-  },
-
+  "configuration": {},
   "files": {
-    "/css/sass.css": {
-      "path": "frontend/build/style-minified.css",
-      "gzip": true
+    "/static": "react/build/static",
+    "/img": "frontend/img",
+    "/static/css/static/media": "react/build/static/media",
+    "/js/arango/aqltemplates.json": "react/build/assets/aqltemplates.json",
+    "/favicon.ico": {
+      "path": "react/build/favicon.ico",
+      "gzip": false
     },
-    "/css/style.css": {
-      "path": "frontend/build/extra-minified.css",
+    "/worker-json.js": {
+      "path": "react/build/assets/src/worker-json.js",
       "gzip": true
     },
     "/ace.js": {
-      "path": "frontend/src/ace.min.js",
+      "path": "react/build/assets/src/ace.min.js",
       "gzip": true
     },
-    "/app.js": {
-      "path": "frontend/build/app.min.js",
-      "gzip": true
-    },
-    "/templates.js": {
-      "path": "frontend/build/templates.min.js",
-      "gzip": true
-    },
-    "/libs.js": {
-      "path": "frontend/build/libs.min.js",
-      "gzip": true
-    },
-    "/favicon.ico": {
-      "path": "favicon.ico",
+    "/mode-aql.js": {
+      "path": "react/build/assets/src/mode-aql.js",
       "gzip": false
-    },
-    "/fonts": "frontend/fonts",
-    "/img": "frontend/compressed-img",
-    "/data": "frontend/data",
-    "/js/arango/aqltemplates.json": "frontend/aqltemplates.json",
-    "/ext-searchbox.js": "frontend/src/ext-searchbox.js",
-    "/worker-json.js": {
-      "path": "frontend/src/worker-json.js",
-      "gzip": true
     }
   }
 }
-

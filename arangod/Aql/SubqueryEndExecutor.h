@@ -48,19 +48,23 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
                            RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                            std::unordered_set<RegisterId> const& registersToClear,
                            std::unordered_set<RegisterId> registersToKeep,
-                           transaction::Methods* trxPtr, RegisterId outReg);
+                           velocypack::Options const* options, RegisterId inReg,
+                           RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
-  SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&);
+  SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) noexcept = default;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos const&) = delete;
   ~SubqueryEndExecutorInfos();
 
-  transaction::Methods* getTrxPtr() const noexcept { return _trxPtr; }
-  inline RegisterId getOutputRegister() const { return _outReg; }
+  [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
+  [[nodiscard]] RegisterId getOutputRegister() const noexcept;
+  [[nodiscard]] bool usesInputRegister() const noexcept;
+  [[nodiscard]] RegisterId getInputRegister() const noexcept;
 
  private:
-  transaction::Methods* _trxPtr;
+  velocypack::Options const* _vpackOptions;
   RegisterId const _outReg;
+  RegisterId const _inReg;
 };
 
 class SubqueryEndExecutor {
@@ -82,24 +86,39 @@ class SubqueryEndExecutor {
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  enum State : int {
-    ACCUMULATE,
-    RELEVANT_SHADOW_ROW_PENDING,
-    FORWARD_IRRELEVANT_SHADOW_ROWS
+  enum class State {
+    ACCUMULATE_DATA_ROWS,
+    PROCESS_SHADOW_ROWS,
   };
-  void resetAccumulator();
+
+  // Accumulator for rows between shadow rows.
+  // We need to allocate the buffer ourselves because we need to keep
+  // control of it to hand over to an AqlValue
+  class Accumulator {
+   public:
+    explicit Accumulator(VPackOptions const* options);
+    void reset();
+
+    void addValue(AqlValue const& value);
+
+    AqlValueGuard stealValue(AqlValue& value);
+
+    size_t numValues() const noexcept;
+
+   private:
+    VPackOptions const* const _options;
+    std::unique_ptr<arangodb::velocypack::Buffer<uint8_t>> _buffer{nullptr};
+    std::unique_ptr<VPackBuilder> _builder{nullptr};
+    size_t _numValues{0};
+  };
 
  private:
   Fetcher& _fetcher;
   SubqueryEndExecutorInfos& _infos;
 
-  // Accumulator for rows between shadow rows.
-  // We need to allocate the buffer ourselves because we need to keep
-  // control of it to hand over to an AqlValue
-  std::unique_ptr<arangodb::velocypack::Buffer<uint8_t>> _buffer;
-  std::unique_ptr<VPackBuilder> _accumulator;
+  Accumulator _accumulator;
 
-  State _state;
+  State _state{State::ACCUMULATE_DATA_ROWS};
 };
 }  // namespace aql
 }  // namespace arangodb

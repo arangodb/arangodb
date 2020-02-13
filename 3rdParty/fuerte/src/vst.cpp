@@ -159,11 +159,7 @@ void message::requestHeader(RequestHeader const& header,
       builder.add(fu_content_type_key,
                   VPackValue(to_string(header.contentType())));
     }
-    for (auto const& pair : header.meta()) {
-      if (boost::iequals(fu_content_type_key, pair.first) ||
-          boost::iequals(fu_accept_key, pair.first)) {
-        continue;
-      }
+    for (auto const& pair : header.meta()) {  // iequals for data from server
       builder.add(pair.first, VPackValue(pair.second));
     }
   }
@@ -309,7 +305,9 @@ void message::prepareForNetwork(VSTVersion vstVersion, MessageID messageId,
     }
     if (chunkDataLen > 0) {
       assert(payload.size() > 0);
+#ifdef FUERTE_DEBUG
       assert(begin < end);
+#endif
       // Add chunk data buffer
       result.emplace_back(begin, chunkDataLen);
       begin += chunkDataLen;
@@ -473,9 +471,6 @@ MessageType validateAndExtractMessageType(uint8_t const* const vpStart,
 RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   RequestHeader header;
-#ifdef FUERTE_DEBUG
-  header.byteSize = headerSlice.byteSize();  // for debugging
-#endif
 
   header.setVersion(headerSlice.at(0).getNumber<short>());  // version
   assert(headerSlice.at(1).getNumber<int>() ==
@@ -484,13 +479,13 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
   header.restVerb =
       static_cast<RestVerb>(headerSlice.at(3).getInt());  // rest verb
   header.path = headerSlice.at(4).copyString();           // request (path)
-  for (auto const& it :
-       VPackObjectIterator(headerSlice.at(5))) {  // query params
+  for (auto it : VPackObjectIterator(headerSlice.at(5))) {  // query params
     header.parameters.emplace(it.key.copyString(), it.value.copyString());
   }
-  for (auto const& it :
-       VPackObjectIterator(headerSlice.at(6))) {  // meta (headers)
-    header.addMeta(it.key.copyString(), it.value.copyString());
+  for (auto it : VPackObjectIterator(headerSlice.at(6))) {  // meta (headers)
+    std::string key = it.key.copyString();
+    toLowerInPlace(key);
+    header.addMeta(std::move(key), it.value.copyString());
   }
   return header;
 };
@@ -498,9 +493,6 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
 ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   ResponseHeader header;
-#ifdef FUERTE_DEBUG
-  header.byteSize = headerSlice.byteSize();  // for debugging
-#endif
 
   header.setVersion(headerSlice.at(0).getNumber<short>());  // version
   assert(headerSlice.at(1).getNumber<int>() ==
@@ -512,7 +504,7 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
     if (meta.isObject()) {
       for (auto it : VPackObjectIterator(meta)) {
         std::string key = it.key.copyString();
-        boost::algorithm::to_lower(key);  // in-place
+        toLowerInPlace(key);
         header.addMeta(std::move(key), it.value.copyString());
       }
     }

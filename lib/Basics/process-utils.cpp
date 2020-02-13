@@ -34,6 +34,7 @@
 #include <type_traits>
 
 #include "process-utils.h"
+#include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
@@ -436,14 +437,14 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
 
   icu::UnicodeString uwargs(external->_executable.c_str());
 
-  err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
+  err = wAppendQuotedArg(res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
     uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
+    err = wAppendQuotedArg(res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
       return nullptr;
     }
@@ -1029,16 +1030,41 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
 
   if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
-    int opts;
-    int loc = 0;
+    if (timeout > 0) {
+      // if we use a timeout, it means we cannot use blocking
+      wait = false;
+    }
 
+    int opts;
     if (wait) {
       opts = WUNTRACED;
     } else {
       opts = WNOHANG | WUNTRACED;
     }
 
-    TRI_pid_t res = waitpid(external->_pid, &loc, opts);
+    int loc = 0;
+    TRI_pid_t res = 0;
+    if (timeout) {
+      TRI_ASSERT((opts & WNOHANG) != 0);
+      double endTime = 0.0; 
+      while (true) {
+        res = waitpid(external->_pid, &loc, opts);
+        if (res != 0) {
+          break;
+        }
+        double now = TRI_microtime();
+        if (endTime <= 0.000001) {
+          // set endtime only once
+          endTime = now + timeout / 1000.0;
+        } else if (now >= endTime) {
+          // timeout
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      }
+    } else {
+      res = waitpid(external->_pid, &loc, opts);
+    }
 
     if (res == 0) {
       if (wait) {

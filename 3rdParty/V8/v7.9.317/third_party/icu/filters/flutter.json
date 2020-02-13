@@ -1,0 +1,49 @@
+// Copyright 2019 the V8 project authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+{
+  "featureFilters": {
+// Based on the ICU63 version of
+// https://cs.chromium.org/chromium/src/third_party/icu/source/data/brkitr/brklocal.mk?rcl=797b7c
+// # List of dictionary files (dict).
+// BRK_DICT_SOURCE = burmesedict.txt cjdict.txt khmerdict.txt laodict.txt\
+//  thaidict.txt
+// Filtered by android/brkitr.patch        "cjdict",
+    "brkitr_dictionaries": {
+      "whitelist": [ "burmesedict", "laodict", "thaidict", "khmerdict" ]
+    },
+// # List of break iterator files (brk).
+// BRK_SOURCE = char.txt line.txt line_loose.txt line_loose_cj.txt\
+//  line_normal.txt line_normal_cj.txt sent.txt sent_el.txt title.txt\
+//  word.txt
+// Added by android/brkitr.patch
+    "brkitr_rules": {
+      "whitelist": [ "char", "line_normal", "line_normal_cj", "word", "word_ja" ]
+    },
+// Need to explicitly add "root"
+    "brkitr_tree": { "whitelist": [ "root", "ja" ] },
+    "conversion_mappings": { "filterType": "exclude" },
+    "coll_tree": { "filterType": "exclude" },
+    "coll_ucadata": { "filterType": "exclude" },
+    "confusables": { "filterType": "exclude" },
+    "curr_tree": { "filterType": "exclude" },
+    "lang_tree": { "filterType": "exclude" },
+    "locales_tree": { "filterType": "exclude" },
+    "misc": { "whitelist": [ "icustd", "icuver", "likelySubtags" ] },
+    "normalization": { "whitelist": [ "nfkc" ] },
+    "rbnf_tree": { "filterType": "exclude" },
+    "rbnf_index": { "filterType": "exclude" },
+    "region_tree": { "filterType": "exclude" },
+    "stringprep": { "filterType": "exclude" },
+    "translit": { "filterType": "exclude" },
+    "unames": { "filterType": "exclude" },
+    "unit_tree": { "filterType": "exclude" },
+    "zone_tree": { "filterType": "exclude" }
+  },
+  "resourceFilters": [
+    {
+      "categories": [ "brkitr_tree" ],
+      "rules": [ "-/Version" ]
+    }
+  ]
+}

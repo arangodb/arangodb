@@ -319,6 +319,10 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
     // we are in single-server mode, we already flushed the wal
     baseUrl += "&flush=false";
   }
+  
+  std::unordered_map<std::string, std::string> headers;
+  headers.emplace(arangodb::StaticStrings::Accept, arangodb::StaticStrings::MimeTypeDump);
+
 
   while (true) {
     std::string url = baseUrl + "&from=" + itoa(fromTick) + "&chunkSize=" + itoa(chunkSize);
@@ -330,7 +334,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     // make the actual request for data
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-        client.request(arangodb::rest::RequestType::GET, url, nullptr, 0));
+        client.request(arangodb::rest::RequestType::GET, url, nullptr, 0, headers));
     auto check = ::checkHttpResponse(client, response);
     if (check.fail()) {
       LOG_TOPIC("ac972", ERR, arangodb::Logger::DUMP)
@@ -368,6 +372,12 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
               std::string("got invalid response from server: required header "
                           "is missing while dumping collection '") +
                   name + "'"};
+    }
+    
+    header = response->getHeaderField(arangodb::StaticStrings::ContentTypeHeader, headerExtracted);
+    if (!headerExtracted || header.compare(0, 25, "application/x-arango-dump") != 0) {
+      return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+        "got invalid response from server: content-type is invalid"};
     }
 
     // now actually write retrieved data to dump file
@@ -722,6 +732,8 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   // fetch the collection inventory
   std::string const url = "/_api/replication/inventory?includeSystem=" +
                           std::string(_options.includeSystemCollections ? "true" : "false") +
+                          "&includeFoxxQueues=" + 
+                          std::string(_options.includeSystemCollections ? "true" : "false") +
                           "&batchId=" + basics::StringUtils::itoa(batchId);
   std::unique_ptr<httpclient::SimpleHttpResult> response(
       client.request(rest::RequestType::GET, url, nullptr, 0));
@@ -777,7 +789,12 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < _options.collections.size(); ++i) {
-    restrictList.insert(std::pair<std::string, bool>(_options.collections[i], true));
+    auto const& name = _options.collections[i];
+    restrictList.insert(std::pair<std::string, bool>(name, true));
+    if (!name.empty() && name[0] == '_') {
+      // if the user explictly asked for dumping certain collections, toggle the system collection flag automatically
+      _options.includeSystemCollections = true;
+    }
   }
 
   // Step 3. iterate over collections, queue dump jobs
@@ -993,6 +1010,10 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
     meta.openObject();
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
+    auto props = body.get("properties");
+    if (props.isObject()) {
+      meta.add("properties", props);
+    }
     meta.close();
 
     // save last tick in file

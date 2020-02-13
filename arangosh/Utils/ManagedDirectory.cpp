@@ -29,6 +29,7 @@
 
 #include "ManagedDirectory.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
@@ -170,9 +171,9 @@ inline void rawWrite(int fd, char const* data, size_t length,
 }
 
 /// @brief Performs a raw (non-decrypted) read
-inline ssize_t rawRead(int fd, char* buffer, size_t length, arangodb::Result& status,
+inline TRI_read_return_t rawRead(int fd, char* buffer, size_t length, arangodb::Result& status,
                        std::string const& path, int flags) {
-  ssize_t bytesRead = TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
+  TRI_read_return_t bytesRead = TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
   }
@@ -543,8 +544,8 @@ void ManagedDirectory::File::write(char const* data, size_t length) {
   }
 }
 
-ssize_t ManagedDirectory::File::read(char* buffer, size_t length) {
-  ssize_t bytesRead = -1;
+TRI_read_return_t ManagedDirectory::File::read(char* buffer, size_t length) {
+  TRI_read_return_t bytesRead = -1;
   if (!::isReadable(_fd, _flags, _path, _status)) {
     return bytesRead;
   }
@@ -571,7 +572,7 @@ std::string ManagedDirectory::File::slurp() {
   if (::isReadable(_fd, _flags, _path, _status)) {
     char buffer[::DefaultIOChunkSize];
     while (true) {
-      ssize_t bytesRead = read(buffer, ::DefaultIOChunkSize);
+      TRI_read_return_t bytesRead = read(buffer, ::DefaultIOChunkSize);
       if (_status.ok()) {
         content.append(buffer, bytesRead);
       }
@@ -619,12 +620,12 @@ Result const& ManagedDirectory::File::close() {
 
 
 ssize_t ManagedDirectory::File::offset() const {
-  ssize_t fileBytesRead = -1;
+  TRI_read_return_t fileBytesRead = -1;
 
   if (isGzip()) {
     fileBytesRead = gzoffset(_gzFile);
   } else {
-    fileBytesRead = (ssize_t)TRI_LSEEK(_fd, 0L, SEEK_CUR);
+    fileBytesRead = (TRI_read_return_t)TRI_LSEEK(_fd, 0L, SEEK_CUR);
   } // else
 
   return fileBytesRead;

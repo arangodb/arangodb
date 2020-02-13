@@ -29,6 +29,7 @@
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -118,142 +119,24 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
 ///                  corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
-void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
+void InputAqlItemRow::toVelocyPack(velocypack::Options const* const trxOptions,
+                                   VPackBuilder& result) const {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(result.isOpenObject());
-  VPackOptions options(VPackOptions::Defaults);
-  options.buildUnindexedArrays = true;
-  options.buildUnindexedObjects = true;
+  _block->toVelocyPack(_baseIndex, _baseIndex + 1, trxOptions, result);
+}
 
-  VPackBuilder raw(&options);
-  raw.openArray();
-  // Two nulls in the beginning such that indices start with 2
-  raw.add(VPackValue(VPackValueType::Null));
-  raw.add(VPackValue(VPackValueType::Null));
-
-  result.add("nrItems", VPackValue(1));
-  result.add("nrRegs", VPackValue(getNrRegisters()));
-  result.add("error", VPackValue(false));
-  // Backwards compatbility 3.3
-  result.add("exhausted", VPackValue(false));
-
-  enum State {
-    Empty,       // saw an empty value
-    Range,       // saw a range value
-    Next,        // saw a previously unknown value
-    Positional,  // saw a value previously encountered
-  };
-
-  std::unordered_map<AqlValue, size_t> table;  // remember duplicates
-  size_t lastTablePos = 0;
-  State lastState = Positional;
-
-  State currentState = Positional;
-  size_t runLength = 0;
-  size_t tablePos = 0;
-
-  result.add("data", VPackValue(VPackValueType::Array));
-
-  // write out data buffered for repeated "empty" or "next" values
-  auto writeBuffered = [](State lastState, size_t lastTablePos,
-                          VPackBuilder& result, size_t runLength) {
-    if (lastState == Range) {
-      return;
-    }
-
-    if (lastState == Positional) {
-      if (lastTablePos >= 2) {
-        if (runLength == 1) {
-          result.add(VPackValue(lastTablePos));
-        } else {
-          result.add(VPackValue(-4));
-          result.add(VPackValue(runLength));
-          result.add(VPackValue(lastTablePos));
-        }
-      }
-    } else {
-      TRI_ASSERT(lastState == Empty || lastState == Next);
-      if (runLength == 1) {
-        // saw exactly one value
-        result.add(VPackValue(lastState == Empty ? 0 : 1));
-      } else {
-        // saw multiple values
-        result.add(VPackValue(lastState == Empty ? -1 : -3));
-        result.add(VPackValue(runLength));
-      }
-    }
-  };
-
-  size_t pos = 2;  // write position in raw
-  // We use column == 0 to simulate a shadowRow
-  // this is only relevant if all participants can use shadow rows
-  RegisterId startRegister = 0;
-  if (block().getFormatType() == SerializationFormat::CLASSIC) {
-    // Skip over the shadowRows
-    startRegister = 1;
-  }
-  for (RegisterId column = startRegister; column < getNrRegisters() + 1; column++) {
-    AqlValue const& a = column == 0 ? AqlValue{} : getValue(column - 1);
-    // determine current state
-    if (a.isEmpty()) {
-      currentState = Empty;
-    } else if (a.isRange()) {
-      currentState = Range;
-    } else {
-      auto it = table.find(a);
-
-      if (it == table.end()) {
-        currentState = Next;
-        a.toVelocyPack(trx, raw, false);
-        table.emplace(a, pos++);
-      } else {
-        currentState = Positional;
-        tablePos = it->second;
-        TRI_ASSERT(tablePos >= 2);
-        if (lastState != Positional) {
-          lastTablePos = tablePos;
-        }
-      }
-    }
-
-    // handle state change
-    if (currentState != lastState || (currentState == Positional && tablePos != lastTablePos)) {
-      // write out remaining buffered data in case of a state change
-      writeBuffered(lastState, lastTablePos, result, runLength);
-
-      lastTablePos = 0;
-      lastState = currentState;
-      runLength = 0;
-    }
-
-    switch (currentState) {
-      case Empty:
-      case Next:
-      case Positional:
-        ++runLength;
-        lastTablePos = tablePos;
-        break;
-
-      case Range:
-        result.add(VPackValue(-2));
-        result.add(VPackValue(a.range()->_low));
-        result.add(VPackValue(a.range()->_high));
-        break;
-    }
-  }
-
-  // write out any remaining buffered data
-  writeBuffered(lastState, lastTablePos, result, runLength);
-
-  result.close();  // closes "data"
-
-  raw.close();
-  result.add("raw", raw.slice());
+void InputAqlItemRow::toSimpleVelocyPack(velocypack::Options const* trxOpts,
+                                         arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(_block != nullptr);
+  _block->rowToSimpleVPack(_baseIndex, trxOpts, result);
 }
 
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
     : _block(block), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
@@ -281,7 +164,9 @@ AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   return a;
 }
 
-RegisterCount InputAqlItemRow::getNrRegisters() const noexcept { return block().getNrRegs(); }
+RegisterCount InputAqlItemRow::getNrRegisters() const noexcept {
+  return block().getNrRegs();
+}
 
 bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
   return this->_block == other._block && this->_baseIndex == other._baseIndex;
@@ -291,7 +176,8 @@ bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
   return !(*this == other);
 }
 
-bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
+bool InputAqlItemRow::equates(InputAqlItemRow const& other,
+                              velocypack::Options const* const options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
@@ -299,8 +185,9 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
   if (getNrRegisters() != other.getNrRegisters()) {
     return false;
   }
-  // NOLINTNEXTLINE(modernize-use-transparent-functors)
-  auto const eq = std::equal_to<AqlValue>{};
+  auto const eq = [options](auto left, auto right) {
+    return 0 == AqlValue::Compare(options, left, right, false);
+  };
   for (RegisterId i = 0; i < getNrRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;
@@ -321,10 +208,30 @@ bool InputAqlItemRow::isInitialized() const noexcept {
 
 InputAqlItemRow::operator bool() const noexcept { return isInitialized(); }
 
-bool InputAqlItemRow::isFirstRowInBlock() const noexcept {
+bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(_baseIndex < block().size());
-  return _baseIndex == 0;
+
+  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+
+  // Count the number of shadow rows before this row.
+  size_t const numShadowRowsBeforeCurrentRow = [&]() {
+    auto const& begin = shadowRowIndexes.cbegin();
+    auto const& end = shadowRowIndexes.cend();
+
+    // this is the last shadow row after _baseIndex, i.e.
+    // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
+    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    // But, as _baseIndex must not be a shadow row, it's actually
+    // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
+    // so the same as shadowRowIndexes.upper_bound(_baseIndex)
+    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+
+    return std::distance(begin, nextShadowRowIt);
+  }();
+  TRI_ASSERT(numShadowRowsBeforeCurrentRow <= shadowRowIndexes.size());
+
+  return numShadowRowsBeforeCurrentRow == _baseIndex;
 }
 
 bool InputAqlItemRow::isLastRowInBlock() const noexcept {
@@ -333,7 +240,32 @@ bool InputAqlItemRow::isLastRowInBlock() const noexcept {
   return _baseIndex + 1 == block().size();
 }
 
-bool InputAqlItemRow::blockHasMoreRows() const noexcept { return !isLastRowInBlock(); }
+bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(_baseIndex < block().size());
+
+  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+
+  // Count the number of shadow rows after this row.
+  size_t const numShadowRowsAfterCurrentRow = [&]() {
+    auto const& end = shadowRowIndexes.cend();
+
+    // this is the last shadow row after _baseIndex, i.e.
+    // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
+    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    // But, as _baseIndex must not be a shadow row, it's actually
+    // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
+    // so the same as shadowRowIndexes.upper_bound(_baseIndex)
+    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+
+    return std::distance(nextShadowRowIt, end);
+  }();
+
+  // block().size() is strictly greater than baseIndex
+  size_t const totalRowsAfterCurrentRow = block().size() - _baseIndex - 1;
+
+  return totalRowsAfterCurrentRow > numShadowRowsAfterCurrentRow;
+}
 
 AqlItemBlock& InputAqlItemRow::block() noexcept {
   TRI_ASSERT(_block != nullptr);

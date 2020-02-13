@@ -160,11 +160,11 @@ V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& se
 }
 
 void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
   options->addOption("--javascript.v8-options", "options to pass to v8",
                      new VectorParameter<StringParameter>(&_v8Options),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.v8-max-heap", "maximal heap size (in MB)",
                      new UInt64Parameter(&_v8MaxHeap));
@@ -208,7 +208,7 @@ void V8PlatformFeature::start() {
   v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int)forceARMv6.size());
 #endif
 
-  _platform.reset(v8::platform::CreateDefaultPlatform());
+  _platform = v8::platform::NewDefaultPlatform();
   v8::V8::InitializePlatform(_platform.get());
   v8::V8::Initialize();
 
@@ -242,7 +242,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   {
     MUTEX_LOCKER(guard, _lock);
     try {
-      _isolateData.emplace(isolate, std::move(data));
+      _isolateData.try_emplace(isolate, std::move(data));
     } catch (...) {
       isolate->SetData(V8_INFO, nullptr);
       isolate->Dispose();

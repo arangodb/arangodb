@@ -124,7 +124,7 @@ class V8Completer : public Completer {
  public:
   V8Completer() {}
 
-  ~V8Completer() {}
+  ~V8Completer() = default;
 
  public:
   bool isComplete(std::string const& source, size_t /*lineno*/) override final {
@@ -303,9 +303,14 @@ class V8Completer : public Completer {
             return result;
           }
 
-          v8::Handle<v8::Value> val = current->Get(name);
+          v8::MaybeLocal<v8::Value> maybeVal = current->Get(context, name);
 
-          if (!val->IsObject()) {
+          if (maybeVal.IsEmpty()) {
+            return result;
+          }
+
+          v8::Local<v8::Value> val = maybeVal.FromMaybe(v8::Local<v8::Value>());
+          if (val.IsEmpty() || !val->IsObject()) {
             return result;
           }
 
@@ -328,7 +333,7 @@ class V8Completer : public Completer {
     v8::Local<v8::String> cpl = TRI_V8_ASCII_STRING(isolate, "_COMPLETIONS");
 
     if (current->HasOwnProperty(context, cpl).FromMaybe(false)) {
-      v8::Handle<v8::Value> funcVal = current->Get(cpl);
+      v8::Handle<v8::Value> funcVal = current->Get(context, cpl).FromMaybe(v8::Local<v8::Value>());
 
       if (funcVal->IsFunction()) {
         v8::Handle<v8::Function> func = v8::Handle<v8::Function>::Cast(funcVal);
@@ -338,7 +343,7 @@ class V8Completer : public Completer {
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
 
         try {
-          v8::Handle<v8::Value> cpls = func->Call(current, 0, args);
+          v8::Handle<v8::Value> cpls = func->Call(context, current, 0, args).FromMaybe(v8::Handle<v8::Value>());
 
           if (cpls->IsArray()) {
             properties = v8::Handle<v8::Array>::Cast(cpls);
@@ -348,7 +353,7 @@ class V8Completer : public Completer {
         }
       }
     } else {
-      properties = current->GetPropertyNames();
+      properties = current->GetPropertyNames(context).FromMaybe(v8::Handle<v8::Array>());
     }
 
     // locate
@@ -358,13 +363,13 @@ class V8Completer : public Completer {
         result.reserve(static_cast<size_t>(n));
 
         for (uint32_t i = 0; i < n; ++i) {
-          v8::Handle<v8::Value> v = properties->Get(i);
+          v8::Handle<v8::Value> v = properties->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
 
           TRI_Utf8ValueNFC str(isolate, v);
           char const* s = *str;
 
           if (s != nullptr && *s) {
-            std::string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+            std::string suffix = (current->Get(context, v).FromMaybe(v8::Local<v8::Value>())->IsFunction()) ? "()" : "";
             std::string name = path + s + suffix;
 
             if (prefix.empty() || prefix[0] == '\0' ||

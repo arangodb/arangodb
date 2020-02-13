@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
+#include "Aql/AqlCall.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -34,15 +35,16 @@
 #include <memory>
 #include <queue>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
+struct AqlCall;
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
+class ShadowAqlItemRow;
 
 /**
  * @brief This is the implementation class of AqlExecutionBlocks.
@@ -104,6 +106,31 @@ class ExecutionBlockImpl final : public ExecutionBlock {
           Executor::Properties::preservesOrder,
       "allowsBlockPassthrough must imply preservesOrder, but does not!");
 
+ private:
+  // Used in getSome/skipSome implementation. deprecated
+  enum class InternalState { FETCH_DATA, FETCH_SHADOWROWS, DONE };
+
+  // Used in execute implmentation
+  // Defines the internal state this executor is in.
+  enum class ExecState {
+    // We need to check the client call to define the next state (inital state)
+    CHECKCALL,
+    // We are skipping rows in offset
+    SKIP,
+    // We are producing rows
+    PRODUCE,
+    // We are done producing (limit reached) and drop all rows that are unneeded
+    FASTFORWARD,
+    // We are done producing (limit reached), but we count all rows that could be used on higher limit
+    FULLCOUNT,
+    // We need more information from dependency
+    UPSTREAM,
+    // We are done with a subquery, we need to pass forward ShadowRows
+    SHADOWROWS,
+    // Locally done, ready to return, will set state to resetted
+    DONE
+  };
+
  public:
   /**
    * @brief Construct a new ExecutionBlock
@@ -115,7 +142,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @param node The Node used to create this ExecutionBlock
    */
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     typename Executor::Infos&&);
+                     typename Executor::Infos);
 
   ~ExecutionBlockImpl() override;
 
@@ -145,7 +172,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *           Guaranteed to be non nullptr in the HASMORE case, maybe a nullptr
    *           in DONE. Is a nullptr in WAITING.
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
+  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
   /**
    * @brief Like get some, but lines are skipped and not returned.
@@ -165,17 +192,17 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *                   skipped. On WAITING this is always 0. On any other state
    *                   this is between 0 and atMost.
    */
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
+  [[nodiscard]] std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
+  [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
-  Infos const& infos() const;
+  [[nodiscard]] Infos const& infos() const;
 
   /// @brief shutdown, will be called exactly once for the whole query
   /// Special implementation for all Executors that need to implement Shutdown
   /// Most do not, we might be able to move their shutdown logic to a more
   /// central place.
-  std::pair<ExecutionState, Result> shutdown(int) override;
+  [[nodiscard]] std::pair<ExecutionState, Result> shutdown(int) override;
 
   /// @brief main function to produce data in this ExecutionBlock.
   ///        It gets the AqlCallStack defining the operations required in every
@@ -196,15 +223,19 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    */
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
+  // execute a skipRowsRange call
+  std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> executeSkipRowsRange(
+      AqlItemBlockInputRange& input, AqlCall& call);
+
   /**
    * @brief Inner getSome() part, without the tracing calls.
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
+  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   /**
    * @brief Inner skipSome() part, without the tracing calls.
    */
-  std::pair<ExecutionState, size_t> skipSomeOnceWithoutTrace(size_t atMost);
+  [[nodiscard]] std::pair<ExecutionState, size_t> skipSomeOnceWithoutTrace(size_t atMost);
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it, with the specified
@@ -219,23 +250,34 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        a nullptr. This happens only if upstream is WAITING, or
    *        respectively, if it is DONE and did not return a new block.
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(size_t nrItems,
-                                                                       RegisterId nrRegs);
+  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(
+      size_t nrItems, RegisterId nrRegs);
 
-  std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;
+  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock,
+                                                                  AqlCall&& call);
 
-  Query const& getQuery() const;
+  [[nodiscard]] Query const& getQuery() const;
 
-  Executor& executor();
+  [[nodiscard]] Executor& executor();
 
   /// @brief request an AqlItemBlock from the memory manager
-  SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
+  [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
-  // Trace the start of a getSome call
-  void traceExecuteBegin(AqlCallStack const& stack);
+  void resetAfterShadowRow();
 
-  // Trace the end of a getSome call, potentially with result
-  void traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result);
+  [[nodiscard]] ExecutionState fetchShadowRowInternal();
+
+  // Allocate an output block and install a call in it
+  [[nodiscard]] auto allocateOutputBlock(AqlCall&& call)
+      -> std::unique_ptr<OutputAqlItemRow>;
+
+  // Ensure that we have an output block of the desired dimenstions
+  // Will as a side effect modify _outputItemRow
+  void ensureOutputBlock(AqlCall&& call);
+
+  // Compute the next state based on the given call.
+  // Can only be one of Skip/Produce/FullCount/FastForward/Done
+  [[nodiscard]] auto nextState(AqlCall const& call) const -> ExecState;
 
  private:
   /**
@@ -263,11 +305,24 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   Query const& _query;
 
+  InternalState _state;
+
   size_t _skipped{};
 
   DataRange _lastRange;
+
+  ExecState _execState;
+
+  AqlCall _upstreamRequest;
+
+  AqlCall _clientRequest;
+
+  // Only used in passthrough variant.
+  // We track if we have reference the range's block
+  // into an output block.
+  // If so we are not allowed to reuse it.
+  bool _hasUsedDataRangeBlock;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 #endif

@@ -45,8 +45,8 @@ static void JS_EnabledAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto& server = ApplicationServer::server();
-  TRI_V8_RETURN(v8::Boolean::New(isolate, server.isEnabled<AgencyFeature>()));
+  TRI_GET_GLOBALS();
+  TRI_V8_RETURN(v8::Boolean::New(isolate, v8g->_server.isEnabled<AgencyFeature>()));
 
   TRI_V8_TRY_CATCH_END
 }
@@ -57,8 +57,8 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    auto& server = ApplicationServer::server();
-    AgencyFeature& feature = server.getEnabledFeature<AgencyFeature>();
+    TRI_GET_GLOBALS();
+    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {
@@ -67,9 +67,10 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
-
-  r->Set(TRI_V8_ASCII_STRING(isolate, "leading"),
-         v8::Boolean::New(isolate, agent->leading()));
+  auto context = TRI_IGETC;
+  
+  r->Set(context, TRI_V8_ASCII_STRING(isolate, "leading"),
+         v8::Boolean::New(isolate, agent->leading())).FromMaybe(false);
 
   TRI_V8_RETURN(r);
   TRI_V8_TRY_CATCH_END
@@ -81,8 +82,8 @@ static void JS_ReadAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    auto& server = ApplicationServer::server();
-    AgencyFeature& feature = server.getEnabledFeature<AgencyFeature>();
+    TRI_GET_GLOBALS();
+    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {
@@ -114,8 +115,8 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   Agent* agent = nullptr;
   try {
-    auto& server = ApplicationServer::server();
-    AgencyFeature& feature = server.getEnabledFeature<AgencyFeature>();
+    TRI_GET_GLOBALS();
+    AgencyFeature& feature = v8g->_server.getEnabledFeature<AgencyFeature>();
     agent = feature.agent();
 
   } catch (std::exception const& e) {
@@ -189,10 +190,10 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"),
-                               ft->GetFunction(), true);
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoAgent"), aa);

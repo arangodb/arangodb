@@ -22,6 +22,7 @@
 
 #include "NetworkFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
@@ -32,6 +33,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
@@ -70,50 +72,41 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
-      _numIOThreads(config.numIOThreads),
       _maxOpenConnections(config.maxOpenConnections),
-      _connectionTtlMilli(config.connectionTtlMilli),
+      _idleTtlMilli(config.idleConnectionMilli),
+      _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
+  startsAfter<EngineSelectorFeature>();
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("--network", "Networking ");
+  options->addSection("network", "Configure cluster-internal networking");
 
   options->addOption("--network.io-threads", "number of network IO threads",
-                     new UInt32Parameter(&_numIOThreads));
+                     new UInt32Parameter(&_numIOThreads))
+                     .setIntroducedIn(30600);
   options->addOption("--network.max-open-connections",
                      "max open network connections",
-                     new UInt64Parameter(&_maxOpenConnections));
-  options->addOption("--network.connection-ttl",
-                     "default time-to-live of connections (in milliseconds)",
-                     new UInt64Parameter(&_connectionTtlMilli));
+                     new UInt64Parameter(&_maxOpenConnections))
+                     .setIntroducedIn(30600);
+  options->addOption("--network.idle-connection-ttl",
+                     "default time-to-live of idle connections (in milliseconds)",
+                     new UInt64Parameter(&_idleTtlMilli))
+                     .setIntroducedIn(30600);
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
-                     new BooleanParameter(&_verifyHosts));
+                     new BooleanParameter(&_verifyHosts))
+                     .setIntroducedIn(30600);
+  
+  std::unordered_set<std::string> protos = {
+      "", "http", "http2", "h2", "vst"};
 
-  _gcfunc = [this](bool canceled) {
-    if (canceled) {
-      return;
-    }
-
-    _pool->pruneConnections();
-
-    if (server().hasFeature<ClusterFeature>()) {
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto failed = ci.getFailedServers();
-      for (ServerID const& f : failed) {
-        _pool->cancelConnections(f);
-      }
-    }
-
-    if (!server().isStopping() && !canceled) {
-      auto off = std::chrono::seconds(3);
-      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
-    }
-  };
+  options->addOption("--network.protocol", "network protocol to use",
+                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
+                     .setIntroducedIn(30700);
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
@@ -121,23 +114,65 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
   }
-  if (_connectionTtlMilli < 10000) {
-    _connectionTtlMilli = 10000;
+  if (_idleTtlMilli < 10000) {
+    _idleTtlMilli = 10000;
   }
 }
 
 void NetworkFeature::prepare() {
+  
+  ClusterInfo* ci = nullptr;
+  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
+     ci = &server().getFeature<ClusterFeature>().clusterInfo();
+  }
+
   network::ConnectionPool::Config config;
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
-  config.connectionTtlMilli = _connectionTtlMilli;
+  config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
-  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
-    config.clusterInfo = &server().getFeature<ClusterFeature>().clusterInfo();
+  config.clusterInfo = ci;
+  if (_protocol == "http") {
+    config.protocol = fuerte::ProtocolType::Http;
+  } else if (_protocol == "http2" || _protocol == "h2") {
+    config.protocol = fuerte::ProtocolType::Http2;
+  } else if (_protocol == "vst") {
+    config.protocol = fuerte::ProtocolType::Vst;
+  } else {
+    config.protocol = fuerte::ProtocolType::Http;
+  }
+  
+  // simon: mmfiles replication is hardcoded for http
+  if (EngineSelectorFeature::isMMFiles()) {
+    config.protocol = fuerte::ProtocolType::Http;
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
+  
+  _gcfunc = [this, ci](bool canceled) {
+    if (canceled) {
+      return;
+    }
+
+    _pool->pruneConnections();
+
+    if (ci != nullptr) {
+      auto failed = ci->getFailedServers();
+      for (ServerID const& srvId : failed) {
+        std::string endpoint = ci->getServerEndpoint(srvId);
+        size_t n = _pool->cancelConnections(endpoint);
+        LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
+            << "canceling " << n << " connection(s) to failed server '"
+            << srvId << "' on endpoint '" << endpoint << "'";
+      }
+    }
+
+    if (!server().isStopping() && !canceled) {
+      std::chrono::seconds off(12);
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
+    }
+  };
 }
 
 void NetworkFeature::start() {
@@ -155,7 +190,7 @@ void NetworkFeature::beginShutdown() {
   }
   _poolPtr.store(nullptr, std::memory_order_release);
   if (_pool) {  // first cancel all connections
-    _pool->drainConnections();
+    _pool->shutdownConnections();
   }
 }
 
@@ -165,7 +200,7 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _pool->drainConnections();
+  _pool->shutdownConnections();
 }
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {

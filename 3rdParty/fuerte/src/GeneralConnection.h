@@ -38,7 +38,7 @@ class GeneralConnection : public fuerte::Connection {
  public:
   explicit GeneralConnection(EventLoopService& loop,
                              detail::ConnectionConfiguration const&);
-  virtual ~GeneralConnection() {}
+  virtual ~GeneralConnection() = default;
 
   /// @brief connection state
   Connection::State state() const override final {
@@ -49,21 +49,19 @@ class GeneralConnection : public fuerte::Connection {
   void cancel() override;
 
   // Activate this connection
-  void startConnection() override;
+  void start() override;
 
  protected:
+  void startConnection();
   // shutdown connection, cancel async operations
-  void shutdownConnection(const fuerte::Error, std::string const& msg = "");
-
-  // Connect with a given number of retries
-  void tryConnect(unsigned retries);
+  void shutdownConnection(const fuerte::Error, std::string const& msg = "",
+                          bool mayRestart = false);
 
   void restartConnection(const Error error);
 
   // Call on IO-Thread: read from socket
   void asyncReadSome();
-
- protected:
+  
   virtual void finishConnect() = 0;
 
   /// begin writing
@@ -72,19 +70,22 @@ class GeneralConnection : public fuerte::Connection {
   // called by the async_read handler (called from IO thread)
   virtual void asyncReadCallback(asio_ns::error_code const&) = 0;
 
-  /// abort ongoing / unfinished requests
+  /// abort ongoing / unfinished requests (locally)
   virtual void abortOngoingRequests(const fuerte::Error) = 0;
 
   /// abort all requests lingering in the queue
   virtual void drainQueue(const fuerte::Error) = 0;
+ 
+ private:
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries, std::chrono::steady_clock::time_point start);
+
 
  protected:
   /// @brief io context to use
   std::shared_ptr<asio_ns::io_context> _io_context;
   /// @brief underlying socket
-  Socket<ST> _protocol;
-  /// @brief timer to handle connection / request timeouts
-  asio_ns::steady_timer _timeout;
+  Socket<ST> _proto;
 
   /// default max chunksize is 30kb in arangodb
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
@@ -92,6 +93,8 @@ class GeneralConnection : public fuerte::Connection {
 
   /// @brief is the connection established
   std::atomic<Connection::State> _state;
+  
+  std::atomic<uint32_t> _numQueued; /// queued items
 };
 
 }}  // namespace arangodb::fuerte

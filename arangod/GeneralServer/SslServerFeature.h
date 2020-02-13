@@ -28,6 +28,11 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 // needs to come first
 #include "Ssl/ssl-helper.h"
 
@@ -54,11 +59,17 @@ class SslServerFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
   virtual void verifySslOptions();
 
-  virtual asio_ns::ssl::context createSslContext() const;
+  virtual std::shared_ptr<asio_ns::ssl::context> createSslContext();
+
+  // Dump all SSL related data into a builder, private keys
+  // are hashed.
+  virtual Result dumpTLSData(VPackBuilder& builder) const;
 
  protected:
   std::string _cafile;
+  std::string _cafileContent;  // the actual cert file
   std::string _keyfile;
+  std::string _keyfileContent; // the actual keyfile
   bool _sessionCache;
   std::string _cipherList;
   uint64_t _sslProtocol;

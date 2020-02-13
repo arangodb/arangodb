@@ -17,10 +17,11 @@ The response is a JSON object with the following attributes:
 
 - *isSystem*: whether or not the current database is the *_system* database
 
-- *sharding*: information about the default sharding method for collections created in this database
+- *sharding*: the default sharding method for collections created in this database
 
 - *replicationFactor*: the default replication factor for collections in this database
 
+- *writeConcern*: the default write concern for collections in this database
 
 @RESTRETURNCODES
 
@@ -44,4 +45,3 @@ is returned if the database could not be found.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

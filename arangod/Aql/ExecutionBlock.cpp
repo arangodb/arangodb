@@ -25,6 +25,7 @@
 
 #include "ExecutionBlock.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/Ast.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
@@ -68,11 +69,16 @@ std::string const& stateToString(aql::ExecutionState state) {
 
 }  // namespace
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+size_t ExecutionBlock::DefaultBatchSize = ExecutionBlock::ProductionDefaultBatchSize;
+#endif
+
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
-      _trx(engine->getQuery()->trx()),
+      _trxVpackOptions(engine->getQuery()->trx()->transactionContextPtr()->getVPackOptions()),
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _done(false),
+      _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
       _exeNode(ep),
       _dependencyPos(_dependencies.end()),
       _profile(engine->getQuery()->queryOptions().getProfileLevel()),
@@ -170,7 +176,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+      _engine->_stats.nodes.try_emplace(en->id(), stats);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -189,11 +195,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          {
-            VPackObjectBuilder guard(&builder);
-            result->toVelocyPack(transaction(), builder);
-          }
-          auto options = transaction()->transactionContextPtr()->getVPackOptions();
+          auto const options = trxVpackOptions();
+          result->toSimpleVPack(options, builder);
           LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
               << "[query#" << queryId << "] "
               << "getSome type=" << node->getTypeString()
@@ -240,7 +243,7 @@ std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+      _engine->_stats.nodes.try_emplace(en->id(), stats);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -274,7 +277,9 @@ ExecutionState ExecutionBlock::getHasMoreState() {
 
 ExecutionNode const* ExecutionBlock::getPlanNode() const { return _exeNode; }
 
-transaction::Methods* ExecutionBlock::transaction() const { return _trx; }
+velocypack::Options const* ExecutionBlock::trxVpackOptions() const noexcept {
+  return _trxVpackOptions;
+}
 
 void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   TRI_ASSERT(ep != nullptr);
@@ -283,4 +288,75 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
              _dependencies.end());
   _dependencies.emplace_back(ep);
   _dependencyPos = _dependencies.end();
+}
+
+bool ExecutionBlock::isInSplicedSubquery() const noexcept {
+  return _isInSplicedSubquery;
+}
+
+void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      auto const node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
+      // TODO make sure this works also if stack is non relevant, e.g. passed through by outer subquery.
+      auto const& call = stack.peek();
+      LOG_TOPIC("1e717", INFO, Logger::QUERIES)
+          << "[query#" << queryId << "] "
+          << "execute type=" << node->getTypeString() << " call= " << call
+          << " this=" << (uintptr_t)this << " id=" << node->id();
+    }
+  }
+}
+
+void ExecutionBlock::traceExecuteEnd(
+    std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    auto const& [state, skipped, block] = result;
+    auto const items = block != nullptr ? block->size() : 0;
+    ExecutionNode const* en = getPlanNode();
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = skipped + items;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(en->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(en->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      ExecutionNode const* node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
+      LOG_TOPIC("60bbc", INFO, Logger::QUERIES)
+          << "[query#" << queryId << "] "
+          << "execute done type=" << node->getTypeString() << " this=" << (uintptr_t)this
+          << " id=" << node->id() << " state=" << stateToString(state)
+          << " skipped=" << skipped << " produced=" << items;
+
+      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+        if (block == nullptr) {
+          LOG_TOPIC("9b3f4", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
+              << "execute type=" << node->getTypeString() << " result: nullptr";
+        } else {
+          VPackBuilder builder;
+          auto const options = trxVpackOptions();
+          block->toSimpleVPack(options, builder);
+          LOG_TOPIC("f12f9", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
+              << "execute type=" << node->getTypeString()
+              << " result: " << VPackDumper::toString(builder.slice(), options);
+        }
+      }
+    }
+  }
 }

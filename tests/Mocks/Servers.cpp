@@ -31,11 +31,11 @@
 #include "Aql/Query.h"
 #include "Basics/files.h"
 #include "Cluster/ActionDescription.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -61,6 +61,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Servers.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -70,8 +71,10 @@
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
-#include "../IResearch/AgencyMock.h"
-#include "../IResearch/common.h"
+#include "Servers.h"
+
+#include "IResearch/AgencyMock.h"
+#include "IResearch/common.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -84,14 +87,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/core/demangle.hpp>
-using namespace arangodb;
+    using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
 namespace {
-struct ClusterCommResetter : public arangodb::ClusterComm {
-  static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-};
 
 char const* plan_dbs_string =
 #include "plan_dbs_db.h"
@@ -293,7 +293,6 @@ MockServer::MockServer()
 
 MockServer::~MockServer() {
   stopFeatures();
-  ClusterCommResetter::reset();
   _server.setStateUnsafe(_oldApplicationServerState);
   arangodb::AgencyCommManager::MANAGER.reset();
 }
@@ -449,12 +448,16 @@ std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransac
                                                           noCollections, opts);
 }
 
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createQueryHelper(std::string queryString) const {
+std::unique_ptr<arangodb::aql::Query> MockAqlServer::createQueryHelper(bool activateTracing,
+                                                                       std::string queryString) const {
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
   auto queryOptions = std::make_shared<VPackBuilder>();
   queryOptions->openObject();
+  if (activateTracing) {
+    queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
+  }
   queryOptions->close();
   aql::QueryString fakeQueryString(queryString);
 
@@ -465,16 +468,12 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createQueryHelper(std::stri
   return query;
 }
 
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(std::string fakeQueryString) const {
-  std::unique_ptr<arangodb::aql::Query> query = createQueryHelper(fakeQueryString);
+std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(
+    bool activateTracing, std::string fakeQueryString) const {
+  std::unique_ptr<arangodb::aql::Query> query =
+      createQueryHelper(activateTracing, fakeQueryString);
   query->prepare(arangodb::QueryRegistryFeature::registry(),
                  aql::SerializationFormat::SHADOWROWS);
-  return query;
-}
-
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery() const {
-  std::unique_ptr<arangodb::aql::Query> query = createQueryHelper("");
-  query->injectTransaction(createFakeTransaction());
   return query;
 }
 
@@ -489,11 +488,11 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
 
 MockClusterServer::MockClusterServer()
     : MockServer(), _agencyStore(_server, nullptr, "arango") {
-  auto* agencyCommManager = new AgencyCommManagerMock("arango");
+  auto* agencyCommManager = new AgencyCommManagerMock(_server, "arango");
   std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-      _agencyStore);  // need 2 connections or Agency callbacks will fail
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);
+  std::ignore =
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);  // need 2 connections or Agency callbacks will fail
   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
   _oldRole = arangodb::ServerState::instance()->getRole();
 
@@ -518,12 +517,13 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
   arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-  arangodb::ServerState::instance()->setRebootId(1);
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
 
   // register factories & normalizers
   auto& indexFactory = const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
-  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-                       arangodb::iresearch::IResearchLinkCoordinator::factory());
+  auto& factory =
+      getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
+  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
 }
 
 void MockClusterServer::agencyTrx(std::string const& key, std::string const& value) {

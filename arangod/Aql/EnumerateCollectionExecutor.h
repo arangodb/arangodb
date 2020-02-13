@@ -64,8 +64,7 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter,
-      std::vector<std::string> const& projections,
+      Expression* filter, std::vector<std::string> const& projections,
       std::vector<size_t> const& coveringIndexAttributePositions,
       bool useRawDocumentPointers, bool random);
 
@@ -136,14 +135,14 @@ class EnumerateCollectionExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
-                                                        AqlItemBlockInputRange& input,
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(AqlItemBlockInputRange& input,
                                                         OutputAqlItemRow& output);
 
-  std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(size_t atMost,
-                                                           AqlItemBlockInputRange& input);
+  std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(AqlItemBlockInputRange& input,
+                                                                  AqlCall& call);
 
-  void setProducingFunction(DocumentProducingFunction const& documentProducer);
+  // TODO CHECK
+  // void setProducingFunction(DocumentProducingFunction const& documentProducer);
 
   void initializeCursor();
 
@@ -159,7 +158,8 @@ class EnumerateCollectionExecutor {
  private:
   Infos& _infos;
   Fetcher& _fetcher;
-  DocumentProducingFunction _documentProducer;
+  IndexIterator::DocumentCallback _documentProducer;
+  IndexIterator::DocumentCallback _documentSkipper;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutionState _state;
   ExecutorState _executorState;

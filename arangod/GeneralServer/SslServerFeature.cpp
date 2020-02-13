@@ -41,6 +41,7 @@
 #include "SslServerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
@@ -55,6 +56,8 @@
 #include "Random/UniformCharacter.h"
 #include "Ssl/ssl-helper.h"
 
+#include <nghttp2/nghttp2.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -67,11 +70,7 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
       _keyfile(),
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-      _sslProtocol(TLS_V13),
-#else
-      _sslProtocol(TLS_V12),
-#endif
+      _sslProtocol(TLS_GENERIC),
       _sslOptions(asio_ns::ssl::context::default_workarounds |
                   asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
@@ -111,7 +110,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--ssl.options",
                      "ssl connection options, see OpenSSL documentation",
                      new UInt64Parameter(&_sslOptions),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--ssl.ecdh-curve",
@@ -198,13 +197,27 @@ class BIOGuard {
 };
 }  // namespace
 
-asio_ns::ssl::context SslServerFeature::createSslContext() const {
+static int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg) {
+  int rv = nghttp2_select_next_protocol((unsigned char **)out, outlen, in, inlen);
+
+  if (rv != 1) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+
+  return SSL_TLSEXT_ERR_OK;
+}
+
+std::shared_ptr<asio_ns::ssl::context> SslServerFeature::createSslContext() {
   try {
+    std::string keyfileContent = FileUtils::slurp(_keyfile);
     // create context
-    asio_ns::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    std::shared_ptr<asio_ns::ssl::context> sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    _keyfileContent = std::move(keyfileContent);
 
     // and use this native handle
-    asio_ns::ssl::context::native_handle_type nativeContext = sslContext.native_handle();
+    asio_ns::ssl::context::native_handle_type nativeContext = sslContext->native_handle();
 
     // set cache mode
     SSL_CTX_set_session_cache_mode(nativeContext, _sessionCache ? SSL_SESS_CACHE_SERVER
@@ -216,7 +229,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
     }
 
     // set options
-    sslContext.set_options(static_cast<long>(_sslOptions));
+    sslContext->set_options(static_cast<long>(_sslOptions));
 
     if (!_cipherList.empty()) {
       if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
@@ -285,7 +298,9 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
 
       STACK_OF(X509_NAME) * certNames;
 
+      std::string cafileContent = FileUtils::slurp(_cafile);
       certNames = SSL_load_client_CA_file(_cafile.c_str());
+      _cafileContent = cafileContent;
 
       if (certNames == nullptr) {
         LOG_TOPIC("30363", ERR, arangodb::Logger::SSL)
@@ -317,7 +332,9 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
       SSL_CTX_set_client_CA_list(nativeContext, certNames);
     }
 
-    sslContext.set_verify_mode(SSL_VERIFY_NONE);
+    sslContext->set_verify_mode(SSL_VERIFY_NONE);
+
+    SSL_CTX_set_alpn_select_cb(sslContext->native_handle(), alpn_select_proto_cb, NULL);
 
     return sslContext;
   } catch (std::exception const& ex) {
@@ -574,4 +591,90 @@ std::string SslServerFeature::stringifySslOptions(uint64_t opts) const {
 
   // strip initial comma
   return result.substr(2);
+}
+
+
+static void splitPEM(std::string const& pem, std::vector<std::string>& certs, std::vector<std::string>& keys) {
+  std::vector<std::string> result;
+  size_t pos = 0;
+  while (pos < pem.size()) {
+    pos = pem.find("-----", pos);
+    if (pos == std::string::npos) {
+      return;
+    }
+    if (pem.compare(pos, 11, "-----BEGIN ") != 0) {
+      return;
+    }
+    size_t posEndHeader = pem.find('\n', pos);
+    if (posEndHeader == std::string::npos) {
+      return;
+    }
+    size_t posStartFooter = pem.find("-----END ", posEndHeader);
+    if (posStartFooter == std::string::npos) {
+      return;
+    }
+    size_t posEndFooter = pem.find("-----", posStartFooter + 9);
+    if (posEndFooter == std::string::npos) {
+      return;
+    }
+    posEndFooter += 5;  // Point to line end, typically or end of file
+    size_t p = posEndHeader;
+    while (p > pos + 11 &&
+           (pem[p] == '\n' || pem[p] == '-' || pem[p] == '\r' || pem[p] == ' ')) {
+      --p;
+    }
+    std::string type(pem.c_str() + pos + 11, (p + 1) - (pos + 11));
+    if (type == "CERTIFICATE") {
+      certs.emplace_back(pem.c_str() + pos, posEndFooter - pos);
+    } else if (type.find("PRIVATE KEY") != std::string::npos) {
+      keys.emplace_back(pem.c_str() + pos, posEndFooter - pos);
+    } else {
+      LOG_TOPIC("54271", INFO, Logger::SSL)
+          << "Found part of type " << type << " in PEM file, ignoring it...";
+    }
+    pos = posEndFooter;
+  }
+}
+
+static void dumpPEM(std::string const& pem, VPackBuilder& builder, std::string attrName) {
+  if (pem.empty()) {
+    { VPackObjectBuilder guard(&builder, attrName);
+      return;
+    }
+  }
+  // Compute a SHA256 of the whole file:
+  TRI_SHA256Functor func;
+  func(pem.c_str(), pem.size());
+
+  // Now split into certs and key:
+  std::vector<std::string> certs;
+  std::vector<std::string> keys;
+  splitPEM(pem, certs, keys);
+
+  // Now dump the certs and the hash of the key:
+  {
+    VPackObjectBuilder guard2(&builder, attrName);
+    builder.add("SHA256", VPackValue(func.final()));
+    {
+      VPackArrayBuilder guard3(&builder, "certificates");
+      for (auto const& c : certs) {
+        builder.add(VPackValue(c));
+      }
+    }
+    if (!keys.empty()) {
+      TRI_SHA256Functor func2;
+      func2(keys[0].c_str(), keys[0].size());
+      builder.add("privateKeySHA256", VPackValue(func2.final()));
+    }
+  }
+}
+
+// Dump all SSL related data into a builder, private keys
+// are hashed.
+Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
+  { VPackObjectBuilder guard(&builder);
+    dumpPEM(_keyfileContent, builder, "keyfile");
+    dumpPEM(_cafileContent, builder, "clientCA");
+  }
+  return Result(TRI_ERROR_NO_ERROR);
 }

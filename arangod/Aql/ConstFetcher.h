@@ -35,6 +35,7 @@ namespace aql {
 class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
+class ShadowAqlItemRow;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -81,13 +82,15 @@ class ConstFetcher {
   // Argument will be ignored!
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t);
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
-
   void setDistributeId(std::string const&) {
     // This is not implemented for this fetcher
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+
+  // At most does not matter for this fetcher. It will return DONE anyways
+  // NOLINTNEXTLINE google-default-arguments
+  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(size_t atMost = 1) const;
 
  private:
   /**

@@ -42,7 +42,7 @@ using namespace arangodb::basics;
 
 static size_t const MinReserveValue = 32;
 
-void VelocyPackDumper::handleUnsupportedType(VPackSlice const* /*slice*/) {
+void VelocyPackDumper::handleUnsupportedType(VPackSlice const* slice) {
   TRI_string_buffer_t* buffer = _buffer->stringBuffer();
 
   if (options->unsupportedTypeBehavior == VPackOptions::NullifyUnsupportedType) {
@@ -52,7 +52,10 @@ void VelocyPackDumper::handleUnsupportedType(VPackSlice const* /*slice*/) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(strlen("\"(non-representable type)\"") + 1 < MinReserveValue);
 #endif
-    TRI_AppendStringUnsafeStringBuffer(buffer, "\"(non-representable type)\"");
+    TRI_AppendStringUnsafeStringBuffer(buffer, "\"(non-representable type ");
+    TRI_AppendStringUnsafeStringBuffer(buffer, slice->typeName());
+    TRI_AppendStringUnsafeStringBuffer(buffer, ")\"");
+
     return;
   }
 
@@ -519,7 +522,8 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:
     case VPackValueType::MaxKey:
-    case VPackValueType::BCD: {
+    case VPackValueType::BCD: 
+    case VPackValueType::Tagged: {
       handleUnsupportedType(slice);
       break;
     }

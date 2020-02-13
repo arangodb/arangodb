@@ -42,6 +42,7 @@ class Acceptor {
  public:
   virtual void open() = 0;
   virtual void close() = 0;
+  virtual void cancel() = 0;
 
   /// start accepting connections
   virtual void asyncAccept() = 0;

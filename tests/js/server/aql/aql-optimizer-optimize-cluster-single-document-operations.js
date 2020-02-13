@@ -42,8 +42,8 @@ var assertQueryError = helper.assertQueryError;
 function optimizerClusterSingleDocumentTestSuite () {
   var ruleName = "optimize-cluster-single-document-operations";
   // various choices to control the optimizer:
-  var thisRuleEnabled  = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate" ] } }; // we can only work after other rules
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-" + ruleName ] } };
+  var thisRuleEnabled  = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather" ] } }; // we can only work after other rules
+  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather", "-" + ruleName ] } };
   var notHereDoc = "notHereDoc";
   var yeOldeDoc = "yeOldeDoc";
 
@@ -142,7 +142,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         }
         pruneRevisions(r1);
         pruneRevisions(r2);
-        assertEqual(r1.json, r2.json, "results of with and without rule differ: " + queryInfo);
+        assertEqual(r1.json, r2.json, "results of with and without rule differ, queryInfo: " + queryInfo + ", set: " + set);
       }
       count += 1;
     });

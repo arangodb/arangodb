@@ -26,7 +26,9 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Aql/Arithmetic.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -40,6 +42,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/SmallVector.h"
@@ -842,7 +845,7 @@ AstNode* Ast::createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
   // do a bit of normalization here, so that attribute accesses are normally
   // on the left side of a comparison. this may allow future simplifications
   // of code that check filter conditions
-  // note that there will still be cases in which both sides of the comparsion
+  // note that there will still be cases in which both sides of the comparison
   // contain an attribute access, e.g.  doc.value1 == doc.value2
   bool swap = false;
   if (type == NODE_TYPE_OPERATOR_BINARY_EQ && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
@@ -898,6 +901,17 @@ AstNode* Ast::createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs
 
   TRI_ASSERT(node->isArrayComparisonOperator());
   TRI_ASSERT(node->numMembers() == 3);
+
+  return node;
+}
+
+/// @brief create an AST ternary operator node, using the condition as the truth part
+AstNode* Ast::createNodeTernaryOperator(AstNode const* condition, 
+                                        AstNode const* falsePart) {
+  AstNode* node = createNode(NODE_TYPE_OPERATOR_TERNARY);
+  node->reserve(2);
+  node->addMember(condition);
+  node->addMember(falsePart);
 
   return node;
 }
@@ -1132,7 +1146,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
     auto member = lhs->getMemberUnchecked(i);
     VPackSlice slice = member->computeValue();
 
-    cache.emplace(slice, member);
+    cache.try_emplace(slice, member);
   }
 
   auto node = createNodeArray(cache.size() + nr);
@@ -1176,7 +1190,7 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     }
     VPackSlice slice = member->computeValue();
 
-    if (cache.emplace(slice, member).second) {
+    if (cache.try_emplace(slice, member).second) {
       // only insert unique values
       node->addMember(member);
     }
@@ -1876,7 +1890,7 @@ void Ast::validateAndOptimize() {
       return false;
     } else if (node->type == NODE_TYPE_COLLECTION) {
       // note the level on which we first saw a collection
-      ctx->collectionsFirstSeen.emplace(node->getString(), ctx->nestingLevel);
+      ctx->collectionsFirstSeen.try_emplace(node->getString(), ctx->nestingLevel);
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       ++ctx->stopOptimizationRequests;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
@@ -2069,7 +2083,7 @@ void Ast::validateAndOptimize() {
         definition = (*it).second;
       }
 
-      ctx->variableDefinitions.emplace(variable, definition);
+      ctx->variableDefinitions.try_emplace(variable, definition);
       return this->optimizeLet(node);
     }
 
@@ -2217,13 +2231,13 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      auto it = result.find(variable);
-
-      if (it == result.end()) {
-        // insert variable and attributeName
-        result.emplace(variable, std::unordered_set<std::string>(
-                                     {std::string(attributeName, nameLength)}));
-      } else {
+      auto[it, emp] = result.try_emplace(
+        variable,
+        arangodb::lazyConstruct([&]{
+         return std::unordered_set<std::string>( {std::string(attributeName, nameLength)});
+         })
+      );
+      if (emp) {
         // insert attributeName only
         (*it).second.emplace(attributeName, nameLength);
       }
@@ -2382,23 +2396,11 @@ bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
   return state.isSafeForOptimization;
 }
 
-/// @brief recursively clone a node
-AstNode* Ast::clone(AstNode const* node) {
+/// @brief copies node payload from node into copy. this is *not* copying
+/// the subnodes
+void Ast::copyPayload(AstNode const* node, AstNode* copy) const {
   AstNodeType const type = node->type;
-  if (type == NODE_TYPE_NOP) {
-    // nop node is a singleton
-    return const_cast<AstNode*>(node);
-  }
 
-  AstNode* copy = createNode(type);
-  TRI_ASSERT(copy != nullptr);
-
-  // copy flags
-  copy->flags = node->flags;
-  TEMPORARILY_UNLOCK_NODE(copy);  // if locked, unlock to copy properly
-
-  // special handling for certain node types
-  // copy payload...
   if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW || type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
@@ -2447,7 +2449,27 @@ AstNode* Ast::clone(AstNode const* node) {
         break;
     }
   }
+}
 
+/// @brief recursively clone a node
+AstNode* Ast::clone(AstNode const* node) {
+  AstNodeType const type = node->type;
+  if (type == NODE_TYPE_NOP) {
+    // nop node is a singleton
+    return const_cast<AstNode*>(node);
+  }
+
+  AstNode* copy = createNode(type);
+  TRI_ASSERT(copy != nullptr);
+
+  // copy flags
+  copy->flags = node->flags;
+  TEMPORARILY_UNLOCK_NODE(copy);  // if locked, unlock to copy properly
+
+  // special handling for certain node types
+  // copy payload...
+  copyPayload(node, copy);
+  
   // recursively clone subnodes
   size_t const n = node->numMembers();
   copy->members.reserve(n);
@@ -2473,59 +2495,13 @@ AstNode* Ast::shallowCopyForModify(AstNode const* node) {
 
   // special handling for certain node types
   // copy payload...
-  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW || type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
-    copy->setStringValue(node->getStringValue(), node->getStringLength());
-  } else if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE || type == NODE_TYPE_FCALL) {
-    copy->setData(node->getData());
-  } else if (type == NODE_TYPE_UPSERT || type == NODE_TYPE_EXPANSION) {
-    copy->setIntValue(node->getIntValue(true));
-  } else if (type == NODE_TYPE_QUANTIFIER) {
-    copy->setIntValue(node->getIntValue(true));
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN || type == NODE_TYPE_OPERATOR_BINARY_NIN ||
-             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
-             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
-    // copy sortedness information
-    copy->setBoolValue(node->getBoolValue());
-  } else if (type == NODE_TYPE_ARRAY) {
-    if (node->isSorted()) {
-      copy->setFlag(DETERMINED_SORTED, VALUE_SORTED);
-    } else {
-      copy->setFlag(DETERMINED_SORTED);
-    }
-  } else if (type == NODE_TYPE_VALUE) {
-    switch (node->value.type) {
-      case VALUE_TYPE_NULL:
-        copy->value.type = VALUE_TYPE_NULL;
-        break;
-      case VALUE_TYPE_BOOL:
-        copy->value.type = VALUE_TYPE_BOOL;
-        copy->setBoolValue(node->getBoolValue());
-        break;
-      case VALUE_TYPE_INT:
-        copy->value.type = VALUE_TYPE_INT;
-        copy->setIntValue(node->getIntValue());
-        break;
-      case VALUE_TYPE_DOUBLE:
-        copy->value.type = VALUE_TYPE_DOUBLE;
-        copy->setDoubleValue(node->getDoubleValue());
-        break;
-      case VALUE_TYPE_STRING:
-        copy->value.type = VALUE_TYPE_STRING;
-        copy->setStringValue(node->getStringValue(), node->getStringLength());
-        break;
-    }
-  }
-
-  // recursively clone subnodes
+  copyPayload(node, copy);
+  
+  // recursively add subnodes
   size_t const n = node->numMembers();
-  if (n > 0) {
-    copy->members.reserve(n);
-
-    for (size_t i = 0; i < n; ++i) {
-      copy->addMember(node->getMemberUnchecked(i));
-    }
+  copy->members.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    copy->addMember(node->getMemberUnchecked(i));
   }
 
   return copy;
@@ -2582,7 +2558,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     VPackSlice slice = member->computeValue();
 
     if (cache.find(slice) == cache.end()) {
-      cache.emplace(slice, member);
+      cache.try_emplace(slice, member);
     }
   }
 
@@ -2656,13 +2632,13 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   }
 
   AstNode* result = nullptr;
-  std::vector<std::pair<char const*, size_t>> attributeParts{};
+  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef> attributeParts{a};
 
   std::function<void(AstNode const*)> createCondition = [&](AstNode const* object) -> void {
     TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
 
     auto const n = object->numMembers();
-
     for (size_t i = 0; i < n; ++i) {
       auto member = object->getMember(i);
 
@@ -2672,17 +2648,16 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
             "expecting object literal with literal attribute names in example");
       }
 
-      attributeParts.emplace_back(
-          std::make_pair(member->getStringValue(), member->getStringLength()));
+      attributeParts.emplace_back(member->getStringRef());
 
       auto value = member->getMember(0);
 
-      if (value->type == NODE_TYPE_OBJECT) {
-        createCondition(value);
+      if (value->type == NODE_TYPE_OBJECT && value->numMembers() != 0) {
+          createCondition(value);
       } else {
         auto access = variable;
         for (auto const& it : attributeParts) {
-          access = createNodeAttributeAccess(access, it.first, it.second);
+          access = createNodeAttributeAccess(access, it.data(), it.size());
         }
 
         auto condition =
@@ -3124,11 +3099,11 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY);
-  TRI_ASSERT(node->numMembers() == 3);
+  TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3);
 
   AstNode* condition = node->getMember(0);
-  AstNode* truePart = node->getMember(1);
-  AstNode* falsePart = node->getMember(2);
+  AstNode* truePart = (node->numMembers() == 2) ? condition : node->getMember(1);
+  AstNode* falsePart = (node->numMembers() == 2) ? node->getMember(1) : node->getMember(2);
 
   if (condition == nullptr || truePart == nullptr || falsePart == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

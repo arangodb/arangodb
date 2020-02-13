@@ -45,12 +45,12 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other)
 
 bool AqlCallStack::isRelevant() const { return _depth == 0; }
 
-AqlCall&& AqlCallStack::popCall() {
+AqlCall AqlCallStack::popCall() {
   TRI_ASSERT(isRelevant());
   TRI_ASSERT(!_operations.empty());
   auto call = _operations.top();
   _operations.pop();
-  return std::move(call);
+  return call;
 }
 
 AqlCall const& AqlCallStack::peek() const {
@@ -83,5 +83,15 @@ void AqlCallStack::pop() {
     _operations.pop();
     // We can never pop the main query, so one element needs to stay
     TRI_ASSERT(!_operations.empty());
+  } else {
+    _depth--;
   }
+}
+
+auto AqlCallStack::increaseSubqueryDepth() -> void {
+  // Avoid overflow. If you actually have a subquery nesting of size_t many subqueries
+  // there is a rather high chance that your query will not perform well.
+  TRI_ASSERT(_depth < std::numeric_limits<size_t>::max() - 2);
+  _depth++;
+  TRI_ASSERT(!isRelevant());
 }

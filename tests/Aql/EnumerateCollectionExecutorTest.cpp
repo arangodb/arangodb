@@ -86,6 +86,7 @@ class EnumerateCollectionExecutorTest : public ::testing::Test {
   Collection aqlCollection;
   std::vector<std::string> const projections;
   std::vector<size_t> const coveringIndexAttributePositions;
+  // transaction::Methods& trx;
   bool useRawPointers;
   bool random;
 
@@ -112,6 +113,18 @@ class EnumerateCollectionExecutorTest : public ::testing::Test {
               &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
               coveringIndexAttributePositions, useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
+  /*
+  // fake indexScan
+  fakeit::When(Method(mockTrx, indexScan))
+      .AlwaysDo(std::function<std::unique_ptr<IndexIterator>(std::string const&, CursorType&)>(
+          [this](std::string const&, CursorType&) -> std::unique_ptr<IndexIterator> {
+            return std::make_unique<EmptyIndexIterator>(&collection, &(mockTrx.get()));
+          }));
+
+  Query& query = mockQuery.get();
+  fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&(mockTrx.get()));
+  fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
+ */
 };
 
 TEST_F(EnumerateCollectionExecutorTest, the_producer_does_not_wait) {
@@ -164,7 +177,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
-  auto const [state, stats, call] = testee.produceRows(1000, inputRange, output);
+  auto const [state, stats, call] = testee.produceRows(inputRange, output);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_FALSE(output.produced());
 }
@@ -182,7 +195,8 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
   AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
-  auto const [state, skipped, call] = testee.skipRowsRange(1000, inputRange);
+  AqlCall skipCall {1000, AqlCall::Infinity{}, AqlCall::Infinity{}, false};
+  auto const [state, stats, skipped, call] = testee.skipRowsRange(inputRange, skipCall);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(skipped, 0);
   ASSERT_FALSE(output.produced());
@@ -222,7 +236,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
-  auto const [state, stats, call] = testee.produceRows(1000, inputRange, output);
+  auto const [state, stats, call] = testee.produceRows(inputRange, output);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(stats.getFiltered(), 0);
   ASSERT_EQ(stats.getScanned(), 3);
@@ -263,7 +277,8 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
-  auto const [state, skipped, call] = testee.skipRowsRange(1000, inputRange);
+  AqlCall skipCall {1000, AqlCall::Infinity{}, AqlCall::Infinity{}, false};
+  auto const [state, stats, skipped, call] = testee.skipRowsRange(inputRange, skipCall);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(skipped, 3);
   ASSERT_FALSE(output.produced());

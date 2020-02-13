@@ -5,6 +5,7 @@
 # ------------------------------------------------------------------------------
 
 cmake_minimum_required(VERSION 3.9)
+message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -85,7 +86,7 @@ option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from .
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "6")
+set(ARANGODB_VERSION_MINOR "7")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -437,14 +438,6 @@ elseif (UNIX AND NOT APPLE)
     set(FREEBSD TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
     set(SYSV5 TRUE)
-  elseif ((CMAKE_SYSTEM_NAME MATCHES "Solaris.*") OR (CMAKE_SYSTEM_NAME MATCHES "SunOS.*"))
-    set(SOLARIS TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "HP-UX.*")
-    set(HPUX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "AIX.*")
-    set(AIX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "Minix.*")
-    set(MINIX TRUE)
   endif ()
 elseif (APPLE)
   if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
@@ -480,13 +473,9 @@ endif()
 ## EXTERNAL PROGRAMS
 ################################################################################
 
-if (SOLARIS)
-  set(MAKE gmake)
-else ()
-  set(MAKE make)
-endif ()
+set(MAKE make)
 
-find_package(PythonInterp 2 EXACT REQUIRED)
+find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
@@ -496,6 +485,8 @@ set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 # to find those files the NO_DEFAULT_PATH
 # argument is passed
 if (NOT WINDOWS)
+  find_program (MAKE make gmake)
+
   find_program(
     CHMOD_EXECUTABLE chmod
     PATHS "/bin/" "/usr/bin/"
@@ -513,11 +504,6 @@ endif()
 ################################################################################
 ## ARCHITECTURE
 ################################################################################
-
-if (SOLARIS OR NOT CMAKE_SIZEOF_VOID_P)
-  set(CMAKE_SIZEOF_VOID_P 8)
-  set(CMAKE_CXX_SIZEOF_DATA_PTR 8)
-endif ()
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
 add_definitions("-DARANGODB_BITS=${BITS}")
@@ -542,19 +528,6 @@ else ()
   set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
   set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
   set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
-endif ()
-
-if (SOLARIS)
-  set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
-
-  set(CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES
-    /lib;/lib64;/lib64;/usr/lib;/usr/lib64;/usr/lib64
-  )
-
-  list(APPEND SYSTEM_LIBRARIES nsl socket)
-
-  # force 64bit compile
-  set(BASE_FLAGS "-I /opt/csw/include -D_REENTRANT -m64 ${BASE_FLAGS}")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -764,7 +737,7 @@ option(USE_MAINTAINER_MODE
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
-  if (CMAKE_COMPILER_IS_GNUCC)
+  if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
   endif()
 
@@ -772,8 +745,6 @@ if (USE_MAINTAINER_MODE)
   find_package(BISON)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
-  find_program(MARKDOWN_EXECUTABLE markdown)
-  find_program(HTML2TEXT_EXECUTABLE html2text)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif ()
@@ -810,7 +781,7 @@ set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
 set(IPO_ENABLED False)
 
 # Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
-if(USE_IPO STREQUAL "AUTO")
+if (USE_IPO STREQUAL "AUTO")
   # When USE_IPO=AUTO, enable IPO for optimized / release builds.
   # But to work around a g++ segfault triggered by using both -flto and
   # -fno-devirtualize-functions, we disable IPO when using google tests, because
@@ -827,7 +798,7 @@ if(USE_IPO STREQUAL "AUTO")
   else()
     set(IPO_ENABLED False)
   endif ()
-elseif(USE_IPO)
+elseif (USE_IPO)
   set(IPO_ENABLED True)
 else()
   set(IPO_ENABLED False)
@@ -835,6 +806,10 @@ endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+
+if (IPO_ENABLED)
+  add_definitions("-DARANGODB_USE_IPO=1")
+endif()
 
 ################################################################################
 ## LIBRARY RESOLV
@@ -894,7 +869,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter ${BASE_FLAGS}")
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
@@ -913,7 +888,7 @@ elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
   endif ()
 
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter ${BASE_FLAGS}")
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "-g"                             CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "-O0 -g -D_DEBUG=1"              CACHE INTERNAL "C debug flags")
@@ -931,6 +906,8 @@ elseif (MSVC)
   if (VERBOSE)
     message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
   endif ()
+
+  set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
 
   set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj" CACHE INTERNAL "C++ debug flags")
@@ -1030,7 +1007,7 @@ else ()
   else ()
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
   endif ()
-  string(REGEX MATCH  
+  string(REGEX MATCH
             "${OPENSSL_VERSION_PATTERN}"
             ARANGODB_REQUIRED_OPENSSL_VERSION
             "${ARANGODB_VERSIONS_CONTENT}")
@@ -1136,6 +1113,7 @@ endif ()
 # ZLIB_LIBS
 # ZLIB_INCLUDE_DIR
 
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
@@ -1150,6 +1128,7 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/function2)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
@@ -1164,10 +1143,11 @@ include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
-add_dependencies(rocksdb ${SNAPPY_LIB})
+add_dependencies(rocksdb snappy-static)
 
 if (USE_JEMALLOC)
-  add_dependencies(rocksdb jemalloc)
+  add_dependencies(rocksdb jemalloc_build)
+  link_directories("${JEMALLOC_HOME}/lib")
 endif ()
 
 ################################################################################
@@ -1202,16 +1182,6 @@ endforeach()
 include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
-
-################################################################################
-## cURL
-################################################################################
-
-add_definitions(-DCURL_STATICLIB=1)
-include_directories(SYSTEM
-  ${CURL_SRC_DIR}/include/
-  ${CURL_BIN_DIR}/include/curl/
-)
 
 ################################################################################
 ## PATHS, installation, packages, frontend
@@ -1298,7 +1268,6 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${ZLIB_LIBS}
   ${ICU_LIBS}
   ${OPENSSL_LIBRARIES}
-  libcurl
   ${BASE_LIBS}
   ${SYS_LIBS}
   ${CMAKE_DL_LIBS}
@@ -1381,3 +1350,6 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #     message(STATUS "${_variableName}=${${_variableName}}")
 #   endforeach ()
 # endif ()
+
+add_custom_target(arangodb
+        DEPENDS arangod arangosh arangodump arangoexport arangobackup arangoimport arangorestore)

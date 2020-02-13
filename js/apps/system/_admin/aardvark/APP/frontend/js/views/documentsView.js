@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
 /* global numeral */
 
 (function () {
@@ -220,7 +220,7 @@
       $('#documents_first').css('visibility', 'visible');
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
-      this.collection.loadTotal(callback);
+      this.collection.loadCollectionConfig(callback);
       this.restoredFilters = [];
 
       // for resetting json upload
@@ -249,6 +249,7 @@
         if (error) {
           arangoHelper.arangoError('Upload', msg);
         } else {
+          arangoHelper.arangoMessage('Upload', msg);
           this.hideImportModal();
           this.resetView();
         }
@@ -1066,15 +1067,12 @@
       this.tableView.setElement($('#docPureTable')).render();
       // we added some icons, so we need to fix their tooltips
       arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'top');
-
-      $('.prettify').snippet('javascript', {
-        style: 'nedit',
-        menu: false,
-        startText: false,
-        transparent: true,
-        showNum: false
-      });
       this.resize();
+
+      // enable hljs for entries
+      document.querySelectorAll('code').forEach((block) => {
+        window.hljs.highlightBlock(block);
+      });
     },
 
     checkCollectionState: function () {
@@ -1178,7 +1176,7 @@
 
       if (window.App.naviView && $('#subNavigationBar .breadcrumb').html() !== undefined) {
         $('#subNavigationBar .breadcrumb').html(
-          'Collection: ' + arangoHelper.escapeHtml(this.collectionName)
+          'Collection: ' + arangoHelper.escapeHtml(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
         );
         arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
       } else {

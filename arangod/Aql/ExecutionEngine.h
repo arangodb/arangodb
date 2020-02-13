@@ -58,7 +58,9 @@ class ExecutionEngine {
 
  public:
   // @brief create an execution engine from a plan
-  static ExecutionEngine* instantiateFromPlan(QueryRegistry&, Query&, ExecutionPlan&, bool);
+  static ExecutionEngine* instantiateFromPlan(QueryRegistry& queryRegistry, Query& query,
+                                              ExecutionPlan& plan, bool planRegisters,
+                                              SerializationFormat format);
 
   TEST_VIRTUAL Result createBlocks(std::vector<ExecutionNode*> const& nodes,
                                    std::unordered_set<std::string> const& restrictToShards,
@@ -72,14 +74,14 @@ class ExecutionEngine {
 
   /// @brief get the query
   TEST_VIRTUAL Query* getQuery() const;
-    
+
   /// @brief server to snippet mapping
   void snippetMapping(MapRemoteToSnippet&& dbServerMapping,
-                      std::vector<uint64_t>&& coordinatorQueryIds) { 
-    _dbServerMapping = std::move(dbServerMapping); 
-    _coordinatorQueryIds = std::move(coordinatorQueryIds); 
+                      std::vector<uint64_t>&& coordinatorQueryIds) {
+    _dbServerMapping = std::move(dbServerMapping);
+    _coordinatorQueryIds = std::move(coordinatorQueryIds);
   }
-  
+
   /// @brief kill the query
   void kill();
 
@@ -116,6 +118,8 @@ class ExecutionEngine {
   /// @brief accessor to the memory recyler for AqlItemBlocks
   TEST_VIRTUAL AqlItemBlockManager& itemBlockManager();
 
+  auto getStats() const noexcept -> ExecutionStats const&;
+
  public:
   /// @brief execution statistics for the query
   /// note that the statistics are modification by execution blocks
@@ -142,10 +146,10 @@ class ExecutionEngine {
 
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
-  
+
   /// @brief server to snippet mapping
   MapRemoteToSnippet _dbServerMapping;
-  
+
   /// @brief ids of all coordinator query snippets
   std::vector<uint64_t> _coordinatorQueryIds;
 };

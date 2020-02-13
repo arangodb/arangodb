@@ -72,8 +72,9 @@ TraverserEngineID TraverserEngineRegistry::createNew(
   info->_expires = TRI_microtime() + ttl;
 
   WRITE_LOCKER(writeLocker, _lock);
-  TRI_ASSERT(_engines.find(id) == _engines.end());
-  _engines.emplace(id, info.get());
+  auto [it, emplaced] = _engines.try_emplace(id, info.get());
+  TRI_ASSERT(emplaced);
+  TRI_ASSERT(it != _engines.end());
   info.release();
   return id;
 }
@@ -185,6 +186,7 @@ void TraverserEngineRegistry::destroy(TraverserEngineID id, bool doLock) {
 void TraverserEngineRegistry::expireEngines() {
   double now = TRI_microtime();
   std::vector<TraverserEngineID> toDelete;
+  std::vector<TraverserEngineID> enginesLeft;
 
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -194,6 +196,8 @@ void TraverserEngineRegistry::expireEngines() {
       EngineInfo*& ei = y.second;
       if (!ei->_isInUse && now > ei->_expires) {
         toDelete.emplace_back(y.first);
+      } else {
+        enginesLeft.push_back(y.first);
       }
     }
   }
@@ -205,6 +209,11 @@ void TraverserEngineRegistry::expireEngines() {
       destroy(p, true);
     } catch (...) {
     }
+  }
+  
+  if (!enginesLeft.empty()) {
+    LOG_TOPIC("f0ec8", DEBUG, arangodb::Logger::AQL)
+        << "queries left in TraverserEngineRegistry: " << enginesLeft;
   }
 }
 

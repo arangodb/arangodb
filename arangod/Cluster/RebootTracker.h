@@ -23,54 +23,20 @@
 #ifndef ARANGOD_CLUSTER_REBOOTTRACKER_H
 #define ARANGOD_CLUSTER_REBOOTTRACKER_H
 
-#include "Cluster/ClusterTypes.h"
+#include "Cluster/CallbackGuard.h"
 #include "Basics/Mutex.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 #include <map>
+#include <memory>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 namespace arangodb {
+
+class SupervisedScheduler;
+
 namespace cluster {
-
-/// @brief If constructed with a callback, the given callback will be called
-/// exactly once: Either during destruction, or when the object is overwritten
-/// (via operator=()), or when it's explicitly cleared. It's not copyable,
-/// but movable.
-class CallbackGuard {
- public:
-  // Calls the callback given callback upon destruction.
-  // Allows only move semantics and no copy semantics.
-
-  CallbackGuard();
-  // IMPORTANT NOTE:
-  // The passed callback should not throw exceptions, they will not be caught
-  // here, but thrown by the destructor!
-  explicit CallbackGuard(std::function<void(void)> callback);
-  ~CallbackGuard();
-
-  // Note that the move constructor of std::function is not noexcept until
-  // C++20. Thus we cannot mark the constructors here noexcept.
-  // NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-  CallbackGuard(CallbackGuard&& other);
-  // operator= additionally calls the _callback, and this can also throw.
-  // NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-  CallbackGuard& operator=(CallbackGuard&&);
-
-  CallbackGuard(CallbackGuard const&) = delete;
-  CallbackGuard& operator=(CallbackGuard const&) = delete;
-
-  /// @brief Call the contained callback, then delete it.
-  void callAndClear();
-
- private:
-  void call();
-
-  std::function<void(void)> _callback;
-};
 
 // Note:
 // Instances of this class must be destructed during shutdown before the
@@ -78,13 +44,7 @@ class CallbackGuard {
 class RebootTracker {
  public:
   using Callback = std::function<void(void)>;
-  using SchedulerPointer = decltype(SchedulerFeature::SCHEDULER);
-  static_assert(std::is_pointer<SchedulerPointer>::value,
-                "If SCHEDULER is changed to a non-pointer type, this class "
-                "might have to be adapted");
-  static_assert(
-      std::is_base_of<Scheduler, std::remove_pointer<SchedulerPointer>::type>::value,
-      "SchedulerPointer is expected to point to an instance of Scheduler");
+  using SchedulerPointer = SupervisedScheduler*;
 
   class PeerState {
    public:

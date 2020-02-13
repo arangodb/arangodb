@@ -79,14 +79,13 @@ class SortLimitTest
     arangodb::ClusterEngine::Mocking = true;
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                                              testDBInfo(server.server()));
 
     CreateCollection();
   }
 
-  ~SortLimitTest() {
-    vocbase.reset();
-  }
+  ~SortLimitTest() { vocbase.reset(); }
 
   std::string sorterType(TRI_vocbase_t& vocbase, std::string const& queryString,
                          std::string rules = "") {
@@ -113,7 +112,7 @@ class SortLimitTest
     return strategy;
   }
 
-  bool verifyExpectedResults(TRI_vocbase_t& vocbase, std::string const& queryString,
+  void verifyExpectedResults(TRI_vocbase_t& vocbase, std::string const& queryString,
                              std::vector<size_t> const& expected,
                              std::string rules = "") {
     auto options = arangodb::velocypack::Parser::fromJson(
@@ -126,7 +125,7 @@ class SortLimitTest
     while (true) {
       auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
       if (state == arangodb::aql::ExecutionState::WAITING) {
-        ss->waitForAsyncResponse();
+        ss->waitForAsyncWakeup();
       } else {
         break;
       }
@@ -135,21 +134,18 @@ class SortLimitTest
     EXPECT_TRUE(result.result.ok());
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-
-    if (slice.length() != expected.size()) {
-      return false;
-    }
+    ASSERT_EQ(slice.length(), expected.size());
 
     size_t i = 0;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      if (0 != arangodb::basics::VelocyPackHelper::compare(
-                   insertedDocs[expected[i++]].slice(), resolved, true)) {
-        return false;
-      }
-    }
 
-    return true;
+      EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                       insertedDocs[expected[i]].slice(), resolved, true))
+          << insertedDocs[expected[i]].slice().toJson() << " vs. "
+          << resolved.toJson();
+      i++;
+    }
   }
 
   // create collection0, insertedDocs[0, 999]
@@ -170,9 +166,9 @@ class SortLimitTest
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                                              *collection,
-                                              arangodb::AccessMode::Type::WRITE);
+    arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(*vocbase), *collection,
+        arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -191,7 +187,7 @@ TEST_F(SortLimitTest, CheckSimpleLimitSortedAscInInsertionOrder) {
       "FOR d IN testCollection0 SORT d.valAsc LIMIT 0, 10 RETURN d";
   std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckLimitWithOffsetSortedAscInInsertionOrder) {
@@ -199,7 +195,7 @@ TEST_F(SortLimitTest, CheckLimitWithOffsetSortedAscInInsertionOrder) {
       "FOR d IN testCollection0 SORT d.valAsc LIMIT 10, 10 RETURN d";
   std::vector<size_t> expected = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckSimpleLimitSortedAscInReverseInsertionOrder) {
@@ -208,7 +204,7 @@ TEST_F(SortLimitTest, CheckSimpleLimitSortedAscInReverseInsertionOrder) {
   std::vector<size_t> expected = {999, 998, 997, 996, 995,
                                   994, 993, 992, 991, 990};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckLimitWithOffsetSortedAscInReverseInsertionOrder) {
@@ -217,7 +213,7 @@ TEST_F(SortLimitTest, CheckLimitWithOffsetSortedAscInReverseInsertionOrder) {
   std::vector<size_t> expected = {989, 988, 987, 986, 985,
                                   984, 983, 982, 981, 980};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckSimpleLimitSortedDscInInsertionOrder) {
@@ -226,7 +222,7 @@ TEST_F(SortLimitTest, CheckSimpleLimitSortedDscInInsertionOrder) {
   std::vector<size_t> expected = {999, 998, 997, 996, 995,
                                   994, 993, 992, 991, 990};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckLimitWithOffsetSortedDscInInsertionOrder) {
@@ -235,7 +231,7 @@ TEST_F(SortLimitTest, CheckLimitWithOffsetSortedDscInInsertionOrder) {
   std::vector<size_t> expected = {989, 988, 987, 986, 985,
                                   984, 983, 982, 981, 980};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckSimpleLimitSortedDscInReverseInsertionOrder) {
@@ -243,7 +239,7 @@ TEST_F(SortLimitTest, CheckSimpleLimitSortedDscInReverseInsertionOrder) {
       "FOR d IN testCollection0 SORT d.valDsc DESC LIMIT 0, 10 RETURN d";
   std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckLimitWithOffsetSortedDscInReverseInsertionOrder) {
@@ -251,7 +247,7 @@ TEST_F(SortLimitTest, CheckLimitWithOffsetSortedDscInReverseInsertionOrder) {
       "FOR d IN testCollection0 SORT d.valDsc DESC LIMIT 10, 10 RETURN d";
   std::vector<size_t> expected = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckLimitWithOffsetCompoundSort) {
@@ -259,7 +255,7 @@ TEST_F(SortLimitTest, CheckLimitWithOffsetCompoundSort) {
       "FOR d IN testCollection0 SORT d.mod, d.valAsc LIMIT 2, 5 RETURN  d";
   std::vector<size_t> expected = {200, 300, 400, 500, 600};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckLimitWithOffsetCompoundSortAgain) {
@@ -268,7 +264,7 @@ TEST_F(SortLimitTest, CheckLimitWithOffsetCompoundSortAgain) {
   std::vector<size_t> expected = {1,   101, 201, 301, 401,
                                   501, 601, 701, 801, 901};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckInterloperFilterMovedUp) {
@@ -278,7 +274,7 @@ TEST_F(SortLimitTest, CheckInterloperFilterMovedUp) {
   std::vector<size_t> expected = {0,   100, 200, 300, 400,
                                   500, 600, 700, 800, 900};
   EXPECT_EQ(sorterType(*vocbase, query), "constrained-heap");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }
 
 TEST_F(SortLimitTest, CheckInterloperFilterNotMoved) {
@@ -289,7 +285,7 @@ TEST_F(SortLimitTest, CheckInterloperFilterNotMoved) {
   std::vector<size_t> expected = {0,   100, 200, 300, 400,
                                   500, 600, 700, 800, 900};
   EXPECT_EQ(sorterType(*vocbase, query, rules), "standard");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected, rules));
+  verifyExpectedResults(*vocbase, query, expected, rules);
 }
 
 TEST_F(SortLimitTest, CheckInterloperEnumerateList) {
@@ -298,5 +294,5 @@ TEST_F(SortLimitTest, CheckInterloperEnumerateList) {
       "LIMIT 0, 10 RETURN d";
   std::vector<size_t> expected = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   EXPECT_EQ(sorterType(*vocbase, query), "standard");
-  EXPECT_TRUE(verifyExpectedResults(*vocbase, query, expected));
+  verifyExpectedResults(*vocbase, query, expected);
 }

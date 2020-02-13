@@ -53,7 +53,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
   RestStatus execute() override;
   RestStatus continueExecute() override;
-
+  void shutdownExecute(bool isFinalized) noexcept override;
+  
  public:
   // DELETE method for /_api/aql/kill/<queryId>, (internal)
   bool killQuery(std::string const& idString);
@@ -71,8 +72,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //   "number": must be a positive integer, the cursor skips as many items,
   //             possibly exhausting the cursor.
   //             The result is a JSON with the attributes "error" (boolean),
-  //             "errorMessage" (if applicable) and "exhausted" (boolean) [3.3
-  //             and earlier] "done" (boolean) [3.4.0 and later] to indicate
+  //             "errorMessage" (if applicable) and
+  //             "done" (boolean) [3.4.0 and later] to indicate
   //             whether or not the cursor is exhausted.
   RestStatus useQuery(std::string const& operation, std::string const& idString);
 
@@ -114,23 +115,13 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                                 std::shared_ptr<transaction::Context> const& ctx,
                                 double const ttl, bool& needToLock,
                                 arangodb::velocypack::Builder& answer);
-
-  // Send slice as result with the given response type.
-  void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const,
-                    transaction::Context*);
-  // Send slice as result with the given response type.
-  void sendResponse(rest::ResponseCode, arangodb::velocypack::Slice const);
-
+  
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&, Query*, arangodb::velocypack::Slice const);
-
-  // parseVelocyPackBody, returns a nullptr and produces an error
-  // response if parse was not successful.
-  std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody();
+  RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
 
  private:
   // dig out vocbase from context and query from ID, handle errors
-  bool findQuery(std::string const& idString, Query*& query);
+  Query* findQuery(std::string const& idString);
 
   // generate patched options with TTL extracted from request
   std::pair<double, std::shared_ptr<VPackBuilder>> getPatchedOptionsWithTTL(VPackSlice const& optionsSlice) const;
@@ -140,7 +131,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // our traversal engine registry
   traverser::TraverserEngineRegistry* _traverserRegistry;
-
+  
+  aql::Query* _query;
+  
   // id of current query
   QueryId _qId;
 };

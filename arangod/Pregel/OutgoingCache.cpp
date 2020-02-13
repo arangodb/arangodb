@@ -43,7 +43,7 @@ using namespace arangodb::pregel;
 template <typename M>
 OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
     : _config(state), _format(format) {
-  _baseUrl = Utils::baseUrl(_config->database(), Utils::workerPrefix);
+  _baseUrl = Utils::baseUrl(Utils::workerPrefix);
 }
 
 // ================= ArrayOutCache ==================
@@ -96,6 +96,10 @@ void ArrayOutCache<M>::flushMessages() {
   application_features::ApplicationServer& server = this->_config->vocbase()->server();
   auto const& nf = server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
+  
+  network::RequestOptions reqOpts;
+  reqOpts.database = this->_config->database();
+  reqOpts.skipScheduler = true;
 
   std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
@@ -134,8 +138,7 @@ void ArrayOutCache<M>::flushMessages() {
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
     
     responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
-                                                this->_baseUrl + Utils::messagesPath, std::move(buffer),
-                                                network::Timeout(120)));
+                                                this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
   }
   
   futures::collectAll(responses).wait();
@@ -178,7 +181,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
     if (it != vertexMap.end()) {  // more than one message
       _combiner->combine(vertexMap[key], data);
     } else {  // first message for this vertex
-      vertexMap.emplace(key, data);
+      vertexMap.try_emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
         // LOG_TOPIC("23bc7", INFO, Logger::PREGEL) << "Hit buffer limit";
@@ -239,9 +242,14 @@ void CombiningOutCache<M>::flushMessages() {
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
     
+    network::RequestOptions reqOpts;
+    reqOpts.database = this->_config->database();
+    reqOpts.timeout = network::Timeout(180);
+    reqOpts.skipScheduler = true;
+    
     responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
                                                 this->_baseUrl + Utils::messagesPath, std::move(buffer),
-                                                network::Timeout(180)));
+                                                reqOpts));
   }
   
   futures::collectAll(responses).wait();

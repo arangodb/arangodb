@@ -29,15 +29,28 @@
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
+#include "Meta/static_assert_size.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-namespace aql {
+using namespace arangodb;
+using namespace arangodb::aql;
+
+namespace {
+bool CompareVariables(Variable const* mine, Variable const* yours) {
+  if (mine == nullptr || yours == nullptr) {
+    return mine == nullptr && yours == nullptr;
+  }
+  return mine->isEqualTo(*yours);
+}
+}  // namespace
 
 SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
+      _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -46,6 +59,11 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
+
+  if (_inVariable != nullptr) {
+    nodes.add(VPackValue("inVariable"));
+    _inVariable->toVelocyPack(nodes);
+  }
 
   nodes.close();
 }
@@ -62,15 +80,18 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
 
-  auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
-  TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
-  RegisterId outReg = outVar->second.registerId;
+  auto inReg = variableToRegisterOptionalId(_inVariable);
+  if (inReg != RegisterPlan::MaxRegisterId) {
+    inputRegisters->emplace(inReg);
+  }
+  auto outReg = variableToRegisterId(_outVariable);
   outputRegisters->emplace(outReg);
 
+  auto const vpackOptions = trx->transactionContextPtr()->getVPackOptions();
   SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                 getRegisterPlan()->nrRegs[getDepth()],
-                                 getRegsToClear(), calcRegsToKeep(), trx, outReg);
+                                 getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                                 calcRegsToKeep(), vpackOptions, inReg, outReg);
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
                                                                    std::move(infos));
@@ -79,11 +100,15 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
 ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies,
                                       bool withProperties) const {
   auto outVariable = _outVariable;
+  auto inVariable = _inVariable;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    if (inVariable != nullptr) {
+      inVariable = plan->getAst()->variables()->createVariable(inVariable);
+    }
   }
-  auto c = std::make_unique<SubqueryEndNode>(plan, _id, outVariable);
+  auto c = std::make_unique<SubqueryEndNode>(plan, _id, inVariable, outVariable);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -108,12 +133,14 @@ bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
   try {
     SubqueryEndNode const& p = dynamic_cast<SubqueryEndNode const&>(other);
     TRI_ASSERT(p._outVariable != nullptr);
-    return ExecutionNode::isEqualTo(p) && _outVariable->isEqualTo(*(p._outVariable));
+    if (!CompareVariables(_outVariable, p._outVariable) ||
+        !CompareVariables(_inVariable, p._inVariable)) {
+      // One of the variables does not match
+      return false;
+    }
+    return ExecutionNode::isEqualTo(p);
   } catch (const std::bad_cast&) {
     TRI_ASSERT(false);
     return false;
   }
 }
-
-}  // namespace aql
-}  // namespace arangodb

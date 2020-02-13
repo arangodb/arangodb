@@ -197,8 +197,6 @@ struct V8Cursor final {
 
   ~V8Cursor() {
     if (!_handle.IsEmpty()) {
-      TRI_ASSERT(_handle.IsNearDeath());
-
       _handle.ClearWeak();
 
       _handle.Reset();
@@ -373,6 +371,7 @@ struct V8Cursor final {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
+    auto context = TRI_IGETC;
 
     V8Cursor* self = V8Cursor::unwrap(args.Holder());
     if (self == nullptr) {
@@ -395,7 +394,7 @@ struct V8Cursor final {
 
       while (self->_dataIterator->valid()) {
         VPackSlice s = self->_dataIterator->value();
-        resArray->Set(j++, TRI_VPackToV8(isolate, s, &self->_options));
+        resArray->Set(context, j++, TRI_VPackToV8(isolate, s, &self->_options)).FromMaybe(false);
         ++(*self->_dataIterator);
       }
       // reset so that the next one can fetch again

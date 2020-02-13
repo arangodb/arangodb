@@ -123,6 +123,7 @@ add_library(arango STATIC
   Basics/Mutex.cpp
   Basics/Nonce.cpp
   Basics/ReadWriteLock.cpp
+  Basics/ReadWriteSpinLock.cpp
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/RocksDBLogger.cpp
@@ -205,7 +206,6 @@ add_library(arango STATIC
   Rest/InitializeRest.cpp
   Rest/Version.cpp
   SimpleHttpClient/ClientConnection.cpp
-  SimpleHttpClient/Communicator.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
   SimpleHttpClient/SimpleHttpClient.cpp
   SimpleHttpClient/SimpleHttpResult.cpp
@@ -309,11 +309,11 @@ endif()
 if (USE_FAIL_ON_WARNINGS)
   if (MSVC)
     target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS96)
     target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   else ()
-    target_compile_options(arango_v8 PRIVATE -Werror)
-    target_compile_options(arango_geo PRIVATE -Werror)
-    target_compile_options(arango PRIVATE -Werror)
+    target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
+    target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)
+    target_compile_options(arango PRIVATE -Werror -Wno-error=deprecated-declarations)
   endif ()
 endif ()

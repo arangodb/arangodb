@@ -25,9 +25,9 @@
 #include "Basics/StringBuffer.h"
 #include "velocypack/velocypack-aliases.h"
 
-AgencyCommManagerMock::AgencyCommManagerMock(std::string const& prefix /*= ""*/)
-  : AgencyCommManager(prefix) {
-}
+AgencyCommManagerMock::AgencyCommManagerMock(arangodb::application_features::ApplicationServer& server,
+                                             std::string const& prefix /*= ""*/)
+    : AgencyCommManager(server, prefix) {}
 
 void AgencyCommManagerMock::addConnection(
     std::unique_ptr<arangodb::httpclient::GeneralClientConnection>&& connection
@@ -84,30 +84,30 @@ int EndpointMock::port() const {
 }
 
 #ifndef _WIN32
-  GeneralClientConnectionMock::GeneralClientConnectionMock()
-    : GeneralClientConnection(&endpoint, 0, 0, 0),
-      nil(file_open((const file_path_t)nullptr, "rw")) {
-  _socket.fileDescriptor = file_no(nil.get()); // must be a readable/writable descriptor
-  }
+GeneralClientConnectionMock::GeneralClientConnectionMock(arangodb::application_features::ApplicationServer& server)
+    : GeneralClientConnection(server, &endpoint, 0, 0, 0),
+      nil(irs::file_utils::open(IR_DEVNULL, irs::file_utils::OpenMode::Write, 0)) {
+  _socket.fileDescriptor = handle_cast(nil.get()); // must be a readable/writable descriptor
+}
 #else
-  GeneralClientConnectionMock::GeneralClientConnectionMock()
-    : GeneralClientConnection(&endpoint, 0, 0, 0) {
-    struct sockaddr_in addr;
-    auto size = (int)sizeof(addr);
-    auto sock = socket(AF_INET, SOCK_DGRAM, 0); // should not return INVALID_SOCKET
+GeneralClientConnectionMock::GeneralClientConnectionMock(arangodb::application_features::ApplicationServer& server)
+    : GeneralClientConnection(server, &endpoint, 0, 0, 0) {
+  struct sockaddr_in addr;
+  auto size = (int)sizeof(addr);
+  auto sock = socket(AF_INET, SOCK_DGRAM, 0);  // should not return INVALID_SOCKET
 
-    addr.sin_family = AF_INET;
-    inet_pton(addr.sin_family, "127.0.0.1", &addr.sin_addr);
-    addr.sin_port = 0;
-    sock = socket(AF_INET, SOCK_DGRAM, 0); // should not return INVALID_SOCKET
-    bind(sock, (const struct sockaddr*)&addr, size); // should return 0
-    memset(&addr, 0, size);
-    getsockname(sock, (struct sockaddr*)&addr, &size); // should return 0
+  addr.sin_family = AF_INET;
+  inet_pton(addr.sin_family, "127.0.0.1", &addr.sin_addr);
+  addr.sin_port = 0;
+  sock = socket(AF_INET, SOCK_DGRAM, 0);  // should not return INVALID_SOCKET
+  bind(sock, (const struct sockaddr*)&addr, size);  // should return 0
+  memset(&addr, 0, size);
+  getsockname(sock, (struct sockaddr*)&addr, &size);  // should return 0
 
-    // make sure something in the socket
-    sendto(sock, "", 0, 0, (const struct sockaddr*)&addr, size); // should not return SOCKET_ERROR
+  // make sure something in the socket
+  sendto(sock, "", 0, 0, (const struct sockaddr*)&addr, size);  // should not return SOCKET_ERROR
 
-    _socket.fileHandle = sock; // must be a readable/writable descriptor
+  _socket.fileHandle = sock;  // must be a readable/writable descriptor
   }
 #endif
 

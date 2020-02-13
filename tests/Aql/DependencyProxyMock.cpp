@@ -21,12 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DependencyProxyMock.h"
+#include <Logger/LogMacros.h>
 
 #include "gtest/gtest.h"
 
-namespace arangodb {
-namespace tests {
-namespace aql {
+#include <velocypack/Options.h>
+
+namespace arangodb::tests::aql {
 
 using namespace arangodb::aql;
 
@@ -42,7 +43,7 @@ DependencyProxyMock<passBlocksThrough>::DependencyProxyMock(arangodb::aql::Resou
                                                             ::arangodb::aql::RegisterId nrRegisters)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                          std::shared_ptr<std::unordered_set<RegisterId>>(),
-                                         nrRegisters),
+                                         nrRegisters, &velocypack::Options::Defaults),
       _itemsToReturn(),
       _numFetchBlockCalls(0),
       _monitor(monitor),
@@ -104,6 +105,9 @@ DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::
   for (RegisterId i = 0; i < this->getNrInputRegisters(); i++) {
     inputRegisters->emplace(i);
   }
+  // keep the block address
+  _block = block;
+
   return andThenReturn({state, block});
 }
 
@@ -123,6 +127,13 @@ DependencyProxyMock<passBlocksThrough>& DependencyProxyMock<passBlocksThrough>::
   }
 
   return *this;
+}
+
+template <BlockPassthrough passBlocksThrough>
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+DependencyProxyMock<passBlocksThrough>::execute(AqlCallStack& stack) {
+  TRI_ASSERT(_block != nullptr);
+  return {arangodb::aql::ExecutionState::DONE, 0, _block};
 }
 
 template <BlockPassthrough passBlocksThrough>
@@ -174,7 +185,7 @@ MultiDependencyProxyMock<passBlocksThrough>::MultiDependencyProxyMock(
     ::arangodb::aql::RegisterId nrRegisters, size_t nrDeps)
     : DependencyProxy<passBlocksThrough>({}, _itemBlockManager,
                                          std::shared_ptr<std::unordered_set<RegisterId>>(),
-                                         nrRegisters),
+                                         nrRegisters, &velocypack::Options::Defaults),
       _itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {
   _dependencyMocks.reserve(nrDeps);
   for (size_t i = 0; i < nrDeps; ++i) {
@@ -214,9 +225,7 @@ size_t MultiDependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
   return res;
 }
 
-}  // namespace aql
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests::aql
 
 template class ::arangodb::tests::aql::DependencyProxyMock<::arangodb::aql::BlockPassthrough::Enable>;
 template class ::arangodb::tests::aql::DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable>;

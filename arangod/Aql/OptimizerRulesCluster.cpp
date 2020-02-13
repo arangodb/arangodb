@@ -65,7 +65,7 @@ Index* hasSingleIndexHandle(ExecutionNode const* node) {
   IndexNode const* indexNode = ExecutionNode::castTo<IndexNode const*>(node);
   auto indexHandleVec = indexNode->getIndexes();
   if (indexHandleVec.size() == 1) {
-    return indexHandleVec.front().getIndex().get();
+    return indexHandleVec.front().get();
   }
   return nullptr;
 }
@@ -163,8 +163,12 @@ bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
 
 void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode) {
   if (oldNode == plan->root()) {
-    for (auto* dep : oldNode->getDependencies()) {
-      newNode->addDependency(dep);
+    // intentional copy, the dependencies are changed in the loop
+    std::vector<ExecutionNode*> deps = oldNode->getDependencies();
+    for (auto* x : deps) {
+      TRI_ASSERT(x != nullptr);
+      newNode->addDependency(x);
+      oldNode->removeDependency(x);
     }
     plan->root(newNode, true);
   } else {
@@ -182,15 +186,15 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
 
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPlan* plan,
                                                     OptimizerRule const& rule) {
-  bool modified = false;
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::INDEX, false);
 
   if (nodes.size() != 1) {
-    return modified;
+    return false;
   }
 
+  bool modified = false;
   for (auto* node : nodes) {
     if (!::depIsSingletonOrConstCalc(node)) {
       continue;
@@ -252,10 +256,10 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           }
         }
 
-        ExecutionNode* singleOperationNode = plan->registerNode(new SingleRemoteOperationNode(
+        ExecutionNode* singleOperationNode = plan->createNode<SingleRemoteOperationNode>(
             plan, plan->nextId(), parentType, true, key, mod->collection(),
             mod->getOptions(), update, indexNode->outVariable(),
-            mod->getOutVariableOld(), mod->getOutVariableNew()));
+            mod->getOutVariableOld(), mod->getOutVariableNew());
 
         ::replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
@@ -278,15 +282,15 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
 
 bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionPlan* plan,
                                                       OptimizerRule const& rule) {
-  bool modified = false;
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, false);
 
   if (nodes.size() != 1) {
-    return modified;
+    return false;
   }
 
+  bool modified = false;
   for (auto* node : nodes) {
     auto mod = ExecutionNode::castTo<ModificationNode*>(node);
 

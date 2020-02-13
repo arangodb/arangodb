@@ -44,7 +44,7 @@ class AqlCallStack {
 
   // Get the top most Call element (this must be relevant).
   // This is popped of the stack and caller can take responsibility for it
-  AqlCall&& popCall();
+  AqlCall popCall();
 
   // Peek at the top most Call element (this must be relevant).
   // The responsibility will stay at the stack
@@ -66,6 +66,10 @@ class AqlCallStack {
   // if this is not revelent it reduces the depth by 1.
   // Can be savely called on every subquery Start.
   void pop();
+
+  // Increase the subquery by one, not placing another call on the stack
+  // This is used to bypass all executors until we reach the next subquery start.
+  void increaseSubqueryDepth();
 
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main query)

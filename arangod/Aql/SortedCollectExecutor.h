@@ -153,14 +153,14 @@ class SortedCollectExecutor {
     ~CollectGroup();
 
     void initialize(size_t capacity);
-    void reset(InputAqlItemRow& input);
+    void reset(InputAqlItemRow const& input);
 
     bool isValid() const { return _lastInputRow.isInitialized(); }
 
-    void addLine(InputAqlItemRow& input);
-    bool isSameGroup(InputAqlItemRow& input);
+    void addLine(InputAqlItemRow const& input);
+    bool isSameGroup(InputAqlItemRow const& input) const;
     void groupValuesToArray(velocypack::Builder& builder);
-    void writeToOutput(OutputAqlItemRow& output, InputAqlItemRow& input);
+    void writeToOutput(OutputAqlItemRow& output, InputAqlItemRow const& input);
   };
 
  public:
@@ -183,14 +183,31 @@ class SortedCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  auto produceRows(OutputAqlItemRow& output) -> std::pair<ExecutionState, Stats>;
+
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
    * This executor has no chance to estimate how many rows
    * it will produce exactly. It can however only
    * overestimate never underestimate.
    */
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] auto expectedNumberOfRows(size_t atMost) const
+      -> std::pair<ExecutionState, size_t>;
 
  private:
   Infos const& infos() const noexcept { return _infos; };
@@ -198,12 +215,10 @@ class SortedCollectExecutor {
  private:
   Infos const& _infos;
 
-  Fetcher& _fetcher;
-
   /// @brief details about the current group
   CollectGroup _currentGroup;
 
-  bool _fetcherDone;  // Flag if fetcher is done
+  bool _haveSeenData = false;
 };
 
 }  // namespace aql

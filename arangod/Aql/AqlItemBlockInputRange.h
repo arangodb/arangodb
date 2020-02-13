@@ -29,27 +29,45 @@
 
 namespace arangodb::aql {
 
+class ShadowAqlItemRow;
+
 class AqlItemBlockInputRange {
  public:
   explicit AqlItemBlockInputRange(ExecutorState state);
 
   AqlItemBlockInputRange(ExecutorState, arangodb::aql::SharedAqlItemBlockPtr const&,
-                         std::size_t, std::size_t endIndex);
+                         std::size_t startIndex, std::size_t endIndex);
   AqlItemBlockInputRange(ExecutorState, arangodb::aql::SharedAqlItemBlockPtr&&,
-                         std::size_t, std::size_t endIndex) noexcept;
+                         std::size_t startIndex, std::size_t endIndex) noexcept;
 
-  bool hasMore() const noexcept;
+  arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
-  ExecutorState state() const noexcept;
+  ExecutorState upstreamState() const noexcept;
+  bool upstreamHasMore() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peek();
+  bool hasDataRow() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> next();
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow();
+
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
+
+  std::size_t getRowIndex() noexcept { return _rowIndex; };
+
+  bool hasShadowRow() const noexcept;
+
+  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRow();
+
+  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
  private:
-  bool indexIsValid() const noexcept;
+  bool isIndexValid(std::size_t index) const noexcept;
 
-  bool hasMoreAfterThis() const noexcept;
+  bool isShadowRowAtIndex(std::size_t index) const noexcept;
+
+  enum LookAhead { NOW, NEXT };
+  enum RowType { DATA, SHADOW };
+  template <LookAhead doPeek, RowType type>
+  ExecutorState nextState() const noexcept;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block;

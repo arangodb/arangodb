@@ -26,6 +26,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
@@ -53,8 +54,6 @@ ClusterTraverser::ClusterTraverser(arangodb::traverser::TraverserOptions* opts,
 }
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
-  _verticesToFetch.clear();
-  _startIdBuilder.clear();
   _startIdBuilder.add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder.slice();
 
@@ -70,12 +69,12 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  if (!vertexMatchesConditions(arangodb::velocypack::StringRef(vid), 0)) {
+  arangodb::velocypack::StringRef persId = traverserCache()->persistString(arangodb::velocypack::StringRef(vid));
+  if (!vertexMatchesConditions(persId, 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
-  arangodb::velocypack::StringRef persId = traverserCache()->persistString(arangodb::velocypack::StringRef(vid));
 
   _vertexGetter->reset(persId);
   if (_opts->useBreadthFirst) {
@@ -84,6 +83,14 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     _enumerator.reset(new arangodb::traverser::DepthFirstEnumerator(this, vid, _opts));
   }
   _done = false;
+}
+
+void ClusterTraverser::clear() {
+  _startIdBuilder.clear();
+  traverserCache()->clear();
+
+  _vertices.clear();
+  _verticesToFetch.clear();
 }
 
 bool ClusterTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {
@@ -158,36 +165,37 @@ void ClusterTraverser::destroyEngines() {
   // We have to clean up the engines in Coordinator Case.
   NetworkFeature const& nf = _trx->vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  if (pool != nullptr) {
-    // nullptr only happens on controlled server shutdown
-    std::string const url(
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name()) +
-        "/_internal/traverser/");
+  if (pool == nullptr) {
+    return;
+  }
+  // nullptr only happens on controlled server shutdown
 
-    if (_enumerator != nullptr) {
-      _enumerator->incHttpRequests(_engines->size());
-    }
+  if (_enumerator != nullptr) {
+    _enumerator->incHttpRequests(_engines->size());
+  }
 
-    VPackBuffer<uint8_t> body;
-    network::Headers headers;
-    network::RequestOptions options;
-    options.timeout = network::Timeout(30.0);
+  VPackBuffer<uint8_t> body;
+  
+  network::RequestOptions options;
+  options.database = _trx->vocbase().name();
+  options.timeout = network::Timeout(30.0);
+  options.skipScheduler = true; // hack to speed up future.get()
 
-    for (auto const& it : *_engines) {
-      auto res =
-          network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
-                               url + arangodb::basics::StringUtils::itoa(it.second),
-                               body, headers, options);
-      res.wait();
+  // TODO: use collectAll to parallelize shutdown ?
+  for (auto const& it : *_engines) {
+    auto res =
+        network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                             "/_internal/traverser/" + arangodb::basics::StringUtils::itoa(it.second),
+                             body, options);
+    res.wait();
 
-      if (!res.hasValue() || res.get().fail()) {
-        // Note If there was an error on server side we do not have ok()
-        std::string message("Could not destroy all traversal engines");
-        if (res.hasValue()) {
-          message += ": " + network::fuerteToArangoErrorMessage(res.get());
-        }
-        LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
+    if (!res.hasValue() || res.get().fail()) {
+      // Note If there was an error on server side we do not have ok()
+      std::string message("Could not destroy all traversal engines");
+      if (res.hasValue()) {
+        message += ": " + network::fuerteToArangoErrorMessage(res.get());
       }
+      LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
     }
   }
 }

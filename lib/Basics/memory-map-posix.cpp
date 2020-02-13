@@ -32,8 +32,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-#include <sys/mman.h>
 #include <fcntl.h>
+#include <sys/mman.h>
+#include <cstring>
 
 using namespace arangodb;
 

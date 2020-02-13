@@ -539,8 +539,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
 
     if (vocbase != nullptr) {
-      _state.vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(name),
-                              std::forward_as_tuple(*vocbase));
+      _state.vocbases.try_emplace(name, *vocbase); //we can not be lazy because of the guard requires a valid ref
     } else {
       LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
@@ -972,8 +971,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
                                                /*nullMeansRemove*/ true);
 
   try {
-    LogicalView::ptr view;  // ignore result
-    return LogicalView::create(view, vocbase, merged.slice());
+    LogicalView::ptr empty;  // ignore result
+    return LogicalView::create(empty, vocbase, merged.slice());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

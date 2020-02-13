@@ -99,12 +99,12 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
   }
 
 
-  std::string collectionName = id.substr(0,pos).toString();
+  std::string collectionName = id.substr(0, pos).toString();
 
   auto const& map = _baseOptions->collectionToShard();
-  if(!map.empty()) {
+  if (!map.empty()) {
     auto found = map.find(collectionName);
-    if ( found != map.end()) {
+    if (found != map.end()) {
       collectionName = found->second;
     }
   }

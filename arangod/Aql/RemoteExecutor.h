@@ -84,9 +84,22 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
   arangodb::Result sendAsyncRequest(fuerte::RestVerb type, std::string const& urlPart,
-                                    velocypack::Buffer<uint8_t> body);
+                                    velocypack::Buffer<uint8_t>&& body);
+
+  // _communicationMutex *must* be locked for this!
+  unsigned generateRequestTicket();
 
  private:
+  enum class ReqState {
+    None,
+    SendingGetSome,
+    GotSendSome,
+    SendingSkipSome,
+    GotSkipSome,
+    SendingShutdown,
+    GotShutdown
+  };
+
   ExecutorInfos _infos;
 
   Query const& _query;
@@ -105,6 +118,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
 
+  std::mutex _communicationMutex;
+
   /// @brief the last unprocessed result. Make sure to reset it
   ///        after it is processed.
   std::unique_ptr<fuerte::Response> _lastResponse;
@@ -112,19 +127,15 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
 
-  std::mutex _communicationMutex;
-
   unsigned _lastTicket;  /// used to check for canceled requests
+
+  bool _requestInFlight;
 
   bool _hasTriggeredShutdown;
 
-  // _communicationMutex *must* be locked for this!
-  unsigned generateNewTicket();
-
-  bool _didSendShutdownRequest = false;
-
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);
+  void traceInitializeCursorRequest(velocypack::Slice slice);
   void traceShutdownRequest(velocypack::Slice slice, int errorCode);
   void traceRequest(const char* rpc, velocypack::Slice slice, std::string const& args);
 };

@@ -335,21 +335,21 @@ TEST_F(CalculationExecutorTest, test_produce_datarange_has_more) {
   EXPECT_EQ(output.numRowsWritten(), 3);
 
   EXPECT_EQ(state, ExecutorState::HASMORE);
-  EXPECT_TRUE(input.hasMore());
+  EXPECT_TRUE(input.hasDataRow());
   // We still have two values in block: 3 and 4
   {
     // pop 3
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_EQ(row.getValue(0).toInt64(), 3);
   }
   {
     // pop 4
-    auto const [state, row] = input.next();
+    auto const [state, row] = input.nextDataRow();
     EXPECT_EQ(state, ExecutorState::DONE);
     EXPECT_EQ(row.getValue(0).toInt64(), 4);
   }
-  EXPECT_FALSE(input.hasMore());
+  EXPECT_FALSE(input.hasDataRow());
 }
 
 }  // namespace aql

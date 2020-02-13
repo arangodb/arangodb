@@ -50,7 +50,7 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
+std::shared_ptr<asio_ns::ssl::context> arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
   asio_ns::ssl::context::method meth;
@@ -86,14 +86,18 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
       break;
 #endif
 
+    case TLS_GENERIC:
+      meth = asio_ns::ssl::context::method::tls_server;
+      break;
+
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                      "unknown SSL protocol method");
   }
 
-  asio_ns::ssl::context sslctx(meth);
+  auto sslctx = std::make_shared<asio_ns::ssl::context>(meth);
 
-  if (sslctx.native_handle() == nullptr) {
+  if (sslctx->native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
     // library not having been initialized
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -102,7 +106,7 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
 
   // load our keys and certificates
   boost::system::error_code ec;
-  sslctx.use_certificate_chain_file(keyfile, ec);
+  sslctx->use_certificate_chain_file(keyfile, ec);
   if (ec) {
     LOG_TOPIC("c6a00", ERR, arangodb::Logger::SSL)
     << "cannot read certificate from '" << keyfile << "': " << ec;
@@ -110,7 +114,7 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
                                    "unable to read certificate from file");
   }
   
-  sslctx.use_private_key_file(keyfile, asio_ns::ssl::context::file_format::pem, ec);
+  sslctx->use_private_key_file(keyfile, asio_ns::ssl::context::file_format::pem, ec);
   if (ec) {
     LOG_TOPIC("98712", ERR, arangodb::Logger::FIXME)
     << "cannot read key from '" << keyfile << "': " << ec;
@@ -118,7 +122,7 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
                                    "unable to read key from keyfile");
   }
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
-  sslctx.set_verify_depth(1);
+  sslctx->set_verify_depth(1);
 #endif
 
   return sslctx;
@@ -149,6 +153,9 @@ std::string arangodb::protocolName(SslProtocol protocol) {
     case TLS_V13:
       return "TLSv13";
 #endif
+    
+    case TLS_GENERIC:
+      return "TLS";
 
     default:
       return "unknown";
@@ -163,12 +170,13 @@ std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
   return std::unordered_set<uint64_t>{SslProtocol::SSL_V2,  // unsupported!
                                       SslProtocol::SSL_V23, SslProtocol::SSL_V3,
                                       SslProtocol::TLS_V1, SslProtocol::TLS_V12,
-                                      SslProtocol::TLS_V13};
+                                      SslProtocol::TLS_V13, SslProtocol::TLS_GENERIC};
 #else
   // no support for TLS 1.3                                      
   return std::unordered_set<uint64_t>{SslProtocol::SSL_V2,  // unsupported!
                                       SslProtocol::SSL_V23, SslProtocol::SSL_V3,
-                                      SslProtocol::TLS_V1, SslProtocol::TLS_V12};
+                                      SslProtocol::TLS_V1, SslProtocol::TLS_V12,
+                                      SslProtocol::TLS_GENERIC};
 #endif
 }
 
@@ -176,11 +184,11 @@ std::string arangodb::availableSslProtocolsDescription() {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
   return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
          "(negotiated), 3 = SSLv3, 4 = "
-         "TLSv1, 5 = TLSv1.2, 6 = TLSv1.3)";
+         "TLSv1, 5 = TLSv1.2, 6 = TLSv1.3, 9 = generic TLS)";
 #else
   return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
          "(negotiated), 3 = SSLv3, 4 = "
-         "TLSv1, 5 = TLSv1.2)";
+         "TLSv1, 5 = TLSv1.2, 9 = generic TLS)";
 #endif
 }
 

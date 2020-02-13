@@ -26,8 +26,6 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutionStats.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/QueryOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -39,12 +37,14 @@ using namespace arangodb::tests::aql;
 
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
-                                                     std::deque<SharedAqlItemBlockPtr>&& data)
+                                                     std::deque<SharedAqlItemBlockPtr>&& data,
+                                                     WaitingBehaviour variant)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
-      _hasWaited(false) {}
+      _hasWaited(false),
+      _variant{variant} {}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
@@ -93,30 +93,114 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
-    traceSkipSomeEnd(ExecutionState::WAITING, 0);
-    return {ExecutionState::WAITING, 0};
+    return traceSkipSomeEnd(ExecutionState::WAITING, 0);
   }
   _hasWaited = false;
 
   if (_data.empty()) {
-    traceSkipSomeEnd(ExecutionState::DONE, 0);
-    return {ExecutionState::DONE, 0};
+    return traceSkipSomeEnd(ExecutionState::DONE, 0);
   }
 
   size_t skipped = _data.front()->size();
   _data.pop_front();
 
   if (_data.empty()) {
-    traceSkipSomeEnd(ExecutionState::DONE, skipped);
-    return {ExecutionState::DONE, skipped};
+    return traceSkipSomeEnd(ExecutionState::DONE, skipped);
   } else {
-    traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
-    return {ExecutionState::HASMORE, skipped};
+    return traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
   }
 }
 
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
-  // TODO implement!
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  traceExecuteBegin(stack);
+  auto res = executeWithoutTrace(stack);
+  traceExecuteEnd(res);
+  return res;
+}
+
+// NOTE: Does not care for shadowrows!
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::executeWithoutTrace(
+    AqlCallStack stack) {
+  while (!stack.isRelevant()) {
+    stack.pop();
+  }
+  auto myCall = stack.popCall();
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
+    // If we orderd waiting check on _hasWaited and wait if not
+    _hasWaited = true;
+    return {ExecutionState::WAITING, 0, nullptr};
+  }
+  if (_variant == WaitingBehaviour::ALWAYS) {
+    // If we allways wait, reset.
+    _hasWaited = false;
+  }
+  size_t skipped = 0;
+  SharedAqlItemBlockPtr result = nullptr;
+  while (!_data.empty()) {
+    if (_data.front()->size() <= _inflight) {
+      dropBlock();
+      continue;
+    }
+    TRI_ASSERT(_data.front()->size() > _inflight);
+    // Drop while skip
+    if (myCall.getOffset() > 0) {
+      size_t canSkip = (std::min)(_data.front()->size() - _inflight, myCall.getOffset());
+      _inflight += canSkip;
+      myCall.didSkip(canSkip);
+      skipped += canSkip;
+      continue;
+    } else if (myCall.getLimit() > 0) {
+      if (result != nullptr) {
+        // Sorry we can only return one block.
+        // This means we have prepared the first block.
+        // But still need more data.
+        return {ExecutionState::HASMORE, skipped, result};
+      }
+
+      size_t canReturn = _data.front()->size() - _inflight;
+
+      if (canReturn <= myCall.getLimit()) {
+        // We can return the remainder of this block
+        if (_inflight == 0) {
+          // use full block
+          result = std::move(_data.front());
+        } else {
+          // Slice out the last part
+          result = _data.front()->slice(_inflight, _data.front()->size());
+        }
+        dropBlock();
+      } else {
+        // Slice out limit many rows starting at _inflight
+        result = _data.front()->slice(_inflight, _inflight + myCall.getLimit());
+        // adjust _inflight to the fist non-returned row.
+        _inflight += myCall.getLimit();
+      }
+      TRI_ASSERT(result != nullptr);
+      myCall.didProduce(result->size());
+    } else if (myCall.needsFullCount()) {
+      size_t counts = _data.front()->size() - _inflight;
+      dropBlock();
+      myCall.didSkip(counts);
+      skipped += counts;
+    } else {
+      if (myCall.getLimit() == 0 && !myCall.needsFullCount() && myCall.hasHardLimit()) {
+        while (!_data.empty()) {
+          // Drop data we are in fastForward phase
+          dropBlock();
+        }
+      }
+      if (_data.empty()) {
+        return {ExecutionState::DONE, skipped, result};
+      } else {
+        return {ExecutionState::HASMORE, skipped, result};
+      }
+    }
+  }
+  return {ExecutionState::DONE, skipped, result};
+}
+
+void WaitingExecutionBlockMock::dropBlock() {
+  TRI_ASSERT(!_data.empty());
+  _data.pop_front();
+  _inflight = 0;
 }

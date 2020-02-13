@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN */
+/*global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, subqueries
@@ -29,10 +29,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+const { assertEqual, assertTrue } = jsunity.jsUnity.assertions;
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
+const isCoordinator = require('@arangodb/cluster').isCoordinator();
+const isEnterprise = require("internal").isEnterprise();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -179,11 +182,24 @@ function ahuacatlSubqueryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryOutVariableName : function () {
-      var XPResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
+      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable",
+        {}, {optimizer: {rules: ['-splice-subqueries']}});
 
-      var SubqueryNode = findExecutionNodes(XPResult, "SubqueryNode")[0];
+      const subqueryNode = findExecutionNodes(explainResult, "SubqueryNode")[0];
 
-      assertEqual(SubqueryNode.outVariable.name, "theLetVariable");
+      assertEqual(subqueryNode.outVariable.name, "theLetVariable");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test splice-subqueries optimization
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpliceSubqueryOutVariableName : function () {
+      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
+
+      const subqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode")[0];
+
+      assertEqual(subqueryEndNode.outVariable.name, "theLetVariable");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -356,6 +372,137 @@ function ahuacatlSubqueryTestSuite () {
         db._drop(colName);
       }
       
+    },
+
+    testCollectionAccessSubquery: function () {
+      const colName = "UnitTestSubqueryCollection";
+      try {
+        const col = db._create(colName, {numberOfShards: 9});
+        let dbServers = 0;
+        if (isCoordinator) {
+          dbServers = Object.values(col.shards(true)).filter((value, index, self) => {
+            return self.indexOf(value) === index;
+          }).length;
+        }
+        const docs = [];
+        const expected = new Map();
+        for (let i = 0; i < 2000; ++i) {
+          docs.push({value: i, mod100: i % 100});
+          const oldValue = expected.get(i % 100) || [];
+          oldValue.push(i);
+          expected.set(i % 100, oldValue);
+        }
+        col.save(docs);
+
+        // Now we do a left outer join on the same collection
+        const query = `
+          FOR left IN ${colName}
+            LET rightJoin = (
+              FOR right IN ${colName}
+                FILTER left.mod100 == right.mod100
+                RETURN right.value
+            )
+            RETURN {key: left.mod100, value: rightJoin}
+        `;
+        // First NoIndex variant
+        {
+          const cursor = db._query(query);
+          const actual = cursor.toArray();
+          const {scannedFull, scannedIndex, filtered, httpRequests} = cursor.getExtra().stats;
+          assertEqual(scannedFull, 4002000);
+          assertEqual(scannedIndex, 0);
+          assertEqual(filtered, 3960000);
+          if (isCoordinator) {
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
+          } else {
+            assertEqual(httpRequests, 0);
+          }
+          const foundKeys = new Map();
+          for (const {key, value} of actual) {
+            assertTrue(expected.has(key));
+            // Use sort here as no ordering is guaranteed by query.
+            assertEqual(expected.get(key).sort(), value.sort());
+            foundKeys.set(key, (foundKeys.get(key) || 0) + 1);
+          }
+          assertEqual(foundKeys.size, expected.size);
+          for (const value of foundKeys.values()) {
+            assertEqual(value, 20);
+          }
+        }
+        // Second with Index
+        {
+          col.ensureHashIndex("mod100");
+
+          const cursor = db._query(query);
+          const actual = cursor.toArray();
+          const {scannedFull, scannedIndex, filtered, httpRequests} = cursor.getExtra().stats;
+          assertEqual(scannedFull, 2000);
+          assertEqual(scannedIndex, 40000);
+          assertEqual(filtered, 0);
+          if (isCoordinator) {
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
+          } else {
+            assertEqual(httpRequests, 0);
+          }
+          const foundKeys = new Map();
+          for (const {key, value} of actual) {
+            assertTrue(expected.has(key));
+            // Use sort here as no ordering is guaranteed by query.
+            assertEqual(expected.get(key).sort(), value.sort());
+            foundKeys.set(key, (foundKeys.get(key) || 0) + 1);
+          }
+          assertEqual(foundKeys.size, expected.size);
+          for (const value of foundKeys.values()) {
+            assertEqual(value, 20);
+          }
+        }        
+      } finally {
+        db._drop(colName);
+      }
+    },
+
+    testOneShardDBAndSpliceSubquery: function () {
+      const dbName = "SingleShardDB";
+      const docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({foo: i});
+      }
+      const q = `
+        FOR x IN a
+          SORT x.foo ASC
+          LET subquery = (
+            FOR y IN b
+              FILTER x.foo == y.foo
+              RETURN y
+          )
+          RETURN {x, subquery}
+      `;
+      try {
+        db._createDatabase(dbName, {sharding: "single"});
+        db._useDatabase(dbName);
+        const a = db._create("a");
+        const b = db._create("b");
+        a.save(docs);
+        b.save(docs);
+        const statement = db._createStatement(q);
+        const rules = statement.explain().plan.rules;
+        if (isEnterprise && isCoordinator) {
+          // Has one shard rule
+          assertTrue(rules.indexOf("cluster-one-shard") !== -1);
+        }
+        // Has one splice subquery rule
+        assertTrue(rules.indexOf("splice-subqueries") !== -1);
+        // Result is as expected
+        const result = statement.execute().toArray();
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(result[i].x.foo, i);
+          assertEqual(result[i].subquery.length, 1);
+          assertEqual(result[i].subquery[0].foo, i);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._drop(dbName);
+      }
     }
   }; 
 }

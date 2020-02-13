@@ -44,6 +44,7 @@ StatusCode constexpr StatusCreated = 201;
 StatusCode constexpr StatusAccepted = 202;
 StatusCode constexpr StatusPartial = 203;
 StatusCode constexpr StatusNoContent = 204;
+StatusCode constexpr StatusTemporaryRedirect = 307;
 StatusCode constexpr StatusBadRequest = 400;
 StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;
@@ -53,7 +54,8 @@ StatusCode constexpr StatusNotAcceptable = 406;
 StatusCode constexpr StatusConflict = 409;
 StatusCode constexpr StatusPreconditionFailed = 412;
 StatusCode constexpr StatusInternalError = 500;
-StatusCode constexpr StatusUnavailable = 505;
+StatusCode constexpr StatusServiceUnavailable = 503;
+StatusCode constexpr StatusVersionNotSupported = 505;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         enum class ErrorCondition
@@ -72,7 +74,7 @@ enum class Error : uint16_t {
   WriteError = 1103,
 
   Canceled = 1104,
-  
+
   VstUnauthorized = 2000,
 
   ProtocolError = 3000,
@@ -131,21 +133,21 @@ std::string to_string(MessageType type);
 // --SECTION--                                                     SocketType
 // -----------------------------------------------------------------------------
 
-enum class SocketType { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
+enum class SocketType : uint8_t { Undefined = 0, Tcp = 1, Ssl = 2, Unix = 3 };
 std::string to_string(SocketType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     ProtocolType
 // -----------------------------------------------------------------------------
 
-enum class ProtocolType { Undefined = 0, Http = 1, Vst = 2 };
+enum class ProtocolType : uint8_t { Undefined = 0, Http = 1, Http2 = 2, Vst = 3 };
 std::string to_string(ProtocolType type);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ContentType
 // -----------------------------------------------------------------------------
 
-enum class ContentType { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
+enum class ContentType : uint8_t { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
 ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
 
@@ -178,8 +180,9 @@ struct ConnectionConfiguration {
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-        _connectTimeout(10000),
+        _connectTimeout(15000),
         _idleTimeout(300000),
+        _connectRetryPause(1000),
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),
         _user(""),
@@ -197,6 +200,7 @@ struct ConnectionConfiguration {
 
   std::chrono::milliseconds _connectTimeout;
   std::chrono::milliseconds _idleTimeout;
+  std::chrono::milliseconds _connectRetryPause;
   unsigned _maxConnectRetries;
 
   AuthenticationType _authenticationType;

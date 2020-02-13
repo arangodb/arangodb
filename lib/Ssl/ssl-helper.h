@@ -53,6 +53,7 @@ enum SslProtocol {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
   TLS_V13 = 6,
 #endif
+  TLS_GENERIC = 9,
 
   SSL_LAST
 };
@@ -69,7 +70,7 @@ std::unordered_set<uint64_t> availableSslProtocols();
 /// @brief returns a string description the available SSL protocols
 std::string availableSslProtocolsDescription();
 
-asio_ns::ssl::context sslContext(SslProtocol, std::string const& keyfile);
+std::shared_ptr<asio_ns::ssl::context> sslContext(SslProtocol, std::string const& keyfile);
 
 std::string protocolName(SslProtocol protocol);
 

@@ -23,6 +23,7 @@
 
 #include "LogicalView.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -38,6 +39,8 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 
@@ -51,7 +54,7 @@ namespace arangodb {
 LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, uint64_t planVersion)
     : LogicalDataSource(LogicalView::category(),
                         LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringRef(
-                            definition, StaticStrings::DataSourceType, "")),
+                            definition, StaticStrings::DataSourceType, VPackStringRef())),
                         vocbase, definition, planVersion) {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {

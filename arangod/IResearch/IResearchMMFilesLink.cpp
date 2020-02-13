@@ -38,60 +38,6 @@
 namespace arangodb {
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchMMFilesLink-specific implementation of an IndexTypeFactory
-////////////////////////////////////////////////////////////////////////////////
-struct IResearchMMFilesLink::IndexFactory : public arangodb::IndexTypeFactory {
-  bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
-  }
-
-  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                               arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id,
-                                               bool isClusterConstructor) const override {
-    // ensure loaded so that we have valid data in next check
-    if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
-      collection.load();
-    }
-
-    // try casting underlying collection to an MMFilesCollection
-    // this may not succeed because we may have to deal with a
-    // PhysicalCollectionMock here
-    auto mmfilesCollection =
-        dynamic_cast<arangodb::MMFilesCollection*>(collection.getPhysical());
-
-    if (mmfilesCollection && !mmfilesCollection->hasAllPersistentLocalIds()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-          "mmfiles collection uses pre-3.4 format and cannot be linked to an "
-          "arangosearch view; try recreating collection and moving the "
-          "contents to the new collection");
-    }
-
-    auto link =
-        std::shared_ptr<IResearchMMFilesLink>(new IResearchMMFilesLink(id, collection));
-    auto res = link->init(definition);
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    return link;
-  }
-
-  virtual arangodb::Result normalize( // normalize definition
-      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
-      arangodb::velocypack::Slice definition, // source definition
-      bool isCreation, // definition for index creation
-      TRI_vocbase_t const& vocbase // index vocbase
-  ) const override {
-    return IResearchLinkHelper::normalize( // normalize
-      normalized, definition, isCreation, vocbase // args
-    );
-  }
-};
-
 IResearchMMFilesLink::IResearchMMFilesLink(TRI_idx_iid_t iid,
                                            arangodb::LogicalCollection& collection)
     : MMFilesIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
@@ -101,16 +47,9 @@ IResearchMMFilesLink::IResearchMMFilesLink(TRI_idx_iid_t iid,
   _sparse = true;   // always sparse
 }
 
-/*static*/ arangodb::IndexTypeFactory const& IResearchMMFilesLink::factory() {
-  static const IndexFactory factory;
-
-  return factory;
-}
-
-void IResearchMMFilesLink::toVelocyPack( // generate definition
-    arangodb::velocypack::Builder& builder, // destination buffer
-    std::underlying_type<arangodb::Index::Serialize>::type flags // definition flags
-) const {
+void IResearchMMFilesLink::toVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    std::underlying_type<arangodb::Index::Serialize>::type flags) const {
   if (builder.isOpenObject()) {
     THROW_ARANGO_EXCEPTION(arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
@@ -131,12 +70,9 @@ void IResearchMMFilesLink::toVelocyPack( // generate definition
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
-    VPackBuilder figuresBuilder;
-
-    figuresBuilder.openObject();
-    toVelocyPackFigures(figuresBuilder);
-    figuresBuilder.close();
-    builder.add("figures", figuresBuilder.slice());
+    builder.add("figures", VPackValue(VPackValueType::Object));
+    toVelocyPackFigures(builder);
+    builder.close();
   }
 
   builder.close();
@@ -156,6 +92,64 @@ bool IResearchMMFilesLink::isPersistent() const {
   }
 
   return true;
+}
+
+IResearchMMFilesLink::IndexFactory::IndexFactory(arangodb::application_features::ApplicationServer& server)
+    : IndexTypeFactory(server) {}
+
+bool IResearchMMFilesLink::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
+                                               arangodb::velocypack::Slice const& rhs) const {
+  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs);
+}
+
+std::shared_ptr<arangodb::Index> IResearchMMFilesLink::IndexFactory::instantiate(
+    arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id, bool isClusterConstructor) const {
+  // ensure loaded so that we have valid data in next check
+  if (TRI_VOC_COL_STATUS_LOADED != collection.status()) {
+    collection.load();
+  }
+
+  // try casting underlying collection to an MMFilesCollection
+  // this may not succeed because we may have to deal with a
+  // PhysicalCollectionMock here
+  auto mmfilesCollection =
+      dynamic_cast<arangodb::MMFilesCollection*>(collection.getPhysical());
+
+  if (mmfilesCollection && !mmfilesCollection->hasAllPersistentLocalIds()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "mmfiles collection uses pre-3.4 format and cannot be linked to an "
+        "arangosearch view; try recreating collection and moving the "
+        "contents to the new collection");
+  }
+
+  auto link = std::shared_ptr<arangodb::iresearch::IResearchMMFilesLink>(
+      new arangodb::iresearch::IResearchMMFilesLink(id, collection));
+  auto res = link->init(definition);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return link;
+}
+
+arangodb::Result IResearchMMFilesLink::IndexFactory::normalize(  // normalize definition
+    arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+    arangodb::velocypack::Slice definition,  // source definition
+    bool isCreation,                         // definition for index creation
+    TRI_vocbase_t const& vocbase             // index vocbase
+    ) const {
+  return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
+      normalized, definition, isCreation, vocbase              // args
+  );
+}
+
+std::shared_ptr<IResearchMMFilesLink::IndexFactory> IResearchMMFilesLink::createFactory(
+    application_features::ApplicationServer& server) {
+  return std::shared_ptr<IResearchMMFilesLink::IndexFactory>(
+      new IResearchMMFilesLink::IndexFactory(server));
 }
 
 }  // namespace iresearch

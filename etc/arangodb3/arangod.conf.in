@@ -7,8 +7,6 @@
 [database]
 directory = @LOCALSTATEDIR@/lib/arangodb3
 
-# maximal-journal-size = 33554432
-
 [server]
 # Specify the endpoint for HTTP requests by clients.
 #  tcp://ipv4-address:port
@@ -26,7 +24,6 @@ directory = @LOCALSTATEDIR@/lib/arangodb3
 #   endpoint = tcp://[fe80::21a:5df1:aede:98cf]:8529
 #
 endpoint = tcp://127.0.0.1:8529
-storage-engine = auto
 
 # reuse a port on restart or wait until it is freed by the operating system
 # reuse-address = false
@@ -66,8 +63,6 @@ app-path = @LOCALSTATEDIR@/lib/arangodb3-apps
 [log]
 level = info
 @COMMENT_LOGFILE@file = @LOCALSTATEDIR@/log/arangodb3/arangod.log
-
-[cluster]
 
 [rocksdb]
 # encryption-keyfile=/your-encryption-file

@@ -21,7 +21,6 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdint.h>
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -33,7 +32,6 @@
 
 #include "Cache/Manager.h"
 
-#include "Basics/Common.h"
 #include "Basics/SharedPRNG.h"
 #include "Basics/voc-errors.h"
 #include "Cache/Cache.h"
@@ -150,14 +148,14 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type, bool enableWindowedS
   }
 
   if (result.get() != nullptr) {
-    _caches.emplace(id, result);
+    _caches.try_emplace(id, result);
   }
   _lock.writeUnlock();
 
   return result;
 }
 
-void Manager::destroyCache(std::shared_ptr<Cache> cache) {
+void Manager::destroyCache(std::shared_ptr<Cache> const& cache) {
   Cache::destroy(cache);
 }
 
@@ -415,7 +413,7 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(Cache* cache, uint3
       if (allowed) {
         // now find out if we can lease the table
         std::shared_ptr<Table> table = leaseTable(requestedLogSize);
-        allowed = (table.get() != nullptr);
+        allowed = (table != nullptr);
         if (allowed) {
           nextRequest = std::chrono::steady_clock::now();
           migrateCache(TaskEnvironment::none, cache,
@@ -443,14 +441,14 @@ void Manager::reportHitStat(Stat stat) {
   switch (stat) {
     case Stat::findHit: {
       _findHits.add(1, std::memory_order_relaxed);
-      if (_enableWindowedStats && _findStats.get() != nullptr) {
+      if (_enableWindowedStats && _findStats != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
       }
       break;
     }
     case Stat::findMiss: {
       _findMisses.add(1, std::memory_order_relaxed);
-      if (_enableWindowedStats && _findStats.get() != nullptr) {
+      if (_enableWindowedStats && _findStats != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
       }
       break;
@@ -514,7 +512,7 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
 int Manager::rebalance(bool onlyCalculate) {
   if (!onlyCalculate) {
     _lock.writeLock();
-    if (_caches.size() == 0) {
+    if (_caches.empty()) {
       _lock.writeUnlock();
       return TRI_ERROR_NO_ERROR;
     }
@@ -536,7 +534,7 @@ int Manager::rebalance(bool onlyCalculate) {
   for (auto pair : (*cacheList)) {
     std::shared_ptr<Cache>& cache = pair.first;
     double weight = pair.second;
-    uint64_t newDeserved = static_cast<uint64_t>(
+    auto newDeserved = static_cast<uint64_t>(
         std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (newDeserved < Manager::minCacheAllocation) {
@@ -709,7 +707,7 @@ void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
   }
 
   uint32_t logSize = table->logSize();
-  size_t maxTables = (logSize < 18) ? (1 << (18 - logSize)) : 1;
+  size_t maxTables = (logSize < 18) ? (1u << (18 - logSize)) : 1;
   if ((_tables[logSize].size() < maxTables) &&
       ((table->memoryUsage() + _spareTableAllocation) <
        ((_globalSoftLimit - _globalHighwaterMark) / 2))) {

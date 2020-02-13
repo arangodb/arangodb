@@ -127,7 +127,7 @@ class AqlItemBlock {
     } catch (...) {
       // invoke dtor
       value->~AqlValue();
-      // TODO - instead of disabling it completly we could you use
+      // TODO - instead of disabling it completely we could you use
       // a constexpr if() with c++17
       _data[address].destroy();
       throw;
@@ -165,6 +165,9 @@ class AqlItemBlock {
 
   /// @brief getter for _nrItems
   size_t size() const noexcept;
+
+  /// @brief get the relevant consumable range of the block
+  std::tuple<size_t, size_t> getRelevantRange();
 
   /// @brief Number of entries in the matrix. If this changes, the memory usage
   /// must be / in- or decreased appropriately as well.
@@ -206,9 +209,29 @@ class AqlItemBlock {
   /// to which our AqlValues point will vanish.
   SharedAqlItemBlockPtr steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
-  /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
+  /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
+  /// can be used to recreate the AqlItemBlock via the Json constructor
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  /// @brief toJson, transfer a slice of this AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  /// The slice will be starting at line `from` (including) and end at line `to` (excluding).
+  /// Only calls with 0 <= from < to <= this.size() are allowed.
+  /// If you want to transfer the full block, use from == 0, to == this.size()
+  void toVelocyPack(size_t from, size_t to, velocypack::Options const*,
+                    arangodb::velocypack::Builder&) const;
+
+  /// @brief Creates a human-readable velocypack of the block. Adds an object
+  /// `{nrItems, nrRegs, matrix}` to the builder.
+  ///
+  // `matrix` is an array of rows (of length nrItems). Each entry is an array
+  // (of length nrRegs+1 (sic)). The first entry contains the shadow row depth,
+  // or `null` for data rows. The entries with indexes 1..nrRegs contain the
+  // registers 0..nrRegs-1, respectively.
+  void toSimpleVPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  void rowToSimpleVPack(size_t row, velocypack::Options const*,
+                        velocypack::Builder& builder) const;
 
   /// @brief test if the given row is a shadow row and conveys subquery
   /// information only. It should not be handed to any non-subquery executor.
@@ -238,6 +261,16 @@ class AqlItemBlock {
   /// @brief Quick test if we have any ShadowRows within this block;
   bool hasShadowRows() const noexcept;
 
+  /// @brief Moves all values *from* source *to* this block.
+  /// Returns the row index of the last written row plus one (may equal size()).
+  /// Expects size() - targetRow >= source->size(); and, of course, an equal
+  /// number of registers.
+  /// The source block will be cleared after this.
+  size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
+
+  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
+                                       size_t sourceRow);
+
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
   size_t getRefCount() const noexcept;
@@ -254,9 +287,6 @@ class AqlItemBlock {
   size_t getSubqueryDepthAddress(size_t index) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
-
-  void copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
-                                     size_t sourceRow, size_t targetRow) const;
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
@@ -287,6 +317,11 @@ class AqlItemBlock {
   /// @brief A list of indexes with all shadowRows within
   /// this ItemBlock. Used to easier split data based on them.
   std::set<size_t> _shadowRowIndexes;
+
+  /// @brief current row index we want to read from. This will be increased after
+  /// getRelevantRange function will be called, which will return a tuple of the
+  /// old _rowIndex and the newly calculated _rowIndex - 1
+  size_t _rowIndex;
 };
 
 }  // namespace aql

@@ -28,6 +28,7 @@
 #include <thread>
 #include <valarray>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -52,8 +53,7 @@ RestRepairHandler::RestRepairHandler(application_features::ApplicationServer& se
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestRepairHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
-  if (server.isStopping()) {
+  if (server().isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }
@@ -264,7 +264,7 @@ bool RestRepairHandler::repairCollection(DatabaseID const& databaseId,
   for (auto const& op : repairOperations) {
     RepairOperationToVPackVisitor addToVPack(response);
 
-    boost::apply_visitor(addToVPack, op);
+    std::visit(addToVPack, op);
   }
 
   response.close();
@@ -333,17 +333,17 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
                                                   CollectionID const& collectionId,
                                                   std::string const& dbAndCollectionName,
                                                   std::list<RepairOperation> const& repairOperations) {
-  AgencyComm comm;
+  AgencyComm comm(server());
 
   size_t opNum = 0;
   for (auto& op : repairOperations) {
     opNum += 1;
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     auto visitor = RepairOperationToTransactionVisitor(ci);
-    auto trxJobPair = boost::apply_visitor(visitor, op);
+    auto trxJobPair = std::visit(visitor, op);
 
     AgencyWriteTransaction& wtrx = trxJobPair.first;
-    boost::optional<uint64_t> waitForJobId = trxJobPair.second;
+    std::optional<uint64_t> waitForJobId = trxJobPair.second;
 
     LOG_TOPIC("6f32d", DEBUG, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::executeRepairOperations: "
@@ -378,9 +378,9 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
     if (waitForJobId) {
       LOG_TOPIC("e6252", DEBUG, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::executeRepairOperations: "
-          << "Waiting for job " << waitForJobId.get();
+          << "Waiting for job " << waitForJobId.value();
       bool previousJobFinished = false;
-      std::string jobId = std::to_string(waitForJobId.get());
+      std::string jobId = std::to_string(waitForJobId.value());
 
       while (!previousJobFinished) {
         ResultT<bool> jobFinishedResult = jobFinished(jobId);
@@ -426,7 +426,7 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
     std::array<std::string const, N> const& agencyKeyArray) {
   std::array<VPackBufferPtr, N> resultArray;
 
-  AgencyComm agency;
+  AgencyComm agency(server());
 
   std::vector<std::string> paths;
 
@@ -541,7 +541,7 @@ ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const 
 }
 
 void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNumber) {
-  boost::optional<const char*> errorDetails;
+  std::optional<const char*> errorDetails;
 
   switch (errorNumber) {
     case TRI_ERROR_CLUSTER_REPAIRS_FAILED:
@@ -630,8 +630,8 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNu
         ;
   }
 
-  if (errorDetails.is_initialized()) {
-    builder.add("errorDetails", VPackValue(errorDetails.get()));
+  if (errorDetails.has_value()) {
+    builder.add("errorDetails", VPackValue(errorDetails.value()));
   }
 }
 

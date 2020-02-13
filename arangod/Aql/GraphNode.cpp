@@ -26,6 +26,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphNode.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
@@ -151,7 +153,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         // do not re-add the same collection!
         continue;
       }
-      seenCollections.emplace(eColName, dir);
+      seenCollections.try_emplace(eColName, dir);
 
       auto collection = resolver->getCollection(eColName);
 
@@ -282,7 +284,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     _directions.emplace_back(d);
   }
 
-  if(!ServerState::instance()->isDBServer()) {
+  if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
     if (base.hasKey("graph") && (base.get("graph").isString())) {
@@ -522,7 +524,7 @@ CostEstimate GraphNode::estimateCost() const {
 
 void GraphNode::addEngine(TraverserEngineID const& engine, ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-  _engines.emplace(server, engine);
+  _engines.try_emplace(server, engine);
 }
 
 /// @brief Returns a reference to the engines. (CLUSTER ONLY)
@@ -552,13 +554,7 @@ Collection const* GraphNode::collection() const {
 
 void GraphNode::injectVertexCollection(aql::Collection const* other) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  for (auto const& e : _edgeColls) {
-    if (e->name() == other->name()) {
-      // This collection is already known.
-      // unfortunately we cannot do pointer comparison
-      return;
-    }
-  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // This is a workaround to inject all unknown aql collections into
   // this node, that should be list of unique values!

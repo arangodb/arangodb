@@ -69,7 +69,7 @@ BlocksWithClients::BlocksWithClients(ExecutionEngine* engine, ExecutionNode cons
       _wasShutdown(false) {
   _shardIdMap.reserve(_nrClients);
   for (size_t i = 0; i < _nrClients; i++) {
-    _shardIdMap.emplace(std::make_pair(shardIds[i], i));
+    _shardIdMap.try_emplace(shardIds[i], i);
   }
   auto scatter = ExecutionNode::castTo<ScatterNode const*>(ep);
   TRI_ASSERT(scatter != nullptr);
