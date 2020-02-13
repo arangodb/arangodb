@@ -300,6 +300,7 @@ template <SocketType ST>
 void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                            std::shared_ptr<RequestItem> item,
                                            std::size_t nwrite) {
+  FUERTE_ASSERT(_writing.load());
   // auto pendingAsyncCalls = --_connection->_async_calls;
   if (ec) {
     // Send failed
@@ -317,6 +318,7 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     } catch (...) {
     }
     
+    _writing.store(false);
     // Stop current connection and try to restart a new one.
     this->restartConnection(err);
     return;
@@ -360,6 +362,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_VSTTRACE
         << "asyncReadCallback: Error while reading from socket: "
         << ec.message();
+    _reading.store(false);
     this->restartConnection(translateError(ec, Error::ReadError));
     return;
   }
@@ -545,8 +548,6 @@ void VstConnection<ST>::abortOngoingRequests(const fuerte::Error err) {
     _messages.clear();
     _numMessages.store(0);
   }
-  _reading.store(false);
-  _writing.store(false);
 }
 
 /// abort all requests lingering in the queue
