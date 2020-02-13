@@ -1168,6 +1168,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           size_t offsetBefore = clientCall.getOffset();
           TRI_ASSERT(offsetBefore > 0);
+          size_t canPassFullcount =
+              clientCall.getLimit() == 0 && clientCall.needsFullCount();
 #endif
           auto [state, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1175,7 +1177,17 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // This means that they have to be removed from clientCall.getOffset()
           // This has to be done by the Executor calling call.didSkip()
           // accordingly.
-          TRI_ASSERT(clientCall.getOffset() + skippedLocal == offsetBefore);
+          if (canPassFullcount) {
+            // In htis case we can first skip. But straight after continue with fullCount, so we might skip more
+            TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
+            if (clientCall.getOffset() + skippedLocal > offsetBefore) {
+              // First need to count down offset.
+              TRI_ASSERT(clientCall.getOffset() == 0);
+            }
+          } else {
+            TRI_ASSERT(clientCall.getOffset() + skippedLocal == offsetBefore);
+          }
+
 #endif
           _skipped += skippedLocal;
           // The execute might have modified the client call.
