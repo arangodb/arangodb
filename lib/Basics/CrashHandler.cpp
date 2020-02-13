@@ -67,12 +67,12 @@ void appendNullTerminatedString(char const* src, char*& dst) {
   *dst = '\0';
 }
 
-/// @brief logs the occurrence of a signal to the logfile.
+/// @brief Logs the occurrence of a signal to the logfile.
 /// does not allocate any memory, so should be safe to call even
-/// in SIGSEGV context with a broken heap etc.
-/// assumes that the buffer pointed to by s has enough space to
+/// in context of SIGSEGV, with a broken heap etc.
+/// Assumes that the buffer pointed to by s has enough space to
 /// hold the thread id, the thread name and the signal name
-/// (512 bytes should be more than enough)
+/// (1024 bytes should be more than enough).
 size_t buildLogMessage(char* s, int signal, siginfo_t const* info, int stackSize) {
   // build a crash message
   char* p = s;

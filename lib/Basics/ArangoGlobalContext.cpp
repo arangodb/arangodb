@@ -177,8 +177,6 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const*
   TRI_InitializeError();
   TRI_InitializeFiles();
 
-  // use the rng so the linker does not remove it from the executable
-  // we might need it later because .so files might refer to the symbols
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
 
   arangodb::rest::Version::initialize();

@@ -749,17 +749,15 @@ void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const*
 
 void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
                                  arangodb::velocypack::Builder& builder) const {
+  VPackObjectBuilder block{&builder};
+  block->add("nrItems", VPackValue(size()));
+  block->add("nrRegs", VPackValue(getNrRegs()));
+  block->add(VPackValue("matrix"));
   {
-    VPackObjectBuilder block{&builder};
-    block->add("nrItems", VPackValue(size()));
-    block->add("nrRegs", VPackValue(getNrRegs()));
-    block->add(VPackValue("matrix"));
-    {
-      size_t const n = size();
-      VPackArrayBuilder matrixBuilder{&builder};
-      for (size_t row = 0; row < n; ++row) {
-        rowToSimpleVPack(row, options, builder);
-      }
+    size_t const n = size();
+    VPackArrayBuilder matrixBuilder{&builder};
+    for (size_t row = 0; row < n; ++row) {
+      rowToSimpleVPack(row, options, builder);
     }
   }
 }

@@ -139,9 +139,8 @@ bool isDeadly(int signal) {
     case SignalType::user:  // user signals aren't supposed to be deadly.
       return false;
   }
-#else
-  // well windows... always deadly.
 #endif
+  // well windows... always deadly.
   return true;
 }
 
