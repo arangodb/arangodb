@@ -49,7 +49,7 @@ using namespace arangodb::cache;
 
 struct ThreadGuard {
   ThreadGuard(ThreadGuard&&) noexcept = default;
-  ThreadGuard& operator=(ThreadGuard&& other) {
+  ThreadGuard& operator=(ThreadGuard&&) noexcept = default; 
     thread = std::move(other.thread);
     return *this;
   }
