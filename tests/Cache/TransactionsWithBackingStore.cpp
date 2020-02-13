@@ -34,13 +34,37 @@
 #include "TransactionalStore.h"
 #include "gtest/gtest.h"
 
-#include <stdint.h>
 #include <chrono>
+#include <cstdint>
+#include <memory>
 #include <thread>
 #include <vector>
 
 using namespace arangodb;
 using namespace arangodb::cache;
+
+struct ThreadGuard {
+  ThreadGuard(ThreadGuard&& other) : thread(std::move(other.thread)) {}
+  ThreadGuard& operator=(ThreadGuard&& other) {
+    thread = std::move(other.thread);
+    return *this;
+  }
+
+  ThreadGuard(std::unique_ptr<std::thread> thread)
+      : thread(std::move(thread)) {}
+  ~ThreadGuard() {
+    join();
+  }
+
+  void join() {
+    if (thread != nullptr) {
+      thread->join();
+      thread.reset();
+    }
+  }
+
+  std::unique_ptr<std::thread> thread;
+};
 
 // long-running
 
@@ -106,17 +130,14 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_readonly_hotset_workload_LongR
     }
   };
 
-  std::vector<std::thread*> threads;
+  std::vector<ThreadGuard> threads;
   // dispatch threads
   for (size_t i = 0; i < threadCount; i++) {
-    threads.push_back(new std::thread(worker));
+    threads.emplace_back(std::make_unique<std::thread>(worker));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   auto hitRates = manager.globalHitRates();
   EXPECT_TRUE(hitRates.first >= 15.0);
@@ -179,24 +200,21 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
     writersDone++;
   };
 
-  std::vector<std::thread*> threads;
+  std::vector<ThreadGuard> threads;
   // dispatch reader threads
   for (size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+    threads.emplace_back(std::make_unique<std::thread>(readWorker));
   }
   // dispatch writer threads
   uint64_t chunkSize = totalDocuments / writerCount;
   for (size_t i = 0; i < writerCount; i++) {
     uint64_t lower = (i * chunkSize) + 1;
     uint64_t upper = ((i + 1) * chunkSize);
-    threads.push_back(new std::thread(writeWorker, lower, upper));
+    threads.emplace_back(std::make_unique<std::thread>(writeWorker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   auto hitRates = manager.globalHitRates();
   EXPECT_TRUE(hitRates.first >= 0.1);
@@ -269,24 +287,21 @@ TEST(CacheWithBackingStoreTest, test_transactionality_for_mixed_workload_LongRun
     writersDone++;
   };
 
-  std::vector<std::thread*> threads;
+  std::vector<ThreadGuard> threads;
   // dispatch reader threads
   for (size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+    threads.emplace_back(std::make_unique<std::thread>(readWorker));
   }
   // dispatch writer threads
   uint64_t chunkSize = totalDocuments / writerCount;
   for (size_t i = 0; i < writerCount; i++) {
     uint64_t lower = (i * chunkSize) + 1;
     uint64_t upper = ((i + 1) * chunkSize);
-    threads.push_back(new std::thread(writeWorker, lower, upper));
+    threads.emplace_back(std::make_unique<std::thread>(writeWorker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   RandomGenerator::shutdown();
 }
@@ -322,7 +337,8 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
       }
     }
   };
-  auto rebalancerThread = new std::thread(rebalanceWorker);
+
+  ThreadGuard rebalancerThread(std::make_unique<std::thread>(rebalanceWorker));
 
   // initial fill
   for (uint64_t i = 1; i <= totalDocuments; i++) {
@@ -376,60 +392,52 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
     writersDone++;
   };
 
-  std::vector<std::thread*> threads;
 
   // bias toward first store
   storeBias = 80;
 
   // dispatch reader threads
+  std::vector<ThreadGuard> threads;
   for (size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+    threads.emplace_back(std::make_unique<std::thread>(readWorker));
   }
   // dispatch writer threads
   uint64_t chunkSize = totalDocuments / writerCount;
   for (size_t i = 0; i < writerCount; i++) {
     uint64_t lower = (i * chunkSize) + 1;
     uint64_t upper = ((i + 1) * chunkSize);
-    threads.push_back(new std::thread(writeWorker, lower, upper));
+    threads.emplace_back(std::make_unique<std::thread>(writeWorker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   while (store1.cache()->isResizing() || store2.cache()->isResizing()) {
     std::this_thread::yield();
   }
-  threads.clear();
 
   // bias toward second store
   storeBias = 20;
 
   // dispatch reader threads
   for (size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+    threads.emplace_back(std::make_unique<std::thread>(readWorker));
   }
   // dispatch writer threads
   for (size_t i = 0; i < writerCount; i++) {
     uint64_t lower = (i * chunkSize) + 1;
     uint64_t upper = ((i + 1) * chunkSize);
-    threads.push_back(new std::thread(writeWorker, lower, upper));
+    threads.emplace_back(std::make_unique<std::thread>(writeWorker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   while (store1.cache()->isResizing() || store2.cache()->isResizing()) {
     std::this_thread::yield();
   }
   doneRebalancing = true;
-  rebalancerThread->join();
-  delete rebalancerThread;
+  rebalancerThread.join();
 
   RandomGenerator::shutdown();
 }
