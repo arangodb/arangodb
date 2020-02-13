@@ -270,7 +270,7 @@ auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlI
 }
 
 auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   auto skipped = size_t{0};
 
   while (true) {
@@ -279,13 +279,13 @@ auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall&
     if (pathLengthAvailable() == 0) {
       if (!fetchPath(input)) {
         TRI_ASSERT(!input.hasDataRow());
-        return {input.upstreamState(), skipped, AqlCall{}};
+        return {input.upstreamState(), NoStats{}, skipped, AqlCall{}};
       }
     } else {
       // if we end up here there is path available, but
       // we have skipped as much as we were asked to.
       TRI_ASSERT(call.getOffset() == 0);
-      return {ExecutorState::HASMORE, skipped, AqlCall{}};
+      return {ExecutorState::HASMORE, NoStats{}, skipped, AqlCall{}};
     }
   }
 }
