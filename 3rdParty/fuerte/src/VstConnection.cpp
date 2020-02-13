@@ -477,11 +477,7 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
   
   if (type != MessageType::Response) {
     FUERTE_LOG_ERROR << "received unsupported vst message ("
-    << static_cast<int>(type) << ") from server";
-    if (type != MessageType::Undefined) {
-      FUERTE_LOG_ERROR << VPackSlice(itemCursor).toJson();
-    }
-    FUERTE_LOG_ERROR << "\n";
+    << static_cast<int>(type) << ") from server\n";
     return nullptr;
   }
 
