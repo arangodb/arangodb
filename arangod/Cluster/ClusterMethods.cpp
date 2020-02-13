@@ -3074,9 +3074,9 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     return result;
   }
   
-  // no need to keep connections to shut-down servers
+  // no need to keep connections to shut-down servers, they auto close when unused
   if (pool) {
-    pool->shutdownConnections();
+    pool->drainConnections();
   }
   
   auto startTime = std::chrono::steady_clock::now();

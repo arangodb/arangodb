@@ -44,6 +44,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void start() override;
   void beginShutdown() override;
   void stop() override;
+  void unprepare() override;
 
   /// @brief global connection pool
   arangodb::network::ConnectionPool* pool() const;

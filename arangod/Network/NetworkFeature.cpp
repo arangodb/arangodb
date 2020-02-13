@@ -148,7 +148,7 @@ void NetworkFeature::prepare() {
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
-  _poolPtr.store(_pool.get(), std::memory_order_release);
+  _poolPtr.store(_pool.get(), std::memory_order_relaxed);
   
   _gcfunc = [this, ci](bool canceled) {
     if (canceled) {
@@ -188,7 +188,7 @@ void NetworkFeature::beginShutdown() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _poolPtr.store(nullptr, std::memory_order_release);
+  _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
     _pool->shutdownConnections();
   }
@@ -200,11 +200,19 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _pool->shutdownConnections();
+  if (_pool) {
+    _pool->shutdownConnections();
+  }
+}
+
+void NetworkFeature::unprepare() {
+  if (_pool) {
+    _pool->drainConnections();
+  }
 }
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {
-  return _poolPtr.load(std::memory_order_acquire);
+  return _poolPtr.load(std::memory_order_relaxed);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
