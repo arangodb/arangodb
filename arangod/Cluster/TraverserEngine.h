@@ -129,7 +129,7 @@ class BaseTraverserEngine : public BaseEngine {
 
   EngineType getType() const override { return TRAVERSER; }
   
-  bool produceVertices() const;
+  bool produceVertices() const override;
  
  protected:
   std::unique_ptr<traverser::TraverserOptions> _opts;
