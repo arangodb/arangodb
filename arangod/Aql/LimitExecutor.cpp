@@ -326,22 +326,31 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
   auto const& clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.getOffset() == 0);
 
-  if (!infos().isFullCountEnabled()) {
-    TRI_ASSERT(input.skippedInFlight() == 0);
+  auto stats = LimitStats{};
+
+
+  auto const upstreamCall = calculateUpstreamCall(clientCall);
+
+  // We may not yet skip more than our offset, fullCount must happen after all
+  // rows were produced only.
+  auto const skipped = input.skip(upstreamCall.getOffset());
+  _counter += skipped;
+  if (infos().isFullCountEnabled()) {
+    stats.incrFullCountBy(skipped);
   }
 
-  auto upstreamCall = calculateUpstreamCall(clientCall);
+  // We may not get data rows until our offset is reached
+  TRI_ASSERT(upstreamCall.getOffset() == skipped || !input.hasDataRow());
 
   auto numRowsWritten = size_t{0};
-  auto stats = LimitStats{};
-  while (upstreamCall.getLimit() > 0 && input.hasDataRow()) {
+  while (numRowsWritten < upstreamCall.getLimit() && input.hasDataRow() && !output.isFull()) {
     output.copyRow(input.nextDataRow().second);
     output.advanceRow();
     ++numRowsWritten;
   }
+  _counter += numRowsWritten;
   if (infos().isFullCountEnabled()) {
     stats.incrFullCountBy(numRowsWritten);
-    stats.incrFullCountBy(input.skipAll());
   }
 
   return {input.upstreamState(), stats, calculateUpstreamCall(clientCall)};
@@ -350,9 +359,9 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
 auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
 
-  auto const skipTotal = call.offset + infos().getOffset();
+  auto upstreamCall = calculateUpstreamCall(call);
 
-  if (ADB_UNLIKELY(inputRange.skippedInFlight() < skipTotal && inputRange.hasDataRow())) {
+  if (ADB_UNLIKELY(inputRange.skippedInFlight() < upstreamCall.getOffset() && inputRange.hasDataRow())) {
     static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
                   "For LIMIT with passthrough to work, there must no input "
                   "rows before the offset was skipped.");
@@ -362,12 +371,15 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
                                    "rows before offset was reached.");
   }
 
-  auto const skipped = inputRange.skip(skipTotal);
+  // We may not yet skip more than the combined offsets, fullCount must happen
+  // after all rows were produced only.
+  auto const skipped = inputRange.skip(upstreamCall.getOffset());
   call.didSkip(skipped);
-  auto const upstreamCall = calculateUpstreamCall(call);
+  _counter += skipped;
   auto stats = LimitStats{};
   if (infos().isFullCountEnabled()) {
     stats.incrFullCountBy(skipped);
   }
-  return {inputRange.upstreamState(), stats, skipped, upstreamCall};
+
+  return {inputRange.upstreamState(), stats, skipped, calculateUpstreamCall(call)};
 }

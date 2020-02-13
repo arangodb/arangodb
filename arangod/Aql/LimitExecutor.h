@@ -148,7 +148,8 @@ class LimitExecutor {
     auto const offset = infos().getOffset();
 
     // Restricted value of _counter in [0, offset]
-    auto const boundedCounter = std::max(offset, _counter);
+    auto const boundedCounter = std::min(offset, _counter);
+    TRI_ASSERT(boundedCounter <= offset);
 
     return offset - boundedCounter;
   }
@@ -159,6 +160,8 @@ class LimitExecutor {
 
     // Restricted value of _counter in [offset, limitPlusOffset]
     auto const boundedCounter = std::min(limitPlusOffset, std::max(offset, _counter));
+    TRI_ASSERT(offset <= boundedCounter);
+    TRI_ASSERT(boundedCounter <= limitPlusOffset);
     return limitPlusOffset - boundedCounter;
   }
 
