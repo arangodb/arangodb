@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 
 #include "Basics/FileUtils.h"
+#include "Basics/PageSize.h"
 #include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
@@ -167,7 +168,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     this->_filename = basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
 
     _mappedSize = sizeof(T) * capacity;
-    size_t pageSize = PageSizeFeature::getPageSize();
+    size_t pageSize = PageSize::getValue();
     TRI_ASSERT(pageSize >= 256);
     // use multiples of page-size
     _mappedSize = (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);

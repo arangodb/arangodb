@@ -27,6 +27,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/error.h"
+#include "Basics/voc-errors.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

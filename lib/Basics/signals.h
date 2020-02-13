@@ -17,27 +17,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LoggerBufferFeature.h"
-
-#include "Logger/LogBuffer.h"
-#include "Logger/LoggerFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-
-using namespace arangodb::basics;
-using namespace arangodb::options;
+#ifndef ARANGODB_BASICS_SIGNALS_H
+#define ARANGODB_BASICS_SIGNALS_H 1
 
 namespace arangodb {
+namespace signals {
 
-LoggerBufferFeature::LoggerBufferFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "LoggerBuffer") {
-  setOptional(true);
-  startsAfter<LoggerFeature>();
-}
+enum class SignalType {
+  term,
+  core,
+  cont,
+  ign,
+  logrotate,
+  stop,
+  user
+};
 
-void LoggerBufferFeature::prepare() { LogBuffer::initialize(); }
+/// @brief find out what impact a signal will have to the process we send it.
+#ifndef _WIN32
+SignalType signalType(int signal);
+#endif
 
+/// @brief whether or not the signal is deadly
+bool isDeadly(int signal);
+
+/// @brief return the name for a signal
+char const* name(int signal);
+
+void maskAllSignals();
+void unmaskAllSignals();
+  
+}  // namespace signals
 }  // namespace arangodb
+
+#endif

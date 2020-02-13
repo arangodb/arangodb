@@ -20,39 +20,45 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PageSizeFeature.h"
-
 #include "Basics/operating-system.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
+#include "Basics/PageSize.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
-using namespace arangodb::basics;
+using namespace arangodb;
 
-namespace arangodb {
+namespace {
 
-size_t PageSizeFeature::PageSize = 0;
-
-PageSizeFeature::PageSizeFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "PageSize") {
-  setOptional(false);
-  startsAfter<application_features::GreetingsFeaturePhase>();
+// Windows variant for getpagesize()
+#ifdef _WIN32
+int pageSizeImpl() {
+  SYSTEM_INFO systemInfo;
+  GetSystemInfo(&systemInfo);
+  return systemInfo.dwPageSize;
 }
-
-void PageSizeFeature::prepare() {
-  PageSize = static_cast<size_t>(getpagesize());
-  LOG_TOPIC("c6b86", TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
+#else
+int pageSizeImpl() {
+  return getpagesize();
 }
+#endif
 
-}  // namespace arangodb
+struct PageSizeCache {
+  PageSizeCache() : cachedValue(pageSizeImpl()) {}
+  int cachedValue;
+};
+
+PageSizeCache const cache;
+
+} // namespace
+
+/// @brief return page size from cache
+int arangodb::PageSize::getValue() {
+  return ::cache.cachedValue;
+}

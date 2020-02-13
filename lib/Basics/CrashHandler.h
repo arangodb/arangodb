@@ -20,27 +20,13 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_APPLICATION_FEATURES_PAGE_SIZE_FEATURE_H
-#define ARANGODB_APPLICATION_FEATURES_PAGE_SIZE_FEATURE_H 1
-
-#include <stddef.h>
-
-#include "ApplicationFeatures/ApplicationFeature.h"
+#ifndef ARANGODB_BASICS_CRASH_HANDLER_H
+#define ARANGODB_BASICS_CRASH_HANDLER_H 1
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
-
-class PageSizeFeature final : public application_features::ApplicationFeature {
+class CrashHandler {
  public:
-  explicit PageSizeFeature(application_features::ApplicationServer& server);
-
-  void prepare() override final;
-  static size_t getPageSize() { return PageSize; }
-
- private:
-  static size_t PageSize;
+  static void installCrashHandler();
 };
 
 }  // namespace arangodb

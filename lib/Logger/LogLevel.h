@@ -25,7 +25,7 @@
 #ifndef ARANGODB_LOGGER_LOG_LEVEL_H
 #define ARANGODB_LOGGER_LOG_LEVEL_H 1
 
-#include <ostream>
+#include <iosfwd>
 
 #include "Basics/operating-system.h"
 

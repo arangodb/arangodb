@@ -37,6 +37,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -726,15 +727,23 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 
 void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const* options,
                                     arangodb::velocypack::Builder& builder) const {
-  VPackArrayBuilder rowBuilder{&builder};
+  {
+    VPackArrayBuilder rowBuilder{&builder};
 
-  if (isShadowRow(row)) {
-    getShadowRowDepth(row).toVelocyPack(options, *rowBuilder, false);
-  } else {
-    AqlValue{AqlValueHintNull{}}.toVelocyPack(options, *rowBuilder, false);
-  }
-  for (RegisterId reg = 0; reg < getNrRegs(); ++reg) {
-    getValueReference(row, reg).toVelocyPack(options, *rowBuilder, false);
+    if (isShadowRow(row)) {
+      getShadowRowDepth(row).toVelocyPack(options, builder, false);
+    } else {
+      builder.add(VPackSlice::nullSlice());
+    }
+    RegisterId const n = getNrRegs();
+    for (RegisterId reg = 0; reg < n; ++reg) {
+      AqlValue const& ref = getValueReference(row, reg);
+      if (ref.isEmpty()) {
+        builder.add(VPackSlice::noneSlice());
+      } else {
+        ref.toVelocyPack(options, builder, false);
+      }
+    }
   }
 }
 
@@ -745,9 +754,10 @@ void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
   block->add("nrRegs", VPackValue(getNrRegs()));
   block->add(VPackValue("matrix"));
   {
-    VPackArrayBuilder matrixBuilder{block.builder};
-    for (size_t row = 0; row < size(); ++row) {
-      rowToSimpleVPack(row, options, *matrixBuilder.builder);
+    size_t const n = size();
+    VPackArrayBuilder matrixBuilder{&builder};
+    for (size_t row = 0; row < n; ++row) {
+      rowToSimpleVPack(row, options, builder);
     }
   }
 }

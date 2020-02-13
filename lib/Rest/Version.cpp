@@ -179,19 +179,19 @@ void Version::initialize() {
 
   Values["asan"] = "false";
 #if defined(__SANITIZE_ADDRESS__)
-#if defined(__has_feature)
-#if __has_feature(address_sanitizer))
   Values["asan"] = "true";
-#endif
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+  Values["asan"] = "true";
 #endif
 #endif
 
   Values["tsan"] = "false";
 #if defined(__SANITIZE_THREAD__)
-#if defined(__has_feature)
+  Values["tsan"] = "true";
+#elif defined(__has_feature)
 #if __has_feature(thread_sanitizer)
   Values["tsan"] = "true";
-#endif
 #endif
 #endif
 
@@ -425,24 +425,28 @@ std::string Version::getVerboseVersionString() {
   std::ostringstream version;
 
   version << "ArangoDB " << ARANGODB_VERSION_FULL << " "
-          << (sizeof(void*) == 4 ? "32" : "64") << "bit"
+          << (sizeof(void*) == 4 ? "32" : "64") << "bit";
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          << " maintainer mode"
+  version << " maintainer mode";
 #endif
-    /* TODO
-#if defined(__SANITIZE_ADDRESS__) || \
-    (defined(__has_feature) && __has_feature(address_sanitizer))
-          << " with ASAN"
+
+#if defined(__SANITIZE_ADDRESS__)
+  version << " with ASAN";
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+  version << " with ASAN";
 #endif
-    */
-          << ", using "
+#endif
+
+  version << ", using ";
 #ifdef ARANGODB_HAVE_JEMALLOC
-          << "jemalloc, "
+  version << "jemalloc, ";
 #endif
+
 #ifdef HAVE_ARANGODB_BUILD_REPOSITORY
-          << "build " << getBuildRepository() << ", "
+  version << "build " << getBuildRepository() << ", ";
 #endif
-          << "VPack " << getVPackVersion() << ", "
+  version << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
           << "V8 " << getV8Version() << ", " << getOpenSSLVersion(false);

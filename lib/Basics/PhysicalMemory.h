@@ -17,36 +17,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOG_BUFFER_H
-#define ARANGODB_LOGGER_LOG_BUFFER_H 1
+#ifndef ARANGODB_BASICS_PHYSICAL_MEMORY_H
+#define ARANGODB_BASICS_PHYSICAL_MEMORY_H 1
 
-#include <vector>
-
-#include "Basics/Common.h"
-
-#include "Basics/Mutex.h"
-#include "Logger/LogLevel.h"
+#include <cstdint>
 
 namespace arangodb {
+namespace PhysicalMemory {
 
-struct LogBuffer {
-  static size_t const RING_BUFFER_SIZE = 10240;
-  static Mutex _ringBufferLock;
-  static uint64_t _ringBufferId;
-  static LogBuffer _ringBuffer[];
+/// @brief return system's physical memory
+uint64_t getValue();
 
-  static std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel);
-  static void initialize();
-
-  uint64_t _id;
-  LogLevel _level;
-  time_t _timestamp;
-  char _message[256];
-  size_t _topicId;
-};
+} 
 }  // namespace arangodb
 
 #endif

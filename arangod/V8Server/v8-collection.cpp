@@ -66,7 +66,6 @@
 #include "VocBase/Methods/Collections.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/HexDump.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
