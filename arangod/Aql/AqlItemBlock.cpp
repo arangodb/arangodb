@@ -725,7 +725,7 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
   result.add("raw", raw.slice());
 }
 
-void AqlItemBlock::rowToSimpleVPack(size_t row, velocypack::Options const* options,
+void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const* options,
                                     arangodb::velocypack::Builder& builder) const {
   {
     VPackArrayBuilder rowBuilder{&builder};
