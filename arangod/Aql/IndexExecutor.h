@@ -234,7 +234,7 @@ class IndexExecutor {
       -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
-      -> std::tuple<ExecutorState, size_t, AqlCall>;
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  public:
   void initializeCursor();

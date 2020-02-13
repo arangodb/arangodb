@@ -53,7 +53,7 @@
 #include <utility>
 
 // Set this to true to activate devel logging
-#define LOG_DEVEL_INDEX_ENABLED true
+#define LOG_DEVEL_INDEX_ENABLED false
 #define LOG_DEVEL_IDX LOG_DEVEL_IF(LOG_DEVEL_INDEX_ENABLED)
 
 using namespace arangodb;
@@ -750,7 +750,7 @@ auto IndexExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIte
 }
 
 auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   // This code does not work correctly with multiple indexes, as it does not
   // check for duplicates. Currently, no plan is generated where that can
   // happen, because with multiple indexes, the FILTER is not removed and thus
@@ -817,5 +817,5 @@ auto IndexExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
 
 
   LOG_DEVEL_IDX << "IndexExecutor::skipRowsRange returning " << _state << " " << skipped << " " << upstreamCall;
-  return {_state, skipped, upstreamCall};
+  return {_state, stats, skipped, upstreamCall};
 }
