@@ -911,7 +911,6 @@ void Supervision::run() {
 
           bool maintenanceMode = false;
           if (_snapshot.has(supervisionMaintenance)) {
-            TRI_ASSERT(_snapshot.get(supervisionMaintenance).isString());
             try {
               auto const maintenanceExpires =
                 stringToTimepoint(_snapshot.get(supervisionMaintenance).getString());
