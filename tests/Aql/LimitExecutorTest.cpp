@@ -1302,6 +1302,7 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
     .setInputFromRowNum(numInputRows)
     .setInputSplitType(inputLengths)
     .setCall(clientCall)
+    .setLieAboutHasmore(doneResultIsEmpty)
     .expectOutput({0}, expectedOutput)
     .expectSkipped(expectedSkipped)
     .expectedState(ExecutionState::DONE)
