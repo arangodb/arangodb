@@ -123,6 +123,7 @@ struct ExecutorTestHelper {
       : _expectedSkip{0},
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
+        _unorderedOutput{false},
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
@@ -195,6 +196,11 @@ struct ExecutorTestHelper {
     return *this;
   };
 
+  auto allowAnyOutputOrder(bool expected) -> ExecutorTestHelper& {
+    _unorderedOutput = expected;
+    return *this;
+  }
+
   auto run(typename E::Infos infos) -> void {
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
@@ -216,7 +222,12 @@ struct ExecutorTestHelper {
         buildBlock<outputColumns>(itemBlockManager, std::move(_output));
     std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
                                          _outputRegisters.end());
-    asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
+    if (_unorderedOutput) {
+      asserthelper::ValidateBlocksAreEqualUnordered(result, expectedOutputBlock, outRegVector);
+    } else {
+      asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
+    }
+
     if (_testStats) {
       auto actualStats = _query.engine()->getStats();
       EXPECT_EQ(actualStats, _expectedStats);
@@ -283,6 +294,7 @@ struct ExecutorTestHelper {
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
   bool _testStats;
+  bool _unorderedOutput;
 
   SplitType _inputSplit = {std::monostate()};
   SplitType _outputSplit = {std::monostate()};

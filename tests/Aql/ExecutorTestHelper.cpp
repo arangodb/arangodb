@@ -36,7 +36,7 @@ auto asserthelper::RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualR
                                     std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
     -> bool {
   if (onlyCompareRegisters) {
-    if (actual->getNrRegs() >= onlyCompareRegisters->size()) {
+    if (actual->getNrRegs() < onlyCompareRegisters->size()) {
       // Registers do not match
       return false;
     }
@@ -104,7 +104,15 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
   EXPECT_EQ(actual->size(), expected->size());
-  EXPECT_EQ(actual->getNrRegs(), expected->getNrRegs());
+
+  RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  if (onlyCompareRegisters) {
+    outRegs = onlyCompareRegisters->size();
+    ASSERT_GE(actual->getNrRegs(), outRegs);
+  } else {
+    EXPECT_EQ(actual->getNrRegs(), expected->getNrRegs());
+  }
+
   for (size_t expectedRow = 0; expectedRow < expected->size(); ++expectedRow) {
     bool found = false;
     for (size_t actualRow = 0; actualRow < actual->size(); ++actualRow) {
