@@ -142,11 +142,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
       std::string eColName = col->getString();
 
-      if (!_options->includeEdgeCollection(eColName)) {
-        // excluded edge collection
-        continue;
-      }
-
       // now do some uniqueness checks for the specified collections
       auto [it, inserted] = seenCollections.try_emplace(eColName, dir);
       if (!inserted) {
@@ -225,11 +220,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     }
 
     for (const auto& n : eColls) {
-      if (!_options->includeEdgeCollection(n)) {
-        // excluded edge collection
-        continue;
-      }
-
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), n);
         if (!c->isSmart()) {
@@ -257,10 +247,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
     }
     _vertexColls.reserve(length);
     for (auto const& v : vColls) {
-      if (!_options->includeVertexCollection(v)) {
-        // excluded vertex collection
-        continue;
-      }
       _vertexColls.emplace_back(
           std::make_unique<aql::Collection>(v, _vocbase, AccessMode::Type::READ));
     }
@@ -522,12 +508,6 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
-
-#if 0
-  // TODO AR-15
-  nodes.add(VPackValue("restrictions"));
-  _options->toVelocyPackRestrictions(nodes);
-#endif
 }
 
 CostEstimate GraphNode::estimateCost() const {
@@ -609,8 +589,6 @@ void GraphNode::addEdgeCollection(std::string const& n, TRI_edge_direction_e dir
       return;
     }
   }
-
-  TRI_ASSERT(_options->includeEdgeCollection(n));
 
   if (dir == TRI_EDGE_ANY) {
     _directions.emplace_back(TRI_EDGE_OUT);

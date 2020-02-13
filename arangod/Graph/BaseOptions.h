@@ -112,34 +112,6 @@ struct BaseOptions {
 
   void setCollectionToShard(std::map<std::string, std::string>const&);
 
-  void setVertexCollectionRestrictions(std::vector<std::string> collections) { 
-    _vertexCollectionRestrictions = std::move(collections); 
-    _hasVertexRestrictions = true;
-  }
-
-  void setEdgeCollectionRestrictions(std::vector<std::string> collections) { 
-    _edgeCollectionRestrictions = std::move(collections); 
-    _hasEdgeRestrictions = true;
-  }
-  
-  bool includeVertexCollection(std::string const& collection) const {
-#if 0
-  // TODO AR-15
-    return !_hasVertexRestrictions ||
-           (std::find(_vertexCollectionRestrictions.begin(), _vertexCollectionRestrictions.end(), collection) != _vertexCollectionRestrictions.end());
-#endif
-    return true;
-  }
-
-  bool includeEdgeCollection(std::string const& collection) const {
-#if 0
-  // TODO AR-15
-    return !_hasEdgeRestrictions ||
-           (std::find(_edgeCollectionRestrictions.begin(), _edgeCollectionRestrictions.end(), collection) != _edgeCollectionRestrictions.end());
-#endif
-    return true;
-  }
-
   bool produceVertices() const { return _produceVertices; }
   
   void setProduceVertices(bool value) { _produceVertices = value; }
@@ -157,10 +129,6 @@ struct BaseOptions {
   /// in the given builder.
   virtual void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
   
-  /// @brief Creates a complete Object containing all collection restrictions
-  /// in the given builder
-  virtual void toVelocyPackRestrictions(arangodb::velocypack::Builder&) const;
-
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 
@@ -202,20 +170,6 @@ struct BaseOptions {
   /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
 
-  /// @brief optional vector of vertex collections the traversal is restricted to
-  /// only used if _hasVertexRestrictions is true
-  std::vector<std::string> _vertexCollectionRestrictions;
-  
-  /// @brief optional vector of edge collections the traversal is restricted to
-  /// only used if _hasEdgeRestrictions is true
-  std::vector<std::string> _edgeCollectionRestrictions;
-
-  /// @brief whether or not _vertexCollectionRestrictions is valid 
-  bool _hasVertexRestrictions;
-  
-  /// @brief whether or not _edgeCollectionRestrictions is valid 
-  bool _hasEdgeRestrictions;
-  
   /// @brief whether or not the traversal will produce vertices
   bool _produceVertices;
  

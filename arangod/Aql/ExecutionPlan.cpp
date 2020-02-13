@@ -96,29 +96,6 @@ struct NodeCounter final : public WalkerWorker<ExecutionNode> {
 };
 #endif
 
-#if 0
-// TODO AR-15
-void parseGraphCollectionRestriction(std::vector<std::string>& collections, AstNode const* src) {
-  if (src->isStringValue()) {
-    collections.emplace_back(src->getString());
-  } else if (src->type == NODE_TYPE_ARRAY) {
-    size_t const n = src->numMembers();
-    collections.reserve(n);
-    for (size_t i = 0; i < n; ++i) {
-      AstNode const* c = src->getMemberUnchecked(i);
-      if (!c->isStringValue()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-            "collection restrictions option must be either a string or an array of collection names");
-      }
-      collections.emplace_back(c->getString());
-    }
-  } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-        "collection restrictions option must be either a string or an array of collection names");
-  }
-}
-#endif
-
 uint64_t checkTraversalDepthValue(AstNode const* node) {
   if (!node->isNumericValue()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
@@ -203,17 +180,6 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                 "due to unpredictable results. Use 'path' "
                 "or 'none' instead");
           }
-#if 0 
-        // TODO AR-15
-        } else if (name == "edgeCollections") {
-          std::vector<std::string> collections;
-          ::parseGraphCollectionRestriction(collections, value);
-          options->setEdgeCollectionRestrictions(std::move(collections));
-        } else if (name == "vertexCollections") {
-          std::vector<std::string> collections;
-          ::parseGraphCollectionRestriction(collections, value);
-          options->setVertexCollectionRestrictions(std::move(collections));
-#endif
         }
       }
     }

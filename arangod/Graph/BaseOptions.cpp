@@ -170,8 +170,6 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query)
     : _query(query),
       _ctx(_query),
       _trx(_query->trx()),
-      _hasVertexRestrictions(false),
-      _hasEdgeRestrictions(false),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _tmpVar(nullptr) {}
@@ -180,10 +178,6 @@ BaseOptions::BaseOptions(BaseOptions const& other)
     : _query(other._query),
       _ctx(_query),
       _trx(other._trx),
-      _vertexCollectionRestrictions(other._vertexCollectionRestrictions),
-      _edgeCollectionRestrictions(other._edgeCollectionRestrictions),
-      _hasVertexRestrictions(other._hasVertexRestrictions),
-      _hasEdgeRestrictions(other._hasEdgeRestrictions),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _tmpVar(nullptr) {
@@ -219,27 +213,6 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlic
     itCollections.next();
   }
 
-#if 0
-  // TODO AR-15
-  read = info.get("restrictions");
-  if (read.isObject()) {
-    VPackSlice c = read.get("vertexCollections");
-    if (c.isArray()) {
-      _hasVertexRestrictions = true;
-      for (auto it : VPackArrayIterator(c)) {
-        _vertexCollectionRestrictions.emplace_back(it.copyString());
-      }
-    }
-    c = read.get("edgeCollections");
-    if (c.isArray()) {
-      _hasEdgeRestrictions = true;
-      for (auto it : VPackArrayIterator(c)) {
-        _edgeCollectionRestrictions.emplace_back(it.copyString());
-      }
-    }
-  }
-#endif
-
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
   if (read.isBool() && !read.getBool()) {
@@ -248,32 +221,6 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlic
 }
 
 BaseOptions::~BaseOptions() = default;
-
-void BaseOptions::toVelocyPackRestrictions(VPackBuilder& builder) const {
-  TRI_ASSERT(false);
-#if 0
-  // TODO AR-15
-  builder.openObject();
- 
-  if (_hasVertexRestrictions) {
-    builder.add("vertexCollections", VPackValue(VPackValueType::Array));
-    for (auto const& it : _vertexCollectionRestrictions) {
-      builder.add(VPackValue(it));
-    }
-    builder.close(); 
-  }
-  
-  if (_hasEdgeRestrictions) {
-    builder.add("edgeCollections", VPackValue(VPackValueType::Array));
-    for (auto const& it : _edgeCollectionRestrictions) {
-      builder.add(VPackValue(it));
-    }
-    builder.close(); 
-  }
-
-  builder.close();
-#endif
-}
 
 void BaseOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.openObject();
