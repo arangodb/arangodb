@@ -302,7 +302,7 @@ Result LogicalCollection::updateValidators(VPackSlice validatorArray) {
   std::atomic_store_explicit(&_validators, newVec, std::memory_order_relaxed);
 
   return { TRI_ERROR_NO_ERROR };
-};
+}
 
 LogicalCollection::~LogicalCollection() = default;
 

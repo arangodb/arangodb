@@ -29,10 +29,6 @@
 
 var jsunity = require("jsunity");
 
-//var testHelper = require("@arangodb/test-helper");
-
-//var ArangoCollection = arangodb.ArangoCollection;
-
 const internal = require("internal");
 const db = internal.db;
 const print = internal.print;
@@ -234,9 +230,88 @@ function ValidationBasicsSuite () {
       assertEqual(testCollection.toArray().length, 1);
     },
 
+    // levels ////////////////////////////////////////////////////////////////////////////////////////////
+    testLevelNone : () => {
+      const v =  validatorsFalseOnly;
+      const v0 =  v[0];
+      v0.level = "none";
+      testCollection.properties({"validators" : v });
+      assertEqual(testCollection.properties().validators[0].level, v0.level);
+
+      let  doc = testCollection.insert({"foo" : "bar"});
+    },
+
+    testLevelNew : () => {
+      const v =  validatorsFalseOnly;
+      const v0 =  v[0];
+      v0.level = "new";
+      testCollection.properties({"validators" : v });
+      assertEqual(testCollection.properties().validators[0].level, v0.level);
+
+      let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      try {
+        testCollection.insert({"foo" : "bar"});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+      testCollection.replace(doc._key, {"foo" : "baz"});
+      testCollection.update(doc._key, {"foo" : "poo"});
+    },
+
+    testLevelModerate : () => {
+      const v =  validatorsFalseOnly;
+      const v0 =  v[0];
+      v0.level = "moderate";
+      testCollection.properties({"validators" : v });
+      assertEqual(testCollection.properties().validators[0].level, v0.level);
+
+      let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      try {
+        testCollection.insert({"foo" : "bar"});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+      testCollection.replace(doc._key, {"foo" : "baz"});
+      testCollection.update(doc._key, {"foo" : "poo"});
+    },
+
+    testLevelStict : () => {
+      const v =  validatorsFalseOnly;
+      const v0 =  v[0];
+      v0.level = "strict";
+      testCollection.properties({"validators" : v });
+      assertEqual(testCollection.properties().validators[0].level, v0.level);
+
+      let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+
+      try {
+        testCollection.insert({"foo" : "bar"});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+      try {
+        testCollection.replace(doc._key, {"foo" : "baz"});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+      try {
+        testCollection.update(doc._key, {"foo" : "poo"});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+
+    },
 ////////////////////////////////////////////////////////////////////////////////
   }; // return
-} // END - ValidationBasicsSuitr
+} // END - ValidationBasicsSuite
 
 jsunity.run(ValidationBasicsSuite);
 
