@@ -300,7 +300,6 @@ template <SocketType ST>
 void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
                                            std::shared_ptr<RequestItem> item,
                                            std::size_t nwrite) {
-  FUERTE_ASSERT(_writing.load());
   // auto pendingAsyncCalls = --_connection->_async_calls;
   if (ec) {
     // Send failed
@@ -323,6 +322,7 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     this->restartConnection(err);
     return;
   }
+  FUERTE_ASSERT(_writing.load());
   // Send succeeded
   FUERTE_LOG_VSTTRACE << "asyncWriteCallback: send succeeded, " << nwrite
                       << " bytes send\n";
@@ -357,7 +357,6 @@ void VstConnection<ST>::startReading() {
 // asyncReadCallback is called when asyncReadSome is resulting in some data.
 template <SocketType ST>
 void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
-  FUERTE_ASSERT(_reading.load());
   if (ec) {
     FUERTE_LOG_VSTTRACE
         << "asyncReadCallback: Error while reading from socket: "
@@ -366,6 +365,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     this->restartConnection(translateError(ec, Error::ReadError));
     return;
   }
+  FUERTE_ASSERT(_reading.load());
 
   // Inspect the data we've received so far.
   auto recvBuffs = this->_receiveBuffer.data();  // no copy
