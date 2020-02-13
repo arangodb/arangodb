@@ -107,7 +107,8 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
 
 using Sender =
     std::function<FutureRes(DestinationId const&, arangodb::fuerte::RestVerb, std::string const&,
-                            velocypack::Buffer<uint8_t>, Timeout, Headers)>;
+                            velocypack::Buffer<uint8_t>, RequestOptions const& options,
+                            Headers)>;
 
 }  // namespace network
 }  // namespace arangodb

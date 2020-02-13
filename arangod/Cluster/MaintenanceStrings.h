@@ -33,7 +33,6 @@ constexpr char const* COLLECTION = "collection";
 constexpr char const* CREATE_COLLECTION = "CreateCollection";
 constexpr char const* CREATE_DATABASE = "CreateDatabase";
 constexpr char const* DATABASE = "database";
-constexpr char const* DB = "/_db/";
 constexpr char const* DO_COMPACT = "doCompact";
 constexpr char const* DROP_COLLECTION = "DropCollection";
 constexpr char const* DROP_DATABASE = "DropDatabase";

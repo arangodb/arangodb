@@ -60,6 +60,9 @@ template <SocketType ST>
 void VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                     RequestCallback cb) {
   FUERTE_ASSERT(req != nullptr);
+  if (req->header.path.find("/_db/") != std::string::npos) {
+    FUERTE_LOG_ERROR << "path: " << req->header.path << " \n";
+  }
   FUERTE_ASSERT(req->header.path.find("/_db/") == std::string::npos);
   FUERTE_ASSERT(req->header.path.find('?') == std::string::npos);
   
