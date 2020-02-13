@@ -1,6 +1,10 @@
 devel
 -----
 
+* Remove storage engine selection from package installers. The default storage
+  engine for new installations is now RocksDB. The MMFiles storage engine cannot
+  be selected for new installations.
+
 * Remove misleading error messages about upgrade commands to carry out in
   case of a database upgrade. These commands are highly platform-dependent and
   also depend on whether ArangoDB is started manually, via the ArangoDB starter
