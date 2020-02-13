@@ -165,6 +165,8 @@ class LimitExecutor {
     return limitPlusOffset - boundedCounter;
   }
 
+  auto limitFulfilled() const -> bool;
+
   enum class LimitState {
     // state is SKIPPING until the offset is reached
     SKIPPING,

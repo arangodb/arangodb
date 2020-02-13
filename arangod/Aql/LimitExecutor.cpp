@@ -293,6 +293,10 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows
   return std::make_tuple(state, LimitStats{}, reportSkipped);
 }
 
+bool LimitExecutor::limitFulfilled() const {
+  return remainingOffset() + remainingLimit() == 0;
+}
+
 auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> AqlCall {
   auto upstreamCall = AqlCall{};
 
@@ -359,7 +363,11 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
     stats.incrFullCountBy(numRowsWritten);
   }
 
-  return {input.upstreamState(), stats, calculateUpstreamCall(clientCall)};
+  auto const state = limitFulfilled() && !infos().isFullCountEnabled()
+                         ? ExecutorState::DONE
+                         : input.upstreamState();
+
+  return {state, stats, calculateUpstreamCall(clientCall)};
 }
 
 auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
@@ -387,5 +395,9 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     stats.incrFullCountBy(skipped);
   }
 
-  return {inputRange.upstreamState(), stats, skipped, calculateUpstreamCall(call)};
+  auto const state = limitFulfilled() && !infos().isFullCountEnabled()
+                     ? ExecutorState::DONE
+                     : inputRange.upstreamState();
+
+  return {state, stats, skipped, calculateUpstreamCall(call)};
 }
