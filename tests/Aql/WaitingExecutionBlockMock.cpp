@@ -64,7 +64,7 @@ std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shut
 }
 
 std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::getSome(size_t atMost) {
-  if (!_hasWaited) {
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     _hasWaited = true;
     if (_returnedDone) {
       return {ExecutionState::DONE, nullptr};
@@ -91,7 +91,7 @@ std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecution
 
 std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
-  if (!_hasWaited) {
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     _hasWaited = true;
     return traceSkipSomeEnd(ExecutionState::WAITING, 0);
   }
