@@ -67,6 +67,8 @@ function ValidationBasicsSuite () {
 
   const testCollectionName = "TestValidationCollection";
   var testCollection;
+  var validatorsTrueOnly;
+  var validatorsFalseOnly;
 
   return {
 
@@ -75,6 +77,18 @@ function ValidationBasicsSuite () {
         db._drop(testCollectionName);
       } catch (ex) {}
       testCollection = db._create(testCollectionName, { "validators" :  validatorsStart });
+      validatorsTrueOnly = [ {
+        type : "bool",
+        level : "new",
+        rule : true,
+        message : "First rule of the tautology club is the first rule of the tautology club.",
+      } ];
+      validatorsFalseOnly = [ {
+        type : "bool",
+        level : "moderate",
+        rule : false,
+        message : "Oh no what a nightmare!",
+      } ];
     },
 
     tearDown : () => {
@@ -96,6 +110,29 @@ function ValidationBasicsSuite () {
 
       assertEqual(props.validators[2].type, v[2].type);
       assertEqual(props.validators[2].level, v[2].level);
+    },
+
+    testPropertiesUpdate : () => {
+      const v =  validatorsTrueOnly;
+      testCollection.properties({"validators" : v});
+
+      var props = testCollection.properties();
+      assertTrue(props !== undefined);
+      assertEqual(props.validators.length, 1);
+      assertEqual(props.validators[0].type, "bool");
+      assertEqual(props.validators[0].rule, true);
+      assertEqual(props.validators[0].message, v[0].message);
+      assertEqual(props.validators[0].level, v[0].level);
+    },
+
+    testPropertiesUpdateNoArray : () => {
+      v =  validatorsTrueOnly[0];
+      try {
+        testCollection.properties({"validators" : v});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_BAD_PARAMETER.code, err.errorNum);
+      }
     },
 
     // insert ////////////////////////////////////////////////////////////////////////////////////////////
@@ -139,6 +176,63 @@ function ValidationBasicsSuite () {
       }
     },
 
+    // update ////////////////////////////////////////////////////////////////////////////////////////////
+    testDocumentsShellUpdateSkip : () => {
+      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      assertEqual(testCollection.toArray().length, 1);
+
+      testCollection.update(doc._key, {"foo" : "baz"}, skipOptions);
+      assertEqual(testCollection.toArray().length, 1);
+    },
+
+    testAQLUpdate : () => {
+      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      assertEqual(testCollection.toArray().length, 1);
+
+      try {
+        db._query(`UPDATE "${doc._key}" WITH {"foo" : "baz"} INTO ${testCollectionName}`);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testAQLUpdateSkip : () => {
+      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      assertEqual(testCollection.toArray().length, 1);
+
+      db._query(`UPDATE "${doc._key}" WITH {"foo" : "baz"} INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
+      assertEqual(testCollection.toArray().length, 1);
+    },
+
+    // replace ///////////////////////////////////////////////////////////////////////////////////////////
+    testDocumentsShellReplaceSkip : () => {
+      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      assertEqual(testCollection.toArray().length, 1);
+
+      testCollection.replace(doc._key, {"foo" : "baz"}, skipOptions);
+      assertEqual(testCollection.toArray().length, 1);
+    },
+
+    testAQLReplace : () => {
+      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      assertEqual(testCollection.toArray().length, 1);
+
+      try {
+        db._query(`REPLACE "${doc._key}" WITH {"foo" : "baz"} INTO ${testCollectionName}`);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testAQLReplaceSkip : () => {
+      let doc = testCollection.insert({"foo" : "bar"}, skipOptions);
+      assertEqual(testCollection.toArray().length, 1);
+
+      db._query(`REPLACE "${doc._key}" WITH {"foo" : "baz"} INTO ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
+      assertEqual(testCollection.toArray().length, 1);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
   }; // return
