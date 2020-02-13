@@ -430,7 +430,8 @@ class ShortestPathExecutorTest
 
     // If an offset is requested, skip
     if (ourCall.getOffset() > 0) {
-      std::tie(state, skippedInitial, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, std::ignore, skippedInitial, std::ignore) =
+          testee.skipRowsRange(input, ourCall);
     }
 
     // Produce rows
@@ -453,7 +454,8 @@ class ShortestPathExecutorTest
       // Emulate being called with a full count
       ourCall.hardLimit = 0;
       ourCall.softLimit = 0;
-      std::tie(state, skippedFullCount, std::ignore) = testee.skipRowsRange(input, ourCall);
+      std::tie(state, std::ignore, skippedFullCount, std::ignore) =
+          testee.skipRowsRange(input, ourCall);
     }
 
     ValidateCalledWith();
