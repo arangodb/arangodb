@@ -1270,9 +1270,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // We do not return anything in WAITING state, also NOT skipped.
             return {_upstreamState, 0, nullptr};
           }
-          if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
+          if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
             // We have a new range, passthrough can use this range.
             _hasUsedDataRangeBlock = false;
+          }
+          if constexpr (skipRowsType<Executor>() == SkipRowsRangeVariant::FETCHER) {
             _skipped += skippedLocal;
             // We skipped through passthrough, so count that a skip was solved.
             clientCall.didSkip(skippedLocal);
