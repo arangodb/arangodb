@@ -64,7 +64,7 @@ class EnumerateListExecutorTest : public ::testing::Test {
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
 };
 
-TEST_F(EnumerateListExecutorTest, test_produce_inner_outer_edge_state) {
+TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
   // old styled test, to test the inner step-states of our executor
 
   // This fetcher will not be called!
@@ -91,20 +91,44 @@ TEST_F(EnumerateListExecutorTest, test_produce_inner_outer_edge_state) {
   output.setCall(std::move(myCall));
   EXPECT_EQ(output.numRowsWritten(), 0);
   {
+    // reach the end (edge) of our first row, check that we do not return DONE here!
     auto const [state, stats, call] = testee.produceRows(input, output);
-
-    // reach the end (edge) of our first row, we do not return DONE here!
     EXPECT_EQ(state, ExecutorState::HASMORE);
     EXPECT_EQ(output.numRowsWritten(), 3);
   }
+}
 
-  // reach the end (edge) of our second row, now DONE must be returned!
+TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
+  // old styled test, to test the inner step-states of our executor
+
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
+  EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, {0, 1, 2, 3});
+  EnumerateListExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
+                                       {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  // receive 6 of 6 results in total
+  AqlCall myCall{0, AqlCall::Infinity{}, 6, false};
+
+  output.setCall(std::move(myCall));
+  EXPECT_EQ(output.numRowsWritten(), 0);
   {
+    // reach the end (edge) of our second row, check that we do not return DONE here!
     auto const [state, stats, call] = testee.produceRows(input, output);
-    // we will not produce more (hardLimit is 3), but output stays the same (3)
-    EXPECT_EQ(output.numRowsWritten(), 3);
-    // we could in theory produce more
-    EXPECT_EQ(state, ExecutorState::HASMORE);
+    EXPECT_EQ(state, ExecutorState::DONE);
+    EXPECT_EQ(output.numRowsWritten(), 6);
   }
 }
 
