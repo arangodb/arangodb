@@ -224,8 +224,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
 
   // execute a skipRowsRange call
-  std::tuple<ExecutorState, size_t, AqlCall> executeSkipRowsRange(AqlItemBlockInputRange& input,
-                                                                  AqlCall& call);
+  std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> executeSkipRowsRange(
+      AqlItemBlockInputRange& input, AqlCall& call);
 
   /**
    * @brief Inner getSome() part, without the tracing calls.
