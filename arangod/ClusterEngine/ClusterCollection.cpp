@@ -189,6 +189,10 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     merge.add("cacheEnabled",
               VPackValue(Helper::getBooleanValue(slice, "cacheEnabled", def)));
 
+    auto validators = slice.get(StaticStrings::Validators);
+    if(!validators.isNone()) {
+      merge.add(StaticStrings::Validators, validators);
+    }
   } else if (_engineType != ClusterEngineType::MockEngine) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
@@ -409,7 +413,7 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Me
 Result ClusterCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
-  
+
 /// @brief compact-data operation
 Result ClusterCollection::compact() {
   return {};

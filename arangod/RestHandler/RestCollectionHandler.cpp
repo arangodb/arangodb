@@ -556,10 +556,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         }));
       
   } else if (sub == "properties") {
-
     std::vector<std::string> keep = {StaticStrings::DoCompact,
                                      StaticStrings::JournalSize,
                                      StaticStrings::WaitForSyncString,
+                                     StaticStrings::Validators,
                                      StaticStrings::IndexBuckets,
                                      StaticStrings::ReplicationFactor,
                                      StaticStrings::MinReplicationFactor,  // deprecated
