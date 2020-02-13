@@ -296,15 +296,17 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows
 auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> AqlCall {
   auto upstreamCall = AqlCall{};
 
+
   // Offsets can simply be added.
-  upstreamCall.offset = clientCall.offset + remainingOffset();
+  upstreamCall.offset = clientCall.getOffset() + remainingOffset();
 
   // To get the limit for upstream, we must subtract the downstream offset from
   // our limit, and take the minimum of this and the downstream limit.
   auto const localLimitMinusDownstreamOffset =
-      remainingLimit() - std::min(remainingLimit(), upstreamCall.offset);
+      remainingLimit() - std::min(remainingLimit(), clientCall.getOffset());
   auto const limit =
       std::min<AqlCall::Limit>(clientCall.getLimit(), localLimitMinusDownstreamOffset);
+
 
   // Generally, we create a hard limit. However, if we get a soft limit from
   // downstream that is lower than our hard limit, we use that instead.
