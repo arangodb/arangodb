@@ -385,7 +385,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher) {
       EXPECT_EQ(skipped, 0);
     }
 
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Validate that additional upstream-rows are gone.
@@ -422,7 +422,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_at_end) {
     } else {
       EXPECT_EQ(skipped, 0);
     }
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Validate that additional upstream-rows are gone.
@@ -459,7 +459,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
     } else {
       EXPECT_EQ(skipped, 0);
     }
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Validate that next call will give remaining rows
@@ -470,7 +470,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped, 0);
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
 }
 
@@ -500,7 +500,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     } else {
       EXPECT_EQ(skipped, 0);
     }
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Second call will only find a single ShadowRow
@@ -512,7 +512,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped, 0);
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Third call will only find a single ShadowRow
@@ -524,7 +524,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped, 0);
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Validate that additional upstream-rows are gone.

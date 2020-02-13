@@ -44,9 +44,38 @@
 namespace arangodb {
 namespace tests {
 namespace aql {
+/**
+ * @brief Static helper class just offers helper methods
+ * Do never instantiate
+ *
+ */
+class asserthelper {
+ private:
+  asserthelper() {}
 
-auto ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected)
-    -> void;
+ public:
+  static auto AqlValuesAreIdentical(AqlValue const& lhs, AqlValue const& rhs) -> bool;
+
+  static auto RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualRow,
+                               SharedAqlItemBlockPtr expected, size_t expectedRow,
+                               std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> bool;
+
+  static auto ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
+                                        size_t actualRow, RegisterId actualRegister,
+                                        SharedAqlItemBlockPtr expected, size_t expectedRow,
+                                        RegisterId expectedRegister) -> void;
+
+  static auto ValidateBlocksAreEqual(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
+
+  static auto ValidateBlocksAreEqualUnordered(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
+};
 
 /**
  * @brief Base class for ExecutorTests in Aql.
@@ -135,7 +164,7 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto expectOutput(std::array<std::size_t, outputColumns> const& regs,
+  auto expectOutput(std::array<RegisterId, outputColumns> const& regs,
                     MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
     _outputRegisters = regs;
     _output = out;
@@ -185,7 +214,9 @@ struct ExecutorTestHelper {
 
     SharedAqlItemBlockPtr expectedOutputBlock =
         buildBlock<outputColumns>(itemBlockManager, std::move(_output));
-    testOutputBlock(result, expectedOutputBlock);
+    std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
+                                         _outputRegisters.end());
+    asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
     if (_testStats) {
       auto actualStats = _query.engine()->getStats();
       EXPECT_EQ(actualStats, _expectedStats);
@@ -193,23 +224,6 @@ struct ExecutorTestHelper {
   };
 
  private:
-  void testOutputBlock(SharedAqlItemBlockPtr const& outputBlock,
-                       SharedAqlItemBlockPtr const& expectedOutputBlock) {
-    velocypack::Options vpackOptions;
-
-    EXPECT_EQ(outputBlock->size(), expectedOutputBlock->size());
-    for (size_t i = 0; i < outputBlock->size(); i++) {
-      for (size_t j = 0; j < outputColumns; j++) {
-        AqlValue const& x = outputBlock->getValueReference(i, _outputRegisters[j]);
-        AqlValue const& y = expectedOutputBlock->getValueReference(i, j);
-
-        EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
-            << "Row " << i << " Column " << j << " (Reg " << _outputRegisters[j]
-            << ") do not agree";
-      }
-    }
-  }
-
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)
       -> std::unique_ptr<ExecutionBlock> {
     using VectorSizeT = std::vector<std::size_t>;
@@ -264,7 +278,7 @@ struct ExecutorTestHelper {
   AqlCall _call;
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
-  std::array<std::size_t, outputColumns> _outputRegisters;
+  std::array<RegisterId, outputColumns> _outputRegisters;
   size_t _expectedSkip;
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
