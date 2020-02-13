@@ -38,13 +38,15 @@ using namespace arangodb::tests::aql;
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
                                                      std::deque<SharedAqlItemBlockPtr>&& data,
-                                                     WaitingBehaviour variant)
+                                                     WaitingBehaviour variant,
+                                                     bool lieAboutHasmore)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
       _hasWaited(false),
-      _variant{variant} {}
+      _variant{variant},
+      _lieAboutHasmore{lieAboutHasmore} {}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
@@ -189,10 +191,14 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
           dropBlock();
         }
       }
-      if (_data.empty()) {
-        return {ExecutionState::DONE, skipped, result};
-      } else {
+      if (!_data.empty()) {
         return {ExecutionState::HASMORE, skipped, result};
+      } else if (_lieAboutHasmore) {
+        // Return HASMORE once after returning all data
+        _lieAboutHasmore = false;
+        return {ExecutionState::HASMORE, skipped, result};
+      } else {
+        return {ExecutionState::DONE, skipped, result};
       }
     }
   }
