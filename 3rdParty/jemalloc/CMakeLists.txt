@@ -56,8 +56,8 @@ if (LINUX OR DARWIN)
       1
     INSTALL_COMMAND
       $(MAKE) install_include
-             && mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/lib
-             && cp -a ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
+           && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+           && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
     STEP_TARGETS
       ${JEMALLOC_LIB} jemalloc
   )
