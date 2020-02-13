@@ -1,9 +1,22 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Disable "collect-in-cluster" AQL optimizer rule in case a LIMIT node is between
+  the COLLECT and the source data. In this case it is not safe to apply the
+  distributed collect, as it may alter the results.
+
+* Fixed issue DEVSUP-554: COLLECT WITH COUNT together with FILTER yields zero.
+
+  This bugfix fixes an issue when skipping over documents in an index scan 
+  using a covering index and also at the same time using an early-pruning filter.
+
+  In this case wrong document data may have been injected into the filter 
+  condition for filtering, with the filter wrongfully deciding which documents
+  to filter out.
+
 * Fixed issue #11051: AQL query wrongfully returning no results on 3.6.1.
 
-  This change prevents the "late-document-materialization" optimizer rule from
+  This bugfix prevents the "late-document-materialization" optimizer rule from
   kicking in in cases when an index scan also uses early pruning of index
   entries. In this case, the late document materialization will lead to the
   filter condition used in early pruning not being applied correctly, potentially

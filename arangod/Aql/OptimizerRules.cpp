@@ -4043,7 +4043,9 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
     auto current = node->getFirstDependency();
 
     while (current != nullptr) {
-      bool eligible = true;
+      if (current->getType() == EN::LIMIT) {
+        break;
+      }
 
       // check if any of the nodes we pass use a variable that will not be
       // available after we insert a new COLLECT on top of it (note: COLLECT
@@ -4053,6 +4055,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
         current->getVariablesUsedHere(allUsed);
       }
 
+      bool eligible = true;
       for (auto const& it : current->getVariablesSetHere()) {
         if (std::find(used.begin(), used.end(), it) != used.end()) {
           eligible = false;
