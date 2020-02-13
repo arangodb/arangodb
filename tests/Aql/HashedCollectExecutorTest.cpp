@@ -68,7 +68,8 @@ class HashedCollectExecutorTest
   }
 
   auto buildInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters)
+                  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
+                  RegisterId collectRegister = RegisterPlan::MaxRegisterId)
       -> HashedCollectExecutorInfos {
     std::unordered_set<RegisterId> registersToClear{};
     std::unordered_set<RegisterId> registersToKeep{};
@@ -85,10 +86,15 @@ class HashedCollectExecutorTest
       writeableOutputRegisters.emplace(out);
     }
 
-    RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+    // It seems that count <=> collectRegister exists
+    bool count = false;
+    if (collectRegister != RegisterPlan::MaxRegisterId) {
+      writeableOutputRegisters.emplace(collectRegister);
+      count = true;
+    }
+
     std::vector<std::string> aggregateTypes{};
     std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{};
-    bool count = false;
 
     return HashedCollectExecutorInfos{nrInputRegisters,
                                       nrOutputRegisters,
@@ -115,10 +121,7 @@ INSTANTIATE_TEST_CASE_P(HashedCollect, HashedCollectExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
                                           splitStep<1>, splitStep<2>));
 
-// Note: For all of the following tests the output ordering is not guaranteed.
-// It might be deterministic, what we hope for now.
-// But we might want to add a SORT after HashedCollect to ensure correct ordering
-
+// Collect with only one group value
 TEST_P(HashedCollectExecutorTest, collect_only) {
   auto infos = buildInfos(1, 2, {{1, 0}});
   AqlCall call{};          // unlimited produce
@@ -128,6 +131,142 @@ TEST_P(HashedCollectExecutorTest, collect_only) {
       .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({1}, {{1}, {2}, {6}, {R"("1")"}})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// TODO add tests for combination of offset, limit and fullCount
+
+// Collect with more then one group value
+TEST_P(HashedCollectExecutorTest, collect_only_multiple_values) {
+  auto infos = buildInfos(2, 4, {{2, 0}, {3, 1}});
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor, 2, 2>(*fakedQuery)
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 5}, RowBuilder<2>{1, 1},
+                                      RowBuilder<2>{2, 2}, RowBuilder<2>{1, 5},
+                                      RowBuilder<2>{6, 1}, RowBuilder<2>{2, 2},
+                                      RowBuilder<2>{R"("1")", 1}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({2, 3}, MatrixBuilder<2>{RowBuilder<2>{1, 5}, RowBuilder<2>{1, 1},
+                                             RowBuilder<2>{2, 2}, RowBuilder<2>{6, 1},
+                                             RowBuilder<2>{R"("1")", 1}})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect with one group value and count
+TEST_P(HashedCollectExecutorTest, count) {
+  auto infos = buildInfos(1, 3, {{1, 0}}, 2);
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor, 1, 2>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1, 2}, {{1, 3}, {2, 2}, {6, 1}, {R"("1")", 1}})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+struct AggregateInput {
+  std::string name;
+  RegisterId inReg;
+  RegisterId outReg;
+  MatrixBuilder<2> expectedOutput;
+};
+
+using HashedCollectAggregateInputParam = std::tuple<HashedCollectSplitType, AggregateInput>;
+
+class HashedCollectExecutorTestAggregate
+    : public AqlExecutorTestCase<false>,
+      public ::testing::TestWithParam<HashedCollectAggregateInputParam> {
+ protected:
+  auto getSplit() -> HashedCollectSplitType {
+    auto [split, unused] = GetParam();
+    return split;
+  }
+
+  auto getAggregator() -> AggregateInput {
+    auto [unused, info] = GetParam();
+    return info;
+  }
+
+  auto buildInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+                  std::vector<std::pair<RegisterId, RegisterId>> groupRegisters)
+      -> HashedCollectExecutorInfos {
+    std::unordered_set<RegisterId> registersToClear{};
+    std::unordered_set<RegisterId> registersToKeep{};
+    std::unordered_set<RegisterId> readableInputRegisters{};
+    std::unordered_set<RegisterId> writeableOutputRegisters{};
+
+    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
+      // All registers need to be invalidated!
+      registersToClear.emplace(i);
+    }
+
+    for (auto const& [out, in] : groupRegisters) {
+      readableInputRegisters.emplace(in);
+      writeableOutputRegisters.emplace(out);
+    }
+
+    bool count = false;
+    RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+
+    auto agg = getAggregator();
+    std::vector<std::string> aggregateTypes{agg.name};
+    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{agg.outReg, agg.inReg}};
+    if (agg.inReg != RegisterPlan::MaxRegisterId) {
+      readableInputRegisters.emplace(agg.inReg);
+    }
+
+    writeableOutputRegisters.emplace(agg.outReg);
+
+    return HashedCollectExecutorInfos{nrInputRegisters,
+                                      nrOutputRegisters,
+                                      registersToClear,
+                                      registersToKeep,
+                                      std::move(readableInputRegisters),
+                                      std::move(writeableOutputRegisters),
+                                      std::move(groupRegisters),
+                                      collectRegister,
+                                      std::move(aggregateTypes),
+                                      std::move(aggregateRegisters),
+                                      fakedQuery->trx(),
+                                      count};
+  };
+};
+
+INSTANTIATE_TEST_CASE_P(
+    HashedCollectAggregate, HashedCollectExecutorTestAggregate,
+    ::testing::Combine(
+        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                          splitStep<1>, splitStep<2>),
+        ::testing::Values(AggregateInput{"LENGTH",
+                                         RegisterPlan::MaxRegisterId,
+                                         2,
+                                         {{1, 3}, {2, 2}, {6, 1}, {3, 1}}},
+                          AggregateInput{"SUM", 0, 2, {{1, 3}, {2, 4}, {6, 6}, {3, 3}}})));
+
+TEST_P(HashedCollectExecutorTestAggregate, run) {
+  auto infos = buildInfos(1, 3, {{1, 0}});
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor, 1, 2>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{3}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1, 2}, getAggregator().expectedOutput)
       .allowAnyOutputOrder(true)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
