@@ -554,7 +554,7 @@ void Index::toVelocyPack(VPackBuilder& builder,
 /// base functionality (called from derived classes)
 std::shared_ptr<VPackBuilder> Index::toVelocyPackFigures() const {
   auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
+  builder->openObject(/*unindexed*/ true);
   toVelocyPackFigures(*builder);
   builder->close();
   return builder;

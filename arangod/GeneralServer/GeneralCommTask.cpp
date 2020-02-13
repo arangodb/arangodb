@@ -38,7 +38,7 @@ template <SocketType T>
 GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
                                     ConnectionInfo info,
                                     std::unique_ptr<AsioSocket<T>> socket)
-: CommTask(server, std::move(info)), _protocol(std::move(socket)) {
+: CommTask(server, std::move(info)), _protocol(std::move(socket)), _stopped(false) {
   if (AsioSocket<T>::supportsMixedIO()) {
     _protocol->setNonBlocking(true);
   }
@@ -46,6 +46,7 @@ GeneralCommTask<T>::GeneralCommTask(GeneralServer& server,
 
 template <SocketType T>
 void GeneralCommTask<T>::stop() {
+  _stopped.store(true, std::memory_order_release);
   if (!_protocol) {
     return;
   }
@@ -56,6 +57,7 @@ void GeneralCommTask<T>::stop() {
 
 template <SocketType T>
 void GeneralCommTask<T>::close(asio_ns::error_code const& ec) {
+  _stopped.store(true, std::memory_order_release);
   if (ec && ec != asio_ns::error::misc_errors::eof) {
     LOG_TOPIC("2b6b3", WARN, arangodb::Logger::REQUESTS)
     << "asio IO error: '" << ec.message() << "'";
