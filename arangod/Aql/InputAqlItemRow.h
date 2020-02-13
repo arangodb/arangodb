@@ -88,12 +88,9 @@ class InputAqlItemRow {
 
   RegisterCount getNrRegisters() const noexcept;
 
-  // Note that == and != here check whether the rows are *identical*, that is,
-  // the same row in the same block.
-  // TODO Make this a named method
-  bool operator==(InputAqlItemRow const& other) const noexcept;
-
-  bool operator!=(InputAqlItemRow const& other) const noexcept;
+  // This the old operator==. It tests if both rows refer to the _same_ block and
+  // the _same_ index.
+  [[nodiscard]] bool isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept;
 
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal.

@@ -88,12 +88,8 @@ AqlItemBlock const& ShadowAqlItemRow::block() const noexcept {
   return *_block;
 }
 
-bool ShadowAqlItemRow::operator==(ShadowAqlItemRow const& other) const noexcept {
-  return this->_block == other._block && this->_baseIndex == other._baseIndex;
-}
-
-bool ShadowAqlItemRow::operator!=(ShadowAqlItemRow const& other) const noexcept {
-  return !(*this == other);
+bool ShadowAqlItemRow::isSameBlockAndIndex(ShadowAqlItemRow const& other) const noexcept {
+    return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
 bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,

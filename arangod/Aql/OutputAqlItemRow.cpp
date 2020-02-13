@@ -327,7 +327,7 @@ void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sou
 
 template <>
 bool OutputAqlItemRow::testIfWeMustClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const {
-  return _baseIndex == 0 || _lastSourceRow != sourceRow;
+  return _baseIndex == 0 || !_lastSourceRow.isSameBlockAndIndex(sourceRow);
 }
 
 template <>
