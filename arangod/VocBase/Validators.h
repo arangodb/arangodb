@@ -46,8 +46,8 @@ struct ValidatorBase {
 
   bool validate(VPackSlice new_, VPackSlice old_, bool isInsert) const;
   void toVelocyPack(VPackBuilder&) const;
-  virtual std::string const& type() const = 0;
-  std::string const& message() const { return this->_message; }
+  virtual std::string const type() const = 0;
+  std::string const message() const { return this->_message; }
 
  protected:
   virtual bool validateDerived(VPackSlice slice) const = 0;
@@ -61,14 +61,14 @@ struct ValidatorAQL : public ValidatorBase {
   explicit ValidatorAQL(VPackSlice params);
   bool validateDerived(VPackSlice slice) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
-  std::string const& type() const override;
+  std::string const type() const override;
 };
 
 struct ValidatorBool : public ValidatorBase {
   explicit ValidatorBool(VPackSlice params);
   bool validateDerived(VPackSlice slice) const override;
   void toVelocyPackDerived(VPackBuilder& b) const override;
-  std::string const& type() const override;
+  std::string const type() const override;
 
  private:
   bool _result;

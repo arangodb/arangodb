@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Validators.h"
+#include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
 
 namespace arangodb {
 
-std::string_view to_view(ValidationLevel level) {
+std::string const&  to_string(ValidationLevel level) {
   switch (level) {
     case ValidationLevel::None:
       return StaticStrings::ValidatorLevelNone;
@@ -43,7 +44,8 @@ std::string_view to_view(ValidationLevel level) {
 
 //////////////////////////////////////////////////////////////////////////////
 
-ValidatorBase::ValidatorBase(VPackSlice params) : _level(ValidationLevel::Strict) {
+ValidatorBase::ValidatorBase(VPackSlice params)
+    : _level(ValidationLevel::Strict) {
   // parse message
   auto msgSlice = params.get(StaticStrings::ValidatorParameterMessage);
   if (msgSlice.isString()) {
@@ -61,20 +63,28 @@ ValidatorBase::ValidatorBase(VPackSlice params) : _level(ValidationLevel::Strict
       this->_level = ValidationLevel::Moderate;
     } else if (levelSlice.compareString(StaticStrings::ValidatorLevelStrict) == 0) {
       this->_level = ValidationLevel::Strict;
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_VALIDATION_BAD_PARAMETER,
+                                     "Valid validation levels are: " + StaticStrings::ValidatorLevelNone +
+                                         ", " + StaticStrings::ValidatorLevelNew +
+                                         ", " + StaticStrings::ValidatorLevelModerate +
+                                         ", " + StaticStrings::ValidatorLevelStrict +
+                                         "");
     }
   }
 }
 
-bool ValidatorBase::validate(VPackSlice new_, VPackSlice old_, bool isInsert) const {
+bool ValidatorBase::validate(VPackSlice newDoc, VPackSlice oldDoc, bool isInsert) const {
   // This function performs the validation depending on operation (Insert /
   // Update / Replace) and requested validation level (None / Insert / New /
   // Strict / Moderate).
+
   if (this->_level == ValidationLevel::None) {
     return true;
   }
 
   if (isInsert) {
-    return this->validateDerived(new_);
+    return this->validateDerived(newDoc);
   }
 
   /* update replace case */
@@ -85,23 +95,20 @@ bool ValidatorBase::validate(VPackSlice new_, VPackSlice old_, bool isInsert) co
 
   if (this->_level == ValidationLevel::Strict) {
     // Changed document must be good!
-    return validateDerived(new_);
+    return validateDerived(newDoc);
   }
 
   TRI_ASSERT(this->_level == ValidationLevel::Moderate);
   // Changed document must be good IIF the unmodified
   // document passed validation.
-  return (this->validateDerived(new_) || !this->validateDerived(old_));
+  return (this->validateDerived(newDoc) || !this->validateDerived(oldDoc));
 }
 
 void ValidatorBase::toVelocyPack(VPackBuilder& b) const {
   VPackObjectBuilder guard(&b);
-  auto view = to_view(this->_level);
-  b.add(StaticStrings::ValidatorParameterLevel,
-        VPackValuePair(view.data(), view.length()));
-  b.add(StaticStrings::ValidatorParameterType,
-        VPackValuePair(this->type().data(), this->type().length()));
   b.add(StaticStrings::ValidatorParameterMessage, VPackValue(_message));
+  b.add(StaticStrings::ValidatorParameterLevel, VPackValue(to_string(this->_level)));
+  b.add(StaticStrings::ValidatorParameterType, VPackValue(this->type()));
   this->toVelocyPackDerived(b);
 }
 
@@ -114,16 +121,18 @@ bool ValidatorBool::validateDerived(VPackSlice slice) const { return _result; }
 void ValidatorBool::toVelocyPackDerived(VPackBuilder& b) const {
   b.add(StaticStrings::ValidatorParameterRule, VPackValue(_result));
 }
-std::string const& ValidatorBool::type() const {
+std::string const ValidatorBool::type() const {
   return StaticStrings::ValidatorTypeBool;
-};
+}
 
 /////////////////////////////////////////////////////////////////////////////
 
 ValidatorAQL::ValidatorAQL(VPackSlice params) : ValidatorBase(params) {}
 bool ValidatorAQL::validateDerived(VPackSlice slice) const { return true; }
-void ValidatorAQL::toVelocyPackDerived(VPackBuilder& b) const {}
-std::string const& ValidatorAQL::type() const {
+void ValidatorAQL::toVelocyPackDerived(VPackBuilder& b) const {
+  b.add(StaticStrings::ValidatorParameterRule, VPackValue(std::string("test")));
+}
+std::string const ValidatorAQL::type() const {
   return StaticStrings::ValidatorTypeAQL;
 }
 
