@@ -198,8 +198,8 @@ class SortedCollectExecutor {
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  [[nodiscard]] std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(
-      AqlItemBlockInputRange& inputRange, AqlCall& call);
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
    * This executor has no chance to estimate how many rows

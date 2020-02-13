@@ -150,8 +150,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _trxPtr(trxPtr) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
-    : _infos(infos),
-      _currentGroup(infos.getCount(), infos) {
+    : _infos(infos), _currentGroup(infos.getCount(), infos) {
   // reserve space for the current row
   _currentGroup.initialize(_infos.getGroupRegisters().size());
   // reset and recreate new group
@@ -398,7 +397,7 @@ auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 }
 
 auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   TRI_IF_FAILURE("SortedCollectExecutor::skipRowsRange") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -468,5 +467,5 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
   LOG_DEVEL_SC << " skipped rows: " << clientCall.getSkipCount();
   LOG_DEVEL_SC << "reporting state: " << inputRange.upstreamState();
 
-  return {inputRange.upstreamState(), clientCall.getSkipCount(), AqlCall{}};
+  return {inputRange.upstreamState(), Stats{}, clientCall.getSkipCount(), AqlCall{}};
 }
