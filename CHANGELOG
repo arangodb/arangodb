@@ -24,6 +24,11 @@ devel
 * Clear backups from DB servers and agency, when plan unchanged not
   met and not allowing for inconsistency.
 
+* V8 version upgrade to 7.9.317; ICU version upgrade to 64.2.
+  - JSON parsing is roughly 60% faster than in V8 7.1; you should prefer 
+    JSON.parse(string) over deeply nested javascript variable declarations.
+  - several new javascript language features
+
 * Clean out server job checks preconditions plan version unchanged for start.
 
 * Cluster collection creation preconditioned on involved db servers not
