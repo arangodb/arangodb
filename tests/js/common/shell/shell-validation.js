@@ -122,7 +122,7 @@ function ValidationBasicsSuite () {
     },
 
     testPropertiesUpdateNoArray : () => {
-      v =  validatorsTrueOnly[0];
+      const v =  validatorsTrueOnly[0];
       try {
         testCollection.properties({"validators" : v});
         fail();
