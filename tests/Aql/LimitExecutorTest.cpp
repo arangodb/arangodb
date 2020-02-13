@@ -1257,11 +1257,10 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   // Note that structured bindings are *not* captured by lambdas, at least in C++17.
   // So we must explicity capture them.
   // TODO expectedPassedBlocks is needed no longer. This code can thus be simplified.
-  auto const[expectedSkipped, expectedPassedBlocks, expectedOutput, expectedStats] =
+  auto const[expectedSkipped, expectedOutput, expectedStats] =
   std::invoke(
     [&, offset = offset, limit = limit, fullCount = fullCount,
       &inputLengths = inputLengths, clientCall = clientCall]() {
-      std::vector<SharedAqlItemBlockPtr> blocks;
       auto output = MatrixBuilder<1>{};
       auto const effectiveOffset = clientCall.getOffset() + offset;
       // The combined limit of a call and a LimitExecutor:
@@ -1282,10 +1281,6 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
         for (auto k = begin; k < end; ++k) {
           output.emplace_back(RowBuilder<1>{k});
         }
-        // Both during the offset, and after the limit, begin equals end.
-        if (begin < end) {
-          blocks.emplace_back(buildBlockRange(begin, end));
-        }
         i += length;
       }
       // Only the client's offset counts against the "skipped" count returned
@@ -1295,18 +1290,9 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
       if (fullCount) {
         stats.incrFullCountBy(numInputRows);
       }
-      return std::make_tuple(skipped, blocks, output, stats);
+      return std::make_tuple(skipped, output, stats);
     }
   );
-  {
-    auto const numReturnedRows =
-        std::accumulate(expectedPassedBlocks.begin(), expectedPassedBlocks.end(),
-                        size_t{0}, [](auto const& accum, auto const& it) {
-                          return accum + it->size();
-                        });
-    TRI_ASSERT(numReturnedRows <= limit);
-    TRI_ASSERT(numReturnedRows <= clientCall.getLimit());
-  }
 
   auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
 
