@@ -1275,7 +1275,9 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
         }
         i += length;
       }
-      auto const skipped = std::min(numInputRows, effectiveOffset);
+      // Only the client's offset counts against the "skipped" count returned
+      // by the limit block, the rest is upstream!
+      auto const skipped = std::min(numInputRows, clientCall.getOffset());
       auto stats = LimitStats{};
       if (fullCount) {
         stats.incrFullCountBy(numInputRows);
