@@ -92,7 +92,7 @@ TRI_voc_rid_t extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
 OperationResult buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count,
-                                 transaction::CountType type, int64_t& total);
+                                 transaction::CountType type, uint64_t& total);
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
