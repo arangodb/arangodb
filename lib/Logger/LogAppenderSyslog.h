@@ -37,9 +37,9 @@ class LogAppenderSyslog final : public LogAppender {
   LogAppenderSyslog(std::string const& facility, std::string const& name,
                     std::string const& filter);
 
-  void logMessage(LogLevel, std::string const& message, size_t offset) override final;
+  void logMessage(LogMessage const& message) override final;
 
-  std::string details() override final;
+  std::string details() const override final;
 
  private:
   static bool _opened;

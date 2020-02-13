@@ -29,7 +29,6 @@
 #include <condition_variable>
 #include <list>
 #include <mutex>
-#include <queue>
 
 #include "Scheduler/Scheduler.h"
 
@@ -45,7 +44,6 @@ class SupervisedScheduler final : public Scheduler {
   virtual ~SupervisedScheduler();
 
   bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
-
 
  private:
   std::atomic<size_t> _numWorkers;
@@ -113,7 +111,7 @@ class SupervisedScheduler final : public Scheduler {
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
 
-  struct alignas(64) WorkerState {
+  struct WorkerState {
     uint64_t _queueRetryTime_us; // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working, _sleeping;
