@@ -3797,6 +3797,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       });
 
+      // we have to reset the timeout, otherwise the code below will exit too soon
+      end = steady_clock::now() + milliseconds(static_cast<uint64_t>(1000 * timeout));
+
       // send the locks
       result = hotbackupAsyncLockDBServersTransactions(pool, backupId, dbServers, lockWait, lockJobIds);
       if (result.fail()) {
@@ -3807,6 +3810,11 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       transaction::Manager* mgr = transaction::ManagerFeature::manager();
 
       while (!lockJobIds.empty()) {
+        if (steady_clock::now() > end) {
+          return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT,
+                                  "hot backup timeout before locking phase");
+        }
+
         // kill all transactions
         result = mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
         if (result.fail()) {
