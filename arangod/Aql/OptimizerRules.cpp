@@ -5772,8 +5772,9 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
         std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       outVariable = traversal->pathOutVariable();
-      if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
-          std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
+      if (outVariable == nullptr ||
+          (!n->isVarUsedLater(outVariable) &&
+           std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end())) {
         // both traversal vertex and path outVariables not used later
         traversal->options()->setProduceVertices(false);
         modified = true;

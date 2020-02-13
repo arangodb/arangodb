@@ -103,6 +103,11 @@ function collectionTestSuite () {
         "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "v1/test1' " + cn + "e1 RETURN 1",
         "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "v1/test1' " + cn + "e1 RETURN e._key",
         "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "v1/test1' " + cn + "e1 FILTER e._key == '123' RETURN e",
+        "FOR v, e IN 1..3 OUTBOUND '" + cn + "v1/test1' " + cn + "e1 RETURN e",
+        "FOR v, e IN 1..3 OUTBOUND '" + cn + "v1/test1' " + cn + "e1 RETURN 1",
+        "FOR v, e IN 1..3 OUTBOUND '" + cn + "v1/test1' " + cn + "e1 FILTER e._key == '123' RETURN e",
+        "FOR v, e IN 1..3 OUTBOUND '" + cn + "v1/test1' " + cn + "e1 FILTER e._key == '123' RETURN 1",
+        "FOR v IN 1..3 OUTBOUND '" + cn + "v1/test1' " + cn + "e1 RETURN 1",
       ];
 
       queries.forEach(function(query) {
