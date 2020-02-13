@@ -250,7 +250,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       err = llhttp_execute(&_parser, data, buffer.size());
       if (err != HPE_OK) {
         ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
-        TRI_ASSERT(diff > 0);
+        TRI_ASSERT(diff >= 0);
         nparsed += static_cast<size_t>(diff);
         break;
       }
@@ -419,6 +419,10 @@ void HttpCommTask<T>::processRequest() {
 template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
                                    RequestStatistics* stat) {
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
+  }
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(*baseRes);
 #else

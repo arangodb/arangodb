@@ -685,14 +685,8 @@ std::string tolower(std::string&& str) {
 }
 
 std::string tolower(std::string const& str) {
-  std::string result;
-  result.resize(str.size());
-
-  size_t i = 0;
-  for (auto& c : result) {
-    c = StringUtils::tolower(str[i++]);
-  }
-
+  std::string result = str;
+  tolowerInPlace(result);
   return result;
 }
 
