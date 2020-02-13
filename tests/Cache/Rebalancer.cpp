@@ -50,9 +50,6 @@ using namespace arangodb::cache;
 struct ThreadGuard {
   ThreadGuard(ThreadGuard&&) noexcept = default;
   ThreadGuard& operator=(ThreadGuard&&) noexcept = default; 
-    thread = std::move(other.thread);
-    return *this;
-  }
 
   ThreadGuard(std::unique_ptr<std::thread> thread)
       : thread(std::move(thread)) {}
