@@ -1244,6 +1244,7 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   // Expected output, though the expectedPassedBlocks are also the input.
   // Note that structured bindings are *not* captured by lambdas, at least in C++17.
   // So we must explicity capture them.
+  // TODO expectedPassedBlocks is needed no longer. This code can thus be simplified.
   auto const[expectedSkipped, expectedPassedBlocks, expectedOutput, expectedStats] =
   std::invoke(
     [&, offset = offset, limit = limit, fullCount = fullCount,
@@ -1254,15 +1255,15 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
       // The combined limit of a call and a LimitExecutor:
       auto const effectiveLimit =
         std::min(
-          clientCall.getLimit(),
+          clientCall.getOffset() + clientCall.getLimit(),
           nonNegativeSubtraction(limit, clientCall.getOffset()));
       auto i = size_t{0};
       for (auto const length : inputLengths) {
         // In each iteration, we calculate a range (begin, end) ~= (i, i+length),
         // but potentially restricted by both offset and limit.
-        auto const localLimit = nonNegativeSubtraction(effectiveLimit, i);
+        auto const localLimit = nonNegativeSubtraction(effectiveLimit, nonNegativeSubtraction(i, offset));
         auto const localOffset = nonNegativeSubtraction(effectiveOffset, i);
-        auto const limitedLength = std::min(length, localLimit);
+        auto const limitedLength = std::min(length, localOffset + localLimit);
         auto const skip = std::min(limitedLength, localOffset);
         auto const begin = i + skip;
         auto const end = i + limitedLength;
