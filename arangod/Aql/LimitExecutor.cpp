@@ -296,7 +296,6 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows
 auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> AqlCall {
   auto upstreamCall = AqlCall{};
 
-
   // Offsets can simply be added.
   upstreamCall.offset = clientCall.getOffset() + remainingOffset();
 
@@ -306,7 +305,6 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
       remainingLimit() - std::min(remainingLimit(), clientCall.getOffset());
   auto const limit =
       std::min<AqlCall::Limit>(clientCall.getLimit(), localLimitMinusDownstreamOffset);
-
 
   // Generally, we create a hard limit. However, if we get a soft limit from
   // downstream that is lower than our hard limit, we use that instead.
@@ -325,11 +323,17 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
 
 auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+
+  // I think this *should* be the case, because we're passthrough. However,
+  // isFull() ignores shadow rows in the passthrough case, which it probably
+  // should not.
+  // static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable);
+  // TRI_ASSERT(input.hasDataRow() == !output.isFull());
+
   auto const& clientCall = output.getClientCall();
   TRI_ASSERT(clientCall.getOffset() == 0);
 
   auto stats = LimitStats{};
-
 
   auto const upstreamCall = calculateUpstreamCall(clientCall);
 
