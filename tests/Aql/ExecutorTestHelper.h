@@ -26,19 +26,24 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
+#include "MockTypedNode.h"
 #include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
+#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Logger/LogMacros.h"
 
+#include <numeric>
 #include <tuple>
 
 namespace arangodb {
@@ -105,6 +110,11 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto setTesteeNodeType(ExecutionNode::NodeType nodeType) -> ExecutorTestHelper& {
+    _testeeNodeType = nodeType;
+    return *this;
+  }
+
   auto expectOutput(std::array<std::size_t, outputColumns> const& regs,
                     MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
     _outputRegisters = regs;
@@ -142,20 +152,34 @@ struct ExecutorTestHelper {
 
     auto inputBlock = generateInputRanges(itemBlockManager);
 
-    auto testeeNode = std::make_unique<SingletonNode>(_query.plan(), 1);
+    auto testeeNode = std::make_unique<MockTypedNode>(_query.plan(), 1, _testeeNodeType);
 
     ExecutionBlockImpl<E> testee{_query.engine(), testeeNode.get(), std::move(infos)};
     testee.addDependency(inputBlock.get());
 
-    AqlCallStack stack{_call};
-    auto const [state, skipped, result] = testee.execute(stack);
-    EXPECT_EQ(skipped, _expectedSkip);
+    auto skippedTotal = size_t{0};
+    auto finalState = ExecutionState::HASMORE;
+    auto allResults = AqlItemMatrix{outputColumns};
+    do {
+      auto call = _call;
+      call.didSkip(skippedTotal);
+      call.didProduce(allResults.size());
+      AqlCallStack stack{call};
+      auto const [state, skipped, result] = testee.execute(stack);
+      finalState = state;
+      skippedTotal += skipped;
+      if (result != nullptr) {
+        allResults.addBlock(result);
+      }
+    } while (finalState != ExecutionState::DONE &&
+             ((_call.getLimit() + _call.getOffset()) > 0 || _call.needsFullCount()));
+    EXPECT_EQ(skippedTotal, _expectedSkip);
 
-    EXPECT_EQ(state, _expectedState);
+    EXPECT_EQ(finalState, _expectedState);
 
     SharedAqlItemBlockPtr expectedOutputBlock =
         buildBlock<outputColumns>(itemBlockManager, std::move(_output));
-    testOutputBlock(result, expectedOutputBlock);
+    testOutputBlock(allResults, expectedOutputBlock);
     if (_testStats) {
       auto actualStats = _query.engine()->getStats();
       EXPECT_EQ(actualStats, _expectedStats);
@@ -163,29 +187,35 @@ struct ExecutorTestHelper {
   };
 
  private:
-  void testOutputBlock(SharedAqlItemBlockPtr const& outputBlock,
+  void testOutputBlock(AqlItemMatrix const& outputBlocks,
                        SharedAqlItemBlockPtr const& expectedOutputBlock) {
     velocypack::Options vpackOptions;
 
-    EXPECT_EQ(outputBlock == nullptr, expectedOutputBlock == nullptr);
+    EXPECT_EQ(outputBlocks.empty(), expectedOutputBlock == nullptr);
     if (expectedOutputBlock == nullptr) {
       return;
     }
-    EXPECT_EQ(outputBlock->size(), expectedOutputBlock->size());
-    auto const size = std::max(outputBlock->size(), expectedOutputBlock->size());
+    EXPECT_EQ(outputBlocks.size(), expectedOutputBlock->size());
+    auto const outputIndexes = outputBlocks.produceRowIndexes();
+    TRI_ASSERT(outputIndexes.size() == outputBlocks.size());
+
+    auto const size = std::max(outputBlocks.size(), expectedOutputBlock->size());
     for (size_t i = 0; i < size; i++) {
-      for (size_t j = 0; j < outputColumns; j++) {
+      for (RegisterId j = 0; j < outputColumns; j++) {
         auto const none = AqlValue{};
         // Allow comparison of blocks of different sizes
-        auto const getValueOrNone = [none](auto block, auto i, auto j) -> AqlValue const& {
-          return i < block->size() ? block->getValueReference(i, j) : none;
-        };
-        AqlValue const& x = getValueOrNone(outputBlock, i, _outputRegisters[j]);
-        AqlValue const& y = getValueOrNone(expectedOutputBlock, i, j);
+        AqlValue const& x =
+            i < outputBlocks.size()
+                ? outputBlocks.getRow(outputIndexes[i]).getValue(_outputRegisters[j])
+                : none;
+        AqlValue const& y = i < expectedOutputBlock->size()
+                                ? expectedOutputBlock->getValueReference(i, j)
+                                : none;
 
         EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
             << "Row " << i << " Column " << j << " (Reg " << _outputRegisters[j]
-            << ") do not agree";
+            << ") do not agree. "
+            "Expected " << y.slice().toJson() << ", got " << x.slice().toJson() << ".";
       }
     }
   }
@@ -252,6 +282,7 @@ struct ExecutorTestHelper {
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
   bool _testStats;
+  ExecutionNode::NodeType _testeeNodeType{ExecutionNode::MAX_NODE_TYPE_VALUE};
 
   SplitType _inputSplit = {std::monostate()};
   SplitType _outputSplit = {std::monostate()};

@@ -126,12 +126,12 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
   }
   auto myCall = stack.popCall();
   if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
-    // If we orderd waiting check on _hasWaited and wait if not
+    // If we ordered waiting check on _hasWaited and wait if not
     _hasWaited = true;
     return {ExecutionState::WAITING, 0, nullptr};
   }
   if (_variant == WaitingBehaviour::ALWAYS) {
-    // If we allways wait, reset.
+    // If we always wait, reset.
     _hasWaited = false;
   }
   size_t skipped = 0;

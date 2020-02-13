@@ -217,9 +217,9 @@ inline std::ostream& operator<<(std::ostream& out,
 }
 
 inline std::ostream& operator<<(std::ostream& out, const arangodb::aql::AqlCall& call) {
-  return out << "skip: " << call.getOffset() << " softLimit: " << call.softLimit
-             << " hardLimit: " << call.hardLimit
-             << " fullCount: " << std::boolalpha << call.fullCount;
+  return out << "{ skip: " << call.getOffset() << ", softLimit: " << call.softLimit
+             << ", hardLimit: " << call.hardLimit
+             << ", fullCount: " << std::boolalpha << call.fullCount << " }";
 }
 
 }  // namespace aql

@@ -1303,6 +1303,7 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   //                                        OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
 
   ExecutorTestHelper<LimitExecutor>{*fakedQuery}
+    .setTesteeNodeType(ExecutionNode::LIMIT)
     .setInputFromRowNum(numInputRows)
     .setInputSplitType(inputLengths)
     .setCall(clientCall)
