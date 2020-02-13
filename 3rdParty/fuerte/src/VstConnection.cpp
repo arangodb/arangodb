@@ -119,8 +119,10 @@ std::size_t VstConnection<ST>::requestsLeft() const {
 // socket connection is up (with optional SSL), now initiate the VST protocol.
 template <SocketType ST>
 void VstConnection<ST>::finishConnect() {
-  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
-
+  if (this->state() != Connection::State::Connecting) {
+    return;
+  }
+  
   FUERTE_LOG_VSTTRACE << "finishInitialization (vst)\n";
   const char* vstHeader;
   switch (_vstVersion) {
@@ -151,8 +153,7 @@ void VstConnection<ST>::finishConnect() {
           // send the auth, then set _state == connected
           me->sendAuthenticationRequest();
         } else {
-          me->_state.store(Connection::State::Connected,
-                           std::memory_order_release);
+          me->_state.store(Connection::State::Connected);
           me->startWriting();  // start writing if something is queued
         }
       });
@@ -172,8 +173,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
                            std::unique_ptr<Response> resp) {
     auto* thisPtr = static_cast<VstConnection<ST>*>(self.get());
     if (error != Error::NoError || resp->statusCode() != StatusOK) {
-      thisPtr->_state.store(Connection::State::Failed,
-                            std::memory_order_release);
+      thisPtr->_state.store(Connection::State::Failed);
       thisPtr->shutdownConnection(Error::VstUnauthorized,
                                   "could not authenticate");
       thisPtr->drainQueue(Error::VstUnauthorized);

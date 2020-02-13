@@ -353,8 +353,10 @@ std::size_t H2Connection<T>::requestsLeft() const {
 // socket connection is used without TLS
 template <SocketType T>
 void H2Connection<T>::finishConnect() {
-  FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";
-  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
+  FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";  
+  if (this->state() != Connection::State::Connecting) {
+    return;
+  }
 
   std::array<nghttp2_settings_entry, 4> iv;
   populateSettings(iv);
@@ -447,6 +449,11 @@ void H2Connection<T>::readSwitchingProtocolsResponse() {
 // socket connection is up (with optional SSL), now initiate the VST protocol.
 template <>
 void H2Connection<SocketType::Ssl>::finishConnect() {
+  FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";
+  if (this->state() != Connection::State::Connecting) {
+    return;
+  }
+  
   const unsigned char *alpn = NULL;
   unsigned int alpnlen = 0;
   SSL_get0_alpn_selected(this->_proto.socket.native_handle(), &alpn, &alpnlen);

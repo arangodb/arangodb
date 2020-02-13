@@ -222,9 +222,10 @@ size_t H1Connection<ST>::requestsLeft() const {
 
 template <SocketType ST>
 void H1Connection<ST>::finishConnect() {
-  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
-  this->_state.store(Connection::State::Connected);
-  startWriting();  // starts writing queue if non-empty
+  auto exp = Connection::State::Connecting;
+  if (this->_state.compare_exchange_strong(exp, Connection::State::Connected)) {
+    startWriting();  // starts writing queue if non-empty
+  }
 }
 
 // Thread-Safe: activate the combined write-read loop
