@@ -352,10 +352,9 @@ void VstCommTask<T>::doWrite() {
       return; // done, someone else may restart
     }
 
-    if (!_writing.exchange(true)) {
+    if (_writing.exchange(true)) {
       return; // someone else restarted writing
     }
-    
     bool success = _writeQueue.pop(tmp);
     TRI_ASSERT(success);
   }
