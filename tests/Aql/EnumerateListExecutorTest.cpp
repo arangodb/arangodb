@@ -27,7 +27,6 @@
 
 #include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
-#include "fakeit.hpp"
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
@@ -42,7 +41,6 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
-#include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -52,6 +50,63 @@ using namespace arangodb::aql;
 namespace arangodb {
 namespace tests {
 namespace aql {
+
+// test inner executor behaviour
+class EnumerateListExecutorTest : public ::testing::Test {
+ protected:
+  ExecutionState state;
+  NoStats stats;
+  AqlCall call;
+
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  EnumerateListExecutorTest()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+};
+
+TEST_F(EnumerateListExecutorTest, test_produce_inner_outer_edge_state) {
+  // old styled test, to test the inner step-states of our executor
+
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
+  EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, {0, 1, 2, 3});
+  EnumerateListExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
+                                       {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  // receive first 3 of 6 results in total
+  AqlCall myCall{0, AqlCall::Infinity{}, 3, false};
+
+  output.setCall(std::move(myCall));
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  {
+    auto const [state, stats, call] = testee.produceRows(input, output);
+
+    // reach the end (edge) of our first row, we do not return DONE here!
+    EXPECT_EQ(state, ExecutorState::HASMORE);
+    EXPECT_EQ(output.numRowsWritten(), 3);
+  }
+
+  // reach the end (edge) of our second row, now DONE must be returned!
+  {
+    auto const [state, stats, call] = testee.produceRows(input, output);
+    // we will not produce more (hardLimit is 3), but output stays the same (3)
+    EXPECT_EQ(output.numRowsWritten(), 3);
+    // we could in theory produce more
+    EXPECT_EQ(state, ExecutorState::HASMORE);
+  }
+}
 
 // new framework tests
 using EnumerateListTestHelper = ExecutorTestHelper<EnumerateListExecutor, 1, 1>;
@@ -246,7 +301,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_soft) {
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
       .expectSkipped(0)
-      .expectedState(ExecutionState::HASMORE) // hasmore because of softLimit
+      .expectedState(ExecutionState::HASMORE)  // hasmore because of softLimit
       .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
 }
 
@@ -262,7 +317,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard) {
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
       .expectSkipped(0)
-      .expectedState(ExecutionState::DONE) // done because of hardLimit
+      .expectedState(ExecutionState::DONE)  // done because of hardLimit
       .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
 }
 
@@ -277,7 +332,7 @@ TEST_P(EnumerateListExecutorTestProduce, default_border_first_array_hard_fullcou
       .expectOutput({0, 1, 2, 3, 4}, {{RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 1},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 2},
                                        RowBuilder<5>{1, 2, 3, R"([1, 2, 3])", 3}}})
-      .expectSkipped(3) // skipped amount of 3 in the fullCount phase
+      .expectSkipped(3)  // skipped amount of 3 in the fullCount phase
       .expectedState(ExecutionState::DONE)
       .run(makeInfos(3, 4, 4, 5, {}, {0, 1, 2, 3}));
 }
