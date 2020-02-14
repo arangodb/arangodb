@@ -69,7 +69,9 @@ class HashedCollectExecutorTest
 
   auto buildInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
-                  RegisterId collectRegister = RegisterPlan::MaxRegisterId)
+                  RegisterId collectRegister = RegisterPlan::MaxRegisterId,
+                  std::vector<std::string> aggregateTypes = {},
+                  std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> HashedCollectExecutorInfos {
     std::unordered_set<RegisterId> registersToClear{};
     std::unordered_set<RegisterId> registersToKeep{};
@@ -92,9 +94,13 @@ class HashedCollectExecutorTest
       writeableOutputRegisters.emplace(collectRegister);
       count = true;
     }
-
-    std::vector<std::string> aggregateTypes{};
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{};
+    TRI_ASSERT(aggregateTypes.size() == aggregateRegisters.size());
+    for (auto const& [out, in] : aggregateRegisters) {
+      if (in != RegisterPlan::MaxRegisterId) {
+        readableInputRegisters.emplace(in);
+      }
+      writeableOutputRegisters.emplace(out);
+    }
 
     return HashedCollectExecutorInfos{nrInputRegisters,
                                       nrOutputRegisters,
@@ -172,6 +178,76 @@ TEST_P(HashedCollectExecutorTest, count) {
       .setInputSplitType(getSplit())
       .setCall(call)
       .expectOutput({1, 2}, {{1, 3}, {2, 2}, {6, 1}, {R"("1")", 1}})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect with multiple aggregators
+TEST_P(HashedCollectExecutorTest, many_aggregators) {
+  auto infos =
+      buildInfos(2, 5, {{2, 0}}, RegisterPlan::MaxRegisterId, {"LENGTH", "SUM"},
+                 {{3, RegisterPlan::MaxRegisterId}, {4, 1}});
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor, 2, 3>(*fakedQuery)
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 5}, RowBuilder<2>{1, 1},
+                                      RowBuilder<2>{2, 2}, RowBuilder<2>{1, 5},
+                                      RowBuilder<2>{6, 1}, RowBuilder<2>{2, 2},
+                                      RowBuilder<2>{3, 1}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({2, 3, 4},
+                    MatrixBuilder<3>{RowBuilder<3>{1, 3, 11}, RowBuilder<3>{2, 2, 4},
+                                     RowBuilder<3>{6, 1, 1}, RowBuilder<3>{3, 1, 1}})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect based on equal arrays.
+TEST_P(HashedCollectExecutorTest, collect_arrays) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{R"([1,1,1])"}},
+                      {{1}},
+                      {{R"([1,1,1,1])"}},
+                      {{R"([2,1,1])"}},
+                      {{R"([1,1,1])"}},
+                      {{R"([2,1,1])"}},
+                      {{R"([1,1,1])"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {{1}, {R"([1,1,1])"}, {R"([1,1,1,1])"}, {R"([2,1,1])"}})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect based on equal objects.
+TEST_P(HashedCollectExecutorTest, collect_objects) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{R"({"a": 1, "b": 1})"}},
+                      {{1}},
+                      {{R"({"a": 1, "b": 1, "c": 1})"}},
+                      {{R"({"a": 2, "b": 1})"}},
+                      {{R"({"b": 1, "a": 1})"}},
+                      {{R"({"b": 1, "c": 1, "a": 1})"}},
+                      {{R"([1,1,1])"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {{1}, {R"([1,1,1])"}, {R"({"a": 1, "b": 1})"}, {R"({"a": 1, "b": 1, "c": 1})"}, {R"({"a": 2, "b": 1})"}})
       .allowAnyOutputOrder(true)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
