@@ -1540,8 +1540,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
 
-    auto skipData = [&skipAsserter](AqlItemBlockInputRange& inputRange,
-                                    AqlCall& call) -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+    auto skipData = [&skipAsserter](AqlItemBlockInputRange& inputRange, AqlCall& call)
+        -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
       skipAsserter.gotCalled(call);
 
       size_t skipped = 0;

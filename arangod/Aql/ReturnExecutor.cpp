@@ -85,9 +85,13 @@ auto ReturnExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     call.didSkip(1);
+
+    /*
     if (_infos.doCount()) {
+      // TODO: do we need to include counted here?
       stats.incrCounted();
     }
+    */
   }
 
   return {inputRange.upstreamState(), stats, call.getSkipCount(), call};

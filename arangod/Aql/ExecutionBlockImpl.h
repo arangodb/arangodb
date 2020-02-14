@@ -37,6 +37,9 @@
 
 namespace arangodb::aql {
 
+template <class Fetcher>
+class IdExecutor;
+
 struct AqlCall;
 class AqlItemBlock;
 class ExecutionEngine;
@@ -195,6 +198,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
+
+  template <class exec = Executor, typename = std::enable_if_t<std::is_same_v<exec, IdExecutor<ConstFetcher>>>>
+  auto injectConstantBlock(SharedAqlItemBlockPtr block) -> void;
 
   [[nodiscard]] Infos const& infos() const;
 

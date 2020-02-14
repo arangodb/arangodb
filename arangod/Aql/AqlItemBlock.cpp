@@ -447,20 +447,58 @@ void AqlItemBlock::clearRegisters(std::unordered_set<RegisterId> const& toClear)
 SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to);
   TRI_ASSERT(to <= _nrItems);
+  return slice({{from, to}});
+}
+
+/**
+ * @brief Slice multiple ranges out of this AqlItemBlock.
+ *        This does a deep copy of all entries
+ *
+ * @param ranges list of ranges from(included) -> to(excluded)
+ *        Every range needs to be valid from[i] < to[i]
+ *        And every range needs to be within the block to[i] <= size()
+ *        The list is required to be ordered to[i] <= from[i+1]
+ *
+ * @return SharedAqlItemBlockPtr A block where all the slices are contained in the order of the list
+ */
+auto AqlItemBlock::slice(std::vector<std::pair<size_t, size_t>> const& ranges) const
+    -> SharedAqlItemBlockPtr {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Analyze correctness of ranges
+  TRI_ASSERT(!ranges.empty());
+  for (size_t i = 0; i < ranges.size(); ++i) {
+    auto const& [from, to] = ranges[i];
+    // Range is valid
+    TRI_ASSERT(from < to);
+    TRI_ASSERT(to <= _nrItems);
+    if (i > 0) {
+      // List is ordered
+      TRI_ASSERT(ranges[i - 1].second <= from);
+    }
+  }
+#endif
+  size_t numRows = 0;
+  for (auto const& [from, to] : ranges) {
+    numRows += to - from;
+  }
 
   std::unordered_set<AqlValue> cache;
-  cache.reserve((to - from) * _nrRegs / 4 + 1);
+  cache.reserve(numRows * _nrRegs / 4 + 1);
 
-  SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
-
-  for (size_t row = from; row < to; row++) {
-    // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
-    for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a(_data[getAddress(row, col)]);
-      ::CopyValueOver(cache, a, row - from, col, res);
+  SharedAqlItemBlockPtr res{_manager.requestBlock(numRows, _nrRegs)};
+  size_t targetRow = 0;
+  for (auto const& [from, to] : ranges) {
+    for (size_t row = from; row < to; row++, targetRow++) {
+      // Note this loop is special, it will also Copy over the SubqueryDepth data in reg 0
+      for (RegisterId col = 0; col < _nrRegs; col++) {
+        AqlValue const& a(_data[getAddress(row, col)]);
+        ::CopyValueOver(cache, a, targetRow, col, res);
+      }
+      res->copySubQueryDepthFromOtherBlock(targetRow, *this, row);
     }
-    res->copySubQueryDepthFromOtherBlock(row - from, *this, row);
   }
+
+  TRI_ASSERT(res->size() == numRows);
 
   return res;
 }

@@ -150,8 +150,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _trxPtr(trxPtr) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
-    : _infos(infos),
-      _currentGroup(infos.getCount(), infos) {
+    : _infos(infos), _currentGroup(infos.getCount(), infos) {
   // reserve space for the current row
   _currentGroup.initialize(_infos.getGroupRegisters().size());
   // reset and recreate new group
