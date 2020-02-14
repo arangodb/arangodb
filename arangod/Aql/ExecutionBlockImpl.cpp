@@ -182,134 +182,137 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
-  TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize);
-  // silence tests -- we need to introduce new failure tests for fetchers
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (getQuery().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-
-  if (_state == InternalState::DONE) {
-    // We are done, so we stay done
-    return {ExecutionState::DONE, nullptr};
-  }
-
-  if (!_outputItemRow) {
-    ExecutionState state;
-    SharedAqlItemBlockPtr newBlock;
-    std::tie(state, newBlock) =
-        requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(newBlock == nullptr);
-      return {state, nullptr};
-    }
-    if (newBlock == nullptr) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      _state = InternalState::DONE;
-      // _rowFetcher must be DONE now already
-      return {state, nullptr};
-    }
-    TRI_ASSERT(newBlock != nullptr);
-    TRI_ASSERT(newBlock->size() > 0);
-    // We cannot hold this assertion, if we are on a pass-through
-    // block and the upstream uses execute already.
-    // TRI_ASSERT(newBlock->size() <= atMost);
-    _outputItemRow = createOutputRow(newBlock, AqlCall{});
-  }
-
-  ExecutionState state = ExecutionState::HASMORE;
-  ExecutorStats executorStats{};
-
-  TRI_ASSERT(atMost > 0);
-
-  if (isInSplicedSubquery()) {
-    // The loop has to be entered at least once!
-    TRI_ASSERT(!_outputItemRow->isFull());
-    while (!_outputItemRow->isFull() && _state != InternalState::DONE) {
-      // Assert that write-head is always pointing to a free row
-      TRI_ASSERT(!_outputItemRow->produced());
-      switch (_state) {
-        case InternalState::FETCH_DATA: {
-          std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
-          // Count global but executor-specific statistics, like number of
-          // filtered rows.
-          _engine->_stats += executorStats;
-          if (_outputItemRow->produced()) {
-            _outputItemRow->advanceRow();
-          }
-
-          if (state == ExecutionState::WAITING) {
-            return {state, nullptr};
-          }
-
-          if (state == ExecutionState::DONE) {
-            _state = InternalState::FETCH_SHADOWROWS;
-          }
-          break;
-        }
-        case InternalState::FETCH_SHADOWROWS: {
-          state = fetchShadowRowInternal();
-          if (state == ExecutionState::WAITING) {
-            return {state, nullptr};
-          }
-          break;
-        }
-        case InternalState::DONE: {
-          TRI_ASSERT(false);  // Invalid state
-        }
-      }
-    }
-    // Modify the return state.
-    // As long as we do still have ShadowRows
-    // We need to return HASMORE!
-    if (_state == InternalState::DONE) {
-      state = ExecutionState::DONE;
-    } else {
-      state = ExecutionState::HASMORE;
-    }
+  if constexpr (isNewStyleExecutor<Executor>) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
   } else {
-    // The loop has to be entered at least once!
-    TRI_ASSERT(!_outputItemRow->isFull());
-    while (!_outputItemRow->isFull()) {
-      std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
-      // Count global but executor-specific statistics, like number of filtered
-      // rows.
-      _engine->_stats += executorStats;
-      if (_outputItemRow->produced()) {
-        _outputItemRow->advanceRow();
-      }
+    TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize);
+    // silence tests -- we need to introduce new failure tests for fetchers
+    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
+    if (getQuery().killed()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+
+    if (_state == InternalState::DONE) {
+      // We are done, so we stay done
+      return {ExecutionState::DONE, nullptr};
+    }
+
+    if (!_outputItemRow) {
+      ExecutionState state;
+      SharedAqlItemBlockPtr newBlock;
+      std::tie(state, newBlock) =
+          requestWrappedBlock(atMost, _infos.numberOfOutputRegisters());
       if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(newBlock == nullptr);
         return {state, nullptr};
       }
-
-      if (state == ExecutionState::DONE) {
-        auto outputBlock = _outputItemRow->stealBlock();
-        // This is not strictly necessary here, as we shouldn't be called again
-        // after DONE.
-        _outputItemRow.reset();
-        return {state, std::move(outputBlock)};
+      if (newBlock == nullptr) {
+        TRI_ASSERT(state == ExecutionState::DONE);
+        _state = InternalState::DONE;
+        // _rowFetcher must be DONE now already
+        return {state, nullptr};
       }
+      TRI_ASSERT(newBlock != nullptr);
+      TRI_ASSERT(newBlock->size() > 0);
+      // We cannot hold this assertion, if we are on a pass-through
+      // block and the upstream uses execute already.
+      // TRI_ASSERT(newBlock->size() <= atMost);
+      _outputItemRow = createOutputRow(newBlock, AqlCall{});
     }
 
-    TRI_ASSERT(state == ExecutionState::HASMORE);
-    TRI_ASSERT(_outputItemRow->isFull());
-  }
+    ExecutionState state = ExecutionState::HASMORE;
+    ExecutorStats executorStats{};
 
-  auto outputBlock = _outputItemRow->stealBlock();
-  // we guarantee that we do return a valid pointer in the HASMORE case.
-  TRI_ASSERT(outputBlock != nullptr || _state == InternalState::DONE);
-  _outputItemRow.reset();
-  return {state, std::move(outputBlock)};
+    TRI_ASSERT(atMost > 0);
+
+    if (isInSplicedSubquery()) {
+      // The loop has to be entered at least once!
+      TRI_ASSERT(!_outputItemRow->isFull());
+      while (!_outputItemRow->isFull() && _state != InternalState::DONE) {
+        // Assert that write-head is always pointing to a free row
+        TRI_ASSERT(!_outputItemRow->produced());
+        switch (_state) {
+          case InternalState::FETCH_DATA: {
+            std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
+            // Count global but executor-specific statistics, like number of
+            // filtered rows.
+            _engine->_stats += executorStats;
+            if (_outputItemRow->produced()) {
+              _outputItemRow->advanceRow();
+            }
+
+            if (state == ExecutionState::WAITING) {
+              return {state, nullptr};
+            }
+
+            if (state == ExecutionState::DONE) {
+              _state = InternalState::FETCH_SHADOWROWS;
+            }
+            break;
+          }
+          case InternalState::FETCH_SHADOWROWS: {
+            state = fetchShadowRowInternal();
+            if (state == ExecutionState::WAITING) {
+              return {state, nullptr};
+            }
+            break;
+          }
+          case InternalState::DONE: {
+            TRI_ASSERT(false);  // Invalid state
+          }
+        }
+      }
+      // Modify the return state.
+      // As long as we do still have ShadowRows
+      // We need to return HASMORE!
+      if (_state == InternalState::DONE) {
+        state = ExecutionState::DONE;
+      } else {
+        state = ExecutionState::HASMORE;
+      }
+    } else {
+      // The loop has to be entered at least once!
+      TRI_ASSERT(!_outputItemRow->isFull());
+      while (!_outputItemRow->isFull()) {
+        std::tie(state, executorStats) = _executor.produceRows(*_outputItemRow);
+        // Count global but executor-specific statistics, like number of filtered rows.
+        _engine->_stats += executorStats;
+        if (_outputItemRow->produced()) {
+          _outputItemRow->advanceRow();
+        }
+
+        if (state == ExecutionState::WAITING) {
+          return {state, nullptr};
+        }
+
+        if (state == ExecutionState::DONE) {
+          auto outputBlock = _outputItemRow->stealBlock();
+          // This is not strictly necessary here, as we shouldn't be called again after DONE.
+          _outputItemRow.reset();
+          return {state, std::move(outputBlock)};
+        }
+      }
+
+      TRI_ASSERT(state == ExecutionState::HASMORE);
+      TRI_ASSERT(_outputItemRow->isFull());
+    }
+
+    auto outputBlock = _outputItemRow->stealBlock();
+    // we guarantee that we do return a valid pointer in the HASMORE case.
+    TRI_ASSERT(outputBlock != nullptr || _state == InternalState::DONE);
+    _outputItemRow.reset();
+    return {state, std::move(outputBlock)};
+  }
 }
 
 template <class Executor>
@@ -398,6 +401,7 @@ struct ExecuteSkipVariant<SkipVariants::GET_SOME> {
 
 template <class Executor>
 static SkipVariants constexpr skipType() {
+  static_assert(!isNewStyleExecutor<Executor>);
   bool constexpr useFetcher =
       Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
       !std::is_same<Executor, SubqueryExecutor<true>>::value;
@@ -503,30 +507,35 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWithoutTrace(size_t atMost) {
-  constexpr SkipVariants customSkipType = skipType<Executor>();
+  if constexpr (isNewStyleExecutor<Executor>) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  } else {
+    constexpr SkipVariants customSkipType = skipType<Executor>();
 
-  if (customSkipType == SkipVariants::GET_SOME) {
-    atMost = std::min(atMost, DefaultBatchSize);
-    auto res = getSomeWithoutTrace(atMost);
+    if constexpr (customSkipType == SkipVariants::GET_SOME) {
+      atMost = std::min(atMost, DefaultBatchSize);
+      auto res = getSomeWithoutTrace(atMost);
 
-    size_t skipped = 0;
-    if (res.second != nullptr) {
-      skipped = res.second->size();
+      size_t skipped = 0;
+      if (res.second != nullptr) {
+        skipped = res.second->size();
+      }
+      TRI_ASSERT(skipped <= atMost);
+
+      return {res.first, skipped};
     }
+
+    ExecutionState state;
+    typename Executor::Stats stats;
+    size_t skipped;
+    std::tie(state, stats, skipped) =
+        ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost);
+    _engine->_stats += stats;
     TRI_ASSERT(skipped <= atMost);
 
-    return {res.first, skipped};
+    return {state, skipped};
   }
-
-  ExecutionState state;
-  typename Executor::Stats stats;
-  size_t skipped;
-  std::tie(state, stats, skipped) =
-      ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost);
-  _engine->_stats += stats;
-  TRI_ASSERT(skipped <= atMost);
-
-  return {state, skipped};
 }
 
 template <bool customInit>
@@ -924,11 +933,13 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
       "Properties::inputSizeRestrictsOutputSize is true");
 
   constexpr RequestWrappedBlockVariant variant =
-      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable
-          ? RequestWrappedBlockVariant::PASS_THROUGH
-          : Executor::Properties::inputSizeRestrictsOutputSize
-                ? RequestWrappedBlockVariant::INPUTRESTRICTED
-                : RequestWrappedBlockVariant::DEFAULT;
+      isNewStyleExecutor<Executor>
+          ? RequestWrappedBlockVariant::DEFAULT
+          : Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable
+                ? RequestWrappedBlockVariant::PASS_THROUGH
+                : Executor::Properties::inputSizeRestrictsOutputSize
+                      ? RequestWrappedBlockVariant::INPUTRESTRICTED
+                      : RequestWrappedBlockVariant::DEFAULT;
 
   // Override for spliced subqueries, this optimization does not work there.
   if (isInSplicedSubquery() && variant == RequestWrappedBlockVariant::INPUTRESTRICTED) {
@@ -1018,8 +1029,6 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
 //           ahead on the input range, fetching new blocks when necessary
 // EXECUTOR: the executor has a specialised skipRowsRange method
 //           that will be called to skip
-// GET_SOME: we just request rows from the executor and then discard
-//           them
 //
 enum class SkipRowsRangeVariant { FETCHER, EXECUTOR };
 
