@@ -77,11 +77,10 @@ class DistinctCollectExecutorTest : public ::testing::Test {
 };
 
 TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_doesnt_wait) {
-  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 2));
   DistinctCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::make_pair<RegisterId, RegisterId>(1, 2), trx);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, 2));
 
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
@@ -95,11 +94,10 @@ TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_doesnt_w
 }
 
 TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_waits) {
-  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 2));
   DistinctCollectExecutorInfos infos(2 /*nrIn*/, 2 /*nrOut*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::make_pair<RegisterId, RegisterId>(1, 2), trx);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, 2));
 
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
@@ -118,7 +116,6 @@ TEST_F(DistinctCollectExecutorTest, if_no_rows_in_upstream_the_producer_waits) {
 
 TEST_F(DistinctCollectExecutorTest,
        there_are_rows_in_the_upstream_no_distinct_values_the_producer_doesnt_wait) {
-  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
   readableInputRegisters.insert(0);
   writeableOutputRegisters.insert(1);
   RegisterId nrOutputRegister = 2;
@@ -126,7 +123,7 @@ TEST_F(DistinctCollectExecutorTest,
                                      nrOutputRegister /*nrOutputReg*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::make_pair<RegisterId, RegisterId>(1, 0), trx);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
@@ -162,7 +159,6 @@ TEST_F(DistinctCollectExecutorTest,
 
 TEST_F(DistinctCollectExecutorTest,
        there_are_rows_in_the_upstream_no_distinct_values_the_producer_waits) {
-  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
   readableInputRegisters.insert(0);
   writeableOutputRegisters.insert(1);
   RegisterId nrOutputRegister = 2;
@@ -170,7 +166,7 @@ TEST_F(DistinctCollectExecutorTest,
                                      nrOutputRegister /*nrOutputReg*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::make_pair<RegisterId, RegisterId>(1, 0), trx);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
@@ -214,7 +210,6 @@ TEST_F(DistinctCollectExecutorTest,
 
 TEST_F(DistinctCollectExecutorTest,
        there_are_rows_in_the_upstream_with_distinct_values_the_producer_doesnt_wait) {
-  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
   readableInputRegisters.insert(0);
   writeableOutputRegisters.insert(1);
   RegisterId nrOutputRegister = 2;
@@ -222,7 +217,7 @@ TEST_F(DistinctCollectExecutorTest,
                                      nrOutputRegister /*nrOutputReg*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::make_pair<RegisterId, RegisterId>(1, 0), trx);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
@@ -275,7 +270,6 @@ TEST_F(DistinctCollectExecutorTest,
 
 TEST_F(DistinctCollectExecutorTest,
        there_are_rows_in_the_upstream_with_distinct_values_the_producer_waits) {
-  groupRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(1, 0));
   readableInputRegisters.insert(0);
   writeableOutputRegisters.insert(1);
   RegisterId nrOutputRegister = 2;
@@ -283,7 +277,7 @@ TEST_F(DistinctCollectExecutorTest,
                                      nrOutputRegister /*nrOutputReg*/, regToClear,
                                      regToKeep, std::move(readableInputRegisters),
                                      std::move(writeableOutputRegisters),
-                                     std::move(groupRegisters), trx);
+                                     std::make_pair<RegisterId, RegisterId>(1, 0), trx);
   block.reset(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister));
 
   auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
