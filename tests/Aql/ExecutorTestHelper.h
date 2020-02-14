@@ -197,6 +197,7 @@ struct ExecutorTestHelper {
       EXPECT_EQ(_emptyOutput, true);
       return;
     }
+    ASSERT_EQ(_emptyOutput, false);
 
     testOutputBlock(result, expectedOutputBlock);
     if (_testStats) {
