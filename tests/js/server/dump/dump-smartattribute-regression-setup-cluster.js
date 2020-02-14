@@ -28,6 +28,8 @@
 /// @author Copyright 2020, ArangoDB Inc., Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+'use strict';
+const db = require("@arangodb").db;
 const internal = require("internal");
 const isEnterprise = internal.isEnterprise();
 

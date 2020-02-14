@@ -28,6 +28,9 @@
 /// @author Copyright 2020, ArangoDB Inc., Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+'use strict';
+
+const db = require("@arangodb").db;
 var internal = require("internal");
 var jsunity = require("jsunity");
 
