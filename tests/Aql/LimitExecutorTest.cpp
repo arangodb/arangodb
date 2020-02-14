@@ -149,7 +149,90 @@ auto const testingInputLengths = ::testing::Values(
     // 21
     InputLengths{21}, InputLengths{20, 1}, InputLengths{19, 2},
     InputLengths{19, 1, 1}, InputLengths{10, 10, 1}, InputLengths{1, 9, 9, 1, 1});
-auto const testingAqlCalls = ::testing::Values(AqlCall{});
+
+// Note that fullCount does only make sense with a hard limit, and
+// soft limit = 0 and offset = 0 must not occur together.
+auto const testingAqlCalls = ::testing::ValuesIn(std::array{
+    AqlCall{0, false, AqlCall::Infinity{}},
+    AqlCall{0, false, 1, AqlCall::LimitType::SOFT},
+    AqlCall{0, false, 2, AqlCall::LimitType::SOFT},
+    AqlCall{0, false, 3, AqlCall::LimitType::SOFT},
+    AqlCall{0, false, 10, AqlCall::LimitType::SOFT},
+    AqlCall{0, false, 0, AqlCall::LimitType::HARD},
+    AqlCall{0, false, 1, AqlCall::LimitType::HARD},
+    AqlCall{0, false, 2, AqlCall::LimitType::HARD},
+    AqlCall{0, false, 3, AqlCall::LimitType::HARD},
+    AqlCall{0, false, 10, AqlCall::LimitType::HARD},
+    AqlCall{1, false, AqlCall::Infinity{}},
+    AqlCall{1, false, 0, AqlCall::LimitType::SOFT},
+    AqlCall{1, false, 1, AqlCall::LimitType::SOFT},
+    AqlCall{1, false, 2, AqlCall::LimitType::SOFT},
+    AqlCall{1, false, 3, AqlCall::LimitType::SOFT},
+    AqlCall{1, false, 10, AqlCall::LimitType::SOFT},
+    AqlCall{1, false, 0, AqlCall::LimitType::HARD},
+    AqlCall{1, false, 1, AqlCall::LimitType::HARD},
+    AqlCall{1, false, 2, AqlCall::LimitType::HARD},
+    AqlCall{1, false, 3, AqlCall::LimitType::HARD},
+    AqlCall{1, false, 10, AqlCall::LimitType::HARD},
+    AqlCall{2, false, AqlCall::Infinity{}},
+    AqlCall{2, false, 0, AqlCall::LimitType::SOFT},
+    AqlCall{2, false, 1, AqlCall::LimitType::SOFT},
+    AqlCall{2, false, 2, AqlCall::LimitType::SOFT},
+    AqlCall{2, false, 3, AqlCall::LimitType::SOFT},
+    AqlCall{2, false, 10, AqlCall::LimitType::SOFT},
+    AqlCall{2, false, 0, AqlCall::LimitType::HARD},
+    AqlCall{2, false, 1, AqlCall::LimitType::HARD},
+    AqlCall{2, false, 2, AqlCall::LimitType::HARD},
+    AqlCall{2, false, 3, AqlCall::LimitType::HARD},
+    AqlCall{2, false, 10, AqlCall::LimitType::HARD},
+    AqlCall{3, false, AqlCall::Infinity{}},
+    AqlCall{3, false, 0, AqlCall::LimitType::SOFT},
+    AqlCall{3, false, 1, AqlCall::LimitType::SOFT},
+    AqlCall{3, false, 2, AqlCall::LimitType::SOFT},
+    AqlCall{3, false, 3, AqlCall::LimitType::SOFT},
+    AqlCall{3, false, 10, AqlCall::LimitType::SOFT},
+    AqlCall{3, false, 0, AqlCall::LimitType::HARD},
+    AqlCall{3, false, 1, AqlCall::LimitType::HARD},
+    AqlCall{3, false, 2, AqlCall::LimitType::HARD},
+    AqlCall{3, false, 3, AqlCall::LimitType::HARD},
+    AqlCall{3, false, 10, AqlCall::LimitType::HARD},
+    AqlCall{10, false, AqlCall::Infinity{}},
+    AqlCall{10, false, 0, AqlCall::LimitType::SOFT},
+    AqlCall{10, false, 1, AqlCall::LimitType::SOFT},
+    AqlCall{10, false, 2, AqlCall::LimitType::SOFT},
+    AqlCall{10, false, 3, AqlCall::LimitType::SOFT},
+    AqlCall{10, false, 10, AqlCall::LimitType::SOFT},
+    AqlCall{10, false, 0, AqlCall::LimitType::HARD},
+    AqlCall{10, false, 1, AqlCall::LimitType::HARD},
+    AqlCall{10, false, 2, AqlCall::LimitType::HARD},
+    AqlCall{10, false, 3, AqlCall::LimitType::HARD},
+    AqlCall{10, false, 10, AqlCall::LimitType::HARD},
+    AqlCall{0, true, 0, AqlCall::LimitType::HARD},
+    AqlCall{0, true, 1, AqlCall::LimitType::HARD},
+    AqlCall{0, true, 2, AqlCall::LimitType::HARD},
+    AqlCall{0, true, 3, AqlCall::LimitType::HARD},
+    AqlCall{0, true, 10, AqlCall::LimitType::HARD},
+    AqlCall{1, true, 0, AqlCall::LimitType::HARD},
+    AqlCall{1, true, 1, AqlCall::LimitType::HARD},
+    AqlCall{1, true, 2, AqlCall::LimitType::HARD},
+    AqlCall{1, true, 3, AqlCall::LimitType::HARD},
+    AqlCall{1, true, 10, AqlCall::LimitType::HARD},
+    AqlCall{2, true, 0, AqlCall::LimitType::HARD},
+    AqlCall{2, true, 1, AqlCall::LimitType::HARD},
+    AqlCall{2, true, 2, AqlCall::LimitType::HARD},
+    AqlCall{2, true, 3, AqlCall::LimitType::HARD},
+    AqlCall{2, true, 10, AqlCall::LimitType::HARD},
+    AqlCall{3, true, 0, AqlCall::LimitType::HARD},
+    AqlCall{3, true, 1, AqlCall::LimitType::HARD},
+    AqlCall{3, true, 2, AqlCall::LimitType::HARD},
+    AqlCall{3, true, 3, AqlCall::LimitType::HARD},
+    AqlCall{3, true, 10, AqlCall::LimitType::HARD},
+    AqlCall{10, true, 0, AqlCall::LimitType::HARD},
+    AqlCall{10, true, 1, AqlCall::LimitType::HARD},
+    AqlCall{10, true, 2, AqlCall::LimitType::HARD},
+    AqlCall{10, true, 3, AqlCall::LimitType::HARD},
+    AqlCall{10, true, 10, AqlCall::LimitType::HARD}
+});
 auto const testingDoneResultIsEmpty = ::testing::Bool();
 
 auto const limitTestCases =
@@ -160,6 +243,10 @@ TEST_P(LimitExecutorTest, testSuite) {
   // Input.
   auto const& [offset, limit, fullCount, inputLengths, clientCall, doneResultIsEmpty] =
       GetParam();
+
+  TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0}));
+  TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
+  TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
 
   auto const numInputRows =
       std::accumulate(inputLengths.begin(), inputLengths.end(), size_t{0});
@@ -176,10 +263,15 @@ TEST_P(LimitExecutorTest, testSuite) {
   // Expected output, though the expectedPassedBlocks are also the input.
   // Note that structured bindings are *not* captured by lambdas, at least in C++17.
   // So we must explicity capture them.
-  auto const [expectedSkipped, expectedOutput, expectedLimitStats] =
+  auto const [expectedSkipped, expectedOutput, expectedLimitStats, expectedState] =
       std::invoke([&, offset = offset, limit = limit, fullCount = fullCount,
-                   &inputLengths = inputLengths, clientCall = clientCall]() {
+                   &inputLengths = inputLengths, clientCall = clientCall, doneResultIsEmpty = doneResultIsEmpty]() {
         auto const numInputRows = std::accumulate(inputLengths.begin(), inputLengths.end(), size_t{0});
+        auto const effectiveOffset = clientCall.getOffset() + offset;
+        // The combined limit of a call and a LimitExecutor:
+        auto const effectiveLimit =
+            std::min(clientCall.getOffset() + clientCall.getLimit(),
+                nonNegativeSubtraction(limit, clientCall.getOffset()));
 
         // Only the client's offset counts against the "skipped" count returned
         // by the limit block, the rest is upstream!
@@ -188,11 +280,6 @@ TEST_P(LimitExecutorTest, testSuite) {
         auto const output = std::invoke([&]() {
           auto output = MatrixBuilder<1>{};
 
-          auto const effectiveOffset = clientCall.getOffset() + offset;
-          // The combined limit of a call and a LimitExecutor:
-          auto const effectiveLimit =
-              std::min(clientCall.getOffset() + clientCall.getLimit(),
-                       nonNegativeSubtraction(limit, clientCall.getOffset()));
           auto const begin = effectiveOffset;
           auto const end = std::min(effectiveOffset + effectiveLimit, numInputRows);
           for (auto k = begin; k < end; ++k) {
@@ -206,7 +293,26 @@ TEST_P(LimitExecutorTest, testSuite) {
         if (fullCount) {
           stats.incrFullCountBy(numInputRows);
         }
-        return std::make_tuple(skipped, output, stats);
+
+        // Whether the call returns HASMORE:
+        auto const hasMore = std::invoke([&] {
+          auto const clientLimitIsSmaller =
+              clientCall.getOffset() + clientCall.getLimit() < effectiveLimit;
+          auto const effectiveLimitIsHardLimit =
+              clientLimitIsSmaller ? clientCall.hasHardLimit() : true;
+          if (effectiveLimitIsHardLimit) {
+            return true;
+          }
+          // We have a softLimit:
+          if (doneResultIsEmpty) {
+            return effectiveOffset + effectiveLimit <= numInputRows;
+          } else {
+            return effectiveOffset + effectiveLimit < numInputRows;
+          }
+        });
+        auto const state = hasMore ? ExecutionState::HASMORE : ExecutionState::DONE;
+
+        return std::make_tuple(skipped, output, stats, state);
       });
 
   auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
@@ -221,11 +327,11 @@ TEST_P(LimitExecutorTest, testSuite) {
       .setInputSplitType(inputLengths)
       .setCall(clientCall)
       .setLieAboutHasmore(doneResultIsEmpty)
-      .expectedStats(expectedStats)
+      // .expectedStats(expectedStats)
       .expectOutput({0}, expectedOutput)
       .expectSkipped(expectedSkipped)
       .expectedState(ExecutionState::DONE)
-      .run(std::move(infos));
+      .run(std::move(infos), true);
 }
 
 auto printTestCase =
@@ -246,12 +352,12 @@ auto printTestCase =
   out << "clientCall";
   {
     if (clientCall.getOffset() > 0) {
-      out << "_offset" << clientCall;
+      out << "_offset" << clientCall.getOffset();
     }
     if (clientCall.hasHardLimit() || clientCall.hasSoftLimit()) {
       auto const clientLimit =
           std::get<std::size_t>(std::min(clientCall.softLimit, clientCall.hardLimit));
-      out << "_limit" << clientLimit;
+      out << "_" << (clientCall.hasHardLimit() ? "hard" : "soft") << "Limit" << clientLimit;
     }
     if (clientCall.needsFullCount()) {
       out << "_fullCount";
@@ -262,7 +368,7 @@ auto printTestCase =
   return out.str();
 };
 
-INSTANTIATE_TEST_CASE_P(LimitExecutorExecuteApiVariations, LimitExecutorTest,
+INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, LimitExecutorTest,
                         limitTestCases, printTestCase);
 
 }  // namespace arangodb::tests::aql
