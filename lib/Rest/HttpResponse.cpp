@@ -49,8 +49,7 @@ HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
                            std::unique_ptr<basics::StringBuffer> buffer)
 : GeneralResponse(code, mid),
   _body(std::move(buffer)),
-  _bodySize(0), _isHeadResponse(false) {
-  _generateBody = false;
+  _bodySize(0) {
   _contentType = ContentType::TEXT;
     
   if (!_body) {
@@ -67,7 +66,6 @@ void HttpResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
   _contentType = ContentType::TEXT;
-  _isHeadResponse = false;
   TRI_ASSERT(_body != nullptr);
   _body->clear();
   _bodySize = 0;
@@ -130,12 +128,11 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
 void HttpResponse::headResponse(size_t size) {
   TRI_ASSERT(_body != nullptr);
   _body->clear();
-  _isHeadResponse = true;
   _bodySize = size;
 }
 
 size_t HttpResponse::bodySize() const {
-  if (_isHeadResponse) {
+  if (!_generateBody) {
     return _bodySize;
   }
   TRI_ASSERT(_body != nullptr);
@@ -269,7 +266,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 
     output->appendText(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
 
-    if (_isHeadResponse) {
+    if (!_generateBody) {
       // From http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13
       //
       // 14.13 Content-Length

@@ -260,7 +260,6 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
     if (cont == CommTask::Flow::Continue) {
       auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
-      resp->setContentTypeRequested(req->contentTypeResponse());
       this->executeRequest(std::move(req), std::move(resp));
     } // abort is handled in prepareExecution
   } else {  // not supported on server

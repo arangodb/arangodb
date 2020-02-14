@@ -460,6 +460,7 @@ void H2Connection<SocketType::Ssl>::finishConnect() {
 
   if (alpn == NULL || alpnlen != 2 || memcmp("h2", alpn, 2) != 0) {
     this->_state.store(Connection::State::Failed);
+    FUERTE_LOG_ERROR << "h2 is not negotiated";
     shutdownConnection(Error::ProtocolError, "h2 is not negotiated");
     return;
   }
@@ -634,6 +635,7 @@ void H2Connection<T>::queueHttp2Requests() {
                                          /*stream_user_data*/ nullptr);
     
     if (sid < 0) {
+      FUERTE_LOG_ERROR << "illegal stream id";
       this->shutdownConnection(Error::ProtocolError, "illegal stream id");
       return;
     }
@@ -666,6 +668,7 @@ void H2Connection<T>::doWrite() {
     ssize_t rv = nghttp2_session_mem_send(_session, &data);
     if (rv < 0) {  // error
       _writing = false;
+      FUERTE_LOG_ERROR << "http2 framing error";
       this->shutdownConnection(Error::ProtocolError, "http2 framing error");
       return;
     } else if (rv == 0) {  // done
@@ -733,6 +736,7 @@ void H2Connection<T>::asyncReadCallback(asio_ns::error_code const& ec) {
 
     ssize_t rv = nghttp2_session_mem_recv(_session, data, buffer.size());
     if (rv < 0) {
+      FUERTE_LOG_ERROR << "http2 parsing error";
       this->shutdownConnection(Error::ProtocolError, "http2 parsing error");
       return;  // stop read loop
     }

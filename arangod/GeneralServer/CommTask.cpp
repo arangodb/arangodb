@@ -324,6 +324,10 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
 
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                               std::unique_ptr<GeneralResponse> response) {
+  
+  response->setContentTypeRequested(request->contentTypeResponse());
+  response->setGenerateBody(request->requestType() != RequestType::HEAD);
+
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
@@ -470,7 +474,7 @@ void CommTask::addSimpleResponse(rest::ResponseCode code,
     auto resp = createResponse(code, mid);
     resp->setContentType(respType);
     if (!buffer.empty()) {
-      resp->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+      resp->setPayload(std::move(buffer), VPackOptions::Defaults);
     }
     sendResponse(std::move(resp), this->stealStatistics(1UL));
   } catch (...) {
