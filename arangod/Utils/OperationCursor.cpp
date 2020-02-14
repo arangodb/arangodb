@@ -129,3 +129,24 @@ void OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
     _hasMore = false;
   }
 }
+
+/// @brief Skip all elements.
+///        skipped will be increased by the amount of skipped elements
+///        afterwards Check hasMore()==true before using this NOTE: This will
+///        throw on OUT_OF_MEMORY
+void OperationCursor::skipAll(uint64_t& skipped) {
+  size_t toSkip = 1000;
+
+  if (!hasMore()) {
+    TRI_ASSERT(false);
+    // You requested more even if you should have checked it before.
+    return;
+  }
+
+  while (_hasMore) {
+    _indexIterator->skip(toSkip, skipped);
+    if (skipped != toSkip) {
+      _hasMore = false;
+    }
+  }
+}
