@@ -28,6 +28,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const isEnterprise = internal.isEnterprise();
+
 (function () {
   'use strict';
   if (!isEnterprise) {
