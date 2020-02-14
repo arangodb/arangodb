@@ -29,11 +29,34 @@
 #include <cstddef>
 #include <variant>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
+
 struct AqlCall {
+  // TODO We currently have softLimit and hardLimit, where both can be a number
+  //      or Infinity - but not both may be non-infinite at the same time.
+  //      In addition, a soft limit does only make sense together with a hard
+  //      limit.
+  //      The data structures and APIs should reflect that. E.g.:
+  //      Infinity | SoftLimit { count : Int } | HardLimit { count : Int, fullCount : Bool }
+  //      On a less important case, softLimit = 0 and offset = 0 do not occur together,
+  //      but it's probably not worth implementing that in terms of data structures.
   class Infinity {};
   using Limit = std::variant<size_t, Infinity>;
+
+  AqlCall() = default;
+  // Replacements for struct initialization
+  explicit AqlCall(size_t offset, Limit softLimit = Infinity{},
+                   Limit hardLimit = Infinity{}, bool fullCount = false)
+      : offset{offset}, softLimit{softLimit}, hardLimit{hardLimit}, fullCount{fullCount} {}
+
+  enum class LimitType { SOFT, HARD };
+  AqlCall(size_t offset, bool fullCount, Infinity)
+      : offset{offset}, softLimit{Infinity{}}, hardLimit{Infinity{}}, fullCount{fullCount} {}
+  AqlCall(size_t offset, bool fullCount, size_t limit, LimitType limitType)
+      : offset{offset},
+        softLimit{limitType == LimitType::SOFT ? Limit{limit} : Limit{Infinity{}}},
+        hardLimit{limitType == LimitType::HARD ? Limit{limit} : Limit{Infinity{}}},
+        fullCount{fullCount} {}
 
   // TODO Remove me, this will not be necessary later
   static AqlCall SimulateSkipSome(std::size_t toSkip) {
@@ -222,7 +245,6 @@ inline std::ostream& operator<<(std::ostream& out, const arangodb::aql::AqlCall&
              << ", fullCount: " << std::boolalpha << call.fullCount << " }";
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif
