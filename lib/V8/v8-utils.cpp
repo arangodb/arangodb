@@ -65,6 +65,7 @@
 #include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -79,6 +80,7 @@
 #include "Basics/memory.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/signals.h"
 #include "Basics/socket-utils.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
@@ -2837,8 +2839,8 @@ static void ProcessStatisticsToV8(v8::FunctionCallbackInfo<v8::Value> const& arg
   double rss = (double)info._residentSize;
   double rssp = 0;
 
-  if (TRI_PhysicalMemory != 0) {
-    rssp = rss / TRI_PhysicalMemory;
+  if (PhysicalMemory::getValue() != 0) {
+    rssp = rss / PhysicalMemory::getValue();
   }
 
   auto context = TRI_IGETC;
@@ -4598,7 +4600,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() >= 3) {
     isTerminating = TRI_ObjectToBoolean(isolate, args[2]);
   } else {
-    isTerminating = TRI_IsDeadlySignal(signal);
+    isTerminating = arangodb::signals::isDeadly(signal);
   }
 
   ExternalId pid;
