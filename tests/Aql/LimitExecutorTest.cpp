@@ -327,7 +327,7 @@ TEST_P(LimitExecutorTest, testSuite) {
       .setInputSplitType(inputLengths)
       .setCall(clientCall)
       .setLieAboutHasmore(doneResultIsEmpty)
-      // .expectedStats(expectedStats)
+      .expectedStats(expectedStats)
       .expectOutput({0}, expectedOutput)
       .expectSkipped(expectedSkipped)
       .expectedState(expectedState)
