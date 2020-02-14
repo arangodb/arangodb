@@ -270,8 +270,8 @@ TEST_P(LimitExecutorTest, testSuite) {
         auto const effectiveOffset = clientCall.getOffset() + offset;
         // The combined limit of a call and a LimitExecutor:
         auto const effectiveLimit =
-            std::min(clientCall.getOffset() + clientCall.getLimit(),
-                nonNegativeSubtraction(limit, clientCall.getOffset()));
+            std::min(clientCall.getLimit(),
+                     nonNegativeSubtraction(limit, clientCall.getOffset()));
 
         // Only the client's offset counts against the "skipped" count returned
         // by the limit block, the rest is upstream!
@@ -294,14 +294,14 @@ TEST_P(LimitExecutorTest, testSuite) {
           stats.incrFullCountBy(numInputRows);
         }
 
-        // Whether the call returns HASMORE:
+        // Whether the execution should return HASMORE:
         auto const hasMore = std::invoke([&] {
           auto const clientLimitIsSmaller =
-              clientCall.getOffset() + clientCall.getLimit() < effectiveLimit;
+              clientCall.getOffset() + clientCall.getLimit() < limit;
           auto const effectiveLimitIsHardLimit =
               clientLimitIsSmaller ? clientCall.hasHardLimit() : true;
           if (effectiveLimitIsHardLimit) {
-            return true;
+            return false;
           }
           // We have a softLimit:
           if (doneResultIsEmpty) {
@@ -330,7 +330,7 @@ TEST_P(LimitExecutorTest, testSuite) {
       // .expectedStats(expectedStats)
       .expectOutput({0}, expectedOutput)
       .expectSkipped(expectedSkipped)
-      .expectedState(ExecutionState::DONE)
+      .expectedState(expectedState)
       .run(std::move(infos), true);
 }
 

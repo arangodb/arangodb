@@ -1171,6 +1171,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     }
     AqlCall clientCall = stack.popCall();
 
+    TRI_ASSERT(!(clientCall.getOffset() == 0 && clientCall.softLimit == AqlCall::Limit{0}));
+    TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.fullCount));
+    TRI_ASSERT(!(clientCall.hasSoftLimit() && clientCall.hasHardLimit()));
+
     // We can only have returned the following internal states
     TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
                _execState == ExecState::UPSTREAM);
@@ -1210,7 +1214,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // This has to be done by the Executor calling call.didSkip()
           // accordingly.
           if (canPassFullcount) {
-            // In htis case we can first skip. But straight after continue with fullCount, so we might skip more
+            // In this case we can first skip. But straight after continue with fullCount, so we might skip more
             TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
             if (clientCall.getOffset() + skippedLocal > offsetBefore) {
               // First need to count down offset.

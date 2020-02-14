@@ -82,10 +82,11 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
 
   if (useSoftLimit) {
     upstreamCall.softLimit = limit;
+    upstreamCall.fullCount = false;
   } else {
     upstreamCall.hardLimit = limit;
+    upstreamCall.fullCount = infos().isFullCountEnabled();
   }
-  upstreamCall.fullCount = infos().isFullCountEnabled();
 
   return upstreamCall;
 }
@@ -159,13 +160,15 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
 
   // We may not yet skip more than the combined offsets, fullCount must happen
   // after all rows were produced only.
-  auto const skipped = inputRange.skip(upstreamCall.getOffset());
-  call.didSkip(skipped);
-  _counter += skipped;
+  auto const skippedTotal = inputRange.skip(upstreamCall.getOffset());
+  auto const skippedForDownstream = std::min(skippedTotal, call.getOffset());
+  // Report at most what was asked for, the rest is our own offset.
+  call.didSkip(skippedForDownstream);
+  _counter += skippedTotal;
   auto stats = LimitStats{};
   if (infos().isFullCountEnabled()) {
-    stats.incrFullCountBy(skipped);
+    stats.incrFullCountBy(skippedTotal);
   }
 
-  return {inputRange.upstreamState(), stats, skipped, calculateUpstreamCall(call)};
+  return {inputRange.upstreamState(), stats, skippedForDownstream, calculateUpstreamCall(call)};
 }
