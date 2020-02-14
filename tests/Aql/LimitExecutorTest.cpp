@@ -176,35 +176,32 @@ TEST_P(LimitExecutorTest, testSuite) {
   // Expected output, though the expectedPassedBlocks are also the input.
   // Note that structured bindings are *not* captured by lambdas, at least in C++17.
   // So we must explicity capture them.
-  // TODO expectedPassedBlocks is needed no longer. This code can thus be simplified.
   auto const [expectedSkipped, expectedOutput, expectedLimitStats] =
       std::invoke([&, offset = offset, limit = limit, fullCount = fullCount,
                    &inputLengths = inputLengths, clientCall = clientCall]() {
-        auto output = MatrixBuilder<1>{};
-        auto const effectiveOffset = clientCall.getOffset() + offset;
-        // The combined limit of a call and a LimitExecutor:
-        auto const effectiveLimit =
-            std::min(clientCall.getOffset() + clientCall.getLimit(),
-                     nonNegativeSubtraction(limit, clientCall.getOffset()));
-        auto i = size_t{0};
-        for (auto const length : inputLengths) {
-          // In each iteration, we calculate a range (begin, end) ~= (i,
-          // i+length), but potentially restricted by both offset and limit.
-          auto const localLimit =
-              nonNegativeSubtraction(effectiveLimit, nonNegativeSubtraction(i, offset));
-          auto const localOffset = nonNegativeSubtraction(effectiveOffset, i);
-          auto const limitedLength = std::min(length, localOffset + localLimit);
-          auto const skip = std::min(limitedLength, localOffset);
-          auto const begin = i + skip;
-          auto const end = i + limitedLength;
-          for (auto k = begin; k < end; ++k) {
-            output.emplace_back(RowBuilder<1>{k});
-          }
-          i += length;
-        }
+        auto const numInputRows = std::accumulate(inputLengths.begin(), inputLengths.end(), size_t{0});
+
         // Only the client's offset counts against the "skipped" count returned
         // by the limit block, the rest is upstream!
         auto const skipped = std::min(numInputRows, clientCall.getOffset());
+
+        auto const output = std::invoke([&]() {
+          auto output = MatrixBuilder<1>{};
+
+          auto const effectiveOffset = clientCall.getOffset() + offset;
+          // The combined limit of a call and a LimitExecutor:
+          auto const effectiveLimit =
+              std::min(clientCall.getOffset() + clientCall.getLimit(),
+                       nonNegativeSubtraction(limit, clientCall.getOffset()));
+          auto const begin = effectiveOffset;
+          auto const end = std::min(effectiveOffset + effectiveLimit, numInputRows);
+          for (auto k = begin; k < end; ++k) {
+            output.emplace_back(RowBuilder<1>{k});
+          }
+
+          return output;
+        });
+
         auto stats = LimitStats{};
         if (fullCount) {
           stats.incrFullCountBy(numInputRows);
