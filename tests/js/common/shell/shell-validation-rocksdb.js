@@ -35,6 +35,13 @@ const print = internal.print;
 const arangodb = require("@arangodb");
 const ERRORS = arangodb.errors;
 
+// helper
+const isCluster = internal.isCluster();
+let sleepInCluster = () => {
+  if(isCluster){
+    internal.sleep(2);
+  }
+};
 
 function ValidationBasicsSuite () {
   const validatorsStart=[
@@ -236,8 +243,8 @@ function ValidationBasicsSuite () {
       const v0 =  v[0];
       v0.level = "none";
       testCollection.properties({"validators" : v });
+      sleepInCluster();
       assertEqual(testCollection.properties().validators[0].level, v0.level);
-
       let  doc = testCollection.insert({"foo" : "bar"});
     },
 
@@ -246,6 +253,7 @@ function ValidationBasicsSuite () {
       const v0 =  v[0];
       v0.level = "new";
       testCollection.properties({"validators" : v });
+      sleepInCluster();
       assertEqual(testCollection.properties().validators[0].level, v0.level);
 
       let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
@@ -264,6 +272,7 @@ function ValidationBasicsSuite () {
       const v0 =  v[0];
       v0.level = "moderate";
       testCollection.properties({"validators" : v });
+      sleepInCluster();
       assertEqual(testCollection.properties().validators[0].level, v0.level);
 
       let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
@@ -283,6 +292,7 @@ function ValidationBasicsSuite () {
       const v0 =  v[0];
       v0.level = "strict";
       testCollection.properties({"validators" : v });
+      sleepInCluster();
       assertEqual(testCollection.properties().validators[0].level, v0.level);
 
       let  doc = testCollection.insert({"foo" : "bar"}, skipOptions);
