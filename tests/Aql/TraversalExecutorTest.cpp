@@ -123,22 +123,29 @@ class TestGraph {
 };
 
 // @brief
-// A graph enumerator fakes a PathEnumerator that is inderectly used by the
+// A graph enumerator fakes a PathEnumerator that is indirectly used by the
 // TraversalExecutor.
 // It mostly does a breath first enumeration on the given TestGraph
 // instance originating from the given startVertex.
 class GraphEnumerator : public PathEnumerator {
  public:
-  GraphEnumerator(Traverser* traverser, std::string const& startVertex,
-                  TraverserOptions* opts, TestGraph const& g)
-      : PathEnumerator(traverser, startVertex, opts),
+  GraphEnumerator(Traverser* traverser, TraverserOptions* opts, TestGraph const& g)
+      : PathEnumerator(traverser, opts),
         _graph(g),
         _idx(0),
-        _depth(0),
-        _currentDepth{},
-        _nextDepth{arangodb::velocypack::StringRef(startVertex)} {}
+        _depth(0) {}
 
   ~GraphEnumerator() = default;
+
+  void setStartVertex(arangodb::velocypack::StringRef startVertex) override {
+    PathEnumerator::setStartVertex(startVertex);
+  
+    _idx = 0;
+    _depth = 0;
+    _currentDepth.clear();
+    _nextDepth.clear();
+    _nextDepth.emplace_back(startVertex);
+  }
 
   bool next() override {
     ++_idx;
@@ -190,7 +197,8 @@ class TraverserHelper : public Traverser {
 
   void setStartVertex(std::string const& value) override {
     _usedVertexAt.push_back(value);
-    _enumerator.reset(new GraphEnumerator(this, _usedVertexAt.back(), _opts, _graph));
+    _enumerator.reset(new GraphEnumerator(this, _opts, _graph));
+    _enumerator->setStartVertex(arangodb::velocypack::StringRef(_usedVertexAt.back()));
     _done = false;
   }
 

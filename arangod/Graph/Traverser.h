@@ -284,7 +284,7 @@ class Traverser {
   ///        If it returns false it is guaranteed that there are no more paths.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool hasMore() { return !_done; }
+  bool hasMore() const { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice edge,
                              arangodb::velocypack::StringRef vid,
@@ -311,9 +311,6 @@ class Traverser {
 
   /// @brief internal getter to extract an edge
   std::unique_ptr<VertexGetter> _vertexGetter;
-
-  /// @brief Builder for the start value slice. Leased from transaction
-  velocypack::Builder _startIdBuilder;
 
   /// @brief indicator if this traversal is done
   bool _done;

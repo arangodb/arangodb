@@ -130,7 +130,6 @@ void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const&
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::Methods* trx)
     : _trx(trx),
-      _startIdBuilder(),
       _done(true),
       _canUseOptimizedNeighbors(false),
       _opts(opts) {

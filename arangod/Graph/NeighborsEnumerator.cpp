@@ -34,13 +34,22 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, VPackSlice const& startVertex,
-                                         TraverserOptions* opts)
-    : PathEnumerator(traverser, startVertex.copyString(), opts), _searchDepth(0) {
-  arangodb::velocypack::StringRef vId = _traverser->traverserCache()->persistString(
-      arangodb::velocypack::StringRef(startVertex));
-  _allFound.insert(vId);
-  _currentDepth.insert(vId);
+NeighborsEnumerator::NeighborsEnumerator(Traverser* traverser, TraverserOptions* opts)
+    : PathEnumerator(traverser, opts), 
+      _searchDepth(0) {}
+
+void NeighborsEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+
+  _allFound.clear();
+  _currentDepth.clear();
+  _lastDepth.clear();
+  _iterator = _currentDepth.end();
+  _toPrune.clear();
+  _searchDepth = 0;
+
+  _allFound.insert(startVertex);
+  _currentDepth.insert(startVertex);
   _iterator = _currentDepth.begin();
 }
 

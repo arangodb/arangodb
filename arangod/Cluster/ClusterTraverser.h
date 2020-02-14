@@ -86,6 +86,9 @@ class ClusterTraverser final : public Traverser {
  private:
   void fetchVertices();
 
+  /// @brief build the (single) path enumerator of this traverser
+  void createEnumerator();
+
   std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
 
   std::string _dbname;

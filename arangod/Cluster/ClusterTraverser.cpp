@@ -51,13 +51,15 @@ ClusterTraverser::ClusterTraverser(arangodb::traverser::TraverserOptions* opts,
       _dbname(dbname), 
       _engines(engines) { 
   _opts->linkTraverser(this);
+  
+  createEnumerator();
+  TRI_ASSERT(_enumerator != nullptr);
 }
 
 void ClusterTraverser::setStartVertex(std::string const& vid) {
-  _startIdBuilder.add(VPackValue(vid));
-  VPackSlice idSlice = _startIdBuilder.slice();
+  arangodb::velocypack::StringRef const s(vid);
 
-  auto it = _vertices.find(arangodb::velocypack::StringRef(vid));
+  auto it = _vertices.find(s);
   if (it == _vertices.end()) {
     size_t firstSlash = vid.find('/');
     if (firstSlash == std::string::npos ||
@@ -69,7 +71,6 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  arangodb::velocypack::StringRef s(vid);
   if (!vertexMatchesConditions(s, 0)) {
     // Start vertex invalid
     _done = true;
@@ -77,18 +78,12 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
   }
   
   arangodb::velocypack::StringRef persId = traverserCache()->persistString(s);
-
   _vertexGetter->reset(persId);
-  if (_opts->useBreadthFirst) {
-    _enumerator.reset(new arangodb::graph::BreadthFirstEnumerator(this, idSlice, _opts));
-  } else {
-    _enumerator.reset(new arangodb::traverser::DepthFirstEnumerator(this, vid, _opts));
-  }
+  _enumerator->setStartVertex(persId);
   _done = false;
 }
 
 void ClusterTraverser::clear() {
-  _startIdBuilder.clear();
   traverserCache()->clear();
 
   _vertices.clear();
@@ -206,5 +201,15 @@ void ClusterTraverser::destroyEngines() {
       }
       LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
     }
+  }
+}
+
+void ClusterTraverser::createEnumerator() {
+  TRI_ASSERT(_enumerator == nullptr);
+
+  if (_opts->useBreadthFirst) {
+    _enumerator.reset(new arangodb::graph::BreadthFirstEnumerator(this, _opts));
+  } else {
+    _enumerator.reset(new arangodb::traverser::DepthFirstEnumerator(this, _opts));
   }
 }

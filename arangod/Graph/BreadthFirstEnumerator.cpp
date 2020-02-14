@@ -37,31 +37,36 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-BreadthFirstEnumerator::PathStep::PathStep(arangodb::velocypack::StringRef const vertex)
+BreadthFirstEnumerator::PathStep::PathStep(arangodb::velocypack::StringRef vertex)
     : sourceIdx(0), edge(EdgeDocumentToken()), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&& edge,
-                                           arangodb::velocypack::StringRef const vertex)
+                                           arangodb::velocypack::StringRef vertex)
     : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
 
-BreadthFirstEnumerator::PathStep::~PathStep() = default;
-
-BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice startVertex,
-                                               TraverserOptions* opts)
-    : PathEnumerator(traverser, startVertex.copyString(), opts),
+BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, TraverserOptions* opts)
+    : PathEnumerator(traverser, opts),
       _schreierIndex(0),
       _lastReturned(0),
       _currentDepth(0),
       _toSearchPos(0) {
   _schreier.reserve(32);
-  arangodb::velocypack::StringRef startVId =
-      _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
-
-  _schreier.emplace_back(std::make_unique<PathStep>(startVId));
-  _toSearch.emplace_back(NextStep(0));
 }
 
-BreadthFirstEnumerator::~BreadthFirstEnumerator() = default;
+void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
+  PathEnumerator::setStartVertex(startVertex);
+  
+  _schreier.clear();
+  _schreierIndex = 0;
+  _lastReturned = 0;
+  _nextDepth.clear();
+  _toSearch.clear();
+  _currentDepth = 0;
+  _toSearchPos = 0;
+
+  _schreier.emplace_back(std::make_unique<PathStep>(startVertex));
+  _toSearch.emplace_back(NextStep(0));
+}
 
 bool BreadthFirstEnumerator::next() {
   if (_isFirst) {
@@ -107,7 +112,6 @@ bool BreadthFirstEnumerator::next() {
     // If not it should have bailed out before.
     TRI_ASSERT(_toSearchPos < _toSearch.size());
 
-    _tmpEdges.clear();
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx]->vertex;
 

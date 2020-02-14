@@ -81,6 +81,10 @@ class SingleServerTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   void addVertexToVelocyPack(arangodb::velocypack::StringRef, arangodb::velocypack::Builder&) override;
+
+ private:
+  /// @brief build the (single) path enumerator of this traverser
+  void createEnumerator();
 };
 }  // namespace traverser
 }  // namespace arangodb
