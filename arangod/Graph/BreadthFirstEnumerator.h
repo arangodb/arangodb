@@ -69,7 +69,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   };
 
   /// @brief schreier vector to store the visited vertices
-  std::vector<std::unique_ptr<PathStep>> _schreier;
+  std::vector<PathStep> _schreier;
 
   /// @brief Next free index in schreier vector.
   size_t _schreierIndex;
@@ -112,7 +112,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
     size_t depth = 0;
     while (index != 0) {
       ++depth;
-      index = _schreier[index]->sourceIdx;
+      index = _schreier[index].sourceIdx;
     }
     return depth;
   }

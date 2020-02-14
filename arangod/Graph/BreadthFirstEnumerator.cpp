@@ -64,7 +64,7 @@ void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef star
   _currentDepth = 0;
   _toSearchPos = 0;
 
-  _schreier.emplace_back(std::make_unique<PathStep>(startVertex));
+  _schreier.emplace_back(startVertex);
   _toSearch.emplace_back(NextStep(0));
 }
 
@@ -113,7 +113,7 @@ bool BreadthFirstEnumerator::next() {
     TRI_ASSERT(_toSearchPos < _toSearch.size());
 
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
-    auto const nextVertex = _schreier[nextIdx]->vertex;
+    auto const nextVertex = _schreier[nextIdx].vertex;
 
     std::unique_ptr<EdgeCursor> cursor(
         _opts->nextCursor(nextVertex, _currentDepth));
@@ -150,7 +150,7 @@ bool BreadthFirstEnumerator::next() {
             }
           }
 
-          _schreier.emplace_back(std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
+          _schreier.emplace_back(nextIdx, std::move(eid), vId);
           if (_currentDepth < _opts->maxDepth - 1) {
             // Prune here
             if (!shouldPrune()) {
@@ -198,7 +198,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(arangodb::velocyp
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::vertexToAqlValue(size_t index) {
   TRI_ASSERT(index < _schreier.size());
-  return _traverser->fetchVertexData(_schreier[index]->vertex);
+  return _traverser->fetchVertexData(_schreier[index].vertex);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
@@ -207,33 +207,32 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
     // This is the first Vertex. No Edge Pointing to it
     return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
   }
-  return _opts->cache()->fetchEdgeAqlResult(_schreier[index]->edge);
+  return _opts->cache()->fetchEdgeAqlResult(_schreier[index].edge);
 }
 
 VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index) {
-  // TODO make deque class variable
-  std::deque<size_t> fullPath;
+  std::vector<size_t> fullPath;
   while (index != 0) {
     // Walk backwards through the path and push everything found on the local
     // stack
-    fullPath.emplace_front(index);
-    index = _schreier[index]->sourceIdx;
+    fullPath.emplace_back(index);
+    index = _schreier[index].sourceIdx;
   }
 
   result.clear();
   result.openObject();
   result.add(VPackValue("edges"));
   result.openArray();
-  for (auto const& idx : fullPath) {
-    _opts->cache()->insertEdgeIntoResult(_schreier[idx]->edge, result);
+  for (auto it = fullPath.rbegin(); it != fullPath.rend(); ++it) {
+    _opts->cache()->insertEdgeIntoResult(_schreier[*it].edge, result);
   }
   result.close();  // edges
   result.add(VPackValue("vertices"));
   result.openArray();
   // Always add the start vertex
-  _traverser->addVertexToVelocyPack(_schreier[0]->vertex, result);
-  for (auto const& idx : fullPath) {
-    _traverser->addVertexToVelocyPack(_schreier[idx]->vertex, result);
+  _traverser->addVertexToVelocyPack(_schreier[0].vertex, result);
+  for (auto it = fullPath.rbegin(); it != fullPath.rend(); ++it) {
+    _traverser->addVertexToVelocyPack(_schreier[*it].vertex, result);
   }
   result.close();  // vertices
   result.close();
@@ -251,10 +250,7 @@ bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
   while (true) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
-    // Massive logic error, only valid pointers should be inserted into
-    // _schreier
-    TRI_ASSERT(step != nullptr);
-    if (step->vertex == vertex) {
+    if (step.vertex == vertex) {
       // We have the given vertex on this path
       return true;
     }
@@ -262,7 +258,7 @@ bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
       // We have checked the complete path
       return false;
     }
-    index = step->sourceIdx;
+    index = step.sourceIdx;
   }
   return false;
 }
@@ -272,14 +268,11 @@ bool BreadthFirstEnumerator::pathContainsEdge(size_t index,
   while (index != 0) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
-    // Massive logic error, only valid pointers should be inserted into
-    // _schreier
-    TRI_ASSERT(step != nullptr);
-    if (step->edge.equals(edge)) {
+    if (step.edge.equals(edge)) {
       // We have the given vertex on this path
       return true;
     }
-    index = step->sourceIdx;
+    index = step.sourceIdx;
   }
   return false;
 }

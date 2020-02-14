@@ -63,7 +63,6 @@ TraverserOptions::TraverserOptions(aql::Query* query, VPackSlice const& obj)
       useBreadthFirst(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH) {
-      // TODO: call BaseOptions ctor here?
   TRI_ASSERT(obj.isObject());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

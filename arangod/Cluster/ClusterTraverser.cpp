@@ -122,9 +122,7 @@ void ClusterTraverser::fetchVertices() {
     fetchVerticesFromEngines(*_trx, _engines, _verticesToFetch, _vertices, ch->datalake(),
                              /*forShortestPath*/ false);
 
-    if (_enumerator != nullptr) {
-      _enumerator->incHttpRequests(_engines->size()); 
-    }
+    _enumerator->incHttpRequests(_engines->size()); 
   } else {
     for (auto const& it : _verticesToFetch) {
       _vertices.emplace(it, VPackSlice::nullSlice());
@@ -138,6 +136,9 @@ aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef 
   auto cached = _vertices.find(idString);
   if (cached == _vertices.end()) {
     // Vertex not yet cached. Prepare for load.
+    
+    // we need to make sure the idString remains valid afterwards
+    idString = _opts->cache()->persistString(idString);
     _verticesToFetch.emplace(idString);
     fetchVertices();
     cached = _vertices.find(idString);
@@ -174,9 +175,7 @@ void ClusterTraverser::destroyEngines() {
   }
   // nullptr only happens on controlled server shutdown
 
-  if (_enumerator != nullptr) {
-    _enumerator->incHttpRequests(_engines->size());
-  }
+  _enumerator->incHttpRequests(_engines->size());
 
   VPackBuffer<uint8_t> body;
   
