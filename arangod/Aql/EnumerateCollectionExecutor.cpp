@@ -126,7 +126,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
     : _infos(infos),
       _fetcher(fetcher),
       _documentProducer(nullptr),
-      _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
+      _documentProducingFunctionContext(_currentRow, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(), _infos.getQuery(),
                                         _infos.getFilter(), _infos.getProjections(),
                                         _infos.getCoveringIndexAttributePositions(),
@@ -134,7 +134,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
-      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
+      _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
@@ -169,13 +169,13 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
 
   while (true) {
     if (!_cursorHasMore) {
-      std::tie(_state, _input) = _fetcher.fetchRow();
+      std::tie(_state, _currentRow) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
         return {_state, stats};
       }
 
-      if (!_input) {
+      if (!_currentRow) {
         TRI_ASSERT(_state == ExecutionState::DONE);
         return {_state, stats};
       }
@@ -184,7 +184,7 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
       continue;
     }
 
-    TRI_ASSERT(_input.isInitialized());
+    TRI_ASSERT(_currentRow.isInitialized());
 
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -222,13 +222,13 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   }
 
   if (!_cursorHasMore) {
-    std::tie(_state, _input) = _fetcher.fetchRow();
+    std::tie(_state, _currentRow) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
       return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
     }
 
-    if (!_input) {
+    if (!_currentRow) {
       TRI_ASSERT(_state == ExecutionState::DONE);
       return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
     }
@@ -237,7 +237,7 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
     _cursorHasMore = _cursor->hasMore();
   }
 
-  TRI_ASSERT(_input.isInitialized());
+  TRI_ASSERT(_currentRow.isInitialized());
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
 
@@ -267,6 +267,57 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
 
 std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  AqlCall upstreamCall{};
+  EnumerateCollectionStats stats{};
+  uint64_t skipped = 0;
+  bool offsetPhase = (call.getOffset() > 0);
+
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
+
+  while (inputRange.hasDataRow() && call.shouldSkip()) {
+    if (!_cursorHasMore) {
+      initializeNewRow(inputRange);
+      TRI_ASSERT(_currentRow.isInitialized());
+    }
+
+    while (_cursorHasMore) {
+      // if offset is > 0, we're in offset skip phase
+      if (offsetPhase) {
+        if (skipped < call.getOffset()) {
+          LOG_DEVEL << "skipped in offset: ";
+          _cursor->skip(call.getOffset(), skipped);
+          LOG_DEVEL << "amount: " << skipped;
+        } else {
+          // we skipped enough in our offset phase
+          break;
+        }
+      } else {
+        // fullCount phase
+        LOG_DEVEL << "skipped in fullCount: ";
+        _cursor->skipAll( skipped);
+        LOG_DEVEL << "amount: " << skipped;
+      }
+      _cursorHasMore = _cursor->hasMore();
+
+      call.didSkip(skipped);
+      stats.incrScanned(skipped);
+    }
+  }
+
+  if (_cursorHasMore) {
+    LOG_DEVEL << "1 state: " << ExecutorState::HASMORE;
+    return {ExecutorState::HASMORE, stats, skipped, upstreamCall};
+  }
+
+  upstreamCall.softLimit = call.getOffset();
+  LOG_DEVEL << "2 state: " << inputRange.upstreamState();
+  return {inputRange.upstreamState(), stats, skipped, upstreamCall};
+}
+
+/*
+std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
   EnumerateCollectionStats stats{};
   TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -275,7 +326,7 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
     if (!_cursorHasMore) {
-      std::tie(_executorState, _input) = inputRange.nextDataRow();
+      std::tie(_executorState, _currentRow) = inputRange.nextDataRow();
 
       _cursor->reset();
       _cursorHasMore = _cursor->hasMore();
@@ -285,7 +336,7 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
       }
     }
 
-    TRI_ASSERT(_input.isInitialized());
+    TRI_ASSERT(_currentRow.isInitialized());
 
     _cursor->skip(call.getOffset(), actuallySkipped);
     _cursorHasMore = _cursor->hasMore();
@@ -296,64 +347,86 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
   upstreamCall.softLimit = call.getOffset() - actuallySkipped;
   return {_executorState, {}, actuallySkipped, upstreamCall};
 }
+*/
+
+void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
+  if (_currentRow) {
+    std::ignore = inputRange.nextDataRow();
+  }
+  std::tie(_currentRowState, _currentRow) = inputRange.peekDataRow();
+  if (!_currentRow) {
+    return;
+  }
+
+  TRI_ASSERT(_currentRow.isInitialized());
+
+  _cursor->reset();
+  _cursorHasMore = _cursor->hasMore();
+}
 
 std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  LOG_DEVEL << "call to produce";
+
   EnumerateCollectionStats stats{};
+  AqlCall upstreamCall{};
+  upstreamCall.fullCount = output.getClientCall().fullCount;
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
 
   while (inputRange.hasDataRow() && !output.isFull()) {
+    LOG_DEVEL << "we can produce";
     TRI_ASSERT(!output.isFull());
+
     if (!_cursorHasMore) {
-      std::tie(_executorState, _input) = inputRange.nextDataRow();
-      TRI_ASSERT(_input.isInitialized());
-
-      _cursor->reset();
-      _cursorHasMore = _cursor->hasMore();
-
-      if (!_cursorHasMore) {
-        continue;
-      }
+      LOG_DEVEL << "empty cursor";
+      initializeNewRow(inputRange);
     }
 
-    TRI_ASSERT(_input.isInitialized());
+    LOG_DEVEL << "cursor has more";
+    if (_cursorHasMore) {
+      TRI_ASSERT(_currentRow.isInitialized());
+      LOG_DEVEL << "will try to produce: " << output.numRowsLeft();
+      if (_infos.getProduceResult()) {
+        // properly build up results by fetching the actual documents
+        // using nextDocument()
+        _cursorHasMore = _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
+      } else {
+        // performance optimization: we do not need the documents at all,
+        // so just call next()
+        TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
+        _cursorHasMore =
+            _cursor->next(getNullCallback<false>(_documentProducingFunctionContext),
+                          output.numRowsLeft() /*atMost*/);
+      }
+
+      stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
+      stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
+    }
 
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
-    if (_infos.getProduceResult()) {
-      // properly build up results by fetching the actual documents
-      // using nextDocument()
-      _cursorHasMore = _cursor->nextDocument(_documentProducer, 1 /*atMost*/);  // TODO as much as we can
-    } else {
-      // performance optimization: we do not need the documents at all,
-      // so just call next()
-      TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
-      _cursorHasMore =
-          _cursor->next(getNullCallback<false>(_documentProducingFunctionContext),
-                        1 /*atMost*/);  // TODO as much as we can
-    }
-
-    stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
-    stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
   }
 
-  AqlCall upstreamCall{};
-  // upstreamCall.softLimit = limit;
-  return {_executorState, stats, upstreamCall};
+  if (!_cursorHasMore) {
+    LOG_DEVEL << "Last init"; // either first run or empty cursor
+    initializeNewRow(inputRange);
+  }
+
+  LOG_DEVEL << "return produce state: " << inputRange.upstreamState();
+  return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
 void EnumerateCollectionExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
   _executorState = ExecutorState::HASMORE;
-  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   _cursorHasMore = false;
   _cursor->reset();
 }

@@ -122,6 +122,13 @@ class EnumerateCollectionExecutor {
   ~EnumerateCollectionExecutor();
 
   /**
+   * @brief Will fetch a new InputRow if necessary and store their local state
+   *
+   * @return bool done in case we do not have any input and upstreamState is done
+   */
+  void initializeNewRow(AqlItemBlockInputRange& inputRange);
+
+  /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
@@ -164,7 +171,8 @@ class EnumerateCollectionExecutor {
   ExecutionState _state;
   ExecutorState _executorState;
   bool _cursorHasMore;
-  InputAqlItemRow _input;
+  InputAqlItemRow _currentRow;
+  ExecutorState _currentRowState;
   std::unique_ptr<OperationCursor> _cursor;
 };
 
