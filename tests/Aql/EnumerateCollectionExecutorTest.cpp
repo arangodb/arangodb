@@ -27,6 +27,7 @@
 
 #include "Aql/AqlCall.h"
 #include "AqlItemBlockHelper.h"
+#include "ExecutorTestHelper.h"
 #include "IResearch/common.h"
 #include "Mocks/Servers.h"
 #include "QueryHelper.h"
@@ -60,6 +61,8 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+// old tests
+
 static const std::string GetAllDocs =
     R"aql(FOR doc IN UnitTestCollection SORT doc.sortValue RETURN doc.value)aql";
 
@@ -85,11 +88,7 @@ class EnumerateCollectionExecutorTest : public ::testing::Test {
   ExecutionEngine* engine;
   Collection aqlCollection;
   std::vector<std::string> const projections;
-<<<<<<< HEAD
-  transaction::Methods& trx;
-=======
   std::vector<size_t> const coveringIndexAttributePositions;
->>>>>>> 5aa14b8cd12... adde fake query helper, one without auto trx but with prepare plan, the other one without prepare but with trx - also removed fakeit mocks from enumeratecollectionexecutor tests
   bool useRawPointers;
   bool random;
 
@@ -104,7 +103,7 @@ class EnumerateCollectionExecutorTest : public ::testing::Test {
         vocbase(server.getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.createCollection(json->slice())),
-        fakedQuery(server.createFakeQuery("return 1")),
+        fakedQuery(server.createFakeQuery(false, "return 1")),
         ast(fakedQuery.get()),
         outVariable("name", 1),
         varUsedLater(false),
@@ -112,28 +111,10 @@ class EnumerateCollectionExecutorTest : public ::testing::Test {
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         useRawPointers(false),
         random(false),
-<<<<<<< HEAD
-        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
-              &engine, &abc, &outVariable, varUsedLater, nullptr, projections,
-              useRawPointers, random),
-        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {
-    // fake indexScan
-    fakeit::When(Method(mockTrx, indexScan))
-        .AlwaysDo(std::function<std::unique_ptr<IndexIterator>(std::string const&, CursorType&)>(
-            [this](std::string const&, CursorType&) -> std::unique_ptr<IndexIterator> {
-              return std::make_unique<EmptyIndexIterator>(&collection, &(mockTrx.get()));
-            }));
-
-    Query& query = mockQuery.get();
-    fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&(mockTrx.get()));
-    fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
-  }
-=======
         infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep, engine,
               &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
               coveringIndexAttributePositions, useRawPointers, random),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
->>>>>>> 5aa14b8cd12... adde fake query helper, one without auto trx but with prepare plan, the other one without prepare but with trx - also removed fakeit mocks from enumeratecollectionexecutor tests
 };
 
 TEST_F(EnumerateCollectionExecutorTest, the_producer_does_not_wait) {
@@ -204,7 +185,8 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
   AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
-  auto const [state, skipped, call] = testee.skipRowsRange(1000, inputRange);
+  AqlCall skipCall{1000, AqlCall::Infinity{}, AqlCall::Infinity{}, false};
+  auto const [state, stats, skipped, call] = testee.skipRowsRange(inputRange, skipCall);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(skipped, 0);
   ASSERT_FALSE(output.produced());
@@ -285,11 +267,183 @@ TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
-  auto const [state, skipped, call] = testee.skipRowsRange(1000, inputRange);
+  AqlCall skipCall{1000, AqlCall::Infinity{}, AqlCall::Infinity{}, false};
+  auto const [state, stats, skipped, call] = testee.skipRowsRange(inputRange, skipCall);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(skipped, 3);
   ASSERT_FALSE(output.produced());
 }
+
+// new tests
+// new framework tests
+using EnumerateCollectionTestHelper =
+    ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>;
+using EnumerateCollectionSplitType = EnumerateCollectionTestHelper::SplitType;
+
+class EnumerateCollectionExecutorTestProduce
+    : public ::testing::TestWithParam<std::tuple<EnumerateCollectionSplitType>> {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager;
+
+  mocks::MockAqlServer server;
+  TRI_vocbase_t& vocbase;
+  std::shared_ptr<VPackBuilder> json;
+  std::shared_ptr<LogicalCollection> collection;
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+
+  SharedAqlItemBlockPtr block;
+  NoStats stats;
+  Ast ast;
+
+  // needed for infos
+  Variable outVariable;
+  bool varUsedLater;
+  ExecutionEngine* engine;
+  std::vector<std::string> const projections;
+  std::vector<size_t> const coveringIndexAttributePositions;
+  Collection aqlCollection;
+  bool useRawPointers;
+  bool random;
+
+  EnumerateCollectionExecutorInfos infos;
+
+  EnumerateCollectionExecutorTestProduce()
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        server(),
+        vocbase(server.getSystemDatabase()),
+        json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
+        collection(vocbase.createCollection(json->slice())),
+        fakedQuery(server.createFakeQuery(true, "return 1")),
+        ast(fakedQuery.get()),
+        outVariable("name", 1),
+        varUsedLater(true),
+        engine(fakedQuery.get()->engine()),
+        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
+        useRawPointers(false),
+        random(false),
+        infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
+              projections, coveringIndexAttributePositions, useRawPointers, random) {
+    // auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
+    // fakedQuery->setEngine(engine.release());
+    // fakedQuery->setEngine(engine);
+  }
+
+  auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
+                 RegisterId nrOutputRegister = 1,
+                 std::unordered_set<RegisterId> regToClear = {},
+                 std::unordered_set<RegisterId> regToKeep = {})
+      -> EnumerateCollectionExecutorInfos {
+    EnumerateCollectionExecutorInfos infos{
+        outputRegister, nrInputRegister, nrOutputRegister,
+        regToClear,     regToKeep,       engine,
+        &aqlCollection, &outVariable,    varUsedLater,
+        nullptr,        projections,     coveringIndexAttributePositions,
+        useRawPointers, random};
+    block = SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+    return infos;
+  }
+
+  // insert amount of documents into the vocbase
+  void insertDocuments(size_t amount) {
+    // TODO: Can be optimized to not use AQL INSERT (trx object directly instead)
+    std::string insertQuery =
+        R"aql(INSERT {_key: "testee1", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection RETURN new)aql";
+    SCOPED_TRACE(insertQuery);
+    AssertQueryHasResult(vocbase, insertQuery, VPackSlice::emptyArraySlice());
+    auto expected = VPackParser::fromJson(R"([1])");
+    AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+
+    for (size_t i = 2; i <= amount; i++) {
+      std::string insertQueryPart1 = R"aql(INSERT {_key: "testee)aql";
+      std::string insertQueryPart2 = std::to_string(i);
+      std::string insertQueryPart3 =
+          R"(", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection RETURN new)";
+      std::string final = insertQueryPart1 + insertQueryPart2 + insertQueryPart3;
+      SCOPED_TRACE(final);
+      AssertQueryHasResult(vocbase, final, VPackSlice::emptyArraySlice());
+    }
+  }
+};
+
+TEST_P(EnumerateCollectionExecutorTestProduce, produce_all_documents) {
+  auto [split] = GetParam();
+
+  insertDocuments(10);
+  /*
+  LOG_DEVEL << "Amount: "
+            << vocbase.lookupCollection("UnitTestCollection")
+                   ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal);
+                   */
+
+  ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
+      .setInputValue({{RowBuilder<1>{R"("unused")"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
+      .expectSkipped(0)
+      .expectOutput({0}, {{R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"}})
+      .expectedState(ExecutionState::DONE)
+      .run(makeInfos());
+}
+
+TEST_P(EnumerateCollectionExecutorTestProduce, produce_5_documents) {
+  auto [split] = GetParam();
+
+  insertDocuments(10);
+
+  ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
+      .setInputValue({{RowBuilder<1>{R"("unused")"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{0, 5, AqlCall::Infinity{}, false})
+      .expectSkipped(0)
+      .expectOutput({0}, {{R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"}})
+      .expectedState(ExecutionState::HASMORE)
+      .run(makeInfos());
+}
+
+/*
+TEST_P(EnumerateCollectionExecutorTestProduce, skip_5_documents_default) {
+  auto [split] = GetParam();
+
+  insertDocuments(10);
+
+  ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
+      .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
+      .setInputSplitType(split)
+      .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
+      .expectSkipped(5)
+      .expectOutput({0}, {{R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"},
+                          {R"(null)"}})
+      .expectedState(ExecutionState::DONE)
+      .run(makeInfos());
+}
+*/
+
+template <size_t... vs>
+const EnumerateCollectionSplitType splitIntoBlocks =
+    EnumerateCollectionSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const EnumerateCollectionSplitType splitStep = EnumerateCollectionSplitType{step};
+
+INSTANTIATE_TEST_CASE_P(EnumerateCollectionExecutor, EnumerateCollectionExecutorTestProduce,
+                        ::testing::Values(splitIntoBlocks<2, 3>,
+                                          splitIntoBlocks<3, 4>, splitStep<2>));
 
 }  // namespace aql
 }  // namespace tests
