@@ -514,6 +514,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     case rest::RequestType::DELETE_REQ: {
       TRI_GET_GLOBAL_STRING(DeleteConstant);
       req->Set(RequestTypeKey, DeleteConstant);
+      setRequestBodyJsonOrVPack();
       break;
     }
     case rest::RequestType::HEAD: {
