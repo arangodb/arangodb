@@ -122,7 +122,16 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
         break;
       }
     }
-    EXPECT_TRUE(found) << "Did not find expected row nr " << expectedRow;
+    if (!found) {
+      InputAqlItemRow missing(expected, expectedRow);
+      velocypack::Options vpackOptions;
+      VPackBuilder rowBuilder;
+      missing.toSimpleVelocyPack(&vpackOptions, rowBuilder);
+      VPackBuilder blockBuilder;
+      actual->toSimpleVPack(&vpackOptions, blockBuilder);
+      EXPECT_TRUE(found) << "Did not find row: " << rowBuilder.toJson()
+                         << " in " << blockBuilder.toJson();
+    }
   }
 }
 
