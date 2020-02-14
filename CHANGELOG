@@ -5,7 +5,8 @@ v3.6.2 (XXXX-XX-XX)
   the COLLECT and the source data. In this case it is not safe to apply the
   distributed collect, as it may alter the results.
 
-* Fixed issue: COLLECT WITH COUNT together with FILTER yields zero.
+* Fixed internal issue #4932: COLLECT WITH COUNT together with FILTER yields
+  zero.
 
   This bugfix fixes an issue when skipping over documents in an index scan 
   using a covering index and also at the same time using an early-pruning filter.
