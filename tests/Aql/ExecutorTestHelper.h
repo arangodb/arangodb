@@ -198,7 +198,7 @@ struct ExecutorTestHelper {
     return *this;
   };
 
-  auto run(typename E::Infos infos) -> void {
+  auto run(typename E::Infos infos, bool const loop = false) -> void {
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
 
@@ -212,21 +212,33 @@ struct ExecutorTestHelper {
     auto skippedTotal = size_t{0};
     auto finalState = ExecutionState::HASMORE;
     auto allResults = AqlItemMatrix{outputColumns};
-    do {
-      auto call = _call;
-      call.didSkip(skippedTotal);
-      call.didProduce(allResults.size());
-      AqlCallStack stack{call};
+
+    if (!loop) {
+      AqlCallStack stack{_call};
       auto const [state, skipped, result] = testee.execute(stack);
+      skippedTotal = skipped;
       finalState = state;
-      skippedTotal += skipped;
       if (result != nullptr) {
         allResults.addBlock(result);
       }
-    } while (finalState != ExecutionState::DONE &&
-             ((_call.getLimit() + _call.getOffset()) > 0 || _call.needsFullCount()));
-    EXPECT_EQ(skippedTotal, _expectedSkip);
+    } else {
+      auto call = _call;
+      do {
+        AqlCallStack stack{call};
+        auto const [state, skipped, result] = testee.execute(stack);
+        finalState = state;
+        skippedTotal += skipped;
+        if (result != nullptr) {
+          allResults.addBlock(result);
+        }
+        call = _call;
+        call.didSkip(skippedTotal);
+        call.didProduce(allResults.size());
+      } while (finalState != ExecutionState::DONE &&
+               (!call.hasSoftLimit() || (call.getLimit() + call.getOffset()) > 0));
+    }
 
+    EXPECT_EQ(skippedTotal, _expectedSkip);
     EXPECT_EQ(finalState, _expectedState);
 
     SharedAqlItemBlockPtr expectedOutputBlock =
