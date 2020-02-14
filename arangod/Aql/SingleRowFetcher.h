@@ -62,7 +62,18 @@ class SingleRowFetcher {
   SingleRowFetcher();
 
  public:
-  // TODO implement and document
+  /**
+   * @brief Execute the given call stack
+   *
+   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @return std::tuple<ExecutionState, size_t, DataRange>
+   *   ExecutionState => DONE, all queries are done, there will be no more
+   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
+   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
+   *
+   *   size_t => Amount of documents skipped
+   *   DataRange => Resulting data
+   */
   std::tuple<ExecutionState, size_t, DataRange> execute(AqlCallStack& stack);
 
   /**
@@ -100,8 +111,7 @@ class SingleRowFetcher {
   // Like fetchRow(), but returns both the subquery-local state (like fetchRow())
   // and the global state (like fetchShadowRow()).
   // Currently necessary only in the SubqueryStartExecutor.
-  [[nodiscard]] RowWithStates fetchRowWithGlobalState(
-      size_t atMost = ExecutionBlock::DefaultBatchSize);
+  [[nodiscard]] RowWithStates fetchRowWithGlobalState(size_t atMost = ExecutionBlock::DefaultBatchSize);
 
   // NOLINTNEXTLINE google-default-arguments
   [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(

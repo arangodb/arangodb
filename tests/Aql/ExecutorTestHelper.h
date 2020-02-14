@@ -26,6 +26,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
+#include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlCall.h"
@@ -43,6 +44,45 @@
 namespace arangodb {
 namespace tests {
 namespace aql {
+
+auto ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected)
+    -> void;
+
+/**
+ * @brief Base class for ExecutorTests in Aql.
+ *        It will provide a test server, including
+ *        an AqlQuery, as well as the ability to generate
+ *        Dummy ExecutionNodes.
+ *
+ * @tparam enableQueryTrace Enable Aql Profile Trace logging
+ */
+template <bool enableQueryTrace = false>
+class AqlExecutorTestCase {
+ protected:
+  AqlExecutorTestCase();
+  virtual ~AqlExecutorTestCase() = default;
+
+  /**
+   * @brief Creates and manages a ExecutionNode.
+   *        These nodes can be used to create the Executors
+   *        Caller does not need to manage the memory.
+   *
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
+   */
+  auto generateNodeDummy() -> ExecutionNode*;
+
+  auto manager() const -> AqlItemBlockManager&;
+
+ private:
+  mocks::MockAqlServer _server;
+  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
+
+ protected:
+  // available variables
+  ResourceMonitor monitor{};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+};
 
 template <typename E, std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {

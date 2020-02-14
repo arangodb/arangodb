@@ -131,7 +131,8 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
  */
 template <typename Executor>
 constexpr bool isNewStyleExecutor =
-    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, ReturnExecutor, IndexExecutor,
+    is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
+                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
@@ -557,6 +558,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
   _lastRange = DataRange(ExecutorState::HASMORE);
+  _hasUsedDataRangeBlock = false;
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -632,9 +634,11 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
 // error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
 namespace arangodb::aql {
 // TODO -- remove this specialization when cpp 17 becomes available
+
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
-    InputAqlItemRow const& input) {
+template <>
+auto ExecutionBlockImpl<IdExecutor<ConstFetcher>>::injectConstantBlock<IdExecutor<ConstFetcher>>(SharedAqlItemBlockPtr block)
+    -> void {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
 
@@ -647,15 +651,27 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
   _state = InternalState::FETCH_DATA;
 
-  SharedAqlItemBlockPtr block =
-      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
-                         infos().numberOfOutputRegisters());
+  // Reset state of execute
+  _lastRange = AqlItemBlockInputRange{ExecutorState::HASMORE};
+  _hasUsedDataRangeBlock = false;
+  _upstreamState = ExecutionState::HASMORE;
 
   _rowFetcher.injectBlock(block);
 
   // cppcheck-suppress unreadVariable
   constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+}
+
+// TODO -- remove this specialization when cpp 17 becomes available
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
+    InputAqlItemRow const& input) {
+  SharedAqlItemBlockPtr block =
+      input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
+                         infos().numberOfOutputRegisters());
+
+  injectConstantBlock(block);
 
   // end of default initializeCursor
   return ExecutionBlock::initializeCursor(input);
@@ -1171,8 +1187,30 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::SKIP: {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          size_t offsetBefore = clientCall.getOffset();
+          TRI_ASSERT(offsetBefore > 0);
+          size_t canPassFullcount =
+              clientCall.getLimit() == 0 && clientCall.needsFullCount();
+#endif
           auto [state, stats, skippedLocal, call] =
               executeSkipRowsRange(_lastRange, clientCall);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          // Assertion: We did skip 'skippedLocal' documents here.
+          // This means that they have to be removed from clientCall.getOffset()
+          // This has to be done by the Executor calling call.didSkip()
+          // accordingly.
+          if (canPassFullcount) {
+            // In htis case we can first skip. But straight after continue with fullCount, so we might skip more
+            TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
+            if (clientCall.getOffset() + skippedLocal > offsetBefore) {
+              // First need to count down offset.
+              TRI_ASSERT(clientCall.getOffset() == 0);
+            }
+          } else {
+            TRI_ASSERT(clientCall.getOffset() + skippedLocal == offsetBefore);
+          }
+#endif
           _skipped += skippedLocal;
           _engine->_stats += stats;
           // The execute might have modified the client call.
