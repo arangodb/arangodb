@@ -1,5 +1,14 @@
 devel
 -----
+* Fix arangorestore:
+  If a smartGraphAttribute value was changed after document creation,
+  the _key of the document becomes inconsistent with the smartGraphAttribute
+  entry.
+
+  When restoring data from a dump that contains a document with inconsistent
+  _key and smartGraphAttribute this would cause an error and the document
+  would not be inserted. This is fixed by ignoring this inconsistency in
+  the case of restore.
 
 * Added crash handler for Linux builds that taps into the following signals:
   * SIGSEGV (segmentation violation)
