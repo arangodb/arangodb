@@ -285,18 +285,14 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
       // if offset is > 0, we're in offset skip phase
       if (offsetPhase) {
         if (skipped < call.getOffset()) {
-          LOG_DEVEL << "skipped in offset: ";
           _cursor->skip(call.getOffset(), skipped);
-          LOG_DEVEL << "amount: " << skipped;
         } else {
           // we skipped enough in our offset phase
           break;
         }
       } else {
         // fullCount phase
-        LOG_DEVEL << "skipped in fullCount: ";
         _cursor->skipAll( skipped);
-        LOG_DEVEL << "amount: " << skipped;
       }
       _cursorHasMore = _cursor->hasMore();
 
@@ -306,12 +302,10 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
   }
 
   if (_cursorHasMore) {
-    LOG_DEVEL << "1 state: " << ExecutorState::HASMORE;
     return {ExecutorState::HASMORE, stats, skipped, upstreamCall};
   }
 
   upstreamCall.softLimit = call.getOffset();
-  LOG_DEVEL << "2 state: " << inputRange.upstreamState();
   return {inputRange.upstreamState(), stats, skipped, upstreamCall};
 }
 
@@ -369,7 +363,6 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  LOG_DEVEL << "call to produce";
 
   EnumerateCollectionStats stats{};
   AqlCall upstreamCall{};
@@ -380,18 +373,14 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
   _documentProducingFunctionContext.setOutputRow(&output);
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    LOG_DEVEL << "we can produce";
     TRI_ASSERT(!output.isFull());
 
     if (!_cursorHasMore) {
-      LOG_DEVEL << "empty cursor";
       initializeNewRow(inputRange);
     }
 
-    LOG_DEVEL << "cursor has more";
     if (_cursorHasMore) {
       TRI_ASSERT(_currentRow.isInitialized());
-      LOG_DEVEL << "will try to produce: " << output.numRowsLeft();
       if (_infos.getProduceResult()) {
         // properly build up results by fetching the actual documents
         // using nextDocument()
@@ -415,11 +404,9 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
   }
 
   if (!_cursorHasMore) {
-    LOG_DEVEL << "Last init"; // either first run or empty cursor
     initializeNewRow(inputRange);
   }
 
-  LOG_DEVEL << "return produce state: " << inputRange.upstreamState();
   return {inputRange.upstreamState(), stats, upstreamCall};
 }
 
