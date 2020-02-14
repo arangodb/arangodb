@@ -88,6 +88,12 @@ std::string const& RocksDBMetaCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
 }
 
+void RocksDBMetaCollection::deferDropCollection(std::function<bool(LogicalCollection&)> const&) {
+  TRI_ASSERT(!_logicalCollection.syncByRevision());
+  std::unique_lock<std::mutex> guard(_revisionTreeLock);
+  _revisionTree.reset();
+}
+
 TRI_voc_rid_t RocksDBMetaCollection::revision(transaction::Methods* trx) const {
   auto* state = RocksDBTransactionState::toState(trx);
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(

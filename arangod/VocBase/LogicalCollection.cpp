@@ -994,6 +994,7 @@ basics::ReadWriteLock& LogicalCollection::statusLock() {
 ///        the collection and it is guaranteed that no one is using
 ///        it at that moment.
 void LogicalCollection::deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) {
+  _syncByRevision = false;  // safety to make sure we can do physical cleanup
   _physical->deferDropCollection(callback);
 }
 

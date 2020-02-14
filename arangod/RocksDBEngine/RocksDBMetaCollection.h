@@ -52,9 +52,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void open(bool /*ignoreErrors*/) override final {
     TRI_ASSERT(_objectId != 0);
   }
-  
-  void deferDropCollection(std::function<bool(LogicalCollection&)> const&) override final  {}
-  
+
+  void deferDropCollection(std::function<bool(LogicalCollection&)> const&) override final;
+
   /// @brief report extra memory used by indexes etc.
   size_t memory() const override final { return 0; }
   uint64_t objectId() const { return _objectId; }
