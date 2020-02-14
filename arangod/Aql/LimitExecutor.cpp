@@ -361,7 +361,15 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
   _counter += numRowsWritten;
   if (infos().isFullCountEnabled()) {
     stats.incrFullCountBy(numRowsWritten);
+    if (limitFulfilled()) {
+      stats.incrFullCountBy(input.skipAll());
+    }
   }
+
+  // There must not be any skipped rows left. Offset is handled first, and
+  // skipped rows due to fullCount may only appear after the limit is fullfilled;
+  // and those are already counted.
+  TRI_ASSERT(input.skippedInFlight() == 0);
 
   // We're passthrough, we must not have any input left when the limit is fulfilled
   TRI_ASSERT(!limitFulfilled() || !input.hasDataRow());
