@@ -142,10 +142,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
   AqlCall upstreamCall{};
   upstreamCall.fullCount = output.getClientCall().fullCount;
 
-  if (!inputRange.hasDataRow()) {
-    return {inputRange.upstreamState(), NoStats{}, upstreamCall};
-  }
-
   while (inputRange.hasDataRow() && !output.isFull()) {
     if (_inputArrayLength == _inputArrayPosition) {
       // we reached either the end of an array
@@ -162,9 +158,6 @@ std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
     // we reached either the end of an array
     // or are in our first loop iteration
     initializeNewRow(inputRange);
-  } else if (_inputArrayPosition < _inputArrayLength) {
-    // if we're done producing, but still keep values in our list
-    return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
   }
 
   return {inputRange.upstreamState(), NoStats{}, upstreamCall};
