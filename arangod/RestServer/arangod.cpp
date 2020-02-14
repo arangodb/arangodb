@@ -38,7 +38,6 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -50,6 +49,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
@@ -70,7 +70,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "GeneralServer/SslServerFeature.h"
-#include "Logger/LoggerBufferFeature.h"
+#include "Logger/LogBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/PregelFeature.h"
@@ -138,12 +138,10 @@ using namespace arangodb::application_features;
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    context.installSegv();
-    context.runStartupChecks();
-
+    CrashHandler::installCrashHandler();
     std::string name = context.binaryName();
 
-    auto options = std::make_shared<options::ProgramOptions>(
+    auto options = std::make_shared<arangodb::options::ProgramOptions>(
         argv[0], "Usage: " + name + " [<options>]", "For more information use:", SBIN_DIRECTORY);
 
     ApplicationServer server(options, SBIN_DIRECTORY);
@@ -158,7 +156,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(GeneralServerFeature)),
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
-        std::type_index(typeid(LoggerBufferFeature)),
+        std::type_index(typeid(LogBufferFeature)),
         std::type_index(typeid(pregel::PregelFeature)),
         std::type_index(typeid(ServerFeature)),
         std::type_index(typeid(SslServerFeature)),
@@ -208,14 +206,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<LanguageCheckFeature>();
     server.addFeature<LanguageFeature>();
     server.addFeature<LockfileFeature>();
-    server.addFeature<LoggerBufferFeature>();
+    server.addFeature<LogBufferFeature>();
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();
     server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
-    server.addFeature<PageSizeFeature>();
     server.addFeature<PrivilegeFeature>();
     server.addFeature<QueryRegistryFeature>();
     server.addFeature<RandomFeature>();

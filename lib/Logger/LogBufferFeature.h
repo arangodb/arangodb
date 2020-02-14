@@ -20,41 +20,50 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H
-#define ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H 1
+#ifndef ARANGODB_LOGGER_LOG_BUFFER_FEATURE_H
+#define ARANGODB_LOGGER_LOG_BUFFER_FEATURE_H 1
 
-#include <string>
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Logger/LogAppender.h"
+#include "Logger/LogLevel.h"
+
+#include <cstdint>
+#include <memory>
 #include <vector>
 
-#include "Basics/Common.h"
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 namespace arangodb {
-class ArangoGlobalContext {
- public:
-  static ArangoGlobalContext* CONTEXT;
 
- public:
-  ArangoGlobalContext(int argc, char* argv[], char const* installDirectory);
-  ~ArangoGlobalContext();
+struct LogBuffer {
+  uint64_t _id;
+  LogLevel _level;
+  uint32_t _topicId;
+  time_t _timestamp;
+  char _message[256];
 
+  LogBuffer(); 
+};
+
+class LogBufferFeature final : public application_features::ApplicationFeature {
  public:
-  std::string binaryName() const { return _binaryName; }
-  std::string runRoot() const { return _runRoot; }
-  void createMiniDumpFilename();
-  void normalizePath(std::vector<std::string>& path, char const* whichPath, bool fatal);
-  void normalizePath(std::string& path, char const* whichPath, bool fatal);
-  std::string const& getBinaryPath() const { return _binaryPath; }
-  int exit(int ret);
-  void installHup();
-  bool useEventLog() { return _useEventLog; }
+  static constexpr uint32_t BufferSize = 4096;
+  
+  explicit LogBufferFeature(application_features::ApplicationServer& server);
+  ~LogBufferFeature() = default;
+
+  /// @brief return all buffered log entries
+  std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel);
 
  private:
-  std::string _binaryName;
-  std::string _binaryPath;
-  std::string const _runRoot;
-  int _ret;
-  bool _useEventLog;
+  std::shared_ptr<LogAppender> _inMemoryAppender;
 };
+
 }  // namespace arangodb
 
 #endif

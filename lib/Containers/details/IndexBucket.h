@@ -25,6 +25,7 @@
 #ifndef ARANGODB_CONTAINERS_INDEX_BUCKET_H
 #define ARANGODB_CONTAINERS_INDEX_BUCKET_H 1
 
+#include "Basics/PageSize.h"
 #include "Basics/debugging.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
@@ -99,7 +100,7 @@ struct IndexBucket {
     if (numberElements > 1000000) {
       size_t const totalSize = requiredSize(numberElements);
       uintptr_t mem = reinterpret_cast<uintptr_t>(_table);
-      uintptr_t pageSize = getpagesize();
+      uintptr_t pageSize = PageSize::getValue();
       mem = (mem / pageSize) * pageSize;
       void* memptr = reinterpret_cast<void*>(mem);
       TRI_MMFileAdvise(memptr, totalSize, TRI_MADVISE_RANDOM);

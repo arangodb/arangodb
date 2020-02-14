@@ -136,6 +136,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
 #endif
   explicit constexpr DynamicComponent(std::shared_ptr<P const> parent, V value) noexcept
       : _parent(std::move(parent)), _value(std::move(value)) {
+    // cppcheck-suppress *
     static_assert(noexcept(V(std::move(value))),
                   "Move constructor of V is expected to be noexcept");
   }

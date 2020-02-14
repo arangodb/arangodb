@@ -23,6 +23,7 @@
 #include "Descriptions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
 #include "RestServer/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -418,7 +419,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
 
   ServerStatistics const& info = _server.getFeature<MetricsFeature>().serverStatistics();
   b.add("uptime", VPackValue(info._uptime));
-  b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+  b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
   b.add("transactions", VPackValue(VPackValueType::Object));
   b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted.load()));
@@ -537,8 +538,8 @@ void stats::Descriptions::processStatistics(VPackBuilder& b) const {
   double rss = (double)info._residentSize;
   double rssp = 0;
 
-  if (TRI_PhysicalMemory != 0) {
-    rssp = rss / TRI_PhysicalMemory;
+  if (PhysicalMemory::getValue() != 0) {
+    rssp = rss / PhysicalMemory::getValue();
   }
 
   b.add("minorPageFaults", VPackValue(info._minorPageFaults));

@@ -43,7 +43,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/HexDump.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;

@@ -394,6 +394,8 @@ class AqlValueGuard {
   AqlValueGuard() = delete;
   AqlValueGuard(AqlValueGuard const&) = delete;
   AqlValueGuard& operator=(AqlValueGuard const&) = delete;
+  AqlValueGuard(AqlValueGuard&&) = delete;
+  AqlValueGuard& operator=(AqlValueGuard&&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy);
   ~AqlValueGuard();

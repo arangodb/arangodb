@@ -184,7 +184,7 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
   builder.verifyHost(_config.verifyHosts);
   builder.protocolType(_config.protocol); // always overwrite protocol
   TRI_ASSERT(builder.socketType() != SocketType::Undefined);
-  
+    
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();
@@ -228,7 +228,10 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
       return c.fuerte; // TODO: make (num <= 4) configurable ?
     }
   }
-
+  
+  LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION) << "creating connection to "
+    << endpoint << " bucket size  " << bucket.list.size();
+    
   // no free connection found, so we add one
 
   fuerte::ConnectionBuilder builder;

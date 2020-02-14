@@ -51,13 +51,13 @@ if (LINUX OR DARWIN)
                   --with-malloc-conf=${JEMALLOC_CONFIG}
                   --with-version=${JEMALLOC_VERSION}-0-g0
     BUILD_COMMAND
-      make build_lib_static
+      $(MAKE) build_lib_static
     BUILD_IN_SOURCE
       1
     INSTALL_COMMAND
-      make install_include
-           && mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/lib
-           && cp -a ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
+      $(MAKE) install_include
+           && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+           && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
     STEP_TARGETS
       ${JEMALLOC_LIB} jemalloc
   )

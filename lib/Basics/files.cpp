@@ -2649,8 +2649,6 @@ void TRI_InitializeFiles() {
 /// @brief shutdown the files subsystem
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ShutdownFiles() {}
-
 bool TRI_GETENV(char const* which, std::string& value) {
 #ifdef _WIN32
   wchar_t const* wideBuffer = _wgetenv(toWString(which).data());

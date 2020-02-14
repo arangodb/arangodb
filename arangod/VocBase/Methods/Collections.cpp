@@ -421,7 +421,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           break;
         }
         if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-          LOG_TOPIC("116bb", WARN, Logger::FIXME)
+          LOG_TOPIC("116bb", WARN, Logger::AUTHENTICATION)
               << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
           for (auto const& col : collections) {
             events::CreateCollection(vocbase.name(), col->name(), r.errorNumber());
@@ -429,7 +429,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
           return r;
         }
         // try again in case of conflict
-        LOG_TOPIC("ff123", TRACE, Logger::FIXME)
+        LOG_TOPIC("ff123", TRACE, Logger::AUTHENTICATION)
             << "Updating user failed with error: " << r.errorMessage() << ". trying again";
       }
     }
@@ -815,6 +815,10 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   } else {
     res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
+  
+  LOG_TOPIC_IF("1bf4d", INFO, Logger::ENGINES, res.fail())
+    << "error while dropping collection: '" << collName
+    << "' error: '" << res.errorMessage() << "'";
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 

@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
@@ -53,7 +52,6 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
 
   startsAfter<FileDescriptorsFeature>();
   startsAfter<LanguageFeature>();
-  startsAfter<PageSizeFeature>();
   startsAfter<TempFeature>();
 }
 

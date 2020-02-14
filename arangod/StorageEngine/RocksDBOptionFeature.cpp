@@ -28,6 +28,7 @@
 #include "RocksDBOptionFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
@@ -70,9 +71,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _maxSubcompactions(rocksDBDefaults.max_subcompactions),
       _numThreadsHigh(0),
       _numThreadsLow(0),
-      _blockCacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
+      _blockCacheSize((PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30))
                           ? static_cast<uint64_t>(
-                                ((TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.3))
+                                ((PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.3))
                           : (256 << 20)),
       _blockCacheShardBits(-1),
       _tableBlockSize(
@@ -112,9 +113,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
 
   if (_totalWriteBufferSize == 0) {
     // unlimited write buffer size... now set to some fraction of physical RAM
-    if (TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30)) {
+    if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
       _totalWriteBufferSize = static_cast<uint64_t>(
-          (TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.4);
+          (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.4);
     } else {
       _totalWriteBufferSize = (512 << 20);
     }
