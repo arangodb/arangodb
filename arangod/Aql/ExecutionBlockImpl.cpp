@@ -1330,6 +1330,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         default:
           // unreachable
           TRI_ASSERT(false);
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
       }
     }
     // If we do not have an output, we simply return a nullptr here.

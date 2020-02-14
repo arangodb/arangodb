@@ -193,7 +193,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
       }
       if (!_data.empty()) {
         return {ExecutionState::HASMORE, skipped, result};
-      } else if (_lieAboutHasmore) {
+      } else if (result != nullptr && _lieAboutHasmore) {
         // Return HASMORE once after returning all data
         _lieAboutHasmore = false;
         return {ExecutionState::HASMORE, skipped, result};
