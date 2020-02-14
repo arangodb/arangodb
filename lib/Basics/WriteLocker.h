@@ -105,6 +105,7 @@ class WriteLocker {
   /// @brief releases the write-lock
   ~WriteLocker() noexcept {
     if (_isLocked) {
+      // cppcheck-suppress *
       static_assert(noexcept(_readWriteLock->unlockWrite()));
       _readWriteLock->unlockWrite();
     }

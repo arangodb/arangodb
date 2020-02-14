@@ -77,7 +77,10 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bo
   _foregroundTty = (isatty(STDOUT_FILENO) == 1);
 }
 
-LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
+LoggerFeature::~LoggerFeature() { 
+  Logger::shutdown(); 
+  Logger::shutdownLogThread();
+}
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
