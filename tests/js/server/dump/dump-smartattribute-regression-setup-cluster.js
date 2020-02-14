@@ -37,6 +37,14 @@ const isEnterprise = internal.isEnterprise();
     return;
   }
 
+  try {
+    db._dropDatabase("UnitTestsDumpSrc");
+  } catch (err1) {
+  }
+
+  db._createDatabase("UnitTestsDumpSrc");
+  db._useDatabase("UnitTestsDumpSrc");
+
   const smartGraphName = "UnitTestDumpSmartGraph";
   const edges = "UnitTestDumpSmartEdges";
   const vertices = "UnitTestDumpSmartVertices";

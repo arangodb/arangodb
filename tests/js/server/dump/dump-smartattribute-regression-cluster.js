@@ -62,8 +62,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testSmartGraphAttribute : function () {
-      assertEqual(UnitTestDumpSmartVertices.toArray().length, 2);
-      assertEqual(UnitTestDumpSmartVertices.toArray()[0].cheesyness, "bread");
+      assertEqual(db.UnitTestDumpSmartVertices.toArray().length, 1);
+      assertEqual(db.UnitTestDumpSmartVertices.toArray()[0].cheesyness, "bread");
     }
 
   };
