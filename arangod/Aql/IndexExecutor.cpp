@@ -400,14 +400,12 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
       TRI_ASSERT(_documentNonProducer != nullptr);
       return _cursor->next(_documentNonProducer, output.numRowsLeft());
     case Type::Covering:
+    case Type::LateMaterialized:
       TRI_ASSERT(_documentProducer != nullptr);
       return _cursor->nextCovering(_documentProducer, output.numRowsLeft());
     case Type::Document:
       TRI_ASSERT(_documentProducer != nullptr);
       return _cursor->nextDocument(_documentProducer, output.numRowsLeft());
-    case Type::LateMaterialized:
-      TRI_ASSERT(_documentProducer != nullptr);
-      return _cursor->nextCovering(_documentProducer, output.numRowsLeft());
   }
   // The switch above is covering all values and this code
   // cannot be reached
@@ -474,7 +472,18 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
 
   uint64_t skipped = 0;
   if (_infos.getFilter() != nullptr) {
-    _cursor->nextDocument(_documentSkipper, toSkip);
+    switch (_type) {
+      case Type::Covering:
+      case Type::LateMaterialized:
+        TRI_ASSERT(_documentSkipper != nullptr);
+        _cursor->nextCovering(_documentSkipper, toSkip);
+        break;
+      case Type::NoResult:
+      case Type::Document:
+        TRI_ASSERT(_documentSkipper != nullptr);
+        _cursor->nextDocument(_documentSkipper, toSkip);
+        break;;
+    }
     skipped = _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
   } else {
     _cursor->skip(toSkip, skipped);
