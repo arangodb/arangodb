@@ -129,6 +129,7 @@ void HttpResponse::headResponse(size_t size) {
   TRI_ASSERT(_body != nullptr);
   _body->clear();
   _bodySize = size;
+  _generateBody = false;
 }
 
 size_t HttpResponse::bodySize() const {
