@@ -229,7 +229,7 @@ void VstConnection<ST>::startWriting() {
                 Connection::State::Connected);
   FUERTE_LOG_VSTTRACE << "startWriting: this=" << this << "\n";
 
-  if (_writing.load() || _writing.exchange(true)) {
+  if (_writing.load()) {
     return;  // There is already a write loop, do nothing
   }
 
@@ -237,20 +237,22 @@ void VstConnection<ST>::startWriting() {
 
   FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
 
-  asio_ns::post(*this->_io_context,
-                [self = Connection::shared_from_this(), this] {
-                  FUERTE_ASSERT(_writing.load());
-                  // we have been in a race with shutdownConnection()
-                  Connection::State state = this->_state.load();
-                  if (state != Connection::State::Connected) {
-                    this->_writing.store(false);
-                    if (state == Connection::State::Disconnected) {
-                      this->startConnection();
-                    }
-                  } else {
-                    this->asyncWriteNextRequest();
-                  }
-                });
+  this->_io_context->post([self = Connection::shared_from_this(), this] {
+    if (_writing.exchange(true)) {
+      return;
+    }
+    
+    // we have been in a race with shutdownConnection()
+    Connection::State state = this->_state.load();
+    if (state != Connection::State::Connected) {
+      this->_writing.store(false);
+      if (state == Connection::State::Disconnected) {
+        this->startConnection();
+      }
+    } else {
+      this->asyncWriteNextRequest();
+    }
+  });
 }
 
 // writes data from task queue to network using asio_ns::async_write

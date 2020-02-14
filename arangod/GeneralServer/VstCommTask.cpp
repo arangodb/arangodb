@@ -328,11 +328,14 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   resItem.release();
 
   // start writing if necessary
-  if (_writing.load() || _writing.exchange(true)) {
+  if (!_writing.load()) {
     return;
   }
   this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
-    static_cast<VstCommTask<T>&>(*self).doWrite();
+    auto& me = static_cast<VstCommTask<T>&>(*self);
+    if (!me._writing.exchange(true)) {
+      me.doWrite();
+    }
   });
 }
 
