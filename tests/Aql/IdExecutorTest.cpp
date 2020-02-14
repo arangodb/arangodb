@@ -69,7 +69,8 @@ class IdExecutorTestCombiner : public AqlExecutorTestCase<>,
       matrix.emplace_back(RowBuilder<1>{{it}});
     }
     SharedAqlItemBlockPtr block = buildBlock<1>(manager(), std::move(matrix));
-    return AqlItemBlockInputRange{upstreamState, block, 0, input.size()};
+    TRI_ASSERT(clientCall.getSkipCount() == 0);
+    return AqlItemBlockInputRange{upstreamState, 0, block, 0};
   }
 
   auto prepareOutputRow(SharedAqlItemBlockPtr input) -> OutputAqlItemRow {
