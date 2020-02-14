@@ -443,7 +443,6 @@ void IndexExecutor::CursorReader::reset() {
 
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
       _documentProducingFunctionContext(::createContext(_input, _infos)),
       _state(ExecutorState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),

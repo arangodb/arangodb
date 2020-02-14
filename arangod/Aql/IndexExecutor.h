@@ -250,7 +250,6 @@ class IndexExecutor {
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutorState _state;
   InputAqlItemRow _input;
