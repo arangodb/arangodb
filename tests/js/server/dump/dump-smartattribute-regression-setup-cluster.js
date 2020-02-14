@@ -28,6 +28,7 @@
 /// @author Copyright 2020, ArangoDB Inc., Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const internal = require("internal");
 const isEnterprise = internal.isEnterprise();
 
 (function () {
