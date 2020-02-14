@@ -25,16 +25,15 @@
 #include "AqlHelper.h"
 #include "AqlItemBlockHelper.h"
 #include "ExecutorTestHelper.h"
+#include "Mocks/Servers.h"
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
-#include "Mocks/Servers.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/ResourceUsage.h"
-#include "Aql/SingleRowFetcher.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -44,1066 +43,12 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace arangodb::aql {
-void PrintTo(LimitStats const &stats, std::ostream *os) {
+void PrintTo(LimitStats const& stats, std::ostream* os) {
   *os << "LimitStats{" << stats.getFullCount() << "}";
 }
-}
+}  // namespace arangodb::aql
 
 namespace arangodb::tests::aql {
-
-class LimitExecutorTest : public ::testing::Test {
- protected:
-  ExecutionState state;
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-  SharedAqlItemBlockPtr block;
-  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep;
-
-  // Special parameters:
-  // 4th offset
-  // 5th limit
-  // 6th fullCount
-  // 7th queryDepth
-
-  LimitExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{})),
-        registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{0})) {}
-};
-
-TEST_F(LimitExecutorTest, row_upstream_the_producer_doesnt_wait) {
-  auto input = VPackParser::fromJson("[ [1] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-
-  OutputAqlItemRow result{std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(result.produced());
-  ASSERT_EQ(1, stats.getFullCount());
-}
-
-TEST_F(LimitExecutorTest, row_upstream_the_producer_waits) {
-  auto input = VPackParser::fromJson("[ [1] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-
-  OutputAqlItemRow result{std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(0, stats.getFullCount());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(result.produced());
-  ASSERT_EQ(1, stats.getFullCount());
-}
-
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_false) {
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_FALSE(row.produced());
-}
-
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_true) {
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(row.produced());
-  ASSERT_EQ(4, stats.getFullCount());
-
-  auto block = row.stealBlock();
-  AqlValue value = block->getValue(0, 0);
-  ASSERT_TRUE(value.isNumber());
-  ASSERT_EQ(1, value.toInt64());
-}
-
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_1_fullcount_true) {
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, 1, 1, true);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(row.produced());
-  ASSERT_EQ(4, stats.getFullCount());
-
-  auto block = row.stealBlock();
-  AqlValue value = block->getValue(0, 0);
-  ASSERT_TRUE(value.isNumber());
-  ASSERT_EQ(2, value.toInt64());
-}
-
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_false) {
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_FALSE(row.produced());
-
-  auto block = row.stealBlock();
-  AqlValue value = block->getValue(0, 0);
-  ASSERT_TRUE(value.isNumber());
-  ASSERT_EQ(1, value.toInt64());
-}
-
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_true) {
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-  size_t fullCount = 0;
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-  EXPECT_EQ(0, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  // In the following, the EXPECTs against stats.getFullCount() after each
-  // produceRows() call are not strictly required, but implementation dependent.
-  // The implementation of LimitExecutor would be allowed to return rows it has
-  // already seen at these points.
-  // It is sufficient that the sum of the stats equals 4, which is asserted at
-  // the end. So the intermediate EXPECTs are against the actual implementation
-  // and thus just there in order to find the location of an error faster.
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-  EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-  EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-  EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(row.produced());
-  EXPECT_EQ(4, stats.getFullCount());  // not strictly required, see comment above
-  fullCount += stats.getFullCount();
-
-  ASSERT_EQ(4, fullCount);
-
-  auto block = row.stealBlock();
-  AqlValue value = block->getValue(0, 0);
-  ASSERT_TRUE(value.isNumber());
-  ASSERT_EQ(1, value.toInt64());
-}
-
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_6_offset_1_fullcount_false) {
-  size_t constexpr offset = 1;
-  size_t constexpr limit = 6;
-  bool constexpr fullcount = false;
-  bool constexpr waiting = false;
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), waiting);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(row.produced());
-
-  auto block = row.stealBlock();
-  EXPECT_EQ(3, block->size());
-  AqlValue value = block->getValue(0, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(2, value.toInt64());
-  value = block->getValue(1, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(3, value.toInt64());
-  value = block->getValue(2, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(4, value.toInt64());
-}
-
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_6_offset_1_fullcount_true) {
-  size_t constexpr offset = 1;
-  size_t constexpr limit = 6;
-  bool constexpr fullcount = true;
-  bool constexpr waiting = false;
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), waiting);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-  size_t fullCount = 0;
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  EXPECT_EQ(2, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  EXPECT_EQ(1, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(row.produced());
-  EXPECT_EQ(1, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  ASSERT_EQ(4, fullCount);
-
-  auto block = row.stealBlock();
-  EXPECT_EQ(3, block->size());
-  AqlValue value = block->getValue(0, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(2, value.toInt64());
-  value = block->getValue(1, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(3, value.toInt64());
-  value = block->getValue(2, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(4, value.toInt64());
-}
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_fullcount_false) {
-  size_t constexpr offset = 1;
-  size_t constexpr limit = 6;
-  bool constexpr fullcount = false;
-  bool constexpr waiting = true;
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), waiting);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(row.produced());
-
-  auto block = row.stealBlock();
-  EXPECT_EQ(3, block->size());
-  AqlValue value = block->getValue(0, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(2, value.toInt64());
-  value = block->getValue(1, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(3, value.toInt64());
-  value = block->getValue(2, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(4, value.toInt64());
-}
-
-TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_fullcount_true) {
-  size_t constexpr offset = 1;
-  size_t constexpr limit = 6;
-  bool constexpr fullcount = true;
-  bool constexpr waiting = true;
-  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), waiting);
-  LimitExecutor testee(fetcher, infos);
-  LimitStats stats{};
-  size_t fullCount = 0;
-
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-  EXPECT_EQ(0, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-  EXPECT_EQ(1, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  EXPECT_EQ(1, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-  EXPECT_EQ(0, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::HASMORE, state);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  EXPECT_EQ(1, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::WAITING, state);
-  ASSERT_FALSE(row.produced());
-  EXPECT_EQ(0, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(ExecutionState::DONE, state);
-  ASSERT_TRUE(row.produced());
-  EXPECT_EQ(1, stats.getFullCount());
-  fullCount += stats.getFullCount();
-
-  ASSERT_EQ(4, fullCount);
-
-  auto block = row.stealBlock();
-  EXPECT_EQ(3, block->size());
-  AqlValue value = block->getValue(0, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(2, value.toInt64());
-  value = block->getValue(1, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(3, value.toInt64());
-  value = block->getValue(2, 0);
-  ASSERT_TRUE(value.isNumber());
-  EXPECT_EQ(4, value.toInt64());
-}
-
-class LimitExecutorTestBase {
- protected:
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep;
-
-  LimitExecutorTestBase()
-      : monitor(),
-        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{})),
-        registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
-            std::initializer_list<RegisterId>{0})) {}
-};
-
-// skip and fullCount cannot go together: Only the last limit block may get
-// fullCount, so there is no block after that could skip.
-// For these cases, use this class.
-class LimitExecutorWaitingTest : public LimitExecutorTestBase,
-                                 public ::testing::TestWithParam<bool> {
- protected:
-  bool waiting{};
-
-  LimitExecutorWaitingTest() : LimitExecutorTestBase() {}
-
-  virtual void SetUp() { waiting = GetParam(); }
-};
-
-// Fields:
-//  [0] bool waiting
-//  [1] bool fullCount
-using ExtendedLimitTestParameters = std::tuple<bool, bool>;
-
-class LimitExecutorWaitingFullCountTest
-    : public LimitExecutorTestBase,
-      public ::testing::TestWithParam<ExtendedLimitTestParameters> {
- protected:
-  bool waiting{};
-  bool fullCount{};
-
-  LimitExecutorWaitingFullCountTest() : LimitExecutorTestBase() {}
-
-  virtual void SetUp() {
-    ExtendedLimitTestParameters const& params = GetParam();
-    std::tie(waiting, fullCount) = params;
-  }
-};
-
-void removeWaiting(std::vector<ExecutorStepResult>& results) {
-  std::vector<ExecutorStepResult> tmp;
-  for (auto const result : results) {
-    if (std::get<ExecutionState>(result) != ExecutionState::WAITING) {
-      tmp.emplace_back(result);
-    }
-  }
-  results.swap(tmp);
-}
-
-TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_10) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 0;
-  size_t constexpr limit = 10;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::DONE, 3},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::DONE, 1},
-  };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  if (fullCount) {
-    expectedStats.fullCount = 9;
-  } else {
-    expectedStats.fullCount = 0;
-  }
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result =
-      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_4) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 0;
-  size_t constexpr limit = 4;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
-  };
-  if (fullCount) {
-    expectedStates.emplace_back(ExecutorCall::PRODUCE_ROWS, ExecutionState::WAITING, 0);
-  }
-  expectedStates.emplace_back(ExecutorCall::PRODUCE_ROWS, ExecutionState::DONE, 1);
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  if (fullCount) {
-    expectedStats.fullCount = 9;
-  } else {
-    expectedStats.fullCount = 0;
-  }
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result =
-      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_0) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 0;
-  size_t constexpr limit = 0;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{};
-  if (fullCount) {
-    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH,
-                                ExecutionState::WAITING, 0);
-    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH,
-                                ExecutionState::WAITING, 0);
-    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH,
-                                ExecutionState::WAITING, 0);
-  }
-  expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::DONE, 0);
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  if (fullCount) {
-    expectedStats.fullCount = 9;
-  } else {
-    expectedStats.fullCount = 0;
-  }
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result =
-      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_4_limit_4) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 4;
-  size_t constexpr limit = 4;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {{4}, {5}, {6}, {7}});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 2},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::DONE, 1},
-  };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  if (fullCount) {
-    expectedStats.fullCount = 9;
-  } else {
-    expectedStats.fullCount = 0;
-  }
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result =
-      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_10_limit_1) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 10;
-  size_t constexpr limit = 1;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::DONE, 0},
-  };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  if (fullCount) {
-    expectedStats.fullCount = 9;
-  } else {
-    expectedStats.fullCount = 0;
-  }
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result =
-      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, LimitExecutorWaitingFullCountTest,
-                        testing::Combine(testing::Bool(), testing::Bool()));
-
-TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_7) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 1;
-  size_t constexpr limit = 7;
-  size_t constexpr skip = 4;
-  size_t constexpr readRows = 2;
-  bool constexpr skipAfter = true;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput =
-      buildBlock<1>(itemBlockManager, {{5}, {6}});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::HASMORE, 4},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 1},
-  };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  expectedStats.fullCount = 0;
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_3) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 1;
-  size_t constexpr limit = 3;
-  size_t constexpr skip = 4;
-  size_t constexpr readRows = 1;
-  bool constexpr skipAfter = true;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 3},
-  };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  expectedStats.fullCount = 0;
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_read_1_offset_2_limit_4) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 2;
-  size_t constexpr limit = 4;
-  size_t constexpr skip = 2;
-  size_t constexpr readRows = 1;
-  bool constexpr skipAfter = true;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {{4}});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::HASMORE, 2},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 2},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 1},
-  };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  expectedStats.fullCount = 0;
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_10_limit_12) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 0;
-  size_t constexpr limit = 12;
-  size_t constexpr skip = 10;
-  size_t constexpr readRows = 1;
-  bool constexpr skipAfter = true;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 9},
-  };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  expectedStats.fullCount = 0;
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_1_read_1_limit_12) {
-  // Input spec:
-  size_t constexpr blocksize = 3;
-  size_t constexpr offset = 0;
-  size_t constexpr limit = 12;
-  size_t constexpr skip = 1;
-  size_t constexpr readRows = 1;
-  bool constexpr skipAfter = true;
-  SharedAqlItemBlockPtr const input =
-      buildBlock<1>(itemBlockManager, {{0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}});
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, blocksize, waiting, input);
-  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
-
-  // Output spec:
-  SharedAqlItemBlockPtr const expectedOutput = buildBlock<1>(itemBlockManager, {{1}});
-  size_t const expectedOutputSize =
-      expectedOutput == nullptr ? 0 : expectedOutput->size();
-  std::vector<ExecutorStepResult> expectedStates{
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 2},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
-      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 7},
-  };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
-  ExecutionStats expectedStats{};
-  expectedStats.fullCount = 0;
-
-  // Run:
-  LimitExecutor testee(fetcher, infos);
-  // Allocate at least one output row more than expected!
-  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
-  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
-                             infos.registersToClear()};
-
-  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
-  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
-  auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
-
-  EXPECT_EQ(expectedStats, actualStats);
-  EXPECT_EQ(expectedStates, actualStates);
-  if (expectedOutput == nullptr) {
-    ASSERT_EQ(actualOutput, nullptr);
-  } else {
-    ASSERT_FALSE(actualOutput == nullptr);
-    EXPECT_EQ(*expectedOutput, *actualOutput);
-  }
-}
-
-INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, LimitExecutorWaitingTest, testing::Bool());
 
 /*
  * How a test case for LimitExecutor is described:
@@ -1128,21 +73,15 @@ INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, LimitExecutorWaitingTest, testi
  * to cover both the case where the last upstream non-empty result returns with
  * HASMORE, or immediately with DONE.
  */
-
-// New test class for the new "execute" API.
-// TODO Can be renamed when the old tests are removed.
-class LimitExecutorExecuteApiTest
-    : public LimitExecutorTestBase,
-      public ::testing::TestWithParam<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> {
+class LimitExecutorTest
+    : public ::testing::TestWithParam<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> {
  public:
   // Creating a server instance costs a lot of time, so do it only once.
   // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
   static void SetUpTestCase() {
     server = std::make_unique<decltype(server)::element_type>();
   }
-  static void TearDownTestCase() {
-    server.reset();
-  }
+  static void TearDownTestCase() { server.reset(); }
 
  protected:
   static std::unique_ptr<mocks::MockAqlServer> server;
@@ -1159,7 +98,7 @@ class LimitExecutorExecuteApiTest
   // Fetcher argument&member are removed.
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> dummyFetcher;
 
-  LimitExecutorExecuteApiTest()
+  LimitExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
@@ -1169,7 +108,6 @@ class LimitExecutorExecuteApiTest
         dummyFetcher(itemBlockManager, 1, false, nullptr) {
     fakedQuery = server->createFakeQuery();
   }
-
 
   auto buildBlockRange(size_t const begin, size_t const end) -> SharedAqlItemBlockPtr {
     auto builder = MatrixBuilder<1>{};
@@ -1181,7 +119,7 @@ class LimitExecutorExecuteApiTest
   }
 };
 
-std::unique_ptr<mocks::MockAqlServer> LimitExecutorExecuteApiTest::server{nullptr};
+std::unique_ptr<mocks::MockAqlServer> LimitExecutorTest::server{nullptr};
 
 auto const testingOffsets = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
 auto const testingLimits = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
@@ -1193,42 +131,24 @@ auto const testingInputLengths = ::testing::Values(
     // 1
     InputLengths{1},
     // 2
-    InputLengths{2},
-    InputLengths{1, 1},
+    InputLengths{2}, InputLengths{1, 1},
     // 3
-    InputLengths{3},
-    InputLengths{1, 2},
-    InputLengths{2, 1},
-    InputLengths{1, 1, 1},
+    InputLengths{3}, InputLengths{1, 2}, InputLengths{2, 1}, InputLengths{1, 1, 1},
     // 4
-    InputLengths{4},
-    InputLengths{3, 1},
-    InputLengths{2, 2},
+    InputLengths{4}, InputLengths{3, 1}, InputLengths{2, 2},
     // 9
     InputLengths{9},
     // 10
-    InputLengths{10},
-    InputLengths{9, 1},
+    InputLengths{10}, InputLengths{9, 1},
     // 11
-    InputLengths{11},
-    InputLengths{10, 1},
-    InputLengths{9, 2},
-    InputLengths{9, 1, 1},
+    InputLengths{11}, InputLengths{10, 1}, InputLengths{9, 2}, InputLengths{9, 1, 1},
     // 19
     InputLengths{19},
     // 20
-    InputLengths{20},
-    InputLengths{1, 19},
-    InputLengths{19, 1},
-    InputLengths{10, 10},
+    InputLengths{20}, InputLengths{1, 19}, InputLengths{19, 1}, InputLengths{10, 10},
     // 21
-    InputLengths{21},
-    InputLengths{20, 1},
-    InputLengths{19, 2},
-    InputLengths{19, 1, 1},
-    InputLengths{10, 10, 1},
-    InputLengths{1, 9, 9, 1, 1}
-);
+    InputLengths{21}, InputLengths{20, 1}, InputLengths{19, 2},
+    InputLengths{19, 1, 1}, InputLengths{10, 10, 1}, InputLengths{1, 9, 9, 1, 1});
 auto const testingAqlCalls = ::testing::Values(AqlCall{});
 auto const testingDoneResultIsEmpty = ::testing::Bool();
 
@@ -1236,7 +156,7 @@ auto const limitTestCases =
     ::testing::Combine(testingOffsets, testingLimits, testingFullCount,
                        testingInputLengths, testingAqlCalls, testingDoneResultIsEmpty);
 
-TEST_P(LimitExecutorExecuteApiTest, testSuite) {
+TEST_P(LimitExecutorTest, testSuite) {
   // Input.
   auto const& [offset, limit, fullCount, inputLengths, clientCall, doneResultIsEmpty] =
       GetParam();
@@ -1257,42 +177,40 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   // Note that structured bindings are *not* captured by lambdas, at least in C++17.
   // So we must explicity capture them.
   // TODO expectedPassedBlocks is needed no longer. This code can thus be simplified.
-  auto const[expectedSkipped, expectedOutput, expectedLimitStats] =
-  std::invoke(
-    [&, offset = offset, limit = limit, fullCount = fullCount,
-      &inputLengths = inputLengths, clientCall = clientCall]() {
-      auto output = MatrixBuilder<1>{};
-      auto const effectiveOffset = clientCall.getOffset() + offset;
-      // The combined limit of a call and a LimitExecutor:
-      auto const effectiveLimit =
-        std::min(
-          clientCall.getOffset() + clientCall.getLimit(),
-          nonNegativeSubtraction(limit, clientCall.getOffset()));
-      auto i = size_t{0};
-      for (auto const length : inputLengths) {
-        // In each iteration, we calculate a range (begin, end) ~= (i, i+length),
-        // but potentially restricted by both offset and limit.
-        auto const localLimit = nonNegativeSubtraction(effectiveLimit, nonNegativeSubtraction(i, offset));
-        auto const localOffset = nonNegativeSubtraction(effectiveOffset, i);
-        auto const limitedLength = std::min(length, localOffset + localLimit);
-        auto const skip = std::min(limitedLength, localOffset);
-        auto const begin = i + skip;
-        auto const end = i + limitedLength;
-        for (auto k = begin; k < end; ++k) {
-          output.emplace_back(RowBuilder<1>{k});
+  auto const [expectedSkipped, expectedOutput, expectedLimitStats] =
+      std::invoke([&, offset = offset, limit = limit, fullCount = fullCount,
+                   &inputLengths = inputLengths, clientCall = clientCall]() {
+        auto output = MatrixBuilder<1>{};
+        auto const effectiveOffset = clientCall.getOffset() + offset;
+        // The combined limit of a call and a LimitExecutor:
+        auto const effectiveLimit =
+            std::min(clientCall.getOffset() + clientCall.getLimit(),
+                     nonNegativeSubtraction(limit, clientCall.getOffset()));
+        auto i = size_t{0};
+        for (auto const length : inputLengths) {
+          // In each iteration, we calculate a range (begin, end) ~= (i,
+          // i+length), but potentially restricted by both offset and limit.
+          auto const localLimit =
+              nonNegativeSubtraction(effectiveLimit, nonNegativeSubtraction(i, offset));
+          auto const localOffset = nonNegativeSubtraction(effectiveOffset, i);
+          auto const limitedLength = std::min(length, localOffset + localLimit);
+          auto const skip = std::min(limitedLength, localOffset);
+          auto const begin = i + skip;
+          auto const end = i + limitedLength;
+          for (auto k = begin; k < end; ++k) {
+            output.emplace_back(RowBuilder<1>{k});
+          }
+          i += length;
         }
-        i += length;
-      }
-      // Only the client's offset counts against the "skipped" count returned
-      // by the limit block, the rest is upstream!
-      auto const skipped = std::min(numInputRows, clientCall.getOffset());
-      auto stats = LimitStats{};
-      if (fullCount) {
-        stats.incrFullCountBy(numInputRows);
-      }
-      return std::make_tuple(skipped, output, stats);
-    }
-  );
+        // Only the client's offset counts against the "skipped" count returned
+        // by the limit block, the rest is upstream!
+        auto const skipped = std::min(numInputRows, clientCall.getOffset());
+        auto stats = LimitStats{};
+        if (fullCount) {
+          stats.incrFullCountBy(numInputRows);
+        }
+        return std::make_tuple(skipped, output, stats);
+      });
 
   auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
 
@@ -1301,21 +219,23 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
 
   // fakedQuery->queryOptions().profile = PROFILE_LEVEL_TRACE_2;
   ExecutorTestHelper<LimitExecutor>{*fakedQuery}
-    .setTesteeNodeType(ExecutionNode::LIMIT)
-    .setInputFromRowNum(numInputRows)
-    .setInputSplitType(inputLengths)
-    .setCall(clientCall)
-    .setLieAboutHasmore(doneResultIsEmpty)
-    .expectedStats(expectedStats)
-    .expectOutput({0}, expectedOutput)
-    .expectSkipped(expectedSkipped)
-    .expectedState(ExecutionState::DONE)
-    .run(std::move(infos))
-  ;
+      .setTesteeNodeType(ExecutionNode::LIMIT)
+      .setInputFromRowNum(numInputRows)
+      .setInputSplitType(inputLengths)
+      .setCall(clientCall)
+      .setLieAboutHasmore(doneResultIsEmpty)
+      .expectedStats(expectedStats)
+      .expectOutput({0}, expectedOutput)
+      .expectSkipped(expectedSkipped)
+      .expectedState(ExecutionState::DONE)
+      .run(std::move(infos));
 }
 
-auto printTestCase = [](testing::TestParamInfo<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> const& paramInfo) -> std::string {
-  auto const& [offset, limit, fullCount, inputLengths, clientCall, doneResultIsEmpty] = paramInfo.param;
+auto printTestCase =
+    [](testing::TestParamInfo<std::tuple<size_t, size_t, bool, std::vector<size_t>, AqlCall, bool>> const& paramInfo)
+    -> std::string {
+  auto const& [offset, limit, fullCount, inputLengths, clientCall, doneResultIsEmpty] =
+      paramInfo.param;
 
   std::stringstream out;
 
@@ -1323,7 +243,7 @@ auto printTestCase = [](testing::TestParamInfo<std::tuple<size_t, size_t, bool, 
   out << "limit" << limit;
   out << "fullCount" << (fullCount ? "True" : "False");
   out << "inputLengths";
-  for (auto const &it : inputLengths) {
+  for (auto const& it : inputLengths) {
     out << it << "_";
   }
   out << "clientCall";
@@ -1332,7 +252,8 @@ auto printTestCase = [](testing::TestParamInfo<std::tuple<size_t, size_t, bool, 
       out << "_offset" << clientCall;
     }
     if (clientCall.hasHardLimit() || clientCall.hasSoftLimit()) {
-      auto const clientLimit = std::get<std::size_t>(std::min(clientCall.softLimit, clientCall.hardLimit));
+      auto const clientLimit =
+          std::get<std::size_t>(std::min(clientCall.softLimit, clientCall.hardLimit));
       out << "_limit" << clientLimit;
     }
     if (clientCall.needsFullCount()) {
@@ -1344,7 +265,7 @@ auto printTestCase = [](testing::TestParamInfo<std::tuple<size_t, size_t, bool, 
   return out.str();
 };
 
-INSTANTIATE_TEST_CASE_P(LimitExecutorExecuteApiVariations, LimitExecutorExecuteApiTest,
-    limitTestCases, printTestCase);
+INSTANTIATE_TEST_CASE_P(LimitExecutorExecuteApiVariations, LimitExecutorTest,
+                        limitTestCases, printTestCase);
 
 }  // namespace arangodb::tests::aql
