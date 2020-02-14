@@ -1257,7 +1257,7 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
   // Note that structured bindings are *not* captured by lambdas, at least in C++17.
   // So we must explicity capture them.
   // TODO expectedPassedBlocks is needed no longer. This code can thus be simplified.
-  auto const[expectedSkipped, expectedOutput, expectedStats] =
+  auto const[expectedSkipped, expectedOutput, expectedLimitStats] =
   std::invoke(
     [&, offset = offset, limit = limit, fullCount = fullCount,
       &inputLengths = inputLengths, clientCall = clientCall]() {
@@ -1296,6 +1296,9 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
 
   auto infos = LimitExecutorInfos{1, 1, {}, {0}, offset, limit, fullCount};
 
+  auto expectedStats = ExecutionStats{};
+  expectedStats += expectedLimitStats;
+
   // fakedQuery->queryOptions().profile = PROFILE_LEVEL_TRACE_2;
   ExecutorTestHelper<LimitExecutor>{*fakedQuery}
     .setTesteeNodeType(ExecutionNode::LIMIT)
@@ -1303,6 +1306,7 @@ TEST_P(LimitExecutorExecuteApiTest, testSuite) {
     .setInputSplitType(inputLengths)
     .setCall(clientCall)
     .setLieAboutHasmore(doneResultIsEmpty)
+    .expectedStats(expectedStats)
     .expectOutput({0}, expectedOutput)
     .expectSkipped(expectedSkipped)
     .expectedState(ExecutionState::DONE)
