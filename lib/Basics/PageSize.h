@@ -17,29 +17,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_LOGGER_LOGGER_BUFFER_FEATURE_H
-#define ARANGODB_LOGGER_LOGGER_BUFFER_FEATURE_H 1
-
-#include "ApplicationFeatures/ApplicationFeature.h"
+#ifndef ARANGODB_BASICS_PAGE_SIZE_H
+#define ARANGODB_BASICS_PAGE_SIZE_H 1
 
 namespace arangodb {
+namespace PageSize {
 
-class LoggerBufferFeature final : public application_features::ApplicationFeature {
- public:
-  explicit LoggerBufferFeature(application_features::ApplicationServer& server);
+/// @brief return system's page size
+int getValue();
 
-  // void collectOptions(std::shared_ptr<options::ProgramOptions>) override
-  // final; void loadOptions(std::shared_ptr<options::ProgramOptions>) override
-  // final; void validateOptions(std::shared_ptr<options::ProgramOptions>)
-  // override final;
-  void prepare() override final;
-  // void start() override final;
-  // void stop() override final;
-};
-
+}
 }  // namespace arangodb
 
 #endif
