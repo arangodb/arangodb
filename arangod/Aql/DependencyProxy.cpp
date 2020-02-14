@@ -34,9 +34,47 @@ using namespace arangodb::aql;
 template <BlockPassthrough blockPassthrough>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
-  // TODO: Test this, especially if upstreamBlock is done etc.
-  // We do not modify any local state here.
-  return upstreamBlock().execute(stack);
+  ExecutionState state = ExecutionState::HASMORE;
+  size_t skipped = 0;
+  SharedAqlItemBlockPtr block = nullptr;
+  do {
+    // Note: upstreamBlock will return next dependency
+    // if we need to loop here
+    if (!_distributeId.empty()) {
+      // We are in the cluster case.
+      // we have to ask executeForShard
+      auto upstreamWithClient = dynamic_cast<BlocksWithClients*>(&upstreamBlock());
+      TRI_ASSERT(upstreamWithClient != nullptr);
+      if (upstreamWithClient == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                       "Invalid state reached, we try to "
+                                       "request sharded data from a block "
+                                       "that is not able to provide it.");
+      }
+      std::tie(state, skipped, block) =
+          upstreamWithClient->executeForClient(stack, _distributeId);
+    } else {
+      std::tie(state, skipped, block) = upstreamBlock().execute(stack);
+    }
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(block == nullptr);
+      TRI_ASSERT(skipped == 0);
+      break;
+    }
+
+    if (block == nullptr) {
+      // We're not waiting and didn't get a block, so we have to be done.
+      TRI_ASSERT(state == ExecutionState::DONE);
+      if (!advanceDependency()) {
+        break;
+      }
+    }
+
+  } while (block == nullptr);
+  return {state, skipped, block};
 }
 
 template <BlockPassthrough blockPassthrough>
@@ -264,8 +302,7 @@ template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
     std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-    RegisterId nrInputRegisters,
-    velocypack::Options const* const options)
+    RegisterId nrInputRegisters, velocypack::Options const* const options)
     : _dependencies(dependencies),
       _itemBlockManager(itemBlockManager),
       _inputRegisters(std::move(inputRegisters)),

@@ -928,14 +928,9 @@ using SortedCollectTestHelper = ExecutorTestHelper<SortedCollectExecutor, 1, 1>;
 using SortedCollectSplitType = SortedCollectTestHelper::SplitType;
 
 class SortedCollectExecutorTestSplit
-    : public ::testing::TestWithParam<std::tuple<SortedCollectSplitType>> {
+    : public AqlExecutorTestCase<false>,
+      public ::testing::TestWithParam<std::tuple<SortedCollectSplitType>> {
  protected:
-  // ExecutionState state;
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-
-  mocks::MockAqlServer server;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
   arangodb::transaction::Methods* trx;
 
   std::unordered_set<RegisterId> regToClear;
@@ -961,13 +956,8 @@ class SortedCollectExecutorTestSplit
 
   SortedCollectExecutorInfos infos;
 
-  SharedAqlItemBlockPtr block;
-  NoStats stats;
-
   SortedCollectExecutorTestSplit()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        fakedQuery(server.createFakeQuery()),
-        trx(fakedQuery->trx()),
+      : trx(fakedQuery->trx()),
         groupRegisters{std::make_pair<RegisterId, RegisterId>(1, 0)},
         readableInputRegisters({0}),
         collectRegister(2),
@@ -980,12 +970,7 @@ class SortedCollectExecutorTestSplit
               std::move(readableInputRegisters), std::move(writeableOutputRegisters),
               std::move(groupRegisters), collectRegister, expressionRegister,
               expressionVariable, std::move(aggregateTypes),
-              std::move(variables), std::move(aggregateRegisters), trx, count),
-        block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {
-    auto engine =
-        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
-    fakedQuery->setEngine(engine.release());
-  }
+              std::move(variables), std::move(aggregateRegisters), trx, count) {}
 };
 
 TEST_P(SortedCollectExecutorTestSplit, split_1) {
