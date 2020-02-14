@@ -327,7 +327,7 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   resItem.release();
 
   // start writing if necessary
-  if (!_writing.load()) {
+  if (_writing.load()) {
     return;
   }
   this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
