@@ -4,9 +4,9 @@ v3.6.2 (XXXX-XX-XX)
 * Fixed handling of `geometry` attributes in query editor of the web UI.
 
   Previously, document attributes named `geometry` were treated in a special
-  way, assuming they were JSON objects. In case a document contained a `geometry`
-  attribute that had a non-object value (e.g. `null`) the web UI threw a
-  JavaScript exception and would not display AQL query results properly.
+  way, assuming they were JSON objects. In case a document contained a
+	`geometry` attribute that had a non-object value (e.g. `null`) the web UI
+	threw a JavaScript exception and would not display AQL query results properly.
 
 * Disable "collect-in-cluster" AQL optimizer rule in case a LIMIT node is between
   the COLLECT and the source data. In this case it is not safe to apply the
