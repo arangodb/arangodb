@@ -32,6 +32,7 @@ const functionsDocumentation = {
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
   'dump_multiple': 'restore multiple DBs at once',
+  'dump_smartgraphattribute_regression': 'regression test for smart graph attribute bug',
   'hot_backup': 'hotbackup tests'
 };
 
@@ -59,6 +60,7 @@ const testPaths = {
   'dump_encrypted': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
   'dump_multiple': [tu.pathForTesting('server/dump')],
+  'dump_smartgraphattribute_regression': [tu.pathForTesting('server/dump')],
   'hot_backup': [tu.pathForTesting('server/dump')]
 };
 
@@ -567,6 +569,38 @@ function dumpMaskings (options) {
   return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
 }
 
+function dumpSmartGraphAttributeRegression (options) {
+  // test is only meaningful in the enterprise version
+  let skip = true;
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      skip = false;
+    }
+  }
+
+  if (skip) {
+    print('skipping dump_smartgraphattribute_regression test');
+    return {
+      dump_smartgraphattribute_regression: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
+  let tstFiles = {
+    dumpSetup: 'dump-smartattribute-regression-setup-cluster.js',
+    dumpCleanup: 'cleanup-nothing.js',
+    dumpAgain: 'dump-smartattribute-regression-cluster.js',
+    dumpTearDown: 'dump-teardown.js'
+  };
+
+  let dumpOptions = _.clone(options);
+
+  return dump_backend(options, {}, {}, dumpOptions, options, 'dump_smartgraphattribute_regression', tstFiles, function(){});
+}
+
 function hotBackup (options) {
   let c = getClusterStrings(options);
   if (options.storageEngine === "mmfiles") {
@@ -658,6 +692,10 @@ function hotBackup (options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
+
+  testFns['dump_smartgraphattribute_regression'] = dumpSmartGraphAttributeRegression;
+  defaultFns.push('dump_smartgraphattribute_regression');
+
   testFns['dump'] = dump;
   defaultFns.push('dump');
 
@@ -672,6 +710,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump_multiple'] = dumpMultiple;
   defaultFns.push('dump_multiple');
+
+  testFns['dump_smartgraphattribute_regression'] = dumpSmartGraphAttributeRegression;
+  defaultFns.push('dump_smartgraphattribute_regression');
 
   testFns['hot_backup'] = hotBackup;
   defaultFns.push('hot_backup');
