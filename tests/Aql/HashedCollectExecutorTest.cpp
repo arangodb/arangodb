@@ -182,9 +182,33 @@ TEST_P(HashedCollectExecutorTest, count) {
 struct AggregateInput {
   std::string name;
   RegisterId inReg;
-  RegisterId outReg;
   MatrixBuilder<2> expectedOutput;
 };
+
+std::ostream& operator<<(std::ostream& out, HashedCollectSplitType const& split) {
+  return std::visit(overload{[&out](std::size_t i) -> std::ostream& {
+                               return out << "split every " << i << " row";
+                             },
+                             [&out](std::vector<std::size_t> is) -> std::ostream& {
+                               out << "split after rows:";
+                               for (auto const& i : is) {
+                                 out << " " << i;
+                               }
+                               return out;
+                             },
+                             [&out](std::monostate) -> std::ostream& {
+                               return out << "full input";
+                             }},
+                    split);
+}
+
+std::ostream& operator<<(std::ostream& out, AggregateInput const& agg) {
+  out << agg.name;
+  if (agg.inReg != RegisterPlan::MaxRegisterId) {
+    out << " reg: " << agg.inReg;
+  }
+  return out;
+}
 
 using HashedCollectAggregateInputParam = std::tuple<HashedCollectSplitType, AggregateInput>;
 
@@ -225,12 +249,12 @@ class HashedCollectExecutorTestAggregate
 
     auto agg = getAggregator();
     std::vector<std::string> aggregateTypes{agg.name};
-    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{agg.outReg, agg.inReg}};
+    std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters{{3, agg.inReg}};
     if (agg.inReg != RegisterPlan::MaxRegisterId) {
       readableInputRegisters.emplace(agg.inReg);
     }
 
-    writeableOutputRegisters.emplace(agg.outReg);
+    writeableOutputRegisters.emplace(3);
 
     return HashedCollectExecutorInfos{nrInputRegisters,
                                       nrOutputRegisters,
@@ -247,6 +271,22 @@ class HashedCollectExecutorTestAggregate
   };
 };
 
+/**
+ * Input used:
+ *
+ * [
+ *   [1, 5]
+ *   [1, 1]
+ *   [2, 2]
+ *   [1, 5]
+ *   [6, 1]
+ *   [2, 2]
+ *   [3, 1]
+ * ]
+ * We join on the first value.
+ * The second value can be used by aggregate
+ */
+
 INSTANTIATE_TEST_CASE_P(
     HashedCollectAggregate, HashedCollectExecutorTestAggregate,
     ::testing::Combine(
@@ -254,19 +294,22 @@ INSTANTIATE_TEST_CASE_P(
                           splitStep<1>, splitStep<2>),
         ::testing::Values(AggregateInput{"LENGTH",
                                          RegisterPlan::MaxRegisterId,
-                                         2,
                                          {{1, 3}, {2, 2}, {6, 1}, {3, 1}}},
-                          AggregateInput{"SUM", 0, 2, {{1, 3}, {2, 4}, {6, 6}, {3, 3}}})));
+                          AggregateInput{"SUM", 0, {{1, 3}, {2, 4}, {6, 6}, {3, 3}}},
+                          AggregateInput{"SUM", 1, {{1, 11}, {2, 4}, {6, 1}, {3, 1}}})));
 
 TEST_P(HashedCollectExecutorTestAggregate, run) {
-  auto infos = buildInfos(1, 3, {{1, 0}});
+  auto infos = buildInfos(2, 4, {{2, 0}});
   AqlCall call{};          // unlimited produce
   ExecutionStats stats{};  // No stats here
-  ExecutorTestHelper<HashedCollectExecutor, 1, 2>(*fakedQuery)
-      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{3}}})
+  ExecutorTestHelper<HashedCollectExecutor, 2, 2>(*fakedQuery)
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 5}, RowBuilder<2>{1, 1},
+                                      RowBuilder<2>{2, 2}, RowBuilder<2>{1, 5},
+                                      RowBuilder<2>{6, 1}, RowBuilder<2>{2, 2},
+                                      RowBuilder<2>{3, 1}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({1, 2}, getAggregator().expectedOutput)
+      .expectOutput({2, 3}, getAggregator().expectedOutput)
       .allowAnyOutputOrder(true)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
