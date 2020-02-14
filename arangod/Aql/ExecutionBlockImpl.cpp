@@ -1400,6 +1400,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
     }
+    // We must return skipped and/or data when reporting HASMORE
+    TRI_ASSERT(_upstreamState != ExecutionState::HASMORE ||
+               (skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0)));
     return {_upstreamState, skipped, std::move(outputBlock)};
   } else {
     // TODO this branch must never be taken with an executor that has not been

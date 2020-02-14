@@ -77,8 +77,8 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
 
   // Generally, we create a hard limit. However, if we get a soft limit from
   // downstream that is lower than our hard limit, we use that instead.
-  bool const useSoftLimit = clientCall.getLimit() < localLimitMinusDownstreamOffset &&
-                            !clientCall.hasSoftLimit();
+  bool const useSoftLimit = clientCall.hasSoftLimit() &&
+                            clientCall.getLimit() < localLimitMinusDownstreamOffset;
 
   if (useSoftLimit) {
     upstreamCall.softLimit = limit;
@@ -131,10 +131,10 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
     }
   }
 
-  // There must not be any skipped rows left. Offset is handled first, and
-  // skipped rows due to fullCount may only appear after the limit is fullfilled;
-  // and those are already counted.
-  TRI_ASSERT(input.skippedInFlight() == 0);
+  // When the limit is fulfilled, there must not be any skipped rows left.
+  // The offset is handled first, and skipped rows due to fullCount may only
+  // appear after the limit is fullfilled; and those are already counted.
+  TRI_ASSERT(!limitFulfilled() || input.skippedInFlight() == 0);
 
   // We're passthrough, we must not have any input left when the limit is fulfilled
   TRI_ASSERT(!limitFulfilled() || !input.hasDataRow());
