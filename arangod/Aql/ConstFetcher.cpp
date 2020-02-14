@@ -151,7 +151,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     _blockForPassThrough.reset(nullptr);
     _rowIndex = 0;
     return {ExecutionState::DONE, call.getSkipCount(),
-            DataRange{ExecutorState::DONE, resultBlock, 0, resultBlock->size()}};
+            DataRange{ExecutorState::DONE, call.getSkipCount(), resultBlock, 0}};
   }
 
   SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;
@@ -185,7 +185,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
 
   resultBlock = resultBlock->slice(sliceIndexes);
   return {resState, call.getSkipCount(),
-          DataRange{rangeState, resultBlock, 0, resultBlock->size()}};
+          DataRange{rangeState, call.getSkipCount(), resultBlock, 0}};
 }
 
 void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block) {
