@@ -54,6 +54,53 @@
 
 #ifndef _WIN32
 namespace {
+
+/// @brief helper struct that is used to create an alternative stack for the
+/// signal handler on construction and to tear it down on destruction
+struct CrashHandlerStackInitializer {
+  CrashHandlerStackInitializer() 
+      : stackAdjusted(false) {
+    // reserve 512KB space for signal handler stack - should be more than enough
+    try {
+      memory = std::make_unique<char[]>(512 * 1024);
+    } catch (...) {
+      // could not allocate memory for alternative stack.
+      // in this case we must not modify the stack for the signal handler
+      // as we have no way of signaling failure here, all we can do is drop out
+      // of the constructor
+      return;
+    }
+
+    stack_t altstack;
+    altstack.ss_sp = static_cast<void*>(memory.get());
+    altstack.ss_size = MINSIGSTKSZ;
+    altstack.ss_flags = 0;
+    if (sigaltstack(&altstack, nullptr) == 0) {
+      stackAdjusted = true;
+    }
+  }
+
+  ~CrashHandlerStackInitializer() {
+    // reset to default stack
+    if (stackAdjusted) {
+      stack_t altstack;
+      altstack.ss_sp = nullptr;
+      altstack.ss_size = 0;
+      altstack.ss_flags = SS_DISABLE;
+      // intentionally ignore return value here as this will be called on shutdown only
+      sigaltstack(&altstack, nullptr);
+    }
+  }
+
+  // memory reserved for the signal handler stack
+  std::unique_ptr<char[]> memory;
+  bool stackAdjusted;
+};
+
+/// @brief this instance will make sure that we have an extra stack for
+/// our signal handler
+CrashHandlerStackInitializer stackInitializer;
+
 /// @brief an atomic that makes sure there are no races inside the signal
 /// handler callback
 std::atomic<bool> crashHandlerInvoked(false);
