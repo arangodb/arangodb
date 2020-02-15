@@ -99,11 +99,11 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
 }
 
 auto asserthelper::ValidateBlocksAreEqualUnordered(
-    SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+    SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected, std::size_t numRowsNotContained,
     std::optional<std::vector<RegisterId>> const& onlyCompareRegisters) -> void {
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
-  EXPECT_EQ(actual->size(), expected->size());
+  EXPECT_EQ(actual->size() + numRowsNotContained, expected->size());
 
   RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
   if (onlyCompareRegisters) {
@@ -113,24 +113,34 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
     EXPECT_EQ(actual->getNrRegs(), expected->getNrRegs());
   }
 
+  std::unordered_set<size_t> matchedRows{};
+
   for (size_t expectedRow = 0; expectedRow < expected->size(); ++expectedRow) {
-    bool found = false;
     for (size_t actualRow = 0; actualRow < actual->size(); ++actualRow) {
       if (RowsAreIdentical(actual, actualRow, expected, expectedRow, onlyCompareRegisters)) {
-        found = true;
-        // one is enough
-        break;
+        auto const& [unused, inserted] = matchedRows.emplace(expectedRow);
+        if (inserted) {
+          // one is enough, but do not match the same rows twice
+          break;
+        }
       }
     }
-    if (!found) {
-      InputAqlItemRow missing(expected, expectedRow);
-      velocypack::Options vpackOptions;
-      VPackBuilder rowBuilder;
-      missing.toSimpleVelocyPack(&vpackOptions, rowBuilder);
-      VPackBuilder blockBuilder;
-      actual->toSimpleVPack(&vpackOptions, blockBuilder);
-      EXPECT_TRUE(found) << "Did not find row: " << rowBuilder.toJson()
-                         << " in " << blockBuilder.toJson();
+  }
+
+  if (matchedRows.size() + numRowsNotContained < expected->size()) {
+    // Did not find all rows.
+    // This is for reporting only:
+    for (size_t expectedRow = 0; expectedRow < expected->size(); ++expectedRow) {
+      if (matchedRows.find(expectedRow) == matchedRows.end()) {
+        InputAqlItemRow missing(expected, expectedRow);
+        velocypack::Options vpackOptions;
+        VPackBuilder rowBuilder;
+        missing.toSimpleVelocyPack(&vpackOptions, rowBuilder);
+        VPackBuilder blockBuilder;
+        actual->toSimpleVPack(&vpackOptions, blockBuilder);
+        EXPECT_TRUE(false) << "Did not find row: " << rowBuilder.toJson()
+                           << " in " << blockBuilder.toJson();
+      }
     }
   }
 }

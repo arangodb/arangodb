@@ -73,6 +73,7 @@ class asserthelper {
 
   static auto ValidateBlocksAreEqualUnordered(
       SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::size_t numRowsNotContained = 0,
       std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
       -> void;
 };
@@ -124,6 +125,7 @@ struct ExecutorTestHelper {
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
         _unorderedOutput{false},
+        _unorderedSkippedRows{0},
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
@@ -196,8 +198,9 @@ struct ExecutorTestHelper {
     return *this;
   };
 
-  auto allowAnyOutputOrder(bool expected) -> ExecutorTestHelper& {
+  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
     _unorderedOutput = expected;
+    _unorderedSkippedRows = skippedRows;
     return *this;
   }
 
@@ -217,15 +220,21 @@ struct ExecutorTestHelper {
     EXPECT_EQ(skipped, _expectedSkip);
 
     EXPECT_EQ(state, _expectedState);
-
-    SharedAqlItemBlockPtr expectedOutputBlock =
-        buildBlock<outputColumns>(itemBlockManager, std::move(_output));
-    std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
-                                         _outputRegisters.end());
-    if (_unorderedOutput) {
-      asserthelper::ValidateBlocksAreEqualUnordered(result, expectedOutputBlock, outRegVector);
+    if (result == nullptr) {
+      // Empty output, possible if we skip all
+      EXPECT_EQ(_output.size(), 0)
+          << "Executor does not yield output, although it is expected";
     } else {
-      asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
+      SharedAqlItemBlockPtr expectedOutputBlock =
+          buildBlock<outputColumns>(itemBlockManager, std::move(_output));
+      std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
+                                           _outputRegisters.end());
+      if (_unorderedOutput) {
+        asserthelper::ValidateBlocksAreEqualUnordered(result, expectedOutputBlock,
+                                                      _unorderedSkippedRows, outRegVector);
+      } else {
+        asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
+      }
     }
 
     if (_testStats) {
@@ -290,11 +299,12 @@ struct ExecutorTestHelper {
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
   std::array<RegisterId, outputColumns> _outputRegisters;
-  size_t _expectedSkip;
+  std::size_t _expectedSkip;
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
   bool _testStats;
   bool _unorderedOutput;
+  std::size_t _unorderedSkippedRows;
 
   SplitType _inputSplit = {std::monostate()};
   SplitType _outputSplit = {std::monostate()};

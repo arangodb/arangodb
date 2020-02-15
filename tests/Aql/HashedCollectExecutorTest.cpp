@@ -144,7 +144,155 @@ TEST_P(HashedCollectExecutorTest, collect_only) {
       .run(std::move(infos));
 }
 
-// TODO add tests for combination of offset, limit and fullCount
+// Collect skip all
+TEST_P(HashedCollectExecutorTest, skip_all) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};
+  call.offset = 1000;      // skip all
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect fullCount all
+TEST_P(HashedCollectExecutorTest, fullcount_all) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};
+  call.hardLimit = 0;      // HardLimit
+  call.fullCount = true;   // count all
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect get some
+TEST_P(HashedCollectExecutorTest, collect_only_soft_less) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};
+  call.softLimit = 2;
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {{1}, {2}, {6}, {R"("1")"}})
+      .allowAnyOutputOrder(true, 2)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::HASMORE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect get some
+TEST_P(HashedCollectExecutorTest, collect_only_hard_less) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};
+  call.hardLimit = 2;
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {{1}, {2}, {6}, {R"("1")"}})
+      .allowAnyOutputOrder(true, 2)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect skip some
+TEST_P(HashedCollectExecutorTest, skip_some) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};
+  call.offset = 2;         // skip some
+  call.softLimit = 0;      // 0 limit
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(true)
+      .expectSkipped(2)
+      .expectedState(ExecutionState::HASMORE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect skip and get
+TEST_P(HashedCollectExecutorTest, skip_and_get) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};
+  call.offset = 2;         // skip some
+  call.softLimit = 1000;   // high limit
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {{1}, {2}, {6}, {R"("1")"}})
+      .allowAnyOutputOrder(true, 2)
+      .expectSkipped(2)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect skip and hardLimit
+TEST_P(HashedCollectExecutorTest, skip_and_hardLimit) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};
+  call.offset = 2;         // skip some
+  call.hardLimit = 1;      // hard limit
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {{1}, {2}, {6}, {R"("1")"}})
+      .allowAnyOutputOrder(true, 3)
+      .expectSkipped(2)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
+
+// Collect skip and fullCount
+TEST_P(HashedCollectExecutorTest, skip_and_fullCount) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+  AqlCall call{};
+  call.offset = 1;     // skip some
+  call.hardLimit = 2;  // hard limit
+  call.fullCount = true;
+  ExecutionStats stats{};  // No stats here
+  ExecutorTestHelper<HashedCollectExecutor>(*fakedQuery)
+      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {{1}, {2}, {6}, {R"("1")"}})
+      .allowAnyOutputOrder(true, 2)
+      .expectSkipped(2)
+      .expectedState(ExecutionState::DONE)
+      // .expectedStats(stats)
+      .run(std::move(infos));
+}
 
 // Collect with more then one group value
 TEST_P(HashedCollectExecutorTest, collect_only_multiple_values) {
@@ -247,7 +395,11 @@ TEST_P(HashedCollectExecutorTest, collect_objects) {
                       {{R"([1,1,1])"}}})
       .setInputSplitType(getSplit())
       .setCall(call)
-      .expectOutput({1}, {{1}, {R"([1,1,1])"}, {R"({"a": 1, "b": 1})"}, {R"({"a": 1, "b": 1, "c": 1})"}, {R"({"a": 2, "b": 1})"}})
+      .expectOutput({1}, {{1},
+                          {R"([1,1,1])"},
+                          {R"({"a": 1, "b": 1})"},
+                          {R"({"a": 1, "b": 1, "c": 1})"},
+                          {R"({"a": 2, "b": 1})"}})
       .allowAnyOutputOrder(true)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
@@ -255,28 +407,20 @@ TEST_P(HashedCollectExecutorTest, collect_objects) {
       .run(std::move(infos));
 }
 
+/**
+ * @section
+ *
+ * Test suite for aggregate functions.
+ * We only do full produce here, to make sure that aggregate
+ * functions work as expected.
+ * The register / call implementation is tested in the other suite
+ */
+
 struct AggregateInput {
   std::string name;
   RegisterId inReg;
   MatrixBuilder<2> expectedOutput;
 };
-
-std::ostream& operator<<(std::ostream& out, HashedCollectSplitType const& split) {
-  return std::visit(overload{[&out](std::size_t i) -> std::ostream& {
-                               return out << "split every " << i << " row";
-                             },
-                             [&out](std::vector<std::size_t> is) -> std::ostream& {
-                               out << "split after rows:";
-                               for (auto const& i : is) {
-                                 out << " " << i;
-                               }
-                               return out;
-                             },
-                             [&out](std::monostate) -> std::ostream& {
-                               return out << "full input";
-                             }},
-                    split);
-}
 
 std::ostream& operator<<(std::ostream& out, AggregateInput const& agg) {
   out << agg.name;
@@ -363,16 +507,23 @@ class HashedCollectExecutorTestAggregate
  * The second value can be used by aggregate
  */
 
-INSTANTIATE_TEST_CASE_P(
-    HashedCollectAggregate, HashedCollectExecutorTestAggregate,
-    ::testing::Combine(
-        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
-                          splitStep<1>, splitStep<2>),
-        ::testing::Values(AggregateInput{"LENGTH",
-                                         RegisterPlan::MaxRegisterId,
-                                         {{1, 3}, {2, 2}, {6, 1}, {3, 1}}},
-                          AggregateInput{"SUM", 0, {{1, 3}, {2, 4}, {6, 6}, {3, 3}}},
-                          AggregateInput{"SUM", 1, {{1, 11}, {2, 4}, {6, 1}, {3, 1}}})));
+/**
+ * TODO:
+ * [] Add tests for all aggregate functions
+ */
+
+auto AggregateInputs =
+    ::testing::Values(AggregateInput{"LENGTH",
+                                     RegisterPlan::MaxRegisterId,
+                                     {{1, 3}, {2, 2}, {6, 1}, {3, 1}}},
+                      AggregateInput{"SUM", 0, {{1, 3}, {2, 4}, {6, 6}, {3, 3}}},
+                      AggregateInput{"SUM", 1, {{1, 11}, {2, 4}, {6, 1}, {3, 1}}});
+
+INSTANTIATE_TEST_CASE_P(HashedCollectAggregate, HashedCollectExecutorTestAggregate,
+                        ::testing::Combine(::testing::Values(splitIntoBlocks<2, 3>,
+                                                             splitIntoBlocks<3, 4>,
+                                                             splitStep<1>, splitStep<2>),
+                                           AggregateInputs));
 
 TEST_P(HashedCollectExecutorTestAggregate, run) {
   auto infos = buildInfos(2, 4, {{2, 0}});
@@ -392,17 +543,6 @@ TEST_P(HashedCollectExecutorTestAggregate, run) {
       // .expectedStats(stats)
       .run(std::move(infos));
 }
-
-/***
- * TODO List Tests:
- *   std::unordered_set<RegisterId>&& readableInputRegisters,
- *   std::unordered_set<RegisterId>&& writeableOutputRegisters,
- *   std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
- *   RegisterId collectRegister,
- *   std::vector<std::string>&& aggregateTypes,
- *   std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
- *   bool count
- */
 
 /*****
  *
