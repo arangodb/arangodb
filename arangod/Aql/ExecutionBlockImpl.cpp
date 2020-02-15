@@ -612,7 +612,8 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
 
   // Fall back to getSome/skipSome
   auto myCall = stack.popCall();
-  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall));
+  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) ||
+             AqlCall::IsGetSomeCall(myCall) || AqlCall::IsFullCountCall(myCall));
   if (AqlCall::IsSkipSomeCall(myCall)) {
     auto const [state, skipped] = skipSome(myCall.getOffset());
     if (state != ExecutionState::WAITING) {
@@ -623,6 +624,12 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
     auto const [state, block] = getSome(myCall.getLimit());
     // We do not need to count as softLimit will be overwritten, and hard cannot be set.
     return {state, 0, block};
+  } else if (AqlCall::IsFullCountCall(myCall)) {
+    auto const [state, skipped] = skipSome(ExecutionBlock::SkipAllSize());
+    if (state != ExecutionState::WAITING) {
+      myCall.didSkip(skipped);
+    }
+    return {state, skipped, nullptr};
   }
   // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
