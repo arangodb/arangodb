@@ -199,6 +199,9 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less) {
       .run(std::move(infos));
 }
 
+// TODO: Add another test like the above
+// that does 2 calls with too small limit and make sure all lines are returned.
+
 // Collect get some
 TEST_P(HashedCollectExecutorTest, collect_only_hard_less) {
   auto infos = buildInfos(1, 2, {{1, 0}});
