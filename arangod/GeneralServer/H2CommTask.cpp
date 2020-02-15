@@ -525,6 +525,9 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
     strm->response = std::move(guard);
 
+    // will add CORS headers if necessary
+    this->finishExecution(*strm->response, strm->origin);
+
     auto& res = *response;
     // we need a continuous block of memory for headers
     std::vector<nghttp2_nv> nva;

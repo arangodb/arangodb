@@ -289,31 +289,31 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
   if (mode == ServerState::Mode::REDIRECT) {
     res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
   }
-  
-  // CORS response handling
-  if (!origin.empty()) {
-    // the request contained an Origin header. We have to send back the
-    // access-control-allow-origin header now
-    LOG_TOPIC("be603", DEBUG, arangodb::Logger::REQUESTS)
-        << "handling CORS response";
-
-    // send back original value of "Origin" header
-    res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, origin);
-
-    // send back "Access-Control-Allow-Credentials" header
-    res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                 (allowCorsCredentials(origin)
-                                      ? "true"
-                                      : "false"));
-
-    // use "IfNotSet" here because we should not override HTTP headers set
-    // by Foxx applications
-    res.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
-                            StaticStrings::ExposedCorsHeaders);
-  }
-  
   if (res.transportType() == Endpoint::TransportType::HTTP &&
       !ServerState::instance()->isDBServer()) {
+  
+    // CORS response handling
+    if (!origin.empty()) {
+      // the request contained an Origin header. We have to send back the
+      // access-control-allow-origin header now
+      LOG_TOPIC("be603", DEBUG, arangodb::Logger::REQUESTS)
+          << "handling CORS response for origin '" << origin << "'";
+
+      // send back original value of "Origin" header
+      res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, origin);
+
+      // send back "Access-Control-Allow-Credentials" header
+      res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
+                                   (allowCorsCredentials(origin)
+                                        ? "true"
+                                        : "false"));
+
+      // use "IfNotSet" here because we should not override HTTP headers set
+      // by Foxx applications
+      res.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
+                              StaticStrings::ExposedCorsHeaders);
+    }
+
     // DB server is not user-facing, and does not need to set this header
     // use "IfNotSet" to not overwrite an existing response header
     res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
