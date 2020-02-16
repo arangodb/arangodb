@@ -147,7 +147,7 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
 
 template <bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
-    : _server{}, fakedQuery{_server.createFakeQuery(enableQueryTrace)} {
+    : fakedQuery{_server->createFakeQuery(enableQueryTrace)} {
   auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
   fakedQuery->setEngine(engine.release());
 }

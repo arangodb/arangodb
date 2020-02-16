@@ -87,7 +87,16 @@ class asserthelper {
  * @tparam enableQueryTrace Enable Aql Profile Trace logging
  */
 template <bool enableQueryTrace = false>
-class AqlExecutorTestCase {
+class AqlExecutorTestCase : public ::testing::Test {
+ public:
+  // Creating a server instance costs a lot of time, so do it only once.
+  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
+  static void SetUpTestCase() {
+    _server = std::make_unique<mocks::MockAqlServer>();
+  }
+
+  static void TearDownTestCase() { _server.reset(); }
+
  protected:
   AqlExecutorTestCase();
   virtual ~AqlExecutorTestCase() = default;
@@ -104,7 +113,7 @@ class AqlExecutorTestCase {
   auto manager() const -> AqlItemBlockManager&;
 
  private:
-  mocks::MockAqlServer _server;
+  static inline std::unique_ptr<mocks::MockAqlServer> _server;
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
  protected:
@@ -113,6 +122,16 @@ class AqlExecutorTestCase {
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 };
+
+/**
+ * @brief Shortcut handle for parameterized AqlExecutorTestCases with param
+ *
+ * @tparam T The Test Parameter used for gtest.
+ * @tparam enableQueryTrace Enable Aql Profile Trace logging
+ */
+template <typename T, bool enableQueryTrace = false>
+class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
+                                     public ::testing::WithParamInterface<T> {};
 
 template <typename E, std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {

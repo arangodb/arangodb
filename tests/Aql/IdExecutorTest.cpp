@@ -53,8 +53,7 @@ using TestParam = std::tuple<std::vector<int>,  // The input data
                              OutputAqlItemRow::CopyRowBehavior  // How the data is handled within outputRow
                              >;
 
-class IdExecutorTestCombiner : public AqlExecutorTestCase<>,
-                               public ::testing::TestWithParam<TestParam> {
+class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
  protected:
   IdExecutorTestCombiner() {}
 
@@ -203,7 +202,7 @@ auto copyBehaviours = testing::Values(OutputAqlItemRow::CopyRowBehavior::CopyInp
 INSTANTIATE_TEST_CASE_P(IdExecutorTest, IdExecutorTestCombiner,
                         ::testing::Combine(inputs, upstreamStates, clientCalls, copyBehaviours));
 
-class IdExecutionBlockTest : public AqlExecutorTestCase<>, public ::testing::Test {};
+class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
@@ -347,8 +346,7 @@ TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
  *  Used in ScatterExecutor logic.
  *  param: useFullCount
  */
-class BlockOverloadTest : public AqlExecutorTestCase<>,
-                          public ::testing::TestWithParam<bool> {
+class BlockOverloadTest : public AqlExecutorTestCaseWithParam<bool> {
  protected:
   auto getTestee() -> ExecutionBlockImpl<IdExecutor<ConstFetcher>> {
     IdExecutorInfos infos{1, {0}, {}};
