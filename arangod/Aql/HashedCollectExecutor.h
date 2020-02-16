@@ -148,9 +148,16 @@ class HashedCollectExecutor {
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
-                                                        AqlItemBlockInputRange& input,
-                                                        OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
@@ -168,6 +175,9 @@ class HashedCollectExecutor {
       std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
   Infos const& infos() const noexcept;
+
+  auto consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool;
+  auto finalizeInputRange(AqlItemBlockInputRange& inputRange) -> void;
 
   /**
    * @brief Shall be executed until it returns DONE, then never again.

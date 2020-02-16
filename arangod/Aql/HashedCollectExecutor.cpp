@@ -265,6 +265,8 @@ ExecutorState HashedCollectExecutor::initRange(AqlItemBlockInputRange& inputRang
 }
 
 std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -293,35 +295,114 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlI
   return {state, NoStats{}};
 }
 
-std::tuple<ExecutorState, NoStats, AqlCall> HashedCollectExecutor::produceRows(
-    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool {
+  TRI_ASSERT(!_isInitialized);
+  do {
+    auto [state, input] = inputRange.peekDataRow();
+    if (input) {
+      consumeInputRow(input);
+      // We need to retain this
+      _lastInitializedInputRow = input;
+    }
+    if (state == ExecutorState::DONE) {
+      // invalid input -> no groups
+      TRI_ASSERT(input || _allGroups.empty());
+      // initialize group iterator for output
+      _currentGroup = _allGroups.begin();
+      return true;
+    }
+    std::ignore = inputRange.nextDataRow();
+  } while (inputRange.hasDataRow());
+
+  TRI_ASSERT(inputRange.upstreamState() == ExecutorState::HASMORE);
+  return false;
+}
+
+auto HashedCollectExecutor::finalizeInputRange(AqlItemBlockInputRange& inputRange) -> void {
+  TRI_ASSERT(_isInitialized);
+  // consume the last row
+  auto const& [state, row] = inputRange.nextDataRow();
+  TRI_ASSERT(state == ExecutorState::DONE);
+}
+
+/**
+ * @brief Produce rows.
+ *   We need to consume all rows from the inputRange, except the
+ *   last Row. This is to indicate that this executor is not yet done.
+ *   Afterwards we write all groups into the output.
+ *   Only if we have written the last group we consume
+ *   the remaining inputRow. This is to indicate that
+ *   this executor cannot produce anymore.
+ *
+ * @param inputRange Data from input
+ * @param output Where to write the output
+ * @return std::tuple<ExecutorState, NoStats, AqlCall>
+ */
+
+auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                        OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, NoStats, AqlCall> {
   TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  ExecutorState state = ExecutorState::HASMORE;
   if (!_isInitialized) {
-    // fetch & consume all input and initialize output cursor
-    state = initRange(inputRange, limit);
-    TRI_ASSERT(state == ExecutorState::DONE);
-    _isInitialized = true;
+    // Consume the input range
+    _isInitialized = consumeInputRange(inputRange);
   }
 
-  // produce output
-  while (_currentGroup != _allGroups.end()) {
-    writeCurrentGroupToOutput(output);
-    ++_currentGroup;
-    ++_returnedGroups;
-    output.advanceRow();
-    TRI_ASSERT(_returnedGroups <= _allGroups.size());
+  if (_isInitialized) {
+    while (_currentGroup != _allGroups.end() && !output.isFull()) {
+      writeCurrentGroupToOutput(output);
+      ++_currentGroup;
+      output.advanceRow();
+    }
+    if (_currentGroup == _allGroups.end()) {
+      // All groups produced. Finalize input
+      finalizeInputRange(inputRange);
+    }
   }
-
-  state = _currentGroup != _allGroups.end() ? ExecutorState::HASMORE : ExecutorState::DONE;
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = limit;
-  // return {inputRange.peek().first, NoStats{}, upstreamCall}; // TODO: check states
-  return {state, NoStats{}, upstreamCall};
+  // We cannot forward anything, no skip, no limit.
+  // Need to request all from upstream.
+  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+}
+
+/**
+ * @brief Skip Rows
+ *   We need to consume all rows from the inputRange, except the
+ *   last Row. This is to indicate that this executor is not yet done.
+ *   Afterwards we skip all groups.
+ *   Only if we have skipped the last group we consume
+ *   the remaining inputRow. This is to indicate that
+ *   this executor cannot produce anymore.
+ *
+ * @param inputRange  Data from input
+ * @param call Call from client
+ * @return std::tuple<ExecutorState, NoStats, size_t, AqlCall>
+ */
+auto HashedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, NoStats, size_t, AqlCall> {
+  if (!_isInitialized) {
+    // Consume the input range
+    _isInitialized = consumeInputRange(inputRange);
+  }
+
+  if (_isInitialized) {
+    while (_currentGroup != _allGroups.end() && call.needSkipMore()) {
+      ++_currentGroup;
+      call.didSkip(1);
+    }
+    if (_currentGroup == _allGroups.end()) {
+      // All groups produced. Finalize input
+      finalizeInputRange(inputRange);
+    }
+  }
+
+  AqlCall upstreamCall{};
+  // We cannot forward anything, no skip, no limit.
+  // Need to request all from upstream.
+  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 // finds the group matching the current row, or emplaces it. in either case,
