@@ -112,16 +112,13 @@ HashedCollectExecutor::createAggregatorFactories(HashedCollectExecutor::Infos co
 
 HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
-      _upstreamState(ExecutionState::HASMORE),
       _lastInitializedInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024,
                  AqlValueGroupHash(_infos.getTransaction(),
                                    _infos.getGroupRegisters().size()),
                  AqlValueGroupEqual(_infos.getTransaction())),
       _isInitialized(false),
-      _aggregatorFactories(),
-      _returnedGroups(0) {
+      _aggregatorFactories() {
   _aggregatorFactories = createAggregatorFactories(_infos);
   _nextGroupValues.reserve(_infos.getGroupRegisters().size());
 };
@@ -206,93 +203,9 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(OutputAqlItemRow& output) 
   }
 }
 
-ExecutionState HashedCollectExecutor::init() {
-  TRI_ASSERT(!_isInitialized);
-
-  // fetch & consume all input
-  while (_upstreamState != ExecutionState::DONE) {
-    InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    std::tie(_upstreamState, input) = _fetcher.fetchRow();
-
-    if (_upstreamState == ExecutionState::WAITING) {
-      TRI_ASSERT(!input.isInitialized());
-      return ExecutionState::WAITING;
-    }
-
-    // !input.isInitialized() => _upstreamState == ExecutionState::DONE
-    TRI_ASSERT(input.isInitialized() || _upstreamState == ExecutionState::DONE);
-
-    // needed to remember the last valid input aql item row
-    // NOTE: this might impact the performance
-    if (input.isInitialized()) {
-      _lastInitializedInputRow = input;
-
-      consumeInputRow(input);
-    }
-  }
-
-  // initialize group iterator for output
-  _currentGroup = _allGroups.begin();
-  // The values within are not supposed to be used anymore.
-  _nextGroupValues.clear();
-  return ExecutionState::DONE;
-}
-
-ExecutorState HashedCollectExecutor::initRange(AqlItemBlockInputRange& inputRange,
-                                               size_t& limit) {
-  TRI_ASSERT(!_isInitialized);
-
-  // fetch & consume all input
-  while (inputRange.hasDataRow() && limit > 0) {
-    auto [state, input] = inputRange.nextDataRow();
-    TRI_ASSERT(input.isInitialized() || _upstreamState == ExecutionState::DONE);
-
-    // needed to remember the last valid input aql item row
-    // NOTE: this might impact the performance
-    if (input.isInitialized()) {
-      _lastInitializedInputRow = input;
-
-      consumeInputRow(input);
-      limit--;
-    }
-  }
-
-  // initialize group iterator for output
-  _currentGroup = _allGroups.begin();
-  // The values within are not supposed to be used anymore.
-  _nextGroupValues.clear();
-  return ExecutorState::DONE;
-}
-
 std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (!_isInitialized) {
-    // fetch & consume all input and initialize output cursor
-    ExecutionState state = init();
-    if (state == ExecutionState::WAITING) {
-      return {state, NoStats{}};
-    }
-    TRI_ASSERT(state == ExecutionState::DONE);
-    _isInitialized = true;
-  }
-
-  // produce output
-  if (_currentGroup != _allGroups.end()) {
-    writeCurrentGroupToOutput(output);
-    ++_currentGroup;
-    ++_returnedGroups;
-    TRI_ASSERT(_returnedGroups <= _allGroups.size());
-  }
-
-  ExecutionState state = _currentGroup != _allGroups.end() ? ExecutionState::HASMORE
-                                                           : ExecutionState::DONE;
-
-  return {state, NoStats{}};
 }
 
 auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool {
@@ -453,24 +366,8 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
 };
 
 std::pair<ExecutionState, size_t> HashedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  size_t rowsLeft = 0;
-  if (!_isInitialized) {
-    ExecutionState state;
-    std::tie(state, rowsLeft) = _fetcher.preFetchNumberOfRows(atMost);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(rowsLeft == 0);
-      return {state, 0};
-    }
-    // Overestimate, we have not grouped!
-  } else {
-    // This fetcher nows how exactly many rows are left
-    // as it knows how many  groups is has created and not returned.
-    rowsLeft = _allGroups.size() - _returnedGroups;
-  }
-  if (rowsLeft > 0) {
-    return {ExecutionState::HASMORE, rowsLeft};
-  }
-  return {ExecutionState::DONE, rowsLeft};
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 const HashedCollectExecutor::Infos& HashedCollectExecutor::infos() const noexcept {

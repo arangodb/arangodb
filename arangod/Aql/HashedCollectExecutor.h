@@ -140,6 +140,7 @@ class HashedCollectExecutor {
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @deprecated
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
@@ -176,18 +177,25 @@ class HashedCollectExecutor {
 
   Infos const& infos() const noexcept;
 
+  /**
+   * @brief Consumes all but the last row from upstream
+   *        Every row is collected into one of the groups.
+   *        We keep the lastRow in the input to make sure the
+   *        input state stays HASMORE to indicate we are still producing.
+   *
+   * @param inputRange Upstream range, will be fully consumed
+   * @return true We have consumed everything, start output
+   * @return false We do not have all input ask for more.
+   */
   auto consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool;
-  auto finalizeInputRange(AqlItemBlockInputRange& inputRange) -> void;
 
   /**
-   * @brief Shall be executed until it returns DONE, then never again.
-   * Consumes all input, writes groups and calculates aggregates, and
-   * initializes _currentGroup to _allGroups.begin().
+   * @brief We are done producing. Consume last row from inputRange
+   *        and thereby set it to DONE.
    *
-   * @return DONE or WAITING
+   * @param inputRange Upstream range, consumed except the last row.
    */
-  ExecutionState init();
-  ExecutorState initRange(AqlItemBlockInputRange& inputRange, size_t& limit);
+  auto finalizeInputRange(AqlItemBlockInputRange& inputRange) -> void;
 
   void destroyAllGroupsAqlValues();
 
@@ -202,8 +210,6 @@ class HashedCollectExecutor {
 
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
-  ExecutionState _upstreamState;
 
   /// @brief We need to save any input row (it really doesn't matter, except for
   /// when input blocks are freed - thus the last), so we can produce output
@@ -217,8 +223,6 @@ class HashedCollectExecutor {
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
-
-  size_t _returnedGroups;
 
   GroupKeyType _nextGroupValues;
 };
