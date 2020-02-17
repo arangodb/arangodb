@@ -50,7 +50,7 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<asio_ns::ssl::context> arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
+std::unique_ptr<asio_ns::ssl::context> arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
   asio_ns::ssl::context::method meth;
@@ -95,7 +95,7 @@ std::shared_ptr<asio_ns::ssl::context> arangodb::sslContext(SslProtocol protocol
                                      "unknown SSL protocol method");
   }
 
-  auto sslctx = std::make_shared<asio_ns::ssl::context>(meth);
+  auto sslctx = std::make_unique<asio_ns::ssl::context>(meth);
 
   if (sslctx->native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL

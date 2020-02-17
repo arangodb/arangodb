@@ -185,18 +185,54 @@ IoContext& GeneralServer::selectIoContext() {
   return _contexts[lowpos];
 }
 
-std::shared_ptr<asio_ns::ssl::context> GeneralServer::sslContext() {
-  std::lock_guard<std::mutex> guard(_sslContextMutex);
-  if (!_sslContext) {
-    _sslContext = SslServerFeature::SSL->createSslContext();
+static int clientHelloCallback(SSL* ssl, int* al, void* arg) {
+  TRI_ASSERT(arg != nullptr);
+  GeneralServer* generalServer = reinterpret_cast<GeneralServer*>(arg);
+
+  const unsigned char* out;
+  size_t outlen;
+  int res = SSL_client_hello_get0_ext(ssl, 0, &out, &outlen);
+  if (res == 0) {
+    LOG_TOPIC("ababa", DEBUG, Logger::SSL) << "clientHelloCallback: server_name extension is not present";
+  } else {
+    std::string serverName((char*) out, outlen);
+    LOG_TOPIC("ababb", DEBUG, Logger::SSL) << "clientHelloCallback: server_name extension is present and has value:" << serverName;
+    size_t contextIndex = SslServerFeature::SSL->chooseSslContext(serverName);
+    if (contextIndex > 0) {
+      SSL_set_SSL_CTX(ssl, generalServer->getSSL_CTX(contextIndex));
+    }
   }
-  return _sslContext;
+
+  return 1;
+}
+
+std::shared_ptr<std::vector<std::unique_ptr<asio_ns::ssl::context>>> GeneralServer::sslContext() {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  if (!_sslContexts) {
+    _sslContexts = SslServerFeature::SSL->createSslContext();
+    if (_sslContexts->size() > 0) {
+      // Set a client hello callback such that we have a chance to change the SSL context:
+      SSL_CTX_set_client_hello_cb((*_sslContexts)[0]->native_handle(), &clientHelloCallback, (void*) this);
+    }
+  }
+  return _sslContexts;
+}
+
+SSL_CTX* GeneralServer::getSSL_CTX(size_t index) {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  return (*_sslContexts)[index]->native_handle();
 }
 
 Result GeneralServer::reloadTLS() {
-  std::lock_guard<std::mutex> guard(_sslContextMutex);
   try {
-    _sslContext = SslServerFeature::SSL->createSslContext();
+    {
+      std::lock_guard<std::mutex> guard(_sslContextMutex);
+      _sslContexts = SslServerFeature::SSL->createSslContext();
+      if (_sslContexts->size() > 0) {
+        // Set a client hello callback such that we have a chance to change the SSL context:
+        SSL_CTX_set_client_hello_cb((*_sslContexts)[0]->native_handle(), &clientHelloCallback, (void*) this);
+      }
+    }
     // Now cancel every acceptor once, such that a new AsioSocket is generated which will
     // use the new context. Otherwise, the first connection will still use the old certs:
     for (auto& a : _acceptors) {
