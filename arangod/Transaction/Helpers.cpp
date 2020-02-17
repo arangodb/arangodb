@@ -237,6 +237,7 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
+  TRI_ASSERT(slice.isObject());
 
   if (slice.isEmptyObject()) {
     return VPackSlice();
