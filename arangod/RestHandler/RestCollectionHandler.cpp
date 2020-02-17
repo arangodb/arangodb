@@ -332,6 +332,7 @@ void RestCollectionHandler::handleCommandPost() {
     }
   }
 
+
   // for some "security" a whitelist of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
       body, std::unordered_set<std::string>{"doCompact",
@@ -354,6 +355,7 @@ void RestCollectionHandler::handleCommandPost() {
                                             StaticStrings::ReplicationFactor,
                                             StaticStrings::MinReplicationFactor, // deprecated
                                             StaticStrings::WriteConcern,
+                                            StaticStrings::Validators,
                                             "servers"
                                           });
   VPackSlice const parameters = filtered.slice();
@@ -554,10 +556,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         }));
       
   } else if (sub == "properties") {
-
     std::vector<std::string> keep = {StaticStrings::DoCompact,
                                      StaticStrings::JournalSize,
                                      StaticStrings::WaitForSyncString,
+                                     StaticStrings::Validators,
                                      StaticStrings::IndexBuckets,
                                      StaticStrings::ReplicationFactor,
                                      StaticStrings::MinReplicationFactor,  // deprecated

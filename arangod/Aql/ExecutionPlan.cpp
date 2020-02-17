@@ -723,6 +723,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
 
         if (name == "waitForSync") {
           options.waitForSync = value->isTrue();
+        } else if (name == StaticStrings::SkipDocumentValidation) {
+          options.validate = ! value->isTrue();
         } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
         } else if (name == "keepNull") {
@@ -750,6 +752,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
       }
     }
   }
+
   return options;
 }
 
