@@ -211,7 +211,7 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlI
 auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool {
   TRI_ASSERT(!_isInitialized);
   do {
-    auto [state, input] = inputRange.peekDataRow();
+    auto [state, input] = inputRange.nextDataRow();
     if (input) {
       consumeInputRow(input);
       // We need to retain this
@@ -222,18 +222,10 @@ auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange
       _currentGroup = _allGroups.begin();
       return true;
     }
-    std::ignore = inputRange.nextDataRow();
   } while (inputRange.hasDataRow());
 
   TRI_ASSERT(inputRange.upstreamState() == ExecutorState::HASMORE);
   return false;
-}
-
-auto HashedCollectExecutor::finalizeInputRange(AqlItemBlockInputRange& inputRange) -> void {
-  TRI_ASSERT(_isInitialized);
-  // consume the last row
-  auto const& [state, row] = inputRange.nextDataRow();
-  TRI_ASSERT(state == ExecutorState::DONE);
 }
 
 auto HashedCollectExecutor::returnState() const -> ExecutorState {
@@ -275,10 +267,6 @@ auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       ++_currentGroup;
       output.advanceRow();
     }
-    if (_currentGroup == _allGroups.end()) {
-      // All groups produced. Finalize input
-      finalizeInputRange(inputRange);
-    }
   }
 
   AqlCall upstreamCall{};
@@ -311,10 +299,6 @@ auto HashedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
     while (_currentGroup != _allGroups.end() && call.needSkipMore()) {
       ++_currentGroup;
       call.didSkip(1);
-    }
-    if (_currentGroup == _allGroups.end()) {
-      // All groups produced. Finalize input
-      finalizeInputRange(inputRange);
     }
   }
 

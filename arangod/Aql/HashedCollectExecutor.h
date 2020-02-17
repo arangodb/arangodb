@@ -178,24 +178,14 @@ class HashedCollectExecutor {
   Infos const& infos() const noexcept;
 
   /**
-   * @brief Consumes all but the last row from upstream
+   * @brief Consumes all rows from upstream
    *        Every row is collected into one of the groups.
-   *        We keep the lastRow in the input to make sure the
-   *        input state stays HASMORE to indicate we are still producing.
    *
    * @param inputRange Upstream range, will be fully consumed
    * @return true We have consumed everything, start output
    * @return false We do not have all input ask for more.
    */
   auto consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool;
-
-  /**
-   * @brief We are done producing. Consume last row from inputRange
-   *        and thereby set it to DONE.
-   *
-   * @param inputRange Upstream range, consumed except the last row.
-   */
-  auto finalizeInputRange(AqlItemBlockInputRange& inputRange) -> void;
 
   /**
    * @brief State this Executor needs to report
