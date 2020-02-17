@@ -196,10 +196,26 @@ static int clientHelloCallback(SSL* ssl, int* al, void* arg) {
     LOG_TOPIC("ababa", DEBUG, Logger::SSL) << "clientHelloCallback: server_name extension is not present";
   } else {
     std::string serverName((char*) out, outlen);
-    LOG_TOPIC("ababb", DEBUG, Logger::SSL) << "clientHelloCallback: server_name extension is present and has value:" << serverName;
-    size_t contextIndex = SslServerFeature::SSL->chooseSslContext(serverName);
-    if (contextIndex > 0) {
-      SSL_set_SSL_CTX(ssl, generalServer->getSSL_CTX(contextIndex));
+    if (outlen < 2 || (static_cast<uint32_t>(out[0]) << 8) + out[1] + 2 != outlen) {
+      LOG_TOPIC("ababc", WARN, Logger::SSL)
+          << "clientHelloCallback: server_name extension malformed with "
+             "respect to length, ignoring: " << serverName;
+    } else if (outlen < 3 || out[2] != 0) {
+      LOG_TOPIC("ababd", WARN, Logger::SSL)
+          << "clientHelloCallback: server_name extension malformed with "
+             "wrong type byte, ignoring: " << serverName;
+    } else if (outlen < 5 || (static_cast<uint32_t>(out[3]) << 8) + out[4] + 5 != outlen) {
+      LOG_TOPIC("ababe", WARN, Logger::SSL)
+          << "clientHelloCallback: server_name extension malformed with "
+             "wrong string length, ignoring: "
+          << serverName;
+    } else {
+      serverName = serverName.substr(5);
+      LOG_TOPIC("ababb", DEBUG, Logger::SSL) << "clientHelloCallback: server_name extension is present and has value:" << serverName;
+      size_t contextIndex = SslServerFeature::SSL->chooseSslContext(serverName);
+      if (contextIndex > 0) {
+        SSL_set_SSL_CTX(ssl, generalServer->getSSL_CTX(contextIndex));
+      }
     }
   }
 
