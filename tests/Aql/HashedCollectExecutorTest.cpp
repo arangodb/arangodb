@@ -229,6 +229,24 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
                                                    generateNodeDummy(), std::move(infos)};
   testee.addDependency(inputBlock.get());
   // First Call
+  std::unordered_set<std::size_t> matchedRows{};
+  auto buildExpectedOutput = [&]() -> SharedAqlItemBlockPtr {
+    MatrixBuilder<1> matrix;
+    if (matchedRows.find(0) == matchedRows.end()) {
+      matrix.emplace_back(RowBuilder<1>{1});
+    }
+    if (matchedRows.find(1) == matchedRows.end()) {
+      matrix.emplace_back(RowBuilder<1>{2});
+    }
+    if (matchedRows.find(2) == matchedRows.end()) {
+      matrix.emplace_back(RowBuilder<1>{6});
+    }
+    if (matchedRows.find(3) == matchedRows.end()) {
+      matrix.emplace_back(RowBuilder<1>{R"("1")"});
+    }
+    return buildBlock<1>(manager(), std::move(matrix));
+  };
+  std::vector<RegisterId> registersToTest{1};
   {
     AqlCall call{};
     call.softLimit = 2;
@@ -237,7 +255,10 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped, 0);
     ASSERT_NE(result, nullptr);
+    asserthelper::ValidateBlocksAreEqualUnordered(result, buildExpectedOutput(),
+                                                  matchedRows, 2, registersToTest);
   }
+
   // Second call
   {
     AqlCall call{};
@@ -247,12 +268,10 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped, 0);
     ASSERT_NE(result, nullptr);
+    asserthelper::ValidateBlocksAreEqualUnordered(result, buildExpectedOutput(),
+                                                  matchedRows, 0, registersToTest);
   }
-  // {1} {{1}, {2}, {6}, {R"("1")"}}
 }
-
-// TODO: Add another test like the above
-// that does 2 calls with too small limit and make sure all lines are returned.
 
 // Collect get some
 TEST_P(HashedCollectExecutorTest, collect_only_hard_less) {
