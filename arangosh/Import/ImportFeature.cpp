@@ -159,7 +159,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--separator", "field separator, used for csv and tsv. "
                      "Defaults to a comma (csv) or a tabulation character (tsv)",
                      new StringParameter(&_separator),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 

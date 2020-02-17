@@ -1,0 +1,157 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_GB{
+    %%Parent{"en_001"}
+    Version{"2.1.47.86"}
+    calendar{
+        generic{
+            availableFormats{
+                MEd{"E dd/MM"}
+                MMMEd{"E d MMM"}
+            }
+            intervalFormats{
+                M{
+                    M{"M–M"}
+                }
+                MMMd{
+                    d{"d–d MMM"}
+                }
+                Md{
+                    M{"dd/MM–dd/MM"}
+                    d{"dd/MM–dd/MM"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                y{
+                    y{"y–y G"}
+                }
+                yMMMd{
+                    d{"d–d MMM y G"}
+                }
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "dd/MM/y",
+                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            dayPeriod{
+                format{
+                    abbreviated{
+                        noon{"noon"}
+                    }
+                    narrow{
+                        noon{"n"}
+                    }
+                    wide{
+                        noon{"noon"}
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        pm{"pm"}
+                    }
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
+                }
+                M{
+                    M{"M–M"}
+                }
+                MMMd{
+                    d{"d–d MMM"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                h{
+                    h{"h–h a"}
+                }
+                hv{
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"y–y"}
+                }
+                yMMMd{
+                    d{"d–d MMM y"}
+                }
+            }
+        }
+        islamic{
+            availableFormats{
+                MEd{"E dd/MM"}
+                MMMEd{"E d MMM"}
+            }
+        }
+    }
+    characterLabel{
+        math_symbols{"maths symbol"}
+    }
+    fields{
+        day{
+            relative{
+                "-1"{"yesterday"}
+                "0"{"today"}
+                "1"{"tomorrow"}
+            }
+        }
+        day-narrow{
+            relative{
+                "-1"{"yesterday"}
+                "0"{"today"}
+                "1"{"tomorrow"}
+            }
+        }
+        day-short{
+            relative{
+                "-1"{"yesterday"}
+            }
+            relativeTime{
+                future{
+                    other{"in {0} days"}
+                }
+                past{
+                    other{"{0} days ago"}
+                }
+            }
+        }
+    }
+    listPattern{
+        or{
+            end{"{0} or {1}"}
+        }
+        standard{
+            end{"{0} and {1}"}
+        }
+        standard-short{
+            2{"{0} and {1}"}
+            end{"{0} and {1}"}
+        }
+    }
+}

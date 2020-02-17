@@ -67,9 +67,10 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
-
-  r->Set(TRI_V8_ASCII_STRING(isolate, "leading"),
-         v8::Boolean::New(isolate, agent->leading()));
+  auto context = TRI_IGETC;
+  
+  r->Set(context, TRI_V8_ASCII_STRING(isolate, "leading"),
+         v8::Boolean::New(isolate, agent->leading())).FromMaybe(false);
 
   TRI_V8_RETURN(r);
   TRI_V8_TRY_CATCH_END
@@ -189,10 +190,10 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"),
-                               ft->GetFunction(), true);
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoAgent"), aa);

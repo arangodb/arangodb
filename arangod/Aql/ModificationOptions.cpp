@@ -45,6 +45,7 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice) {
       basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
   exclusive = basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
   overwrite = basics::VelocyPackHelper::getBooleanValue(obj, "overwrite", false);
+  overwriteModeUpdate = basics::VelocyPackHelper::getBooleanValue(obj, "overwriteModeUpdate", false);
   ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreRevs", true);
 }
 
@@ -60,5 +61,6 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
   builder.add("overwrite", VPackValue(overwrite));
+  builder.add("overwriteModeUpdate", VPackValue(overwriteModeUpdate));
   builder.add("ignoreRevs", VPackValue(ignoreRevs));
 }

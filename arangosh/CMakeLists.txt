@@ -75,12 +75,12 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangobench jemalloc)
+  add_dependencies(arangobench jemalloc_build)
 endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-    target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
    target_compile_options(arangobench PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()
@@ -134,12 +134,12 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangobackup jemalloc)
+  add_dependencies(arangobackup jemalloc_build)
 endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-    target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
    target_compile_options(arangobackup PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()
@@ -193,12 +193,12 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangodump jemalloc)
+  add_dependencies(arangodump jemalloc_build)
 endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-    target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
    target_compile_options(arangodump PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()
@@ -249,12 +249,12 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoexport jemalloc)
+  add_dependencies(arangoexport jemalloc_build)
 endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-    target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
    target_compile_options(arangoexport PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()
@@ -290,7 +290,6 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
-  fuerte
   boost_system
   boost_boost
   arango_shell
@@ -312,7 +311,7 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangoimport jemalloc)
+  add_dependencies(arangoimport jemalloc_build)
 endif ()
 
 install_command_alias(arangoimport
@@ -322,7 +321,7 @@ install_command_alias(arangoimport
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-    target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
    target_compile_options(arangoimport PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()
@@ -374,12 +373,12 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangorestore jemalloc)
+  add_dependencies(arangorestore jemalloc_build)
 endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-    target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
    target_compile_options(arangorestore PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()
@@ -439,12 +438,12 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangosh jemalloc)
+  add_dependencies(arangosh jemalloc_build)
 endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-    target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
    target_compile_options(arangosh PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()
@@ -495,12 +494,12 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangovpack jemalloc)
+  add_dependencies(arangovpack jemalloc_build)
 endif ()
 
 if (USE_FAIL_ON_WARNINGS)
  if (MSVC)
-    target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+   target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
  else ()
    target_compile_options(arangovpack PRIVATE -Werror -Wno-error=deprecated-declarations)
  endif ()

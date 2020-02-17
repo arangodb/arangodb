@@ -29,10 +29,21 @@
 #include "shared.hpp"
 #include "ebo.hpp"
 #include "log.hpp"
+#include "math_utils.hpp"
 #include "type_utils.hpp"
 
 NS_ROOT
 NS_BEGIN(memory)
+
+inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
+#if defined(_MSC_VER) && (_MSC_VER < 1900)
+  assert(math::is_power2(alignment));
+  return (size + alignment - 1) & (0 - alignment);
+#else
+  return IRS_ASSERT(math::is_power2(alignment)),
+         (size + alignment - 1) & (0 - alignment);
+#endif
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                    is_shared_ptr
@@ -301,6 +312,10 @@ struct managed_deleter {
     delete ptr_;
   }
 
+  T* get() const noexcept {
+    return ptr_;
+  }
+
  private:
   T* ptr_;
 }; // managed_deleter
@@ -323,6 +338,14 @@ inline typename std::enable_if<
 >::type make_managed(std::unique_ptr<T>&& ptr) noexcept {
   auto* p = ptr.release();
   return managed_ptr<T>(p, p);
+}
+
+
+template <typename T>
+std::shared_ptr<T> make_shared(managed_ptr<T>&& ptr) {
+  auto tmp = std::shared_ptr<T>(ptr.get(), memory::managed_deleter<T>(ptr.get_deleter().get()));
+  ptr.release();
+  return tmp;
 }
 
 #define DECLARE_MANAGED_PTR(class_name) typedef irs::memory::managed_ptr<class_name> ptr

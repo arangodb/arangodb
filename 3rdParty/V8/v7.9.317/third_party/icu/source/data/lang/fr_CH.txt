@@ -1,0 +1,10 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+fr_CH{
+    Languages{
+        gu{"goudjrati"}
+        pdc{"allemand de Pennsylvanie"}
+        sdh{"kurde méridional"}
+    }
+    Version{"2.1.48.88"}
+}

@@ -60,15 +60,15 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  explicit V8ClientConnection(application_features::ApplicationServer&);
+  explicit V8ClientConnection(application_features::ApplicationServer&, ClientFeature&);
   ~V8ClientConnection();
 
  public:
   void setInterrupted(bool interrupted);
   bool isConnected() const;
 
-  void connect(ClientFeature*);
-  void reconnect(ClientFeature*);
+  void connect();
+  void reconnect();
 
   double timeout() const;
 
@@ -121,7 +121,7 @@ class V8ClientConnection {
                                   std::unordered_map<std::string, std::string> const& headerFields,
                                   bool raw);
 
-  void initServer(v8::Isolate*, v8::Handle<v8::Context> context, ClientFeature*);
+  void initServer(v8::Isolate*, v8::Handle<v8::Context> context);
 
  private:
   std::shared_ptr<fuerte::Connection> createConnection();
@@ -153,6 +153,7 @@ class V8ClientConnection {
   }
  private:
   application_features::ApplicationServer& _server;
+  ClientFeature& _client;
 
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;

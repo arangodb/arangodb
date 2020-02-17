@@ -1,0 +1,114 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_419{
+    Keys{
+        colAlternate{"orden ignorando símbolos"}
+        colBackwards{"orden de acentos con inversión"}
+        colCaseFirst{"orden de mayúsculas/minúsculas"}
+        colCaseLevel{"orden con distinción entre mayúsculas y minúsculas"}
+        lb{"salto de línea"}
+        ms{"sm"}
+    }
+    Languages{
+        ace{"achenés"}
+        ady{"adigeo"}
+        alt{"altái del sur"}
+        arp{"arapajó"}
+        ars{"árabe de Néyed"}
+        bla{"siksiká"}
+        ccp{"chakma"}
+        eu{"vasco"}
+        goh{"alemán de la alta edad antigua"}
+        grc{"griego clásico"}
+        gu{"gujarati"}
+        ht{"haitiano"}
+        kbd{"cabardiano"}
+        krc{"karachái-bálkaro"}
+        lo{"laosiano"}
+        luo{"luo"}
+        nr{"ndebele del sur"}
+        nso{"sesotho del norte"}
+        prg{"prusiano antiguo"}
+        rm{"retorrománico"}
+        shu{"árabe (Chad)"}
+        sma{"sami del sur"}
+        st{"sesotho del sur"}
+        sw{"swahili"}
+        sw_CD{"swahili (Congo)"}
+        syr{"siríaco"}
+        tet{"tetun"}
+        tyv{"tuvano"}
+        tzm{"tamazight del Marruecos Central"}
+        vai{"vai"}
+        wal{"walamo"}
+        wuu{"wu"}
+        xal{"calmuco"}
+        zun{"zuni"}
+    }
+    Languages%short{
+        en_GB{"inglés (R.U.)"}
+    }
+    Languages%variant{
+        ps{"pashtún"}
+        ug{"uighur"}
+    }
+    Scripts{
+        Hanb{"han con bopomofo"}
+        Hrkt{"katakana o hiragana"}
+        Laoo{"lao"}
+        Latn{"latín"}
+        Mlym{"malayalam"}
+    }
+    Types{
+        calendar{
+            islamic-umalqura{"islamic-umalqura"}
+        }
+        colAlternate{
+            non-ignorable{"ordenar símbolos"}
+            shifted{"ordenar ignorando símbolos"}
+        }
+        colBackwards{
+            no{"ordenar acentos normalmente"}
+            yes{"ordenar acentos con inversión"}
+        }
+        colCaseFirst{
+            lower{"ordenar empezando por minúsculas"}
+            no{"ordenar siguiendo orden normal de mayúsculas y minúsculas"}
+            upper{"ordenar empezando por mayúsculas"}
+        }
+        colCaseLevel{
+            no{"ordenar sin distinguir entre mayúsculas y minúsculas"}
+            yes{"ordenar distinguiendo entre mayúsculas y minúsculas"}
+        }
+        collation{
+            compat{"orden anterior, para compatibilidad"}
+            eor{"reglas de orden europeas"}
+            phonebook{"orden de agenda telefónica"}
+        }
+        lb{
+            loose{"salto de línea flexible"}
+            strict{"salto de línea estricto"}
+        }
+        ms{
+            metric{"Sistema Métrico de Unidades"}
+            uksystem{"sistema inglés"}
+            ussystem{"Sistema Anglosajón de Unidades"}
+        }
+        numbers{
+            tirh{"dígitos en tirh"}
+            traditional{"números traducionales"}
+            wara{"dígitos en Warang Citi"}
+        }
+    }
+    Version{"2.1.47.86"}
+    characterLabelPattern{
+        enclosed{"{0} — Adjunto"}
+        extended{"{0} — Extendido"}
+        historic{"{0} — Histórico"}
+        miscellaneous{"{0} — Miscelánea"}
+        scripts{"Símbolos de escritura — {0}"}
+    }
+    codePatterns{
+        script{"Alfabeto: {0}"}
+    }
+}

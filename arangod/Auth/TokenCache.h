@@ -79,25 +79,29 @@ class TokenCache {
   };
 
  public:
+  
   TokenCache::Entry checkAuthentication(arangodb::rest::AuthenticationMethod authType,
                                         std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
+  
+#ifdef USE_ENTERPRISE
+  /// set new jwt secret, regenerate _jwtToken
+  void setJwtSecrets(std::string const& active,
+                     std::vector<std::string> const& passive);
+#else
+  /// set new jwt secret, regenerate _jwtToken
+  void setJwtSecret(std::string const& active);
+#endif
 
-  /// set new jwt secret, regenerate _jetToken
-  void setJwtSecret(std::string const&);
-  std::string jwtSecret() const;
-  
-  
   /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept {
     TRI_ASSERT(!_jwtSuperToken.empty());
     return _jwtSuperToken;
   }
-
-  std::string generateRawJwt(velocypack::Slice const&) const;
-  std::string generateJwt(velocypack::Slice const&) const;
+  
+  std::string jwtSecret() const;
 
  private:
   /// Check basic HTTP Authentication header
@@ -110,24 +114,30 @@ class TokenCache {
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
   std::shared_ptr<velocypack::Builder> parseJson(std::string const& str, char const* hint);
-
+  
   /// generate new superuser jwtToken
   void generateSuperToken();
 
  private:
   auth::UserManager* const _userManager;
-  /// Timeout in seconds
-  double const _authTimeout;
 
   mutable arangodb::basics::ReadWriteLock _basicLock;
-  std::atomic<uint64_t> _basicCacheVersion;
   std::unordered_map<std::string, TokenCache::Entry> _basicCache;
+  std::atomic<uint64_t> _basicCacheVersion{0};
 
-  std::string _jwtSecret;
-  std::string _jwtSuperToken;
+  mutable arangodb::basics::ReadWriteLock _jwtSecretLock;
+    
+#ifdef USE_ENTERPRISE
+  std::vector<std::string> _jwtPassiveSecrets;
+#endif
+  std::string _jwtActiveSecret;
+  std::string _jwtSuperToken;  /// token for internal use
 
-  mutable arangodb::basics::ReadWriteLock _jwtLock;
+  mutable std::mutex _jwtCacheMutex;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
+  
+  /// Timeout in seconds
+  double const _authTimeout;
 };
 }  // namespace auth
 }  // namespace arangodb

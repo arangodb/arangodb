@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+sr_Latn{
+    Version{"2.1.19.14"}
+    collations{
+        search{
+            Sequence{"[import hr-u-co-search]"}
+            Version{"35.1"}
+        }
+        standard{
+            Sequence{"[import hr]"}
+            Version{"35.1"}
+        }
+    }
+}

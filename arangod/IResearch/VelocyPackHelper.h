@@ -161,6 +161,23 @@ inline irs::string_ref getStringRef(VPackSlice const& slice) {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief extracts string_ref from VPackSlice, note that provided 'slice'
+///        must be a string
+/// @return extracted string_ref
+//////////////////////////////////////////////////////////////////////////////
+inline irs::bytes_ref getBytesRef(VPackSlice const& slice) {
+  TRI_ASSERT(slice.isString());
+
+  arangodb::velocypack::ValueLength size;
+  auto const* str = slice.getString(size);
+
+  static_assert(sizeof(arangodb::velocypack::ValueLength) == sizeof(size_t),
+                "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)");
+
+  return irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(str), size);
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief parses a numeric sub-element
 /// @return success
 //////////////////////////////////////////////////////////////////////////////

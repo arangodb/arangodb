@@ -29,14 +29,6 @@
 * License Name: MIT License
 * License Id: MIT
 
-### Curl 7.66.0
-
-* Name: Curl
-* Version: 7.66.0
-* Project Home: https://curl.haxx.se/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/curl/curl-7.66.0/COPYING
-* License Comment: free as-is license
-
 ### date 2.4
 
 * Name: date
@@ -64,7 +56,6 @@
 * License Name: MIT License
 * License Id: MIT
 
-
 ### fpconv_dtoa
 
 * Name: fpconv
@@ -86,9 +77,9 @@
 ### Google V8 7.1.302.28
 
 * Name: V8
-* Version: 7.1.302.28
+* Version: 7.9.317
 * Project Home: https://github.com/v8/v8
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.v8
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/LICENSE.v8
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
@@ -151,9 +142,9 @@
 ### ICU
 
 * Name: ICU
-* Version: V8 7.1.302.28 bundled
+* Version: V8 7.9.317 bundled
 * Project Home: http://site.icu-project.org/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/V8/v7.1.302.28/third_party/icu/LICENSE
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.9.317/third_party/icu/LICENSE
 * License Comment: ICU License
 
 ### jemalloc

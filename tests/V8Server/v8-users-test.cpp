@@ -60,8 +60,8 @@
 // I have not dug into which header included by ClusterInfo.h will finally
 // include mwsockdef.h. Nor did I check whether all of the following headers
 // will include V8's "src/base/win32-headers.h".
-#include "src/api.h"
-#include "src/objects-inl.h"
+#include "src/api/api.h"
+// #include "src/objects-inl.h"
 #include "src/objects/scope-info.h"
 
 namespace {
@@ -175,14 +175,13 @@ TEST_F(V8UsersTest, test_collection_auth) {
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = vocbase;
   TRI_InitV8Users(context, vocbase, v8g.get(), isolate.get());
-
   auto arangoUsers =
-      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance();
+      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   auto fn_grantCollection =
-      arangoUsers->Get(TRI_V8_ASCII_STRING(isolate.get(), "grantCollection"));
+    arangoUsers->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "grantCollection")).FromMaybe(v8::Local<v8::Value>());
   EXPECT_TRUE(fn_grantCollection->IsFunction());
   auto fn_revokeCollection =
-      arangoUsers->Get(TRI_V8_ASCII_STRING(isolate.get(), "revokeCollection"));
+    arangoUsers->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "revokeCollection")).FromMaybe(v8::Local<v8::Value>());
   EXPECT_TRUE(fn_revokeCollection->IsFunction());
   std::vector<v8::Local<v8::Value>> grantArgs = {
       TRI_V8_STD_STRING(isolate.get(), userName),

@@ -54,7 +54,7 @@ class ConsoleThread final : public Thread {
 
  public:
   void run() override;
-  bool isSilent() override { return true; }
+  bool isSilent() const override { return true; }
 
  public:
   void userAbort() { _userAborted.store(true); }
