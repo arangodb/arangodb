@@ -1463,7 +1463,12 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   if (tcpdump !== undefined) {
     print(CYAN + "Stopping tcpdump" + RESET);
     killExternal(tcpdump.pid);
-    statusExternal(tcpdump.pid, true);
+    try {
+      statusExternal(tcpdump.pid, true);
+    } catch (x)
+    {
+      print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
+    }
   }
   cleanupDirectories.unshift(instanceInfo.rootDir);
   return shutdownSuccess;
