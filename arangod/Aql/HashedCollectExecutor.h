@@ -197,6 +197,13 @@ class HashedCollectExecutor {
    */
   auto finalizeInputRange(AqlItemBlockInputRange& inputRange) -> void;
 
+  /**
+   * @brief State this Executor needs to report
+   *
+   * @return ExecutorState
+   */
+  auto returnState() const -> ExecutorState;
+
   void destroyAllGroupsAqlValues();
 
   static std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>

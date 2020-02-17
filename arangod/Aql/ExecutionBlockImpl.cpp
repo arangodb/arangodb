@@ -1167,6 +1167,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
     }
     AqlCall clientCall = stack.popCall();
+    ExecutorState localExecutorState = ExecutorState::DONE;
 
     // We can only have returned the following internal states
     TRI_ASSERT(_execState == ExecState::CHECKCALL || _execState == ExecState::SHADOWROWS ||
@@ -1217,6 +1218,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             TRI_ASSERT(clientCall.getOffset() + skippedLocal == offsetBefore);
           }
 #endif
+          localExecutorState = state;
           _skipped += skippedLocal;
           _engine->_stats += stats;
           // The execute might have modified the client call.
@@ -1244,6 +1246,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           auto const [state, stats, call] =
               _executor.produceRows(_lastRange, *_outputItemRow);
           _engine->_stats += stats;
+          localExecutorState = state;
 
           // Produce might have modified the clientCall
           clientCall = _outputItemRow->getClientCall();
@@ -1267,8 +1270,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // We can either do FASTFORWARD or FULLCOUNT, difference is that
           // fullcount counts what is produced now, FASTFORWARD simply drops
           TRI_ASSERT(!clientCall.needsFullCount());
-          // We can drop all dataRows from upstream
+          // We need to claim that the Executor was done
+          localExecutorState = ExecutorState::DONE;
 
+          // We can drop all dataRows from upstream
           while (_lastRange.hasDataRow()) {
             auto [state, row] = _lastRange.nextDataRow();
             TRI_ASSERT(row.isInitialized());
@@ -1288,6 +1293,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
               executeSkipRowsRange(_lastRange, clientCall);
           _skipped += skippedLocal;
           _engine->_stats += stats;
+          localExecutorState = state;
 
           if (state == ExecutorState::DONE) {
             _execState = ExecState::SHADOWROWS;
@@ -1387,7 +1393,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
     // We return skipped here, reset member
     size_t skipped = _skipped;
     _skipped = 0;
-    if (_lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
+    if (localExecutorState == ExecutorState::HASMORE ||
+        _lastRange.hasDataRow() || _lastRange.hasShadowRow()) {
       // We have skipped or/and return data, otherwise we cannot return HASMORE
       TRI_ASSERT(skipped > 0 || (outputBlock != nullptr && outputBlock->numEntries() > 0));
       return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};

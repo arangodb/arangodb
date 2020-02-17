@@ -218,8 +218,6 @@ auto HashedCollectExecutor::consumeInputRange(AqlItemBlockInputRange& inputRange
       _lastInitializedInputRow = input;
     }
     if (state == ExecutorState::DONE) {
-      // invalid input -> no groups
-      TRI_ASSERT(input || _allGroups.empty());
       // initialize group iterator for output
       _currentGroup = _allGroups.begin();
       return true;
@@ -236,6 +234,14 @@ auto HashedCollectExecutor::finalizeInputRange(AqlItemBlockInputRange& inputRang
   // consume the last row
   auto const& [state, row] = inputRange.nextDataRow();
   TRI_ASSERT(state == ExecutorState::DONE);
+}
+
+auto HashedCollectExecutor::returnState() const -> ExecutorState {
+  if (!_isInitialized || _currentGroup != _allGroups.end()) {
+    // We have either not started, or not produce all groups.
+    return ExecutorState::HASMORE;
+  }
+  return ExecutorState::DONE;
 }
 
 /**
@@ -278,7 +284,7 @@ auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
   AqlCall upstreamCall{};
   // We cannot forward anything, no skip, no limit.
   // Need to request all from upstream.
-  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+  return {returnState(), NoStats{}, upstreamCall};
 }
 
 /**
@@ -315,7 +321,7 @@ auto HashedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, Aq
   AqlCall upstreamCall{};
   // We cannot forward anything, no skip, no limit.
   // Need to request all from upstream.
-  return {inputRange.upstreamState(), NoStats{}, call.getSkipCount(), upstreamCall};
+  return {returnState(), NoStats{}, call.getSkipCount(), upstreamCall};
 }
 
 // finds the group matching the current row, or emplaces it. in either case,
