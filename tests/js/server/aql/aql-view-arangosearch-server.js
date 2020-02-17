@@ -357,7 +357,7 @@ function iResearchFeatureAqlServerSideTestSuite () {
           if (db._engine().name === "rocksdb") {
             dbPath = fs.safeJoin(internal.db._path(), 'databases');
             let databases = fs.list(dbPath);
-            assertTrue(databases.length >= 1);
+            assertTrue(databases.length >= 1, databases);
             dbPath = fs.safeJoin(dbPath, 'database-' + db._id());
             assertTrue(fs.isDirectory(dbPath));
           } else if (db._engine().name !== "mmfiles") {
