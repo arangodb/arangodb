@@ -155,13 +155,14 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour waitingBehaviour) -> ExecutorTestHelper& {
+  auto setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour waitingBehaviour)
+      -> ExecutorTestHelper& {
     _waitingBehaviour = waitingBehaviour;
     return *this;
   }
 
-  // Whether the last result with data returns DONE (not lying), or returns HASMORE
-  // and DONE (without any data) only after that.
+  // Whether the last result with data returns DONE (not lying), or returns
+  // HASMORE and DONE (without any data) only after that.
   auto setLieAboutHasmore(bool lieAboutHasmore) -> ExecutorTestHelper& {
     _lieAboutHasmore = lieAboutHasmore;
     return *this;
@@ -263,7 +264,8 @@ struct ExecutorTestHelper {
     auto const outputIndexes = outputBlocks.produceRowIndexes();
     TRI_ASSERT(outputIndexes.size() == outputBlocks.size());
 
-    auto const size = std::max(outputBlocks.size(), expectedOutputBlock->size());
+    auto const size = std::max(outputBlocks.size(),
+                               static_cast<uint64_t>(expectedOutputBlock->size()));
     for (size_t i = 0; i < size; i++) {
       for (RegisterId j = 0; j < outputColumns; j++) {
         auto const none = AqlValue{};
@@ -279,7 +281,8 @@ struct ExecutorTestHelper {
         EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
             << "Row " << i << " Column " << j << " (Reg " << _outputRegisters[j]
             << ") do not agree. "
-            "Expected " << y.slice().toJson() << ", got " << x.slice().toJson() << ".";
+               "Expected "
+            << y.slice().toJson() << ", got " << x.slice().toJson() << ".";
       }
     }
   }
@@ -333,9 +336,10 @@ struct ExecutorTestHelper {
       blockDeque.emplace_back(inputBlock);
     }
 
-    return std::make_unique<WaitingExecutionBlockMock>(
-        _query.engine(), _dummyNode.get(), std::move(blockDeque),
-        _waitingBehaviour, _lieAboutHasmore);
+    return std::make_unique<WaitingExecutionBlockMock>(_query.engine(),
+                                                       _dummyNode.get(),
+                                                       std::move(blockDeque), _waitingBehaviour,
+                                                       _lieAboutHasmore);
   }
 
   AqlCall _call;
@@ -347,7 +351,8 @@ struct ExecutorTestHelper {
   ExecutionStats _expectedStats;
   bool _testStats;
   ExecutionNode::NodeType _testeeNodeType{ExecutionNode::MAX_NODE_TYPE_VALUE};
-  WaitingExecutionBlockMock::WaitingBehaviour _waitingBehaviour = WaitingExecutionBlockMock::NEVER;
+  WaitingExecutionBlockMock::WaitingBehaviour _waitingBehaviour =
+      WaitingExecutionBlockMock::NEVER;
   bool _lieAboutHasmore = false;
 
   SplitType _inputSplit = {std::monostate()};

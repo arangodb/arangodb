@@ -52,10 +52,8 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
       _fullCount(fullCount) {}
 
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos),
-      _fetcher(fetcher),
-      _lastRowToOutput(CreateInvalidInputRowHint{}),
-      _stateOfLastRowToOutput(ExecutionState::HASMORE) {}
+    : _infos(infos), _lastRowToOutput(CreateInvalidInputRowHint{}) {}
+
 LimitExecutor::~LimitExecutor() = default;
 
 auto LimitExecutor::limitFulfilled() const noexcept -> bool {
@@ -93,7 +91,6 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
 
 auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-
   // I think this *should* be the case, because we're passthrough. However,
   // isFull() ignores shadow rows in the passthrough case, which it probably
   // should not.
@@ -119,7 +116,8 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
   TRI_ASSERT(upstreamCall.getOffset() == skipped || !input.hasDataRow());
 
   auto numRowsWritten = size_t{0};
-  while (numRowsWritten < upstreamCall.getLimit() && input.hasDataRow() && !output.isFull()) {
+  while (numRowsWritten < upstreamCall.getLimit() && input.hasDataRow() &&
+         !output.isFull()) {
     output.copyRow(input.nextDataRow().second);
     output.advanceRow();
     ++numRowsWritten;
@@ -145,10 +143,10 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
 
 auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
-
   auto upstreamCall = calculateUpstreamCall(call);
 
-  if (ADB_UNLIKELY(inputRange.skippedInFlight() < upstreamCall.getOffset() && inputRange.hasDataRow())) {
+  if (ADB_UNLIKELY(inputRange.skippedInFlight() < upstreamCall.getOffset() &&
+                   inputRange.hasDataRow())) {
     static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
                   "For LIMIT with passthrough to work, there must no input "
                   "rows before the offset was skipped.");
@@ -170,5 +168,6 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
     stats.incrFullCountBy(skippedTotal);
   }
 
-  return {inputRange.upstreamState(), stats, skippedForDownstream, calculateUpstreamCall(call)};
+  return {inputRange.upstreamState(), stats, skippedForDownstream,
+          calculateUpstreamCall(call)};
 }

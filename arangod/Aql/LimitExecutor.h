@@ -140,9 +140,7 @@ class LimitExecutor {
 
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
   InputAqlItemRow _lastRowToOutput;
-  ExecutionState _stateOfLastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
 };
