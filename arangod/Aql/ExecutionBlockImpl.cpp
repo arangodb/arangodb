@@ -132,9 +132,10 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 template <typename Executor>
 constexpr bool isNewStyleExecutor =
     is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor,
+                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                TestLambdaExecutor, TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
+                TestLambdaExecutor,
+                TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
                 ShortestPathExecutor>;
 
@@ -1043,11 +1044,12 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor == (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
+  static_assert(useExecutor ==
+                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, IndexExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                                            TestLambdaSkipExecutor,
+                                 TestLambdaSkipExecutor,
 #endif
-                                            SortedCollectExecutor>),
+                                 SortedCollectExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
