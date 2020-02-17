@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to 0.7.3.
+
 * Updated ArangoDB Starter to 0.14.14.
 
 * Added crash handler for Linux and MacOS builds. The crash handler is supposed
