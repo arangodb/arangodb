@@ -158,6 +158,7 @@ class ExecutionBlock {
   void traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result);
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
+  [[nodiscard]] auto printTypeInfo() const -> std::string const;
 
  protected:
   /// @brief the execution engine

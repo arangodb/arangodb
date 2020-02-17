@@ -360,10 +360,17 @@ void ExecutionBlock::traceExecuteEnd(
   }
 }
 
+auto ExecutionBlock::printTypeInfo() const -> std::string const {
+  std::stringstream stream;
+  ExecutionNode const* node = getPlanNode();
+  stream << "type=" << node->getTypeString();
+  ;
+  return stream.str();
+}
+
 auto ExecutionBlock::printBlockInfo() const -> std::string const {
   std::stringstream stream;
   ExecutionNode const* node = getPlanNode();
-  stream << "type=" << node->getTypeString() << " this=" << (uintptr_t)this
-         << " id=" << node->id();
+  stream << printTypeInfo() << " this=" << (uintptr_t)this << " id=" << node->id();
   return stream.str();
 }
