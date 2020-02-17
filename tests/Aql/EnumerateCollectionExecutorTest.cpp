@@ -68,17 +68,15 @@ static const std::string GetAllDocs =
 
 using CursorType = arangodb::transaction::Methods::CursorType;
 
-class EnumerateCollectionExecutorTest : public ::testing::Test {
+class EnumerateCollectionExecutorTest : public ::testing::Test,
+                                        public AqlExecutorTestCase<true> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
-  arangodb::tests::mocks::MockAqlServer server;
   TRI_vocbase_t& vocbase;
   std::shared_ptr<VPackBuilder> json;
   std::shared_ptr<LogicalCollection> collection;
 
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
   Ast ast;
 
   Variable outVariable;
@@ -99,15 +97,14 @@ class EnumerateCollectionExecutorTest : public ::testing::Test {
 
   EnumerateCollectionExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        server(),
-        vocbase(server.getSystemDatabase()),
+        vocbase(_server.getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.createCollection(json->slice())),
-        fakedQuery(server.createFakeQuery(false, "return 1")),
+        // fakedQuery(server.createFakeQuery(false, "return 1")),
         ast(fakedQuery.get()),
         outVariable("name", 1),
         varUsedLater(false),
-        engine(fakedQuery.get()->engine()),
+        engine(fakedQuery->engine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         useRawPointers(false),
         random(false),
@@ -281,16 +278,15 @@ using EnumerateCollectionTestHelper =
 using EnumerateCollectionSplitType = EnumerateCollectionTestHelper::SplitType;
 
 class EnumerateCollectionExecutorTestProduce
-    : public ::testing::TestWithParam<std::tuple<EnumerateCollectionSplitType>> {
+    : public ::testing::TestWithParam<std::tuple<EnumerateCollectionSplitType>>,
+      public AqlExecutorTestCase<true> {
  protected:
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
 
-  mocks::MockAqlServer server;
   TRI_vocbase_t& vocbase;
   std::shared_ptr<VPackBuilder> json;
   std::shared_ptr<LogicalCollection> collection;
-  std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
   SharedAqlItemBlockPtr block;
   NoStats stats;
@@ -310,11 +306,10 @@ class EnumerateCollectionExecutorTestProduce
 
   EnumerateCollectionExecutorTestProduce()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        server(),
-        vocbase(server.getSystemDatabase()),
+        vocbase(_server.getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.createCollection(json->slice())),
-        fakedQuery(server.createFakeQuery(true, "return 1")),
+        // fakedQuery(server.createFakeQuery(true, "return 1")),
         ast(fakedQuery.get()),
         outVariable("name", 1),
         varUsedLater(true),
@@ -324,9 +319,12 @@ class EnumerateCollectionExecutorTestProduce
         random(false),
         infos(1, 1, 2, {}, {}, engine, &aqlCollection, &outVariable, varUsedLater, nullptr,
               projections, coveringIndexAttributePositions, useRawPointers, random) {
-    // auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
+    //fakedQuery = _server.createFakeQuery(true, "return 1");
+    //engine =std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
     // fakedQuery->setEngine(engine.release());
-    // fakedQuery->setEngine(engine);
+    // vocbase.createCollection(json->slice());
+    // aqlCollection = aqlCollection("UnitTestCollection", &vocbase,
+    // arangodb::AccessMode::Type::READ); fakedQuery->setEngine(engine);
   }
 
   auto makeInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
@@ -348,7 +346,7 @@ class EnumerateCollectionExecutorTestProduce
   void insertDocuments(size_t amount) {
     // TODO: Can be optimized to not use AQL INSERT (trx object directly instead)
     std::string insertQuery =
-        R"aql(INSERT {_key: "testee1", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection RETURN new)aql";
+        R"aql(INSERT {_key: "testee1", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
     SCOPED_TRACE(insertQuery);
     AssertQueryHasResult(vocbase, insertQuery, VPackSlice::emptyArraySlice());
     auto expected = VPackParser::fromJson(R"([1])");
@@ -358,7 +356,7 @@ class EnumerateCollectionExecutorTestProduce
       std::string insertQueryPart1 = R"aql(INSERT {_key: "testee)aql";
       std::string insertQueryPart2 = std::to_string(i);
       std::string insertQueryPart3 =
-          R"(", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection RETURN new)";
+          R"(", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)";
       std::string final = insertQueryPart1 + insertQueryPart2 + insertQueryPart3;
       SCOPED_TRACE(final);
       AssertQueryHasResult(vocbase, final, VPackSlice::emptyArraySlice());
@@ -369,12 +367,11 @@ class EnumerateCollectionExecutorTestProduce
 TEST_P(EnumerateCollectionExecutorTestProduce, produce_all_documents) {
   auto [split] = GetParam();
 
-  insertDocuments(10);
-  /*
-  LOG_DEVEL << "Amount: "
-            << vocbase.lookupCollection("UnitTestCollection")
-                   ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal);
-                   */
+  uint64_t numberOfDocumentsToInsert = 10;
+  insertDocuments(numberOfDocumentsToInsert);
+  EXPECT_EQ(vocbase.lookupCollection("UnitTestCollection")
+                ->numberDocuments(fakedQuery->trx(), transaction::CountType::Normal),
+            numberOfDocumentsToInsert);
 
   ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
       .setInputValue({{RowBuilder<1>{R"("unused")"}}})
@@ -401,15 +398,12 @@ TEST_P(EnumerateCollectionExecutorTestProduce, produce_5_documents) {
   insertDocuments(10);
 
   ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
-      .setInputValue({{RowBuilder<1>{R"("unused")"}}})
+      .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
+      // .setInputValue({{RowBuilder<1>{R"("unused")"}}})
       .setInputSplitType(split)
       .setCall(AqlCall{0, 5, AqlCall::Infinity{}, false})
       .expectSkipped(0)
-      .expectOutput({0}, {{R"(null)"},
-                          {R"(null)"},
-                          {R"(null)"},
-                          {R"(null)"},
-                          {R"(null)"}})
+      .expectOutput({0}, {{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::HASMORE)
       .run(makeInfos());
 }
@@ -421,15 +415,10 @@ TEST_P(EnumerateCollectionExecutorTestProduce, skip_5_documents_default) {
   insertDocuments(10);
 
   ExecutorTestHelper<EnumerateCollectionExecutor, 1, 1>(*fakedQuery)
-      .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}}})
-      .setInputSplitType(split)
-      .setCall(AqlCall{5, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
-      .expectSkipped(5)
-      .expectOutput({0}, {{R"(null)"},
-                          {R"(null)"},
-                          {R"(null)"},
-                          {R"(null)"},
-                          {R"(null)"}})
+      .setInputValue({{RowBuilder<1>{R"({ "cid" : "1337", "name":
+"UnitTestCollection" })"}}}) .setInputSplitType(split) .setCall(AqlCall{5,
+AqlCall::Infinity{}, AqlCall::Infinity{}, false}) .expectSkipped(5) .expectOutput({0},
+{{R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}, {R"(null)"}})
       .expectedState(ExecutionState::DONE)
       .run(makeInfos());
 }
