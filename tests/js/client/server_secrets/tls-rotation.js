@@ -156,11 +156,10 @@ function TLSRotation() {
 
     testSNI: function () {
       // We use curl here, since then we can use the server name extension
-      // and verify the validity of the server certificate.0
+      // and verify the validity of the server certificate.
       let url = baseUrl();  // https://server:port
       expect(url.substr(0, 8)).to.eq("https://");
       let endpoint = url.substr(8);
-      console.error("Hugo Honk:", jwt1);
       let res = require("internal").executeExternalAndWait(
           "curl", ["--cacert", "./UnitTests/tls-ca.crt",
           "-H", "Authorization: bearer " + jwt1,
