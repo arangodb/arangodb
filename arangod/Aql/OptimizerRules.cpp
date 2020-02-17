@@ -7249,12 +7249,13 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         ExecutionNode* filterParent = current->getFirstParent();
         TRI_ASSERT(filterParent != nullptr);
         plan->unlinkNode(current);
-        current = filterParent;
-
+          
         if (!current->isVarUsedLater(cn->outVariable())) {
           // also remove the calculation node
           plan->unlinkNode(cn);
         }
+        
+        current = filterParent;
         modified = true;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found
