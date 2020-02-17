@@ -129,22 +129,22 @@ CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
 
 template <CalculationType calculationType>
 std::tuple<ExecutorState, typename CalculationExecutor<calculationType>::Stats, AqlCall>
-CalculationExecutor<calculationType>::produceRows(size_t limit, AqlItemBlockInputRange& inputRange,
+CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputRange,
                                                   OutputAqlItemRow& output) {
   TRI_IF_FAILURE("CalculationExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   ExecutorState state = ExecutorState::HASMORE;
   InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  AqlCall upstreamCall{};
+  upstreamCall.fullCount = output.getClientCall().fullCount;
 
   while (inputRange.hasDataRow() && !output.isFull()) {
-    TRI_ASSERT(!output.isFull());
-    std::tie(state, input) = inputRange.nextDataRow(); // TODO refactor
+    std::tie(state, input) = inputRange.nextDataRow();  // TODO refactor
     TRI_ASSERT(input.isInitialized());
 
     doEvaluation(input, output);
-    output.advanceRow();
-    limit--;
+    // output.advanceRow();
 
     // _hasEnteredContext implies the query has entered the context, but not
     // the other way round because it may be owned by exterior.
@@ -162,9 +162,7 @@ CalculationExecutor<calculationType>::produceRows(size_t limit, AqlItemBlockInpu
                state == ExecutorState::HASMORE);
   }
 
-  AqlCall upstreamCall{};
-  upstreamCall.softLimit = limit;
-  return {state, NoStats{}, upstreamCall};
+  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
 }
 
 template <CalculationType calculationType>
