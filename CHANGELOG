@@ -1,6 +1,12 @@
 devel
 -----
 
+* Added crash handler for Linux and MacOS builds. The crash handler is supposed
+  to log basic crash information to the ArangoDB logfile in case the arangod
+  process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or SIGABRT.
+  If possible, the crash handler will also write a backtrace to the logfile, so
+  the crash location can be found later.
+
 * Fixed handling of `geometry` attributes in query editor of the web UI.
 
   Previously, document attributes named `geometry` were treated in a special
