@@ -3,7 +3,7 @@ devel
 * Fix arangorestore:
   If a smartGraphAttribute value was changed after document creation,
   the _key of the document becomes inconsistent with the smartGraphAttribute
-  entry.
+  entry. However, the sharding of documents stays intact.
 
   When restoring data from a dump that contains a document with inconsistent
   _key and smartGraphAttribute this would cause an error and the document
