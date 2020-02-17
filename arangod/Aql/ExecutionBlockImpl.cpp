@@ -81,6 +81,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+#define LOG_QUERY(logId, level)            \
+  LOG_TOPIC(logId, level, Logger::QUERIES) \
+      << "[query#" << this->_engine->getQuery()->id() << "] "
+
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
  * named `methodName`, used like this:
@@ -1161,6 +1165,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   if constexpr (isNewStyleExecutor<Executor>) {
     if (!stack.isRelevant()) {
+      LOG_QUERY("bf029", DEBUG) << "subquery bypassing executor " << printBlockInfo();
       // We are bypassing subqueries.
       // This executor is not allowed to perform actions
       // However we need to maintain the upstream state.
@@ -1193,9 +1198,12 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       clientCall = _clientRequest;
     }
 
+    LOG_QUERY("007ac", DEBUG) << "starting statemachine of executor " << printBlockInfo();
     while (_execState != ExecState::DONE) {
       switch (_execState) {
         case ExecState::CHECKCALL: {
+          LOG_QUERY("cfe46", DEBUG)
+              << printTypeInfo() << " determine next action on call " << clientCall;
           _execState = nextState(clientCall);
           break;
         }
@@ -1206,6 +1214,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           size_t canPassFullcount =
               clientCall.getLimit() == 0 && clientCall.needsFullCount();
 #endif
+          LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call skipRows " << clientCall;
           auto [state, stats, skippedLocal, call] =
               executeSkipRowsRange(_lastRange, clientCall);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1244,6 +1253,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // Make sure there's a block allocated and set
           // the call
           TRI_ASSERT(clientCall.getLimit() > 0);
+
+          LOG_QUERY("1f786", DEBUG) << printTypeInfo() << " call produceRows " << clientCall;
           ensureOutputBlock(std::move(clientCall));
           TRI_ASSERT(_outputItemRow);
 
@@ -1271,6 +1282,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::FASTFORWARD: {
+          LOG_QUERY("96e2c", DEBUG)
+              << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
           // We can either do FASTFORWARD or FULLCOUNT, difference is that
           // fullcount counts what is produced now, FASTFORWARD simply drops
           TRI_ASSERT(!clientCall.needsFullCount());
@@ -1291,6 +1304,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::FULLCOUNT: {
+          LOG_QUERY("ff258", DEBUG)
+              << printTypeInfo()
+              << " all produced, skip to end up (sub-)query, for fullCount.";
           auto [state, stats, skippedLocal, call] =
               executeSkipRowsRange(_lastRange, clientCall);
           _skipped += skippedLocal;
@@ -1306,6 +1322,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::UPSTREAM: {
+          LOG_QUERY("488de", DEBUG)
+              << printTypeInfo() << " request dependency " << _upstreamRequest;
           // If this triggers the executors produceRows function has returned
           // HASMORE even if it knew that upstream has no further rows.
           TRI_ASSERT(_upstreamState != ExecutionState::DONE);
@@ -1337,6 +1355,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           break;
         }
         case ExecState::SHADOWROWS: {
+          LOG_QUERY("7c63c", DEBUG)
+              << printTypeInfo() << " (sub-)query completed. Move ShadowRows.";
           // TODO: Check if there is a situation where we are at this point, but at the end of a block
           // Or if we would not recognize this beforehand
           // TODO: Check if we can have the situation that we are between two shadow rows here.
@@ -1353,6 +1373,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             _outputItemRow->copyRow(shadowRow);
 
             if (shadowRow.isRelevant()) {
+              LOG_QUERY("6d337", DEBUG) << printTypeInfo() << " init executor.";
               // We found a relevant shadow Row.
               // We need to reset the Executor
               // cppcheck-suppress unreadVariable
@@ -1387,6 +1408,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
       }
     }
+    LOG_QUERY("80c24", DEBUG) << printBlockInfo() << " local statemachine done. Return now.";
     // If we do not have an output, we simply return a nullptr here.
     auto outputBlock = _outputItemRow != nullptr ? _outputItemRow->stealBlock()
                                                  : SharedAqlItemBlockPtr{nullptr};
