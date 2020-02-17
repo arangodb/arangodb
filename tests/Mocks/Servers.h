@@ -128,7 +128,7 @@ class MockAqlServer : public MockServer,
   ~MockAqlServer();
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
-  std::unique_ptr<arangodb::aql::Query> createFakeQuery(bool activateTracing = false, std::string fakeQueryString = "") const;
+  std::unique_ptr<arangodb::aql::Query> createFakeQuery(bool activateTracing = false, std::string queryString = "") const;
 };
 
 class MockRestServer : public MockServer,

@@ -87,7 +87,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <boost/core/demangle.hpp>
-using namespace arangodb;
+    using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
@@ -459,11 +459,11 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
   }
   queryOptions->close();
   aql::QueryString fakeQueryString(queryString);
-
   auto query =
       std::make_unique<arangodb::aql::Query>(false, getSystemDatabase(),
                                              fakeQueryString, bindParams, queryOptions,
                                              arangodb::aql::QueryPart::PART_DEPENDENT);
+  query->injectTransaction(createFakeTransaction());
   return query;
 }
 

@@ -148,10 +148,19 @@ class EnumerateCollectionExecutor {
   std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(AqlItemBlockInputRange& inputRange,
                                                            AqlCall& call);
 
+  // TODO CHECK
+  // void setProducingFunction(DocumentProducingFunction const& documentProducer);
+
   void initializeCursor();
 
  private:
   bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
+
+  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
+
+  /// @brief whether or not we are allowed to use the covering index
+  /// optimization in a callback
+  bool getAllowCoveringIndexOptimization() const noexcept;
 
  private:
   Infos& _infos;

@@ -310,14 +310,15 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
 }
 
 /*
-std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall>
-EnumerateCollectionExecutor::skipRowsRange( AqlItemBlockInputRange& inputRange,
-AqlCall& call) { EnumerateCollectionStats stats{}; TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows")
-{ THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  EnumerateCollectionStats stats{};
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   uint64_t actuallySkipped = 0;
 
-  while (inputRange.hasMore() && actuallySkipped < offset) {
+  while (inputRange.hasDataRow() && call.shouldSkip()) {
     if (!_cursorHasMore) {
       std::tie(_executorState, _currentRow) = inputRange.nextDataRow();
 
@@ -331,14 +332,14 @@ AqlCall& call) { EnumerateCollectionStats stats{}; TRI_IF_FAILURE("EnumerateColl
 
     TRI_ASSERT(_currentRow.isInitialized());
 
-    _cursor->skip(offset, actuallySkipped);
+    _cursor->skip(call.getOffset(), actuallySkipped);
     _cursorHasMore = _cursor->hasMore();
     stats.incrScanned(actuallySkipped);
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = offset - actuallySkipped;
-  return {_executorState, actuallySkipped, upstreamCall};
+  upstreamCall.softLimit = call.getOffset() - actuallySkipped;
+  return {_executorState, {}, actuallySkipped, upstreamCall};
 }
 */
 
