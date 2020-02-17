@@ -152,6 +152,25 @@ function TLSRotation() {
       expect(res.json.result).to.have.property('keyfile');
       expect(res.json.result.keyfile).to.have.property('SHA256');
       expect(keyfileDB.SHA256).to.eq(keyfileDiskSHA);
+    },
+
+    testSNI: function () {
+      // We use curl here, since then we can use the server name extension
+      // and verify the validity of the server certificate.0
+      let url = baseUrl();  // https://server:port
+      expect(url.substr(0, 8)).to.eq("https://");
+      let endpoint = url.substr(8);
+      console.error("Hugo Honk:", jwt1);
+      let res = require("internal").executeExternalAndWait(
+          "curl", ["--cacert", "./UnitTests/tls-ca.crt",
+          "-H", "Authorization: bearer " + jwt1,
+          "--connect-to", "hans.arangodb.com:8529:" + endpoint,
+          "https://hans.arangodb.com:8529/_api/version"]);
+      expect(res).to.have.property('pid');
+      expect(res).to.have.property('exit');
+      expect(res.exit).to.eq(0);
+      expect(res).to.have.property('status');
+      expect(res.status).to.eq("TERMINATED");
     }
   };
 }

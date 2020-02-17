@@ -179,7 +179,8 @@ function server_secrets(options) {
     'server.authentication': 'true',
     'server.jwt-secret-folder': secretsDir,
     'cluster.create-waits-for-sync-replication': false,
-    'ssl.keyfile': keyfileName
+    'ssl.keyfile': keyfileName,
+    'ssl.server-name-indication': "hans.arangodb.com=./UnitTests/tls.keyfile"
   });
 }
 
