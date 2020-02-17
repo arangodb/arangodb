@@ -150,7 +150,7 @@ RestStatus RestAdminExecuteHandler::execute() {
             VPackBuilder builder(buffer);
             builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(errorMessage.data()), errorMessage.size()));
             _response->setContentType(rest::ContentType::VPACK);
-            _response->setPayload(std::move(buffer), true);
+            _response->setPayload(std::move(buffer));
             break;
           }
         }
