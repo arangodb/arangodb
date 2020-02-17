@@ -155,10 +155,6 @@ struct BoostScorer : public irs::sort {
 
     Prepared() = default;
 
-    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
-      score_cast(dst) += score_cast(src);
-    }
-
     virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
       const size_t size, size_t offset) const  override {
       auto& casted_dst = score_cast(dst + offset);
@@ -238,10 +234,6 @@ struct CustomScorer : public irs::sort {
     DECLARE_FACTORY(Prepared);
 
     Prepared(float_t i) : i(i) {}
-
-    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
-      score_cast(dst) += score_cast(src);
-    }
 
     virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
       const size_t size, size_t offset) const  override {
@@ -406,12 +398,16 @@ void v8Init() {
   struct init_t {
     std::shared_ptr<v8::Platform> platform;
     init_t() {
-      platform = std::shared_ptr<v8::Platform>(v8::platform::CreateDefaultPlatform(),
-                                               [](v8::Platform* p) -> void {
-                                                 v8::V8::Dispose();
-                                                 v8::V8::ShutdownPlatform();
-                                                 delete p;
-                                               });
+      auto uniquePlatform = v8::platform::NewDefaultPlatform();
+      platform = std::shared_ptr<v8::Platform>(
+        uniquePlatform.get(),
+        [](v8::Platform* p) -> void {
+          v8::V8::Dispose();
+          v8::V8::ShutdownPlatform();
+          delete p;
+        }
+      );
+      uniquePlatform.release();
       v8::V8::InitializePlatform(platform.get());  // avoid SIGSEGV duing 8::Isolate::New(...)
       v8::V8::Initialize();  // avoid error: "Check failed: thread_data_table_"
     }

@@ -48,6 +48,7 @@ struct ModificationOptions {
         consultAqlWriteFilter(false),
         exclusive(false),
         overwrite(false),
+        overwriteModeUpdate(false),
         ignoreRevs(true) {}
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
@@ -62,6 +63,7 @@ struct ModificationOptions {
   bool consultAqlWriteFilter;
   bool exclusive;
   bool overwrite;
+  bool overwriteModeUpdate;
   bool ignoreRevs;
 };
 

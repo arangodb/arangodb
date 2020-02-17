@@ -23,13 +23,14 @@
 
 #include "MMFilesDatafile.h"
 
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/PageSize.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/encoding.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
@@ -340,7 +341,7 @@ int MMFilesDatafile::judge(std::string const& filename) {
 /// @brief creates either an anonymous or a physical datafile
 MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fid_t fid,
                                          uint32_t maximalSize, bool withInitialMarkers) {
-  size_t pageSize = PageSizeFeature::getPageSize();
+  size_t pageSize = PageSize::getValue();
 
   TRI_ASSERT(pageSize >= 256);
 
@@ -1169,7 +1170,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
 
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(isPhysical());
-  size_t pageSize = PageSizeFeature::getPageSize();
+  size_t pageSize = PageSize::getValue();
 
   // use multiples of page-size
   size_t maximalSize =

@@ -138,11 +138,10 @@ class GeneralResponse {
   // Payload needs to be of type: VPackSlice const&
   // or VPackBuffer<uint8_t>&&
   template <typename Payload>
-  void setPayload(Payload&& payload, bool generateBody,
+  void setPayload(Payload&& payload,
                   velocypack::Options const& options = velocypack::Options::Defaults,
                   bool resolveExternals = true) {
     TRI_ASSERT(isResponseEmpty());
-    _generateBody = generateBody;
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
@@ -156,9 +155,12 @@ class GeneralResponse {
 
   /// used for head
   bool generateBody() const { return _generateBody; }
-  /// used for head
-  virtual bool setGenerateBody(bool) { return _generateBody; }
 
+  /// used for head-responses
+  bool setGenerateBody(bool generateBody) {
+    return _generateBody = generateBody;
+  }
+  
   virtual int deflate(size_t size = 16384) = 0;
 
  protected:

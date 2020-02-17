@@ -160,18 +160,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
             << "  --database.auto-upgrade true";
         LOG_TOPIC("13414", ERR, Logger::STARTUP)
             << "option to upgrade the data in the database directory.";
-
-        LOG_TOPIC("7421a", ERR, Logger::STARTUP)
-            << "Normally you can use the control "
-               "script to upgrade your database'";
-        LOG_TOPIC("fb665", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb stop";
-        LOG_TOPIC("6753e", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb upgrade";
-        LOG_TOPIC("f7b06", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb start";
-        LOG_TOPIC("24bd1", ERR, Logger::STARTUP)
-            << "---------------------------------------------------------------"
+        LOG_TOPIC("24bd1", ERR, Logger::STARTUP)	
+            << "---------------------------------------------------------------"	
                "-------'";
         return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
       }

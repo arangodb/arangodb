@@ -84,7 +84,7 @@ class ConnectionPool final {
   void drainConnections();
 
   /// @brief shutdown all connections
-  void shutdown();
+  void shutdownConnections();
 
   /// @brief automatically prune connections
   void pruneConnections();

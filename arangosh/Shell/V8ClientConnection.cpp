@@ -63,8 +63,11 @@ using namespace arangodb::import;
 
 namespace fu = arangodb::fuerte;
 
-V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server)
+V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server,
+                                       ClientFeature& client)
     : _server(server),
+      _client(client),
+      _requestTimeout(_client.requestTimeout()),
       _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
@@ -76,6 +79,10 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
       _setCustomError(false) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
+
+  _builder.maxConnectRetries(3);
+  _builder.connectRetryPause(std::chrono::milliseconds(100));
+  _builder.connectTimeout(std::chrono::milliseconds(static_cast<int64_t>(1000.0 * _client.connectionTimeout())));
   _builder.onFailure([this](fu::Error err, std::string const& msg) {
     // care only about connection errors
     if (err == fu::Error::CouldNotConnect ||
@@ -98,6 +105,10 @@ V8ClientConnection::~V8ClientConnection() {
 }
 
 std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
+  if (_client.endpoint() == "none") {
+    setCustomError(400, "no endpoint specified");
+    return nullptr;
+  }
   auto newConnection = _builder.connect(_loop);
   fu::StringMap params{{"details", "true"}};
   auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
@@ -247,42 +258,40 @@ void V8ClientConnection::timeout(double value) {
   _requestTimeout = std::chrono::duration<double>(value);
 }
 
-void V8ClientConnection::connect(ClientFeature* client) {
-  TRI_ASSERT(client);
+void V8ClientConnection::connect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  _forceJson = client->forceJson();
-
-  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
-  _databaseName = client->databaseName();
-  _builder.endpoint(client->endpoint());
+  _forceJson = _client.forceJson();
+  _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
+  _databaseName = _client.databaseName();
+  _builder.endpoint(_client.endpoint());
   // check jwtSecret first, as it is empty by default,
   // but username defaults to "root" in most configurations
-  if (!client->jwtSecret().empty()) {
+  if (!_client.jwtSecret().empty()) {
     _builder.jwtToken(
-        fu::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
+        fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
-  } else if (!client->username().empty()) {
-    _builder.user(client->username()).password(client->password());
+  } else if (!_client.username().empty()) {
+    _builder.user(_client.username()).password(_client.password());
     _builder.authenticationType(fu::AuthenticationType::Basic);
   }
   createConnection();
 }
 
-void V8ClientConnection::reconnect(ClientFeature* client) {
+void V8ClientConnection::reconnect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
-  _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
-  _databaseName = client->databaseName();
-  _builder.endpoint(client->endpoint());
-  _forceJson = client->forceJson();
+  _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
+  _databaseName = _client.databaseName();
+  _builder.endpoint(_client.endpoint());
+  _forceJson = _client.forceJson();
   // check jwtSecret first, as it is empty by default,
   // but username defaults to "root" in most configurations
-  if (!client->jwtSecret().empty()) {
+  if (!_client.jwtSecret().empty()) {
     _builder.jwtToken(
-        fu::jwt::generateInternalToken(client->jwtSecret(), "arangosh"));
+        fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
-  } else if (!client->username().empty()) {
-    _builder.user(client->username()).password(client->password());
+  } else if (!_client.username().empty()) {
+    _builder.user(_client.username()).password(_client.password());
     _builder.authenticationType(fu::AuthenticationType::Basic);
   }
 
@@ -295,18 +304,18 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   try {
     createConnection();
   } catch (...) {
-    std::string errorMessage = "error in '" + client->endpoint() + "'";
+    std::string errorMessage = "error in '" + _client.endpoint() + "'";
     throw errorMessage;
   }
 
   if (isConnected() && _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG_TOPIC("2d416", INFO, arangodb::Logger::FIXME)
-        << ClientFeature::buildConnectedMessage(endpointSpecification(), _version, _role, _mode, _databaseName, client->username());
+        << ClientFeature::buildConnectedMessage(endpointSpecification(), _version, _role, _mode, _databaseName, _client.username());
   } else {
-    if (client->getWarnConnect()) {
+    if (_client.getWarnConnect()) {
       LOG_TOPIC("9d7ea", ERR, arangodb::Logger::FIXME)
-          << "Could not connect to endpoint '" << client->endpoint()
-          << "', username: '" << client->username() << "' - Server message: " <<
+          << "Could not connect to endpoint '" << _client.endpoint()
+          << "', username: '" << _client.username() << "' - Server message: " <<
         _lastErrorMessage;
     }
 
@@ -348,12 +357,12 @@ static void ObjectToMap(v8::Isolate* isolate,
   v8::Local<v8::Object> v8Headers = val.As<v8::Object>();
 
   if (v8Headers->IsObject()) {
-    v8::Local<v8::Array> const props = v8Headers->GetPropertyNames();
-
+    v8::Local<v8::Array> const props = v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
+    auto context = TRI_IGETC;
     for (uint32_t i = 0; i < props->Length(); i++) {
-      v8::Local<v8::Value> key = props->Get(i);
+      v8::Local<v8::Value> key = props->Get(context, i).FromMaybe(v8::Local<v8::Value>());
       myMap.emplace(TRI_ObjectToString(isolate, key),
-                    TRI_ObjectToString(isolate, v8Headers->Get(key)));
+                    TRI_ObjectToString(isolate, v8Headers->Get(context, key).FromMaybe(v8::Local<v8::Value>())));
     }
   }
 }
@@ -396,7 +405,7 @@ static v8::Local<v8::Value> WrapV8ClientConnection(v8::Isolate* isolate,
                                                    V8ClientConnection* v8connection) {
   v8::EscapableHandleScope scope(isolate);
   auto localConnectionTempl = v8::Local<v8::ObjectTemplate>::New(isolate, ConnectionTempl);
-  v8::Local<v8::Object> result = localConnectionTempl->NewInstance();
+  v8::Local<v8::Object> result = localConnectionTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   auto myConnection = v8::External::New(isolate, v8connection);
   result->SetInternalField(SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRAP_TYPE_CONNECTION));
@@ -418,8 +427,8 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
-  auto v8connection = std::make_unique<V8ClientConnection>(client->server());
-  v8connection->connect(client);
+  auto v8connection = std::make_unique<V8ClientConnection>(client->server(), *client);
+  v8connection->connect();
 
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
@@ -509,7 +518,7 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
   client->setWarnConnect(warnConnect);
 
   try {
-    v8connection->reconnect(client);
+    v8connection->reconnect();
   } catch (std::string const& errorMessage) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
   } catch (...) {
@@ -537,6 +546,7 @@ static void ClientConnection_connectedUser(v8::FunctionCallbackInfo<v8::Value> c
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
   if (client == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("connectedUser() must be invoked on an arango connection object instance.");
   }
@@ -1033,7 +1043,7 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
     v8::Local<v8::Object> options = TRI_ToObject(context, args[2]);
     // separator
     if (TRI_HasProperty(context, isolate, options, separatorKey)) {
-      separator = TRI_ObjectToString(isolate, options->Get(separatorKey));
+      separator = TRI_ObjectToString(isolate, options->Get(context, separatorKey).FromMaybe(v8::Local<v8::Value>()));
 
       if (separator.length() < 1) {
         TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -1043,7 +1053,7 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
 
     // quote
     if (TRI_HasProperty(context, isolate, options, quoteKey)) {
-      quote = TRI_ObjectToString(isolate, options->Get(quoteKey));
+      quote = TRI_ObjectToString(isolate, options->Get(context, quoteKey).FromMaybe(v8::Local<v8::Value>()));
 
       if (quote.length() > 1) {
         TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -1057,6 +1067,7 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
   SimpleHttpClientParams params(client->requestTimeout(), client->getWarn());
   ImportHelper ih(*client, v8connection->endpointSpecification(), params,
                   DefaultChunkSize, 1);
@@ -1070,20 +1081,25 @@ static void ClientConnection_importCsv(v8::FunctionCallbackInfo<v8::Value> const
   if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Local<v8::Object> result = v8::Object::New(isolate);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "lines"),
-                v8::Integer::New(isolate, (int32_t)ih.getReadLines()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "lines"),
+                v8::Integer::New(isolate, (int32_t)ih.getReadLines())).FromMaybe(false);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "created"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "created"),
+                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated())).FromMaybe(false);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errors"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "errors"),
+                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors())).FromMaybe(false);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "updated"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "updated"),
+                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated())).FromMaybe(false);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "ignored"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "ignored"),
+                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored())).FromMaybe(false);
 
     TRI_V8_RETURN(result);
   }
@@ -1134,24 +1150,30 @@ static void ClientConnection_importJson(v8::FunctionCallbackInfo<v8::Value> cons
 
   std::string fileName = TRI_ObjectToString(isolate, args[0]);
   std::string collectionName = TRI_ObjectToString(isolate, args[1]);
+  auto context = TRI_IGETC;
 
   if (ih.importJson(collectionName, fileName, false)) {
     v8::Local<v8::Object> result = v8::Object::New(isolate);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "lines"),
-                v8::Integer::New(isolate, (int32_t)ih.getReadLines()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "lines"),
+                v8::Integer::New(isolate, (int32_t)ih.getReadLines())).FromMaybe(false);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "created"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "created"),
+                v8::Integer::New(isolate, (int32_t)ih.getNumberCreated())).FromMaybe(false);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errors"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "errors"),
+                v8::Integer::New(isolate, (int32_t)ih.getNumberErrors())).FromMaybe(false);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "updated"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "updated"),
+                v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated())).FromMaybe(false);
 
-    result->Set(TRI_V8_ASCII_STRING(isolate, "ignored"),
-                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored()));
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "ignored"),
+                v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored())).FromMaybe(false);
 
     TRI_V8_RETURN(result);
   }
@@ -1264,6 +1286,7 @@ static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
   if (client == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("forceJson() unable to get client instance");
   }
@@ -1750,14 +1773,18 @@ again:
     goto again;
   }
 
+  auto context = TRI_IGETC;
   v8::Local<v8::Object> result = v8::Object::New(isolate);
   if (!response) {
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true));
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, _lastHttpReturnCode));
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, _lastErrorMessage));
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+                v8::Boolean::New(isolate, true)).FromMaybe(false);
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+                TRI_V8_STD_STRING(isolate, _lastErrorMessage)).FromMaybe(false);
 
     return result;
   }
@@ -1767,22 +1794,27 @@ again:
   _lastHttpReturnCode = response->statusCode();
 
   // create raw response
-  result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-              v8::Integer::New(isolate, _lastHttpReturnCode));
+  result->Set(context,
+              TRI_V8_ASCII_STRING(isolate, "code"),
+              v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
 
   if (_lastHttpReturnCode >= 400) {
     std::string msg(GeneralResponse::responseString(
         static_cast<ResponseCode>(_lastHttpReturnCode)));
 
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true));
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, _lastHttpReturnCode));
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, msg));
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+                v8::Boolean::New(isolate, true)).FromMaybe(false);
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+                TRI_V8_STD_STRING(isolate, msg)).FromMaybe(false);
   } else {
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, false));
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+                v8::Boolean::New(isolate, false)).FromMaybe(false);
   }
 
   // got a body, copy it into the result
@@ -1790,19 +1822,23 @@ again:
   if (sb.size() > 0) {
     const char* str = reinterpret_cast<const char*>(sb.data());
     v8::Local<v8::String> b = TRI_V8_PAIR_STRING(isolate, str, sb.size());
-    result->Set(TRI_V8_ASCII_STRING(isolate, "body"), b);
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "body"), b).FromMaybe(false);
   }
 
   // copy all headers
   v8::Local<v8::Object> headers = v8::Object::New(isolate);
   for (auto const& it : response->header.meta()) {
-    headers->Set(TRI_V8_STD_STRING(isolate, it.first),
-                 TRI_V8_STD_STRING(isolate, it.second));
+    headers->Set(context,
+                TRI_V8_STD_STRING(isolate, it.first),
+                 TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
   }
   auto content = TRI_V8_STD_STRING(isolate, fu::to_string(response->contentType()));
-  headers->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), content);
+  headers->Set(context,
+               TRI_V8_STD_STRING(isolate, StaticStrings::ContentTypeHeader), content).FromMaybe(false);
 
-  result->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
+  result->Set(context,
+              TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false);
 
   // and returns
   return result;
@@ -1811,16 +1847,19 @@ again:
 v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
                                                       std::unique_ptr<fu::Response> res,
                                                       fu::Error ec) {
+  auto context = TRI_IGETC;
   // not complete
   if (!res) {
     _lastErrorMessage = fu::to_string(ec);
     _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     v8::Local<v8::Object> result = v8::Object::New(isolate);
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true));
-    result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-                v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+                v8::Boolean::New(isolate, true)).FromMaybe(false);
+    result->Set(context,
+                TRI_V8_ASCII_STRING(isolate, "code"),
+                v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR))).FromMaybe(false);
 
     int errorNumber = 0;
     switch (ec) {
@@ -1842,10 +1881,12 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
         break;
     }
 
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, errorNumber));
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, _lastErrorMessage));
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+                v8::Integer::New(isolate, errorNumber)).FromMaybe(false);
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+                TRI_V8_STD_STRING(isolate, _lastErrorMessage)).FromMaybe(false);
 
     return result;
   }
@@ -1894,30 +1935,34 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
   v8::Local<v8::Object> result = v8::Object::New(isolate);
 
-  result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-              v8::Integer::New(isolate, _lastHttpReturnCode));
+  result->Set(context,
+              TRI_V8_ASCII_STRING(isolate, "code"),
+              v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
 
   if (_lastHttpReturnCode >= 400) {
     std::string msg(GeneralResponse::responseString(
         static_cast<ResponseCode>(_lastHttpReturnCode)));
 
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, true));
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, _lastHttpReturnCode));
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, msg));
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+                v8::Boolean::New(isolate, true)).FromMaybe(false);
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+                v8::Integer::New(isolate, _lastHttpReturnCode)).FromMaybe(false);
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+                TRI_V8_STD_STRING(isolate, msg)).FromMaybe(false);
   } else {
-    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
-                v8::Boolean::New(isolate, false));
+    result->Set(context,
+                TRI_V8_STD_STRING(isolate, StaticStrings::Error),
+                v8::Boolean::New(isolate, false)).FromMaybe(false);
   }
 
   return result;
 }
 
-void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context> context,
-                                    ClientFeature* client) {
-  v8::Local<v8::Value> v8client = v8::External::New(isolate, client);
+void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context> context) {
+  v8::Local<v8::Value> v8client = v8::External::New(isolate, &_client);
 
   v8::Local<v8::FunctionTemplate> connection_templ = v8::FunctionTemplate::New(isolate);
 
@@ -2028,7 +2073,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoConnection"),
-                               connection_proto->NewInstance());
+                               connection_proto->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
 
   ConnectionTempl.Reset(isolate, connection_inst);
 

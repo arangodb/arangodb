@@ -35,6 +35,7 @@
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
 #include "search/wildcard_filter.hpp"
+#include "search/levenshtein_filter.hpp"
 
 #include "IResearch/ExpressionContextMock.h"
 #include "IResearch/common.h"
@@ -4960,7 +4961,255 @@ TEST_F(IResearchFilterFunctionTest, wildcard) {
       "FOR d IN myView FILTER LIKE(d.name) RETURN d");
 }
 
-TEST_F(IResearchFilterFunctionTest, IN_RANGE) {
+TEST_F(IResearchFilterFunctionTest, levenshteinMatch) {
+  // LEVENSHTEIN_MATCH(d.name, 'foo', 1)
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::by_edit_distance>();
+    filter.field(mangleStringIdentity("name"))
+          .max_distance(1)
+          .with_transpositions(false)
+          .scored_terms_limit(128)
+          .term("foo");
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name, 'foo', 1) RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER LEVENSHTEIN_match(d['name'], 'foo', 1) RETURN d",
+        expected);
+  }
+
+  // ANALYZER(LEVENSHTEIN_MATCH(d.name.foo, 'foo', 0, true), 'test_analyzer')
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::by_edit_distance>();
+    filter.field(mangleString("name.foo", "test_analyzer"))
+          .max_distance(0)
+          .with_transpositions(true)
+          .scored_terms_limit(128)
+          .term("fooo");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"foo"}));
+    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
+    ctx.vars.emplace("transp", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name.foo, 'fooo', 0, true), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_('foo')], 'fooo', 0, true), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET y='o' LET transp=true LET dist=1 LET x='foo' FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), dist-1, transp), 'test_analyzer') RETURN d",
+        expected,
+        &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET transp=true LET dist=1 LET x='foo' FOR d IN myView FILTER ANALYZER(LEVENSHTEIN_MATCH(d['name'].foo, 'fooo', dist-1, transp), 'test_analyzer') RETURN d",
+        expected,
+        &ctx);
+  }
+
+  // BOOST(ANALYZER(LEVENSHTEIN_DISTANCE(d.name[4], 'fooo', 2, false), 'test_analyzer'), 0.5)
+  {
+    irs::Or expected;
+    auto& filter = expected.add<irs::by_edit_distance>();
+    filter.field(mangleString("name[4]", "test_analyzer"))
+          .max_distance(2)
+          .with_transpositions(false)
+          .scored_terms_limit(128)
+          .term("fooo")
+          .boost(0.5);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4}));
+    ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"o"}));
+    ctx.vars.emplace("dist", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1}));
+    ctx.vars.emplace("transp", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));
+
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2, false), 'test_analyzer'), 0.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2), 'test_analyzer'), 0.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[4], 'fooo', 2, false), 0.5), 'test_analyzer') RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_(4)], 'fooo', 2, false), 'test_analyzer'), 0.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER BOOST(ANALYZER(LEVENSHTEIN_MATCH(d.name[_FORWARD_(4)], 'fooo', 2), 'test_analyzer'), 0.5) RETURN d",
+        expected, &ctx);
+    assertFilterSuccess(
+        vocbase(),
+        "LET y='o' LET transp=false LET dist=1 LET x='foo' FOR d IN myView FILTER ANALYZER(BOOST(LEVENSHTEIN_MATCH(d.name[x], CONCAT('foo', y), dist+1, transp), 0.5), 'test_analyzer') RETURN d",
+        expected,
+        &ctx);
+  }
+
+  // invalid attribute access
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH([d], 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d[*], 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.name[*], 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo[*].name, 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH('foo', 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH([], 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH({}, 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(null, 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(true, 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // non-deterministic attribute access
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(RAND() > 0.5 ? d.foo.name : d.foo.bar, 'fooo', 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // invalid target
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, true, 1, false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, null, 1, false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 1, 1, false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, [], 1, false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, {}, 1, false) RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, _FORWARD_({}), 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, d, 1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // invalid distance
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 5, false) RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', -1, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{-1}));
+
+    assertFilterExecutionFail(
+        vocbase(),
+        "LET x=-1 FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', x, false) RETURN d",
+        &ExpressionContextMock::EMPTY);
+  }
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', null, false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', true, false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', '1', false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', [1], false) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', {}, false) RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', _FORWARD_({}), false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', d, false) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // invalid "with transpositions"
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, 'true') RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, null) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, 1) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, [false]) RETURN d");
+  assertFilterFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, {}) RETURN d");
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, _FORWARD_({})) RETURN d",
+      &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'foo', 1, d) RETURN d",
+      &ExpressionContextMock::EMPTY);
+
+  // wrong number of arguments
+  assertFilterParseFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'true', 1, false, 'z') RETURN d");
+  assertFilterParseFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo, 'true') RETURN d");
+  assertFilterParseFail(
+      vocbase(),
+      "FOR d IN myView FILTER LEVENSHTEIN_MATCH(d.foo) RETURN d");
+}
+
+TEST_F(IResearchFilterFunctionTest, inRange) {
   // d.name > 'a' && d.name < 'z'
   {
     irs::Or expected;

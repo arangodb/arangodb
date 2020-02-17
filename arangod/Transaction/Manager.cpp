@@ -54,6 +54,7 @@
 #include "Enterprise/VocBase/VirtualCollection.h"
 #endif
 
+#include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -914,14 +915,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder authBuilder;
-          {
-            VPackObjectBuilder payload{&authBuilder};
-            payload->add("preferred_username", VPackValue(username));
-          }
-          VPackSlice slice = authBuilder.slice();
           headers.try_emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+                          "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
@@ -1002,8 +997,9 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     std::vector<network::FutureRes> futures;
     auto auth = AuthenticationFeature::instance();
 
-    network::RequestOptions options;
-    options.timeout = network::Timeout(30.0);
+    network::RequestOptions reqOpts;
+    reqOpts.timeout = network::Timeout(30.0);
+    reqOpts.param("local", "true");
 
     VPackBuffer<uint8_t> body;
 
@@ -1016,23 +1012,17 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder builder;
-          {
-            VPackObjectBuilder payload{&builder};
-            payload->add("preferred_username", VPackValue(username));
-          }
-          VPackSlice slice = builder.slice();
           headers.try_emplace(StaticStrings::Authorization,
-                          "bearer " + auth->tokenCache().generateJwt(slice));
+                          "bearer " + fuerte::jwt::generateUserToken(auth->tokenCache().jwtSecret(), username));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
         }
       }
-
+      
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
-                                    "/_db/_system/_api/transaction/write?local=true",
-                                    body, options, std::move(headers));
+                                    "_api/transaction/write",
+                                    body, reqOpts, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 

@@ -30,7 +30,6 @@
 #include "Aql/Query.h"
 #include "Basics/files.h"
 #include "Cluster/ActionDescription.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
@@ -91,9 +90,6 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
 namespace {
-struct ClusterCommResetter : public arangodb::ClusterComm {
-  static void reset() { arangodb::ClusterComm::_theInstanceInit.store(0); }
-};
 
 char const* plan_dbs_string =
 #include "plan_dbs_db.h"
@@ -295,7 +291,6 @@ MockServer::MockServer()
 
 MockServer::~MockServer() {
   stopFeatures();
-  ClusterCommResetter::reset();
   _server.setStateUnsafe(_oldApplicationServerState);
   arangodb::AgencyCommManager::MANAGER.reset();
 }

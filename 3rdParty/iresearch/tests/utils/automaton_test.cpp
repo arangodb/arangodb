@@ -23,6 +23,7 @@
 #include "tests_shared.hpp"
 
 #include "utils/automaton_utils.hpp"
+#include "utils/wildcard_utils.hpp"
 
 TEST(automaton_test, match_wildcard) {
   // check automaton structure

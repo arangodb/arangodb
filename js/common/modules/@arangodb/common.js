@@ -602,7 +602,7 @@ exports.checkAvailableVersions = function() {
         + '&license=' + encodeURIComponent(license)
         + '&source=' + (isServer ? "arangod" : "arangosh")
         + '&hash=' + encodeURIComponent(hash);
-    var d = internal.download(u, '', {timeout: 5});
+    var d = internal.download(u, '', {timeout: 3});
     var v = JSON.parse(d.body);
 
     if (!isServer && internal.quiet !== true) {
@@ -638,5 +638,12 @@ exports.checkAvailableVersions = function() {
 };
 
 exports.query = function query (strings, ...args) {
+  if (!Array.isArray(strings)) {
+    const options = strings;
+    const extra = args;
+    return function queryWithOptions(strings, ...args) {
+      return internal.db._query(exports.aql(strings, ...args), options, ...extra);
+    };
+  }
   return internal.db._query(exports.aql(strings, ...args));
 };

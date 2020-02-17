@@ -230,7 +230,7 @@ HttpCommTask<T>::~HttpCommTask() noexcept = default;
 
 template <SocketType T>
 void HttpCommTask<T>::start() {
-  LOG_TOPIC("358d4", TRACE, Logger::REQUESTS)
+  LOG_TOPIC("358d4", DEBUG, Logger::REQUESTS)
       << "<http> opened connection \"" << (void*)this << "\"";
 
   asio_ns::post(this->_protocol->context.io_context, [self = this->shared_from_this()] {
@@ -250,7 +250,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       err = llhttp_execute(&_parser, data, buffer.size());
       if (err != HPE_OK) {
         ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
-        TRI_ASSERT(diff > 0);
+        TRI_ASSERT(diff >= 0);
         nparsed += static_cast<size_t>(diff);
         break;
       }
@@ -410,15 +410,17 @@ void HttpCommTask<T>::processRequest() {
 
   // create a handler and execute
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1, nullptr);
-  resp->setContentType(_request->contentTypeResponse());
-  resp->setContentTypeRequested(_request->contentTypeResponse());
-  
+  resp->setContentType(_request->contentTypeResponse());  
   this->executeRequest(std::move(_request), std::move(resp));
 }
 
 template <SocketType T>
 void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
                                    RequestStatistics* stat) {
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
+  }
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(*baseRes);
 #else

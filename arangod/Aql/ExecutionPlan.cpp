@@ -151,7 +151,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = optionsNode->getMember(i);
+      auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -184,6 +184,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
       }
     }
   }
+
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
       !options->useBreadthFirst) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -191,9 +192,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                                    "supported, with bfs: true due to "
                                    "unpredictable results.");
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+
+  return options;
 }
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Query* query,
@@ -204,7 +204,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -221,9 +221,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       }
     }
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+  
+  return options;
 }
 
 std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
@@ -708,6 +707,7 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node) {
   ModificationOptions options;
 
+
   // parse the modification options we got
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -733,7 +733,17 @@ ModificationOptions ExecutionPlan::parseModificationOptions(AstNode const* node)
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
         } else if (name == "overwrite") {
-          options.overwrite = value->isTrue();
+          if(value->isTrue()) {
+            options.overwrite = true;
+          }
+        } else if (name == "overwriteMode" && value->isStringValue()) {
+          auto ref = value->getStringRef();
+          if(ref == "update") {
+            options.overwrite = true;
+            options.overwriteModeUpdate = true;
+          } else if(ref == "replace") {
+            options.overwrite = true;
+          }
         } else if (name == "ignoreRevs") {
           options.ignoreRevs = value->isTrue();
         }

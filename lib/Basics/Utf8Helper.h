@@ -33,6 +33,7 @@
 
 #include <unicode/coll.h>
 #include <unicode/umachine.h>
+#include <unicode/regex.h>
 
 #include "Basics/Common.h"
 

@@ -3,20 +3,6 @@
 (function () {
   'use strict';
 
-  /*
-  var isVersionCheckEnabled = function (cb) {
-    $.ajax({
-      type: 'GET',
-      url: arangoHelper.databaseUrl('/_admin/aardvark/shouldCheckVersion'),
-      success: function (data) {
-        if (data === true) {
-          cb();
-        }
-      }
-    });
-  };
-  */
-
   var showInterface = function (currentVersion, json) {
     var buttons = [];
 
@@ -71,8 +57,6 @@
           $('#currentVersion').click(function () {
             showInterface(currentVersion, json);
           });
-
-          // isVersionCheckEnabled(showInterface.bind(window, currentVersion, json))
         };
 
         $.ajax({

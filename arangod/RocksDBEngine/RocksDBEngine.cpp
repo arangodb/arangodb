@@ -304,7 +304,7 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "initial timeout after which unused WAL files deletion kicks in after "
       "server start",
       new DoubleParameter(&_pruneWaitTimeInitial),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--rocksdb.throttle", "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
@@ -312,18 +312,18 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--rocksdb.create-sha-files",
                      "enable generation of sha256 files for each .sst file",
                      new BooleanParameter(&_createShaFiles),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Enterprise));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise));
 
   options->addOption("--rocksdb.debug-logging",
                      "true to enable rocksdb debug logging",
                      new BooleanParameter(&_debugLogging),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
       "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
       new UInt64Parameter(&_maxWalArchiveSizeLimit),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);

@@ -293,13 +293,13 @@ void ApplicationServer::collectOptions() {
 
   _options->addOption("--dump-dependencies", "dump dependency graph",
                       new BooleanParameter(&_dumpDependencies),
-                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                    arangodb::options::Flags::Command));
 
   _options->addOption("--dump-options",
                       "dump configuration options in JSON format",
                       new BooleanParameter(&_dumpOptions),
-                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                    arangodb::options::Flags::Command));
 
   apply(

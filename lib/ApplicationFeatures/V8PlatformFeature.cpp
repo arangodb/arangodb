@@ -164,7 +164,7 @@ void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 
   options->addOption("--javascript.v8-options", "options to pass to v8",
                      new VectorParameter<StringParameter>(&_v8Options),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--javascript.v8-max-heap", "maximal heap size (in MB)",
                      new UInt64Parameter(&_v8MaxHeap));
@@ -208,7 +208,7 @@ void V8PlatformFeature::start() {
   v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int)forceARMv6.size());
 #endif
 
-  _platform.reset(v8::platform::CreateDefaultPlatform());
+  _platform = v8::platform::NewDefaultPlatform();
   v8::V8::InitializePlatform(_platform.get());
   v8::V8::Initialize();
 

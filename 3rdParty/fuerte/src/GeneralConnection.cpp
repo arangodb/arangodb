@@ -51,16 +51,21 @@ void GeneralConnection<ST>::cancel() {
 
 // Activate this connection.
 template <SocketType ST>
+void GeneralConnection<ST>::start() {
+  asio_ns::post(*this->_io_context, [self = Connection::shared_from_this()] {
+    static_cast<GeneralConnection<ST>&>(*self).startConnection();
+  });
+}
+
+template <SocketType ST>
 void GeneralConnection<ST>::startConnection() {
   // start connecting only if state is disconnected
   Connection::State exp = Connection::State::Disconnected;
   if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
     FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
-    auto cb = [self = Connection::shared_from_this()] {
-      auto* me = static_cast<GeneralConnection<ST>*>(self.get());
-      me->tryConnect(me->_config._maxConnectRetries);
-    };
-    asio_ns::post(*this->_io_context, std::move(cb));
+    FUERTE_ASSERT(_config._maxConnectRetries > 0);
+    tryConnect(_config._maxConnectRetries, std::chrono::steady_clock::now(),
+               asio_ns::error_code());
   }
 }
 
@@ -68,8 +73,11 @@ void GeneralConnection<ST>::startConnection() {
 template <SocketType ST>
 void GeneralConnection<ST>::shutdownConnection(const Error err, std::string const& msg,
                                                bool mayRestart) {
-  FUERTE_LOG_DEBUG << "shutdownConnection: '" << msg
-                   << "' this=" << this << "\n";
+  FUERTE_LOG_DEBUG << "shutdownConnection: err = '" << to_string(err) << "' ";
+  if (!msg.empty()) {
+    FUERTE_LOG_DEBUG << ", msg = '" << msg<< "' ";
+  }
+  FUERTE_LOG_DEBUG<< "this=" << this << "\n";
 
   auto state = _state.load();
   if (state != Connection::State::Failed) {
@@ -96,43 +104,52 @@ void GeneralConnection<ST>::shutdownConnection(const Error err, std::string cons
 
 // Connect with a given number of retries
 template <SocketType ST>
-void GeneralConnection<ST>::tryConnect(unsigned retries) {
-  FUERTE_ASSERT(_state.load() == Connection::State::Connecting);
-  FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
+void GeneralConnection<ST>::tryConnect(unsigned retries,
+                                       std::chrono::steady_clock::time_point start,
+                                       asio_ns::error_code const& ec) {
+  if (_state.load() != Connection::State::Connecting) {
+    return;
+  }
 
-  auto self = Connection::shared_from_this();
-  if (_config._connectTimeout.count() > 0) {
-    _proto.timer.expires_after(_config._connectTimeout);
-    _proto.timer.async_wait([self, this](asio_ns::error_code const& ec) {
-      if (!ec) {
-        _proto.cancel();
-        shutdownConnection(Error::CouldNotConnect);
-      }
-    });
-  } else {
-    asio_ns::error_code ec;
-    _proto.timer.cancel(ec);
+  if (retries == 0) {
+    _state.store(Connection::State::Failed, std::memory_order_release);
+    drainQueue(Error::CouldNotConnect);
+    std::string msg("connecting failed: '");
+    msg.append((ec != asio_ns::error::operation_aborted) ? ec.message() : "timeout");
+    msg.push_back('\'');
+    shutdownConnection(Error::CouldNotConnect, msg);
+    return;
   }
   
-  _proto.connect(_config, [self, this, retries](auto const& ec) {
-    _proto.timer.cancel();
+  FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
+  auto self = Connection::shared_from_this();
+
+  _proto.timer.expires_at(start + _config._connectTimeout);
+  _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
     if (!ec) {
-      finishConnect();
+      // the connect handler below gets 'operation_aborted' error
+      static_cast<GeneralConnection<ST>&>(*self)._proto.cancel();
+    }
+  });
+  
+  _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
+    GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
+    me._proto.timer.cancel();
+    if (!ec) {
+      me.finishConnect();
       return;
     }
     FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-      _proto.timer.expires_after(std::chrono::seconds(3));
-      _proto.timer.async_wait([self, this, retries](auto ec) {
-        if (!ec) {
-          tryConnect(retries - 1);
-        }
+      auto end = std::min(std::chrono::steady_clock::now() + me._config._connectRetryPause,
+                          start + me._config._connectTimeout);
+      me._proto.timer.expires_at(end);
+      me._proto.timer.async_wait([self(std::move(self)), start, retries](auto ec) mutable {
+        GeneralConnection<ST>& me = static_cast<GeneralConnection<ST>&>(*self);
+        me.tryConnect(!ec ? retries - 1 : 0, start, ec);
       });
     } else {
-      _state.store(Connection::State::Failed, std::memory_order_release);
-      drainQueue(Error::CouldNotConnect);
-      shutdownConnection(Error::CouldNotConnect,
-                         "connecting failed: " + ec.message());
+      me.tryConnect(0, start, ec); // <- handles errors
     }
   });
 }
