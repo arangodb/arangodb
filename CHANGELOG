@@ -1,6 +1,8 @@
 v3.4.10 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to 0.7.3.
+
 * Updated ArangoDB Starter to 0.14.14.
 
 * Fix issue #10897, using COLLECT in a subquery could lead to unexpected and
