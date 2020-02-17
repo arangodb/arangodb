@@ -1049,7 +1049,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                                  TestLambdaSkipExecutor,
 #endif
-                                            EnumerateListExecutor, SortedCollectExecutor>),
+                                 EnumerateListExecutor, SortedCollectExecutor>),
+
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
