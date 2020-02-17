@@ -1,0 +1,108 @@
+[
+    {
+        "description": "validation of date-time strings",
+        "schema": {"format": "date-time"},
+        "tests": [
+            {
+                "description": "an invalid date-time string (space instead of T)",
+                "data": "1972-11-10 08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "a valid date-time string (29th of February, leap-year)",
+                "data": "1972-02-29T08:30:06Z",
+                "valid": true
+            },
+            {
+                "description": "an invalid date-time string (29th of February, non-leap-year)",
+                "data": "1974-02-29T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (29th of February, non-leap-year, multiple of 100 years)",
+                "data": "1900-02-29T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "a valid date-time string (30th of February, leap-year, multiple of 400 years)",
+                "data": "2000-02-29T08:30:06Z",
+                "valid": true
+            },
+            {
+                "description": "an invalid date-time string (30th of February)",
+                "data": "1972-02-30T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (31th of February)",
+                "data": "1972-02-31T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (31th of April)",
+                "data": "1972-04-31T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (31th of June)",
+                "data": "1972-06-31T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (31th of September)",
+                "data": "1972-09-31T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (31th of November)",
+                "data": "1972-11-31T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (invalid fraction part)",
+                "data": "1972-11-10T08:30:06.Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (60 as minute)",
+                "data": "1972-11-10T08:60:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (25 as hour)",
+                "data": "1972-11-10T25:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (00 as day)",
+                "data": "1972-11-00T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (32 as day)",
+                "data": "1972-12-32T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (00 as month)",
+                "data": "1972-00-10T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (13 as month)",
+                "data": "1972-13-10T08:30:06Z",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (invalid offset)",
+                "data": "1972-11-10T08:30:06+24:00",
+                "valid": false
+            },
+            {
+                "description": "an invalid date-time string (invalid offset)",
+                "data": "1972-11-10T08:30:06-24:00",
+                "valid": false
+            }
+        ]
+    }
+]

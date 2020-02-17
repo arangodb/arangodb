@@ -1,0 +1,4 @@
+{
+   foo : $42.de.ad.be.ef,
+   bar : $"binary string"
+}

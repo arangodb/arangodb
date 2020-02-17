@@ -1,0 +1,682 @@
+[
+    {
+        "description": "positive integer range",
+        "schema": {"minimum": 2, "maximum": 4},
+        "tests": [
+            {
+                "description": "integer number clearly in range",
+                "data": 3,
+                "valid": true
+            },
+            {
+                "description": "integer number just small enough",
+                "data": 2,
+                "valid": true
+            },
+            {
+                "description": "integer number just large enough",
+                "data": 4,
+                "valid": true
+            },
+            {
+                "description": "integer number too small",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "integer number too large",
+                "data": 5,
+                "valid": false
+            },
+            {
+                "description": "negative integer number too small",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "floating point number clearly in range",
+                "data": 3.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number just small enough",
+                "data": 2.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number just large enough",
+                "data": 4.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number too small",
+                "data": 1.999999,
+                "valid": false
+            },
+            {
+                "description": "floating point number too large",
+                "data": 4.000001,
+                "valid": false
+            },
+            {
+                "description": "negative floating point number too small",
+                "data": -0.1,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "positive floating point range",
+        "schema": {"minimum": 2.0, "maximum": 4.0},
+        "tests": [
+            {
+                "description": "integer number clearly in range",
+                "data": 3,
+                "valid": true
+            },
+            {
+                "description": "integer number just small enough",
+                "data": 2,
+                "valid": true
+            },
+            {
+                "description": "integer number just large enough",
+                "data": 3,
+                "valid": true
+            },
+            {
+                "description": "integer number too small",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "integer number too large",
+                "data": 5,
+                "valid": false
+            },
+            {
+                "description": "negative integer number too small",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "floating point number clearly in range",
+                "data": 3.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number just small enough",
+                "data": 2.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number just large enough",
+                "data": 4.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number too small",
+                "data": 1.999999,
+                "valid": false
+            },
+            {
+                "description": "floating point number too large",
+                "data": 4.000001,
+                "valid": false
+            },
+            {
+                "description": "negative floating point number too large",
+                "data": -0.1,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "positive exclusive integer range",
+        "schema": {
+            "minimum": 2,
+            "exclusiveMinimum": true,
+            "maximum": 4,
+            "exclusiveMaximum": true
+        },
+        "tests": [
+            {
+                "description": "integer number clearly in range",
+                "data": 3,
+                "valid": true
+            },
+            {
+                "description": "integer number exact limit too small",
+                "data": 2,
+                "valid": false
+            },
+            {
+                "description": "integer number exact limit too large",
+                "data": 4,
+                "valid": false
+            },
+            {
+                "description": "integer number too small",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "integer number too large",
+                "data": 5,
+                "valid": false
+            },
+            {
+                "description": "negative integer number too small",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "floating point number clearly in range",
+                "data": 3.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number exact limit too small",
+                "data": 2.0,
+                "valid": false
+            },
+            {
+                "description": "floating point number exact limit too large",
+                "data": 4.0,
+                "valid": false
+            },
+            {
+                "description": "floating point number too small",
+                "data": 1.999999,
+                "valid": false
+            },
+            {
+                "description": "floating point number too large",
+                "data": 4.000001,
+                "valid": false
+            },
+            {
+                "description": "negative floating point number too small",
+                "data": -0.1,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "positive exclusive floating point range",
+        "schema": {
+            "minimum": 2.0,
+            "exclusiveMinimum": true,
+            "maximum": 4.0,
+            "exclusiveMaximum": true
+        },
+        "tests": [
+            {
+                "description": "integer number clearly in range",
+                "data": 3,
+                "valid": true
+            },
+            {
+                "description": "integer number exact limit too small",
+                "data": 2,
+                "valid": false
+            },
+            {
+                "description": "integer number exact limit too large",
+                "data": 4,
+                "valid": false
+            },
+            {
+                "description": "integer number too small",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "integer number too large",
+                "data": 5,
+                "valid": false
+            },
+            {
+                "description": "negative integer number too small",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "floating point number clearly in range",
+                "data": 3.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number exact limit too small",
+                "data": 2.0,
+                "valid": false
+            },
+            {
+                "description": "floating point number exact limit too large",
+                "data": 4.0,
+                "valid": false
+            },
+            {
+                "description": "floating point number too small",
+                "data": 1.999999,
+                "valid": false
+            },
+            {
+                "description": "floating point number too large",
+                "data": 4.000001,
+                "valid": false
+            },
+            {
+                "description": "negative floating point number too small",
+                "data": -0.1,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "negative integer range",
+        "schema": {"minimum": -4, "maximum": -2},
+        "tests": [
+            {
+                "description": "integer number clearly in range",
+                "data": -3,
+                "valid": true
+            },
+            {
+                "description": "integer number just small enough",
+                "data": -4,
+                "valid": true
+            },
+            {
+                "description": "integer number just large enough",
+                "data": -2,
+                "valid": true
+            },
+            {
+                "description": "integer number too small",
+                "data": -5,
+                "valid": false
+            },
+            {
+                "description": "integer number too large",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "positive integer number too large",
+                "data": 0,
+                "valid": false
+            },
+            {
+                "description": "floating point number clearly in range",
+                "data": -3.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number just small enough",
+                "data": -4.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number just large enough",
+                "data": -2.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number too small",
+                "data": -4.000001,
+                "valid": false
+            },
+            {
+                "description": "floating point number too large",
+                "data": -1.999999,
+                "valid": false
+            },
+            {
+                "description": "positive floating point number too large",
+                "data": 0.0,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "negative floating point range",
+        "schema": {"minimum": -4.0, "maximum": -2.0},
+        "tests": [
+            {
+                "description": "integer number clearly in range",
+                "data": -3,
+                "valid": true
+            },
+            {
+                "description": "integer number just small enough",
+                "data": -4,
+                "valid": true
+            },
+            {
+                "description": "integer number just large enough",
+                "data": -2,
+                "valid": true
+            },
+            {
+                "description": "integer number too small",
+                "data": -5,
+                "valid": false
+            },
+            {
+                "description": "integer number too large",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "positive integer number too large",
+                "data": 0,
+                "valid": false
+            },
+            {
+                "description": "floating point number clearly in range",
+                "data": -3.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number just small enough",
+                "data": -4.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number just large enough",
+                "data": -2.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number too small",
+                "data": -4.000001,
+                "valid": false
+            },
+            {
+                "description": "floating point number too large",
+                "data": -1.999999,
+                "valid": false
+            },
+            {
+                "description": "positive floating point number too large",
+                "data": 0.0,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "negative exclusive integer range",
+        "schema": {
+            "minimum": -4,
+            "exclusiveMinimum": true,
+            "maximum": -2,
+            "exclusiveMaximum": true
+        },
+        "tests": [
+            {
+                "description": "integer number clearly in range",
+                "data": -3,
+                "valid": true
+            },
+            {
+                "description": "integer number exact limit too small",
+                "data": -4,
+                "valid": false
+            },
+            {
+                "description": "integer number exact limit too large",
+                "data": -2,
+                "valid": false
+            },
+            {
+                "description": "integer number too small",
+                "data": -5,
+                "valid": false
+            },
+            {
+                "description": "integer number too large",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "positive integer number too large",
+                "data": 0,
+                "valid": false
+            },
+            {
+                "description": "floating point number clearly in range",
+                "data": -3.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number exact limit too small",
+                "data": -4.0,
+                "valid": false
+            },
+            {
+                "description": "floating point number exact limit too large",
+                "data": -2.0,
+                "valid": false
+            },
+            {
+                "description": "floating point number too small",
+                "data": -4.000001,
+                "valid": false
+            },
+            {
+                "description": "floating point number too large",
+                "data": -1.999999,
+                "valid": false
+            },
+            {
+                "description": "positive floating point number too large",
+                "data": 0.0,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "negative exclusive floating point range",
+        "schema": {
+            "minimum": -4.0,
+            "exclusiveMinimum": true,
+            "maximum": -2.0,
+            "exclusiveMaximum": true
+        },
+        "tests": [
+            {
+                "description": "integer number clearly in range",
+                "data": -3,
+                "valid": true
+            },
+            {
+                "description": "integer number exact limit too small",
+                "data": -4,
+                "valid": false
+            },
+            {
+                "description": "integer number exact limit too large",
+                "data": -2,
+                "valid": false
+            },
+            {
+                "description": "integer number too small",
+                "data": -5,
+                "valid": false
+            },
+            {
+                "description": "integer number too large",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "positive integer number too large",
+                "data": 0,
+                "valid": false
+            },
+            {
+                "description": "floating point number clearly in range",
+                "data": -3.0,
+                "valid": true
+            },
+            {
+                "description": "floating point number exact limit too small",
+                "data": -4.0,
+                "valid": false
+            },
+            {
+                "description": "floating point number exact limit too large",
+                "data": -2.0,
+                "valid": false
+            },
+            {
+                "description": "floating point number too small",
+                "data": -4.000001,
+                "valid": false
+            },
+            {
+                "description": "floating point number too large",
+                "data": -1.999999,
+                "valid": false
+            },
+            {
+                "description": "positive floating point number too large",
+                "data": 0.0,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "multipleOf 3",
+        "schema": {"multipleOf": 3},
+        "tests": [
+            {
+                "description": "0 is multiple of 3",
+                "data": 0,
+                "valid": true
+            },
+            {
+                "description": "3 is multiple of 3",
+                "data": 3,
+                "valid": true
+            },
+            {
+                "description": "33 is multiple of 3",
+                "data": 33,
+                "valid": true
+            },
+            {
+                "description": "-3 is multiple of 3",
+                "data": -3,
+                "valid": true
+            },
+            {
+                "description": "1 is not a multiple of 3",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "-1 is not a multiple of 3",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "0.0 is multiple of 3",
+                "data": 0.0,
+                "valid": true
+            },
+            {
+                "description": "3.0 is multiple of 3",
+                "data": 3.0,
+                "valid": true
+            },
+            {
+                "description": "33.0 is multiple of 3",
+                "data": 33.0,
+                "valid": true
+            },
+            {
+                "description": "-3 is multiple of 3",
+                "data": -3.0,
+                "valid": true
+            },
+            {
+                "description": "1.0 is not a multiple of 3",
+                "data": 1.0,
+                "valid": false
+            },
+            {
+                "description": "-1.0 is not a multiple of 3",
+                "data": -1.0,
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "multipleOf 3.0",
+        "schema": {"multipleOf": 3.0},
+        "tests": [
+            {
+                "description": "0 is multiple of 3.0",
+                "data": 0,
+                "valid": true
+            },
+            {
+                "description": "3 is multiple of 3.0",
+                "data": 3,
+                "valid": true
+            },
+            {
+                "description": "33 is multiple of 3.0",
+                "data": 33,
+                "valid": true
+            },
+            {
+                "description": "-3 is multiple of 3.0",
+                "data": -3,
+                "valid": true
+            },
+            {
+                "description": "1 is not a multiple of 3.0",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "-1 is not a multiple of 3.0",
+                "data": -1,
+                "valid": false
+            },
+            {
+                "description": "0.0 is multiple of 3.0",
+                "data": 0.0,
+                "valid": true
+            },
+            {
+                "description": "3.0 is multiple of 3.0",
+                "data": 3.0,
+                "valid": true
+            },
+            {
+                "description": "33.0 is multiple of 3.0",
+                "data": 33.0,
+                "valid": true
+            },
+            {
+                "description": "-3 is multiple of 3.0",
+                "data": -3.0,
+                "valid": true
+            },
+            {
+                "description": "1.0 is not a multiple of 3.0",
+                "data": 1.0,
+                "valid": false
+            },
+            {
+                "description": "-1.0 is not a multiple of 3.0",
+                "data": -1.0,
+                "valid": false
+            }
+        ]
+    }
+]

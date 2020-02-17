@@ -1117,6 +1117,9 @@ add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
 
+set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build example programs")
+add_subdirectory(3rdParty/tao-json)
+
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
 

@@ -1,0 +1,378 @@
+[
+    {
+        "description": "schema must be an object",
+        "schema": 42,
+        "valid": false
+    },
+    {
+        "description": "title must be a string",
+        "schema": {"title": 42},
+        "valid": false
+    },
+    {
+        "description": "description must be a string",
+        "schema": {"description": 42},
+        "valid": false
+    },
+    {
+        "description": "type must be string or array",
+        "schema": {"type": 42},
+        "valid": false
+    },
+    {
+        "description": "check invalid type 'null_value'",
+        "schema": {"type": "null_value"},
+        "valid": false
+    },
+    {
+        "description": "invalid type 'bool'",
+        "schema": {"type": "bool"},
+        "valid": false
+    },
+    {
+        "description": "invalid type 'int32'",
+        "schema": {"type": "int32"},
+        "valid": false
+    },
+    {
+        "description": "invalid type 'sting'",
+        "schema": {"type": "sting"},
+        "valid": false
+    },
+    {
+        "description": "invalid type 'arrr'",
+        "schema": {"type": "arrr"},
+        "valid": false
+    },
+    {
+        "description": "invalid type 'octal'",
+        "schema": {"type": "octal"},
+        "valid": false
+    },
+    {
+        "description": "empty type array is valid",
+        "schema": {"type": []},
+        "tests": [
+            {
+                "description": "no type matches, test null",
+                "data": null,
+                "valid": false
+            },
+            {
+                "description": "no type matches, test boolean",
+                "data": true,
+                "valid": false
+            },
+            {
+                "description": "no type matches, test integer",
+                "data": 1,
+                "valid": false
+            },
+            {
+                "description": "no type matches, test number",
+                "data": 1.1,
+                "valid": false
+            },
+            {
+                "description": "no type matches, test string",
+                "data": "",
+                "valid": false
+            },
+            {
+                "description": "no type matches, test array",
+                "data": [],
+                "valid": false
+            },
+            {
+                "description": "no type matches, test object",
+                "data": {},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "type array must contain only string",
+        "schema": {"type": [42]},
+        "valid": false
+    },
+    {
+        "description": "type array must contain valid values",
+        "schema": {"type": ["hello"]},
+        "valid": false
+    },
+    {
+        "description": "type array entries must be unique",
+        "schema": {"type": ["integer", "integer"]},
+        "valid": false
+    },
+    {
+        "description": "enum must be an array",
+        "schema": {"enum": null},
+        "valid": false
+    },
+    {
+        "description": "allOf must be an array",
+        "schema": {"allOf": null},
+        "valid": false
+    },
+    {
+        "description": "allOf must not be an empty array",
+        "schema": {"allOf": []},
+        "valid": false
+    },
+    {
+        "description": "anyOf must be an array",
+        "schema": {"anyOf": null},
+        "valid": false
+    },
+    {
+        "description": "anyOf must not be an empty array",
+        "schema": {"anyOf": []},
+        "valid": false
+    },
+    {
+        "description": "oneOf must be an array",
+        "schema": {"oneOf": null},
+        "valid": false
+    },
+    {
+        "description": "oneOf must not be an empty array",
+        "schema": {"oneOf": []},
+        "valid": false
+    },
+    {
+        "description": "empty definitions is valid",
+        "schema": {"definitions": {}},
+        "tests": []
+    },
+    {
+        "description": "definitions must be an object",
+        "schema": {"definitions": null},
+        "valid": false
+    },
+    {
+        "description": "definitions must contain only schema values",
+        "schema": {"definitions": {"foo": null}},
+        "valid": false
+    },
+    {
+        "description": "multipleOf must be a number",
+        "schema": {"multipleOf": null},
+        "valid": false
+    },
+    {
+        "description": "multipleOf must be greater than zero, test integer value -1",
+        "schema": {"multipleOf": -1},
+        "valid": false
+    },
+    {
+        "description": "multipleOf must be strictly greater than zero, test integer value 0",
+        "schema": {"multipleOf": 0},
+        "valid": false
+    },
+    {
+        "description": "multipleOf must be strictly greater than zero, test floating point value 0.0",
+        "schema": {"multipleOf": 0.0},
+        "valid": false
+    },
+    {
+        "description": "maximum must be a number",
+        "schema": {"maximum": null},
+        "valid": false
+    },
+    {
+        "description": "exclusiveMaximum must be a boolean",
+        "schema": {
+            "maximum": -1,
+            "exclusiveMaximum": null
+        },
+        "valid": false
+    },
+    {
+        "description": "exclusiveMaximum without maximum",
+        "schema": {
+            "exclusiveMaximum": true
+        },
+        "valid": false
+    },
+    {
+        "description": "minimum must be a number",
+        "schema": {"minimum": null},
+        "valid": false
+    },
+    {
+        "description": "exclusiveMinimum must be a boolean",
+        "schema": {
+            "minimum": -1,
+            "exclusiveMinimum": null
+        },
+        "valid": false
+    },
+    {
+        "description": "exclusiveMinimum without minimum",
+        "schema": {
+            "exclusiveMinimum": true
+        },
+        "valid": false
+    },
+    {
+        "description": "maxLength must be an integer",
+        "schema": {"maxLength": 2.0},
+        "valid": false
+    },
+    {
+        "description": "maxLength must not be negative",
+        "schema": {"maxLength": -1},
+        "valid": false
+    },
+    {
+        "description": "minLength must be an integer",
+        "schema": {"minLength": 2.0},
+        "valid": false
+    },
+    {
+        "description": "minLength must not be negative",
+        "schema": {"minLength": -1},
+        "valid": false
+    },
+    {
+        "description": "pattern must be a string",
+        "schema": {"pattern": null},
+        "valid": false
+    },
+    {
+        "description": "pattern must be a regular expression",
+        "schema": {"pattern": "["},
+        "valid": false
+    },
+    {
+        "description": "format must be a string",
+        "schema": {"format": null},
+        "valid": false
+    },
+    {
+        "description": "items must be an array or an object",
+        "schema": {"items": null},
+        "valid": false
+    },
+    {
+        "description": "additionalItems must be a boolean or an object",
+        "schema": {"additionalItems": null},
+        "valid": false
+    },
+    {
+        "description": "maxItems must be an integer",
+        "schema": {"maxItems": 2.0},
+        "valid": false
+    },
+    {
+        "description": "maxItems must not be negative",
+        "schema": {"maxItems": -1},
+        "valid": false
+    },
+    {
+        "description": "minItems must be an integer",
+        "schema": {"minItems": 2.0},
+        "valid": false
+    },
+    {
+        "description": "minItems must not be negative",
+        "schema": {"minItems": -1},
+        "valid": false
+    },
+    {
+        "description": "maxProperties must be an integer",
+        "schema": {"maxProperties": 2.0},
+        "valid": false
+    },
+    {
+        "description": "maxProperties must not be negative",
+        "schema": {"maxProperties": -1},
+        "valid": false
+    },
+    {
+        "description": "minProperties must be an integer",
+        "schema": {"minProperties": 2.0},
+        "valid": false
+    },
+    {
+        "description": "minProperties must not be negative",
+        "schema": {"minProperties": -1},
+        "valid": false
+    },
+    {
+        "description": "required must be an array",
+        "schema": {"required": null},
+        "valid": false
+    },
+    {
+        "description": "required must not be an empty array",
+        "schema": {"required": []},
+        "valid": false
+    },
+    {
+        "description": "required must contain strings",
+        "schema": {"required": [null]},
+        "valid": false
+    },
+    {
+        "description": "required must contain unique strings",
+        "schema": {"required": ["foo", "foo"]},
+        "valid": false
+    },
+    {
+        "description": "properties must be an object",
+        "schema": {"properties": null},
+        "valid": false
+    },
+    {
+        "description": "properties must contain schema values",
+        "schema": {"properties": {"foo": null}},
+        "valid": false
+    },
+    {
+        "description": "patternProperties must be an object",
+        "schema": {"patternProperties": null},
+        "valid": false
+    },
+    {
+        "description": "patternProperties keys must be regular expressions",
+        "schema": {"patternProperties": {"[": {}}},
+        "valid": false
+    },
+    {
+        "description": "patternProperties values must be schema values",
+        "schema": {"patternProperties": {"foo": null}},
+        "valid": false
+    },
+    {
+        "description": "additionalProperties must be a boolean or an object",
+        "schema": {"additionalProperties": null},
+        "valid": false
+    },
+    {
+        "description": "dependencies must be an object",
+        "schema": {"dependencies": null},
+        "valid": false
+    },
+    {
+        "description": "dependencies must contain values of type array or object",
+        "schema": {"dependencies": {"foo": null}},
+        "valid": false
+    },
+    {
+        "description": "array values in dependencies must not be empty",
+        "schema": {"dependencies": {"foo": []}},
+        "valid": false
+    },
+    {
+        "description": "array values in dependencies must contain strings",
+        "schema": {"dependencies": {"foo": [null]}},
+        "valid": false
+    },
+    {
+        "description": "array values in dependencies must contain unique strings",
+        "schema": {"dependencies": {"foo": ["bar", "bar"]}},
+        "valid": false
+    }
+]
