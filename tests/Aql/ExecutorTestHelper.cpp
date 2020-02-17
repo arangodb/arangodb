@@ -101,6 +101,15 @@ auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
 auto asserthelper::ValidateBlocksAreEqualUnordered(
     SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected, std::size_t numRowsNotContained,
     std::optional<std::vector<RegisterId>> const& onlyCompareRegisters) -> void {
+  std::unordered_set<size_t> matchedRows{};
+  return ValidateBlocksAreEqualUnordered(actual, expected, matchedRows,
+                                         numRowsNotContained, onlyCompareRegisters);
+}
+
+auto asserthelper::ValidateBlocksAreEqualUnordered(
+    SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+    std::unordered_set<size_t>& matchedRows, std::size_t numRowsNotContained,
+    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters) -> void {
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
   EXPECT_EQ(actual->size() + numRowsNotContained, expected->size());
@@ -113,7 +122,7 @@ auto asserthelper::ValidateBlocksAreEqualUnordered(
     EXPECT_EQ(actual->getNrRegs(), expected->getNrRegs());
   }
 
-  std::unordered_set<size_t> matchedRows{};
+  matchedRows.clear();
 
   for (size_t expectedRow = 0; expectedRow < expected->size(); ++expectedRow) {
     for (size_t actualRow = 0; actualRow < actual->size(); ++actualRow) {

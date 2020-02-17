@@ -56,14 +56,19 @@ namespace aql {
 // This is only to get a split-type. The Type is independent of actual template parameters
 using HashedCollectTestHelper = ExecutorTestHelper<HashedCollectExecutor, 1, 1>;
 using HashedCollectSplitType = HashedCollectTestHelper::SplitType;
-using HashedCollectInputParam = std::tuple<HashedCollectSplitType>;
+using HashedCollectInputParam = std::tuple<HashedCollectSplitType, bool>;
 
 class HashedCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<HashedCollectInputParam> {
  protected:
   auto getSplit() -> HashedCollectSplitType {
-    auto [split] = GetParam();
+    auto [split, empty] = GetParam();
     return split;
+  }
+
+  auto appendEmpty() -> bool {
+    auto [split, empty] = GetParam();
+    return empty;
   }
 
   auto buildInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
@@ -123,8 +128,10 @@ template <size_t step>
 const HashedCollectSplitType splitStep = HashedCollectSplitType{step};
 
 INSTANTIATE_TEST_CASE_P(HashedCollect, HashedCollectExecutorTest,
-                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
-                                          splitStep<1>, splitStep<2>));
+                        ::testing::Combine(::testing::Values(splitIntoBlocks<2, 3>,
+                                                             splitIntoBlocks<3, 4>,
+                                                             splitStep<1>, splitStep<2>),
+                                           ::testing::Bool()));
 
 // Collect with only one group value
 TEST_P(HashedCollectExecutorTest, collect_only) {
@@ -139,6 +146,7 @@ TEST_P(HashedCollectExecutorTest, collect_only) {
       .allowAnyOutputOrder(true)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
 }
@@ -157,6 +165,7 @@ TEST_P(HashedCollectExecutorTest, skip_all) {
       .allowAnyOutputOrder(true)
       .expectSkipped(4)
       .expectedState(ExecutionState::DONE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
 }
@@ -176,6 +185,7 @@ TEST_P(HashedCollectExecutorTest, fullcount_all) {
       .allowAnyOutputOrder(true)
       .expectSkipped(4)
       .expectedState(ExecutionState::DONE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
 }
@@ -194,8 +204,51 @@ TEST_P(HashedCollectExecutorTest, collect_only_soft_less) {
       .allowAnyOutputOrder(true, 2)
       .expectSkipped(0)
       .expectedState(ExecutionState::HASMORE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
+}
+
+// Collect get some multiple calls
+TEST_P(HashedCollectExecutorTest, collect_only_soft_less_second_call) {
+  auto infos = buildInfos(1, 2, {{1, 0}});
+
+  // TODO maybe we should add this to the test framework as well.
+
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  {
+    auto data =
+        buildBlock<2>(manager(), {{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}});
+    blockDeque.emplace_back(data);
+  }
+
+  auto inputBlock = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->engine(), generateNodeDummy(), std::move(blockDeque),
+      WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+  ExecutionBlockImpl<HashedCollectExecutor> testee{fakedQuery->engine(),
+                                                   generateNodeDummy(), std::move(infos)};
+  testee.addDependency(inputBlock.get());
+  // First Call
+  {
+    AqlCall call{};
+    call.softLimit = 2;
+    AqlCallStack stack{call};
+    auto const [state, skipped, result] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+    EXPECT_EQ(skipped, 0);
+    ASSERT_NE(result, nullptr);
+  }
+  // Second call
+  {
+    AqlCall call{};
+    call.softLimit = 2;
+    AqlCallStack stack{call};
+    auto const [state, skipped, result] = testee.execute(stack);
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    ASSERT_NE(result, nullptr);
+  }
+  // {1} {{1}, {2}, {6}, {R"("1")"}}
 }
 
 // TODO: Add another test like the above
@@ -215,6 +268,7 @@ TEST_P(HashedCollectExecutorTest, collect_only_hard_less) {
       .allowAnyOutputOrder(true, 2)
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
 }
@@ -234,6 +288,7 @@ TEST_P(HashedCollectExecutorTest, skip_some) {
       .allowAnyOutputOrder(true)
       .expectSkipped(2)
       .expectedState(ExecutionState::HASMORE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
 }
@@ -253,6 +308,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_get) {
       .allowAnyOutputOrder(true, 2)
       .expectSkipped(2)
       .expectedState(ExecutionState::DONE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
 }
@@ -272,6 +328,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_hardLimit) {
       .allowAnyOutputOrder(true, 3)
       .expectSkipped(2)
       .expectedState(ExecutionState::DONE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
 }
@@ -292,6 +349,7 @@ TEST_P(HashedCollectExecutorTest, skip_and_fullCount) {
       .allowAnyOutputOrder(true, 2)
       .expectSkipped(2)
       .expectedState(ExecutionState::DONE)
+      .appendEmptyBlock(appendEmpty())
       // .expectedStats(stats)
       .run(std::move(infos));
 }

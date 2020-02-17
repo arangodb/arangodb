@@ -76,6 +76,12 @@ class asserthelper {
       std::size_t numRowsNotContained = 0,
       std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
       -> void;
+
+  static auto ValidateBlocksAreEqualUnordered(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::unordered_set<size_t>& matchedRows, std::size_t numRowsNotContained = 0,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
 };
 
 /**
@@ -144,6 +150,7 @@ struct ExecutorTestHelper {
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
         _unorderedOutput{false},
+        _appendEmptyBlock{false},
         _unorderedSkippedRows{0},
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
@@ -220,6 +227,20 @@ struct ExecutorTestHelper {
   auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
     _unorderedOutput = expected;
     _unorderedSkippedRows = skippedRows;
+    return *this;
+  }
+
+  /**
+   * @brief This appends an empty block after the input fully created.
+   *        It simulates a situation where the Producer lies about the
+   *        the last input with HASMORE, but it actually is not able
+   *        to produce more.
+   *
+   * @param append If this should be enabled or not
+   * @return ExecutorTestHelper& this for chaining
+   */
+  auto appendEmptyBlock(bool append) -> ExecutorTestHelper& {
+    _appendEmptyBlock = append;
     return *this;
   }
 
@@ -308,6 +329,9 @@ struct ExecutorTestHelper {
           buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
       blockDeque.emplace_back(inputBlock);
     }
+    if (_appendEmptyBlock) {
+      blockDeque.emplace_back(nullptr);
+    }
 
     return std::make_unique<WaitingExecutionBlockMock>(
         _query.engine(), _dummyNode.get(), std::move(blockDeque),
@@ -323,6 +347,7 @@ struct ExecutorTestHelper {
   ExecutionStats _expectedStats;
   bool _testStats;
   bool _unorderedOutput;
+  bool _appendEmptyBlock;
   std::size_t _unorderedSkippedRows;
 
   SplitType _inputSplit = {std::monostate()};
