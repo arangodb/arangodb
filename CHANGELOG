@@ -1,6 +1,8 @@
 v3.5.5 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.3.
+
 * Updated ArangoDB Starter to 0.14.14.
 
 * Fixed `console.log(...)` not logging when called inside arangosh.
