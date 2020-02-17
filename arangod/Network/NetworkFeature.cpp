@@ -33,6 +33,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
@@ -79,6 +80,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
+  startsAfter<EngineSelectorFeature>();
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -130,16 +132,23 @@ void NetworkFeature::prepare() {
   config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
   config.clusterInfo = ci;
-  if (_protocol == "http2" || _protocol == "h2") {
+  if (_protocol == "http") {
     config.protocol = fuerte::ProtocolType::Http;
+  } else if (_protocol == "http2" || _protocol == "h2") {
+    config.protocol = fuerte::ProtocolType::Http2;
   } else if (_protocol == "vst") {
     config.protocol = fuerte::ProtocolType::Vst;
   } else {
     config.protocol = fuerte::ProtocolType::Http;
   }
+  
+  // simon: mmfiles replication is hardcoded for http
+  if (EngineSelectorFeature::isMMFiles()) {
+    config.protocol = fuerte::ProtocolType::Http;
+  }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
-  _poolPtr.store(_pool.get(), std::memory_order_release);
+  _poolPtr.store(_pool.get(), std::memory_order_relaxed);
   
   _gcfunc = [this, ci](bool canceled) {
     if (canceled) {
@@ -179,7 +188,7 @@ void NetworkFeature::beginShutdown() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _poolPtr.store(nullptr, std::memory_order_release);
+  _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
     _pool->shutdownConnections();
   }
@@ -191,11 +200,19 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _pool->shutdownConnections();
+  if (_pool) {
+    _pool->shutdownConnections();
+  }
+}
+
+void NetworkFeature::unprepare() {
+  if (_pool) {
+    _pool->drainConnections();
+  }
 }
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {
-  return _poolPtr.load(std::memory_order_acquire);
+  return _poolPtr.load(std::memory_order_relaxed);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

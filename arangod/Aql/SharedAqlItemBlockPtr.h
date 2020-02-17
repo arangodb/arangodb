@@ -34,8 +34,7 @@ class SharedAqlItemBlockPtr {
   inline explicit SharedAqlItemBlockPtr(AqlItemBlock* aqlItemBlock) noexcept;
 
   // allow implicit cast from nullptr:
-  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  // cppcheck-suppress noExplicitConstructor
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions) cppcheck-suppress noExplicitConstructor
   constexpr inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
 
   constexpr inline SharedAqlItemBlockPtr() noexcept;
@@ -113,10 +112,9 @@ SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr&& other) noex
 }
 
 SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr const& other) noexcept {
-  TRI_ASSERT(this != &other);
+  other.incrRefCount();
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
-  incrRefCount();
   return *this;
 }
 

@@ -741,7 +741,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               VPackParser parser(builder);
               parser.parse(json);
               httpResponse->setContentType(rest::ContentType::VPACK);
-              httpResponse->setPayload(std::move(buffer), true);
+              httpResponse->setPayload(std::move(buffer));
             } catch (...) {
               httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
             }
@@ -824,7 +824,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           }
         }
 
-        response->setPayload(std::move(buffer), true);
+        response->setPayload(std::move(buffer));
         break;
       }
 
@@ -863,8 +863,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         TRI_FreeString(content);
 
         // create vpack from file
-        response->setContentType(rest::ContentType::TEXT);
-        response->setPayload(std::move(buffer), true);
+        response->setContentType(rest::ContentType::VPACK);
+        response->setPayload(std::move(buffer));
       }
       break;
 
@@ -995,11 +995,10 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       errorMessage = TRI_errno_string(errorCode);
     }
 
-    // TODO (obi)
-    if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
-      ((HttpResponse*)response)->body().appendText(errorMessage);
-    }
-
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder b(buffer);
+    b.add(VPackValue(errorMessage));
+    response->addPayload(std::move(buffer));
   }
 
   else if (v8g->_canceled) {
@@ -1015,10 +1014,9 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       LOG_TOPIC("b8286", WARN, arangodb::Logger::V8)
           << "Caught an error while executing an action: " << jsError;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // TODO how to generalize this?
-      if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
-        ((HttpResponse*)response)->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
-      }
+      VPackBuilder b;
+      b.add(VPackValue(TRI_StringifyV8Exception(isolate, &tryCatch)));
+      response->addPayload(b.slice());
 #endif
     } else {
       v8g->_canceled = true;

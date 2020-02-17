@@ -44,7 +44,7 @@ class ProgramOptions;
 }
 namespace application_features {
 
-// the following phases exists:
+// the following phases exist:
 //
 // `collectOptions`
 //

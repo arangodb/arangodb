@@ -60,8 +60,8 @@ RestStatus RestAuthHandler::execute() {
 
   bool parseSuccess = false;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {
-    return badRequest();
+  if (!parseSuccess) { // error already set
+    return RestStatus::DONE;
   }
 
   if (!slice.isObject()) {

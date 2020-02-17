@@ -28,14 +28,8 @@
 
 using namespace arangodb;
 
-arangodb::basics::ConditionVariable* LogThread::CONDITION = nullptr;
-boost::lockfree::queue<LogMessage*>* LogThread::MESSAGES = nullptr;
-
 LogThread::LogThread(application_features::ApplicationServer& server, std::string const& name)
-    : Thread(server, name), _messages(0) {
-  MESSAGES = &_messages;
-  CONDITION = &_condition;
-}
+    : Thread(server, name), _messages(16) {}
 
 LogThread::~LogThread() {
   Logger::_threaded = false;
@@ -45,60 +39,63 @@ LogThread::~LogThread() {
 }
 
 bool LogThread::log(std::unique_ptr<LogMessage>& message) {
-  if (MESSAGES->push(message.get())) {
-    // only release message if adding to the queue succeeded
-    // otherwise we would leak here
-    message.release();
-    return true;
+  TRI_ASSERT(message != nullptr);
+
+  bool const isDirectLogLevel =
+             (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR || message->_level == LogLevel::WARN);
+
+  if (!_messages.push(message.get())) {
+    return false;
   }
-  return false;
+
+  // only release message if adding to the queue succeeded
+  // otherwise we would leak here
+  message.release();
+
+  if (isDirectLogLevel) {
+    this->flush();
+  }
+  return true;
 }
 
-void LogThread::flush() {
+void LogThread::flush() noexcept {
   int tries = 0;
 
-  while (++tries < 500) {
-    if (MESSAGES->empty()) {
-      break;
-    }
-
-    // cppcheck-suppress redundantPointerOp
-    CONDITION_LOCKER(guard, *CONDITION);
-    guard.signal();
+  while (++tries < 5 && hasMessages()) {
+    wakeup();
   }
 }
 
-void LogThread::wakeup() {
+void LogThread::wakeup() noexcept {
   // cppcheck-suppress redundantPointerOp
-  CONDITION_LOCKER(guard, *CONDITION);
+  CONDITION_LOCKER(guard, _condition);
   guard.signal();
 }
 
-bool LogThread::hasMessages() { return (!MESSAGES->empty()); }
+bool LogThread::hasMessages() const noexcept { return !_messages.empty(); }
 
 void LogThread::run() {
-  LogMessage* msg;
-
   while (!isStopping() && Logger::_active.load()) {
-    while (_messages.pop(msg)) {
-      try {
-        LogAppender::log(msg);
-      } catch (...) {
-      }
-
-      delete msg;
-    }
+    processPendingMessages();
 
     // cppcheck-suppress redundantPointerOp
-    CONDITION_LOCKER(guard, *CONDITION);
+    CONDITION_LOCKER(guard, _condition);
     guard.wait(25 * 1000);
   }
 
+  processPendingMessages();
+}
+
+void LogThread::processPendingMessages() {
+  LogMessage* msg = nullptr;
+
   while (_messages.pop(msg)) {
+    TRI_ASSERT(msg != nullptr);
     try {
-      LogAppender::log(msg);
+      LogAppender::log(*msg);
     } catch (...) {
     }
+
     delete msg;
   }
 }

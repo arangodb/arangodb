@@ -155,10 +155,6 @@ struct BoostScorer : public irs::sort {
 
     Prepared() = default;
 
-    virtual void add(irs::byte_type* dst, irs::byte_type const* src) const override {
-      score_cast(dst) += score_cast(src);
-    }
-
     virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
       const size_t size, size_t offset) const  override {
       auto& casted_dst = score_cast(dst + offset);
@@ -238,10 +234,6 @@ struct CustomScorer : public irs::sort {
     DECLARE_FACTORY(Prepared);
 
     Prepared(float_t i) : i(i) {}
-
-    virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override {
-      score_cast(dst) += score_cast(src);
-    }
 
     virtual void  merge(irs::byte_type* dst, const irs::byte_type** src_start,
       const size_t size, size_t offset) const  override {
