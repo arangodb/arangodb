@@ -183,6 +183,19 @@ function optimizerRuleTestSuite () {
         assertEqual(query[1], result, query);
       });
     },
+
+    testVariableUsage : function () {
+      let queries = [ 
+        `FOR doc IN ${cn} FILTER doc.abc FOR inner IN doc.abc RETURN inner`,
+        `FOR doc IN ${cn} FILTER doc.abc FILTER doc.abc FOR inner IN doc.abc RETURN inner`,
+        `FOR doc IN ${cn} FILTER doc.abc FILTER doc.xyz FOR inner IN doc.xyz RETURN inner`,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    }
     
   };
 }
