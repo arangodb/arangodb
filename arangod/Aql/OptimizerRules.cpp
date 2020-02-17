@@ -5758,13 +5758,34 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
 
-    // note that we can NOT optimize away the vertex output variable
-    // yet, as many traversal internals depend on the number of vertices
-    // found/built
-    auto outVariable = traversal->edgeOutVariable();
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
 
+    // note that we can NOT optimize away the vertex output variable
+    // yet, as many traversal internals depend on the number of vertices
+    // found/built
+    //
+    // however, we can turn off looking up vertices and producing them in the result set.
+    // we can do this if the traversal's vertex out variable is never used later and
+    // also the traversal's path out variable is not used later (note that the path
+    // out variable can contain the "vertices" sub attribute)
+    auto outVariable = traversal->vertexOutVariable();
+
+#ifdef USE_ENTERPRISE
+    if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
+        std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
+      outVariable = traversal->pathOutVariable();
+      if (outVariable == nullptr ||
+          (!n->isVarUsedLater(outVariable) &&
+           std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end())) {
+        // both traversal vertex and path outVariables not used later
+        traversal->options()->setProduceVertices(false);
+        modified = true;
+      }
+    }
+#endif
+
+    outVariable = traversal->edgeOutVariable();
     if (outVariable != nullptr && !n->isVarUsedLater(outVariable) &&
         std::find(pruneVars.begin(), pruneVars.end(), outVariable) == pruneVars.end()) {
       // traversal edge outVariable not used later
@@ -7228,12 +7249,13 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         ExecutionNode* filterParent = current->getFirstParent();
         TRI_ASSERT(filterParent != nullptr);
         plan->unlinkNode(current);
-        current = filterParent;
-
+          
         if (!current->isVarUsedLater(cn->outVariable())) {
           // also remove the calculation node
           plan->unlinkNode(cn);
         }
+        
+        current = filterParent;
         modified = true;
       } else if (current->getType() == EN::CALCULATION) {
         // store all calculations we found

@@ -223,7 +223,7 @@ class Traverser {
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   virtual bool getSingleVertex(arangodb::velocypack::Slice edge,
-                               arangodb::velocypack::StringRef const sourceVertexId,
+                               arangodb::velocypack::StringRef sourceVertexId,
                                uint64_t depth,
                                arangodb::velocypack::StringRef& targetVertexId) = 0;
 
@@ -284,7 +284,7 @@ class Traverser {
   ///        If it returns false it is guaranteed that there are no more paths.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool hasMore() { return !_done; }
+  bool hasMore() const { return !_done; }
 
   bool edgeMatchesConditions(arangodb::velocypack::Slice edge,
                              arangodb::velocypack::StringRef vid,
@@ -312,16 +312,13 @@ class Traverser {
   /// @brief internal getter to extract an edge
   std::unique_ptr<VertexGetter> _vertexGetter;
 
-  /// @brief Builder for the start value slice. Leased from transaction
-  velocypack::Builder _startIdBuilder;
-
   /// @brief indicator if this traversal is done
   bool _done;
+  
+  bool _canUseOptimizedNeighbors;
 
   /// @brief options for traversal
   TraverserOptions* _opts;
-
-  bool _canUseOptimizedNeighbors;
 
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   virtual aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) = 0;
