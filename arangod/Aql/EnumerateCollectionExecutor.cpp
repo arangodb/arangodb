@@ -70,6 +70,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _outVariable(outVariable),
       _filter(filter),
       _projections(projections),
+      _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _outputRegisterId(outputRegister),
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
@@ -291,7 +292,7 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
         }
       } else {
         // fullCount phase
-        _cursor->skipAll( skipped);
+        _cursor->skipAll(skipped);
       }
       _cursorHasMore = _cursor->hasMore();
 
@@ -309,11 +310,10 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
 }
 
 /*
-std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  EnumerateCollectionStats stats{};
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall>
+EnumerateCollectionExecutor::skipRowsRange( AqlItemBlockInputRange& inputRange,
+AqlCall& call) { EnumerateCollectionStats stats{}; TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows")
+{ THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   uint64_t actuallySkipped = 0;
 
@@ -358,7 +358,7 @@ void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& input
 }
 
 std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
-    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -383,7 +383,8 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
       if (_infos.getProduceResult()) {
         // properly build up results by fetching the actual documents
         // using nextDocument()
-        _cursorHasMore = _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
+        _cursorHasMore =
+            _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
       } else {
         // performance optimization: we do not need the documents at all,
         // so just call next()

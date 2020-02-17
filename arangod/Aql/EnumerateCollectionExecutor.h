@@ -64,8 +64,8 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
       RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter,
-      std::vector<std::string> const& projections,
+      Expression* filter, std::vector<std::string> const& projections,
+      std::vector<size_t> const& coveringIndexAttributePositions,
       bool useRawDocumentPointers, bool random);
 
   EnumerateCollectionExecutorInfos() = delete;
@@ -92,6 +92,7 @@ class EnumerateCollectionExecutorInfos : public ExecutorInfos {
   Variable const* _outVariable;
   Expression* _filter;
   std::vector<std::string> const& _projections;
+  std::vector<size_t> const& _coveringIndexAttributePositions;
   RegisterId _outputRegisterId;
   bool _useRawDocumentPointers;
   bool _produceResult;
@@ -141,12 +142,11 @@ class EnumerateCollectionExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
-                                                        AqlItemBlockInputRange& input,
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(AqlItemBlockInputRange& input,
                                                         OutputAqlItemRow& output);
 
-  std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(size_t atMost,
-                                                           AqlItemBlockInputRange& input);
+  std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                                           AqlCall& call);
 
   void initializeCursor();
 

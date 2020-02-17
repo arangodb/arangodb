@@ -167,7 +167,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
-  auto const [state, stats, call] = testee.produceRows(1000, inputRange, output);
+  auto const [state, stats, call] = testee.produceRows( inputRange, output);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_FALSE(output.produced());
 }
@@ -226,7 +226,7 @@ TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
 
-  auto const [state, stats, call] = testee.produceRows(1000, inputRange, output);
+  auto const [state, stats, call] = testee.produceRows(inputRange, output);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_EQ(stats.getFiltered(), 0);
   ASSERT_EQ(stats.getScanned(), 3);
