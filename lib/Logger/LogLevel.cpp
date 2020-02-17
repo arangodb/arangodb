@@ -22,10 +22,9 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
+#include <iostream>
 
 #include "LogLevel.h"
-
 #include "Logger/Logger.h"
 
 using namespace arangodb;
