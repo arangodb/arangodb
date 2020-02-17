@@ -652,7 +652,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
           }
 
           resetResponse(rest::ResponseCode::ACCEPTED);
-          response()->setPayload(std::move(payload), true);
+          response()->setPayload(std::move(payload));
 
         } else {
           generateError(result.asResult());
@@ -779,7 +779,7 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
                   }
 
                   resetResponse(rest::ResponseCode::OK);
-                  response()->setPayload(std::move(payload), true);
+                  response()->setPayload(std::move(payload));
                   return;
                 }
               }
@@ -867,7 +867,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
               }
 
               resetResponse(rest::ResponseCode::ACCEPTED);
-              response()->setPayload(std::move(payload), true);
+              response()->setPayload(std::move(payload));
             } else {
               generateError(result.asResult());
             }
@@ -916,7 +916,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
             if (result.ok()) {
               resetResponse(ResponseCode(result.statusCode()));  // I quit if the values are not the HTTP Status Codes
               auto payload = result.response->stealPayload();
-              response()->setPayload(std::move(*payload), true);
+              response()->setPayload(std::move(*payload));
             } else {
               switch (result.error) {
                 case fuerte::Error::Canceled:
@@ -981,7 +981,7 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
     result.add(StaticStrings::Code, VPackValue(200));
   }
   resetResponse(rest::ResponseCode::OK);
-  response()->setPayload(std::move(resultBody), true);
+  response()->setPayload(std::move(resultBody));
   return RestStatus::DONE;
 }
 
@@ -1003,7 +1003,7 @@ RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::st
     result.add(StaticStrings::Code, VPackValue(200));
   }
   resetResponse(rest::ResponseCode::OK);
-  response()->setPayload(std::move(resultBody), true);
+  response()->setPayload(std::move(resultBody));
   return RestStatus::DONE;
 }
 
@@ -1061,7 +1061,7 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
               }  // use generateOk instead
 
               resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(body), true);
+              response()->setPayload(std::move(body));
             } else {
               generateError(result.asResult());
             }
@@ -1111,7 +1111,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
             }
 
             resetResponse(rest::ResponseCode::OK);
-            response()->setPayload(std::move(body), true);
+            response()->setPayload(std::move(body));
           }
         } else {
           generateError(result.asResult());
@@ -1237,7 +1237,7 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
               }
 
               resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(body), true);
+              response()->setPayload(std::move(body));
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
@@ -1346,7 +1346,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
                 builder.add(StaticStrings::Error, VPackValue(false));
                 builder.add("code", VPackValue(200));
               }
-              response()->setPayload(std::move(responseBody), true);
+              response()->setPayload(std::move(responseBody));
               resetResponse(rest::ResponseCode::OK);
             } else {
               generateError(result.asResult());
@@ -1470,7 +1470,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                 builder.add(StaticStrings::Code, VPackValue(200));
               }
               resetResponse(rest::ResponseCode::OK);
-              response()->setPayload(std::move(responseBody), true);
+              response()->setPayload(std::move(responseBody));
             } else {
               generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                             "agency communication failed");
@@ -1649,7 +1649,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
         builder.add("code", VPackValue(202));
       }
       resetResponse(rest::ResponseCode::ACCEPTED);
-      response()->setPayload(std::move(responseBody), true);
+      response()->setPayload(std::move(responseBody));
 
     } else {
       generateError(result.asResult());

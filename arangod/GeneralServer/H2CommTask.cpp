@@ -453,8 +453,6 @@ void H2CommTask<T>::processStream(H2CommTask<T>::Stream* stream) {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
                                              req->messageId(), nullptr);
   resp->setContentType(req->contentTypeResponse());
-  resp->setContentTypeRequested(req->contentTypeResponse());
-
   this->executeRequest(std::move(req), std::move(resp));
 }
 
@@ -527,6 +525,9 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
     strm->response = std::move(guard);
 
+    // will add CORS headers if necessary
+    this->finishExecution(*strm->response, strm->origin);
+
     auto& res = *response;
     // we need a continuous block of memory for headers
     std::vector<nghttp2_nv> nva;
@@ -577,7 +578,7 @@ void H2CommTask<T>::queueHttp2Responses() {
     nghttp2_data_provider *prd_ptr = nullptr, prd;
 
     std::string len;
-    if (!res.isHeadResponse() &&
+    if (res.generateBody() &&
         ::expectResponseBody(static_cast<int>(res.responseCode()))) {
       len = std::to_string(res.bodySize());
       nva.push_back({(uint8_t*)"content-length", (uint8_t*)len.c_str(), 14,
