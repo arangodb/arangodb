@@ -289,31 +289,31 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
   if (mode == ServerState::Mode::REDIRECT) {
     res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
   }
-  
-  // CORS response handling
-  if (!origin.empty()) {
-    // the request contained an Origin header. We have to send back the
-    // access-control-allow-origin header now
-    LOG_TOPIC("be603", DEBUG, arangodb::Logger::REQUESTS)
-        << "handling CORS response";
-
-    // send back original value of "Origin" header
-    res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, origin);
-
-    // send back "Access-Control-Allow-Credentials" header
-    res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                 (allowCorsCredentials(origin)
-                                      ? "true"
-                                      : "false"));
-
-    // use "IfNotSet" here because we should not override HTTP headers set
-    // by Foxx applications
-    res.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
-                            StaticStrings::ExposedCorsHeaders);
-  }
-  
   if (res.transportType() == Endpoint::TransportType::HTTP &&
       !ServerState::instance()->isDBServer()) {
+  
+    // CORS response handling
+    if (!origin.empty()) {
+      // the request contained an Origin header. We have to send back the
+      // access-control-allow-origin header now
+      LOG_TOPIC("be603", DEBUG, arangodb::Logger::REQUESTS)
+          << "handling CORS response for origin '" << origin << "'";
+
+      // send back original value of "Origin" header
+      res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, origin);
+
+      // send back "Access-Control-Allow-Credentials" header
+      res.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
+                                   (allowCorsCredentials(origin)
+                                        ? "true"
+                                        : "false"));
+
+      // use "IfNotSet" here because we should not override HTTP headers set
+      // by Foxx applications
+      res.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
+                              StaticStrings::ExposedCorsHeaders);
+    }
+
     // DB server is not user-facing, and does not need to set this header
     // use "IfNotSet" to not overwrite an existing response header
     res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
@@ -324,6 +324,10 @@ void CommTask::finishExecution(GeneralResponse& res, std::string const& origin) 
 
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                               std::unique_ptr<GeneralResponse> response) {
+  
+  response->setContentTypeRequested(request->contentTypeResponse());
+  response->setGenerateBody(request->requestType() != RequestType::HEAD);
+
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
@@ -470,7 +474,7 @@ void CommTask::addSimpleResponse(rest::ResponseCode code,
     auto resp = createResponse(code, mid);
     resp->setContentType(respType);
     if (!buffer.empty()) {
-      resp->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+      resp->setPayload(std::move(buffer), VPackOptions::Defaults);
     }
     sendResponse(std::move(resp), this->stealStatistics(1UL));
   } catch (...) {

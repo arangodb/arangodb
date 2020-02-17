@@ -132,12 +132,12 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 template <typename Executor>
 constexpr bool isNewStyleExecutor =
     is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor,
+                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                TestLambdaExecutor, TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
+                TestLambdaExecutor,
+                TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                ShortestPathExecutor,
-                LimitExecutor>;
+                ShortestPathExecutor, LimitExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1053,12 +1053,12 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor == (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
+  static_assert(useExecutor ==
+                    (is_one_of_v<Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor, IndexExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-                                            TestLambdaSkipExecutor,
+                                 TestLambdaSkipExecutor,
 #endif
-                                            SortedCollectExecutor,
-                                            LimitExecutor>),
+                                 SortedCollectExecutor, LimitExecutor>),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -1323,7 +1323,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             // We do not return anything in WAITING state, also NOT skipped.
             return {_upstreamState, 0, nullptr};
           }
-          if constexpr (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
+          if constexpr (Executor::Properties::allowsBlockPassthrough ==
+                        BlockPassthrough::Enable) {
             // We have a new range, passthrough can use this range.
             _hasUsedDataRangeBlock = false;
           }
