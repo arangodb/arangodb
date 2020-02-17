@@ -14,6 +14,10 @@ v3.6.2 (XXXX-XX-XX)
   considering this, but due to a bug it did not work if the expression in
   the FILTER was reused in the directly following node.
 
+* Updated arangosync to 0.7.3.
+
+* Updated ArangoDB Starter to 0.14.14.
+
 * Fixed handling of `geometry` attributes in query editor of the web UI.
 
   Previously, document attributes named `geometry` were treated in a special
