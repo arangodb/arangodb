@@ -1300,7 +1300,8 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
            .param(StaticStrings::KeepNullString, (options.keepNull ? "true" : "false"))
            .param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"))
-           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
+           .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"))
+           .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"));
     if(options.overwriteModeUpdate) {
       reqOpts.parameters.insert_or_assign(StaticStrings::OverWriteMode,  "update" );
     }
@@ -2132,6 +2133,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.retryNotFound = true;
   reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
+         .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
          .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
@@ -2380,6 +2382,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
 
     std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
     vpackData.reserve(collections.size());
+
     for (auto& col : collections) {
       // We can only serve on Database at a time with this call.
       // We have the vocbase context around this calls anyways, so this is save.
@@ -2454,7 +2457,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         std::shuffle(dbServers.begin(), dbServers.end(), g);
         shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
                                       dbServers, !col->system());
-      }
+      } // if - distributeShardsLike.empty()
 
 
       if (shards->empty() && !col->isSmart()) {
@@ -2477,7 +2480,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           col->writeConcern(), waitForSyncReplication, velocy.slice(),
           serverState->getId(), serverState->getRebootId()});
       vpackData.emplace_back(velocy.steal());
-    }
+    } // for col : collections
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci.createCollectionsCoordinator(dbName, infos, endTime,
