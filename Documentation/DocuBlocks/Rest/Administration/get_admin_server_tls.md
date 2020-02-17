@@ -12,7 +12,7 @@ Return a summary of the TLS data. The JSON response will contain a field
   - `clientCA`: Information about the CA for client certificate
     verification.
 
-If server name identification (SNI) is used and multiple key files are
+If server name indication (SNI) is used and multiple key files are
 configured for different server names, then there is an additional
 attribute `SNI`, which contains for each configured server name
 the corresponding information about the key file for that server name.

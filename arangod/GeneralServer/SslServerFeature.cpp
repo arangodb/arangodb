@@ -117,7 +117,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
       new StringParameter(&_ecdhCurve));
 
-  options->addOption("--ssl.server-name-identification",
+  options->addOption("--ssl.server-name-indication",
                      "add a case SERVERNAME=KEYFILENAME for a different server keyfile for a specific server name, can be given multiple times",
                      new VectorParameter<StringParameter>(&_sniPairs));
 }
