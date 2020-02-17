@@ -60,6 +60,9 @@ template <SocketType ST>
 void VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                     RequestCallback cb) {
   FUERTE_ASSERT(req != nullptr);
+  if (req->header.path.find("/_db/") != std::string::npos) {
+    FUERTE_LOG_ERROR << "path: " << req->header.path << " \n";
+  }
   FUERTE_ASSERT(req->header.path.find("/_db/") == std::string::npos);
   FUERTE_ASSERT(req->header.path.find('?') == std::string::npos);
   
@@ -119,8 +122,10 @@ std::size_t VstConnection<ST>::requestsLeft() const {
 // socket connection is up (with optional SSL), now initiate the VST protocol.
 template <SocketType ST>
 void VstConnection<ST>::finishConnect() {
-  FUERTE_ASSERT(this->state() == Connection::State::Connecting);
-
+  if (this->state() != Connection::State::Connecting) {
+    return;
+  }
+  
   FUERTE_LOG_VSTTRACE << "finishInitialization (vst)\n";
   const char* vstHeader;
   switch (_vstVersion) {
@@ -151,8 +156,7 @@ void VstConnection<ST>::finishConnect() {
           // send the auth, then set _state == connected
           me->sendAuthenticationRequest();
         } else {
-          me->_state.store(Connection::State::Connected,
-                           std::memory_order_release);
+          me->_state.store(Connection::State::Connected);
           me->startWriting();  // start writing if something is queued
         }
       });
@@ -172,8 +176,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
                            std::unique_ptr<Response> resp) {
     auto* thisPtr = static_cast<VstConnection<ST>*>(self.get());
     if (error != Error::NoError || resp->statusCode() != StatusOK) {
-      thisPtr->_state.store(Connection::State::Failed,
-                            std::memory_order_release);
+      thisPtr->_state.store(Connection::State::Failed);
       thisPtr->shutdownConnection(Error::VstUnauthorized,
                                   "could not authenticate");
       thisPtr->drainQueue(Error::VstUnauthorized);
@@ -226,7 +229,7 @@ void VstConnection<ST>::startWriting() {
                 Connection::State::Connected);
   FUERTE_LOG_VSTTRACE << "startWriting: this=" << this << "\n";
 
-  if (_writing.load() || _writing.exchange(true)) {
+  if (_writing.load()) {
     return;  // There is already a write loop, do nothing
   }
 
@@ -234,20 +237,22 @@ void VstConnection<ST>::startWriting() {
 
   FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
 
-  asio_ns::post(*this->_io_context,
-                [self = Connection::shared_from_this(), this] {
-                  FUERTE_ASSERT(_writing.load());
-                  // we have been in a race with shutdownConnection()
-                  Connection::State state = this->_state.load();
-                  if (state != Connection::State::Connected) {
-                    this->_writing.store(false);
-                    if (state == Connection::State::Disconnected) {
-                      this->startConnection();
-                    }
-                  } else {
-                    this->asyncWriteNextRequest();
-                  }
-                });
+  this->_io_context->post([self = Connection::shared_from_this(), this] {
+    if (_writing.exchange(true)) {
+      return;
+    }
+    
+    // we have been in a race with shutdownConnection()
+    Connection::State state = this->_state.load();
+    if (state != Connection::State::Connected) {
+      this->_writing.store(false);
+      if (state == Connection::State::Disconnected) {
+        this->startConnection();
+      }
+    } else {
+      this->asyncWriteNextRequest();
+    }
+  });
 }
 
 // writes data from task queue to network using asio_ns::async_write
@@ -317,10 +322,12 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     } catch (...) {
     }
     
+    _writing.store(false);
     // Stop current connection and try to restart a new one.
     this->restartConnection(err);
     return;
   }
+  FUERTE_ASSERT(_writing.load());
   // Send succeeded
   FUERTE_LOG_VSTTRACE << "asyncWriteCallback: send succeeded, " << nwrite
                       << " bytes send\n";
@@ -355,14 +362,15 @@ void VstConnection<ST>::startReading() {
 // asyncReadCallback is called when asyncReadSome is resulting in some data.
 template <SocketType ST>
 void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
-  FUERTE_ASSERT(_reading.load());
   if (ec) {
     FUERTE_LOG_VSTTRACE
         << "asyncReadCallback: Error while reading from socket: "
         << ec.message();
+    _reading.store(false);
     this->restartConnection(translateError(ec, Error::ReadError));
     return;
   }
+  FUERTE_ASSERT(_reading.load());
 
   // Inspect the data we've received so far.
   auto recvBuffs = this->_receiveBuffer.data();  // no copy
@@ -464,10 +472,20 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
 
   // first part of the buffer contains the response buffer
   std::size_t headerLength;
-  MessageType type = parser::validateAndExtractMessageType(
-      itemCursor, itemLength, headerLength);
+  MessageType type = MessageType::Undefined;
+  
+  try {
+    type = parser::validateAndExtractMessageType(itemCursor, itemLength, headerLength);
+  } catch(std::exception const& e) {
+    FUERTE_LOG_ERROR << "invalid VST message: '" << e.what() << "'";
+  }
+  
   if (type != MessageType::Response) {
-    FUERTE_LOG_ERROR << "received unsupported vst message from server";
+    FUERTE_LOG_ERROR << "received unsupported vst message ("
+    << static_cast<int>(type) << ") from server\n";
+    if (type != MessageType::Undefined) {
+      FUERTE_LOG_ERROR << "got '" << VPackSlice(itemCursor).toJson() << "'\n";
+    }
     return nullptr;
   }
 
@@ -538,8 +556,6 @@ void VstConnection<ST>::abortOngoingRequests(const fuerte::Error err) {
     _messages.clear();
     _numMessages.store(0);
   }
-  _reading.store(false);
-  _writing.store(false);
 }
 
 /// abort all requests lingering in the queue
