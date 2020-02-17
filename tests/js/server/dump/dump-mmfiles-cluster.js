@@ -810,7 +810,9 @@ function dumpTestEnterpriseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testSmartGraphAttribute : function () {
       assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray().length, 1);
-      assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0].cheesyness, "bread");
+      let doc = db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0];
+      assertEqual(doc.cheesyness, "bread");
+      assertTrue(doc._key.startsWith("cheese:"));
     },
   };
 
@@ -822,4 +824,3 @@ if (isEnterprise) {
 }
 
 return jsunity.done();
-
