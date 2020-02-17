@@ -151,7 +151,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
     size_t n = optionsNode->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = optionsNode->getMember(i);
+      auto member = optionsNode->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -184,6 +184,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
       }
     }
   }
+
   if (options->uniqueVertices == arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL &&
       !options->useBreadthFirst) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -191,9 +192,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(aql::Query* query,
                                    "supported, with bfs: true due to "
                                    "unpredictable results.");
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+
+  return options;
 }
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Query* query,
@@ -204,7 +204,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
     size_t n = node->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMember(i);
+      auto member = node->getMemberUnchecked(i);
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringRef();
@@ -221,9 +221,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(arangodb::aql::Que
       }
     }
   }
-  std::unique_ptr<graph::BaseOptions> ret(options.get());
-  options.release();
-  return ret;
+  
+  return options;
 }
 
 std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,

@@ -702,7 +702,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     } else {
       resetResponse(rest::ResponseCode::OK);
       _response->setContentType(rest::ContentType::VPACK);
-      _response->setPayload(std::move(buffer), true, *trxCtx->getVPackOptions(),
+      _response->setPayload(std::move(buffer), *trxCtx->getVPackOptions(),
                             /*resolveExternals*/ false);
     }
 
