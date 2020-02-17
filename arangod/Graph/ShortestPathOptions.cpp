@@ -48,12 +48,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query)
       multiThreaded(true) {}
 
 ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice const& info)
-    : BaseOptions(query),
-      direction("outbound"),
-      weightAttribute(""),
-      defaultWeight(1),
-      bidirectional(true),
-      multiThreaded(true) {
+    : ShortestPathOptions(query) {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
@@ -217,7 +212,7 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& cache = ch->cache();
 
   std::unordered_set<arangodb::velocypack::StringRef> fetch;
-  for (auto it : vertexIds) {
+  for (auto const& it : vertexIds) {
     if (cache.find(it) == cache.end()) {
       // We do not have this vertex
       fetch.emplace(it);

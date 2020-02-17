@@ -410,9 +410,7 @@ void HttpCommTask<T>::processRequest() {
 
   // create a handler and execute
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1, nullptr);
-  resp->setContentType(_request->contentTypeResponse());
-  resp->setContentTypeRequested(_request->contentTypeResponse());
-  
+  resp->setContentType(_request->contentTypeResponse());  
   this->executeRequest(std::move(_request), std::move(resp));
 }
 

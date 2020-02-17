@@ -911,7 +911,29 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint.append(":443");
       }
       endpoint = "ssl://" + endpoint;
-    } else if (url.substr(0, 6) == "srv://") {
+    } else if (url.substr(0, 5) == "h2://") {
+      endpoint = GetEndpointFromUrl(url).substr(5);
+      relative = url.substr(5 + endpoint.length());
+
+      if (relative.empty() || relative[0] != '/') {
+        relative = "/" + relative;
+      }
+      if (endpoint.find(':') == std::string::npos) {
+        endpoint.append(":80");
+      }
+      endpoint = "tcp://" + endpoint;
+    }  else if (url.substr(0, 6) == "h2s://") {
+         endpoint = GetEndpointFromUrl(url).substr(6);
+         relative = url.substr(6 + endpoint.length());
+
+         if (relative.empty() || relative[0] != '/') {
+           relative = "/" + relative;
+         }
+         if (endpoint.find(':') == std::string::npos) {
+           endpoint.append(":80");
+         }
+         endpoint = "tcp://" + endpoint;
+       } else if (url.substr(0, 6) == "srv://") {
       size_t found = url.find('/', 6);
 
       relative = "/";
@@ -951,7 +973,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint = "ssl:" + endpoint;
       }
     } else {
-      TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
+      std::string msg("unsupported URL specified: '");
+      msg.append(url).append("'");
+      TRI_V8_THROW_ERROR(msg.c_str());
     }
 
     LOG_TOPIC("d6bdb", TRACE, arangodb::Logger::FIXME)
@@ -969,7 +993,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      std::string("invalid URL ") + url);
     }
 
-    TRI_GET_GLOBALS();
     std::unique_ptr<GeneralClientConnection> connection(
         GeneralClientConnection::factory(v8g->_server, ep.get(), timeout,
                                          timeout, 3, sslProtocol));

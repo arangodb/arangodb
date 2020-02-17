@@ -58,6 +58,7 @@ class KShortestPathsNode : public GraphNode {
 
   /// @brief Internal constructor to clone the node.
   KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                     TRI_edge_direction_e defaultDirection,
                      std::vector<std::unique_ptr<Collection>> const& edgeColls,
                      std::vector<std::unique_ptr<Collection>> const& vertexColls,
                      std::vector<TRI_edge_direction_e> const& directions,
