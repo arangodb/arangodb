@@ -1,7 +1,7 @@
 v3.3.25 (2020-XX-XX)
 --------------------
 
-* Updated ArangoDB Starter to 0.14.13.
+* Updated ArangoDB Starter to 0.14.14.
 
 * Fix installation of arangoinspect and libraries in Windows client installer.
 
