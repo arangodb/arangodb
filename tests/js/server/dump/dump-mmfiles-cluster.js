@@ -803,8 +803,15 @@ function dumpTestEnterpriseSuite () {
       assertEqual(props.cleanupIntervalStep, 456);
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test whether the test collection has been restored
+////////////////////////////////////////////////////////////////////////////////
+    testSmartGraphAttribute : function () {
+      assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray().length, 1);
+      assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0].cheesyness, "bread");
+    },
   };
 
 }

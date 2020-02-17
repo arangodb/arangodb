@@ -808,6 +808,14 @@ function dumpTestEnterpriseSuite () {
       assertEqual("test", db._jobs.document("test")._key);
       assertEqual("test", db._queues.document("test")._key);
     },
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test whether the test collection has been restored
+////////////////////////////////////////////////////////////////////////////////
+    testSmartGraphAttribute : function () {
+      assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray().length, 1);
+      assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0].cheesyness, "bread");
+    },
   };
 }
 
