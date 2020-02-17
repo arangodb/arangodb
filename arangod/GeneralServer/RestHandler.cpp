@@ -214,7 +214,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       }
       httpResponse->body() = response.response->payloadAsString();
     } else {
-      _response->setPayload(std::move(*response.response->stealPayload()), true);
+      _response->setPayload(std::move(*response.response->stealPayload()));
     }
     
 
@@ -502,7 +502,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       if (_request != nullptr) {
         _response->setContentType(_request->contentTypeResponse());
       }
-      _response->setPayload(std::move(buffer), true, options,
+      _response->setPayload(std::move(buffer), options,
                             /*resolveExternals*/false);
     } catch (...) {
       // exception while generating error
