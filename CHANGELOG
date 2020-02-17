@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to 0.14.14.
+
 * Added crash handler for Linux and MacOS builds. The crash handler is supposed
   to log basic crash information to the ArangoDB logfile in case the arangod
   process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or SIGABRT.
