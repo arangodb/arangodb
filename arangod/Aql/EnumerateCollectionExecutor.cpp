@@ -278,10 +278,10 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
   while (inputRange.hasDataRow() && call.shouldSkip()) {
     if (!_cursorHasMore) {
       initializeNewRow(inputRange);
-      TRI_ASSERT(_currentRow.isInitialized());
     }
 
     while (_cursorHasMore) {
+      TRI_ASSERT(_currentRow.isInitialized());
       // if offset is > 0, we're in offset skip phase
       if (offsetPhase) {
         if (skipped < call.getOffset()) {
