@@ -192,6 +192,9 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
 }
 
 void LogBufferFeature::prepare() {
+  // only create the in-memory appender when we really need it. if we created it
+  // in the ctor, we would waste a lot of memory in case we don't need the in-memory
+  // appender. this is the case for simple command such as `--help` etc.
   _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
   LogAppender::addGlobalAppender(_inMemoryAppender);
 }
