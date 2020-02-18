@@ -347,6 +347,13 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
 
+  // remove the shadow row indices pointing to now invalid rows.
+  _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),
+                          _shadowRowIndexes.end());
+
+  // adjust the size of the block
+  _nrItems = nrItems;
+
   for (size_t i = numEntries(); i < _data.size(); ++i) {
     AqlValue& a = _data[i];
     if (a.requiresDestruction()) {
@@ -368,13 +375,6 @@ void AqlItemBlock::shrink(size_t nrItems) {
     }
     a.erase();
   }
-
-  // remove the shadow row indices pointing to now invalid rows.
-  _shadowRowIndexes.erase(_shadowRowIndexes.lower_bound(nrItems),
-                          _shadowRowIndexes.end());
-
-  // adjust the size of the block
-  _nrItems = nrItems;
 }
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
