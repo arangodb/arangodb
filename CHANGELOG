@@ -1,6 +1,10 @@
 devel
 -----
+
+* Rebuild UI.
+
 * Fix arangorestore:
+
   If a smartGraphAttribute value was changed after document creation,
   the _key of the document becomes inconsistent with the smartGraphAttribute
   entry. However, the sharding of documents stays intact.
