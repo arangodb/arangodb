@@ -1368,16 +1368,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             if (_outputItemRow->allRowsUsed()) {
               _execState = ExecState::DONE;
             } else if (state == ExecutorState::DONE) {
-              if (_lastRange.hasDataRow()) {
-                // TODO this state is invalid, and can just show up now if we exclude SKIP
-                _execState = ExecState::PRODUCE;
-              } else {
-                // Right now we cannot support to have more than one set of
-                // ShadowRows inside of a Range.
-                // We do not know how to continue with the above executor after a shadowrow.
-                TRI_ASSERT(!_lastRange.hasDataRow());
-                _execState = ExecState::DONE;
-              }
+              _execState = ExecState::DONE;
             }
           } else {
             _execState = ExecState::DONE;

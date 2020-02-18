@@ -265,27 +265,49 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tuple, cannot use initializer list due to build failure
 }
 
+u_int64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip, EnumerateCollectionStats& stats) {
+  u_int64_t actuallySkipped = 0;
+
+  if (_infos.getFilter() == nullptr) {
+    _cursor->skip(toSkip, actuallySkipped);
+    stats.incrScanned(actuallySkipped);
+    _documentProducingFunctionContext.getAndResetNumScanned();
+  } else {
+    _cursor->nextDocument(_documentSkipper, toSkip);
+    size_t filtered = _documentProducingFunctionContext.getAndResetNumFiltered();
+    size_t scanned = _documentProducingFunctionContext.getAndResetNumScanned();
+    TRI_ASSERT(scanned >= filtered);
+    stats.incrFiltered(filtered);
+    stats.incrScanned(scanned);
+    actuallySkipped = scanned - filtered;
+  }
+  _cursorHasMore = _cursor->hasMore();
+
+  return actuallySkipped;
+}
+
 std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   AqlCall upstreamCall{};
   EnumerateCollectionStats stats{};
-  uint64_t skipped = 0;
   bool offsetPhase = (call.getOffset() > 0);
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
 
   while (inputRange.hasDataRow() && call.shouldSkip()) {
+    uint64_t skipped = 0;
+
     if (!_cursorHasMore) {
       initializeNewRow(inputRange);
     }
 
-    while (_cursorHasMore) {
+    if (_cursorHasMore) {
       TRI_ASSERT(_currentRow.isInitialized());
       // if offset is > 0, we're in offset skip phase
       if (offsetPhase) {
         if (skipped < call.getOffset()) {
-          _cursor->skip(call.getOffset(), skipped);
+          skipped += skipEntries(call.getOffset(), stats);
         } else {
           // we skipped enough in our offset phase
           break;
@@ -293,55 +315,22 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
       } else {
         // fullCount phase
         _cursor->skipAll(skipped);
+        stats.incrScanned(skipped);
+        _documentProducingFunctionContext.getAndResetNumScanned();
       }
       _cursorHasMore = _cursor->hasMore();
-
       call.didSkip(skipped);
-      stats.incrScanned(skipped);
     }
+
   }
 
   if (_cursorHasMore) {
-    return {ExecutorState::HASMORE, stats, skipped, upstreamCall};
+    return {ExecutorState::HASMORE, stats, call.getSkipCount(), upstreamCall};
   }
 
   upstreamCall.softLimit = call.getOffset();
-  return {inputRange.upstreamState(), stats, skipped, upstreamCall};
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
 }
-
-/*
-std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  EnumerateCollectionStats stats{};
-  TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  uint64_t actuallySkipped = 0;
-
-  while (inputRange.hasDataRow() && call.shouldSkip()) {
-    if (!_cursorHasMore) {
-      std::tie(_executorState, _currentRow) = inputRange.nextDataRow();
-
-      _cursor->reset();
-      _cursorHasMore = _cursor->hasMore();
-
-      if (!_cursorHasMore) {
-        continue;
-      }
-    }
-
-    TRI_ASSERT(_currentRow.isInitialized());
-
-    _cursor->skip(call.getOffset(), actuallySkipped);
-    _cursorHasMore = _cursor->hasMore();
-    stats.incrScanned(actuallySkipped);
-  }
-
-  AqlCall upstreamCall{};
-  upstreamCall.softLimit = call.getOffset() - actuallySkipped;
-  return {_executorState, {}, actuallySkipped, upstreamCall};
-}
-*/
 
 void EnumerateCollectionExecutor::initializeNewRow(AqlItemBlockInputRange& inputRange) {
   if (_currentRow) {
