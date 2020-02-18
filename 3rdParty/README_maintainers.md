@@ -177,6 +177,16 @@ Note that to account for changes introduced by new versions of swagger-ui,
 the stylistic CSS changes may need to be adjusted manually even when
 applied correctly.
 
+## taocpp::json
+
+Json Parser library
+Contains TaoCpp PEGTL - PEG Parsing library
+
+Upstream is: https://github.com/taocpp/json
+
+- On upgrade do not add unnecessary files (e.g. src, tests, contrib)
+  and update the commit hash in `./tao-json.version`.
+
 ## V8
 
 Javascript interpreter.
