@@ -42,6 +42,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
   REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
   REG_ERROR(ERROR_DISABLED, "disabled");
+  REG_ERROR(ERROR_VALIDATION_FAILED, "validation failed");
+  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid validation parameter");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
