@@ -53,8 +53,7 @@ using TestParam = std::tuple<std::vector<int>,  // The input data
                              OutputAqlItemRow::CopyRowBehavior  // How the data is handled within outputRow
                              >;
 
-class IdExecutorTestCombiner : public AqlExecutorTestCase<>,
-                               public ::testing::TestWithParam<TestParam> {
+class IdExecutorTestCombiner : public AqlExecutorTestCaseWithParam<TestParam> {
  protected:
   IdExecutorTestCombiner() {}
 
@@ -204,7 +203,7 @@ auto copyBehaviours = testing::Values(OutputAqlItemRow::CopyRowBehavior::CopyInp
 INSTANTIATE_TEST_CASE_P(IdExecutorTest, IdExecutorTestCombiner,
                         ::testing::Combine(inputs, upstreamStates, clientCalls, copyBehaviours));
 
-class IdExecutionBlockTest : public AqlExecutorTestCase<>, public ::testing::Test {};
+class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
@@ -348,8 +347,7 @@ TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
  *  Used in ScatterExecutor logic.
  *  param: useFullCount
  */
-class BlockOverloadTest : public AqlExecutorTestCase<>,
-                          public ::testing::TestWithParam<bool> {
+class BlockOverloadTest : public AqlExecutorTestCaseWithParam<bool> {
  protected:
   auto getTestee() -> ExecutionBlockImpl<IdExecutor<ConstFetcher>> {
     IdExecutorInfos infos{1, {0}, {}};
@@ -386,7 +384,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher) {
       EXPECT_EQ(skipped, 0);
     }
 
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Validate that additional upstream-rows are gone.
@@ -423,7 +421,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_at_end) {
     } else {
       EXPECT_EQ(skipped, 0);
     }
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Validate that additional upstream-rows are gone.
@@ -460,7 +458,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
     } else {
       EXPECT_EQ(skipped, 0);
     }
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Validate that next call will give remaining rows
@@ -471,7 +469,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_shadow_rows_in_between) {
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped, 0);
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
 }
 
@@ -501,7 +499,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     } else {
       EXPECT_EQ(skipped, 0);
     }
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Second call will only find a single ShadowRow
@@ -513,7 +511,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::HASMORE);
     EXPECT_EQ(skipped, 0);
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Third call will only find a single ShadowRow
@@ -525,7 +523,7 @@ TEST_P(BlockOverloadTest, test_hardlimit_const_fetcher_consecutive_shadow_rows) 
     auto const& [state, skipped, block] = testee.execute(stack);
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped, 0);
-    ValidateBlocksAreEqual(block, expectedOutputBlock);
+    asserthelper::ValidateBlocksAreEqual(block, expectedOutputBlock);
   }
   {
     // Validate that additional upstream-rows are gone.

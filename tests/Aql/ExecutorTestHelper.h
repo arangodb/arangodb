@@ -50,9 +50,45 @@
 namespace arangodb {
 namespace tests {
 namespace aql {
+/**
+ * @brief Static helper class just offers helper methods
+ * Do never instantiate
+ *
+ */
+class asserthelper {
+ private:
+  asserthelper() {}
 
-auto ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected)
-    -> void;
+ public:
+  static auto AqlValuesAreIdentical(AqlValue const& lhs, AqlValue const& rhs) -> bool;
+
+  static auto RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualRow,
+                               SharedAqlItemBlockPtr expected, size_t expectedRow,
+                               std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> bool;
+
+  static auto ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
+                                        size_t actualRow, RegisterId actualRegister,
+                                        SharedAqlItemBlockPtr expected, size_t expectedRow,
+                                        RegisterId expectedRegister) -> void;
+
+  static auto ValidateBlocksAreEqual(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
+
+  static auto ValidateBlocksAreEqualUnordered(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::size_t numRowsNotContained = 0,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
+
+  static auto ValidateBlocksAreEqualUnordered(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::unordered_set<size_t>& matchedRows, std::size_t numRowsNotContained = 0,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
+};
 
 /**
  * @brief Base class for ExecutorTests in Aql.
@@ -63,7 +99,16 @@ auto ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr 
  * @tparam enableQueryTrace Enable Aql Profile Trace logging
  */
 template <bool enableQueryTrace = false>
-class AqlExecutorTestCase {
+class AqlExecutorTestCase : public ::testing::Test {
+ public:
+  // Creating a server instance costs a lot of time, so do it only once.
+  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
+  static void SetUpTestCase() {
+    _server = std::make_unique<mocks::MockAqlServer>();
+  }
+
+  static void TearDownTestCase() { _server.reset(); }
+
  protected:
   AqlExecutorTestCase();
   virtual ~AqlExecutorTestCase() = default;
@@ -80,7 +125,7 @@ class AqlExecutorTestCase {
   auto manager() const -> AqlItemBlockManager&;
 
  private:
-  mocks::MockAqlServer _server;
+  static inline std::unique_ptr<mocks::MockAqlServer> _server;
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
  protected:
@@ -89,6 +134,16 @@ class AqlExecutorTestCase {
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 };
+
+/**
+ * @brief Shortcut handle for parameterized AqlExecutorTestCases with param
+ *
+ * @tparam T The Test Parameter used for gtest.
+ * @tparam enableQueryTrace Enable Aql Profile Trace logging
+ */
+template <typename T, bool enableQueryTrace = false>
+class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
+                                     public ::testing::WithParamInterface<T> {};
 
 template <typename E, std::size_t inputColumns = 1, std::size_t outputColumns = 1>
 struct ExecutorTestHelper {
@@ -100,6 +155,9 @@ struct ExecutorTestHelper {
       : _expectedSkip{0},
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
+        _unorderedOutput{false},
+        _appendEmptyBlock{false},
+        _unorderedSkippedRows{0},
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
@@ -168,7 +226,7 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto expectOutput(std::array<std::size_t, outputColumns> const& regs,
+  auto expectOutput(std::array<RegisterId, outputColumns> const& regs,
                     MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
     _outputRegisters = regs;
     _output = out;
@@ -198,6 +256,26 @@ struct ExecutorTestHelper {
     _testStats = true;
     return *this;
   };
+
+  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
+    _unorderedOutput = expected;
+    _unorderedSkippedRows = skippedRows;
+    return *this;
+  }
+
+  /**
+   * @brief This appends an empty block after the input fully created.
+   *        It simulates a situation where the Producer lies about the
+   *        the last input with HASMORE, but it actually is not able
+   *        to produce more.
+   *
+   * @param append If this should be enabled or not
+   * @return ExecutorTestHelper& this for chaining
+   */
+  auto appendEmptyBlock(bool append) -> ExecutorTestHelper& {
+    _appendEmptyBlock = append;
+    return *this;
+  }
 
   auto run(typename E::Infos infos, bool const loop = false) -> void {
     ResourceMonitor monitor;
@@ -241,10 +319,38 @@ struct ExecutorTestHelper {
 
     EXPECT_EQ(skippedTotal, _expectedSkip);
     EXPECT_EQ(finalState, _expectedState);
+    if (allResults.empty()) {
+      // Empty output, possible if we skip all
+      EXPECT_EQ(_output.size(), 0)
+          << "Executor does not yield output, although it is expected";
+    } else {
+      SharedAqlItemBlockPtr expectedOutputBlock =
+          buildBlock<outputColumns>(itemBlockManager, std::move(_output));
+      std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
+                                           _outputRegisters.end());
+      auto regsToKeep = std::make_shared<std::unordered_set<RegisterId>>();
+      for (auto const& it : _outputRegisters) {
+        regsToKeep->emplace(it);
+      }
+      SharedAqlItemBlockPtr result{new AqlItemBlock(itemBlockManager, allResults.size(),
+                                                    allResults.getNrRegisters())};
 
-    SharedAqlItemBlockPtr expectedOutputBlock =
-        buildBlock<outputColumns>(itemBlockManager, std::move(_output));
-    testOutputBlock(allResults, expectedOutputBlock);
+      OutputAqlItemRow out(result, std::make_shared<std::unordered_set<RegisterId>>(), regsToKeep,
+                           std::make_shared<std::unordered_set<RegisterId>>());
+      // TODO join Matrix => result.
+      for (auto const& index : allResults.produceRowIndexes()) {
+        auto const& in = allResults.getRow(index);
+        out.copyRow(in);
+        out.advanceRow();
+      }
+      if (_unorderedOutput) {
+        asserthelper::ValidateBlocksAreEqualUnordered(result, expectedOutputBlock,
+                                                      _unorderedSkippedRows, outRegVector);
+      } else {
+        asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
+      }
+    }
+
     if (_testStats) {
       auto actualStats = _query.engine()->getStats();
       EXPECT_EQ(actualStats, _expectedStats);
@@ -252,41 +358,6 @@ struct ExecutorTestHelper {
   };
 
  private:
-  void testOutputBlock(AqlItemMatrix const& outputBlocks,
-                       SharedAqlItemBlockPtr const& expectedOutputBlock) {
-    velocypack::Options vpackOptions;
-
-    EXPECT_EQ(outputBlocks.empty(), expectedOutputBlock == nullptr);
-    if (expectedOutputBlock == nullptr) {
-      return;
-    }
-    EXPECT_EQ(outputBlocks.size(), expectedOutputBlock->size());
-    auto const outputIndexes = outputBlocks.produceRowIndexes();
-    TRI_ASSERT(outputIndexes.size() == outputBlocks.size());
-
-    auto const size = std::max(outputBlocks.size(),
-                               static_cast<uint64_t>(expectedOutputBlock->size()));
-    for (size_t i = 0; i < size; i++) {
-      for (RegisterId j = 0; j < outputColumns; j++) {
-        auto const none = AqlValue{};
-        // Allow comparison of blocks of different sizes
-        AqlValue const& x =
-            i < outputBlocks.size()
-                ? outputBlocks.getRow(outputIndexes[i]).getValue(_outputRegisters[j])
-                : none;
-        AqlValue const& y = i < expectedOutputBlock->size()
-                                ? expectedOutputBlock->getValueReference(i, j)
-                                : none;
-
-        EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
-            << "Row " << i << " Column " << j << " (Reg " << _outputRegisters[j]
-            << ") do not agree. "
-               "Expected "
-            << y.slice().toJson() << ", got " << x.slice().toJson() << ".";
-      }
-    }
-  }
-
   auto generateInputRanges(AqlItemBlockManager& itemBlockManager)
       -> std::unique_ptr<ExecutionBlock> {
     using VectorSizeT = std::vector<std::size_t>;
@@ -306,7 +377,6 @@ struct ExecutorTestHelper {
       matrix.push_back(value);
 
       TRI_ASSERT(!_inputSplit.valueless_by_exception());
-      TRI_ASSERT(!std::holds_alternative<std::monostate>(_inputSplit));
 
       bool openNewBlock =
           std::visit(overload{[&](VectorSizeT& list) {
@@ -335,6 +405,9 @@ struct ExecutorTestHelper {
           buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
       blockDeque.emplace_back(inputBlock);
     }
+    if (_appendEmptyBlock) {
+      blockDeque.emplace_back(nullptr);
+    }
 
     return std::make_unique<WaitingExecutionBlockMock>(_query.engine(),
                                                        _dummyNode.get(),
@@ -345,8 +418,8 @@ struct ExecutorTestHelper {
   AqlCall _call;
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
-  std::array<std::size_t, outputColumns> _outputRegisters;
-  size_t _expectedSkip;
+  std::array<RegisterId, outputColumns> _outputRegisters;
+  std::size_t _expectedSkip;
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
   bool _testStats;
@@ -354,13 +427,16 @@ struct ExecutorTestHelper {
   WaitingExecutionBlockMock::WaitingBehaviour _waitingBehaviour =
       WaitingExecutionBlockMock::NEVER;
   bool _lieAboutHasmore = false;
+  bool _unorderedOutput;
+  bool _appendEmptyBlock;
+  std::size_t _unorderedSkippedRows;
 
   SplitType _inputSplit = {std::monostate()};
   SplitType _outputSplit = {std::monostate()};
 
   arangodb::aql::Query& _query;
   std::unique_ptr<arangodb::aql::ExecutionNode> _dummyNode;
-};
+};  // namespace aql
 
 enum class ExecutorCall {
   SKIP_ROWS,
