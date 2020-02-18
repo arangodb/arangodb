@@ -928,8 +928,7 @@ using SortedCollectTestHelper = ExecutorTestHelper<SortedCollectExecutor, 1, 1>;
 using SortedCollectSplitType = SortedCollectTestHelper::SplitType;
 
 class SortedCollectExecutorTestSplit
-    : public AqlExecutorTestCase<false>,
-      public ::testing::TestWithParam<std::tuple<SortedCollectSplitType>> {
+    : public AqlExecutorTestCaseWithParam<std::tuple<SortedCollectSplitType>> {
  protected:
   arangodb::transaction::Methods* trx;
 

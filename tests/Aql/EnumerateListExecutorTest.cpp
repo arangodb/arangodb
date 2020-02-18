@@ -176,8 +176,8 @@ TEST_P(EnumerateListExecutorTestProduce, empty_array_1) {
   ExecutorTestHelper<EnumerateListExecutor, 1, 1>(*fakedQuery)
       .setInputValue({{{R"([])"}}})
       .setInputSplitType(split)
+      .expectOutput({}, {})
       .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
-      .expectEmptyOutput()
       .expectSkipped(0)
       .expectedState(ExecutionState::DONE)
       .run(makeInfos());
@@ -191,7 +191,7 @@ TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
         .setInputValue({{1}})
         .setInputSplitType(split)
         .setCall(AqlCall{0, AqlCall::Infinity{}, AqlCall::Infinity{}, false})
-        .expectEmptyOutput()
+        .expectOutput({}, {})
         .expectSkipped(0)
         .expectedState(ExecutionState::DONE)
         .run(makeInfos());
