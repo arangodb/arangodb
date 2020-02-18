@@ -155,19 +155,47 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
                                    "Unexpected input while skipping: got data "
                                    "rows before offset was reached.");
   }
-
-  // We may not yet skip more than the combined offsets, fullCount must happen
-  // after all rows were produced only.
-  auto const skippedTotal = inputRange.skip(upstreamCall.getOffset());
-  auto const skippedForDownstream = std::min(skippedTotal, call.getOffset());
-  // Report at most what was asked for, the rest is our own offset.
-  call.didSkip(skippedForDownstream);
-  _counter += skippedTotal;
   auto stats = LimitStats{};
-  if (infos().isFullCountEnabled()) {
-    stats.incrFullCountBy(skippedTotal);
+  while (inputRange.skippedInFlight() > 0) {
+    if (remainingOffset() > 0) {
+      // First we skip in the input row until we fullfill our local offset.
+      auto const didSkip = inputRange.skip(remainingOffset());
+      // Need to forward the
+      _counter += didSkip;
+      // We do not report this to downstream
+      // But we report it in fullCount
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(didSkip);
+      }
+    } else if (call.getOffset() > 0) {
+      // Next we skip as many rows as ordered by the client
+      auto const didSkip = inputRange.skip(call.getOffset());
+      call.didSkip(didSkip);
+      _counter += didSkip;
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(didSkip);
+      }
+    } else if (call.getLimit() > 0) {
+      // If we get here we need to break out, and let produce rows be called.
+      break;
+    } else if (call.needsFullCount() || infos().isFullCountEnabled()) {
+      // Skip the remainder, it does not matter if we neeed to produce anything
+      // or not. This is only for reporting of the skipped numbers
+      auto const didSkip = inputRange.skipAll();
+      _counter += didSkip;
+      if (call.needsFullCount()) {
+        // Report to downstream
+        call.didSkip(didSkip);
+      }
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(didSkip);
+      }
+    } else {
+      // We are done.
+      // All produced, all skipped, nothing to report
+      break;
+    }
   }
-
-  return {inputRange.upstreamState(), stats, skippedForDownstream,
+  return {inputRange.upstreamState(), stats, call.getSkipCount(),
           calculateUpstreamCall(call)};
 }
