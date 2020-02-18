@@ -1,6 +1,19 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed queries having the following structure
+
+      FOR doc IN collection
+        FILTER doc.nonIndexedAttribute     // expression
+        FOR sub IN doc.nonIndexedAttribute // same expression
+
+  For such queries, the FILTER was moved into the first FOR loop for early
+  pruning. Afterwards, the leftover CalculationNode that evaluated 
+  `doc.nonIndexedAttribute` was removed. This was wrong however, because
+  the same expression was reused in the second FOR loop. There was code 
+  considering this, but due to a bug it did not work if the expression in
+  the FILTER was reused in the directly following node.
+
 * Updated arangosync to 0.7.3.
 
 * Updated ArangoDB Starter to 0.14.14.
