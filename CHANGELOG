@@ -7,6 +7,8 @@ devel
   This allows to use different TLS setups for the same server which is
   reachable behind different DNS names, for example.
 
+* Updated rclone to 1.51.1.
+
 * Updated arangosync to 0.7.3.
 
 * Updated ArangoDB Starter to 0.14.14.
