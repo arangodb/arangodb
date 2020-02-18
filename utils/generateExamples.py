@@ -32,7 +32,7 @@
 ################################################################################
 
 from __future__ import print_function # py2 compat
-import re, sys, string, os, re
+import re, sys, string, os, re, io
 from pprint import pprint
 
 ################################################################################
@@ -146,7 +146,7 @@ doubleBS = "\\\\\\\\"
 ################################################################################
 
 def generateArangoshHeader():
-    headerF = open("./Documentation/Scripts/exampleHeader.js", "r")
+    headerF = io.open("./Documentation/Scripts/exampleHeader.js", "r", encoding="utf-8", newline=None)
     print(headerF.read())
     headerF.close()
 
@@ -659,7 +659,7 @@ def loopDirectories():
 
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
-            f = open(filename, "r")
+            f = open(filename, "r", encoding="utf-8", newline=None)
 
             for line in f:
                 line = line.rstrip('\n')
@@ -673,7 +673,7 @@ def loopDirectories():
 
         elif fstate == OPTION_OUTPUT_FILE:
             fstate = OPTION_NORMAL
-            sys.stdout = open(filename, 'w')
+            sys.stdout = open(filename, 'w', encoding='utf-8', newline='')
 
         elif fstate == OPTION_OUTPUT_ENGINE:
             fstate = OPTION_NORMAL
@@ -693,7 +693,7 @@ def loopDirectories():
 
     for filename in filenames:
         if (filename.find("#") < 0):
-            f = open(filename, "r")
+            f = open(filename, "r", encoding="utf-8", newline=None)
             analyzeFile(f, filename)
 
             f.close()
