@@ -125,10 +125,12 @@ class LimitExecutorTest
 
 std::unique_ptr<mocks::MockAqlServer> LimitExecutorTest::server{nullptr};
 
-auto const testingOffsets = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
-auto const testingLimits = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
 auto const testingFullCount = ::testing::Bool();
 using InputLengths = std::vector<size_t>;
+#define USE_FULL_SUITE false
+#if USE_FULL_SUITE
+auto const testingOffsets = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
+auto const testingLimits = ::testing::Values(0, 1, 2, 3, 10, 100'000'000);
 auto const testingInputLengths = ::testing::Values(
     // 0
     InputLengths{},
@@ -153,6 +155,24 @@ auto const testingInputLengths = ::testing::Values(
     // 21
     InputLengths{21}, InputLengths{20, 1}, InputLengths{19, 2},
     InputLengths{19, 1, 1}, InputLengths{10, 10, 1}, InputLengths{1, 9, 9, 1, 1});
+#else
+auto const testingOffsets = ::testing::Values(0, 3, 100'000'000);
+auto const testingLimits = ::testing::Values(0, 3, 100'000'000);
+auto const testingInputLengths = ::testing::Values(
+    // 0
+    InputLengths{},
+    // 1
+    InputLengths{1},
+    // 3
+    InputLengths{3}, InputLengths{1, 2}, InputLengths{2, 1}, InputLengths{1, 1, 1},
+    // 11
+    InputLengths{9, 2}, InputLengths{9, 1, 1},
+    // 19
+    InputLengths{19},
+    // 21
+    InputLengths{10, 10, 1}, InputLengths{1, 9, 9, 1, 1});
+
+#endif
 
 // Note that fullCount does only make sense with a hard limit, and
 // soft limit = 0 and offset = 0 must not occur together.
