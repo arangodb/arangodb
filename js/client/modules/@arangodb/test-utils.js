@@ -37,7 +37,7 @@ const sleep = require('internal').sleep;
 const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
 const platform = require('internal').platform;
-
+const setTotalTimeout = require('internal').setTotalTimeout;
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -889,6 +889,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   eval('testFunc = function () { \nglobal.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + testCode + "}");
   
   try {
+    setTotalTimeout(options.oneTestTimeout * 1000);
     let result = testFunc();
     return result;
   } catch (ex) {
@@ -897,6 +898,9 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
       message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
       stack: ex.stack
     };
+  }
+  finally {
+    setTotalTimeout(0.0);
   }
 }
 runInLocalArangosh.info = 'runInLocalArangosh';

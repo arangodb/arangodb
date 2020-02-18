@@ -203,6 +203,80 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set a point in time after which we will abort external connection
+////////////////////////////////////////////////////////////////////////////////
+static std::atomic<double> connectionToBeDeadAt(0.0);
+void setConnectionToBeDeadInMS(uint64_t timeout) {
+  if (timeout == 0) {
+    connectionToBeDeadAt = 0.0;
+  } else {
+    connectionToBeDeadAt = TRI_microtime() + timeout / 1000;
+  }
+}
+
+static void JS_SetConnectionsToBeDeadIn(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("SetConnectionsToBeDeadIn(<timeout>)");
+  }
+  double n = TRI_ObjectToDouble(isolate, args[0]);
+  setConnectionToBeDeadInMS(n);
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
+bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  auto when = connectionToBeDeadAt.load();
+  if (when == 0.0) {
+    return false;
+  }
+  auto now = TRI_microtime();
+  if (now < when) {
+    return false;
+  }
+
+  auto isolate = args.GetIsolate();
+  TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, "Timeout for remote!", true);
+  return true;
+}
+
+double getMaxTimeoutConnectionToBeDead(double timeout) {
+  auto when = connectionToBeDeadAt.load();
+  if (when == 0.0) {
+    return timeout;
+  }
+  auto now = TRI_microtime();
+  auto delta = now - when;
+  if (delta > timeout) {
+    return timeout;
+  }
+  return delta;
+}
+#define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
+std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::duration<double> timeout) {
+  return timeout;
+  /*
+  auto when = connectionToBeDeadAt.load();
+  if (when == 0.0) {
+    return timeout;
+  }
+  auto chronoWhen = std::chrono::duration<double>(when);
+  
+  auto now =  std::chrono::system_clock::now();
+
+  auto delta = now - chronoWhen;
+  if (delta > timeout) {
+    return timeout;
+  }
+  return delta;
+  */
+}
+#undef ARANGODB_SHELL_V8CLIENT_CONNECTION_H
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief reads/execute a file into/in the current context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -665,6 +739,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
+  if (isConnectionToBeDead(args)) {
+    return;
+  }
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
@@ -808,6 +885,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                                               options, "timeout"));
       }
     }
+    timeout = getMaxTimeoutConnectionToBeDead(timeout);
 
     // return body as a buffer?
     if (TRI_HasProperty(context, isolate, options, "returnBodyAsBuffer")) {
@@ -5614,6 +5692,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                JS_CreateNonce);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_DOWNLOAD"), JS_Download);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_COMMUNICATE_UNTIL"),
+                               JS_SetConnectionsToBeDeadIn);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE"), JS_Execute);
   TRI_AddGlobalFunctionVocbase(isolate,

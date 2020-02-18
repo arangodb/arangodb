@@ -102,6 +102,17 @@ static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
   return ret;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set a point in time after which we will abort external connection
+////////////////////////////////////////////////////////////////////////////////
+void setConnectionToBeDeadInMS(uint64_t timeout);
+bool isConnectionToBeDead(v8::FunctionCallbackInfo<v8::Value> const& args);
+double getMaxTimeoutConnectionToBeDead(double timeout);
+#ifdef ARANGODB_SHELL_V8CLIENT_CONNECTION_H
+std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::duration<double> timeout);
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reports an exception
 ////////////////////////////////////////////////////////////////////////////////
