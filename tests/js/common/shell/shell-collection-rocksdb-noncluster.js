@@ -504,11 +504,9 @@ function CollectionSuite () {
             assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
           }
         });
-      } catch (x) {
-        db._drop(x);
-        throw x;
+      } finally {
+        db._drop(cn);
       }
-      db._drop(cn);
     }
   };
 }
