@@ -1007,6 +1007,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
         if (endTime == 0.0) {
           endTime = now + timeout / 1000.0;
         } else if (now >= endTime) {
+          res = external->_pid;
           timeoutHappened = true;
           break;
         }
@@ -1052,7 +1053,10 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
                              arangodb::basics::StringUtils::itoa(external->_pid) +
                              std::string(": ") + std::string(TRI_last_error());
     } else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
-      if (WIFEXITED(loc)) {
+      if (timeoutHappened) {
+        external->_status = TRI_EXT_TIMEOUT;
+        external->_exitStatus = -1;
+      } else if (WIFEXITED(loc)) {
         external->_status = TRI_EXT_TERMINATED;
         external->_exitStatus = WEXITSTATUS(loc);
       } else if (WIFSIGNALED(loc)) {
