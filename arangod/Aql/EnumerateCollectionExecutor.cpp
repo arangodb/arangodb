@@ -42,7 +42,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-  
+
 namespace {
 std::vector<size_t> const emptyAttributePositions;
 }
@@ -55,7 +55,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter,
-    std::vector<std::string> const& projections, 
+    std::vector<std::string> const& projections,
     bool useRawDocumentPointers, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
@@ -119,7 +119,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(),
                                         _infos.getQuery(), _infos.getFilter(),
-                                        _infos.getProjections(), 
+                                        _infos.getProjections(),
                                         ::emptyAttributePositions,
                                         true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),

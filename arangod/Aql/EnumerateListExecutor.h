@@ -41,6 +41,8 @@ class Methods;
 
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class ExecutorInfos;
 class OutputAqlItemRow;
 class NoStats;
@@ -85,7 +87,7 @@ class EnumerateListExecutor {
   using Infos = EnumerateListExecutorInfos;
   using Stats = NoStats;
 
-  EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos&);
+  EnumerateListExecutor(Fetcher&, EnumerateListExecutorInfos&);
   ~EnumerateListExecutor() = default;
 
   /**
@@ -95,15 +97,47 @@ class EnumerateListExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief Will fetch a new InputRow if necessary and store their local state
+   *
+   * @return bool done in case we do not have any input and upstreamState is done
+   */
+  void initializeNewRow(AqlItemBlockInputRange& inputRange);
+
+  /**
+   * @brief Will process an found array element
+   */
+  void processArrayElement(OutputAqlItemRow& output);
+
+  /**
+   * @brief Will skip a maximum of n-elements inside the current array
+   */
+  size_t skipArrayElement(size_t skip);
+
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
+
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
   void initialize();
 
  private:
   EnumerateListExecutorInfos& _infos;
-  Fetcher& _fetcher;
   InputAqlItemRow _currentRow;
-  ExecutionState _rowState;
+  ExecutorState _currentRowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
 };

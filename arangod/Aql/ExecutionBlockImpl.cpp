@@ -141,7 +141,7 @@ constexpr bool isNewStyleExecutor =
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
 #endif
-                ShortestPathExecutor>;
+                ShortestPathExecutor, EnumerateListExecutor>;
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -1060,7 +1060,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                                  TestLambdaSkipExecutor,
 #endif
-                                 SortedCollectExecutor>),
+                                 EnumerateListExecutor, SortedCollectExecutor>),
+
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -1381,16 +1382,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
             if (_outputItemRow->allRowsUsed()) {
               _execState = ExecState::DONE;
             } else if (state == ExecutorState::DONE) {
-              if (_lastRange.hasDataRow()) {
-                // TODO this state is invalid, and can just show up now if we exclude SKIP
-                _execState = ExecState::PRODUCE;
-              } else {
-                // Right now we cannot support to have more than one set of
-                // ShadowRows inside of a Range.
-                // We do not know how to continue with the above executor after a shadowrow.
-                TRI_ASSERT(!_lastRange.hasDataRow());
-                _execState = ExecState::DONE;
-              }
+              _execState = ExecState::DONE;
             }
           } else {
             _execState = ExecState::DONE;
