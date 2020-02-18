@@ -1,0 +1,14 @@
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/transaction</span>
+
+HTTP/<span class="hljs-number">1.1</span> OK
+x-content-type-options: nosniff
+content-type: application/json
+
+{ 
+  <span class="hljs-string">"transactions"</span> : [ 
+    { 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"8199"</span>, 
+      <span class="hljs-string">"state"</span> : <span class="hljs-string">"running"</span> 
+    } 
+  ] 
+}

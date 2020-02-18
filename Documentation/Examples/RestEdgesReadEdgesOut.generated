@@ -1,0 +1,30 @@
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/edges/edges?vertex=vertices/1&amp;direction=out</span>
+
+HTTP/<span class="hljs-number">1.1</span> OK
+x-content-type-options: nosniff
+content-type: application/json
+
+{ 
+  <span class="hljs-string">"edges"</span> : [ 
+    { 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"5"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/5"</span>, 
+      <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/1"</span>, 
+      <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/3"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjrqL2---"</span>, 
+      <span class="hljs-string">"$label"</span> : <span class="hljs-string">"v1 -&gt; v3"</span> 
+    } 
+  ], 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"stats"</span> : { 
+    <span class="hljs-string">"writesExecuted"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"writesIgnored"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"scannedFull"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0006363391876220703</span>, 
+    <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">35979</span> 
+  } 
+}

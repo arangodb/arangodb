@@ -1,0 +1,2 @@
+arangosh&gt; db.example;
+[ArangoCollection <span class="hljs-number">10667</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]

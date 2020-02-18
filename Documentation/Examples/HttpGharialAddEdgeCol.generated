@@ -1,0 +1,57 @@
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge</span> &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"works_in"</span>, 
+  <span class="hljs-string">"from"</span> : [ 
+    <span class="hljs-string">"female"</span>, 
+    <span class="hljs-string">"male"</span> 
+  ], 
+  <span class="hljs-string">"to"</span> : [ 
+    <span class="hljs-string">"city"</span> 
+  ] 
+}
+EOF
+
+HTTP/<span class="hljs-number">1.1</span> Accepted
+etag: _aDjr<span class="hljs-number">-2</span>G--H
+x-content-type-options: nosniff
+content-type: application/json
+
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
+  <span class="hljs-string">"graph"</span> : { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"social"</span>, 
+    <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"minReplicationFactor"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"writeConcern"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"edgeDefinitions"</span> : [ 
+      { 
+        <span class="hljs-string">"collection"</span> : <span class="hljs-string">"relation"</span>, 
+        <span class="hljs-string">"from"</span> : [ 
+          <span class="hljs-string">"female"</span>, 
+          <span class="hljs-string">"male"</span> 
+        ], 
+        <span class="hljs-string">"to"</span> : [ 
+          <span class="hljs-string">"female"</span>, 
+          <span class="hljs-string">"male"</span> 
+        ] 
+      }, 
+      { 
+        <span class="hljs-string">"collection"</span> : <span class="hljs-string">"works_in"</span>, 
+        <span class="hljs-string">"from"</span> : [ 
+          <span class="hljs-string">"female"</span>, 
+          <span class="hljs-string">"male"</span> 
+        ], 
+        <span class="hljs-string">"to"</span> : [ 
+          <span class="hljs-string">"city"</span> 
+        ] 
+      } 
+    ], 
+    <span class="hljs-string">"orphanCollections"</span> : [ ], 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjr-2G--H"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"social"</span> 
+  } 
+}

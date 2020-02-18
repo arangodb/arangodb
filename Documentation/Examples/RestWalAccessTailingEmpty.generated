@@ -1,0 +1,11 @@
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/wal/tail?from=21640</span>
+
+HTTP/1.1 No Content
+x-arango-replication-checkmore: false
+x-arango-replication-frompresent: true
+x-arango-replication-lastincluded: 0
+x-arango-replication-lastscanned: 21640
+x-arango-replication-lasttick: 21640
+x-content-type-options: nosniff
+content-type: application/x-arango-dump
+

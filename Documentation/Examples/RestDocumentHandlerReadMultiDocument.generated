@@ -1,0 +1,22 @@
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products?onlyget=<span class="hljs-literal">true</span></span> &lt;&lt;EOF
+["doc1", {"_key":"doc2"}]
+EOF
+
+HTTP/<span class="hljs-number">1.1</span> OK
+x-content-type-options: nosniff
+content-type: application/json
+
+[ 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"doc1"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/doc1"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjrqFW---"</span>, 
+    <span class="hljs-string">"hello"</span> : <span class="hljs-string">"world"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"doc2"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/doc2"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjrqFa---"</span>, 
+    <span class="hljs-string">"say"</span> : <span class="hljs-string">"hi to mom"</span> 
+  } 
+]

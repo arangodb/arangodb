@@ -1,0 +1,25 @@
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products</span> &lt;&lt;EOF
+[{"Hello":"Earth"}, {"Hello":"Venus"}, {"Hello":"Mars"}]
+EOF
+
+HTTP/<span class="hljs-number">1.1</span> Accepted
+x-content-type-options: nosniff
+content-type: application/json
+
+[ 
+  { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/6782"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6782"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjrp8----"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/6783"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6783"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjrp8---A"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/6784"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6784"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjrp8---C"</span> 
+  } 
+]

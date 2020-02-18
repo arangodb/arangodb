@@ -1,0 +1,33 @@
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/simple/range</span> &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"collection"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"attribute"</span> : <span class="hljs-string">"i"</span>, 
+  <span class="hljs-string">"left"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"right"</span> : <span class="hljs-number">4</span> 
+}
+EOF
+
+HTTP/<span class="hljs-number">1.1</span> Created
+x-content-type-options: nosniff
+content-type: application/json
+
+{ 
+  <span class="hljs-string">"result"</span> : [ 
+    { 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7824"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/7824"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjruBq--A"</span>, 
+      <span class="hljs-string">"i"</span> : <span class="hljs-number">2</span> 
+    }, 
+    { 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7826"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/7826"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_aDjruBq--C"</span>, 
+      <span class="hljs-string">"i"</span> : <span class="hljs-number">3</span> 
+    } 
+  ], 
+  <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
+}
