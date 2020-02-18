@@ -3,11 +3,9 @@ devel
 
 * Fixed a memory leak in ModificationExecutors.
 
-* Added crash handler for Linux and MacOS builds. The crash handler is supposed
-  to log basic crash information to the ArangoDB logfile in case the arangod
-  process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or SIGABRT.
-  If possible, the crash handler will also write a backtrace to the logfile, so
-  the crash location can be found later.
+* Updated arangosync to 0.7.3.
+
+* Updated ArangoDB Starter to 0.14.14.
 
 * Fixed handling of `geometry` attributes in query editor of the web UI.
 
@@ -39,6 +37,8 @@ devel
   In case the arangod process catches one these signals, the crash handler
   tries to log a message and a backtrace into the installation's logfile before
   terminating the process.
+
+* Removed dependency on libcurl library.
 
 * Remove storage engine selection from package installers. The default storage
   engine for new installations is now RocksDB. The MMFiles storage engine cannot
