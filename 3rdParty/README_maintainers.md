@@ -185,7 +185,7 @@ Contains TaoCpp PEGTL - PEG Parsing library
 Upstream is: https://github.com/taocpp/json
 
 - On upgrade do not add unnecessary files (e.g. src, tests, contrib)
-  and update the commit hash in `./tao-json.version`.
+  and update the commit hash in `./taocpp-json.version`.
 
 ## V8
 

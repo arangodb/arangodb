@@ -20,9 +20,9 @@ if (${IPO_ENABLED})
     set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
 endif ()
 
-set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE "Build test programs")
-set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build example programs")
-add_subdirectory(tao-json)
+set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build test programs"    FORCE)
+set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build example programs" FORCE)
+add_subdirectory(taocpp-json)
 
 ################################################################################
 ## ZLIB
