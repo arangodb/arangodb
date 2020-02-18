@@ -27,8 +27,8 @@
 
 #include "Aql/AqlCall.h"
 #include "AqlItemBlockHelper.h"
-#include "RowFetcherHelper.h"
 #include "ExecutorTestHelper.h"
+#include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
@@ -69,7 +69,7 @@ namespace aql {
 // CalculationExecutor<CalculationType::V8Condition> and
 // CalculationExecutor<CalculationType::Reference>!
 
- class CalculationExecutorTest : public ::testing::Test, public AqlExecutorTestCase<true> {
+class CalculationExecutorTest : public ::testing::Test, public AqlExecutorTestCase<true> {
  protected:
   ExecutionState state;
   AqlItemBlockManager itemBlockManager;
@@ -285,9 +285,15 @@ TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
 
   AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear());
+                          infos.registersToKeep(),
+                          infos.registersToClear(),
+                              AqlCall{0, 3, AqlCall::Infinity{}, false});
+
+  auto myCall = output.getClientCall();
+  EXPECT_EQ(myCall.getLimit(), 3);
   EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(input, output);
+
+  auto const [state, stats, outputCall] = testee.produceRows(input, output);
   EXPECT_EQ(output.numRowsWritten(), 3);
 
   EXPECT_EQ(state, ExecutorState::HASMORE);
@@ -302,12 +308,12 @@ TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
     }
   }
   // Test the Call we send to upstream
-  EXPECT_EQ(call.offset, 0);
-  EXPECT_FALSE(call.hasHardLimit());
+  EXPECT_EQ(outputCall.offset, 0);
+  EXPECT_FALSE(outputCall.hasHardLimit());
   // Avoid overfetching. I do not have a strong requirement on this
   // test, however this is what we do right now.
-  EXPECT_EQ(call.getLimit(), 997);
-  EXPECT_FALSE(call.fullCount);
+  EXPECT_EQ(outputCall.getLimit(), 0);
+  EXPECT_FALSE(outputCall.fullCount);
 }
 
 TEST_F(CalculationExecutorTest, test_produce_datarange_has_more) {
@@ -327,10 +333,10 @@ TEST_F(CalculationExecutorTest, test_produce_datarange_has_more) {
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
   EXPECT_EQ(output.numRowsWritten(), 0);
-  AqlCall myCall{0, AqlCall::Infinity{}, 3, false};
+  AqlCall myCall{0, 3, AqlCall::Infinity{}, false};
   output.setCall(std::move(myCall));
 
-  auto const [state, stats, call] = testee.produceRows(input, output); // TODO call to 3
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(output.numRowsWritten(), 3);
 
   EXPECT_EQ(state, ExecutorState::HASMORE);
