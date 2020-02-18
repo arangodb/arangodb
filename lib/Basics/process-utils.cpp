@@ -994,6 +994,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
 
     int loc = 0;
     TRI_pid_t res = 0;
+    bool timeoutHappened = false;
     if (timeout) {
       TRI_ASSERT((opts & WNOHANG) != 0);
       double endTime = 0.0; 
@@ -1003,11 +1004,10 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
           break;
         }
         double now = TRI_microtime();
-        if (endTime <= 0.000001) {
-          // set endtime only once
+        if (endTime == 0.0) {
           endTime = now + timeout / 1000.0;
         } else if (now >= endTime) {
-          // timeout
+          timeoutHappened = true;
           break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
@@ -1021,8 +1021,10 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
         status._errorMessage =
             std::string("waitpid returned 0 for pid while it shouldn't ") +
             arangodb::basics::StringUtils::itoa(external->_pid);
-
-        if (WIFEXITED(loc)) {
+        if (timeoutHappened) {
+          external->_status = TRI_EXT_TIMEOUT;
+          external->_exitStatus = -1;
+        } else if (WIFEXITED(loc)) {
           external->_status = TRI_EXT_TERMINATED;
           external->_exitStatus = WEXITSTATUS(loc);
         } else if (WIFSIGNALED(loc)) {
