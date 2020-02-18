@@ -408,6 +408,7 @@ function CollectionSuite () {
       var cn = "UnitLoadBehavior123";
       db._drop(cn);
       var c = db._createEdgeCollection(cn);
+      try {
       c.load();
       for(let i=0;i<10000;i++) {
         c.insert({_from:"c/v"+(i/100), _to:"c/v"+i});
@@ -503,7 +504,10 @@ function CollectionSuite () {
           assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
         }
       });
-
+      } catch (x) {
+        db._drop(cn);
+        throw x;
+      }
       db._drop(cn);
     }
   };
