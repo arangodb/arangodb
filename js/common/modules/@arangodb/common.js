@@ -1,4 +1,4 @@
-/* global arango:true */
+/* global arango:true, ArangoClusterInfo */
 
 'use strict';
 
@@ -602,8 +602,8 @@ exports.checkAvailableVersions = function() {
         + '&license=' + encodeURIComponent(license)
         + '&source=' + (isServer ? "arangod" : "arangosh")
         + '&hash=' + encodeURIComponent(hash);
-    var d = internal.download(u, '', {timeout: 3});
-    var v = JSON.parse(d.body);
+    var d2 = internal.download(u, '', {timeout: 3});
+    var v = JSON.parse(d2.body);
 
     if (!isServer && internal.quiet !== true) {
       if (v.hasOwnProperty('bugfix')) {
