@@ -80,8 +80,12 @@ class LimitExecutorTest
   // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
   static void SetUpTestCase() {
     server = std::make_unique<decltype(server)::element_type>();
+    // Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
   }
-  static void TearDownTestCase() { server.reset(); }
+  static void TearDownTestCase() {
+    // Logger::QUERIES.setLogLevel(LogLevel::INFO);
+    server.reset();
+  }
 
  protected:
   static std::unique_ptr<mocks::MockAqlServer> server;
@@ -152,87 +156,86 @@ auto const testingInputLengths = ::testing::Values(
 
 // Note that fullCount does only make sense with a hard limit, and
 // soft limit = 0 and offset = 0 must not occur together.
-auto const testingAqlCalls = ::testing::ValuesIn(std::array{
-    AqlCall{0, false, AqlCall::Infinity{}},
-    AqlCall{0, false, 1, AqlCall::LimitType::SOFT},
-    AqlCall{0, false, 2, AqlCall::LimitType::SOFT},
-    AqlCall{0, false, 3, AqlCall::LimitType::SOFT},
-    AqlCall{0, false, 10, AqlCall::LimitType::SOFT},
-    AqlCall{0, false, 0, AqlCall::LimitType::HARD},
-    AqlCall{0, false, 1, AqlCall::LimitType::HARD},
-    AqlCall{0, false, 2, AqlCall::LimitType::HARD},
-    AqlCall{0, false, 3, AqlCall::LimitType::HARD},
-    AqlCall{0, false, 10, AqlCall::LimitType::HARD},
-    AqlCall{1, false, AqlCall::Infinity{}},
-    AqlCall{1, false, 0, AqlCall::LimitType::SOFT},
-    AqlCall{1, false, 1, AqlCall::LimitType::SOFT},
-    AqlCall{1, false, 2, AqlCall::LimitType::SOFT},
-    AqlCall{1, false, 3, AqlCall::LimitType::SOFT},
-    AqlCall{1, false, 10, AqlCall::LimitType::SOFT},
-    AqlCall{1, false, 0, AqlCall::LimitType::HARD},
-    AqlCall{1, false, 1, AqlCall::LimitType::HARD},
-    AqlCall{1, false, 2, AqlCall::LimitType::HARD},
-    AqlCall{1, false, 3, AqlCall::LimitType::HARD},
-    AqlCall{1, false, 10, AqlCall::LimitType::HARD},
-    AqlCall{2, false, AqlCall::Infinity{}},
-    AqlCall{2, false, 0, AqlCall::LimitType::SOFT},
-    AqlCall{2, false, 1, AqlCall::LimitType::SOFT},
-    AqlCall{2, false, 2, AqlCall::LimitType::SOFT},
-    AqlCall{2, false, 3, AqlCall::LimitType::SOFT},
-    AqlCall{2, false, 10, AqlCall::LimitType::SOFT},
-    AqlCall{2, false, 0, AqlCall::LimitType::HARD},
-    AqlCall{2, false, 1, AqlCall::LimitType::HARD},
-    AqlCall{2, false, 2, AqlCall::LimitType::HARD},
-    AqlCall{2, false, 3, AqlCall::LimitType::HARD},
-    AqlCall{2, false, 10, AqlCall::LimitType::HARD},
-    AqlCall{3, false, AqlCall::Infinity{}},
-    AqlCall{3, false, 0, AqlCall::LimitType::SOFT},
-    AqlCall{3, false, 1, AqlCall::LimitType::SOFT},
-    AqlCall{3, false, 2, AqlCall::LimitType::SOFT},
-    AqlCall{3, false, 3, AqlCall::LimitType::SOFT},
-    AqlCall{3, false, 10, AqlCall::LimitType::SOFT},
-    AqlCall{3, false, 0, AqlCall::LimitType::HARD},
-    AqlCall{3, false, 1, AqlCall::LimitType::HARD},
-    AqlCall{3, false, 2, AqlCall::LimitType::HARD},
-    AqlCall{3, false, 3, AqlCall::LimitType::HARD},
-    AqlCall{3, false, 10, AqlCall::LimitType::HARD},
-    AqlCall{10, false, AqlCall::Infinity{}},
-    AqlCall{10, false, 0, AqlCall::LimitType::SOFT},
-    AqlCall{10, false, 1, AqlCall::LimitType::SOFT},
-    AqlCall{10, false, 2, AqlCall::LimitType::SOFT},
-    AqlCall{10, false, 3, AqlCall::LimitType::SOFT},
-    AqlCall{10, false, 10, AqlCall::LimitType::SOFT},
-    AqlCall{10, false, 0, AqlCall::LimitType::HARD},
-    AqlCall{10, false, 1, AqlCall::LimitType::HARD},
-    AqlCall{10, false, 2, AqlCall::LimitType::HARD},
-    AqlCall{10, false, 3, AqlCall::LimitType::HARD},
-    AqlCall{10, false, 10, AqlCall::LimitType::HARD},
-    AqlCall{0, true, 0, AqlCall::LimitType::HARD},
-    AqlCall{0, true, 1, AqlCall::LimitType::HARD},
-    AqlCall{0, true, 2, AqlCall::LimitType::HARD},
-    AqlCall{0, true, 3, AqlCall::LimitType::HARD},
-    AqlCall{0, true, 10, AqlCall::LimitType::HARD},
-    AqlCall{1, true, 0, AqlCall::LimitType::HARD},
-    AqlCall{1, true, 1, AqlCall::LimitType::HARD},
-    AqlCall{1, true, 2, AqlCall::LimitType::HARD},
-    AqlCall{1, true, 3, AqlCall::LimitType::HARD},
-    AqlCall{1, true, 10, AqlCall::LimitType::HARD},
-    AqlCall{2, true, 0, AqlCall::LimitType::HARD},
-    AqlCall{2, true, 1, AqlCall::LimitType::HARD},
-    AqlCall{2, true, 2, AqlCall::LimitType::HARD},
-    AqlCall{2, true, 3, AqlCall::LimitType::HARD},
-    AqlCall{2, true, 10, AqlCall::LimitType::HARD},
-    AqlCall{3, true, 0, AqlCall::LimitType::HARD},
-    AqlCall{3, true, 1, AqlCall::LimitType::HARD},
-    AqlCall{3, true, 2, AqlCall::LimitType::HARD},
-    AqlCall{3, true, 3, AqlCall::LimitType::HARD},
-    AqlCall{3, true, 10, AqlCall::LimitType::HARD},
-    AqlCall{10, true, 0, AqlCall::LimitType::HARD},
-    AqlCall{10, true, 1, AqlCall::LimitType::HARD},
-    AqlCall{10, true, 2, AqlCall::LimitType::HARD},
-    AqlCall{10, true, 3, AqlCall::LimitType::HARD},
-    AqlCall{10, true, 10, AqlCall::LimitType::HARD}
-});
+auto const testingAqlCalls = ::testing::ValuesIn(
+    std::array{AqlCall{0, false, AqlCall::Infinity{}},
+               AqlCall{0, false, 1, AqlCall::LimitType::SOFT},
+               AqlCall{0, false, 2, AqlCall::LimitType::SOFT},
+               AqlCall{0, false, 3, AqlCall::LimitType::SOFT},
+               AqlCall{0, false, 10, AqlCall::LimitType::SOFT},
+               AqlCall{0, false, 0, AqlCall::LimitType::HARD},
+               AqlCall{0, false, 1, AqlCall::LimitType::HARD},
+               AqlCall{0, false, 2, AqlCall::LimitType::HARD},
+               AqlCall{0, false, 3, AqlCall::LimitType::HARD},
+               AqlCall{0, false, 10, AqlCall::LimitType::HARD},
+               AqlCall{1, false, AqlCall::Infinity{}},
+               AqlCall{1, false, 0, AqlCall::LimitType::SOFT},
+               AqlCall{1, false, 1, AqlCall::LimitType::SOFT},
+               AqlCall{1, false, 2, AqlCall::LimitType::SOFT},
+               AqlCall{1, false, 3, AqlCall::LimitType::SOFT},
+               AqlCall{1, false, 10, AqlCall::LimitType::SOFT},
+               AqlCall{1, false, 0, AqlCall::LimitType::HARD},
+               AqlCall{1, false, 1, AqlCall::LimitType::HARD},
+               AqlCall{1, false, 2, AqlCall::LimitType::HARD},
+               AqlCall{1, false, 3, AqlCall::LimitType::HARD},
+               AqlCall{1, false, 10, AqlCall::LimitType::HARD},
+               AqlCall{2, false, AqlCall::Infinity{}},
+               AqlCall{2, false, 0, AqlCall::LimitType::SOFT},
+               AqlCall{2, false, 1, AqlCall::LimitType::SOFT},
+               AqlCall{2, false, 2, AqlCall::LimitType::SOFT},
+               AqlCall{2, false, 3, AqlCall::LimitType::SOFT},
+               AqlCall{2, false, 10, AqlCall::LimitType::SOFT},
+               AqlCall{2, false, 0, AqlCall::LimitType::HARD},
+               AqlCall{2, false, 1, AqlCall::LimitType::HARD},
+               AqlCall{2, false, 2, AqlCall::LimitType::HARD},
+               AqlCall{2, false, 3, AqlCall::LimitType::HARD},
+               AqlCall{2, false, 10, AqlCall::LimitType::HARD},
+               AqlCall{3, false, AqlCall::Infinity{}},
+               AqlCall{3, false, 0, AqlCall::LimitType::SOFT},
+               AqlCall{3, false, 1, AqlCall::LimitType::SOFT},
+               AqlCall{3, false, 2, AqlCall::LimitType::SOFT},
+               AqlCall{3, false, 3, AqlCall::LimitType::SOFT},
+               AqlCall{3, false, 10, AqlCall::LimitType::SOFT},
+               AqlCall{3, false, 0, AqlCall::LimitType::HARD},
+               AqlCall{3, false, 1, AqlCall::LimitType::HARD},
+               AqlCall{3, false, 2, AqlCall::LimitType::HARD},
+               AqlCall{3, false, 3, AqlCall::LimitType::HARD},
+               AqlCall{3, false, 10, AqlCall::LimitType::HARD},
+               AqlCall{10, false, AqlCall::Infinity{}},
+               AqlCall{10, false, 0, AqlCall::LimitType::SOFT},
+               AqlCall{10, false, 1, AqlCall::LimitType::SOFT},
+               AqlCall{10, false, 2, AqlCall::LimitType::SOFT},
+               AqlCall{10, false, 3, AqlCall::LimitType::SOFT},
+               AqlCall{10, false, 10, AqlCall::LimitType::SOFT},
+               AqlCall{10, false, 0, AqlCall::LimitType::HARD},
+               AqlCall{10, false, 1, AqlCall::LimitType::HARD},
+               AqlCall{10, false, 2, AqlCall::LimitType::HARD},
+               AqlCall{10, false, 3, AqlCall::LimitType::HARD},
+               AqlCall{10, false, 10, AqlCall::LimitType::HARD},
+               AqlCall{0, true, 0, AqlCall::LimitType::HARD},
+               AqlCall{0, true, 1, AqlCall::LimitType::HARD},
+               AqlCall{0, true, 2, AqlCall::LimitType::HARD},
+               AqlCall{0, true, 3, AqlCall::LimitType::HARD},
+               AqlCall{0, true, 10, AqlCall::LimitType::HARD},
+               AqlCall{1, true, 0, AqlCall::LimitType::HARD},
+               AqlCall{1, true, 1, AqlCall::LimitType::HARD},
+               AqlCall{1, true, 2, AqlCall::LimitType::HARD},
+               AqlCall{1, true, 3, AqlCall::LimitType::HARD},
+               AqlCall{1, true, 10, AqlCall::LimitType::HARD},
+               AqlCall{2, true, 0, AqlCall::LimitType::HARD},
+               AqlCall{2, true, 1, AqlCall::LimitType::HARD},
+               AqlCall{2, true, 2, AqlCall::LimitType::HARD},
+               AqlCall{2, true, 3, AqlCall::LimitType::HARD},
+               AqlCall{2, true, 10, AqlCall::LimitType::HARD},
+               AqlCall{3, true, 0, AqlCall::LimitType::HARD},
+               AqlCall{3, true, 1, AqlCall::LimitType::HARD},
+               AqlCall{3, true, 2, AqlCall::LimitType::HARD},
+               AqlCall{3, true, 3, AqlCall::LimitType::HARD},
+               AqlCall{3, true, 10, AqlCall::LimitType::HARD},
+               AqlCall{10, true, 0, AqlCall::LimitType::HARD},
+               AqlCall{10, true, 1, AqlCall::LimitType::HARD},
+               AqlCall{10, true, 2, AqlCall::LimitType::HARD},
+               AqlCall{10, true, 3, AqlCall::LimitType::HARD},
+               AqlCall{10, true, 10, AqlCall::LimitType::HARD}});
 auto const testingDoneResultIsEmpty = ::testing::Bool();
 
 auto const limitTestCases =
@@ -261,12 +264,14 @@ TEST_P(LimitExecutorTest, testSuite) {
   };
 
   // Expected output, though the expectedPassedBlocks are also the input.
-  // Note that structured bindings are *not* captured by lambdas, at least in C++17.
-  // So we must explicity capture them.
+  // Note that structured bindings are *not* captured by lambdas, at least in
+  // C++17. So we must explicity capture them.
   auto const [expectedSkipped, expectedOutput, expectedLimitStats, expectedState] =
       std::invoke([&, offset = offset, limit = limit, fullCount = fullCount,
-                   &inputLengths = inputLengths, clientCall = clientCall, doneResultIsEmpty = doneResultIsEmpty]() {
-        auto const numInputRows = std::accumulate(inputLengths.begin(), inputLengths.end(), size_t{0});
+                   &inputLengths = inputLengths, clientCall = clientCall,
+                   doneResultIsEmpty = doneResultIsEmpty]() {
+        auto const numInputRows =
+            std::accumulate(inputLengths.begin(), inputLengths.end(), size_t{0});
         auto const effectiveOffset = clientCall.getOffset() + offset;
         // The combined limit of a call and a LimitExecutor:
         auto const effectiveLimit =
@@ -275,7 +280,13 @@ TEST_P(LimitExecutorTest, testSuite) {
 
         // Only the client's offset counts against the "skipped" count returned
         // by the limit block, the rest is upstream!
-        auto const skipped = std::min(numInputRows, clientCall.getOffset());
+        auto skipped = std::min(nonNegativeSubtraction(numInputRows, offset),
+                                clientCall.getOffset());
+        if (clientCall.needsFullCount()) {
+          // offset and limit are already handled.
+          // New we need to include the amount of rows left to count them by skipped.
+          skipped += nonNegativeSubtraction(numInputRows, effectiveOffset + effectiveLimit);
+        }
 
         auto const output = std::invoke([&]() {
           auto output = MatrixBuilder<1>{};
