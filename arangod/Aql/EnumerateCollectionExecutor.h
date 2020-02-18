@@ -138,16 +138,21 @@ class EnumerateCollectionExecutor {
   std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::tuple<ExecutorState, Stats, AqlCall> produceRows(AqlItemBlockInputRange& input,
-                                                        OutputAqlItemRow& output);
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& input, OutputAqlItemRow& output);
 
   u_int64_t skipEntries(size_t toSkip, EnumerateCollectionStats& stats);
-  std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(AqlItemBlockInputRange& inputRange,
-                                                           AqlCall& call);
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   // TODO CHECK
   // void setProducingFunction(DocumentProducingFunction const& documentProducer);
