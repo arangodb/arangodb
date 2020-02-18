@@ -135,6 +135,7 @@ void OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
 ///        afterwards Check hasMore()==true before using this NOTE: This will
 ///        throw on OUT_OF_MEMORY
 void OperationCursor::skipAll(uint64_t& skipped) {
+  // TODO: move that logic to index level to become more efficient
   size_t toSkip = 1000;
 
   if (!hasMore()) {
