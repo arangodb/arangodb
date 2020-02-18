@@ -136,7 +136,9 @@ constexpr bool is_one_of_v = (std::is_same_v<T, Es> || ...);
 template <typename Executor>
 constexpr bool isNewStyleExecutor =
     is_one_of_v<Executor, FilterExecutor, SortedCollectExecutor, IdExecutor<ConstFetcher>,
-                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor, EnumerateCollectionExecutor,
+                IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>, ReturnExecutor, IndexExecutor,
+                EnumerateCollectionExecutor, CalculationExecutor<CalculationType::Condition>,
+                CalculationExecutor<CalculationType::Reference>, CalculationExecutor<CalculationType::V8Condition>,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                 TestLambdaExecutor,
                 TestLambdaSkipExecutor,  // we need one after these to avoid compile errors in non-test mode
