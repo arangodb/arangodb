@@ -1,7 +1,7 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
-* Fixed a memory leak in ModificationExecutors
+* Fixed a memory leak in ModificationExecutors.
 
 * Updated rclone to 1.51.1.
 
