@@ -83,13 +83,15 @@ auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> Aq
     upstreamCall.fullCount = false;
   } else {
     upstreamCall.hardLimit = limit;
-    upstreamCall.fullCount = infos().isFullCountEnabled();
+    // We need the fullCount either if we need to report it ourselfes.
+    // or if the clientCall needs to report it.
+    upstreamCall.fullCount = infos().isFullCountEnabled() || clientCall.fullCount;
   }
 
   return upstreamCall;
 }
 
-auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
   // I think this *should* be the case, because we're passthrough. However,
   // isFull() ignores shadow rows in the passthrough case, which it probably
@@ -102,43 +104,101 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow&
 
   auto stats = LimitStats{};
 
-  auto const upstreamCall = calculateUpstreamCall(clientCall);
+  auto call = output.getClientCall();
+  TRI_ASSERT(call.getOffset() == 0);
+  while (inputRange.skippedInFlight() > 0 || inputRange.hasDataRow()) {
+    if (remainingOffset() > 0) {
+      // First we skip in the input row until we fullfill our local offset.
+      auto const didSkip = inputRange.skip(remainingOffset());
+      // Need to forward the
+      _counter += didSkip;
+      // We do not report this to downstream
+      // But we report it in fullCount
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(didSkip);
+      }
+    } else if (!output.isFull()) {
+      auto numRowsWritten = size_t{0};
 
-  // We may not yet skip more than our offset, fullCount must happen after all
-  // rows were produced only.
-  auto const skipped = input.skip(upstreamCall.getOffset());
-  _counter += skipped;
-  if (infos().isFullCountEnabled()) {
-    stats.incrFullCountBy(skipped);
-  }
-
-  // We may not get data rows until our offset is reached
-  TRI_ASSERT(upstreamCall.getOffset() == skipped || !input.hasDataRow());
-
-  auto numRowsWritten = size_t{0};
-  while (numRowsWritten < upstreamCall.getLimit() && input.hasDataRow() &&
-         !output.isFull()) {
-    output.copyRow(input.nextDataRow().second);
-    output.advanceRow();
-    ++numRowsWritten;
-  }
-  _counter += numRowsWritten;
-  if (infos().isFullCountEnabled()) {
-    stats.incrFullCountBy(numRowsWritten);
-    if (limitFulfilled()) {
-      stats.incrFullCountBy(input.skipAll());
+      while (inputRange.hasDataRow()) {
+        // This block is passhthrough.
+        static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
+                      "For LIMIT with passthrough to work, there must be "
+                      "exactly enough space for all input in the output.");
+        // So there will always be enough place for all inputRows within
+        // the output.
+        TRI_ASSERT(!output.isFull());
+        // Also this number can be at most remainingOffset.
+        TRI_ASSERT(remainingLimit() > numRowsWritten);
+        output.copyRow(inputRange.nextDataRow().second);
+        output.advanceRow();
+        numRowsWritten++;
+      }
+      _counter += numRowsWritten;
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(numRowsWritten);
+      }
+    } else if (call.needsFullCount()) {
+      // We are done with producing.
+      // ExecutionBlockImpl will now call skipSome for the remainder
+      // There cannot be a dataRow left, as this block is passthrough!
+      TRI_ASSERT(!inputRange.hasDataRow());
+      // There are still skippedInflights;
+      TRI_ASSERT(inputRange.skippedInFlight() > 0);
+      break;
+    } else {
+      // We are done with producing.
+      if (infos().isFullCountEnabled()) {
+        // However we need to report the fullCount from above.
+        stats.incrFullCountBy(inputRange.skipAll());
+      }
+      // ExecutionBlockImpl will now call skipSome for the remainder
+      // There cannot be a dataRow left, as this block is passthrough!
+      TRI_ASSERT(!inputRange.hasDataRow());
+      TRI_ASSERT(inputRange.skippedInFlight() == 0);
+      break;
     }
   }
+  // We're passthrough, we must not have any input left when the limit isfulfilled
+  TRI_ASSERT(!limitFulfilled() || !inputRange.hasDataRow());
+  return {inputRange.upstreamState(), stats, calculateUpstreamCall(call)};
 
-  // When the limit is fulfilled, there must not be any skipped rows left.
-  // The offset is handled first, and skipped rows due to fullCount may only
-  // appear after the limit is fullfilled; and those are already counted.
-  TRI_ASSERT(!limitFulfilled() || input.skippedInFlight() == 0);
+  /*
+    // We may not yet skip more than our offset, fullCount must happen after all
+    // rows were produced only.
+    auto const skipped = input.skip(upstreamCall.getOffset());
+    _counter += skipped;
+    if (infos().isFullCountEnabled()) {
+      stats.incrFullCountBy(skipped);
+    }
 
-  // We're passthrough, we must not have any input left when the limit is fulfilled
-  TRI_ASSERT(!limitFulfilled() || !input.hasDataRow());
+    // We may not get data rows until our offset is reached
+    TRI_ASSERT(upstreamCall.getOffset() == skipped || !input.hasDataRow());
 
-  return {input.upstreamState(), stats, calculateUpstreamCall(clientCall)};
+    auto numRowsWritten = size_t{0};
+    while (numRowsWritten < upstreamCall.getLimit() && input.hasDataRow() &&
+           !output.isFull()) {
+      output.copyRow(input.nextDataRow().second);
+      output.advanceRow();
+      ++numRowsWritten;
+    }
+    _counter += numRowsWritten;
+    if (infos().isFullCountEnabled()) {
+      stats.incrFullCountBy(numRowsWritten);
+      if (limitFulfilled()) {
+        stats.incrFullCountBy(input.skipAll());
+      }
+    }
+
+    // When the limit is fulfilled, there must not be any skipped rows left.
+    // The offset is handled first, and skipped rows due to fullCount may only
+    // appear after the limit is fullfilled; and those are already counted.
+    TRI_ASSERT(!limitFulfilled() || input.skippedInFlight() == 0);
+
+
+
+    return {input.upstreamState(), stats, calculateUpstreamCall(clientCall)};
+    */
 }
 
 auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
@@ -175,12 +235,12 @@ auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& c
       if (infos().isFullCountEnabled()) {
         stats.incrFullCountBy(didSkip);
       }
-    } else if (call.getLimit() > 0) {
+    } else if (call.getLimit() > 0 && remainingLimit() > 0) {
       // If we get here we need to break out, and let produce rows be called.
       break;
     } else if (call.needsFullCount() || infos().isFullCountEnabled()) {
-      // Skip the remainder, it does not matter if we neeed to produce anything
-      // or not. This is only for reporting of the skipped numbers
+      // Skip the remainder, it does not matter if we neeed to produce
+      // anything or not. This is only for reporting of the skipped numbers
       auto const didSkip = inputRange.skipAll();
       _counter += didSkip;
       if (call.needsFullCount()) {
