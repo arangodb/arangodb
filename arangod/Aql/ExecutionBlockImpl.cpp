@@ -626,8 +626,8 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
 
   // Fall back to getSome/skipSome
   auto myCall = stack.popCall();
-  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) ||
-             AqlCall::IsGetSomeCall(myCall) || AqlCall::IsFullCountCall(myCall));
+  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall) ||
+             AqlCall::IsFullCountCall(myCall) || AqlCall::IsFastForwardCall(myCall));
   if (AqlCall::IsSkipSomeCall(myCall)) {
     auto const [state, skipped] = skipSome(myCall.getOffset());
     if (state != ExecutionState::WAITING) {
@@ -644,6 +644,9 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
       myCall.didSkip(skipped);
     }
     return {state, skipped, nullptr};
+  } else if (AqlCall::IsFastForwardCall(myCall)) {
+    // No idea if DONE is correct here...
+    return {ExecutionState::DONE, 0, nullptr};
   }
   // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

@@ -80,7 +80,7 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static bool IsSkipSomeCall(AqlCall const& call) {
-    return !call.hasHardLimit() && call.getOffset() > 0;
+    return call.getOffset() > 0;
   }
 
   // TODO Remove me, this will not be necessary later
@@ -92,6 +92,11 @@ struct AqlCall {
   static bool IsFullCountCall(AqlCall const& call) {
     return call.hasHardLimit() && call.getLimit() == 0 &&
            call.getOffset() == 0 && call.needsFullCount();
+  }
+
+  static bool IsFastForwardCall(AqlCall const& call) {
+    return call.hasHardLimit() && call.getLimit() == 0 &&
+           call.getOffset() == 0 && !call.needsFullCount();
   }
 
   std::size_t offset{0};
