@@ -39,6 +39,8 @@ class AqlCallStack {
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other);
 
+  AqlCallStack& operator=(AqlCallStack const& other) = default;
+
   // Quick test is this CallStack is of local relevance, or it is sufficient to pass it through
   bool isRelevant() const;
 
