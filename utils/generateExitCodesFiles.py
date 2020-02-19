@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-import csv, sys, os.path, re, io
+import csv, sys, os.path, re
 
 # wrap text after x characters
 def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
@@ -178,7 +178,7 @@ source = sys.argv[1]
 # read input file
 errors=None
 errorsList = []
-with io.open(source, encoding="utf-8", newline=None) as source_fh:
+with open(source, "r") as source_fh:
     errors = csv.reader(source_fh)
 
     r1 = re.compile(r'^#.*')
@@ -216,5 +216,5 @@ else:
   print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
   sys.exit(1)
 
-with io.open(outfile, mode="w", encoding="utf-8", newline="") as out_fh:
-    out_fh.write(out)
+with open(outfile, "w") as out_fh:
+    out_fh.write(out);
