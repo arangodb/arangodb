@@ -321,7 +321,6 @@ std::tuple<ExecutorState, EnumerateCollectionStats, size_t, AqlCall> EnumerateCo
       _cursorHasMore = _cursor->hasMore();
       call.didSkip(skipped);
     }
-
   }
 
   if (_cursorHasMore) {
