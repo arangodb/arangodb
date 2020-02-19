@@ -148,14 +148,14 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
   }
 
   struct search_state {
-    explicit search_state(uint32_t n, const position_t* s) : len(1), next_pos(n), sequence{ s } {}
+    explicit search_state(size_t pos, const position_t* s) : len(1), sequence{ s }, pos_sequence{pos} {}
     search_state(search_state&&) = default;
     search_state(const search_state&) = default;
     search_state& operator=(const search_state&) = default;
 
     size_t len;
-    uint32_t next_pos;
     std::vector<const position_t*> sequence;
+    std::vector<size_t> pos_sequence;
   };
    
   using search_states_t = std::map<uint32_t, search_state, std::greater<uint32_t>>;
@@ -169,11 +169,11 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     size_t skipped_matched = 0;
     seq_freq_.value = 0;
     for (const auto& post : pos_) {
+      size_t potential = matched_iters - skipped_matched;
       if (post.doc->value == disjunction_.value()) {
         position& pos = *(post.pos);
-        const size_t potential = matched_iters - skipped_matched;
         skipped_matched++;
-        if (potential <= matched) {
+        if (potential <= matched || potential < min_match_count_) {
           // this term could not start largest sequence. 
           // skip it to first position to append to any existing candidates  
           assert(!search_buf_.empty());
@@ -193,8 +193,13 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
             if (last_found_pos != found->first) {
               last_found_pos = found->first;
               auto new_found = found->second;
-              ++(new_found.len);
-              new_found.sequence.emplace_back(&post);
+              if (found->first != new_pos) {
+                ++(new_found.len);
+                new_found.sequence.emplace_back(&post);
+                new_found.pos_sequence.push_back(new_pos);
+              } else {
+                new_found.len = 0;
+              }
               if (new_found.len > matched) {
                 matched = new_found.len;
               } else {
@@ -205,6 +210,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   auto down_found = found->second;
                   ++(down_found.len);
                   down_found.sequence.emplace_back(&post);
+                  down_found.pos_sequence.push_back(new_pos);
                   if (down_found.len > new_found.len) {
                     // we have better option. Replace this match!
                     new_found = down_found;
@@ -215,7 +221,9 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
                   }
                 }
               }
-              temp_cache.emplace_back(new_pos, std::move(new_found));
+              if (new_found.len) {
+                temp_cache.emplace_back(new_pos, std::move(new_found));
+              }
             }
           } else  if (potential > matched && potential >= min_match_count_) {
             // this ngram at this position  could potentially start a long enough sequence
@@ -228,14 +236,24 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
             }
           }
         } while (pos.next());
-        for (auto& p : temp_cache) {
-          search_buf_.emplace(std::move(p));
+        for (const auto& p : temp_cache) {
+          auto res = search_buf_.insert(p);
+          if (!res.second) {
+            // pos already used. This could be if same ngram used several times. Replace
+            res.first->second = p.second;
+          }
         }
+        --potential; // we are done with this term. Next will have potential one less
       }
-      const size_t potential = matched_iters - skipped_matched;
+
+      if (matched + potential < min_match_count_) {
+        break; // all further terms will not let us build long enough sequence
+      }
+      
       if (!potential) {
         break; // all further terms will not add anything
       }
+      
       // if we have no scoring - we could stop searh once we got enough matches
       if (matched >= min_match_count_ && ord_->empty()) {
         break;
@@ -245,11 +263,27 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     // For now if several different sequences are longest - 
     // only most frequent one is counted
     if (matched >= min_match_count_  && !ord_->empty() ) { 
+      std::set<size_t> used_pos;
       for (auto i = search_buf_.begin(), end = search_buf_.end(); i != end;) {
         if (i->second.len < matched) {
           i = search_buf_.erase(i);
         } else {
-          ++i;
+          // check if this positions are used in some other
+          bool delete_candidate = false;
+          for (auto p : i->second.pos_sequence) {
+            if (used_pos.find(p) != used_pos.end()) {
+              delete_candidate = true;
+              break;
+            }
+          }
+          if (delete_candidate) {
+            i = search_buf_.erase(i);
+          } else {
+            for (auto p : i->second.pos_sequence) {
+              used_pos.insert(p);
+            }
+            ++i;
+          }
         }
       }
       using sequence_counter_t = std::map<std::vector<const position_t*>, uint32_t>;
@@ -269,6 +303,7 @@ class ngram_similarity_doc_iterator : public doc_iterator_base, score_ctx {
     }
     return matched >= min_match_count_;
   }
+
   positions_t pos_;
   frequency seq_freq_; // longest sequence frequency
   filter_boost filter_boost_;

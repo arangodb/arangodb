@@ -2282,7 +2282,7 @@ arangodb::Result fromFuncNgramMatch(
   
   TRI_ASSERT(filterCtx.analyzer);
   auto analyzerPool = filterCtx.analyzer;
-  // 4th optional argumaent defines an analyzer
+  // 4th optional argument defines an analyzer
   if (argc > 3) {
     
       auto rv = extractAnalyzerFromArg(analyzerPool, funcName, filter, args, 3, ctx);
