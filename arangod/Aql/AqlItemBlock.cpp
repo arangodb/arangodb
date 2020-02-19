@@ -286,6 +286,9 @@ void AqlItemBlock::shrink(size_t nrItems) {
   }
 
   decreaseMemoryUsage(sizeof(AqlValue) * (_nrItems - nrItems) * _nrRegs);
+
+  // adjust the size of the block
+  _nrItems = nrItems;
   
   for (size_t i = _nrItems * _nrRegs; i < _data.size(); ++i) {
     AqlValue& a = _data[i];
@@ -308,9 +311,6 @@ void AqlItemBlock::shrink(size_t nrItems) {
     }
     a.erase();
   }
-
-  // adjust the size of the block
-  _nrItems = nrItems;
 }
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
