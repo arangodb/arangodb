@@ -684,7 +684,7 @@ std::string extractCollectionName(transaction::Methods* trx,
 
     if (pos != std::string::npos) {
       // this is superior to  identifier.substr(0, pos)
-      identifier.reserve(pos);
+      identifier.resize(pos);
     }
 
     return identifier;
