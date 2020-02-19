@@ -163,9 +163,11 @@ RestStatus RestDocumentHandler::insertDocument() {
     return RestStatus::DONE;
   }
 
+
   arangodb::OperationOptions opOptions;
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
 
@@ -436,6 +438,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
