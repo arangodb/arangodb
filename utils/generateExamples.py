@@ -32,6 +32,7 @@
 ################################################################################
 
 from __future__ import print_function # py2 compat
+from __future__ import unicode_literals
 import re, sys, string, os, re, io
 from pprint import pprint
 
