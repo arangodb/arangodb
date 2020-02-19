@@ -105,7 +105,7 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
 }
 
 auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   ExecutorState state;
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
 
@@ -116,7 +116,7 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   // This is correct since the SubqueryEndExecutor produces one output out
   // of the accumulation of all the (relevant) inputs
   call.didSkip(1);
-  return {input.upstreamState(), 1, AqlCall{}};
+  return {input.upstreamState(), NoStats{}, 1, AqlCall{}};
 }
 
 auto SubqueryEndExecutor::stealValue(AqlValue& result) -> AqlValueGuard {

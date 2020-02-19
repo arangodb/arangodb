@@ -54,7 +54,7 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAql
 }
 
 auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
-    -> std::tuple<ExecutorState, size_t, AqlCall> {
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   // We must not have a row pending to be written as a
   // shadow row
   TRI_ASSERT(!_inputRow.isInitialized());
@@ -63,7 +63,7 @@ auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall
     std::tie(_upstreamState, _inputRow) = input.nextDataRow();
     call.didSkip(1);
   }
-  return {_upstreamState, 1, AqlCall{}};
+  return {_upstreamState, NoStats{}, 1, AqlCall{}};
 }
 
 auto SubqueryStartExecutor::produceShadowRow(OutputAqlItemRow& output) -> void {

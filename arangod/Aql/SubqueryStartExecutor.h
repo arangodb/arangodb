@@ -65,7 +65,7 @@ class SubqueryStartExecutor {
 
   // skipRowsRange just skips input rows and reports how many rows it skipped
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
-      -> std::tuple<ExecutorState, size_t, AqlCall>;
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   // Produce a shadow row *if* we have either skipped or output a datarow
   // previously

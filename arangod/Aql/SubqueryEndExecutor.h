@@ -98,7 +98,7 @@ class SubqueryEndExecutor {
   // so this might not be necessary at all (except for modifying subqueries,
   // where we have to execute the subquery)
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
-      -> std::tuple<ExecutorState, size_t, AqlCall>;
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
   [[nodiscard]] auto stealValue(AqlValue& result) -> AqlValueGuard;
   [[nodiscard]] auto isModificationSubquery() const noexcept -> bool;
 
