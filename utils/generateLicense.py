@@ -1,5 +1,4 @@
 #!/usr/bin/python
-from __future__ import unicode_literals
 import csv, sys, os.path, re, io
 try:
     from urllib.request import urlopen
