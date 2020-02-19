@@ -104,6 +104,7 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
 
   /// stores in-flight messages
   std::map<MessageID, std::shared_ptr<vst::RequestItem>> _messages;
+  std::atomic<uint32_t> _numMessages;
 
   const VSTVersion _vstVersion;
 

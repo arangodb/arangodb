@@ -38,6 +38,9 @@
 
 namespace arangodb {
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
 class OutputAqlItemRow;
 class ExecutorInfos;
 template <BlockPassthrough>
@@ -46,6 +49,26 @@ struct Aggregator;
 
 class HashedCollectExecutorInfos : public ExecutorInfos {
  public:
+  /**
+   * @brief Construct a new Hashed Collect Executor Infos object
+   *
+   * @param nrInputRegisters Number Registers in the input row
+   * @param nrOutputRegisters Number Registers in the output row
+   * @param registersToClear Registers that need to be empty after this
+   * @param registersToKeep Registers that will be copied after this
+   * @param readableInputRegisters InputRegisters this Executor is allowed to read
+   * @param writeableOutputRegisters OutputRegisters this Executor is required to write
+   * @param groupRegisters Registers the grouping is based on.
+   *                       If values in the registers are identical,
+   *                       the rows are considered as the same group.
+   *                       Format: <outputRegister, inputRegister>
+   * @param collectRegister Register to write the GroupingResult to
+   *                        (COLLECT ... INTO collectRegister)
+   * @param aggregateTypes Aggregation methods used
+   * @param aggregateRegisters Input and output Register for Aggregation
+   * @param trxPtr The AQL transaction, as it might be needed for aggregates
+   * @param count Flag to enable count, will be written to collectRegister
+   */
   HashedCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                              std::unordered_set<RegisterId> registersToClear,
                              std::unordered_set<RegisterId> registersToKeep,
@@ -117,8 +140,25 @@ class HashedCollectExecutor {
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @deprecated
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
@@ -138,13 +178,21 @@ class HashedCollectExecutor {
   Infos const& infos() const noexcept;
 
   /**
-   * @brief Shall be executed until it returns DONE, then never again.
-   * Consumes all input, writes groups and calculates aggregates, and
-   * initializes _currentGroup to _allGroups.begin().
+   * @brief Consumes all rows from upstream
+   *        Every row is collected into one of the groups.
    *
-   * @return DONE or WAITING
+   * @param inputRange Upstream range, will be fully consumed
+   * @return true We have consumed everything, start output
+   * @return false We do not have all input ask for more.
    */
-  ExecutionState init();
+  auto consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool;
+
+  /**
+   * @brief State this Executor needs to report
+   *
+   * @return ExecutorState
+   */
+  auto returnState() const -> ExecutorState;
 
   void destroyAllGroupsAqlValues();
 
@@ -159,8 +207,6 @@ class HashedCollectExecutor {
 
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
-  ExecutionState _upstreamState;
 
   /// @brief We need to save any input row (it really doesn't matter, except for
   /// when input blocks are freed - thus the last), so we can produce output
@@ -174,8 +220,6 @@ class HashedCollectExecutor {
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
-
-  size_t _returnedGroups;
 
   GroupKeyType _nextGroupValues;
 };

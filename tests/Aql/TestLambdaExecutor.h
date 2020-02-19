@@ -50,7 +50,7 @@ using ProduceCall =
  * @brief This is a shorthand for the skipRowsInRange signature
  */
 using SkipCall =
-    std::function<std::tuple<ExecutorState, size_t, AqlCall>(AqlItemBlockInputRange& input, AqlCall& call)>;
+    std::function<std::tuple<ExecutorState, NoStats, size_t, AqlCall>(AqlItemBlockInputRange& input, AqlCall& call)>;
 
 /**
  * @brief This is a shorthand for the reset state signature
@@ -223,7 +223,7 @@ class TestLambdaSkipExecutor {
    * @return std::tuple<ExecutorState, size_t, AqlCall>
    */
   auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
-      -> std::tuple<ExecutorState, size_t, AqlCall>;
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
    * @brief produceRows API. Just calls the ProduceCall in the Infos.

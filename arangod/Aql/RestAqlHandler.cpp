@@ -430,7 +430,7 @@ bool RestAqlHandler::killQuery(std::string const& idString) {
 //   "pos":   The number of the row in "items" to take, usually 0.
 // For the "shutdown" and "lock" operations no additional arguments are
 // required and an empty JSON object in the body is OK.
-// All operations allow to set the HTTP header "Shard-ID:". If this is
+// All operations allow to set the HTTP header "x-shard-id:". If this is
 // set, then the root block of the stored query must be a ScatterBlock
 // and the shard ID is given as an additional argument to the ScatterBlock's
 // special API.
@@ -637,7 +637,11 @@ Query* RestAqlHandler::findQuery(std::string const& idString) {
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
-  std::string const& shardId = _request->header("shard-id");
+  bool found;
+  std::string shardId = _request->header("x-shard-id", found);
+  if (!found) {  // deprecated in 3.7, remove later
+    shardId = _request->header("shard-id", found);
+  }
 
   // upon first usage, the "initializeCursor" method must be called
   // note: if the operation is "initializeCursor" itself, we do not initialize
@@ -670,9 +674,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    auto atMost =
-        VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                  ExecutionBlock::DefaultBatchSize);
+    auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
+                                                            ExecutionBlock::DefaultBatchSize);
     SharedAqlItemBlockPtr items;
     ExecutionState state;
     if (shardId.empty()) {
@@ -681,13 +684,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
         return RestStatus::WAITING;
       }
     } else {
+      TRI_ASSERT(_query->engine()->root()->getPlanNode()->getType() == ExecutionNode::SCATTER ||
+                 _query->engine()->root()->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
       auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
       if (block == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected node type");
       }
-      TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
-                 block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
       std::tie(state, items) = block->getSomeForShard(atMost, shardId);
       if (state == ExecutionState::WAITING) {
         return RestStatus::WAITING;
@@ -704,9 +707,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                           answerBuilder);
     }
   } else if (operation == "skipSome") {
-    auto atMost =
-        VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                  ExecutionBlock::DefaultBatchSize);
+    auto atMost = VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
+                                                            ExecutionBlock::DefaultBatchSize);
     size_t skipped;
     if (shardId.empty()) {
       auto tmpRes = _query->engine()->skipSome(atMost);
@@ -715,13 +717,14 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       }
       skipped = tmpRes.second;
     } else {
+      TRI_ASSERT(_query->engine()->root()->getPlanNode()->getType() == ExecutionNode::SCATTER ||
+                 _query->engine()->root()->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
+
       auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
       if (block == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected node type");
       }
-      TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
-                 block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
 
       auto tmpRes = block->skipSomeForShard(atMost, shardId);
       if (tmpRes.first == ExecutionState::WAITING) {

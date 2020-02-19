@@ -26,6 +26,7 @@
 #include "gtest/gtest.h"
 
 #include "AqlItemBlockHelper.h"
+#include "Mocks/Servers.h"
 #include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlCall.h"
@@ -45,6 +46,100 @@
 namespace arangodb {
 namespace tests {
 namespace aql {
+/**
+ * @brief Static helper class just offers helper methods
+ * Do never instantiate
+ *
+ */
+class asserthelper {
+ private:
+  asserthelper() {}
+
+ public:
+  static auto AqlValuesAreIdentical(AqlValue const& lhs, AqlValue const& rhs) -> bool;
+
+  static auto RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualRow,
+                               SharedAqlItemBlockPtr expected, size_t expectedRow,
+                               std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> bool;
+
+  static auto ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
+                                        size_t actualRow, RegisterId actualRegister,
+                                        SharedAqlItemBlockPtr expected, size_t expectedRow,
+                                        RegisterId expectedRegister) -> void;
+
+  static auto ValidateBlocksAreEqual(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
+
+  static auto ValidateBlocksAreEqualUnordered(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::size_t numRowsNotContained = 0,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
+
+  static auto ValidateBlocksAreEqualUnordered(
+      SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+      std::unordered_set<size_t>& matchedRows, std::size_t numRowsNotContained = 0,
+      std::optional<std::vector<RegisterId>> const& onlyCompareRegisters = std::nullopt)
+      -> void;
+};
+
+/**
+ * @brief Base class for ExecutorTests in Aql.
+ *        It will provide a test server, including
+ *        an AqlQuery, as well as the ability to generate
+ *        Dummy ExecutionNodes.
+ *
+ * @tparam enableQueryTrace Enable Aql Profile Trace logging
+ */
+template <bool enableQueryTrace = false>
+class AqlExecutorTestCase : public ::testing::Test {
+ public:
+  // Creating a server instance costs a lot of time, so do it only once.
+  // Note that newer version of gtest call these SetUpTestSuite/TearDownTestSuite
+  static void SetUpTestCase() {
+    _server = std::make_unique<mocks::MockAqlServer>();
+  }
+
+  static void TearDownTestCase() { _server.reset(); }
+
+ protected:
+  AqlExecutorTestCase();
+  virtual ~AqlExecutorTestCase() = default;
+
+  /**
+   * @brief Creates and manages a ExecutionNode.
+   *        These nodes can be used to create the Executors
+   *        Caller does not need to manage the memory.
+   *
+   * @return ExecutionNode* Pointer to a dummy ExecutionNode. Memory is managed, do not delete.
+   */
+  auto generateNodeDummy() -> ExecutionNode*;
+
+  auto manager() const -> AqlItemBlockManager&;
+
+ private:
+  static inline std::unique_ptr<mocks::MockAqlServer> _server;
+  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
+
+ protected:
+  // available variables
+  ResourceMonitor monitor{};
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+};
+
+/**
+ * @brief Shortcut handle for parameterized AqlExecutorTestCases with param
+ *
+ * @tparam T The Test Parameter used for gtest.
+ * @tparam enableQueryTrace Enable Aql Profile Trace logging
+ */
+template <typename T, bool enableQueryTrace = false>
+class AqlExecutorTestCaseWithParam : public AqlExecutorTestCase<enableQueryTrace>,
+                                     public ::testing::WithParamInterface<T> {};
 
 using ExecBlock = std::unique_ptr<ExecutionBlock>;
 
@@ -98,6 +193,9 @@ struct ExecutorTestHelper {
       : _expectedSkip{0},
         _expectedState{ExecutionState::HASMORE},
         _testStats{false},
+        _unorderedOutput{false},
+        _appendEmptyBlock{false},
+        _unorderedSkippedRows{0},
         _query(query),
         _dummyNode{std::make_unique<SingletonNode>(_query.plan(), 42)} {}
 
@@ -139,7 +237,7 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  auto expectOutput(std::array<std::size_t, outputColumns> const& regs,
+  auto expectOutput(std::array<RegisterId, outputColumns> const& regs,
                     MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
     _outputRegisters = regs;
     _output = out;
@@ -196,6 +294,26 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto allowAnyOutputOrder(bool expected, size_t skippedRows = 0) -> ExecutorTestHelper& {
+    _unorderedOutput = expected;
+    _unorderedSkippedRows = skippedRows;
+    return *this;
+  }
+
+  /**
+   * @brief This appends an empty block after the input fully created.
+   *        It simulates a situation where the Producer lies about the
+   *        the last input with HASMORE, but it actually is not able
+   *        to produce more.
+   *
+   * @param append If this should be enabled or not
+   * @return ExecutorTestHelper& this for chaining
+   */
+  auto appendEmptyBlock(bool append) -> ExecutorTestHelper& {
+    _appendEmptyBlock = append;
+    return *this;
+  }
+
   auto run() -> void {
     ResourceMonitor monitor;
     AqlItemBlockManager itemBlockManager(&monitor, SerializationFormat::SHADOWROWS);
@@ -232,10 +350,23 @@ struct ExecutorTestHelper {
     EXPECT_EQ(skipped, _expectedSkip);
 
     EXPECT_EQ(state, _expectedState);
+    if (result == nullptr) {
+      // Empty output, possible if we skip all
+      EXPECT_EQ(_output.size(), 0)
+          << "Executor does not yield output, although it is expected";
+    } else {
+      SharedAqlItemBlockPtr expectedOutputBlock =
+          buildBlock<outputColumns>(itemBlockManager, std::move(_output));
+      std::vector<RegisterId> outRegVector(_outputRegisters.begin(),
+                                           _outputRegisters.end());
+      if (_unorderedOutput) {
+        asserthelper::ValidateBlocksAreEqualUnordered(result, expectedOutputBlock,
+                                                      _unorderedSkippedRows, outRegVector);
+      } else {
+        asserthelper::ValidateBlocksAreEqual(result, expectedOutputBlock, outRegVector);
+      }
+    }
 
-    SharedAqlItemBlockPtr expectedOutputBlock =
-        buildBlock<outputColumns>(itemBlockManager, std::move(_output));
-    testOutputBlock(result, expectedOutputBlock);
     if (_testStats) {
       auto actualStats = _query.engine()->getStats();
       EXPECT_EQ(actualStats, _expectedStats);
@@ -311,6 +442,9 @@ struct ExecutorTestHelper {
           buildBlock<inputColumns>(itemBlockManager, std::move(matrix));
       blockDeque.emplace_back(inputBlock);
     }
+    if (_appendEmptyBlock) {
+      blockDeque.emplace_back(nullptr);
+    }
 
     return std::make_unique<WaitingExecutionBlockMock>(
         _query.engine(), _dummyNode.get(), std::move(blockDeque),
@@ -320,11 +454,14 @@ struct ExecutorTestHelper {
   AqlCall _call;
   MatrixBuilder<inputColumns> _input;
   MatrixBuilder<outputColumns> _output;
-  std::array<std::size_t, outputColumns> _outputRegisters;
-  size_t _expectedSkip;
+  std::array<RegisterId, outputColumns> _outputRegisters;
+  std::size_t _expectedSkip;
   ExecutionState _expectedState;
   ExecutionStats _expectedStats;
   bool _testStats;
+  bool _unorderedOutput;
+  bool _appendEmptyBlock;
+  std::size_t _unorderedSkippedRows;
 
   SplitType _inputSplit = {std::monostate()};
   SplitType _outputSplit = {std::monostate()};

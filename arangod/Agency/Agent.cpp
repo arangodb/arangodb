@@ -578,20 +578,12 @@ void Agent::sendAppendEntriesRPC() {
           needSnapshot = false;
         }
       }
-
-      // RPC path
-      std::stringstream path;
+      
       index_t prevLogIndex = unconfirmed.front().index;
       index_t prevLogTerm = unconfirmed.front().term;
       if (needSnapshot) {
         prevLogIndex = snapshotIndex;
         prevLogTerm = snapshotTerm;
-      }
-      {
-        path << "/_api/agency_priv/appendEntries?term=" << t
-             << "&leaderId=" << id() << "&prevLogIndex=" << prevLogIndex
-             << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex
-             << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
       }
 
       // Body
@@ -654,10 +646,15 @@ void Agent::sendAppendEntriesRPC() {
 
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(150);
+      reqOpts.param("term", std::to_string(t)).param("leaderId", id())
+             .param("prevLogIndex", std::to_string(prevLogIndex))
+             .param("prevLogTerm", std::to_string(prevLogTerm))
+             .param("leaderCommit", std::to_string(commitIndex))
+             .param("senderTimeStamp", std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
       // Send request
       auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
-      network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+      network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, "/_api/agency_priv/appendEntries",
                            std::move(buffer), reqOpts).thenValue([=](network::Response r) {
         ac->operator()(r);
       });
@@ -705,16 +702,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
     READ_LOCKER(oLocker, _outputLock);
     commitIndex = _commitIndex;
   }
-
-  // RPC path
-  std::stringstream path;
-  {
-    path << "/_api/agency_priv/appendEntries?term=" << _constituent.term()
-         << "&leaderId=" << id() << "&prevLogIndex=0"
-         << "&prevLogTerm=0&leaderCommit=" << commitIndex
-         << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
-  }
-
+  
   // Just check once more:
   if (!leading()) {
     LOG_TOPIC("99dc2", DEBUG, Logger::AGENCY)
@@ -733,8 +721,13 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
+  reqOpts.param("term", std::to_string(_constituent.term())).param("leaderId", id())
+         .param("prevLogIndex", "0")
+         .param("prevLogTerm", "0")
+         .param("leaderCommit", std::to_string(commitIndex))
+         .param("senderTimeStamp", std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
-  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, "/_api/agency_priv/appendEntries",
                        std::move(buffer), reqOpts).thenValue([=](network::Response r) {
     ac->operator()(r);
   });

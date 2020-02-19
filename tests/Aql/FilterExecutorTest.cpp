@@ -424,7 +424,8 @@ TEST_F(FilterExecutorTest, test_skip_datarange_need_more) {
   AqlCall clientCall;
   clientCall.offset = 1000;
 
-  auto const [state, skipped, call] = testee.skipRowsRange(input, clientCall);
+  auto const [state, stats, skipped, call] = testee.skipRowsRange(input, clientCall);
+  // TODO check stats
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(skipped, 3);
   EXPECT_EQ(clientCall.getOffset(), 1000 - 3);
@@ -494,7 +495,8 @@ TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
   AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
   AqlCall clientCall;
   clientCall.offset = 2;
-  auto const [state, skipped, call] = testee.skipRowsRange(input, clientCall);
+  auto const [state, stats, skipped, call] = testee.skipRowsRange(input, clientCall);
+  // TODO check stats
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(skipped, 2);
   EXPECT_EQ(clientCall.getOffset(), 0);
