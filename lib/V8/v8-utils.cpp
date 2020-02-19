@@ -225,7 +225,7 @@ static void JS_SetConnectionsToBeDeadIn(v8::FunctionCallbackInfo<v8::Value> cons
 
   auto when = connectionToBeDeadAt.load();
   auto now = TRI_microtime();
-  
+
   double n = TRI_ObjectToDouble(isolate, args[0]);
   setConnectionToBeDeadInMS(n);
   std::cout << "when: " << when << " - now: " << now << std::endl;
@@ -263,6 +263,7 @@ double getMaxTimeoutConnectionToBeDead(double timeout) {
 #define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
 std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::duration<double> timeout) {
   double epochDobuleWhen = connectionToBeDeadAt.load(); // time-point (seconds since epoch as double)
+  LOG_DEVEL << "epoch timeout: " << epochDobuleWhen;
   if (epochDobuleWhen == 0.0) {
     return timeout;
   }
@@ -272,12 +273,15 @@ std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::durat
   std::chrono::time_point<decltype(now)::clock, std::chrono::duration<double>> timepointWhen(durationWhen);
 
   auto delta = now - timepointWhen; // Your problem was here - You need 2 points to create a duration.
-  if (delta > timeout) {
-    std::cout << "original timeout" << std::endl;
+  LOG_DEVEL << "delta in seconds: " <<std::chrono::duration_cast<std::chrono::seconds>(delta).count();      //-29s looks correct the code is running for about a second.
+  LOG_DEVEL << "timeout in minuites: " <<std::chrono::duration_cast<std::chrono::minutes>(timeout).count(); // Are 20 minutes correct?
+
+  if (delta > timeout) { // -29 s > 20 minutes - are you sure?
+    LOG_DEVEL << "original timeout";
     return timeout;
   }
-  std::cout << "modified timeout" << std::endl;
-  return delta;
+  LOG_DEVEL << "modified timeout";
+  return delta;                       // Returns -29 seconds?! Not sure if you want that!
 
 }
 #undef ARANGODB_SHELL_V8CLIENT_CONNECTION_H
