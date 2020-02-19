@@ -181,7 +181,7 @@ function server_secrets(options) {
     'cluster.create-waits-for-sync-replication': false,
     'ssl.keyfile': keyfileName
   };
-   et version = global.ARANGODB_CLIENT_VERSION(true);
+  let version = global.ARANGODB_CLIENT_VERSION(true);
   if (version.hasOwnProperty('enterprise-version')) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
