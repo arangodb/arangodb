@@ -322,7 +322,22 @@ TEST_P(LimitExecutorTest, testSuite) {
 
         auto stats = LimitStats{};
         if (fullCount) {
-          stats.incrFullCountBy(numInputRows);
+          if (!clientCall.hasHardLimit()) {
+            auto rowsToTriggerFullCountInExecutor = offset + limit;
+            auto rowsByClient = clientCall.getOffset() + clientCall.getLimit();
+
+            // If we do not have a hard limit, we only report fullCount
+            // up to the point where the Executor has actually consumed input.
+            if (rowsByClient >= limit && rowsToTriggerFullCountInExecutor < numInputRows) {
+              // however if the limit of the executor is smaller than the input
+              // it will itself start counting.
+              stats.incrFullCountBy(numInputRows);
+            } else {
+              stats.incrFullCountBy(std::min(effectiveOffset + effectiveLimit, numInputRows));
+            }
+          } else {
+            stats.incrFullCountBy(numInputRows);
+          }
         }
 
         // Whether the execution should return HASMORE:
