@@ -84,7 +84,6 @@ class SslServerFeature : public application_features::ApplicationFeature {
   std::string _keyfile;        // name of default keyfile
   // For SNI, we have two maps, one mapping to the filename for a certain
   // server, another, to keep the actual keyfile in memory.
-  std::vector<std::string> _sniPairs;
   std::vector<SNIEntry> _sniEntries;   // the first entry is the default server keyfile
   std::unordered_map<std::string, size_t> _sniServerIndex;  // map server names to indices in _sniEntries
   bool _sessionCache;

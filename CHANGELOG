@@ -5,7 +5,7 @@ devel
   server keys and certificate chains and the system dynamically uses
   the right one depending on the value of the TLS servername extension.
   This allows to use different TLS setups for the same server which is
-  reachable behind different DNS names, for example.
+  reachable behind different DNS names, for example (enterprise only).
 
 * Rebuild UI.
 

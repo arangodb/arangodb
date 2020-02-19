@@ -116,10 +116,6 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--ssl.ecdh-curve",
       "SSL ECDH Curve, see the output of \"openssl ecparam -list_curves\"",
       new StringParameter(&_ecdhCurve));
-
-  options->addOption("--ssl.server-name-indication",
-                     "add a case SERVERNAME=KEYFILENAME for a different server keyfile for a specific server name, can be given multiple times",
-                     new VectorParameter<StringParameter>(&_sniPairs));
 }
 
 void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -129,31 +125,6 @@ void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) 
         << "SSLv2 is not supported any longer because of security "
            "vulnerabilities in this protocol";
     FATAL_ERROR_EXIT();
-  }
-  _sniEntries.clear();
-  _sniEntries.emplace_back("", _keyfile);
-  for (auto const& sni : _sniPairs) {
-    size_t pos = sni.find('=');
-    if (pos == std::string::npos) {
-      LOG_TOPIC("eddaa", WARN, Logger::SSL)
-          << "SNI pair does not have an equals sign: " << sni << ", will be ignored.";
-    } else {
-      std::string serverName = sni.substr(0, pos);
-      std::string keyfileName = sni.substr(pos+1);
-      std::string keyfileContent;
-      try {
-        std::string keyfileContent = FileUtils::slurp(keyfileName);
-        _sniEntries.emplace_back(serverName, keyfileName);
-        _sniEntries.back().keyfileContent = std::move(keyfileContent);
-        _sniServerIndex[serverName] = _sniEntries.size()-1;
-        // Note that _sniServerIndex is immutable once this method has
-        // completed. We do not do any memory protection here.
-      } catch (std::exception const& e) {
-        LOG_TOPIC("eddab", WARN, Logger::SSL)
-            << "Cannot read keyfile for SNI pair: (" << serverName << ", "
-            << keyfileName << ", error: " << e.what() << ", ignoring...";
-      }
-    }
   }
 }
 
@@ -740,3 +711,4 @@ Result SslServerFeature::dumpTLSData(VPackBuilder& builder) const {
   }
   return Result(TRI_ERROR_NO_ERROR);
 }
+

@@ -175,13 +175,18 @@ function server_secrets(options) {
   copyOptions['protocol'] = "ssl";
 
   const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], copyOptions);
-  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, {
+  let additionalArguments = {
     'server.authentication': 'true',
     'server.jwt-secret-folder': secretsDir,
     'cluster.create-waits-for-sync-replication': false,
-    'ssl.keyfile': keyfileName,
-    'ssl.server-name-indication': "hans.arangodb.com=./UnitTests/tls.keyfile"
-  });
+    'ssl.keyfile': keyfileName
+  };
+   et version = global.ARANGODB_CLIENT_VERSION(true);
+  if (version.hasOwnProperty('enterprise-version')) {
+    additionalArguments['ssl.server-name-indication']
+      = "hans.arangodb.com=./UnitTests/tls.keyfile";
+  }
+  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, );
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
