@@ -1013,10 +1013,6 @@ auto ExecutionBlockImpl<Executor>::nextState(AqlCall const& call) const -> ExecS
     // Then produce
     return ExecState::PRODUCE;
   }
-  if (call.needsFullCount()) {
-    // then fullcount
-    return ExecState::FULLCOUNT;
-  }
   if (call.hardLimit == 0) {
     // We reached hardLimit, fast forward
     return ExecState::FASTFORWARD;
@@ -1137,16 +1133,12 @@ enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
 
 template <class Executor>
 static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwardVariant {
-  // We only get into fastForward variant in Executors that have produced
-  // everything. However the LimitExector can do early abortion.
-  TRI_ASSERT(!(std::is_one_of<Executor, LimitExecutor>) || call.getOffset() == 0);
-  TRI_ASSERT(!(std::is_one_of<Executor, LimitExecutor>) || call.getLimit() == 0);
   if (call.needsFullCount()) {
     return FastForwardVariant::FULLCOUNT;
   }
   // TODO: We only need to do this is the executor actually require to call.
   // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
-  if constexpr (std::is_one_of<Executor, LimitExecutor>) {
+  if constexpr (is_one_of_v<Executor, LimitExecutor>) {
     return FastForwardVariant::EXECUTOR;
   }
   return FastForwardVariant::FETCHER;
@@ -1154,10 +1146,32 @@ static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwa
 
 template <class Executor>
 auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& inputRange,
-                                                      AqlCall& call)
+                                                      AqlCall& clientCall)
     -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
-  TRI_ASSERT(constexpr(isNewStyleExecutor<Executor>));
+  TRI_ASSERT(isNewStyleExecutor<Executor>);
+  auto type = fastForwardType(clientCall, _executor);
+  switch (type) {
+    case FastForwardVariant::FULLCOUNT:
+    case FastForwardVariant::EXECUTOR: {
+      auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
+      if (type == FastForwardVariant::EXECUTOR) {
+        // We do not report the skip
+        skippedLocal = 0;
+      }
+      return {state, stats, skippedLocal, call};
+    }
+    case FastForwardVariant::FETCHER: {
+      while (inputRange.hasDataRow()) {
+        auto [state, row] = inputRange.nextDataRow();
+        TRI_ASSERT(row.isInitialized());
+      }
+      AqlCall call{};
+      call.hardLimit = 0;
+      return {inputRange.upstreamState(), typename Executor::Stats{}, 0, call};
+    }
+  }
 }
+
 /**
  * @brief This is the central function of an executor, and it acts like a
  * coroutine: It can be called multiple times and keeps state across
@@ -1165,13 +1179,12 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
  *
  * The intended behaviour of this function is best described in terms of
  * a state machine; the possible states are the ExecStates
- * SKIP, PRODUCE, FULLCOUNT, FASTFORWARD, UPSTREAM, SHADOWROWS, DONE
+ * SKIP, PRODUCE, FASTFORWARD, UPSTREAM, SHADOWROWS, DONE
  *
  * SKIP       skipping rows. How rows are skipped is determined by
  *            the Executor that is used. See SkipVariants
  * PRODUCE    calls produceRows of the executor
- * FULLCOUNT  again skipping rows. like skip, but will skip all rows
- * FASTFORWARD like fullcount, but does not count skipped rows.
+ * FASTFORWARD again skipping rows, will count skipped rows, if fullCount is requested.
  * UPSTREAM   fetches rows from the upstream executor(s) to be processed by
  *            our executor.
  * SHADOWROWS process any shadow rows
@@ -1180,11 +1193,11 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
  *
  * We progress within the states in the following way:
  *   There is a nextState method that determines the next state based on the call, it can only lead to:
- *   SKIP, PRODUCE, FULLCOUNT, FASTFORWAD, DONE
+ *   SKIP, PRODUCE, FASTFORWAD, DONE
  *
  *   On the first call we will use nextState to get to our starting point.
- *   After any of SKIP, PRODUCE, FULLCOUNT, FASTFORWAD, DONE We either go to
- *   1. FASTFORWARD/FULLCOUNT (if executor is done)
+ *   After any of SKIP, PRODUCE,, FASTFORWAD, DONE We either go to
+ *   1. FASTFORWARD (if executor is done)
  *   2. DONE (if output is full)
  *   3. UPSTREAM if executor has More, (Invariant: input fully consumed)
  *   4. NextState (if none of the above applies)
@@ -1315,11 +1328,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           if (_outputItemRow->isInitialized() && _outputItemRow->allRowsUsed()) {
             _execState = ExecState::DONE;
           } else if (state == ExecutorState::DONE) {
-            if (clientCall.needsFullCount()) {
-              _execState = ExecState::FULLCOUNT;
-            } else {
-              _execState = ExecState::FASTFORWARD;
-            }
+            _execState = ExecState::FASTFORWARD;
           } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
@@ -1334,33 +1343,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
         case ExecState::FASTFORWARD: {
           LOG_QUERY("96e2c", DEBUG)
               << printTypeInfo() << " all produced, fast forward to end up (sub-)query.";
-          // We can either do FASTFORWARD or FULLCOUNT, difference is that
-          // fullcount counts what is produced now, FASTFORWARD simply drops
-          TRI_ASSERT(!clientCall.needsFullCount());
-          // We need to claim that the Executor was done
-          localExecutorState = ExecutorState::DONE;
-
-          // We can drop all dataRows from upstream
-          while (_lastRange.hasDataRow()) {
-            auto [state, row] = _lastRange.nextDataRow();
-            TRI_ASSERT(row.isInitialized());
-          }
-          if (_lastRange.upstreamState() == ExecutorState::DONE) {
-            _execState = ExecState::SHADOWROWS;
-          } else {
-            // We need to request more, simply send hardLimit 0 upstream
-            _upstreamRequest = AqlCall{};
-            _upstreamRequest.hardLimit = 0;
-            _execState = ExecState::UPSTREAM;
-          }
-          break;
-        }
-        case ExecState::FULLCOUNT: {
-          LOG_QUERY("ff258", DEBUG)
-              << printTypeInfo()
-              << " all produced, skip to end up (sub-)query, for fullCount.";
           auto [state, stats, skippedLocal, call] =
-              executeSkipRowsRange(_lastRange, clientCall);
+              executeFastForward(_lastRange, clientCall);
+
           _skipped += skippedLocal;
           _engine->_stats += stats;
           localExecutorState = state;
