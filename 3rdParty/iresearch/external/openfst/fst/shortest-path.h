@@ -34,9 +34,12 @@ struct ShortestPathOptions
                       // shortest distance from the initial state.
   bool first_path;    // Single shortest path stops after finding the first
                       // path to a final state; that path is the shortest path
-                      // only when using the ShortestFirstQueue and
-                      // only when all the weights in the FST are between
-                      // One() and Zero() according to NaturalLess.
+                      // only when:
+                      // (1) using the ShortestFirstQueue with all the weights
+                      // in the FST being between One() and Zero() according to
+                      // NaturalLess or when
+                      // (2) using the NaturalAStarQueue with an admissible
+                      // and consistent estimate.
   Weight weight_threshold;  // Pruning weight threshold.
   StateId state_threshold;  // Pruning state threshold.
 
@@ -57,7 +60,7 @@ struct ShortestPathOptions
 
 namespace internal {
 
-FST_CONSTEXPR const size_t kNoArc = -1;
+constexpr size_t kNoArc = -1;
 
 // Helper function for SingleShortestPath building the shortest path as a left-
 // to-right machine backwards from the best final state. It takes the input
@@ -86,7 +89,7 @@ void SingleShortestPathBacktrace(
       aiter.Seek(parent[d].second);
       auto arc = aiter.Value();
       arc.nextstate = d_p;
-      ofst->AddArc(s_p, arc);
+      ofst->AddArc(s_p, std::move(arc));
     }
   }
   ofst->SetStart(s_p);
@@ -126,6 +129,37 @@ void SingleShortestTree(
       kFstProperties);
 }
 
+// Implements the stopping criterion when ShortestPathOptions::first_path
+// is set to true:
+//   operator()(s, d, f) == true
+//   iff every successful path through state 's' has a cost greater or equal
+//   to 'f' under the assumption that 'd' is the shortest distance to state 's'.
+// Correct when using the ShortestFirstQueue with all the weights in the FST
+// being between One() and Zero() according to NaturalLess
+template <typename S, typename W, typename Queue>
+struct FirstPathSelect {
+  FirstPathSelect(const Queue &) {}
+  bool operator()(S s, W d, W f) const { return f == Plus(d, f); }
+};
+
+// Specialisation for A*.
+// Correct when the estimate is admissible and consistent.
+template <typename S, typename W, typename Estimate>
+class FirstPathSelect<S, W, NaturalAStarQueue<S, W, Estimate>> {
+ public:
+  using Queue = NaturalAStarQueue<S, W, Estimate>;
+
+  FirstPathSelect(const Queue &state_queue)
+    : estimate_(state_queue.GetCompare().GetEstimate()) {}
+
+  bool operator()(S s, W d, W f) const {
+    return f == Plus(Times(d, estimate_(s)), f);
+  }
+
+ private:
+  const Estimate &estimate_;
+};
+
 // Shortest-path algorithm. It builds the output mutable FST so that it contains
 // the shortest path in the input FST; distance returns the shortest distances
 // from the source state to each state in the input FST, and the options struct
@@ -147,8 +181,7 @@ bool SingleShortestPath(
     std::vector<std::pair<typename Arc::StateId, size_t>> *parent) {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
-  static_assert((Weight::Properties() & kPath) == kPath,
-                "Weight must have path property.");
+  static_assert(IsPath<Weight>::value, "Weight must have path property.");
   static_assert((Weight::Properties() & kRightSemiring) == kRightSemiring,
                 "Weight must be right distributive.");
   parent->clear();
@@ -164,10 +197,10 @@ bool SingleShortestPath(
   while (distance->size() < source) {
     distance->push_back(Weight::Zero());
     enqueued.push_back(false);
-    parent->push_back(std::make_pair(kNoStateId, kNoArc));
+    parent->emplace_back(kNoStateId, kNoArc);
   }
   distance->push_back(Weight::One());
-  parent->push_back(std::make_pair(kNoStateId, kNoArc));
+  parent->emplace_back(kNoStateId, kNoArc);
   state_queue->Enqueue(source);
   enqueued.push_back(true);
   while (!state_queue->Empty()) {
@@ -177,7 +210,9 @@ bool SingleShortestPath(
     const auto sd = (*distance)[s];
     // If we are using a shortest queue, no other path is going to be shorter
     // than f_distance at this point.
-    if (opts.first_path && final_seen && f_distance == Plus(f_distance, sd)) {
+    using FirstPath = FirstPathSelect<StateId, Weight, Queue>;
+    if (opts.first_path && final_seen &&
+        FirstPath(*state_queue)(s, sd, f_distance)) {
       break;
     }
     if (ifst.Final(s) != Weight::Zero()) {
@@ -194,7 +229,7 @@ bool SingleShortestPath(
       while (distance->size() <= arc.nextstate) {
         distance->push_back(Weight::Zero());
         enqueued.push_back(false);
-        parent->push_back(std::make_pair(kNoStateId, kNoArc));
+        parent->emplace_back(kNoStateId, kNoArc);
       }
       auto &nd = (*distance)[arc.nextstate];
       const auto weight = Times(sd, arc.weight);
@@ -266,8 +301,8 @@ class ShortestPathCompare {
 //
 // The n-shortest paths are the n-lowest weight paths w.r.t. the natural
 // semiring order. The single path that can be read from the ith of at most n
-// transitions leaving the initial state of the the input FST is the ith
-// shortest path. Disregarding the initial state and initial transitions, the
+// transitions leaving the initial state of the input FST is the ith shortest
+// path. Disregarding the initial state and initial transitions, the
 // n-shortest paths, in fact, form a tree rooted at the single final state.
 //
 // The weights need to be left and right distributive (kSemiring) and have the
@@ -285,9 +320,9 @@ class ShortestPathCompare {
 // The algorithm relies on the shortest-distance algorithm. There are some
 // issues with the pseudo-code as written in the paper (viz., line 11).
 //
-// IMPLEMENTATION NOTE: The input FST can be a delayed FST and and at any state
-// in its expansion the values of distance vector need only be defined at that
-// time for the states that are known to exist.
+// IMPLEMENTATION NOTE: The input FST can be a delayed FST and at any state in
+// its expansion the values of distance vector need only be defined at that time
+// for the states that are known to exist.
 template <class Arc, class RevArc>
 void NShortestPath(const Fst<RevArc> &ifst, MutableFst<Arc> *ofst,
                    const std::vector<typename Arc::Weight> &distance,
@@ -324,9 +359,9 @@ void NShortestPath(const Fst<RevArc> &ifst, MutableFst<Arc> *ofst,
   }
   ofst->SetStart(ofst->AddState());
   const auto final_state = ofst->AddState();
-  ofst->SetFinal(final_state, Weight::One());
+  ofst->SetFinal(final_state);
   while (pairs.size() <= final_state) {
-    pairs.push_back(std::make_pair(kNoStateId, Weight::Zero()));
+    pairs.emplace_back(kNoStateId, Weight::Zero());
   }
   pairs[final_state] = std::make_pair(ifst.Start(), Weight::One());
   std::vector<StateId> heap;
@@ -352,9 +387,7 @@ void NShortestPath(const Fst<RevArc> &ifst, MutableFst<Arc> *ofst,
     }
     while (r.size() <= p.first + 1) r.push_back(0);
     ++r[p.first + 1];
-    if (p.first == kNoStateId) {
-      ofst->AddArc(ofst->Start(), Arc(0, 0, Weight::One(), state));
-    }
+    if (p.first == kNoStateId) ofst->AddArc(ofst->Start(), Arc(0, 0, state));
     if ((p.first == kNoStateId) && (r[p.first + 1] == nshortest)) break;
     if (r[p.first + 1] > nshortest) continue;
     if (p.first == kNoStateId) continue;
@@ -364,9 +397,9 @@ void NShortestPath(const Fst<RevArc> &ifst, MutableFst<Arc> *ofst,
       Arc arc(rarc.ilabel, rarc.olabel, rarc.weight.Reverse(), rarc.nextstate);
       const auto weight = Times(p.second, arc.weight);
       const auto next = ofst->AddState();
-      pairs.push_back(std::make_pair(arc.nextstate, weight));
+      pairs.emplace_back(arc.nextstate, weight);
       arc.nextstate = state;
-      ofst->AddArc(next, arc);
+      ofst->AddArc(next, std::move(arc));
       heap.push_back(next);
       std::push_heap(heap.begin(), heap.end(), compare);
     }
@@ -374,7 +407,7 @@ void NShortestPath(const Fst<RevArc> &ifst, MutableFst<Arc> *ofst,
     if (final_weight != Weight::Zero()) {
       const auto weight = Times(p.second, final_weight);
       const auto next = ofst->AddState();
-      pairs.push_back(std::make_pair(kNoStateId, weight));
+      pairs.emplace_back(kNoStateId, weight);
       ofst->AddArc(next, Arc(0, 0, final_weight, state));
       heap.push_back(next);
       std::push_heap(heap.begin(), heap.end(), compare);
@@ -415,9 +448,8 @@ void NShortestPath(const Fst<RevArc> &ifst, MutableFst<Arc> *ofst,
 // The algorithm relies on the shortest-distance algorithm. There are some
 // issues with the pseudo-code as written in the paper (viz., line 11).
 template <class Arc, class Queue, class ArcFilter,
-          typename std::enable_if<
-              (Arc::Weight::Properties() & (kPath | kSemiring)) ==
-              (kPath | kSemiring)>::type * = nullptr>
+          typename std::enable_if<IsPath<typename Arc::Weight>::value>::type * =
+              nullptr>
 void ShortestPath(const Fst<Arc> &ifst, MutableFst<Arc> *ofst,
                   std::vector<typename Arc::Weight> *distance,
                   const ShortestPathOptions<Arc, Queue, ArcFilter> &opts) {
@@ -474,9 +506,8 @@ void ShortestPath(const Fst<Arc> &ifst, MutableFst<Arc> *ofst,
 }
 
 template <class Arc, class Queue, class ArcFilter,
-          typename std::enable_if<
-              (Arc::Weight::Properties() & (kPath | kSemiring)) !=
-              (kPath | kSemiring)>::type * = nullptr>
+          typename std::enable_if<!IsPath<typename Arc::Weight>::value>::type
+              * = nullptr>
 void ShortestPath(const Fst<Arc> &, MutableFst<Arc> *ofst,
                   std::vector<typename Arc::Weight> *,
                   const ShortestPathOptions<Arc, Queue, ArcFilter> &) {
@@ -492,7 +523,7 @@ void ShortestPath(const Fst<Arc> &, MutableFst<Arc> *ofst,
 //
 // The n-shortest paths are the n-lowest weight paths w.r.t. the natural
 // semiring order. The single path that can be read from the ith of at most n
-// transitions leaving the initial state of the ouput FST is the ith best path.
+// transitions leaving the initial state of the output FST is the ith best path.
 // The weights need to be right distributive and have the path (kPath) property.
 template <class Arc>
 void ShortestPath(const Fst<Arc> &ifst, MutableFst<Arc> *ofst,

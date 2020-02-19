@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_DATAOUTPUT_H
@@ -73,9 +72,9 @@ struct IRESEARCH_API data_output
     write_byte(b);
     return *this;
   }
-  data_output& operator*() NOEXCEPT { return *this; }
-  data_output& operator++() NOEXCEPT { return *this; }
-  data_output& operator++(int) NOEXCEPT { return *this; }
+  data_output& operator*() noexcept { return *this; }
+  data_output& operator++() noexcept { return *this; }
+  data_output& operator++(int) noexcept { return *this; }
 }; // data_output
 
 //////////////////////////////////////////////////////////////////////////////

@@ -177,7 +177,7 @@ inline T atoi_positive(char const* p, char const* e, bool& valid) noexcept {
       return result;
     }
     result *= 10;
-    result += c;
+    result += static_cast<T>(c);
   } while (++p < e);
 
   valid = true;

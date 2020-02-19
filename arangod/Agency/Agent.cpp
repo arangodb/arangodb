@@ -29,8 +29,9 @@
 #include <chrono>
 #include <thread>
 
-#include "Agency/AgentCallback.h"
 #include "Agency/AgencyFeature.h"
+#include "Agency/AgentCallback.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -73,6 +74,7 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _compactor(this),
       _ready(false),
       _preparing(0),
+      _loaded(false),
       _write_ok(
         _server.getFeature<arangodb::MetricsFeature>().counter(
           "agency_agent_write_ok", 0, "Agency write ok")),
@@ -449,7 +451,7 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(term_t term, std::string const& leade
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  
+
   auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
@@ -576,20 +578,12 @@ void Agent::sendAppendEntriesRPC() {
           needSnapshot = false;
         }
       }
-
-      // RPC path
-      std::stringstream path;
+      
       index_t prevLogIndex = unconfirmed.front().index;
       index_t prevLogTerm = unconfirmed.front().term;
       if (needSnapshot) {
         prevLogIndex = snapshotIndex;
         prevLogTerm = snapshotTerm;
-      }
-      {
-        path << "/_api/agency_priv/appendEntries?term=" << t
-             << "&leaderId=" << id() << "&prevLogIndex=" << prevLogIndex
-             << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << commitIndex
-             << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
       }
 
       // Body
@@ -649,17 +643,22 @@ void Agent::sendAppendEntriesRPC() {
       }
       LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
           << "Setting _earliestPackage to now + 30s for id " << followerId;
-      
+
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(150);
+      reqOpts.param("term", std::to_string(t)).param("leaderId", id())
+             .param("prevLogIndex", std::to_string(prevLogIndex))
+             .param("prevLogTerm", std::to_string(prevLogTerm))
+             .param("leaderCommit", std::to_string(commitIndex))
+             .param("senderTimeStamp", std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
       // Send request
       auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
-      network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+      network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, "/_api/agency_priv/appendEntries",
                            std::move(buffer), reqOpts).thenValue([=](network::Response r) {
         ac->operator()(r);
       });
-      
+
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
 
@@ -703,16 +702,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
     READ_LOCKER(oLocker, _outputLock);
     commitIndex = _commitIndex;
   }
-
-  // RPC path
-  std::stringstream path;
-  {
-    path << "/_api/agency_priv/appendEntries?term=" << _constituent.term()
-         << "&leaderId=" << id() << "&prevLogIndex=0"
-         << "&prevLogTerm=0&leaderCommit=" << commitIndex
-         << "&senderTimeStamp=" << std::llround(steadyClockToDouble() * 1000);
-  }
-
+  
   // Just check once more:
   if (!leading()) {
     LOG_TOPIC("99dc2", DEBUG, Logger::AGENCY)
@@ -720,7 +710,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
         << " because we are no longer leading.";
     return;
   }
-  
+
   auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
 
@@ -731,12 +721,17 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
+  reqOpts.param("term", std::to_string(_constituent.term())).param("leaderId", id())
+         .param("prevLogIndex", "0")
+         .param("prevLogTerm", "0")
+         .param("leaderCommit", std::to_string(commitIndex))
+         .param("senderTimeStamp", std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
-  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
+  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, "/_api/agency_priv/appendEntries",
                        std::move(buffer), reqOpts).thenValue([=](network::Response r) {
     ac->operator()(r);
   });
-  
+
   _constituent.notifyHeartbeatSent(followerId);
 
   double now = TRI_microtime();
@@ -872,6 +867,9 @@ void Agent::load() {
     _spearhead = _readDB;
     activateAgency();
   }
+
+  _loaded = true;
+
 }
 
 /// Still leading? Under MUTEX from ::read or ::write
@@ -1069,7 +1067,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
 
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
 
-  // Apply to spearhead and get indices for log entries
+  // Apply to _transient and get indices for log entries
   {
     VPackArrayBuilder b(ret.get());
 
@@ -1079,8 +1077,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
       return trans_ret_t(false, NO_LEADER);
     }
 
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);
+    MUTEX_LOCKER(transientLocker, _transientLock);
 
     // Read and writes
     for (const auto& query : VPackArrayIterator(queries->slice())) {
@@ -1137,6 +1134,10 @@ write_ret_t Agent::inquire(query_t const& query) {
   return ret;
 }
 
+bool Agent::loaded() const {
+  return _loaded.load();
+}
+
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
@@ -1150,7 +1151,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if (multihost && leader != id()) {
+  if ((!loaded() && wmode != WriteMode(true,true)) || (multihost && leader != id())) {
     ++_write_no_leader;
     return write_ret_t(false, leader);
   }
@@ -1247,7 +1248,7 @@ read_ret_t Agent::read(query_t const& query) {
   // to use leading() or _constituent.leading() here, but can simply
   // look at the leaderID.
   auto leader = _constituent.leaderID();
-  if (leader != id()) {
+  if (!loaded() || (size() > 1 && leader != id())) {
     ++_read_no_leader;
     return read_ret_t(false, leader);
   }
@@ -1267,7 +1268,7 @@ read_ret_t Agent::read(query_t const& query) {
   }
 
   leader = _constituent.leaderID();
-  
+
   auto result = std::make_shared<arangodb::velocypack::Builder>();
 
   READ_LOCKER(oLocker, _outputLock);
@@ -1446,7 +1447,7 @@ bool Agent::prepareLead() {
 
   {
     // Clear transient for supervision start
-    MUTEX_LOCKER(ioLocker, _ioLock);
+    MUTEX_LOCKER(transientLocker, _transientLock);
     _transient.clear();
   }
 
@@ -1708,12 +1709,17 @@ void Agent::executeLockedWrite(std::function<void()> const& cb) {
   cb();
 }
 
+void Agent::executeTransientLocked(std::function<void()> const& cb) {
+  MUTEX_LOCKER(transientLocker, _transientLock);
+  cb();
+}
+
 /// Get transient
 /// intentionally no lock is acquired here, so we can return
 /// a const reference
 /// the caller has to make sure the lock is actually held
 Store const& Agent::transient() const {
-  _ioLock.assertLockedByCurrentThread();
+  _transientLock.assertLockedByCurrentThread();
   return _transient;
 }
 
@@ -2109,6 +2115,27 @@ Inception const* Agent::inception() const { return _inception.get(); }
 
 void Agent::updateConfiguration(Slice const& slice) {
   _config.updateConfiguration(slice);
+}
+
+void Agent::updateSomeConfigValues(VPackSlice data) {
+  if (!data.isObject()) {
+    return;
+  }
+  double d;
+  VPackSlice slice = data.get("okThreshold");
+  if (slice.isNumber()) {
+    d = slice.getNumber<double>();
+    LOG_TOPIC("12341", DEBUG, Logger::SUPERVISION) << "Updating okThreshold to " << d;
+    _config.setSupervisionOkThreshold(d);
+    _supervision.setOkThreshold(d);
+  }
+  slice = data.get("gracePeriod");
+  if (slice.isNumber()) {
+    d = slice.getNumber<double>();
+    LOG_TOPIC("12342", DEBUG, Logger::SUPERVISION) << "Updating gracePeriod to " << d;
+    _config.setSupervisionGracePeriod(d);
+    _supervision.setGracePeriod(d);
+  }
 }
 
 }  // namespace consensus

@@ -67,6 +67,8 @@ class Exception : public virtual std::exception {
     BuilderKeyAlreadyWritten = 38,
     BuilderKeyMustBeString = 39,
     BuilderCustomDisallowed = 40,
+    BuilderTagsDisallowed = 41,
+    BuilderBCDDisallowed = 42,
 
     ValidatorInvalidLength = 50,
     ValidatorInvalidType = 51,
@@ -145,6 +147,10 @@ class Exception : public virtual std::exception {
         return "The key of the next key/value pair must be a string";
       case BuilderCustomDisallowed:
         return "Custom types are not allowed in this configuration";
+      case BuilderTagsDisallowed:
+        return "Tagged types are not allowed in this configuration";
+      case BuilderBCDDisallowed:
+        return "BCD types are not allowed in this configuration";
     
       case ValidatorInvalidType:
         return "Invalid type found in binary data";

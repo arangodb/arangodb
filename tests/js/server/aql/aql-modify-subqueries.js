@@ -80,17 +80,20 @@ let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlModifySuite () {
-  var errors = internal.errors;
-  var cn = "UnitTestsAhuacatlModify";
+  const errors = internal.errors;
+  const cn = "UnitTestsAhuacatlModify";
+  const cn2 = "UnitTestsAhuacatlModify2";
 
   return {
 
     setUp : function () {
       db._drop(cn);
+      db._drop(cn2);
     },
 
     tearDown : function () {
       db._drop(cn);
+      db._drop(cn2);
     },
 
     // use default shard key (_key)
@@ -1577,6 +1580,48 @@ function ahuacatlModifySuite () {
       assertEqual(1, actual.json.length);
       assertEqual(100, actual.json[0].length);
       assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    // Regression test for a bug in ExecutionPlan::instantiateFromPlan, where
+    // the false branch was not part of the plan anymore (at least, not visible
+    // from the root) if the condition was `true` at compile time.
+    testTernaryEvaluateBothTrue : function () {
+      const c1 = db._create(cn);
+      const c2 = db._create(cn2);
+
+      const query = `LET x = true ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
+      db._query(query);
+      assertEqual([1], c1.toArray().map(o => o.value));
+      assertEqual([2], c2.toArray().map(o => o.value));
+    },
+
+    // Complementary test to testTernaryEvaluateBothTrue, with a constant `false`
+    // condition.
+    testTernaryEvaluateBothFalse : function () {
+      const c1 = db._create(cn);
+      const c2 = db._create(cn2);
+
+      const query = `LET x = false ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
+      db._query(query);
+      assertEqual([1], c1.toArray().map(o => o.value));
+      assertEqual([2], c2.toArray().map(o => o.value));
+    },
+
+    // Complementary test to testTernaryEvaluateBothTrue, with a non-constant
+    // condition.
+    testTernaryEvaluateBothRand : function () {
+      const c1 = db._create(cn);
+      const c2 = db._create(cn2);
+
+      const query = `LET x = RAND() < 0.5 ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
+
+      for (let i = 0; i < 10; ++i) {
+        db._query(query);
+        assertEqual([1], c1.toArray().map(o => o.value));
+        assertEqual([2], c2.toArray().map(o => o.value));
+        c1.truncate();
+        c2.truncate();
+      }
     },
 
   };

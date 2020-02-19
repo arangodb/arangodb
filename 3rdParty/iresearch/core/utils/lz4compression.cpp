@@ -36,7 +36,7 @@ NS_LOCAL
 irs::compression::lz4::lz4compressor LZ4_BASIC_COMPRESSOR;
 irs::compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
 
-inline int acceleration(const irs::compression::options::Hint hint) NOEXCEPT {
+inline int acceleration(const irs::compression::options::Hint hint) noexcept {
   static const int FACTORS[] { 0, 2, 0 };
   assert(static_cast<size_t>(hint) < IRESEARCH_COUNTOF(FACTORS));
 
@@ -54,13 +54,13 @@ static_assert(
 
 NS_BEGIN(compression)
 
-void LZ4_streamDecode_deleter::operator()(void *p) NOEXCEPT {
+void LZ4_streamDecode_deleter::operator()(void *p) noexcept {
   if (p) {
     LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(p));
   }
 }
 
-void LZ4_stream_deleter::operator()(void *p) NOEXCEPT {
+void LZ4_stream_deleter::operator()(void *p) noexcept {
   if (p) {
     LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(p));
   }
@@ -123,7 +123,7 @@ compressor::ptr lz4::compressor(const options& opts) {
     return compressor::ptr(compressor::ptr(), &LZ4_BASIC_COMPRESSOR);
   }
 
-  return std::make_shared<lz4compressor>(acceleration);
+  return memory::make_shared<lz4compressor>(acceleration);
 }
 
 decompressor::ptr lz4::decompressor() {

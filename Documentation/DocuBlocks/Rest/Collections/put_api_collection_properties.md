@@ -22,7 +22,7 @@ attribute(s)
 - *waitForSync*: If *true* then creating or changing a
   document will wait until the data has been synchronized to disk.
 
-- *journalSize*: The maximal size of a journal or datafile in bytes. 
+- *journalSize*: The maximal size of a journal or datafile in bytes.
   The value must be at least `1048576` (1 MB). Note that when
   changing the journalSize value, it will only have an effect for
   additional journals or datafiles that are created. Already
@@ -92,4 +92,3 @@ is returned.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

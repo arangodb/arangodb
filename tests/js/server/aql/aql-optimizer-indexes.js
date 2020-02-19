@@ -55,7 +55,7 @@ function optimizerIndexesTestSuite () {
       c = db._create("UnitTestsCollection");
 
       let docs = [];
-      for (var i = 0; i < 2000; ++i) {
+      for (let i = 0; i < 2000; ++i) {
         docs.push({ _key: "test" + i, value: i });
       }
       c.insert(docs);
@@ -78,6 +78,40 @@ function optimizerIndexesTestSuite () {
         db._dropIndex(idx1);
         idx1 = null;
       }
+    },
+    
+    testIndexUsedForExpansion1 : function () {
+      let query = "LET test = NOOPT([{ value: 1 }, { value : 2 }]) FOR doc IN " + c.name() + " FILTER doc.value IN test[*].value SORT doc.value RETURN doc.value";
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+      let results = AQL_EXECUTE(query);
+      assertEqual([ 1, 2 ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+    
+    testIndexUsedForExpansion2 : function () {
+      let query = "LET test = NOOPT([1, 2]) FOR doc IN " + c.name() + " FILTER doc.value IN test[*] SORT doc.value RETURN doc.value";
+
+      let plan = AQL_EXPLAIN(query).plan;
+      let nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual("SingletonNode", nodeTypes[0], query);
+      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+
+      let results = AQL_EXECUTE(query);
+      assertEqual([ 1, 2 ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

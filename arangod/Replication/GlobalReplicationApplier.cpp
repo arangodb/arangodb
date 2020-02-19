@@ -108,8 +108,8 @@ std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
 
 std::string GlobalReplicationApplier::getStateFilename() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
+  auto& sysDbFeature =
+      _configuration._server.getFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = sysDbFeature.use();
 
   std::string const path = engine->databasePath(vocbase.get());

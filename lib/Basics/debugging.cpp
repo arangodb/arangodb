@@ -109,6 +109,7 @@ void TRI_TerminateDebugging(char const* message) {
   WaitForSingleObject(hSelf, INFINITE);
 #else
   kill(getpid(), SIGKILL);  //to kill the complete process tree.
+  std::this_thread::sleep_for(std::chrono::seconds(5));
 #endif
 
   // ensure the process is terminated

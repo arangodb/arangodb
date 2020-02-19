@@ -27,11 +27,13 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Cluster/CallbackGuard.h"
 #include "Cluster/ResultT.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 namespace aql {
 class ExecutionEngine;
 class Query;
@@ -55,7 +57,9 @@ class QueryRegistry {
   /// With keepLease == true the query will be kept open and it is guaranteed
   /// that the caller can continue to use it exclusively.
   /// This is identical to an atomic sequence of insert();open();
-  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease);
+  TEST_VIRTUAL void insert(
+    QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease,
+    std::unique_ptr<arangodb::cluster::CallbackGuard>&& = nullptr);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -82,6 +86,7 @@ class QueryRegistry {
   /// if the ignoreOpened flag is set, it means the query will be shut down
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
+  // cppcheck-suppress virtualCallInConstructor
   TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened);
 
   /// @brief destroy all queries for the specified database. this can be used
@@ -120,7 +125,8 @@ class QueryRegistry {
     QueryInfo(QueryInfo const&) = delete;
     QueryInfo& operator=(QueryInfo const&) = delete;
 
-    QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared);
+    QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared,
+              std::unique_ptr<arangodb::cluster::CallbackGuard>&& rebootGuard = nullptr);
     ~QueryInfo();
 
     TRI_vocbase_t* _vocbase;  // the vocbase
@@ -131,6 +137,8 @@ class QueryRegistry {
     bool _isPrepared;
     double _timeToLive;  // in seconds
     double _expires;     // UNIX UTC timestamp of expiration
+    std::unique_ptr<arangodb::cluster::CallbackGuard> _rebootGuard;
+                         // Callback to remove query, when rebootId changes
   };
 
   /// @brief _queries, the actual map of maps for the registry

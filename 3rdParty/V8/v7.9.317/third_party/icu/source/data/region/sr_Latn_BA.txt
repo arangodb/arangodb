@@ -1,0 +1,23 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+sr_Latn_BA{
+    Countries{
+        BY{"Bjelorusija"}
+        CG{"Kongo"}
+        CV{"Kabo Verde"}
+        CZ{"Češka Republika"}
+        DE{"Njemačka"}
+        KN{"Sveti Kits i Nevis"}
+        MO{"SAR Makao"}
+        PM{"Sveti Pjer i Mikelon"}
+        RE{"Reunion"}
+        UM{"Manja udaljena ostrva SAD"}
+        VC{"Sveti Vinsent i Grenadini"}
+        VG{"Britanska Djevičanska Ostrva"}
+        VI{"Američka Djevičanska Ostrva"}
+    }
+    Countries%variant{
+        MK{"BJR Makedonija"}
+    }
+    Version{"2.1.48.77"}
+}

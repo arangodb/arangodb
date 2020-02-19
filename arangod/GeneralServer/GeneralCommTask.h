@@ -36,25 +36,41 @@ class GeneralCommTask : public CommTask {
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(GeneralServer& server, char const* name, ConnectionInfo,
+  GeneralCommTask(GeneralServer& server, ConnectionInfo,
                   std::unique_ptr<AsioSocket<T>>);
 
-  virtual ~GeneralCommTask();
+  virtual ~GeneralCommTask() = default;
 
-  void start() override;
-  void close() override final;
+  void stop() override;
+  
+  void close(asio_ns::error_code const& err = asio_ns::error_code());
 
  protected:
+  
+  /// set / reset connection timeout
+  void setTimeout(std::chrono::milliseconds millis);
+  
   /// read from socket
   void asyncReadSome();
+  
+  protected:
+  
+  // set a read timeout in asyncReadSome
+  virtual bool enableReadTimeout() const = 0;
+  
   /// called to process data in _readBuffer, return false to stop
   virtual bool readCallback(asio_ns::error_code ec) = 0;
 
+ protected:
+  
   /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t ReadBlockSize = 1024 * 32;
-
- protected:
+  
+  static constexpr std::chrono::seconds DefaultTimeout{120};
+  
   std::unique_ptr<AsioSocket<T>> _protocol;
+  
+  std::atomic<bool> _stopped;
 };
 }  // namespace rest
 }  // namespace arangodb

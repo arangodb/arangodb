@@ -75,6 +75,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+  // cppcheck-suppress virtualCallInConstructor ; desired impl
   void reset() override;
 
  private:

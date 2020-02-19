@@ -129,8 +129,10 @@ class IResearchFilterCompareTest
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, unused);
+    unused = nullptr;
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice());  // cache analyzer

@@ -50,17 +50,17 @@ void ShellFeature::collectOptions(std::shared_ptr<options::ProgramOptions> optio
   options->addOption("--jslint", "do not start as shell, run jslint instead",
                      new VectorParameter<StringParameter>(&_jslint));
 
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
 
-  options->addOption("--javascript.execute", "execute Javascript code from file",
+  options->addOption("--javascript.execute", "execute JavaScript code from file",
                      new VectorParameter<StringParameter>(&_executeScripts));
 
   options->addOption("--javascript.execute-string",
-                     "execute Javascript code from string",
+                     "execute JavaScript code from string",
                      new VectorParameter<StringParameter>(&_executeStrings));
 
   options->addOption("--javascript.check-syntax",
-                     "syntax check code Javascript code from file",
+                     "syntax check code JavaScript code from file",
                      new VectorParameter<StringParameter>(&_checkSyntaxFiles));
 
   options->addOption("--javascript.unit-tests",

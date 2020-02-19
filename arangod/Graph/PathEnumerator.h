@@ -24,10 +24,12 @@
 #ifndef ARANGODB_VOCBASE_PATHENUMERATOR_H
 #define ARANGODB_VOCBASE_PATHENUMERATOR_H 1
 
-#include <velocypack/Slice.h>
-#include <stack>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
+
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 namespace aql {
@@ -88,10 +90,14 @@ class PathEnumerator {
   size_t _httpRequests;
   
  public:
-  PathEnumerator(Traverser* traverser, std::string const& startVertex,
-                 TraverserOptions* opts);
+  PathEnumerator(Traverser* traverser, TraverserOptions* opts);
 
   virtual ~PathEnumerator() = default;
+  
+  /// @brief set start vertex and reset
+  /// note that the caller *must* guarantee that the string data pointed to by
+  /// startVertex remains valid even after the call to reset()!!
+  virtual void setStartVertex(arangodb::velocypack::StringRef startVertex) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Compute the next Path element from the traversal.
@@ -119,10 +125,10 @@ class PathEnumerator {
 class DepthFirstEnumerator final : public PathEnumerator {
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief The stack of EdgeCursors to walk through.
+  /// @brief The vector of EdgeCursors to walk through.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::stack<std::unique_ptr<graph::EdgeCursor>> _edgeCursors;
+  std::vector<std::unique_ptr<graph::EdgeCursor>> _edgeCursors;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Flag if we need to prune the next path
@@ -130,15 +136,14 @@ class DepthFirstEnumerator final : public PathEnumerator {
   bool _pruneNext;
 
  public:
-  DepthFirstEnumerator(Traverser* traverser, std::string const& startVertex,
-                       TraverserOptions* opts);
+  DepthFirstEnumerator(Traverser* traverser, TraverserOptions* opts);
 
   ~DepthFirstEnumerator();
+  
+  /// @brief set start vertex and reset
+  void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
-  //////////////////////////////////////////////////////////////////////////////
-
   bool next() override;
 
   aql::AqlValue lastVertexToAqlValue() override;

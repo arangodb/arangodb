@@ -37,6 +37,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Cluster/RebootTracker.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
@@ -273,7 +274,8 @@ TEST(EngineInfoContainerTest,
 
   // Mock the Registry
   fakeit::When(Method(mockRegistry, insert))
-      .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
+    .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
+            std::unique_ptr<arangodb::cluster::CallbackGuard>&) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_TRUE(isPrepared);
@@ -497,7 +499,8 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   // handled first. With same fakeit magic we could make this ordering
   // independent which is is fine as well for the production code.
   fakeit::When(Method(mockRegistry, insert))
-      .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
+    .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
+          std::unique_ptr<arangodb::cluster::CallbackGuard>&) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_TRUE(isPrepared);
@@ -506,7 +509,8 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
         ASSERT_EQ(query, &queryClone);
         secondId = id;
       })
-      .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
+    .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
+          std::unique_ptr<arangodb::cluster::CallbackGuard>&) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_EQ(timeout, 600.0);
@@ -683,7 +687,8 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
 
   // Mock the Registry
   fakeit::When(Method(mockRegistry, insert))
-      .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
+    .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
+          std::unique_ptr<arangodb::cluster::CallbackGuard>&) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_EQ(timeout, 600.0);
@@ -847,7 +852,8 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
 
   // Mock the Registry
   fakeit::When(Method(mockRegistry, insert))
-      .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
+    .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease,
+          std::unique_ptr<arangodb::cluster::CallbackGuard>&) {
         ASSERT_NE(id, 0);
         ASSERT_NE(query, nullptr);
         ASSERT_EQ(timeout, 600.0);

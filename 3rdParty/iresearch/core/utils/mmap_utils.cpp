@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -30,7 +29,7 @@
 NS_ROOT
 NS_BEGIN(mmap_utils)
 
-int flush(int fd, void* addr, size_t size, int flags) NOEXCEPT {  
+int flush(int fd, void* addr, size_t size, int flags) noexcept {  
   if (fd < 0) { // an invalid file descriptor of course means an invalid handle
     return 0;
   }
@@ -59,7 +58,7 @@ int flush(int fd, void* addr, size_t size, int flags) NOEXCEPT {
   return 0;
 }
 
-void mmap_handle::close() NOEXCEPT {
+void mmap_handle::close() noexcept {
   if (addr_ != MAP_FAILED) {
     if (dontneed_) {
       advise(IR_MADVICE_DONTNEED);
@@ -72,14 +71,14 @@ void mmap_handle::close() NOEXCEPT {
   }
 }
 
-void mmap_handle::init() NOEXCEPT {
+void mmap_handle::init() noexcept {
   fd_ = -1;
   addr_ = MAP_FAILED;
   size_ = 0;
   dontneed_ = false;
 }
 
-bool mmap_handle::open(const file_path_t path) NOEXCEPT {
+bool mmap_handle::open(const file_path_t path) noexcept {
   assert(path);
 
   close();

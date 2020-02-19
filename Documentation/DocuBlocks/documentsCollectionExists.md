@@ -11,17 +11,17 @@ for easy existence checks.
 The *document* method finds a document given its identifier.  It returns
 the document. Note that the returned document contains two
 pseudo-attributes, namely *_id* and *_rev*. *_id* contains the
-document-handle and *_rev* the revision of the document.
+document-id and *_rev* the revision of the document.
 
 No error will be thrown if the sought document or collection does not
 exist.
 Still this method will throw an error if used improperly, e.g. when called
-with a non-document handle, a non-document, or when a cross-collection
+with a non-document identifier, a non-document, or when a cross-collection
 request is performed.
 
-`collection.exists(document-handle)`
+`collection.exists(document-id)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of document a *document-id* can be passed as
 first argument.
 
 

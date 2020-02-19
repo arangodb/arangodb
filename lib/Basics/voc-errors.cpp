@@ -42,6 +42,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
   REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
   REG_ERROR(ERROR_DISABLED, "disabled");
+  REG_ERROR(ERROR_VALIDATION_FAILED, "validation failed");
+  REG_ERROR(ERROR_VALIDATION_BAD_PARAMETER, "invalid validation parameter");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -79,7 +81,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
   REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
-  REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
+  REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document identifier");
   REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_NAME, "duplicate name");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
@@ -87,7 +89,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
-  REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
+  REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index identifier");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");

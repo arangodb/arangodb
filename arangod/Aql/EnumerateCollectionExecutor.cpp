@@ -42,6 +42,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+  
+namespace {
+std::vector<size_t> const emptyAttributePositions;
+}
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
@@ -52,7 +56,6 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     Collection const* collection, Variable const* outVariable, bool produceResult,
     Expression* filter,
     std::vector<std::string> const& projections, 
-    std::vector<size_t> const& coveringIndexAttributePositions,
     bool useRawDocumentPointers, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
@@ -63,7 +66,6 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
       _outVariable(outVariable),
       _filter(filter),
       _projections(projections),
-      _coveringIndexAttributePositions(coveringIndexAttributePositions),
       _outputRegisterId(outputRegister),
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
@@ -97,11 +99,6 @@ std::vector<std::string> const& EnumerateCollectionExecutorInfos::getProjections
   return _projections;
 }
 
-std::vector<size_t> const& EnumerateCollectionExecutorInfos::getCoveringIndexAttributePositions() const
-    noexcept {
-  return _coveringIndexAttributePositions;
-}
-
 bool EnumerateCollectionExecutorInfos::getProduceResult() const {
   return _produceResult;
 }
@@ -123,7 +120,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                         _infos.getProduceResult(),
                                         _infos.getQuery(), _infos.getFilter(),
                                         _infos.getProjections(), 
-                                        _infos.getCoveringIndexAttributePositions(),
+                                        ::emptyAttributePositions,
                                         true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
       _cursorHasMore(false),
@@ -260,17 +257,8 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
 void EnumerateCollectionExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  setAllowCoveringIndexOptimization(true);
   _cursorHasMore = false;
   _cursor->reset();
-}
-
-void EnumerateCollectionExecutor::setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
-  _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
-}
-
-bool EnumerateCollectionExecutor::getAllowCoveringIndexOptimization() const noexcept {
-  return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
 }
 
 #ifndef USE_ENTERPRISE

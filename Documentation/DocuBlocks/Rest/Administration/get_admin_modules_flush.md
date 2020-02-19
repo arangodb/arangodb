@@ -113,12 +113,12 @@ the adjusted log levels being the object values.
 It can set the log level of all facilities by only specifying the log level as string without json.
 
 Possible log levels are:
- - FATAL - There will be no way out of this. ArangoDB will go down after this message.
- - ERROR - This is an error. you should investigate and fix it. It may harm your production.
- - WARNING - This may be serious application-wise, but we don't know.
- - INFO - Something has happened, take notice, but no drama attached.
- - DEBUG - output debug messages
- - TRACE - trace - prepare your log to be flooded - don't use in production.
+- FATAL - There will be no way out of this. ArangoDB will go down after this message.
+- ERROR - This is an error. you should investigate and fix it. It may harm your production.
+- WARNING - This may be serious application-wise, but we don't know.
+- INFO - Something has happened, take notice, but no drama attached.
+- DEBUG - output debug messages
+- TRACE - trace - prepare your log to be flooded - don't use in production.
 
 @RESTBODYPARAM{agency,string,optional,string}
 One of the possible log levels.

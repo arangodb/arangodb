@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull */
+/*global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -55,7 +55,7 @@ function OneShardPropertiesSuite () {
       } catch (ex) {
       }
     },
-    
+
     testDefaultValues : function () {
       assertTrue(db._createDatabase(dn));
       db._useDatabase(dn);
@@ -66,6 +66,186 @@ function OneShardPropertiesSuite () {
       } else {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
+      }
+    },
+    
+    testDefaultValuesOverridden : function () {
+      assertTrue(db._createDatabase(dn, { replicationFactor: 2, writeConcern: 2, sharding: "single" }));
+      db._useDatabase(dn);
+      let props = db._properties();
+      if (isCluster) {
+        assertEqual(props.sharding, "single");
+        assertEqual(props.replicationFactor, 2);
+        assertEqual(props.writeConcern, 2);
+
+        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 1, distributeShardsLike: "" });
+        props = c.properties();
+        assertEqual(1, props.writeConcern);
+        assertEqual(1, props.replicationFactor);
+        assertEqual(1, props.numberOfShards);
+      } else {
+        assertEqual(props.sharding, undefined);
+        assertEqual(props.replicationFactor, undefined);
+        assertEqual(props.writeConcern, undefined);
+      }
+    },
+    
+    testShardingFlexible : function () {
+      assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
+      db._useDatabase(dn);
+      let props = db._properties();
+      if (isCluster) {
+        assertEqual(props.sharding, "");
+        assertEqual(props.replicationFactor, 1);
+      } else {
+        assertEqual(props.sharding, undefined);
+        assertEqual(props.replicationFactor, undefined);
+      }
+    },
+
+    testDeviatingWriteConcernAndMinReplicationFactorForDatabase : function () {
+      if (!isCluster) {
+        return;
+      }
+      try {
+        db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2, sharding: "flexible" });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+        
+      assertTrue(db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2, sharding: "flexible" }));
+    },
+    
+    testDeviatingWriteConcernAndMinReplicationFactorForCollection : function () {
+      if (!isCluster) {
+        return;
+      }
+      assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
+      db._useDatabase(dn);
+      try {
+        db._create("test", { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+        
+      db._create("test", { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2 });
+    },
+    
+    testNormalDBAndTooManyServers : function () {
+      if (!isCluster) {
+        return;
+      }
+      try {
+        db._createDatabase(dn, { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._createDatabase(dn, { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testNormalDBAndTooManyServers2 : function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { replicationFactor : 2 });
+      db._useDatabase(dn);
+      try {
+        db._create("oneshardcol", { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._create("oneshardcol", { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testNormalDBAndTooManyServers3 : function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { writeConcern: 2, replicationFactor : 2 });
+      db._useDatabase(dn);
+      try {
+        db._create("oneshardcol", { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._create("oneshardcol", { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testOneShardDBAndTooManyServers : function () {
+      if (!isCluster) {
+        return;
+      }
+      try {
+        db._createDatabase(dn, { sharding : "single", replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._createDatabase(dn, { sharding : "single", writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testOneShardDBAndTooManyServers2 : function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { sharding : "single", replicationFactor : 2 });
+      db._useDatabase(dn);
+      try {
+        db._create("oneshardcol", { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._create("oneshardcol", { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+    },
+    
+    testOneShardDBAndTooManyServers3 : function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { sharding : "single", writeConcern: 2, replicationFactor : 2 });
+      db._useDatabase(dn);
+      try {
+        db._create("oneshardcol", { replicationFactor : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
+      }
+      try {
+        db._create("oneshardcol", { writeConcern : 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
     },
     
@@ -121,38 +301,40 @@ function OneShardPropertiesSuite () {
     },
     
     testReplicationFactorAndOverrides : function () {
-      assertTrue(db._createDatabase(dn, { replicationFactor : 2, minReplicationFactor : 2 }));
+      assertTrue(db._createDatabase(dn, { replicationFactor : 2, writeConcern : 2 }));
 
       db._useDatabase(dn);
       let props = db._properties();
       if (!isCluster) {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
-        assertEqual(props.minReplicationFactor, undefined);
+        assertEqual(props.minReplicationFactor, undefined);  // deprecated
+        assertEqual(props.writeConcern, undefined);
       } else {
         assertEqual(props.sharding, "");
         assertEqual(props.replicationFactor, 2);
-        assertEqual(props.minReplicationFactor, 2);
+        assertEqual(props.writeConcern, 2);
 
         {
           let col = db._create("somecollection");
           let colProperties = col.properties();
           assertEqual(colProperties.replicationFactor, 2);
-          assertEqual(colProperties.minReplicationFactor, 2);
+          assertEqual(colProperties.minReplicationFactor, 2);  // deprecated
+          assertEqual(colProperties.writeConcern, 2);
         }
 
         {
-          let col = db._create("overrideCollection1", { minReplicationFactor : 1});
+          let col = db._create("overrideCollection1", { writeConcern : 1});
           let colProperties = col.properties();
-          assertEqual(colProperties.minReplicationFactor, 1);
-          assertEqual(colProperties.minReplicationFactor, 1);
+          assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
+          assertEqual(colProperties.writeConcern, 1);
         }
 
         {
-          let col = db._create("overrideCollection2", { minReplicationFactor : 1, replicationFactor : 1, numberOfShards : 3});
+          let col = db._create("overrideCollection2", { writeConcern : 1, replicationFactor : 1, numberOfShards : 3});
           let colProperties = col.properties();
-          assertEqual(colProperties.minReplicationFactor, 1);
-          assertEqual(colProperties.minReplicationFactor, 1);
+          assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
+          assertEqual(colProperties.writeConcern, 1);
         }
 
         {

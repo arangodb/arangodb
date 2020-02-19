@@ -32,7 +32,6 @@
 #include "Futures/Promise.h"
 #include "Futures/SharedState.h"
 #include "Futures/Unit.h"
-#include "Futures/backports.h"
 
 namespace arangodb {
 namespace futures {
@@ -102,7 +101,7 @@ struct valueCallableResult {
 template <class F, typename R = typename std::result_of<F()>::type>
 typename std::enable_if<!std::is_same<R, void>::value, Try<R>>::type makeTryWith(F&& func) noexcept {
   try {
-    return Try<R>(in_place, func());
+    return Try<R>(std::in_place, func());
   } catch (...) {
     return Try<R>(std::current_exception());
   }
@@ -140,10 +139,10 @@ void waitImpl(Future<T>& f) {
   if (f.isReady()) {
     return; // short-circuit
   }
-  
+
   std::mutex m;
   std::condition_variable cv;
-  
+
   Promise<T> p;
   Future<T> ret = p.getFuture();
   f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
@@ -162,14 +161,14 @@ void waitImpl(Future<T>& f, std::chrono::time_point<Clock, Duration> const& tp) 
   if (f.isReady()) {
     return; // short-circuit
   }
-  
+
   std::mutex m;
   std::condition_variable cv;
-  
+
   Promise<T> p;
   Future<T> ret = p.getFuture();
   f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
-    std::lock_guard<std::mutex> guard(m); 
+    std::lock_guard<std::mutex> guard(m);
     p.setTry(std::move(t));
     cv.notify_one();
   });
@@ -193,7 +192,7 @@ class Future {
  public:
   /// @brief value type of the future
   typedef T value_type;
-  
+
   /// @brief Constructs a Future with no shared state.
   static Future<T> makeEmpty() { return Future<T>(detail::EmptyConstructor{}); }
 
@@ -211,8 +210,8 @@ class Future {
 
   // Construct a Future from a `T` constructed from `args`
   template <class... Args, typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::type = 0>
-  explicit Future(in_place_t, Args&&... args)
-      : _state(detail::SharedState<T>::make(in_place, std::forward<Args>(args)...)) {}
+  explicit Future(std::in_place_t, Args&&... args)
+      : _state(detail::SharedState<T>::make(std::in_place, std::forward<Args>(args)...)) {}
 
   Future(Future const& o) = delete;
   Future(Future<T>&& o) noexcept : _state(std::move(o._state)) {
@@ -354,7 +353,7 @@ class Future {
             pr.setException(std::move(t).exception());
           } else {
             pr.setTry(detail::makeTryWith([&fn, &t] {
-              return futures::invoke(std::forward<DF>(fn), std::move(t).get());
+              return std::invoke(std::forward<DF>(fn), std::move(t).get());
             }));
           }
         });
@@ -370,7 +369,7 @@ class Future {
     using DF = detail::decay_t<F>;
 
     static_assert(!isFuture<B>::value, "");
-    static_assert(is_invocable_r<Future<B>, F, T>::value,
+    static_assert(std::is_invocable_r<Future<B>, F, T>::value,
                   "Function must be invocable with T");
 
     Promise<B> promise;
@@ -381,7 +380,7 @@ class Future {
         pr.setException(std::move(t).exception());
       } else {
         try {
-          auto f = futures::invoke(std::forward<DF>(fn), std::move(t).get());
+          auto f = std::invoke(std::forward<DF>(fn), std::move(t).get());
           std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
             pr.setTry(std::move(t));
           });
@@ -409,7 +408,7 @@ class Future {
     getState().setCallback([fn = std::forward<DF>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       pr.setTry(detail::makeTryWith([&fn, &t] {
-        return futures::invoke(std::forward<DF>(fn), std::move(t));
+        return std::invoke(std::forward<DF>(fn), std::move(t));
       }));
     });
     return future;
@@ -428,7 +427,7 @@ class Future {
     getState().setCallback([fn = std::forward<F>(func),
                             pr = std::move(promise)](Try<T>&& t) mutable {
       try {
-        auto f = futures::invoke(std::forward<F>(fn), std::move(t));
+        auto f = std::invoke(std::forward<F>(fn), std::move(t));
         std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
           pr.setTry(std::move(t));
         });
@@ -465,7 +464,7 @@ class Future {
           std::rethrow_exception(std::move(t).exception());
         } catch (ET& e) {
           pr.setTry(detail::makeTryWith([&fn, &e]() mutable {
-            return futures::invoke(std::forward<DF>(fn), e);
+            return std::invoke(std::forward<DF>(fn), e);
           }));
         } catch (...) {
           pr.setException(std::current_exception());
@@ -494,7 +493,7 @@ class Future {
               std::rethrow_exception(std::move(t).exception());
             } catch (ET& e) {
               try {
-                auto f = futures::invoke(std::forward<DF>(fn), e);
+                auto f = std::invoke(std::forward<DF>(fn), e);
                 std::move(f).then([pr = std::move(pr)](Try<B>&& t) mutable {
                   pr.setTry(std::move(t));
                 });

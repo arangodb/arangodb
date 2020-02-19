@@ -1533,113 +1533,6 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
         .insert<irs::Bound::MIN>("\x7f").include<irs::Bound::MIN>(false),
       docs_t{}, costs_t{0}, rdr);
   }
-
-  void by_range_sequential_order() {
-    // add segment
-    {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &by_range_json_field_factory
-      );
-      add_segment(gen);
-    }
-
-    auto rdr = open_reader();
-
-    // empty query
-    check_query(irs::by_granular_range(), docs_t{}, rdr);
-
-    // value = (..;..) test collector call count for field/term/finish
-    {
-      docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-      costs_t costs{ docs.size() };
-      irs::order order;
-
-      size_t collect_field_count = 0;
-      size_t collect_term_count = 0;
-      size_t finish_count = 0;
-      auto& scorer = order.add<tests::sort::custom_sort>(false);
-
-      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
-        ++collect_field_count;
-      };
-      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_term_count;
-      };
-      scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
-        ++finish_count;
-      };
-      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
-      };
-      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
-      };
-      check_query(
-        irs::by_granular_range()
-          .field("value")
-          .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-          .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
-        , order, docs, rdr
-      );
-      ASSERT_EQ(11, collect_field_count); // 11 fields (1 per term since treated as a disjunction) in 1 segment
-      ASSERT_EQ(11, collect_term_count); // 11 different terms
-      ASSERT_EQ(11, finish_count); // 11 different terms
-    }
-
-    // value = (..;..)
-    {
-      docs_t docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
-      costs_t costs{ docs.size() };
-      irs::order order;
-
-      order.add<tests::sort::frequency_sort>(false);
-      check_query(
-        irs::by_granular_range()
-          .field("value")
-          .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-          .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
-        , order, docs, rdr
-      );
-    }
-
-    // value = (..;..) + scored_terms_limit
-    {
-      docs_t docs{ 1, 5, 7, 9, 10, 3, 8, 2, 4, 6, 11, 12, 13, 14, 15, 16, 17 };
-      costs_t costs{ docs.size() };
-      irs::order order;
-
-      order.add<tests::sort::frequency_sort>(false);
-      check_query(
-        irs::by_granular_range()
-          .field("value")
-          .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-          .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
-          .scored_terms_limit(2)
-        , order, docs, rdr
-      );
-    }
-
-    // value = (..;100)
-    {
-      docs_t docs{ 4, 11, 12, 13, 14, 15, 16, 17 };
-      costs_t costs{ docs.size() };
-      irs::order order;
-      irs::numeric_token_stream max_stream;
-      max_stream.reset((double_t)100.);
-      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
-
-      ASSERT_TRUE(max_stream.next());
-      order.add<tests::sort::frequency_sort>(false);
-      check_query(
-        irs::by_granular_range()
-          .field("value")
-          .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
-          .insert<irs::Bound::MAX>(max_term->value())
-        , order, docs, rdr
-      );
-    }
-  }
 }; // granular_range_filter_test_case
 
 TEST(by_granular_range_test, ctor) {
@@ -1714,7 +1607,170 @@ TEST_P(granular_range_filter_test_case, by_range_numeric) {
 }
 
 TEST_P(granular_range_filter_test_case, by_range_order) {
-  by_range_sequential_order();
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &by_range_json_field_factory
+    );
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+
+  // empty query
+  check_query(irs::by_granular_range(), docs_t{}, rdr);
+
+  // value = (..;..) test collector call count for field/term/finish
+  {
+    docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+    costs_t costs{ docs.size() };
+    irs::order order;
+
+    size_t collect_field_count = 0;
+    size_t collect_term_count = 0;
+    size_t finish_count = 0;
+    auto& scorer = order.add<tests::sort::custom_sort>(false);
+
+    scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+      ++collect_field_count;
+    };
+    scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+      ++collect_term_count;
+    };
+    scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      ++finish_count;
+    };
+    scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+    };
+    scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+      return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+    };
+    check_query(
+      irs::by_granular_range()
+        .field("value")
+        .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
+        .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
+      , order, docs, rdr
+    );
+    ASSERT_EQ(11, collect_field_count); // 11 fields (1 per term since treated as a disjunction) in 1 segment
+    ASSERT_EQ(11, collect_term_count); // 11 different terms
+    ASSERT_EQ(11, finish_count); // 11 different terms
+  }
+
+  // value = (..;..)
+  {
+    docs_t docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
+    costs_t costs{ docs.size() };
+    irs::order order;
+
+    order.add<tests::sort::frequency_sort>(false);
+    check_query(
+      irs::by_granular_range()
+        .field("value")
+        .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
+        .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
+      , order, docs, rdr
+    );
+  }
+
+  // value = (..;..) + scored_terms_limit
+  {
+    docs_t docs{ 1, 5, 7, 9, 10, 3, 8, 2, 4, 6, 11, 12, 13, 14, 15, 16, 17 };
+    costs_t costs{ docs.size() };
+    irs::order order;
+
+    order.add<tests::sort::frequency_sort>(false);
+    check_query(
+      irs::by_granular_range()
+        .field("value")
+        .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
+        .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
+        .scored_terms_limit(2)
+      , order, docs, rdr
+    );
+  }
+
+  // value = (..;100)
+  {
+    docs_t docs{ 4, 11, 12, 13, 14, 15, 16, 17 };
+    costs_t costs{ docs.size() };
+    irs::order order;
+    irs::numeric_token_stream max_stream;
+    max_stream.reset((double_t)100.);
+    auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+
+    ASSERT_TRUE(max_stream.next());
+    order.add<tests::sort::frequency_sort>(false);
+    check_query(
+      irs::by_granular_range()
+        .field("value")
+        .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
+        .insert<irs::Bound::MAX>(max_term->value())
+      , order, docs, rdr
+    );
+  }
+}
+
+TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
+  {
+    auto writer = open_writer(irs::OM_CREATE, {});
+    ASSERT_NE(nullptr, writer);
+
+    // add segment
+    index().emplace_back();
+    auto& segment = index().back();
+
+    {
+      const auto* data =
+        "[                                 \
+           { \"seq\": -6, \"value\": 2  }, \
+           { \"seq\": -5, \"value\": 1  }, \
+           { \"seq\": -4, \"value\": 1  }, \
+           { \"seq\": -3, \"value\": 3  }, \
+           { \"seq\": -2, \"value\": 1  }, \
+           { \"seq\": -1, \"value\": 56 }  \
+         ]";
+
+      tests::json_doc_generator gen(data, &by_range_json_field_factory);
+      write_segment(*writer, segment, gen);
+    }
+
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("simple_sequential.json"),
+        &by_range_json_field_factory);
+
+      write_segment(*writer, segment, gen);
+    }
+    writer->commit();
+  }
+
+  auto rdr = open_reader();
+
+  // value = [...;...)
+  const int seed = -6;
+  for (int begin = seed, end = begin + int(rdr->docs_count()); begin != end; ++begin) {
+    docs_t docs;
+    docs.resize(size_t(end - begin));
+    std::iota(docs.begin(), docs.end(), size_t(begin - seed + irs::doc_limits::min()));
+    costs_t costs{ docs.size() };
+    irs::order order;
+    irs::numeric_token_stream min_stream;
+    min_stream.reset((double_t)begin);
+
+    order.add<tests::sort::frequency_sort>(false);
+    order.add<tests::sort::frequency_sort>(true);
+    check_query(
+      irs::by_granular_range()
+        .field("seq")
+        .insert<irs::Bound::MIN>(min_stream)
+        .include<irs::Bound::MIN>(true)
+      , order, docs, rdr
+    );
+  }
 }
 
 // covers https://github.com/arangodb/backlog/issues/528

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_CONJUNCTION_H
@@ -35,25 +34,28 @@ NS_ROOT
 /// @class score_iterator_adapter
 /// @brief adapter to use doc_iterator with conjunction and disjunction
 ////////////////////////////////////////////////////////////////////////////////
+template<typename DocIterator>
 struct score_iterator_adapter {
-  score_iterator_adapter(doc_iterator::ptr&& it) NOEXCEPT
+  typedef DocIterator doc_iterator_t;
+
+  score_iterator_adapter(doc_iterator_t&& it) noexcept
     : it(std::move(it)) {
     auto& attrs = this->it->attributes();
     score = &irs::score::extract(attrs);
-    doc = attrs.get<irs::document>().get();
+    doc = attrs.template get<irs::document>().get();
     assert(doc);
   }
 
   score_iterator_adapter(const score_iterator_adapter&) = default;
   score_iterator_adapter& operator=(const score_iterator_adapter&) = default;
 
-  score_iterator_adapter(score_iterator_adapter&& rhs) NOEXCEPT
+  score_iterator_adapter(score_iterator_adapter&& rhs) noexcept
     : it(std::move(rhs.it)),
       doc(rhs.doc),
       score(rhs.score) {
   }
 
-  score_iterator_adapter& operator=(score_iterator_adapter&& rhs) NOEXCEPT {
+  score_iterator_adapter& operator=(score_iterator_adapter&& rhs) noexcept {
     if (this != &rhs) {
       it = std::move(rhs.it);
       score = rhs.score;
@@ -62,20 +64,20 @@ struct score_iterator_adapter {
     return *this;
   }
 
-  doc_iterator* operator->() const NOEXCEPT {
+  typename doc_iterator_t::element_type* operator->() const noexcept {
     return it.get();
   }
 
-  operator doc_iterator::ptr&() NOEXCEPT {
+  operator doc_iterator_t&() noexcept {
     return it;
   }
 
   // access iterator value without virtual call
-  doc_id_t value() const NOEXCEPT {
+  doc_id_t value() const noexcept {
     return doc->value;
   }
 
-  doc_iterator::ptr it;
+  doc_iterator_t it;
   const irs::document* doc;
   const irs::score* score;
 }; // score_iterator_adapter
@@ -90,11 +92,12 @@ struct score_iterator_adapter {
 ///   V  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-class conjunction : public doc_iterator_base {
+template<typename DocIterator>
+class conjunction : public doc_iterator_base, score_ctx {
  public:
-  typedef score_iterator_adapter doc_iterator_t;
+  typedef score_iterator_adapter<DocIterator> doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
-  typedef doc_iterators_t::const_iterator iterator;
+  typedef typename doc_iterators_t::const_iterator iterator;
 
   conjunction(
       doc_iterators_t&& itrs,
@@ -122,33 +125,52 @@ class conjunction : public doc_iterator_base {
     // copy scores into separate container
     // to avoid extra checks
     scores_.reserve(itrs_.size());
+    scores_vals_.reserve(itrs_.size());
     for (auto& it : itrs_) {
       const auto* score = it.score;
       if (&irs::score::no_score() != score) {
         scores_.push_back(score);
+        scores_vals_.push_back(score->c_str());
       }
     }
-
-    if (scores_.empty()) {
-      prepare_score(ord, nullptr, [](const void*, byte_type*) { /*NOOP*/});
-    } else {
-      // prepare score
-      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
-        auto& self = *static_cast<const conjunction*>(ctx);
-        self.order_->prepare_score(score);
-        for (auto* it_score : self.scores_) {
-          it_score->evaluate();
-          self.order_->add(score, it_score->c_str());
-        }
-      });
+   
+    // prepare score
+    switch (scores_.size()) {
+      case 0:
+        prepare_score(ord, nullptr, [](const score_ctx*, byte_type*) { /*NOOP*/});
+        break;
+      case 1:
+        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+          auto& self = *static_cast<const conjunction*>(ctx);
+          self.scores_[0]->evaluate();
+          self.order_->merge(score, &self.scores_vals_[0], 1);
+          });
+        break;
+      case 2:
+        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+          auto& self = *static_cast<const conjunction*>(ctx);
+          self.scores_[0]->evaluate();
+          self.scores_[1]->evaluate();
+          self.order_->merge(score, &self.scores_vals_[0], 2);
+          });
+        break;
+      default:
+        prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
+          auto& self = *static_cast<const conjunction*>(ctx);
+          for (auto* it_score : self.scores_) {
+            it_score->evaluate();
+          }
+          self.order_->merge(score, &self.scores_vals_[0], self.scores_vals_.size());
+          });
+        break;
     }
   }
 
-  iterator begin() const NOEXCEPT { return itrs_.begin(); }
-  iterator end() const NOEXCEPT { return itrs_.end(); }
+  iterator begin() const noexcept { return itrs_.begin(); }
+  iterator end() const noexcept { return itrs_.end(); }
 
   // size of conjunction
-  size_t size() const NOEXCEPT { return itrs_.size(); }
+  size_t size() const noexcept { return itrs_.size(); }
 
   virtual doc_id_t value() const override final {
     return front_doc_->value;
@@ -204,13 +226,14 @@ class conjunction : public doc_iterator_base {
 
   doc_iterators_t itrs_;
   std::vector<const irs::score*> scores_; // valid sub-scores
+  mutable std::vector<const irs::byte_type*> scores_vals_;
   const irs::document* front_doc_{};
   irs::doc_iterator* front_;
   const irs::order::prepared* order_;
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////
-/// @returns conjunction iterator created from the specified sub iterators
+/// @returns conjunction iterator created from the specified sub iterators 
 //////////////////////////////////////////////////////////////////////////////
 template<typename Conjunction, typename... Args>
 doc_iterator::ptr make_conjunction(

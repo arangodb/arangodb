@@ -66,6 +66,16 @@ Counter& Counter::operator++(int n) {
   return *this;
 }
 
+Counter& Counter::operator+=(uint64_t const& n) {
+  count(n);
+  return *this;
+}
+
+Counter& Counter::operator=(uint64_t const& n) {
+  store(n);
+  return *this;
+}
+
 void Counter::count() {
   ++_b;
 }
@@ -84,6 +94,10 @@ uint64_t Counter::load() const {
   return _c.load();
 }
 
+void Counter::store(uint64_t const& n) {
+  _c.exchange(n);
+}
+
 void Counter::toPrometheus(std::string& result) const {
   _b.push();
   result += "#TYPE " + name() + " counter\n";
@@ -91,7 +105,8 @@ void Counter::toPrometheus(std::string& result) const {
   result += name() + " " + std::to_string(load()) + "\n";
 }
 
-Counter::Counter(uint64_t const& val, std::string const& name, std::string const& help) :
+Counter::Counter(
+  uint64_t const& val, std::string const& name, std::string const& help) :
   Metric(name, help), _c(val), _b(_c) {}
 
 Counter::~Counter() { _b.push(); }

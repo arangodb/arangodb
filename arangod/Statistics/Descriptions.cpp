@@ -17,10 +17,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Simon Graetzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Descriptions.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/process-utils.h"
 #include "RestServer/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -106,8 +109,9 @@ void stats::Figure::toVPack(velocypack::Builder& b) const {
   b.add("units", VPackValue(stats::fromUnit(units)));
 }
 
-stats::Descriptions::Descriptions()
-    : _requestTimeCuts(arangodb::basics::TRI_RequestTimeDistributionVectorStatistics),
+stats::Descriptions::Descriptions(application_features::ApplicationServer& server)
+    : _server(server),
+      _requestTimeCuts(arangodb::basics::TRI_RequestTimeDistributionVectorStatistics),
       _connectionTimeCuts(arangodb::basics::TRI_ConnectionTimeDistributionVectorStatistics),
       _bytesSendCuts(arangodb::basics::TRI_BytesSentDistributionVectorStatistics),
       _bytesReceivedCuts(arangodb::basics::TRI_BytesReceivedDistributionVectorStatistics) {
@@ -411,9 +415,11 @@ stats::Descriptions::Descriptions()
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  ServerStatistics const& info = MetricsFeature::metrics()->serverStatistics();
+  auto& dealer = _server.getFeature<V8DealerFeature>();
+
+  ServerStatistics const& info = _server.getFeature<MetricsFeature>().serverStatistics();
   b.add("uptime", VPackValue(info._uptime));
-  b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+  b.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
 
   b.add("transactions", VPackValue(VPackValueType::Object));
   b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted.load()));
@@ -422,8 +428,6 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits.load()));
   b.close();
 
-  auto& server = application_features::ApplicationServer::server();
-  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
   if (dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
     auto v8Counters = dealer.getCurrentContextNumbers();
@@ -534,8 +538,8 @@ void stats::Descriptions::processStatistics(VPackBuilder& b) const {
   double rss = (double)info._residentSize;
   double rssp = 0;
 
-  if (TRI_PhysicalMemory != 0) {
-    rssp = rss / TRI_PhysicalMemory;
+  if (PhysicalMemory::getValue() != 0) {
+    rssp = rss / PhysicalMemory::getValue();
   }
 
   b.add("minorPageFaults", VPackValue(info._minorPageFaults));

@@ -63,6 +63,9 @@ class EventLoopService {
   }
   
   asio_ns::ssl::context& sslContext();
+  
+  // stop and join threads
+  void stop();
 
  private:
   /// number of last used io_context

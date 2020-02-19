@@ -22,6 +22,7 @@
 
 #include "ClusterTrxMethods.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"

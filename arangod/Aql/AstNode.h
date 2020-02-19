@@ -458,8 +458,8 @@ struct AstNode {
   /// @brief remove a member from the node
   void removeMemberUnchecked(size_t i);
 
-  /// @brief remove all members from the node at once
-  void removeMembers();
+  /// @brief remove a member from the node while breaking members ordering. Faster than removeMemberUnchecked
+  void removeMemberUncheckedUnordered(size_t i);
 
   /// @brief return a member of the node
   AstNode* getMember(size_t i) const;
@@ -521,8 +521,9 @@ struct AstNode {
   /// @brief set the string value of a node
   void setStringValue(char const* v, size_t length);
 
-  /// @brief whether or not a string is equal to another
-  bool stringEquals(char const* other, bool caseInsensitive) const;
+  /// @brief whether the string value of this node is equal to other
+  ///        ignoring case
+  bool stringEqualsCaseInsensitive(std::string const& other) const;
 
   /// @brief whether or not a string is equal to another
   bool stringEquals(std::string const& other) const;
@@ -561,12 +562,6 @@ struct AstNode {
 
   /// @brief Steals the computed value and frees it.
   void stealComputedValue();
-
-  /// @brief Removes all members from the current node that are also
-  ///        members of the other node (ignoring ordering)
-  ///        Can only be applied if this and other are of type
-  ///        n-ary-and
-  void removeMembersInOtherAndNode(AstNode const* other);
 
   /// @brief If the node has not been marked finalized, mark its subtree so.
   /// If it runs into a finalized node, it assumes the whole subtree beneath

@@ -137,7 +137,34 @@ bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart)
     }
 
     case ValueType::BCD: {
+      if (options->disallowBCD) {
+        throw Exception(Exception::BuilderBCDDisallowed);
+      }
       throw Exception(Exception::NotImplemented);
+    }
+    
+    case ValueType::Tagged: {
+      if (options->disallowTags) {
+        throw Exception(Exception::BuilderTagsDisallowed);
+      }
+      if (head == 0xee) {
+        // 1 byte tag type
+        // the actual Slice (without tag) must be at least one byte long
+        validateBufferLength(1 + 1 + 1, length, true);
+        VELOCYPACK_ASSERT(length > 2);
+        ptr += 2;
+        length -= 2;
+      } else if (head == 0xef) {
+        // 8 bytes tag type
+        // the actual Slice (without tag) must be at least one byte long
+        validateBufferLength(1 + 8 + 1, length, true);
+        VELOCYPACK_ASSERT(length > 9);
+        ptr += 9;
+        length -= 9;
+      } else {
+        throw Exception(Exception::NotImplemented);
+      }
+      break;
     }
 
     case ValueType::External: {

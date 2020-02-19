@@ -28,8 +28,8 @@
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cache/Transaction.h"
 
-#include <stdint.h>
 #include <atomic>
+#include <cstdint>
 
 namespace arangodb {
 namespace cache {

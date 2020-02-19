@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestCursorHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
@@ -205,8 +207,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   std::shared_ptr<VPackBuilder> bindVarsBuilder;
   if (!bindVars.isNone()) {
-    bindVarsBuilder.reset(new VPackBuilder);
-    bindVarsBuilder->add(bindVars);
+    bindVarsBuilder = std::make_unique<VPackBuilder>(bindVars);
   }
 
   TRI_ASSERT(_options == nullptr);
@@ -268,7 +269,7 @@ RestStatus RestCursorHandler::processQuery() {
   if (_query == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "Illegal state in RestQueryHandler, query not found.");
+        "Illegal state in RestCursorHandler, query not found.");
   }
 
   {
@@ -381,25 +382,25 @@ RestStatus RestCursorHandler::handleQueryResult() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::string RestCursorHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.size() < 1) {
-    return "";
+  if (suffixes.empty()) {
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
   if (sourceServer == ServerState::instance()->getShortId()) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return ci.getCoordinatorByShortID(sourceServer);
+  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

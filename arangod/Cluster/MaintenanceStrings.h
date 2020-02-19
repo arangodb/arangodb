@@ -33,7 +33,6 @@ constexpr char const* COLLECTION = "collection";
 constexpr char const* CREATE_COLLECTION = "CreateCollection";
 constexpr char const* CREATE_DATABASE = "CreateDatabase";
 constexpr char const* DATABASE = "database";
-constexpr char const* DB = "/_db/";
 constexpr char const* DO_COMPACT = "doCompact";
 constexpr char const* DROP_COLLECTION = "DropCollection";
 constexpr char const* DROP_DATABASE = "DropDatabase";
@@ -69,6 +68,7 @@ constexpr char const* TAKEOVER_SHARD_LEADERSHIP = "TakeoverShardLeadership";
 constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
+constexpr char const* VALIDATORS = "validators";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
 

@@ -22,6 +22,7 @@
 
 #include "NetworkFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
@@ -32,6 +33,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
@@ -70,14 +72,15 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
-      _numIOThreads(config.numIOThreads),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
+      _numIOThreads(config.numIOThreads),
       _verifyHosts(config.verifyHosts) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
+  startsAfter<EngineSelectorFeature>();
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -97,27 +100,13 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts))
                      .setIntroducedIn(30600);
+  
+  std::unordered_set<std::string> protos = {
+      "", "http", "http2", "h2", "vst"};
 
-  _gcfunc = [this](bool canceled) {
-    if (canceled) {
-      return;
-    }
-
-    _pool->pruneConnections();
-
-    if (server().hasFeature<ClusterFeature>()) {
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto failed = ci.getFailedServers();
-      for (ServerID const& f : failed) {
-        _pool->cancelConnections(f);
-      }
-    }
-
-    if (!server().isStopping() && !canceled) {
-      std::chrono::seconds off(12);
-      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
-    }
-  };
+  options->addOption("--network.protocol", "network protocol to use",
+                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
+                     .setIntroducedIn(30700);
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
@@ -131,17 +120,59 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
 }
 
 void NetworkFeature::prepare() {
+  
+  ClusterInfo* ci = nullptr;
+  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
+     ci = &server().getFeature<ClusterFeature>().clusterInfo();
+  }
+
   network::ConnectionPool::Config config;
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
   config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
-  if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
-    config.clusterInfo = &server().getFeature<ClusterFeature>().clusterInfo();
+  config.clusterInfo = ci;
+  if (_protocol == "http") {
+    config.protocol = fuerte::ProtocolType::Http;
+  } else if (_protocol == "http2" || _protocol == "h2") {
+    config.protocol = fuerte::ProtocolType::Http2;
+  } else if (_protocol == "vst") {
+    config.protocol = fuerte::ProtocolType::Vst;
+  } else {
+    config.protocol = fuerte::ProtocolType::Http;
+  }
+  
+  // simon: mmfiles replication is hardcoded for http
+  if (EngineSelectorFeature::isMMFiles()) {
+    config.protocol = fuerte::ProtocolType::Http;
   }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
-  _poolPtr.store(_pool.get(), std::memory_order_release);
+  _poolPtr.store(_pool.get(), std::memory_order_relaxed);
+  
+  _gcfunc = [this, ci](bool canceled) {
+    if (canceled) {
+      return;
+    }
+
+    _pool->pruneConnections();
+
+    if (ci != nullptr) {
+      auto failed = ci->getFailedServers();
+      for (ServerID const& srvId : failed) {
+        std::string endpoint = ci->getServerEndpoint(srvId);
+        size_t n = _pool->cancelConnections(endpoint);
+        LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
+            << "canceling " << n << " connection(s) to failed server '"
+            << srvId << "' on endpoint '" << endpoint << "'";
+      }
+    }
+
+    if (!server().isStopping() && !canceled) {
+      std::chrono::seconds off(12);
+      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
+    }
+  };
 }
 
 void NetworkFeature::start() {
@@ -157,9 +188,9 @@ void NetworkFeature::beginShutdown() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _poolPtr.store(nullptr, std::memory_order_release);
+  _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
-    _pool->drainConnections();
+    _pool->shutdownConnections();
   }
 }
 
@@ -169,11 +200,19 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _pool->drainConnections();
+  if (_pool) {
+    _pool->shutdownConnections();
+  }
+}
+
+void NetworkFeature::unprepare() {
+  if (_pool) {
+    _pool->drainConnections();
+  }
 }
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {
-  return _poolPtr.load(std::memory_order_acquire);
+  return _poolPtr.load(std::memory_order_relaxed);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

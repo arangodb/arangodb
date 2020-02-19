@@ -68,6 +68,10 @@ std::string const& stateToString(aql::ExecutionState state) {
 
 }  // namespace
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+size_t ExecutionBlock::DefaultBatchSize = ExecutionBlock::ProductionDefaultBatchSize;
+#endif
+
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _trxVpackOptions(engine->getQuery()->trx()->transactionContextPtr()->getVPackOptions()),

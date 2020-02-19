@@ -441,9 +441,10 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
   }
 }
 
-GeneralResponse::GeneralResponse(ResponseCode responseCode)
-    : _responseCode(responseCode),
+GeneralResponse::GeneralResponse(ResponseCode responseCode, uint64_t mid)
+    : _messageId(mid),
+      _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _contentTypeRequested(ContentType::UNSET),
-      _generateBody(false),
+      _generateBody(true),
       _allowCompression(false) {}

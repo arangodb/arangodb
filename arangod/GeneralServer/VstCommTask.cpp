@@ -56,48 +56,37 @@ VstCommTask<T>::VstCommTask(GeneralServer& server,
                             ConnectionInfo info,
                             std::unique_ptr<AsioSocket<T>> so,
                             fuerte::vst::VSTVersion v)
-: GeneralCommTask<T>(server, "VstCommTask", std::move(info), std::move(so)),
+: GeneralCommTask<T>(server, std::move(info), std::move(so)),
   _writing(false),
-  _authorized(!this->_auth->isActive()),
+  _authToken("", false, 0),
+  _authenticated(!this->_auth->isActive()),
   _authMethod(rest::AuthenticationMethod::NONE),
   _vstVersion(v) {}
 
 template<SocketType T>
 VstCommTask<T>::~VstCommTask() {
-  ResponseItem* tmp = nullptr;
-  while (_writeQueue.pop(tmp)) {
-    delete tmp;
-  }
+  try {
+    ResponseItem* tmp = nullptr;
+    while (_writeQueue.pop(tmp)) {
+      delete tmp;
+    }
+  } catch(...) {}
 }
 
-/// @brief send simple response including response body
-template<SocketType T>
-void VstCommTask<T>::addSimpleResponse(rest::ResponseCode code,
-                                       rest::ContentType respType, uint64_t messageId,
-                                       velocypack::Buffer<uint8_t>&& buffer) {
-  auto resp = std::make_unique<VstResponse>(code, messageId);
-  TRI_ASSERT(respType == rest::ContentType::VPACK);  // or not ?
-  resp->setContentType(respType);
-
-  try {
-    if (!buffer.empty()) {
-      resp->setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    }
-    sendResponse(std::move(resp), this->stealStatistics(messageId));
-  } catch (...) {
-    this->close();
-  }
+template <SocketType T>
+void VstCommTask<T>::start() {
+  LOG_TOPIC("7215f", DEBUG, Logger::REQUESTS)
+    << "<vst> opened connection \"" << (void*)this << "\"";
+  asio_ns::dispatch(this->_protocol->context.io_context, [self = this->shared_from_this()] {
+    static_cast<VstCommTask<T>&>(*self).asyncReadSome();
+  });
 }
 
 template <SocketType T>
 bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   using namespace fuerte;
   if (ec) {
-    if (ec != asio_ns::error::misc_errors::eof) {
-      LOG_TOPIC("495fe", INFO, Logger::REQUESTS)
-      << "Error while reading from socket: '" << ec.message() << "'";
-    }
-    this->close();
+    this->close(ec);
     return false;
   }
 
@@ -124,6 +113,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
       this->close();
       return false; // stop read loop
     }
+    TRI_ASSERT(vst::parser::ChunkState::Complete == state);
 
     // move cursors
     cursor += chunk.header.chunkLength();
@@ -166,17 +156,21 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
       VPackBuffer<uint8_t> buffer; // TODO lease buffers ?
       buffer.append(reinterpret_cast<uint8_t const*>(chunk.body.data()),
                     chunk.body.size());
+      TRI_ASSERT(_messages.find(chunk.header.messageID()) == _messages.end());
       return processMessage(std::move(buffer), chunk.header.messageID());
     }
   }
 
+  Message* msg;
   // Find stored message for this chunk.
-  auto it = _messages.try_emplace(
-    chunk.header.messageID(),
-    arangodb::lazyConstruct([&]{
-      return std::make_unique<Message>();
-    })).first;
-  Message* msg = it->second.get();
+  auto it = _messages.find(chunk.header.messageID());
+  if (it != _messages.end()) {
+    msg = it->second.get();
+  } else {
+    auto both = _messages.emplace(chunk.header.messageID(),
+                                  std::make_unique<Message>());
+    msg = both.first->second.get();
+  }
 
   // returns false if message gets too big
   if (!msg->addChunk(chunk)) {
@@ -223,39 +217,38 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
 
   // handle request types
   if (mt == MessageType::Authentication) {  // auth
-    handleAuthHeader(VPackSlice(buffer.data()), messageId);
+    handleVstAuthRequest(VPackSlice(buffer.data()), messageId);
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
-    if (_authMethod != AuthenticationMethod::NONE && _authorized &&
-        this->_authToken._username.empty()) {
+    if (_authMethod != AuthenticationMethod::NONE && _authenticated &&
+        _authToken.username().empty()) {
       RequestStatistics::SET_SUPERUSER(stat);
     }
   } else if (mt == MessageType::Request) {  // request
 
-    VPackSlice header(buffer.data());
     // the handler will take ownership of this pointer
     auto req = std::make_unique<VstRequest>(this->_connectionInfo,
                                             std::move(buffer),
                                             /*payloadOffset*/headerLength,
                                             messageId);
-    req->setAuthenticated(_authorized);
-    req->setUser(this->_authToken._username);
+    req->setAuthenticated(_authenticated);
+    req->setUser(_authToken.username());
     req->setAuthenticationMethod(_authMethod);
-    if (_authorized && this->_auth->userManager() != nullptr) {
+    if (_authenticated && this->_auth->userManager() != nullptr) {
       // if we don't call checkAuthentication we need to refresh
-      this->_auth->userManager()->refreshUser(this->_authToken._username);
+      this->_auth->userManager()->refreshUser(this->_authToken.username());
     }
 
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
-    if (_authMethod != AuthenticationMethod::NONE && _authorized &&
-        this->_authToken._username.empty()) {
+    if (_authMethod != AuthenticationMethod::NONE && _authenticated &&
+        this->_authToken.username().empty()) {
       RequestStatistics::SET_SUPERUSER(stat);
     }
 
-    LOG_TOPIC("92fd6", DEBUG, Logger::REQUESTS)
+    LOG_TOPIC("92fd6", INFO, Logger::REQUESTS)
     << "\"vst-request-begin\",\"" << (void*)this << "\",\""
     << this->_connectionInfo.clientAddress << "\",\""
     << VstRequest::translateMethod(req->requestType()) << "\",\""
@@ -263,18 +256,18 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
     << "\"";
 
-    CommTask::Flow cont = this->prepareExecution(*req.get());
+    // TODO use different token if authentication header is present
+    CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
     if (cont == CommTask::Flow::Continue) {
       auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR, messageId);
-      resp->setContentTypeRequested(req->contentTypeResponse());
       this->executeRequest(std::move(req), std::move(resp));
-    }
+    } // abort is handled in prepareExecution
   } else {  // not supported on server
     LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
     << "\"vst-request-header\",\"" << (void*)this << "/"
     << messageId << "\"" << " is unsupported";
-    addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
-                      messageId, VPackBuffer<uint8_t>());
+    this->addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                            messageId, VPackBuffer<uint8_t>());
   }
   return true;
 }
@@ -283,6 +276,10 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
 template<SocketType T>
 void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, RequestStatistics* stat) {
   using namespace fuerte;
+  
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VstResponse& response = dynamic_cast<VstResponse&>(*baseRes);
@@ -290,13 +287,14 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   VstResponse& response = static_cast<VstResponse&>(*baseRes);
 #endif
 
-  this->finishExecution(*baseRes);
+  this->finishExecution(*baseRes, /*origin*/StaticStrings::Empty);
 
   auto resItem = std::make_unique<ResponseItem>();
   response.writeMessageHeader(resItem->metadata);
   resItem->response = std::move(baseRes);
-  RequestStatistics::SET_WRITE_START(stat);
   resItem->stat = stat;
+  
+  RequestStatistics::SET_WRITE_START(stat);
 
   asio_ns::const_buffer payload;
   if (response.generateBody()) {
@@ -323,77 +321,72 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   << static_cast<int>(response.responseCode()) << ","
   << "\"," << Logger::FIXED(totalTime, 6);
 
-  while (true) {
-    if (_writeQueue.push(resItem.get())) {
-      break;
-    }
-    cpu_relax();
+  while (!_writeQueue.push(resItem.get())) {
+    std::this_thread::yield();
   }
   resItem.release();
 
-  bool expected = _writing.load();
-  if (false == expected) {
-    if (_writing.compare_exchange_strong(expected, true)) {
-      this->_protocol->context.io_context.post([this, self = this->shared_from_this()]{
-        this->doWrite(); // we managed to start writing
-      });
-    }
+  // start writing if necessary
+  if (_writing.load()) {
+    return;
   }
+  this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
+    auto& me = static_cast<VstCommTask<T>&>(*self);
+    if (!me._writing.exchange(true)) {
+      me.doWrite();
+    }
+  });
 }
 
 template<SocketType T>
 void VstCommTask<T>::doWrite() {
   TRI_ASSERT(_writing.load() == true);
-
-  while(true) { // loop instead of using recursion
-
-    ResponseItem* tmp = nullptr;
-    if (!_writeQueue.pop(tmp)) {
-      // careful now, we need to consider that someone queues
-      // a new request item
-      _writing.store(false);
-      if (_writeQueue.empty()) {
-        break; // done, someone else may restart
-      }
-
-      bool expected = false; // may fail in a race
-      if (_writing.compare_exchange_strong(expected, true)) {
-        continue; // we re-start writing
-      }
-      TRI_ASSERT(expected == true);
-      break; // someone else restarted writing
-    }
-    TRI_ASSERT(tmp != nullptr);
-    std::unique_ptr<ResponseItem> item(tmp);
-
-    auto& buffers = item->buffers;
-    asio_ns::async_write(this->_protocol->socket, buffers,
-                         [self(CommTask::shared_from_this()), rsp(std::move(item))]
-                         (asio_ns::error_code ec, size_t transferred) {
-
-      auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
-      RequestStatistics::SET_WRITE_END(rsp->stat);
-      RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
-      if (ec) {
-        LOG_TOPIC("5c6b4", INFO, arangodb::Logger::REQUESTS)
-        << "asio write error: '" << ec.message() << "'";
-        thisPtr->close();
-      } else {
-        thisPtr->doWrite(); // write next one
-      }
-      if (rsp->stat != nullptr) {
-        rsp->stat->release();
-      }
-    });
-    break; // done
+  if (this->_stopped.load(std::memory_order_acquire)) {
+    return;
   }
+  
+  ResponseItem* tmp = nullptr;
+  if (!_writeQueue.pop(tmp)) {
+    // careful now, we need to consider that someone queues
+    // a new request item
+    _writing.store(false);
+    if (_writeQueue.empty()) {
+      return; // done, someone else may restart
+    }
+
+    if (_writing.exchange(true)) {
+      return; // someone else restarted writing
+    }
+    bool success = _writeQueue.pop(tmp);
+    TRI_ASSERT(success);
+  }
+  TRI_ASSERT(tmp != nullptr);
+  std::unique_ptr<ResponseItem> item(tmp);
+
+  auto& buffers = item->buffers;
+  asio_ns::async_write(this->_protocol->socket, buffers,
+                       [self(CommTask::shared_from_this()), rsp(std::move(item))]
+                       (asio_ns::error_code const& ec, size_t) {
+
+    auto* me = static_cast<VstCommTask<T>*>(self.get());
+    RequestStatistics::SET_WRITE_END(rsp->stat);
+    RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
+    if (ec) {
+      me->close(ec);
+    } else {
+      me->doWrite(); // write next one
+    }
+    if (rsp->stat != nullptr) {
+      rsp->stat->release();
+    }
+  });
 }
 
 template<SocketType T>
-void VstCommTask<T>::handleAuthHeader(VPackSlice header, uint64_t mId) {
+void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   std::string authString;
   std::string user = "";
-  _authorized = false;
+  _authenticated = false;
   _authMethod = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();
@@ -410,15 +403,15 @@ void VstCommTask<T>::handleAuthHeader(VPackSlice header, uint64_t mId) {
       << "Unknown VST encryption type";
   }
 
-  this->_authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
-  _authorized = this->_authToken.authenticated();
+  _authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
+  _authenticated = _authToken.authenticated();
 
-  if (this->_authorized || !this->_auth->isActive()) {
+  if (_authenticated || !this->_auth->isActive()) {
     // simon: drivers expect a response for their auth request
     this->addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, mId,
                            TRI_ERROR_NO_ERROR, "auth successful");
   } else {
-    this->_authToken = auth::TokenCache::Entry::Unauthenticated();
+    _authToken = auth::TokenCache::Entry::Unauthenticated();
     this->addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
                            mId, TRI_ERROR_HTTP_UNAUTHORIZED);
   }

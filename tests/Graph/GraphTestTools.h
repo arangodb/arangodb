@@ -247,8 +247,6 @@ struct MockGraphDatabase {
         new arangodb::aql::Query(false, vocbase, queryString, nullptr,
                                  arangodb::velocypack::Parser::fromJson("{}"),
                                  arangodb::aql::PART_MAIN);
-    // TODO Local fix of #10304. Remove this after #10304 is merged back.
-    // query->parse();
     query->prepare(arangodb::QueryRegistryFeature::registry(), SerializationFormat::SHADOWROWS);
 
     queries.emplace_back(query);

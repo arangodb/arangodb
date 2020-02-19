@@ -63,44 +63,53 @@ void MMFilesCompactionFeature::collectOptions(std::shared_ptr<options::ProgramOp
 
   options->addOption("--compaction.db-sleep-time",
                      "sleep interval between two compaction runs (in s)",
-                     new DoubleParameter(&_compactionSleepTime));
+                     new DoubleParameter(&_compactionSleepTime))
+                     .setDeprecatedIn(30700);
 
   options->addOption("--compaction.min-interval",
                      "minimum sleep time between two compaction runs (in s)",
-                     new DoubleParameter(&_compactionCollectionInterval));
+                     new DoubleParameter(&_compactionCollectionInterval))
+                     .setDeprecatedIn(30700);
 
   options->addOption("--compaction.min-small-data-file-size",
-                     "minimal filesize threshhold original data files have to "
+                     "minimal filesize threshold original data files have to "
                      "be below for a compaction",
-                     new UInt64Parameter(&_smallDatafileSize));
+                     new UInt64Parameter(&_smallDatafileSize))
+                     .setDeprecatedIn(30700);
 
   options->addOption("--compaction.dead-documents-threshold",
                      "minimum unused count of documents in a datafile",
-                     new UInt64Parameter(&_deadNumberThreshold));
+                     new UInt64Parameter(&_deadNumberThreshold))
+                     .setDeprecatedIn(30700);
 
   options->addOption(
       "--compaction.dead-size-threshold",
       "how many bytes of the source data file are allowed to be unused at most",
-      new UInt64Parameter(&_deadSizeThreshold));
+      new UInt64Parameter(&_deadSizeThreshold))
+      .setDeprecatedIn(30700);
 
   options->addOption(
       "--compaction.dead-size-percent-threshold",
       "how many percent of the source datafile should be unused at least",
-      new DoubleParameter(&_deadShare));
+      new DoubleParameter(&_deadShare))
+      .setDeprecatedIn(30700);
 
   options->addOption("--compaction.max-files",
                      "Maximum number of files to merge to one file",
-                     new UInt64Parameter(&_maxFiles));
+                     new UInt64Parameter(&_maxFiles))
+                     .setDeprecatedIn(30700);
 
   options->addOption(
       "--compaction.max-result-file-size",
       "how large may the compaction result file become (in bytes)",
-      new UInt64Parameter(&_maxResultFilesize));
+      new UInt64Parameter(&_maxResultFilesize))
+      .setDeprecatedIn(30700);
 
   options->addOption("--compaction.max-file-size-factor",
                      "how large the resulting file may be in comparison to the "
                      "collections '--database.maximal-journal-size' setting",
-                     new UInt64Parameter(&_maxSizeFactor));
+                     new UInt64Parameter(&_maxSizeFactor))
+                     .setDeprecatedIn(30700);
 }
 
 void MMFilesCompactionFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {

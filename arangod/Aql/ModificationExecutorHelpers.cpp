@@ -196,6 +196,7 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
 
   // in.ignoreErrors;
   out.waitForSync = in.waitForSync;
+  out.validate = in.validate;
   out.keepNull = !in.nullMeansRemove;
   out.mergeObjects = in.mergeObjects;
   // in.ignoreDocumentNotFound;
@@ -205,6 +206,7 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
   // in.exclusive;
   out.overwrite = in.overwrite;
   out.ignoreRevs = in.ignoreRevs;
+  out.overwriteModeUpdate = in.overwriteModeUpdate;
 
   out.returnNew = (outVariableNew != nullptr);
   out.returnOld = (outVariableOld != nullptr);

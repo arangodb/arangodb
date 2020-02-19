@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -63,7 +62,7 @@ boolean_token_stream::boolean_token_stream(bool value /*= false*/)
 }
 
 boolean_token_stream::boolean_token_stream(
-    boolean_token_stream&& other) NOEXCEPT
+    boolean_token_stream&& other) noexcept
   : term_(std::move(other.term_)),
     in_use_(std::move(other.in_use_)),
     value_(std::move(other.value_)) {
@@ -103,7 +102,7 @@ string_token_stream::string_token_stream()
   init_attributes();
 }
 
-string_token_stream::string_token_stream(string_token_stream&& other) NOEXCEPT
+string_token_stream::string_token_stream(string_token_stream&& other) noexcept
   : offset_(std::move(other.offset_)),
     inc_(std::move(other.inc_)),
     term_(std::move(other.term_)),
@@ -194,7 +193,7 @@ numeric_token_stream::numeric_token_stream()
 }
 
 numeric_token_stream::numeric_token_stream(
-  numeric_token_stream&& other) NOEXCEPT
+  numeric_token_stream&& other) noexcept
   : num_(std::move(other.num_)),
     inc_(std::move(other.inc_)) {
   init_attributes();
@@ -258,7 +257,7 @@ null_token_stream::null_token_stream()
   init_attributes();
 }
 
-null_token_stream::null_token_stream(null_token_stream&& other) NOEXCEPT
+null_token_stream::null_token_stream(null_token_stream&& other) noexcept
   : term_(std::move(other.term_)),
     in_use_(std::move(other.in_use_)) {
   init_attributes();

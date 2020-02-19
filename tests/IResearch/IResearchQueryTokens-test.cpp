@@ -88,7 +88,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     _attrs.emplace(_term);
   }
 
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+  virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
 

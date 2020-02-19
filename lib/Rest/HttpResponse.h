@@ -42,12 +42,9 @@ class HttpResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
  public:
-  explicit HttpResponse(ResponseCode code,
-                        std::unique_ptr<basics::StringBuffer> leased);
-  ~HttpResponse();
-
- public:
-  bool isHeadResponse() const { return _isHeadResponse; }
+  explicit HttpResponse(ResponseCode code, uint64_t mid,
+                        std::unique_ptr<basics::StringBuffer> = nullptr);
+  ~HttpResponse() = default;
 
  public:
   void setCookie(std::string const& name, std::string const& value,
@@ -88,11 +85,6 @@ class HttpResponse : public GeneralResponse {
     return _body->empty();
   }
 
-  /// used for head-responses
-  bool setGenerateBody(bool generateBody) override final {
-    return _generateBody = generateBody;
-  }
-
   int reservePayload(std::size_t size) override { return _body->reserve(size); }
 
   arangodb::Endpoint::TransportType transportType() override {
@@ -113,11 +105,9 @@ class HttpResponse : public GeneralResponse {
   void addPayloadInternal(velocypack::Slice, size_t, velocypack::Options const*, bool);
   
  private:
-  bool _isHeadResponse;
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
-
 };
 }  // namespace arangodb
 

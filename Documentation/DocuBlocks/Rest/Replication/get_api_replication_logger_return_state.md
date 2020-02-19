@@ -70,4 +70,3 @@ Returns the state of the replication logger.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

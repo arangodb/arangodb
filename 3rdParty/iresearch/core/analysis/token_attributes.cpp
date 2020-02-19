@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -47,7 +46,7 @@ DEFINE_ATTRIBUTE_TYPE(offset)
 REGISTER_ATTRIBUTE(increment);
 DEFINE_ATTRIBUTE_TYPE(increment)
 
-increment::increment() NOEXCEPT
+increment::increment() noexcept
   : basic_attribute<uint32_t>(1U) {
 }
 
@@ -96,17 +95,17 @@ DEFINE_FACTORY_DEFAULT(norm)
 
 const document INVALID_DOCUMENT;
 
-norm::norm() NOEXCEPT {
+norm::norm() noexcept {
   reset();
 }
 
-norm::norm(norm&& rhs) NOEXCEPT
+norm::norm(norm&& rhs) noexcept
   : column_(std::move(rhs.column_)),
     doc_(rhs.doc_) {
   rhs.doc_ = nullptr;
 }
 
-norm& norm::operator=(norm&& rhs) NOEXCEPT {
+norm& norm::operator=(norm&& rhs) noexcept {
   if (this != &rhs) {
     column_ = std::move(rhs.column_);
     doc_ = rhs.doc_;
@@ -154,7 +153,7 @@ float_t norm::read() const {
 REGISTER_ATTRIBUTE(position);
 DEFINE_ATTRIBUTE_TYPE(position) // DO NOT CHANGE NAME
 
-position::position(size_t reserve_attrs) NOEXCEPT
+position::position(size_t reserve_attrs) noexcept
   : attrs_(reserve_attrs) {
 }
 

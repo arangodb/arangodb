@@ -43,19 +43,6 @@ function dumpTestSuite () {
   'use strict';
 
   return {
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test db properties
@@ -68,12 +55,11 @@ function dumpTestSuite () {
         db._useDatabase("UnitTestsDumpProperties1");
         let props = db._properties();
         assertEqual(1, props.replicationFactor);
-        assertEqual(1, props.minReplicationFactor);
-
+        assertEqual(1, props.writeConcern);
         db._useDatabase("UnitTestsDumpProperties2");
         props = db._properties();
         assertEqual(2, props.replicationFactor);
-        assertEqual(2, props.minReplicationFactor);
+        assertEqual(2, props.writeConcern);
       } finally {
         db._useDatabase(old);
       };
@@ -816,7 +802,22 @@ function dumpTestEnterpriseSuite () {
       assertEqual(props.cleanupIntervalStep, 456);
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
-    }
+    },
+
+    testJobsAndQueues : function() {
+      assertEqual("test", db._jobs.document("test")._key);
+      assertEqual("test", db._queues.document("test")._key);
+    },
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test whether the test collection has been restored
+////////////////////////////////////////////////////////////////////////////////
+    testSmartGraphAttribute : function () {
+      assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray().length, 1);
+      let doc = db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0];
+      assertEqual(doc.cheesyness, "bread");
+      assertTrue(doc._key.startsWith("cheese:"));
+    },
   };
 }
 

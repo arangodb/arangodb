@@ -41,7 +41,7 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -196,7 +196,7 @@ class ShardDistributionReporterTest
     }
 
     vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              testDBInfo(server.server()));
+                                              testDBInfo(server));
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(), true);
 
     col->setShardMap(shards);
@@ -277,13 +277,14 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          velocypack::Buffer<uint8_t> body,
+                          network::RequestOptions const& opts,
                           network::Headers headerFields) -> network::FutureRes {
     EXPECT_TRUE(reqType == fuerte::RestVerb::Get);
     EXPECT_TRUE(headerFields.empty());
     // This feature has at most 2s to do its job
     // otherwise default values will be returned
-    EXPECT_TRUE(timeout.count() <= 2.0);
+    EXPECT_TRUE(opts.timeout.count() <= 2.0);
 
     network::Response response;
     response.destination = destination;
@@ -292,23 +293,26 @@ TEST_F(ShardDistributionReporterTest,
     // '/_db/UnitTestDB/_api/collection/' + shard.shard + '/count'
     if (destination == "server:" + dbserver1) {
       // off-sync follows s2,s3
-      if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
+      if (opts.database == "UnitTestDB" && path == "/_api/collection/" + s2 + "/count") {
         response.response = generateCountResponse(shard2LowFollowerCount);
       } else {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
+        EXPECT_TRUE(opts.database == "UnitTestDB");
+        EXPECT_TRUE(path == "/_api/collection/" + s3 + "/count");
         response.response = generateCountResponse(shard3FollowerCount);
       }
     } else if (destination == "server:" + dbserver2) {
+      EXPECT_TRUE(opts.database == "UnitTestDB");
       // Leads s2
-      EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count");
+      EXPECT_TRUE(path == "/_api/collection/" + s2 + "/count");
       response.response = generateCountResponse(shard2LeaderCount);
     } else if (destination == "server:" + dbserver3) {
       // Leads s3
       // off-sync follows s2
-      if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
+      if (opts.database == "UnitTestDB" && path == "/_api/collection/" + s2 + "/count") {
         response.response = generateCountResponse(shard2HighFollowerCount);
       } else {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
+        EXPECT_TRUE(opts.database == "UnitTestDB");
+        EXPECT_TRUE(path == "/_api/collection/" + s3 + "/count");
         response.response = generateCountResponse(shard3LeaderCount);
       }
     } else {
@@ -806,9 +810,11 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          velocypack::Buffer<uint8_t> body,
+                          network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
-    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    EXPECT_TRUE(reqOpts.database == "UnitTestDB");
+    EXPECT_TRUE(path == "/_api/collection/" + s1 + "/count");
 
     network::Response response;
     response.destination = destination;
@@ -888,9 +894,11 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          velocypack::Buffer<uint8_t> body,
+                          network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
-    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    EXPECT_TRUE(reqOpts.database == "UnitTestDB");
+    EXPECT_TRUE(path == "/_api/collection/" + s1 + "/count");
 
     network::Response response;
     response.destination = destination;
@@ -937,9 +945,11 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          velocypack::Buffer<uint8_t> body,
+                          network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
-    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    EXPECT_TRUE(reqOpts.database == "UnitTestDB");
+    EXPECT_TRUE(path == "/_api/collection/" + s1 + "/count");
 
     network::Response response;
     response.destination = destination;
@@ -987,9 +997,11 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          velocypack::Buffer<uint8_t> body,
+                          network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
-    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    EXPECT_TRUE(reqOpts.database == "UnitTestDB");
+    EXPECT_TRUE(path == "/_api/collection/" + s1 + "/count");
 
     network::Response response;
     response.destination = destination;
@@ -1035,9 +1047,11 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          velocypack::Buffer<uint8_t> body,
+                          network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
-    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    EXPECT_TRUE(reqOpts.database == "UnitTestDB");
+    EXPECT_TRUE(path == "/_api/collection/" + s1 + "/count");
 
     network::Response response;
     response.destination = destination;
@@ -1084,9 +1098,11 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          velocypack::Buffer<uint8_t> body,
+                          network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
-    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    EXPECT_TRUE(reqOpts.database == "UnitTestDB");
+    EXPECT_TRUE(path == "/_api/collection/" + s1 + "/count");
 
     network::Response response;
     response.destination = destination;
@@ -1134,9 +1150,11 @@ TEST_F(ShardDistributionReporterTest,
   // Mocking sendRequest for count calls
   auto sender = [&, this](network::DestinationId const& destination,
                           arangodb::fuerte::RestVerb reqType, std::string const& path,
-                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          velocypack::Buffer<uint8_t> body,
+                          network::RequestOptions const& reqOpts,
                           network::Headers headerFields) -> network::FutureRes {
-    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    EXPECT_TRUE(reqOpts.database == "UnitTestDB");
+    EXPECT_TRUE(path == "/_api/collection/" + s1 + "/count");
 
     network::Response response;
     response.destination = destination;

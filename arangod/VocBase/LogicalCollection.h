@@ -34,6 +34,7 @@
 #include "Utils/OperationResult.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/Validators.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -134,7 +135,6 @@ class LogicalCollection : public LogicalDataSource {
   /// if the boolean is false, the return value is always
   /// TRI_VOC_COL_STATUS_CORRUPTED
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
-  std::string statusString() const;
 
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
@@ -317,7 +317,8 @@ class LogicalCollection : public LogicalDataSource {
   ///        created and only on Sinlge/DBServer
   void persistPhysicalCollection();
 
-  basics::ReadWriteLock& lock() { return _lock; }
+  /// lock protecting the status and name
+  basics::ReadWriteLock& statusLock() { return _statusLock; }
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -327,6 +328,9 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
+  void validatorsToVelocyPack(VPackBuilder&) const;
+  Result validate(VPackSlice newDoc) const; // insert
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc) const; // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -340,6 +344,8 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;
 
+  Result updateValidators(VPackSlice validatorArray);
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -352,7 +358,8 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Meta Information
 
-  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
+  /// lock protecting the status and name
+  mutable basics::ReadWriteLock _statusLock;
 
   /// @brief collection format version
   Version _version;
@@ -373,7 +380,7 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool const _isSmart;
 #endif
-  
+
   // SECTION: Properties
   bool _waitForSync;
 
@@ -398,6 +405,11 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
+
+  using ValidatorVec = std::vector<std::unique_ptr<arangodb::ValidatorBase>>;
+  // `_validators` must be used with atomic accessors only!!
+  // We use relaxed access (load/store) as we only care about atomicity.
+  std::shared_ptr<ValidatorVec> _validators;
 };
 
 }  // namespace arangodb

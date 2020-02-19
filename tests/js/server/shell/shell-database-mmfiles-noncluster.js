@@ -137,8 +137,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
@@ -172,8 +171,6 @@ function DatabaseSuite () {
       internal.wait(5, false);
       // still...
       assertEqual(1000, c.count());
-
-      c = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,8 +182,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
@@ -232,8 +228,6 @@ function DatabaseSuite () {
 
       internal.wait(3, false);
       assertEqual(9, d9.value);
-
-      d9 = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,8 +239,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
@@ -268,31 +261,23 @@ function DatabaseSuite () {
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
 
       var tries = 0;
-      while (tries++ < 150) {
-        if (fs.exists(path)) {
-          internal.wait(2, false);
-          continue;
-        }
-        else {
+      while (tries++ < 300) {
+        if (!fs.exists(path)) {
           break;
         }
+        internal.wait(1, false);
       }
       if (tries > 15) {
-        require("internal").printf("[WARNING] waited " + tries * 2 + " seconds for " + path + " to disappear");
+        require("console").warn("waited " + tries + " seconds for " + path + " to disappear");
       }
       // yes, we know this test fails in windows now and then.
-      assertFalse(fs.exists(path));
+      assertFalse(fs.exists(path), fs.listTree(path));
     }
 
   };
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(DatabaseSuite);
 
 return jsunity.done();
-

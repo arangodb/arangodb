@@ -178,6 +178,16 @@ constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    
 /// Will be raised when a requested resource is not enabled.
 constexpr int TRI_ERROR_DISABLED                                                = 36;
 
+/// 37: ERROR_VALIDATION_FAILED
+/// "validation failed"
+/// Will be raised when document does not pass validation.
+constexpr int TRI_ERROR_VALIDATION_FAILED                                       = 37;
+
+/// 38: ERROR_VALIDATION_BAD_PARAMETER
+/// "invalid validation parameter"
+/// Will be raised when values in validator array are not valid.
+constexpr int TRI_ERROR_VALIDATION_BAD_PARAMETER                                = 38;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -361,7 +371,7 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 
 /// 1202: ERROR_ARANGO_DOCUMENT_NOT_FOUND
 /// "document not found"
-/// Will be raised when a document with a given identifier or handle is unknown.
+/// Will be raised when a document with a given identifier is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
 /// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
@@ -376,8 +386,8 @@ constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            
 constexpr int TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING                     = 1204;
 
 /// 1205: ERROR_ARANGO_DOCUMENT_HANDLE_BAD
-/// "illegal document handle"
-/// Will be raised when a document handle is corrupt.
+/// "illegal document identifier"
+/// Will be raised when a document identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD                              = 1205;
 
 /// 1206: ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL
@@ -416,8 +426,8 @@ constexpr int TRI_ERROR_ARANGO_INDEX_NOT_FOUND                                  
 constexpr int TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST                         = 1213;
 
 /// 1214: ERROR_ARANGO_INDEX_HANDLE_BAD
-/// "illegal index handle"
-/// Will be raised when a index handle is corrupt.
+/// "illegal index identifier"
+/// Will be raised when a index identifier is corrupt.
 constexpr int TRI_ERROR_ARANGO_INDEX_HANDLE_BAD                                 = 1214;
 
 /// 1216: ERROR_ARANGO_DOCUMENT_TOO_LARGE

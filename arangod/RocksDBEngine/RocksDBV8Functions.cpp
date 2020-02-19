@@ -46,8 +46,8 @@ using namespace arangodb;
 /// flush the WAL
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   bool waitForSync = false;
   bool waitForCollector = false;
@@ -58,18 +58,19 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> obj =
           args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
-        waitForSync = TRI_ObjectToBoolean(
-            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+        waitForSync = TRI_ObjectToBoolean(isolate,
+                                          obj->Get(context,
+                                                   TRI_V8_ASCII_STRING(isolate, "waitForSync")).FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
         waitForCollector = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
+            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForCollector")).FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "writeShutdownFile")) {
         writeShutdownFile = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
+            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);

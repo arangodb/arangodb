@@ -360,6 +360,9 @@ class GatherNode final : public ExecutionNode {
   bool isParallelizable() const;
 
  private:
+  /// @brief the underlying database
+  TRI_vocbase_t* _vocbase;
+
   /// @brief sort elements, variable, ascending flags and possible attribute
   /// paths.
   SortElementVector _elements;

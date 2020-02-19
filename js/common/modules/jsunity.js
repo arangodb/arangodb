@@ -378,7 +378,7 @@ function RunTest (path, outputReply, filter) {
 
   content = fs.read(path);
 
-  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const getOptions = false;  ${content} }());
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const runSetup = false; const getOptions = false; ${content} }());
 });`;
   f = internal.executeScript(content, undefined, path);
 

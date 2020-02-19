@@ -58,20 +58,18 @@ struct ClusterCollectionCreationInfo;
 // make sure a collection is still in Plan
 // we are only going from *assuming* that it is present
 // to it being changed to not present.
-class CollectionWatcher
-{
-public:
+class CollectionWatcher {
+ public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry *agencyCallbackRegistry, LogicalCollection const& collection)
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
     : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-    AgencyComm ac;
 
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id());
     std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
 
     _agencyCallback = std::make_shared<AgencyCallback>(
-        ac, where,
+        collection.vocbase().server(), where,
         [this](VPackSlice const& result) {
           if (result.isNone()) {
             _present.store(false);
@@ -80,7 +78,7 @@ public:
         },
         true, false);
     _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  };
+  }
   ~CollectionWatcher();
 
   bool isPresent() {
@@ -110,7 +108,7 @@ class PlanCollectionReader {
     std::string databaseName = collection.vocbase().name();
     std::string collectionID = std::to_string(collection.id());
 
-    AgencyComm ac;
+    AgencyComm ac(collection.vocbase().server());
 
     std::string path =
         "Plan/Collections/" + databaseName + "/" + collectionID;
@@ -815,6 +813,9 @@ class ClusterInfo final {
    * @return         List of DB servers serving the shard
    */
   arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
+  
+  /// @brief map shardId to collection name (not ID)
+  CollectionID getCollectionNameForShard(ShardID const& shardId);
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
@@ -956,8 +957,7 @@ class ClusterInfo final {
   ProtectionData _planProt;
 
   uint64_t _planVersion;     // This is the version in the Plan which underlies
-                             // the data in _plannedCollections, _shards and
-                             // _shardKeys
+                             // the data in _plannedCollections and _shards
   uint64_t _currentVersion;  // This is the version in Current which underlies
                              // the data in _currentDatabases,
                              // _currentCollections and _shardsIds
@@ -978,11 +978,10 @@ class ClusterInfo final {
                      std::shared_ptr<std::vector<std::string>>>
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
-  std::unordered_map<CollectionID,
-                     std::shared_ptr<std::vector<std::string>>>
-      _shardKeys;  // from Plan/Collections/
   // planned shard => servers map
   std::unordered_map<ShardID, std::vector<ServerID>> _shardServers;
+  // planned shard ID => collection name
+  std::unordered_map<ShardID, CollectionID> _shardToName;
 
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`

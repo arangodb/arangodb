@@ -1,0 +1,25 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_CA{
+    %%Parent{"en_001"}
+    Languages{
+        bn{"Bengali"}
+        mfe{"Mauritian"}
+        ro_MD{"Moldovan"}
+        tvl{"Tuvaluan"}
+    }
+    Types{
+        calendar{
+            dangi{"Korean Calendar"}
+            ethiopic{"Ethiopian Calendar"}
+        }
+        d0{
+            fwidth{"To Full Width"}
+            hwidth{"To Half Width"}
+            lower{"To Lower Case"}
+            title{"To Title Case"}
+            upper{"To Upper Case"}
+        }
+    }
+    Version{"2.1.47.86"}
+}

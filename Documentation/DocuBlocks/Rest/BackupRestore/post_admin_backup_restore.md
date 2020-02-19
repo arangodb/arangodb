@@ -42,7 +42,7 @@ are detailed in the returned error document.
 
     logJsonResponse(response);
     body = {
-      error: false, code: 200, 
+      error: false, code: 200,
       result: {
         "previous":"FAILSAFE", "isCluster":false
       }

@@ -105,7 +105,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief destructor to clean up resources
   ///////////////////////////////////////////////////////////////////////////////
-  virtual ~IResearchView();
+  virtual ~IResearchView() override;
 
   using arangodb::LogicalView::name;
 
@@ -176,6 +176,13 @@ class IResearchView final: public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   IResearchViewSort const& primarySort() const noexcept {
     return _meta._primarySort;
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return stored values from links collections
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewStoredValues const& storedValues() const noexcept {
+    return _meta._storedValues;
   }
 
  protected:

@@ -20,6 +20,7 @@
 - [External 3rd party dependencies](#external-3rd-party-dependencies)
 - [Query filter building blocks](#query-filter-building-blocks)
 - [Index Query Language](#index-query-language)
+- [Supported compilers](#supported-compilers)
 - [License](#license)
 
 ## Overview
@@ -551,6 +552,12 @@ The following grammar is currently defined via Bison (the root is <query>):
 	               | <term> <sep> "ASC"
 	               | <term> <sep> "DESC"
 ```
+
+## Supported compilers
+
+- GCC: 4.9, 5, 6, 7, 8.3
+- MSVC: 17 (VS 2015), 19 (VS 2017)
+- Apple Clang: 9
 
 ## License
 Copyright (c) 2017-2019 ArangoDB GmbH

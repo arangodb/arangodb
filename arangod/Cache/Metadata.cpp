@@ -22,13 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/Metadata.h"
-#include "Basics/Common.h"
+
+#include "Basics/debugging.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
+#include "Logger/LogMacros.h"
 
-#include <stdint.h>
 #include <algorithm>
 #include <atomic>
+#include <cstdint>
 
 using namespace arangodb::cache;
 
@@ -42,8 +44,8 @@ Metadata::Metadata()
       softUsageLimit(0),
       hardUsageLimit(0),
       _lock(),
-      _migrating(0),
-      _resizing(0) {}
+      _migrating(false),
+      _resizing(false) {}
 
 Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table, uint64_t max)
     : fixedSize(fixed),
@@ -55,12 +57,12 @@ Metadata::Metadata(uint64_t usageLimit, uint64_t fixed, uint64_t table, uint64_t
       softUsageLimit(usageLimit),
       hardUsageLimit(usageLimit),
       _lock(),
-      _migrating(0),
-      _resizing(0) {
+      _migrating(false),
+      _resizing(false) {
   TRI_ASSERT(allocatedSize <= maxSize);
 }
 
-Metadata::Metadata(Metadata&& other)
+Metadata::Metadata(Metadata&& other) noexcept
     : fixedSize(other.fixedSize),
       tableSize(other.tableSize),
       maxSize(other.maxSize),
@@ -73,7 +75,7 @@ Metadata::Metadata(Metadata&& other)
       _migrating(other._migrating),
       _resizing(other._resizing) {}
 
-Metadata& Metadata::operator=(Metadata&& other) {
+Metadata& Metadata::operator=(Metadata&& other) noexcept {
   if (this != &other) {
     _lock = std::move(other._lock);
     _migrating = other._migrating;
@@ -89,6 +91,32 @@ Metadata& Metadata::operator=(Metadata&& other) {
   }
 
   return *this;
+}
+
+void Metadata::readLock() const noexcept {
+  _lock.readLock();
+}
+
+void Metadata::writeLock() const noexcept {
+  _lock.writeLock();
+}
+
+void Metadata::readUnlock() const noexcept {
+  TRI_ASSERT(isLocked());
+  _lock.readUnlock();
+}
+
+void Metadata::writeUnlock() const noexcept {
+  TRI_ASSERT(isWriteLocked());
+  _lock.writeUnlock();
+}
+
+bool Metadata::isLocked() const noexcept {
+  return _lock.isLocked();
+}
+
+bool Metadata::isWriteLocked() const noexcept {
+  return _lock.isWriteLocked();
 }
 
 bool Metadata::adjustUsageIfAllowed(int64_t usageChange) noexcept {

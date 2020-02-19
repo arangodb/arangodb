@@ -12,7 +12,9 @@
 #include <string>
 
 #include <fst/fst.h>
+#include <fst/symbol-table.h>
 #include <fst/util.h>
+#include <fst/script/fst-class.h>
 
 namespace fst {
 
@@ -27,9 +29,10 @@ class FstDrawer {
 
   FstDrawer(const Fst<Arc> &fst, const SymbolTable *isyms,
             const SymbolTable *osyms, const SymbolTable *ssyms, bool accep,
-            const string &title, float width, float height, bool portrait,
+            const std::string &title, float width, float height, bool portrait,
             bool vertical, float ranksep, float nodesep, int fontsize,
-            int precision, const string &float_format, bool show_weight_one)
+            int precision, const std::string &float_format,
+            bool show_weight_one)
       : fst_(fst),
         isyms_(isyms),
         osyms_(osyms),
@@ -49,7 +52,7 @@ class FstDrawer {
         show_weight_one_(show_weight_one) {}
 
   // Draws FST to an output buffer.
-  void Draw(std::ostream *strm, const string &dest) {
+  void Draw(std::ostream *strm, const std::string &dest) {
     ostrm_ = strm;
     SetStreamState(ostrm_);
     dest_ = dest;
@@ -66,7 +69,7 @@ class FstDrawer {
     PrintString(",");
     Print(height_);
     PrintString("\";\n");
-    if (!dest_.empty()) PrintString("label = \"" + title_ + "\";\n");
+    if (!title_.empty()) PrintString("label = \"" + title_ + "\";\n");
     PrintString("center = 1;\n");
     if (portrait_) {
       PrintString("orientation = Portrait;\n");
@@ -98,12 +101,12 @@ class FstDrawer {
     // O.w. defaults to "g" per standard lib.
   }
 
-  void PrintString(const string &str) const { *ostrm_ << str; }
+  void PrintString(const std::string &str) const { *ostrm_ << str; }
 
-  // Escapes backslash and double quote if these occur in the string. Dot will
-  // not deal gracefully with these if they are not escaped.
-  static string Escape(const string &str) {
-    string ns;
+  // Escapes backslash and double quote if these occur in the string. Dot
+  // will not deal gracefully with these if they are not escaped.
+  static std::string Escape(const std::string &str) {
+    std::string ns;
     for (char c : str) {
       if (c == '\\' || c == '"') ns.push_back('\\');
       ns.push_back(c);
@@ -130,11 +133,11 @@ class FstDrawer {
   void PrintStateId(StateId s) const { PrintId(s, ssyms_, "state ID"); }
 
   void PrintILabel(Label label) const {
-    PrintId(label, isyms_, "arc input label");
+    PrintLabel(label, isyms_, "arc input label");
   }
 
   void PrintOLabel(Label label) const {
-    PrintId(label, osyms_, "arc output label");
+    PrintLabel(label, osyms_, "arc output label");
   }
 
   void PrintWeight(Weight w) const {
@@ -145,8 +148,26 @@ class FstDrawer {
   template <class T>
   void Print(T t) const { *ostrm_ << t; }
 
+  void PrintLabel(int32_t id, const SymbolTable* syms, const char* name) const {
+    if (syms) {
+      auto symbol = syms->Find(id);
+      if (!symbol.empty()) {
+        PrintString(Escape(symbol));
+      } else {
+        PrintString(std::to_string(id));
+      }
+    } else {
+      PrintString(std::to_string(id));
+    }
+  }
+
+  template<class T>
+  void PrintLabel(const T& label, const SymbolTable*, const char*) const {
+    *ostrm_ << label;
+  }
+
   template <class T>
-  string ToString(T t) const {
+  std::string ToString(T t) const {
     std::stringstream ss;
     SetStreamState(&ss);
     ss << t;
@@ -203,9 +224,9 @@ class FstDrawer {
   const SymbolTable *ssyms_;  // slabel symbol table.
   bool accep_;                // Print as acceptor when possible.
   std::ostream *ostrm_;       // Drawn FST destination.
-  string dest_;               // Drawn FST destination name.
+  std::string dest_;          // Drawn FST destination name.
 
-  string title_;
+  std::string title_;
   float width_;
   float height_;
   bool portrait_;
@@ -214,7 +235,7 @@ class FstDrawer {
   float nodesep_;
   int fontsize_;
   int precision_;
-  string float_format_;
+  std::string float_format_;
   bool show_weight_one_;
 
   FstDrawer(const FstDrawer &) = delete;
@@ -225,21 +246,21 @@ template<typename Fst>
 inline void drawFst(
     const Fst& fst,
     std::ostream& strm,
-    const std::string& dest,
+    const std::string& dest = "",
     const SymbolTable* isyms = nullptr,
     const SymbolTable* osyms = nullptr,
     const SymbolTable* ssyms = nullptr,
     bool accep = false,
-    const string& title = "", 
+    const std::string& title = "",
     float width = 11,
     float height = 8.5,
-    bool partrait = false,
+    bool partrait = true,
     bool vertical = false,
     float randsep = 0.4,
     float nodesep = 0.25,
     int fontsize = 14,
     int precision = 5,
-    const string& float_format = "g",
+    const std::string& float_format = "g",
     bool show_weight_one = false
 ) {
   FstDrawer<typename Fst::Arc> drawer(

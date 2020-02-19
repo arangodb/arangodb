@@ -131,7 +131,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     VertexRef _pred;
     double _weight;
 
-    // If true, we know that the path leading from the centre of the Ball
+    // If true, we know that the path leading from the center of the Ball
     // under consideration to this vertex following the _pred
     // is the shortest/lowest weight amongst all paths leading to this vertex.
     bool _done;
@@ -152,19 +152,20 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // Dijkstra is run using two Balls, one around the start vertex, one around
   // the end vertex
   struct Ball {
-    VertexRef _centre;
+    VertexRef _center;
     Direction _direction;
     Frontier _frontier;
     // The distance of the last node that has been fully expanded
-    // from _centre
+    // from _center
     double _closest;
 
     Ball() {}
-    Ball(VertexRef const& centre, Direction direction)
-        : _centre(centre), _direction(direction), _closest(0) {
-      _frontier.insert(centre, std::make_unique<DijkstraInfo>(centre));
+    Ball(VertexRef const& center, Direction direction)
+        : _center(center), _direction(direction), _closest(0) {
+      _frontier.insert(center , std::make_unique<DijkstraInfo>(center));
     }
     ~Ball() = default;
+    const VertexRef center() const { return _center; };
   };
 
   //

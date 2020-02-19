@@ -158,9 +158,6 @@ function optimizerRuleTestSuite () {
                        "item3" : { "_id" : "ID" },
                      }
                    ],
-            "item1" : { "_id" : "ID" },
-            "item2" : { "_id" : "ID" },
-            "item3" : { "_id" : "ID" },
             "id1" : "ID"
           }
         ];
@@ -188,9 +185,6 @@ function optimizerRuleTestSuite () {
                            "item3" : { "_id" : "ID" },
                          }
                       ],
-            "item1" : { "_id" : "ID" },
-            "item2" : { "_id" : "ID" },
-            "item3" : { "_id" : "ID" },
             "id" : "ID"
           }
         ];
@@ -217,9 +211,6 @@ function optimizerRuleTestSuite () {
                            "item3" : { "_id" : "ID" },
                          }
                       ],
-            "item1" : { "_id" : "ID" },
-            "item2" : { "_id" : "ID" },
-            "item3" : { "_id" : "ID" },
             "id" : "ID"
           }
        ] ];

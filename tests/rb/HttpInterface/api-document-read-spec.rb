@@ -28,9 +28,9 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "returns an error if document handle is corrupted" do
+      it "returns an error if document identifier is corrupted" do
         cmd = "/_api/document/123456"
-        doc = ArangoDB.log_get("#{prefix}-bad-handle", cmd)
+        doc = ArangoDB.log_get("#{prefix}-bad-identifier", cmd)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
@@ -39,9 +39,9 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "returns an error if document handle is corrupted with empty cid" do
+      it "returns an error if document identifier is corrupted with empty cid" do
         cmd = "/_api/document//123456"
-        doc = ArangoDB.log_get("#{prefix}-bad-handle2", cmd)
+        doc = ArangoDB.log_get("#{prefix}-bad-identifier2", cmd)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
@@ -61,9 +61,9 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
 
-      it "returns an error if document handle is unknown" do
+      it "returns an error if document identifier is unknown" do
         cmd = "/_api/document/#{@cid}/234567"
-        doc = ArangoDB.log_get("#{prefix}-unknown-handle", cmd)
+        doc = ArangoDB.log_get("#{prefix}-unknown-identifier", cmd)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)

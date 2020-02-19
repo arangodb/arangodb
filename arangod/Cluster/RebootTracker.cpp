@@ -27,12 +27,23 @@
 #include "Basics/ScopeGuard.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
 #include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::cluster;
+
+static_assert(
+    std::is_same_v<decltype(SchedulerFeature::SCHEDULER), RebootTracker::SchedulerPointer>,
+    "Type of SchedulerPointer must match SchedulerFeature::SCHEDULER");
+static_assert(std::is_pointer<RebootTracker::SchedulerPointer>::value,
+              "If SCHEDULER is changed to a non-pointer type, this class "
+              "might have to be adapted");
+static_assert(
+    std::is_base_of<Scheduler, std::remove_pointer<RebootTracker::SchedulerPointer>::type>::value,
+    "SchedulerPointer is expected to point to an instance of Scheduler");
 
 RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
     : _scheduler(scheduler) {

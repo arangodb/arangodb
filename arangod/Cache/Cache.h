@@ -37,7 +37,7 @@
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <list>
 #include <memory>
 
@@ -60,7 +60,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   class ConstructionGuard {
    private:
-    ConstructionGuard();
+    ConstructionGuard() = default;
     friend class PlainCache;
     friend class TransactionalCache;
   };
@@ -188,7 +188,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  protected:
   // shutdown cache and let its memory be reclaimed
-  static void destroy(std::shared_ptr<Cache> cache);
+  static void destroy(std::shared_ptr<Cache> const& cache);
 
   void requestGrow();
   void requestMigrate(uint32_t requestedLogSize = 0);

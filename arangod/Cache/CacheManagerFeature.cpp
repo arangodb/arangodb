@@ -30,6 +30,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cache/CacheManagerFeatureThreads.h"
@@ -58,9 +59,9 @@ CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer
     : ApplicationFeature(server, "CacheManager"),
       _manager(nullptr),
       _rebalancer(nullptr),
-      _cacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
+      _cacheSize((PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30))
                      ? static_cast<uint64_t>(
-                           (TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.25)
+                           (PhysicalMemory::getValue() - (static_cast<uint64_t>(2) << 30)) * 0.25)
                      : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
@@ -74,7 +75,7 @@ void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions
 
   options->addOption("--cache.size", "size of cache in bytes",
                      new UInt64Parameter(&_cacheSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--cache.rebalancing-interval",
                      "microseconds between rebalancing attempts",

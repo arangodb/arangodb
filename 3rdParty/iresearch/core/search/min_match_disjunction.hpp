@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_MIN_MATCH_DISJUNCTION_H
@@ -42,21 +41,22 @@ NS_ROOT
 /// t |  [n] <-- end
 ///-----------------------------------------------------------------------------
 ////////////////////////////////////////////////////////////////////////////////
-class min_match_disjunction : public doc_iterator_base {
+template<typename DocIterator>
+class min_match_disjunction : public doc_iterator_base, score_ctx {
  public:
-  struct cost_iterator_adapter : score_iterator_adapter {
-    cost_iterator_adapter(irs::doc_iterator::ptr&& it) NOEXCEPT
-      : score_iterator_adapter(std::move(it)) {
+  struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
+    cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
+      : score_iterator_adapter<DocIterator>(std::move(it)) {
       est = cost::extract(this->it->attributes(), cost::MAX);
     }
 
-    cost_iterator_adapter(cost_iterator_adapter&& rhs) NOEXCEPT
-      : score_iterator_adapter(std::move(rhs)), est(rhs.est) {
+    cost_iterator_adapter(cost_iterator_adapter&& rhs) noexcept
+      : score_iterator_adapter<DocIterator>(std::move(rhs)), est(rhs.est) {
     }
 
-    cost_iterator_adapter& operator=(cost_iterator_adapter&& rhs) NOEXCEPT {
+    cost_iterator_adapter& operator=(cost_iterator_adapter&& rhs) noexcept {
       if (this != &rhs) {
-        score_iterator_adapter::operator=(std::move(rhs));
+        score_iterator_adapter<DocIterator>::operator=(std::move(rhs));
         est = rhs.est;
       }
       return *this;
@@ -103,13 +103,12 @@ class min_match_disjunction : public doc_iterator_base {
     // prepare external heap
     heap_.resize(itrs_.size());
     std::iota(heap_.begin(), heap_.end(), size_t(0));
-
+    scores_vals_.resize(itrs_.size());
     // prepare score
-    prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+    prepare_score(ord, this, [](const score_ctx* ctx, byte_type* score) {
       auto& self = const_cast<min_match_disjunction&>(
         *static_cast<const min_match_disjunction*>(ctx)
       );
-      self.ord_->prepare_score(score);
       self.score_impl(score);
     });
   }
@@ -244,7 +243,7 @@ class min_match_disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+    std::push_heap(begin, end, [this](const size_t lhs, const size_t rhs) noexcept {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
       const auto& lhs_it = itrs_[lhs];
@@ -258,7 +257,7 @@ class min_match_disjunction : public doc_iterator_base {
   template<typename Iterator>
   inline void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
-    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) NOEXCEPT {
+    detail::pop_heap(begin, end, [this](const size_t lhs, const size_t rhs) noexcept {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
       const auto& lhs_it = itrs_[lhs];
@@ -408,16 +407,19 @@ class min_match_disjunction : public doc_iterator_base {
     }
 
     // score lead iterators
+    const irs::byte_type** pVal = scores_vals_.data();
     std::for_each(
-      lead(), heap_.end(),
-      [this, lhs](size_t it) {
-        assert(it < itrs_.size());
-        detail::score_add(lhs, *ord_, itrs_[it]);
-    });
+        lead(), heap_.end(),
+        [this, lhs, &pVal](size_t it) {
+          assert(it < itrs_.size());
+          detail::evaluate_score_iter(pVal, itrs_[it]);
+        });
+    ord_->merge(lhs, scores_vals_.data(), std::distance(scores_vals_.data(), pVal));
   }
 
   doc_iterators_t itrs_; // sub iterators
   std::vector<size_t> heap_;
+  mutable std::vector<const irs::byte_type*> scores_vals_;
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
   document doc_; // current doc

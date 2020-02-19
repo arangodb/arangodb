@@ -25,6 +25,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "RestAdminStatisticsHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
@@ -45,8 +47,7 @@ RestStatus RestAdminStatisticsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here

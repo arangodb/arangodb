@@ -71,4 +71,3 @@ Querying the status of a pending job:
   logRawResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

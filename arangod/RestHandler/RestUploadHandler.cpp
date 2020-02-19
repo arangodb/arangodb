@@ -229,6 +229,7 @@ bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
 
       ++colon;
       while (colon < eol && *colon == ' ') {
+        // cppcheck-suppress nullPointerArithmeticRedundantCheck
         ++colon;
       }
 

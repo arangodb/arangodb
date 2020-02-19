@@ -29,94 +29,6 @@ env:
 matrix:
   include:
     ############################################################################
-    # GCC 4.8
-    ############################################################################
-
-    ############################################################################
-    # Debug build, static library
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Release build, static library (filesystem tests)
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Release build, static library (remaining tests)
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Debug build, shared library
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Release build, shared library (filesystem tests)
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
-    # Release build, shared library (remaining tests)
-    ############################################################################
-    - os: linux
-      before_install:
-        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
-        - for i in 1 2 3; do travis_retry sudo apt-get update; done # 3 times since download failure is not an error
-        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
-      env:
-        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
-        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
-
-    ############################################################################
     # GCC 4.9
     ############################################################################
 
@@ -815,7 +727,7 @@ script:
       # execute tests
       ulimit -n 5120 # required for MacOS (max-open-files = 16 threads * (100000/10000) commits * 8 segments-per-commit * 4 open-files-per-segment)
       ulimit -a
-      if ! travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
+      if ! travis_wait 90 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}; then
         exit 1
       fi
       # archive artifacts

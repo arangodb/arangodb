@@ -31,18 +31,17 @@
 let db = require("@arangodb").db;
 let jsunity = require("jsunity");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function optimizerRuleTestSuite () {
   const ruleName = "parallelize-gather";
   const cn = "UnitTestsAqlOptimizerRule";
+  const en = "UnitTestsAqlOptimizerRuleEdges";
   
   return {
 
     setUpAll : function () {
       db._drop(cn);
+      db._drop(en);
+      db._createEdgeCollection(en, { numberOfShards: 5 });
       let c =  db._create(cn, { numberOfShards: 5 });
       let docs = [];
       for (let i = 0; i < 50000; ++i) {
@@ -56,6 +55,7 @@ function optimizerRuleTestSuite () {
     },
 
     tearDownAll : function () {
+      db._drop(en);
       db._drop(cn);
     },
 
@@ -77,11 +77,23 @@ function optimizerRuleTestSuite () {
 
     testRuleNoEffect : function () {
       let queries = [  
-        "FOR i IN 1..1000 IN " + cn + " INSERT {} IN " + cn,
+        "FOR doc IN " + cn + " LIMIT 10 UPDATE doc WITH {} IN " + cn,
+        "FOR i IN 1..1000 INSERT {} IN " + cn,
+        "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FILTER doc1._key == doc2._key RETURN doc1",
+        "FOR doc1 IN " + cn + " FOR doc2 IN " + cn + " FOR doc3 IN " + cn + " FILTER doc1._key == doc2._key FILTER doc2._key == doc3._key RETURN doc1",
+        "FOR i IN 1..1000 IN " + cn + " FOR doc IN " + cn + " FILTER doc.value == i RETURN doc",
+        "FOR i IN 1..100 LET sub = (FOR doc IN " + cn + " FILTER doc.value == i RETURN doc) RETURN sub",
+        "LET sub = (FOR doc IN " + cn + " FILTER doc.value == 12 LIMIT 10 RETURN doc) FOR doc IN sub RETURN doc",
+        "FOR v, e, p IN 1..1 OUTBOUND '" + cn + "/1' " + en + " RETURN p",
+        "FOR doc IN " + cn + " FOR v, e, p IN 1..1 OUTBOUND doc._id " + en + " RETURN p",
+        "FOR s IN OUTBOUND SHORTEST_PATH '" + cn + "/1' TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR doc IN " + cn + " FOR s IN OUTBOUND SHORTEST_PATH doc._id TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR s IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/1' TO '" + cn + "/2' " + en + " RETURN s",
+        "FOR doc IN " + cn + " FOR s IN OUTBOUND K_SHORTEST_PATHS doc._id TO '" + cn + "/2' " + en + " RETURN s",
       ];
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query);
+        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: ["-smart-joins", "-inline-subqueries"] } });
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -94,19 +106,53 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " SORT doc.value1 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000, 1000 RETURN doc",
-        /* TODO
-        "FOR doc IN " + cn + " REMOVE doc IN " + cn,
-        "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
-        */
       ];
+
+      if (require("internal").options()["query.parallelize-gather-writes"]) {
+        queries.concat([
+          "FOR doc IN " + cn + " REMOVE doc IN " + cn,
+          "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
+        ]);
+      }
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query,);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    },
+    
+    testRuleHasEffectWrites : function () {
+      let queries = [ 
+        "FOR doc IN " + cn + " RETURN doc",
+        "FOR doc IN " + cn + " LIMIT 1000 RETURN doc",
+        "FOR doc IN " + cn + " LIMIT 1000, 1000 RETURN doc",
+        "FOR doc IN " + cn + " SORT doc.value1 RETURN doc",
+        "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000 RETURN doc",
+        "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000, 1000 RETURN doc",
+      ];
+
+      if (require("internal").options()["query.parallelize-gather-writes"]) {
+        queries.concat([
+          "FOR doc IN " + cn + " REMOVE doc IN " + cn,
+          "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
+        ]);
+      }
 
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query,);

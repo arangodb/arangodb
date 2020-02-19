@@ -22,14 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTransactionCollection.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "StorageEngine/TransactionState.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"

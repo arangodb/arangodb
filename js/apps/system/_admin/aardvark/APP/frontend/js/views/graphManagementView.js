@@ -758,7 +758,6 @@
           collList.push(c.id);
         }
       });
-      window.modalView.enableHotKeys = false;
       this.counter = 0;
 
       if (graph) {
@@ -822,9 +821,9 @@
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'writeConcern',
-              'Minimum replication factor',
+              'Write concern',
               graph.get('minReplicationFactor'),
-              'Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
+              'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
             )
           );
         }
@@ -895,15 +894,15 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-writeConcern',
-            'Minimum replication factor',
+            'Write concern',
             '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
             '',
             false,
             [
               {
                 rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
-                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
+                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.'
               }
             ]
           )
@@ -965,9 +964,9 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'general-writeConcern',
-            'Minimum replication factor',
+            'Write concern',
             '',
-            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster to be in sync. If we get below this value the collection will be read-only until enough copies are created.',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
             '',
             false,
             [

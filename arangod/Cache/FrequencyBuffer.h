@@ -137,7 +137,7 @@ class FrequencyBuffer {
       data.emplace_back(std::pair<T, uint64_t>(f.first, f.second));
     }
     std::sort(data.begin(), data.end(),
-              [](std::pair<T, uint64_t>& left, std::pair<T, uint64_t>& right) {
+              [](std::pair<T, uint64_t> const& left, std::pair<T, uint64_t> const& right) {
                 return left.second < right.second;
               });
 

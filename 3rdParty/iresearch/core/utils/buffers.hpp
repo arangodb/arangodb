@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BUFFERS_H
@@ -49,11 +48,11 @@ template<
 
   basic_allocator() = default;
   basic_allocator(const basic_allocator&) = default;
-  basic_allocator(basic_allocator&& rhs) NOEXCEPT
+  basic_allocator(basic_allocator&& rhs) noexcept
     : allocator_t(std::move(rhs)) { }
 
   basic_allocator& operator=(const basic_allocator&) = default;
-  basic_allocator& operator=(basic_allocator&& rhs) NOEXCEPT {
+  basic_allocator& operator=(basic_allocator&& rhs) noexcept {
     if (this != &rhs) {
       allocator_t::operator=(std::move(rhs));
     }
@@ -81,11 +80,11 @@ class basic_allocator<char, std::allocator<char>>:
 
   basic_allocator() = default;
   basic_allocator(const basic_allocator&) = default;
-  basic_allocator(basic_allocator&& rhs) NOEXCEPT
+  basic_allocator(basic_allocator&& rhs) noexcept
     : allocator_t(std::move(rhs)) { }
 
   basic_allocator& operator=(const basic_allocator&) = default;
-  basic_allocator& operator=(basic_allocator&& rhs) NOEXCEPT {
+  basic_allocator& operator=(basic_allocator&& rhs) noexcept {
     if (this != &rhs) {
       allocator_t::operator=(std::move(rhs));
     }
@@ -109,7 +108,7 @@ class basic_allocator<char, std::allocator<char>>:
 
 inline size_t oversize(
     size_t chunk_size, size_t size, size_t min_size
-) NOEXCEPT {
+) noexcept {
   assert(chunk_size);
   assert(min_size > size);
 
@@ -150,7 +149,7 @@ template<
     *this += ref;
   }
 
-  basic_str_builder(basic_str_builder&& rhs) NOEXCEPT
+  basic_str_builder(basic_str_builder&& rhs) noexcept
     : ref_type(rhs.data_, rhs.size_), rep_(std::move(rhs.rep_)) {
     rhs.data_ = nullptr;
     rhs.size_ = 0;
@@ -176,7 +175,7 @@ template<
     return *this;
   }
 
-  basic_str_builder& operator=(basic_str_builder&& rhs) NOEXCEPT {
+  basic_str_builder& operator=(basic_str_builder&& rhs) noexcept {
     if (this != &rhs) {
       this->data_ = rhs.data_;
       rhs.data_ = nullptr;
@@ -259,7 +258,7 @@ template<
     }
   }
 
-  inline size_t max_size() const NOEXCEPT {
+  inline size_t max_size() const noexcept {
     const size_t size = allocator().max_size();
     return (size <= 1U ? 1U : size - 1);
   }
@@ -287,7 +286,7 @@ template<
     return rep_.second();
   }
 
-  inline void destroy() NOEXCEPT {
+  inline void destroy() noexcept {
     allocator().deallocate(data(), capacity());
   }
 
@@ -332,7 +331,7 @@ template<
     *this = data;
   }
 
-  explicit basic_string_builder(basic_string_builder&& other) NOEXCEPT
+  explicit basic_string_builder(basic_string_builder&& other) noexcept
     : buf_(std::move(other.buf_)) {
     this->data_ = buf_.data();
     this->size_ = other.size();
@@ -371,7 +370,7 @@ template<
     return *this;
   }
 
-  basic_string_builder& operator=(basic_string_builder&& other) NOEXCEPT {
+  basic_string_builder& operator=(basic_string_builder&& other) noexcept {
     if (this != &other) {
       buf_ = std::move(other.buf_);
       this->data_ = buf_.data();
@@ -418,7 +417,7 @@ template<
 
   char_type* data() { return &(buf_[0]); }
 
-  inline size_t max_size() const NOEXCEPT { return buf_.max_size(); }
+  inline size_t max_size() const noexcept { return buf_.max_size(); }
 
   size_t remain() const { return capacity() - this->size(); }
 

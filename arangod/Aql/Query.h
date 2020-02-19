@@ -110,7 +110,7 @@ class Query {
 
   /// @brief whether or not the query is killed
   bool killed() const;
-  
+
   void setKilled() { _killed = true; }
 
   /// @brief set the query to killed
@@ -344,12 +344,9 @@ class Query {
   /// @brief create a transaction::Context
   std::shared_ptr<transaction::Context> createTransactionContext();
 
-  /// @brief returns the next query id
-  static TRI_voc_tick_t nextId();
-
  private:
   /// @brief query id
-  const TRI_voc_tick_t _id;
+  TRI_voc_tick_t const _id;
 
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;

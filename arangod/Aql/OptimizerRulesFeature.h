@@ -44,6 +44,9 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   
   std::vector<std::string> const& optimizerRules() const { return _optimizerRules; }
 
+  /// @brief whether or not certain write operations can be parallelized
+  bool parallelizeGatherWrites() const { return _parallelizeGatherWrites; }
+
   /// @brief translate a list of rule ids into rule name
   static std::vector<velocypack::StringRef> translateRules(std::vector<int> const&);
 
@@ -76,16 +79,21 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   void enableOrDisableRules();
   
   std::vector<std::string> _optimizerRules;
+
+  /// @brief if set to true, a gather node will be parallelized even for
+  /// certain write operations. this is false by default, enabling it is
+  /// experimental
+  bool _parallelizeGatherWrites;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _fixed = false;
+#endif
   
   /// @brief the rules database
   static std::vector<OptimizerRule> _rules;
 
   /// @brief map to look up rule id by name
   static std::unordered_map<velocypack::StringRef, int> _ruleLookup;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool _fixed = false;
-#endif
 };
 
 }  // namespace aql

@@ -29,7 +29,7 @@
 #include "Cache/BucketState.h"
 #include "Cache/Common.h"
 
-#include <stdint.h>
+#include <cstdint>
 #include <memory>
 
 namespace arangodb {
@@ -136,7 +136,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// then the return value will be the existing auxiliary table (possibly
   /// null).
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<Table> setAuxiliary(std::shared_ptr<Table> table);
+  std::shared_ptr<Table> setAuxiliary(std::shared_ptr<Table> const& table);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a pointer to the specified bucket in the primary table,

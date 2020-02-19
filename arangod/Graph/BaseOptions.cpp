@@ -56,7 +56,7 @@ BaseOptions::LookupInfo::LookupInfo()
   idxHandles.resize(1);
 }
 
-BaseOptions::LookupInfo::~LookupInfo() {}
+BaseOptions::LookupInfo::~LookupInfo() = default;
 
 BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
                                     VPackSlice const& info, VPackSlice const& shards) {
@@ -168,30 +168,25 @@ std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query)
     : _query(query),
-      _ctx(new aql::FixedVarExpressionContext(_query)),
+      _ctx(_query),
       _trx(_query->trx()),
-      _tmpVar(nullptr),
+      _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(nullptr) {}
+      _tmpVar(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
     : _query(other._query),
-      _ctx(new aql::FixedVarExpressionContext(_query)),
+      _ctx(_query),
       _trx(other._trx),
-      _tmpVar(nullptr),
+      _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(nullptr) {
+      _tmpVar(nullptr) {
   TRI_ASSERT(other._baseLookupInfos.empty());
   TRI_ASSERT(other._tmpVar == nullptr);
 }
 
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlice collections)
-    : _query(query),
-      _ctx(new aql::FixedVarExpressionContext(_query)),
-      _trx(_query->trx()),
-      _tmpVar(nullptr),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _cache(nullptr) {
+    : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -205,19 +200,40 @@ BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info, VPackSlic
                                    "The options require a baseLookupInfos");
   }
 
-  size_t length = read.length();
-  TRI_ASSERT(read.length() == collections.length());
-  _baseLookupInfos.reserve(length);
-  for (size_t j = 0; j < length; ++j) {
-    _baseLookupInfos.emplace_back(query, read.at(j), collections.at(j));
+  VPackArrayIterator itLookup(read);
+  VPackArrayIterator itCollections(collections);
+  _baseLookupInfos.reserve(itLookup.size());
+
+  TRI_ASSERT(itLookup.size() == itCollections.size());
+
+  while (itLookup.valid() && itCollections.valid()) {
+    _baseLookupInfos.emplace_back(query, itLookup.value(), itCollections.value());
+
+    itLookup.next();
+    itCollections.next();
+  }
+
+  TRI_ASSERT(_produceVertices);
+  read = info.get("produceVertices");
+  if (read.isBool() && !read.getBool()) {
+    _produceVertices = false;
   }
 }
 
-BaseOptions::~BaseOptions() { delete _ctx; }
+BaseOptions::~BaseOptions() = default;
 
 void BaseOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.openObject();
-  injectVelocyPackIndexes(builder);
+  // base indexes
+  builder.add("base", VPackValue(VPackValueType::Array));
+  for (auto const& it : _baseLookupInfos) {
+    for (auto const& it2 : it.idxHandles) {
+      builder.openObject();
+      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+      builder.close();
+    }
+  }
+  builder.close(); // base
   builder.close();
 }
 
@@ -304,15 +320,15 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   list.emplace_back(std::move(info));
 }
 
-void BaseOptions::clearVariableValues() { _ctx->clearVariableValues(); }
+void BaseOptions::clearVariableValues() { _ctx.clearVariableValues(); }
 
 void BaseOptions::setVariableValue(aql::Variable const* var, aql::AqlValue const value) {
-  _ctx->setVariableValue(var, value);
+  _ctx.setVariableValue(var, value);
 }
 
 void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
-  _ctx->serializeAllVariables(_trx, builder);
+  _ctx.serializeAllVariables(_trx, builder);
 }
 
 void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const& in) {
@@ -325,21 +341,6 @@ arangodb::aql::Query* BaseOptions::query() const { return _query; }
 
 arangodb::graph::TraverserCache* BaseOptions::cache() const {
   return _cache.get();
-}
-
-void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-
-  // base indexes
-  builder.add("base", VPackValue(VPackValueType::Array));
-  for (auto const& it : _baseLookupInfos) {
-    for (auto const& it2 : it.idxHandles) {
-      builder.openObject();
-      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
-      builder.close();
-    }
-  }
-  builder.close();
 }
 
 void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
@@ -365,7 +366,7 @@ arangodb::aql::Expression* BaseOptions::getEdgeExpression(size_t cursorId,
 }
 
 bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
-                                     VPackSlice value) const {
+                                     VPackSlice value) {
   if (expression == nullptr) {
     return true;
   }
@@ -373,7 +374,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   TRI_ASSERT(value.isObject() || value.isNull());
   expression->setVariable(_tmpVar, value);
   bool mustDestroy = false;
-  aql::AqlValue res = expression->execute(_trx, _ctx, mustDestroy);
+  aql::AqlValue res = expression->execute(_trx, &_ctx, mustDestroy);
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
   expression->clearVariable(_tmpVar);
