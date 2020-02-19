@@ -3,6 +3,9 @@ load_balancing_auth
 shell_client_aql
 version
 upgrade_data_3.4.*
+upgrade_data_3.5.*
+upgrade_data_3.6.*
+upgrade_data_3.7.*
 dump_multiple
 permissions
 server_permissions
@@ -14,3 +17,7 @@ paths_server
 wal_cleanup
 hot_backup
 server_secrets
+shell_client_vst
+shell_client_http2
+shell_client_aql_vst
+shell_client_aql_http2
