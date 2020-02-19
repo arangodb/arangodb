@@ -7,7 +7,22 @@ devel
   This allows to use different TLS setups for the same server which is
   reachable behind different DNS names, for example.
 
+* Rebuild UI.
+
+* Fix arangorestore:
+
+  If a smartGraphAttribute value was changed after document creation,
+  the _key of the document becomes inconsistent with the smartGraphAttribute
+  entry. However, the sharding of documents stays intact.
+
+  When restoring data from a dump that contains a document with inconsistent
+  _key and smartGraphAttribute this would cause an error and the document
+  would not be inserted. This is fixed by ignoring this inconsistency in
+  the case of restore.
+
 * Updated rclone to 1.51.1.
+
+* Fixed a memory leak in ModificationExecutors.
 
 * Updated arangosync to 0.7.3.
 

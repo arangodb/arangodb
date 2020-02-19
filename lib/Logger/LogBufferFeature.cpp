@@ -22,7 +22,6 @@
 
 #include "LogBufferFeature.h"
 
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/tri-strings.h"
@@ -64,6 +63,12 @@ class LogAppenderRingBuffer final : public LogAppender {
 
  public:
   void logMessage(LogMessage const& message) override {
+    if (message._level == LogLevel::FATAL) {
+      // no need to track FATAL messages here, as the process will go down
+      // anyway
+      return;
+    }
+
     auto timestamp = time(nullptr);
 
     MUTEX_LOCKER(guard, _lock);
@@ -166,10 +171,7 @@ class LogAppenderEventLog final : public LogAppender {
       return;
     }
     
-    if (ArangoGlobalContext::CONTEXT != nullptr &&
-        ArangoGlobalContext::CONTEXT->useEventLog()) {
-      TRI_LogWindowsEventlog(message._function, message._file, message._line, message._message);
-    }
+    TRI_LogWindowsEventlog(message._function, message._file, message._line, message._message);
   }
 
   std::string details() const override {
@@ -183,12 +185,18 @@ LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& serv
   setOptional(true);
   startsAfter<LoggerFeature>();
   
-  _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
-  LogAppender::addGlobalAppender(_inMemoryAppender);
-
 #ifdef _WIN32
   LogAppender::addGlobalAppender(std::make_shared<LogAppenderDebugOutput>());
+  LogAppender::addGlobalAppender(std::make_shared<LogAppenderEventLog>());
 #endif
+}
+
+void LogBufferFeature::prepare() {
+  // only create the in-memory appender when we really need it. if we created it
+  // in the ctor, we would waste a lot of memory in case we don't need the in-memory
+  // appender. this is the case for simple command such as `--help` etc.
+  _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
+  LogAppender::addGlobalAppender(_inMemoryAppender);
 }
 
 std::vector<LogBuffer> LogBufferFeature::entries(LogLevel level, uint64_t start, bool upToLevel) {

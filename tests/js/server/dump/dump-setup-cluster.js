@@ -111,7 +111,6 @@ const setupSmartArangoSearch = function () {
   });
 };
 
-
 /**
  * @brief Only if enterprise mode:
  *        Creates a satellite collection with 100 documents
@@ -130,6 +129,43 @@ function setupSatelliteCollections() {
     vDocs.push({value: String(i)});
   }
   db[satelliteCollectionName].save(vDocs);
+}
+
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a smart graph and changes the value of the smart
+ *        attribute to check that the graph can still be restored. 
+ *
+ *        This is a regression test for a bug in which a dumped
+ *        database containing a smart graph with edited smart attribute
+ *        value could not be restored.
+ */
+function setupSmartGraphRegressionTest() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const smartGraphName = "UnitTestRestoreSmartGraphRegressionTest";
+  const edges = "UnitTestRestoreSmartGraphRegressionEdges";
+  const vertices = "UnitTestRestoreSmartGraphRegressionVertices";
+  const gm = require("@arangodb/smart-graph");
+  if (gm._exists(smartGraphName)) {
+    gm._drop(smartGraphName, true);
+  }
+  db._drop(edges);
+  db._drop(vertices);
+
+  gm._create(smartGraphName, [gm._relation(edges, vertices, vertices)],
+    [], {numberOfShards: 5, smartGraphAttribute: "cheesyness"});
+
+  let vDocs = [{cheesyness: "cheese"}];
+  let saved = db[vertices].save(vDocs).map(v => v._id);
+  let eDocs = [];
+
+  // update smartGraphAttribute. This makes _key inconsistent
+  // and on dump/restore used to throw an error. We now ignore
+  // that error
+  db._update(saved[0], { cheesyness: "bread" });  
 }
 
 (function () {
@@ -302,6 +338,7 @@ function setupSatelliteCollections() {
   setupSmartGraph();
   setupSmartArangoSearch();
   setupSatelliteCollections();
+  setupSmartGraphRegressionTest();
 
   db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 2, numberOfShards: 7 });
   db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
