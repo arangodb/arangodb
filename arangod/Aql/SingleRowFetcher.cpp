@@ -85,6 +85,9 @@ SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
     return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};
   }
   if (block == nullptr) {
+    if (state == ExecutionState::HASMORE) {
+      return {state, skipped, AqlItemBlockInputRange{ExecutorState::HASMORE, skipped}};
+    }
     return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE, skipped}};
   }
 
