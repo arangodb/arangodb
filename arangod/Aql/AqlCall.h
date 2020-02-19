@@ -85,7 +85,7 @@ struct AqlCall {
 
   // TODO Remove me, this will not be necessary later
   static bool IsGetSomeCall(AqlCall const& call) {
-    return !call.hasHardLimit() && call.getLimit() > 0 && call.getOffset() == 0;
+    return call.getLimit() > 0 && call.getOffset() == 0;
   }
 
   // TODO Remove me, this will not be necessary later
