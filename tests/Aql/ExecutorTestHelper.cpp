@@ -26,26 +26,137 @@
 
 using namespace arangodb::tests::aql;
 
-auto arangodb::tests::aql::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
-                                                  SharedAqlItemBlockPtr expected) -> void {
+auto asserthelper::AqlValuesAreIdentical(AqlValue const& lhs, AqlValue const& rhs) -> bool {
   velocypack::Options vpackOptions;
+  return AqlValue::Compare(&vpackOptions, lhs, rhs, true) == 0;
+}
+
+auto asserthelper::RowsAreIdentical(SharedAqlItemBlockPtr actual, size_t actualRow,
+                                    SharedAqlItemBlockPtr expected, size_t expectedRow,
+                                    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
+    -> bool {
+  if (onlyCompareRegisters) {
+    if (actual->getNrRegs() < onlyCompareRegisters->size()) {
+      // Registers do not match
+      return false;
+    }
+  } else {
+    if (actual->getNrRegs() != expected->getNrRegs()) {
+      // Registers do not match
+      return false;
+    }
+  }
+
+  for (RegisterId reg = 0; reg < expected->getNrRegs(); ++reg) {
+    auto const& x =
+        actual->getValueReference(actualRow, onlyCompareRegisters
+                                                 ? onlyCompareRegisters->at(reg)
+                                                 : reg);
+    auto const& y = expected->getValueReference(expectedRow, reg);
+    if (!AqlValuesAreIdentical(x, y)) {
+      // At least one value mismatched
+      return false;
+    }
+  }
+  // All values match
+  return true;
+}
+
+auto asserthelper::ValidateAqlValuesAreEqual(SharedAqlItemBlockPtr actual,
+                                             size_t actualRow, RegisterId actualRegister,
+                                             SharedAqlItemBlockPtr expected, size_t expectedRow,
+                                             RegisterId expectedRegister) -> void {
+  velocypack::Options vpackOptions;
+  auto const& x = actual->getValueReference(actualRow, actualRegister);
+  auto const& y = expected->getValueReference(expectedRow, expectedRegister);
+  EXPECT_TRUE(AqlValuesAreIdentical(x, y))
+      << "Row " << actualRow << " Column " << actualRegister << " do not agree. "
+      << x.slice().toJson(&vpackOptions) << " vs. " << y.slice().toJson(&vpackOptions);
+}
+
+auto asserthelper::ValidateBlocksAreEqual(SharedAqlItemBlockPtr actual,
+                                          SharedAqlItemBlockPtr expected,
+                                          std::optional<std::vector<RegisterId>> const& onlyCompareRegisters)
+    -> void {
   ASSERT_NE(expected, nullptr);
   ASSERT_NE(actual, nullptr);
   EXPECT_EQ(actual->size(), expected->size());
-  EXPECT_EQ(actual->getNrRegs(), 1);
-  for (size_t i = 0; i < (std::min)(actual->size(), expected->size()); ++i) {
-    auto const& x = actual->getValueReference(i, 0);
-    auto const& y = expected->getValueReference(i, 0);
-    EXPECT_TRUE(AqlValue::Compare(&vpackOptions, x, y, true) == 0)
-        << "Row " << i << " Column " << 0 << " do not agree. "
-        << x.slice().toJson(&vpackOptions) << " vs. "
-        << y.slice().toJson(&vpackOptions);
+  RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  if (onlyCompareRegisters) {
+    outRegs = onlyCompareRegisters->size();
+    ASSERT_GE(actual->getNrRegs(), outRegs);
+  } else {
+    EXPECT_EQ(actual->getNrRegs(), expected->getNrRegs());
+  }
+
+  for (size_t row = 0; row < (std::min)(actual->size(), expected->size()); ++row) {
+    for (RegisterId reg = 0; reg < outRegs; ++reg) {
+      RegisterId actualRegister =
+          onlyCompareRegisters ? onlyCompareRegisters->at(reg) : reg;
+      ValidateAqlValuesAreEqual(actual, row, actualRegister, expected, row, reg);
+    }
+  }
+}
+
+auto asserthelper::ValidateBlocksAreEqualUnordered(
+    SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected, std::size_t numRowsNotContained,
+    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters) -> void {
+  std::unordered_set<size_t> matchedRows{};
+  return ValidateBlocksAreEqualUnordered(actual, expected, matchedRows,
+                                         numRowsNotContained, onlyCompareRegisters);
+}
+
+auto asserthelper::ValidateBlocksAreEqualUnordered(
+    SharedAqlItemBlockPtr actual, SharedAqlItemBlockPtr expected,
+    std::unordered_set<size_t>& matchedRows, std::size_t numRowsNotContained,
+    std::optional<std::vector<RegisterId>> const& onlyCompareRegisters) -> void {
+  ASSERT_NE(expected, nullptr);
+  ASSERT_NE(actual, nullptr);
+  EXPECT_EQ(actual->size() + numRowsNotContained, expected->size());
+
+  RegisterId outRegs = (std::min)(actual->getNrRegs(), expected->getNrRegs());
+  if (onlyCompareRegisters) {
+    outRegs = onlyCompareRegisters->size();
+    ASSERT_GE(actual->getNrRegs(), outRegs);
+  } else {
+    EXPECT_EQ(actual->getNrRegs(), expected->getNrRegs());
+  }
+
+  matchedRows.clear();
+
+  for (size_t expectedRow = 0; expectedRow < expected->size(); ++expectedRow) {
+    for (size_t actualRow = 0; actualRow < actual->size(); ++actualRow) {
+      if (RowsAreIdentical(actual, actualRow, expected, expectedRow, onlyCompareRegisters)) {
+        auto const& [unused, inserted] = matchedRows.emplace(expectedRow);
+        if (inserted) {
+          // one is enough, but do not match the same rows twice
+          break;
+        }
+      }
+    }
+  }
+
+  if (matchedRows.size() + numRowsNotContained < expected->size()) {
+    // Did not find all rows.
+    // This is for reporting only:
+    for (size_t expectedRow = 0; expectedRow < expected->size(); ++expectedRow) {
+      if (matchedRows.find(expectedRow) == matchedRows.end()) {
+        InputAqlItemRow missing(expected, expectedRow);
+        velocypack::Options vpackOptions;
+        VPackBuilder rowBuilder;
+        missing.toSimpleVelocyPack(&vpackOptions, rowBuilder);
+        VPackBuilder blockBuilder;
+        actual->toSimpleVPack(&vpackOptions, blockBuilder);
+        EXPECT_TRUE(false) << "Did not find row: " << rowBuilder.toJson()
+                           << " in " << blockBuilder.toJson();
+      }
+    }
   }
 }
 
 template <bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase()
-    : _server{}, fakedQuery{_server.createFakeQuery(enableQueryTrace)} {
+    : fakedQuery{_server->createFakeQuery(enableQueryTrace)} {
   auto engine = std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
   fakedQuery->setEngine(engine.release());
 }

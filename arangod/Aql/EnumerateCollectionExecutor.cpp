@@ -265,7 +265,8 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tuple, cannot use initializer list due to build failure
 }
 
-u_int64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip, EnumerateCollectionStats& stats) {
+u_int64_t EnumerateCollectionExecutor::skipEntries(size_t toSkip,
+                                                   EnumerateCollectionStats& stats) {
   u_int64_t actuallySkipped = 0;
 
   if (_infos.getFilter() == nullptr) {

@@ -64,7 +64,7 @@ std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shut
 }
 
 std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::getSome(size_t atMost) {
-  if (!_hasWaited) {
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     _hasWaited = true;
     if (_returnedDone) {
       return {ExecutionState::DONE, nullptr};
@@ -91,7 +91,7 @@ std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecution
 
 std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
-  if (!_hasWaited) {
+  if (_variant != WaitingBehaviour::NEVER && !_hasWaited) {
     _hasWaited = true;
     return traceSkipSomeEnd(ExecutionState::WAITING, 0);
   }
@@ -136,7 +136,23 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
   }
   size_t skipped = 0;
   SharedAqlItemBlockPtr result = nullptr;
+  if (_data.front() == nullptr) {
+    dropBlock();
+  }
   while (!_data.empty()) {
+    if (_data.front() == nullptr) {
+      if (myCall.getOffset() > 0 || myCall.getLimit() > 0) {
+        TRI_ASSERT(skipped > 0 || result != nullptr);
+        // This is a specific break point return now.
+        // Sorry we can only return one block.
+        // This means we have prepared the first block.
+        // But still need more data.
+        return {ExecutionState::HASMORE, skipped, result};
+      } else {
+        dropBlock();
+        continue;
+      }
+    }
     if (_data.front()->size() <= _inflight) {
       dropBlock();
       continue;
