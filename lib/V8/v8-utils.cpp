@@ -222,9 +222,14 @@ static void JS_SetConnectionsToBeDeadIn(v8::FunctionCallbackInfo<v8::Value> cons
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("SetConnectionsToBeDeadIn(<timeout>)");
   }
+
+  auto when = connectionToBeDeadAt.load();
+  auto now = TRI_microtime();
+  
   double n = TRI_ObjectToDouble(isolate, args[0]);
   setConnectionToBeDeadInMS(n);
-  TRI_V8_RETURN_UNDEFINED();
+  std::cout << "when: " << when << " - now: " << now << std::endl;
+  TRI_V8_RETURN_BOOL((when != 0.0) && (now >= when) );
   TRI_V8_TRY_CATCH_END
 }
 
@@ -268,8 +273,10 @@ std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::durat
 
   auto delta = now - timepointWhen; // Your problem was here - You need 2 points to create a duration.
   if (delta > timeout) {
+    std::cout << "original timeout" << std::endl;
     return timeout;
   }
+  std::cout << "modified timeout" << std::endl;
   return delta;
 
 }
@@ -3955,6 +3962,9 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isConnectionToBeDead(args)) {
+    return;
+  }
 
   // extract arguments
   if (args.Length() != 1) {
@@ -4009,6 +4019,9 @@ static void JS_Time(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  if (isConnectionToBeDead(args)) {
+    return;
+  }
 
   // extract arguments
   if (args.Length() < 1) {

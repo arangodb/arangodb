@@ -891,16 +891,25 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   try {
     setTotalTimeout(options.oneTestTimeout * 1000);
     let result = testFunc();
+    let timeout = setTotalTimeout(0.0);
+    print("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
+    print(timeout)
+    if (timeout) {
+      return {
+        timeout: true,
+        status: false,
+        message: "test ran into timeout. Original test status: " + JSON.stringify(result),
+      };
+    }
     return result;
   } catch (ex) {
+    let timeout = setTotalTimeout(0.0);
     return {
+      timeout: timeout,
       status: false,
       message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
       stack: ex.stack
     };
-  }
-  finally {
-    setTotalTimeout(0.0);
   }
 }
 runInLocalArangosh.info = 'runInLocalArangosh';
