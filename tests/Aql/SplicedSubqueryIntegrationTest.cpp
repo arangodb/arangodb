@@ -45,6 +45,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include "Aql/ExecutorTestHelper.h"
 #include "Aql/TestLambdaExecutor.h"
 #include "Aql/WaitingExecutionBlockMock.h"
 
@@ -54,103 +55,114 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 using namespace arangodb::basics;
 
+using SubqueryExecutorTestHelper = ExecutorTestHelper<1, 1>;
+using SubqueryExecutorSplitType = SubqueryExecutorTestHelper::SplitType;
+using SubqueryExecutorParamType = std::tuple<SubqueryExecutorSplitType>;
+
 using RegisterSet = std::unordered_set<RegisterId>;
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
 
 class SplicedSubqueryIntegrationTest : public ::testing::Test {
  protected:
-  SharedAqlItemBlockPtr result;
+  mocks::MockAqlServer server{};
 
-  fakeit::Mock<ExecutionEngine> mockEngine;
-  ExecutionEngine& engine;
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  ExecutorTestHelper<1, 1> executorTestHelper;
 
-  fakeit::Mock<AqlItemBlockManager> mockBlockManager;
-  AqlItemBlockManager& itemBlockManager;
-
-  fakeit::Mock<transaction::Methods> mockTrx;
-  transaction::Methods& trx;
-
-  fakeit::Mock<transaction::Context> mockContext;
-  transaction::Context& context;
-
-  fakeit::Mock<Query> mockQuery;
-  Query& query;
-
-  ExecutionState state;
-  ResourceMonitor monitor;
-
-  fakeit::Mock<QueryOptions> mockQueryOptions;
-  QueryOptions& lqueryOptions;
-  ProfileLevel profile;
-
-  // This is not used thus far in Base-Clase
-  ExecutionNode const* node = nullptr;
-  std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
-
-  SharedAqlItemBlockPtr block;
-
-  using RegisterSet = std::unordered_set<RegisterId>;
-  using SharedRegisterSet = std::shared_ptr<RegisterSet>;
-
- public:
   SplicedSubqueryIntegrationTest()
-      : engine(mockEngine.get()),
-        itemBlockManager(mockBlockManager.get()),
-        trx(mockTrx.get()),
-        context(mockContext.get()),
-        query(mockQuery.get()),
-        lqueryOptions(mockQueryOptions.get()),
-        profile(ProfileLevel(PROFILE_LEVEL_NONE)),
-        node(nullptr),
-        block(nullptr) {
-    fakeit::When(Method(mockBlockManager, requestBlock)).AlwaysDo([&](size_t nrItems, RegisterId nrRegs) -> SharedAqlItemBlockPtr {
-      return SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
-    });
-
-    fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(itemBlockManager);
-    fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
-    fakeit::When(OverloadedMethod(mockBlockManager, returnBlock, void(AqlItemBlock*&)))
-        .AlwaysDo([&](AqlItemBlock*& block) -> void {
-          AqlItemBlockManager::deleteBlock(block);
-          block = nullptr;
-        });
-    fakeit::When(Method(mockBlockManager, resourceMonitor)).AlwaysReturn(&monitor);
-    fakeit::When(ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
-        .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
-    fakeit::When(OverloadedMethod(mockQuery, queryOptions, QueryOptions & ()))
-        .AlwaysDo([&]() -> QueryOptions& { return lqueryOptions; });
-    fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&trx);
-
-    fakeit::When(Method(mockQueryOptions, getProfileLevel)).AlwaysReturn(profile);
-
-    fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&context);
-    fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
+      : fakedQuery(server.createFakeQuery()), executorTestHelper(*fakedQuery) {
+    auto engine =
+        std::make_unique<ExecutionEngine>(*fakedQuery, SerializationFormat::SHADOWROWS);
+    fakedQuery->setEngine(engine.release());
   }
 
- protected:
-  auto generateNodeDummy() -> ExecutionNode* {
-    auto dummy = std::make_unique<SingletonNode>(query.plan(), _execNodes.size());
-    auto res = dummy.get();
-    _execNodes.emplace_back(std::move(dummy));
-    return res;
+  // returns a new pipeline that contains body as a subquery
+  auto createSubquery(Pipeline&& body) -> Pipeline {
+    auto subqueryEnd = createSubqueryEndExecutionBlock();
+    if (!body.empty()) {
+      subqueryEnd->addDependency(body.get().front().get());
+    }
+    body.get().emplace_front(std::move(subqueryEnd));
+
+    auto subqueryStart = createSubqueryStartExecutionBlock();
+    // This exists because we at least added the subqueryEnd
+    body.get().back()->addDependency(subqueryStart.get());
+
+    body.get().emplace_back(std::move(subqueryStart));
+
+    return std::move(body);
   }
 
-  auto createSingleton() -> std::unique_ptr<ExecutionBlock> {
-    std::deque<SharedAqlItemBlockPtr> blockDeque;
-    block = buildBlock<2>(itemBlockManager, {{{{R"("v")"}, {0}}},
-                                             {{{R"("x")"}, {1}}},
-                                             {{{R"("y")"}, {2}}},
-                                             {{{R"("z")"}, {3}}},
-                                             {{{R"("a")"}, {4}}},
-                                             {{{R"("b")"}, {5}}}});
-    blockDeque.push_back(std::move(block));
-    return std::make_unique<WaitingExecutionBlockMock>(
-        &engine, generateNodeDummy(), std::move(blockDeque),
-        WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+  auto createSubquery() -> Pipeline { return createSubquery(Pipeline()); }
+
+  auto createDoNothingPipeline() -> Pipeline {
+    auto numRegs = size_t{1};
+    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+
+    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{0});
+    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{1});
+
+    std::unordered_set<RegisterId> toKeep;
+
+    for (RegisterId r = 0; r < numRegs; ++r) {
+      toKeep.emplace(r);
+    }
+
+    auto infos = LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {},
+                                  toKeep, createProduceCall(), createSkipCall());
+
+    return Pipeline(executorTestHelper.createExecBlock<LambdaExe>(std::move(infos)));
   }
 
-  auto createSubqueryStartExecutor() -> ExecutionBlockImpl<SubqueryStartExecutor> {
+  auto createAssertPipeline() -> Pipeline {
+    auto numRegs = size_t{1};
+    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+
+    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{0});
+    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{1});
+
+    std::unordered_set<RegisterId> toKeep;
+
+    for (RegisterId r = 0; r < numRegs; ++r) {
+      toKeep.emplace(r);
+    }
+
+    auto infos = LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {},
+                                  toKeep, createAssertCall(), createSkipCall());
+
+    return Pipeline(executorTestHelper.createExecBlock<LambdaExe>(std::move(infos)));
+  }
+
+  auto createCallAssertPipeline(AqlCall call) -> Pipeline {
+    auto numRegs = size_t{1};
+    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{});
+
+    auto inRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{0});
+    auto outRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
+        std::initializer_list<RegisterId>{1});
+
+    std::unordered_set<RegisterId> toKeep;
+
+    for (RegisterId r = 0; r < numRegs; ++r) {
+      toKeep.emplace(r);
+    }
+
+    auto infos = LambdaExe::Infos(inRegisterList, outRegisterList, 1, 2, {}, toKeep,
+                                  createAssertCallCall(call), createSkipCall());
+
+    return Pipeline(executorTestHelper.createExecBlock<LambdaExe>(std::move(infos)));
+  }
+
+  auto createSubqueryStartExecutionBlock() -> ExecBlock {
     // Subquery start executor does not care about input or output registers?
     // TODO: talk about registers & register planning
 
@@ -165,12 +177,13 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
                                               inputRegisterSet->size() +
                                                   outputRegisterSet->size(),
                                               {}, toKeepRegisterSet);
-    return ExecutionBlockImpl<SubqueryStartExecutor>{&engine, node, std::move(infos)};
+
+    return executorTestHelper.createExecBlock<SubqueryStartExecutor>(std::move(infos));
   }
 
   // Subquery end executor has an input and an output register,
   // but only the output register is used, remove input reg?
-  auto createSubqueryEndExecutor() -> ExecutionBlockImpl<SubqueryEndExecutor> {
+  auto createSubqueryEndExecutionBlock() -> ExecBlock {
     auto const inputRegister = RegisterId{0};
     auto const outputRegister = RegisterId{1};
     auto inputRegisterSet =
@@ -184,23 +197,25 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
                                    inputRegisterSet->size(),
                                    inputRegisterSet->size() + outputRegisterSet->size(),
                                    {}, toKeepRegisterSet, nullptr,
-                                   inputRegister, outputRegister);
+                                   inputRegister, outputRegister, false);
 
-    return ExecutionBlockImpl<SubqueryEndExecutor>{&engine, node, std::move(infos)};
+    return executorTestHelper.createExecBlock<SubqueryEndExecutor>(std::move(infos));
   }
 
   auto createProduceCall() -> ProduceCall {
     return [](AqlItemBlockInputRange& input,
               OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
-      if (input.hasDataRow()) {
+      while (input.hasDataRow() && !output.isFull()) {
         auto const [state, row] = input.nextDataRow();
+        output.cloneValueInto(1, row, AqlValue("foo"));
+        output.advanceRow();
       }
       NoStats stats{};
       AqlCall call{};
 
       return {input.upstreamState(), stats, call};
     };
-  }
+  };
 
   auto createSkipCall() -> SkipCall {
     return [](AqlItemBlockInputRange& input,
@@ -209,66 +224,171 @@ class SplicedSubqueryIntegrationTest : public ::testing::Test {
       while (input.hasDataRow() && call.shouldSkip()) {
         auto const& [state, inputRow] = input.nextDataRow();
         EXPECT_TRUE(inputRow.isInitialized());
+        call.didSkip(1);
         skipped++;
       }
-      call.didSkip(skipped);
       auto upstreamCall = AqlCall{call};
       return {input.upstreamState(), skipped, upstreamCall};
     };
+  };
+
+  // Asserts if called. This is to check that when we use skip to
+  // skip over a subquery, the subquery's produce is not invoked
+  auto createAssertCall() -> ProduceCall {
+    return [](AqlItemBlockInputRange& input,
+              OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+      TRI_ASSERT(false);
+      NoStats stats{};
+      AqlCall call{};
+
+      return {input.upstreamState(), stats, call};
+    };
   }
 
-  auto createDoNothingExecutor() -> ExecutionBlockImpl<LambdaExe> {
-    auto numRegs = size_t{1};
-    auto emptyRegisterList = std::make_shared<std::unordered_set<RegisterId>>(
-        std::initializer_list<RegisterId>{});
-    std::unordered_set<RegisterId> toKeep;
+  auto createAssertCallCall(AqlCall call) -> ProduceCall {
+    return [call](AqlItemBlockInputRange& input,
+                  OutputAqlItemRow& output) -> std::tuple<ExecutorState, LambdaExe::Stats, AqlCall> {
+      auto clientCall = output.getClientCall();
 
-    for (RegisterId r = 0; r < numRegs; ++r) {
-      toKeep.emplace(r);
-    }
+      TRI_ASSERT(clientCall.offset == call.offset);
+      TRI_ASSERT(clientCall.softLimit == call.softLimit);
+      TRI_ASSERT(clientCall.hardLimit == call.hardLimit);
+      TRI_ASSERT(clientCall.fullCount == call.fullCount);
 
-    auto infos = LambdaExe::Infos(emptyRegisterList, emptyRegisterList, numRegs, numRegs,
-                                  {}, toKeep, createProduceCall(), createSkipCall());
+      while (input.hasDataRow() && !output.isFull()) {
+        auto const [state, row] = input.nextDataRow();
+        output.cloneValueInto(1, row, AqlValue("foo"));
+        output.advanceRow();
+      }
 
-    return ExecutionBlockImpl<LambdaExe>{&engine, node, std::move(infos)};
+      NoStats stats{};
+      AqlCall call{};
+
+      return {input.upstreamState(), stats, call};
+    };
   }
+  /*  auto getSplit() -> SubqueryExecutorSplitType {
+      auto [split] = GetParam();
+      return split;
+      } */
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, check_properties) { EXPECT_TRUE(true); };
-
-TEST_F(SplicedSubqueryIntegrationTest, check_shadow_row_handling) {
-  auto stack = AqlCallStack{AqlCall{}};
-
-  auto singleton = createSingleton();
-  auto startExec = createSubqueryStartExecutor();
-  auto endExec = createSubqueryEndExecutor();
-
-  startExec.addDependency(singleton.get());
-  endExec.addDependency(&startExec);
-
-  endExec.execute(stack);
+TEST_F(SplicedSubqueryIntegrationTest, single_subquery_empty_input) {
+  auto call = AqlCall{};
+  auto pipeline = createSubquery();
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList()
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
 };
 
-TEST_F(SplicedSubqueryIntegrationTest, check_shadow_row_handling_2) {
-  auto stack = AqlCallStack{AqlCall{}};
+TEST_F(SplicedSubqueryIntegrationTest, single_subquery) {
+  auto call = AqlCall{};
+  auto pipeline = createSubquery();
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
+};
 
-  auto singleton = createSingleton();
-  auto startExecOuter = createSubqueryStartExecutor();
-  auto endExecOuter = createSubqueryEndExecutor();
+TEST_F(SplicedSubqueryIntegrationTest, single_subquery_skip) {
+  auto call = AqlCall{5};
+  auto pipeline = createSubquery();
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {{5}, {7}, {1}})
+      .expectSkipped(5)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
+};
 
-  auto startExecInner = createSubqueryStartExecutor();
-  auto endExecInner = createSubqueryEndExecutor();
+TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries_empty_input) {
+  auto call = AqlCall{};
+  auto pipeline = createSubquery(createSubquery());
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList()
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
+};
 
-  startExecOuter.addDependency(singleton.get());
-  startExecInner.addDependency(&startExecOuter);
-  endExecInner.addDependency(&startExecInner);
-  endExecOuter.addDependency(&endExecInner);
+TEST_F(SplicedSubqueryIntegrationTest, two_nested_subqueries) {
+  auto call = AqlCall{};
+  auto pipeline = createSubquery(createSubquery());
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
+};
 
-  auto const [state, num, block] = endExecOuter.execute(stack);
+TEST_F(SplicedSubqueryIntegrationTest, two_sequential_subqueries) {
+  auto call = AqlCall{};
+  auto pipeline = concatPipelines(createSubquery(), createSubquery());
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
+};
 
-  LOG_DEVEL << num << " " << block->size() << " " << block->getNrRegs();
-  for (auto i = size_t{0}; i < block->size(); i++) {
-    LOG_DEVEL << " " << block->getValue(i, RegisterId{0}).slice().toJson()
-              << " " << block->getValue(i, RegisterId{1}).slice().toJson();
-  }
+TEST_F(SplicedSubqueryIntegrationTest, do_nothing_in_subquery) {
+  auto call = AqlCall{};
+  auto pipeline = createSubquery(createDoNothingPipeline());
+
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {{1}, {2}, {5}, {2}, {1}, {5}, {7}, {1}})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
+};
+
+TEST_F(SplicedSubqueryIntegrationTest, check_call_passes_subquery) {
+  auto call = AqlCall{10};
+  auto pipeline = concatPipelines(createCallAssertPipeline(call), createSubquery());
+
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {})
+      .expectSkipped(8)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
+};
+
+TEST_F(SplicedSubqueryIntegrationTest, check_skipping_subquery) {
+  auto call = AqlCall{10};
+  auto pipeline = createSubquery(createAssertPipeline());
+
+  executorTestHelper.setPipeline(std::move(pipeline))
+      .setInputValueList(1, 2, 5, 2, 1, 5, 7, 1)
+      .setInputSplitType(SubqueryExecutorSplitType{std::vector<size_t>{2, 3}})
+      .setCall(call)
+      .expectOutput({0}, {})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .runPipeline();
 };

@@ -37,11 +37,7 @@ class SubqueryEndNode : public ExecutionNode {
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
-                  Variable const* outVariable)
-      : ExecutionNode(plan, id), _inVariable(inVariable), _outVariable(outVariable) {
-    // _inVariable might be nullptr
-    TRI_ASSERT(_outVariable != nullptr);
-  }
+                  Variable const* outVariable, bool isModificationSubquery);
 
   CostEstimate estimateCost() const override final;
 
@@ -74,11 +70,12 @@ class SubqueryEndNode : public ExecutionNode {
   }
 
   void replaceOutVariable(Variable const* var);
+  bool isModificationSubquery() const;
 
  private:
   Variable const* _inVariable;
-
   Variable const* _outVariable;
+  bool _isModificationSubquery;
 };
 
 }  // namespace aql

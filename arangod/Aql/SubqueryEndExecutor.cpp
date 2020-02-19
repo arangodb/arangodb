@@ -34,6 +34,8 @@
 #include <memory>
 #include <utility>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -42,14 +44,15 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    velocypack::Options const* const options, RegisterId inReg, RegisterId outReg)
+    std::unordered_set<RegisterId> registersToKeep, velocypack::Options const* const options,
+    RegisterId inReg, RegisterId outReg, bool isModificationSubquery)
     : ExecutorInfos(std::move(readableInputRegisters),
                     std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
       _vpackOptions(options),
       _outReg(outReg),
-      _inReg(inReg) {}
+      _inReg(inReg),
+      _isModificationSubquery(isModificationSubquery) {}
 
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
@@ -69,6 +72,10 @@ RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept {
   return _inReg;
 }
 
+bool SubqueryEndExecutorInfos::isModificationSubquery() const noexcept {
+  return _isModificationSubquery;
+}
+
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos), _accumulator(_infos.vpackOptions()) {}
 
@@ -80,7 +87,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
 
 auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
-  ExecutorState state;
+  ExecutorState state{ExecutorState::HASMORE};
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint()};
 
   while (input.hasDataRow()) {
@@ -94,7 +101,7 @@ auto SubqueryEndExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlIt
       _accumulator.addValue(inputRow.getValue(_infos.getInputRegister()));
     }
   }
-  return {state, NoStats{}, AqlCall{}};
+  return {input.upstreamState(), NoStats{}, AqlCall{}};
 }
 
 auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
@@ -105,24 +112,21 @@ auto SubqueryEndExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& 
   while (input.hasDataRow()) {
     std::tie(state, inputRow) = input.nextDataRow();
     TRI_ASSERT(inputRow.isInitialized());
-
-    // We got a data row, put it into the accumulator,
-    // if we're getting data through an input register.
-    // If not, we just "accumulate" an empty output.
-    // if (_infos.usesInputRegister()) {
-    //   _accumulator.addValue(inputRow.getValue(_infos.getInputRegister()));
-    // }
   }
   // This is correct since the SubqueryEndExecutor produces one output out
   // of the accumulation of all the (relevant) inputs
   call.didSkip(1);
-  return {state, 1, AqlCall{}};
+  return {input.upstreamState(), 1, AqlCall{}};
 }
 
 auto SubqueryEndExecutor::stealValue(AqlValue& result) -> AqlValueGuard {
   // TODO: meh
   TRI_DEFER(_accumulator.reset());
   return _accumulator.stealValue(result);
+}
+
+auto SubqueryEndExecutor::isModificationSubquery() const noexcept -> bool {
+  return _infos.isModificationSubquery();
 }
 
 void SubqueryEndExecutor::Accumulator::reset() {

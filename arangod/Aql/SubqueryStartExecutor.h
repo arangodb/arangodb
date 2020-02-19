@@ -67,26 +67,19 @@ class SubqueryStartExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, size_t, AqlCall>;
 
+  // Produce a shadow row *if* we have either skipped or output a datarow
+  // previously
+  auto produceShadowRow(OutputAqlItemRow& output) -> void;
+
   std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  enum class State {
-    READ_DATA_ROW,
-    PRODUCE_DATA_ROW,
-    PRODUCE_SHADOW_ROW,
-  };
-
-  auto static stateToString(State state) -> std::string;
-
  private:
   // Upstream state, used to determine if we are done with all subqueries
   ExecutorState _upstreamState{ExecutorState::HASMORE};
 
   // Cache for the input row we are currently working on
   InputAqlItemRow _inputRow{CreateInvalidInputRowHint{}};
-
-  // Internal state
-  State _produceState{State::READ_DATA_ROW};
 };
 }  // namespace aql
 }  // namespace arangodb

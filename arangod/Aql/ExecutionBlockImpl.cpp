@@ -1145,27 +1145,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
       std::tie(_upstreamState, skippedLocal, bypassedRange) = _rowFetcher.execute(stack);
       return {_upstreamState, skippedLocal, bypassedRange.getBlock()};
     }
+
+    //    AqlCall subqueryCall{};
     AqlCall clientCall = stack.popCall();
-
-    // Callstack handling for subqueries
     if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
-      // inspect the top two calls
-      // clientCall has the "topmost" which is coming from the subquery
-      // but we need the next one as real clientCall
-      //      AqlCall subqueryCall = clientCall;
+      // TODO: what happens to the call from the subquery? Currently
+      // we're just discarding it
+      // subqueryCall = clientCall;
+      // (void)subqueryCall;
       clientCall = stack.popCall();
-
-      // TODO: what do we do with subquery call? We know that the subquery
-      //       needs one row to produce one row; If the subquery has an offset
-      //       we might use that, too?
-    } else if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
-      // push original call
-      auto outsideCall = clientCall;
-      stack.pushCall(std::move(outsideCall));
-      clientCall = AqlCall{};
-
-      // special hack
-      // clientCall = AqlCall{clientCall.getOffset(), 0, 0, false};
     }
 
     // We can only have returned the following internal states
@@ -1281,7 +1269,23 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(!_lastRange.hasShadowRow());
           size_t skippedLocal = 0;
           auto callCopy = _upstreamRequest;
+
           stack.pushCall(std::move(callCopy));
+
+          // Callstack handling for subqueries
+          // TODO: If the subquery is modifying we need to do some
+          //       special handling here
+          if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
+            if (_executor.isModificationSubquery()) {
+            } else {
+              if (_upstreamRequest.getOffset() > 0) {
+                stack.pushCall(AqlCall{_upstreamRequest.getOffset(), 0, 0, false});
+              } else {
+                stack.pushCall(AqlCall{});
+              }
+            }
+          }
+
           std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
           if (_upstreamState == ExecutionState::WAITING) {
             // We need to persist the old call before we return.
@@ -1305,6 +1309,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // E.g. LastRow is releveant shadowRow. NextRow is non-relevant shadowRow.
           // NOTE: I do not think this is an issue, as the Executor will always say that it cannot do anything with
           // an empty input. Only exception might be COLLECT COUNT.
+
+          if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            // TODO: make sure ensureOutputBlock can be called here
+            ensureOutputBlock(std::move(clientCall));
+            _executor.produceShadowRow(*_outputItemRow);
+            // produceShadowRow modifies output
+            clientCall = _outputItemRow->getClientCall();
+          }
+
           if (_lastRange.hasShadowRow()) {
             auto const& [state, shadowRow] = _lastRange.nextShadowRow();
             TRI_ASSERT(shadowRow.isInitialized());

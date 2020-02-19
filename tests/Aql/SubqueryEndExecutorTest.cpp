@@ -48,7 +48,7 @@ class SubqueryEndExecutorTest : public ::testing::Test {
   SubqueryEndExecutorTest()
       : _infos(std::make_shared<RegisterSet>(std::initializer_list<RegisterId>({0})),
                std::make_shared<RegisterSet>(std::initializer_list<RegisterId>({0})),
-               1, 1, {}, {}, nullptr, RegisterId{0}, RegisterId{0}) {}
+               1, 1, {}, {}, nullptr, RegisterId{0}, RegisterId{0}, false) {}
 
  protected:
   ResourceMonitor monitor;

@@ -50,7 +50,7 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
                            std::unordered_set<RegisterId> const& registersToClear,
                            std::unordered_set<RegisterId> registersToKeep,
                            velocypack::Options const* options, RegisterId inReg,
-                           RegisterId outReg);
+                           RegisterId outReg, bool isModificationSubquery);
 
   SubqueryEndExecutorInfos() = delete;
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) noexcept = default;
@@ -61,11 +61,13 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
   [[nodiscard]] RegisterId getOutputRegister() const noexcept;
   [[nodiscard]] bool usesInputRegister() const noexcept;
   [[nodiscard]] RegisterId getInputRegister() const noexcept;
+  [[nodiscard]] bool isModificationSubquery() const noexcept;
 
  private:
   velocypack::Options const* _vpackOptions;
   RegisterId const _outReg;
   RegisterId const _inReg;
+  bool const _isModificationSubquery;
 };
 
 class SubqueryEndExecutor {
@@ -98,6 +100,7 @@ class SubqueryEndExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, size_t, AqlCall>;
   [[nodiscard]] auto stealValue(AqlValue& result) -> AqlValueGuard;
+  [[nodiscard]] auto isModificationSubquery() const noexcept -> bool;
 
  private:
   enum class State {
