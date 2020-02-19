@@ -1150,8 +1150,8 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(AqlItemBlockInputRange& 
  *
  *   On the first call we will use nextState to get to our starting point.
  *   After any of SKIP, PRODUCE, FULLCOUNT, FASTFORWAD, DONE We either go to
- *   1. DONE (if output is full)
- *   2. SHADOWROWS (if executor is done)
+ *   1. FASTFORWARD/FULLCOUNT (if executor is done)
+ *   2. DONE (if output is full)
  *   3. UPSTREAM if executor has More, (Invariant: input fully consumed)
  *   4. NextState (if none of the above applies)
  *
@@ -1230,7 +1230,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // This means that they have to be removed from clientCall.getOffset()
           // This has to be done by the Executor calling call.didSkip()
           // accordingly.
-          if (canPassFullcount) {
+          // The LIMIT executor with a LIMIT of 0 can also bypass fullCount
+          // here, even if callLimit > 0
+          if (canPassFullcount || std::is_same_v<Executor, LimitExecutor>) {
             // In this case we can first skip. But straight after continue with fullCount, so we might skip more
             TRI_ASSERT(clientCall.getOffset() + skippedLocal >= offsetBefore);
             if (clientCall.getOffset() + skippedLocal > offsetBefore) {
@@ -1279,7 +1281,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           if (_outputItemRow->isInitialized() && _outputItemRow->allRowsUsed()) {
             _execState = ExecState::DONE;
           } else if (state == ExecutorState::DONE) {
-            _execState = ExecState::SHADOWROWS;
+            if (clientCall.needsFullCount()) {
+              _execState = ExecState::FULLCOUNT;
+            } else {
+              _execState = ExecState::FASTFORWARD;
+            }
           } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
