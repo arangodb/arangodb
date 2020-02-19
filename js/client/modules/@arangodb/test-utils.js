@@ -897,6 +897,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     if (timeout) {
       return {
         timeout: true,
+        forceTerminate: true,
         status: false,
         message: "test ran into timeout. Original test status: " + JSON.stringify(result),
       };
@@ -906,6 +907,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     let timeout = setTotalTimeout(0.0);
     return {
       timeout: timeout,
+      forceTerminate: timeout,
       status: false,
       message: "test has thrown! '" + file + "' - " + ex.message || String(ex),
       stack: ex.stack
