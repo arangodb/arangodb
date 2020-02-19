@@ -219,13 +219,6 @@ struct ExecutorTestHelper {
     return *this;
   }
 
-  // Whether the last result with data returns DONE (not lying), or returns
-  // HASMORE and DONE (without any data) only after that.
-  auto setLieAboutHasmore(bool lieAboutHasmore) -> ExecutorTestHelper& {
-    _lieAboutHasmore = lieAboutHasmore;
-    return *this;
-  }
-
   auto expectOutput(std::array<RegisterId, outputColumns> const& regs,
                     MatrixBuilder<outputColumns> const& out) -> ExecutorTestHelper& {
     _outputRegisters = regs;
@@ -411,8 +404,8 @@ struct ExecutorTestHelper {
 
     return std::make_unique<WaitingExecutionBlockMock>(_query.engine(),
                                                        _dummyNode.get(),
-                                                       std::move(blockDeque), _waitingBehaviour,
-                                                       _lieAboutHasmore);
+                                                       std::move(blockDeque),
+                                                       _waitingBehaviour);
   }
 
   AqlCall _call;
@@ -426,7 +419,6 @@ struct ExecutorTestHelper {
   ExecutionNode::NodeType _testeeNodeType{ExecutionNode::MAX_NODE_TYPE_VALUE};
   WaitingExecutionBlockMock::WaitingBehaviour _waitingBehaviour =
       WaitingExecutionBlockMock::NEVER;
-  bool _lieAboutHasmore = false;
   bool _unorderedOutput;
   bool _appendEmptyBlock;
   std::size_t _unorderedSkippedRows;

@@ -65,8 +65,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
                             arangodb::aql::ExecutionNode const* node,
                             std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
-                            WaitingBehaviour variant = WaitingBehaviour::ALWAYS,
-                            bool lieAboutHasmore = false);
+                            WaitingBehaviour variant = WaitingBehaviour::ALWAYS);
 
   virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
 
@@ -124,7 +123,6 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   bool _returnedDone = false;
   bool _hasWaited;
   WaitingBehaviour _variant;
-  bool _lieAboutHasmore = false;
 };
 }  // namespace aql
 

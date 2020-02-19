@@ -38,15 +38,13 @@ using namespace arangodb::tests::aql;
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
                                                      ExecutionNode const* node,
                                                      std::deque<SharedAqlItemBlockPtr>&& data,
-                                                     WaitingBehaviour variant,
-                                                     bool lieAboutHasmore)
+                                                     WaitingBehaviour variant)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
       _resourceMonitor(),
       _inflight(0),
       _hasWaited(false),
-      _variant{variant},
-      _lieAboutHasmore{lieAboutHasmore} {}
+      _variant{variant} {}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
     arangodb::aql::InputAqlItemRow const& input) {
@@ -143,7 +141,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
   }
   size_t skipped = 0;
   SharedAqlItemBlockPtr result = nullptr;
-  if (_data.front() == nullptr) {
+  if (!_data.empty() && _data.front() == nullptr) {
     dropBlock();
   }
   while (!_data.empty()) {
@@ -214,10 +212,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
       }
       if (!_data.empty()) {
         return {ExecutionState::HASMORE, skipped, result};
-      } else if (_lieAboutHasmore && result != nullptr &&
-                 result->size() < myCall.hardLimit) {
-        // Return HASMORE once after returning all data
-        _lieAboutHasmore = false;
+      } else if (result != nullptr && result->size() < myCall.hardLimit) {
         return {ExecutionState::HASMORE, skipped, result};
       } else {
         return {ExecutionState::DONE, skipped, result};
