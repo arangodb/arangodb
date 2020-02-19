@@ -102,8 +102,6 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
   }
   ExecutorState state = ExecutorState::HASMORE;
   InputAqlItemRow input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  AqlCall upstreamCall{};
-  upstreamCall.fullCount = output.getClientCall().fullCount;
 
   while (inputRange.hasDataRow() && !output.isFull()) {
     std::tie(state, input) = inputRange.nextDataRow();  // TODO refactor
@@ -128,7 +126,7 @@ CalculationExecutor<calculationType>::produceRows(AqlItemBlockInputRange& inputR
                state == ExecutorState::HASMORE);
   }
 
-  return {inputRange.upstreamState(), NoStats{}, upstreamCall};
+  return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
 }
 
 template <CalculationType calculationType>
