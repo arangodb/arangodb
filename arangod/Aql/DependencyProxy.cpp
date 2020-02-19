@@ -312,7 +312,8 @@ DependencyProxy<blockPassthrough>::DependencyProxy(
       _blockPassThroughQueue(),
       _currentDependency(0),
       _skipped(0),
-      _vpackOptions(options) {}
+      _vpackOptions(options),
+      _injectedStack(AqlCall{}) {}
 
 template <BlockPassthrough blockPassthrough>
 RegisterId DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
