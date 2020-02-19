@@ -34,7 +34,7 @@ def file_content(filepath, forceDokuBlockContent):
   """ Fetches and formats file's content to perform the required operation.
   """
 
-  infile = io.open(filepath, 'r', encoding='utf-8', newline=None)
+  infile = io.open(filepath, encoding='utf-8', newline=None)
   filelines = tuple(infile)
   infile.close()
 
@@ -103,7 +103,7 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   blockCount = 0
 
   # read in the context, split into long and short
-  infile = io.open(filepath, 'r', encoding='utf-8', newline=None)
+  infile = io.open(filepath, encoding='utf-8', newline=None)
   for line in infile:
     stripped_line = re.sub('<[^<]+?>', '', line) # remove HTML tags
     if first:
@@ -333,8 +333,8 @@ def fetch_comments(dirpath, forceDokuBlockContent):
   fh.close()
 
 if __name__ == "__main__":
-  errorsFile = io.open("../../lib/Basics/errors.dat", "r", encoding="utf-8", newline=None)
-  commentsFile = io.open("allComments.txt", "w", encoding="utf-8", newline="")
+  errorsFile = io.open("../../lib/Basics/errors.dat", encoding="utf-8", newline=None)
+  commentsFile = io.open("allComments.txt", mode="w", encoding="utf-8", newline="")
   commentsFile.write("@startDocuBlock errorCodes \n")
   for line in errorsFile:
     commentsFile.write(line + "\n")
