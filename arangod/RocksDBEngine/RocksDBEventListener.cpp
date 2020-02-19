@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"
 #include "Logger/LogMacros.h"
@@ -60,7 +61,7 @@ void RocksDBEventListenerThread::run() {
 
             default:
               LOG_TOPIC("7c75c", ERR, arangodb::Logger::ENGINES)
-                << "RocksDBEventListenerThread::run encountered unknown _action";
+                << "RocksDBEventListenerThread::run encountered unknown action";
               TRI_ASSERT(false);
               break;
           } // switch
@@ -92,21 +93,15 @@ void RocksDBEventListenerThread::run() {
 
 
 void RocksDBEventListenerThread::queueShaCalcFile(std::string const& pathName) {
-
   {
     MUTEX_LOCKER(lock, _pendingMutex);
     _pendingQueue.emplace(actionNeeded_t{actionNeeded_t::CALC_SHA, pathName});
   }
-  {
-    CONDITION_LOCKER(lock, _loopingCondvar);
-    lock.signal();
-  }
-
+  signalLoop();
 } // RocksDBEventListenerThread::queueShaCalcFile
 
 
 void RocksDBEventListenerThread::queueDeleteFile(std::string const & pathName) {
-
   {
     MUTEX_LOCKER(lock, _pendingMutex);
     _pendingQueue.emplace(actionNeeded_t{actionNeeded_t::DELETE_ACTION, pathName});
@@ -116,12 +111,10 @@ void RocksDBEventListenerThread::queueDeleteFile(std::string const & pathName) {
 } // RocksDBEventListenerThread::queueDeleteFile
 
 void RocksDBEventListenerThread::signalLoop() {
-
   {
     CONDITION_LOCKER(lock, _loopingCondvar);
     lock.signal();
   }
-
 } // RocksDBEventListenerThread::signalLoop
 
 
@@ -177,14 +170,11 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
     std::vector<std::string> filelist = TRI_FilesDirectory(dirname.c_str());
 
     // future thought: are there faster ways to find matching .sha. file?
-    for (auto iter = filelist.begin(); !found && filelist.end() != iter; ++iter) {
+    for (auto const& it : filelist) {
       // sha256 is 64 characters long.  ".sha." is added 5.  So 69 characters is minimum length
-      if (69 < iter->size() && 0 == iter->substr(0, basename.size()).compare(basename)
-          && 0 == iter->substr(basename.size(), 5).compare(".sha.")) {
-        found = true;
-        std::string deletefile = dirname;
-        deletefile += TRI_DIR_SEPARATOR_CHAR;
-        deletefile += *iter;
+      if (69 < it.size() && 0 == it.compare(0, basename.size(), basename)
+          && 0 == it.substr(basename.size(), 5).compare(".sha.")) {
+        std::string deletefile = basics::FileUtils::buildFilename(dirname, it);
         int ret_val = TRI_UnlinkFile(deletefile.c_str());
         good = (TRI_ERROR_NO_ERROR == ret_val);
         if (!good) {
@@ -196,6 +186,7 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
             << "deleteCalcFile:  TRI_UnlinkFile succeeded for "
             << deletefile.c_str();
         }// if
+        break;
       } // if
     } // for
   } // if
@@ -212,11 +203,7 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
 std::string RocksDBEventListenerThread::getRocksDBPath() {
   // get base path from DatabaseServerFeature
   auto& databasePathFeature = _server.getFeature<DatabasePathFeature>();
-  std::string rockspath = databasePathFeature.directory();
-  rockspath += TRI_DIR_SEPARATOR_CHAR;
-  rockspath += "engine-rocksdb";
-
-  return rockspath;
+  return databasePathFeature.subdirectoryName("engine-rocksdb");
 
 } // RocksDBEventListenerThread::getRocksDBPath
 
@@ -226,15 +213,14 @@ std::string RocksDBEventListenerThread::getRocksDBPath() {
 ///        Will only consider .sst files which have not been written to for
 ///        `requireAge` seconds.
 void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathname, int64_t requireAge) {
-  std::string temppath, tempname;
   std::vector<std::string> filelist = TRI_FilesDirectory(pathname.c_str());
 
   // sorting will put xxxxxx.sha.yyy just before xxxxxx.sst
   std::sort(filelist.begin(), filelist.end());
 
+  std::string temppath, tempname;
   for (auto iter = filelist.begin(); filelist.end() != iter; ++iter) {
-    std::string::size_type shaIdx;
-    shaIdx = iter->find(".sha.");
+    std::string::size_type shaIdx = iter->find(".sha.");
     if (std::string::npos != shaIdx) {
       // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so delete
       bool match = false;
@@ -249,9 +235,7 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
       } // if
 
       if (!match) {
-        temppath = pathname;
-        temppath += TRI_DIR_SEPARATOR_CHAR;
-        temppath += *iter;
+        temppath = basics::FileUtils::buildFilename(pathname, *iter);
         LOG_TOPIC("4eac9", DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
           " Deleting file " << temppath;
         TRI_UnlinkFile(temppath.c_str());
@@ -264,9 +248,7 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
       // normally, the shas should only be computed when the sst file has
       // been fully written, which can only be guaranteed if we got a
       // creation event.
-      temppath = pathname;
-      temppath += TRI_DIR_SEPARATOR_CHAR;
-      temppath += *iter;
+      temppath = basics::FileUtils::buildFilename(pathname, *iter);
       int64_t now = ::time(nullptr);
       int64_t modTime;
       int r = TRI_MTimeFile(temppath.c_str(), &modTime);
@@ -280,8 +262,6 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
       }
     } // else
   } // for
-
-  return;
 
 } // RocksDBEventListenerThread::checkMissingShaFiles
 
@@ -298,7 +278,6 @@ RocksDBEventListener::RocksDBEventListener(application_features::ApplicationServ
 // Shutdown the background thread only if it was ever started
 //
 RocksDBEventListener::~RocksDBEventListener() {
-
   _shaThread.signalLoop();
   CONDITION_LOCKER(locker, _threadDone);
   if (_shaThread.isRunning()) {
@@ -328,8 +307,5 @@ void RocksDBEventListener::OnCompactionCompleted(rocksdb::DB* db,
     _shaThread.queueShaCalcFile(filename);
   } // for
 }  // RocksDBEventListener::OnCompactionCompleted
-
-
-
 
 }  // namespace arangodb
