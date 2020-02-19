@@ -1196,7 +1196,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     # new examples code TODO should include for each example own object in json file
     fn = os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated')
     try:
-        examplefile = io.open(fn, encoding='utf-8')
+        examplefile = io.open(fn, encoding='utf-8', newline=None)
     except:
         print("Failed to open example file:\n  '%s'" % fn, file=sys.stderr)
         raise Exception("failed to open example file:" + fn)
@@ -1435,7 +1435,7 @@ if len(sys.argv) > 5:
     print("Filtering for: [" + fileFilter + "]", file=sys.stderr)
 
 # read ArangoDB version and use it as API version
-f = io.open(scriptDir + "VERSION", encoding="utf-8")
+f = io.open(scriptDir + "VERSION", encoding="utf-8", newline=None)
 version = f.read().strip()
 f.close()
 swagger['info']['version'] = version
@@ -1462,7 +1462,7 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
     currentTag = name
     for fn in filenames:
         thisfn = fn
-        infile = io.open(fn, encoding='utf-8')
+        infile = io.open(fn, encoding='utf-8', newline=None)
         try:
             getOneApi(infile, name + " - " + ', '.join(filenames), fn)
         except Exception as x:

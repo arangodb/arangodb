@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import csv, sys, os.path, re
+import csv, sys, os.path, re, io
 try:
     from urllib.request import urlopen
 except ImportError:
@@ -13,7 +13,7 @@ license = ''
 licenseName = ''
 licenseId = ''
 
-csvfile = open('license.csv', 'w')
+csvfile = io.open('license.csv', mode='w', encoding='utf-8', newline='')
 writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_ALL)
 
 ccomment = re.compile(r"([^#]+)\n(#|\()", re.MULTILINE)
@@ -57,7 +57,7 @@ def generateLine():
 
     writer.writerow([name, version, licenseId, html])
 
-with open(filepath) as fp:  
+with io.open(filepath, encoding="utf-8", newline=None) as fp:
    line = fp.readline()
    cnt = 1
 
