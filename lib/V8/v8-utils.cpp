@@ -257,22 +257,21 @@ double getMaxTimeoutConnectionToBeDead(double timeout) {
 }
 #define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
 std::chrono::duration<double> getMaxTimeoutConnectionToBeDead(std::chrono::duration<double> timeout) {
-  return timeout;
-  /*
-  auto when = connectionToBeDeadAt.load();
-  if (when == 0.0) {
+  double epochDobuleWhen = connectionToBeDeadAt.load(); // time-point (seconds since epoch as double)
+  if (epochDobuleWhen == 0.0) {
     return timeout;
   }
-  auto chronoWhen = std::chrono::duration<double>(when);
-  
-  auto now =  std::chrono::system_clock::now();
 
-  auto delta = now - chronoWhen;
+  std::chrono::time_point now = std::chrono::system_clock::now();
+  std::chrono::duration<double> durationWhen(epochDobuleWhen); // We need this to create a time-point.
+  std::chrono::time_point<decltype(now)::clock, std::chrono::duration<double>> timepointWhen(durationWhen);
+
+  auto delta = now - timepointWhen; // Your problem was here - You need 2 points to create a duration.
   if (delta > timeout) {
     return timeout;
   }
   return delta;
-  */
+
 }
 #undef ARANGODB_SHELL_V8CLIENT_CONNECTION_H
 
@@ -880,7 +879,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                          "invalid option value for timeout");
         }
-        
+
         timeout = TRI_ObjectToDouble(isolate, TRI_GetProperty(context, isolate,
                                                               options, "timeout"));
       }
@@ -4240,7 +4239,7 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
                               v8::Handle<v8::Object>& result, ExternalId const& external) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   auto context = TRI_IGETC;
-  
+
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "pid"),
               v8::Number::New(isolate, external._pid)).FromMaybe(false);
