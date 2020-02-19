@@ -146,8 +146,8 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockM
   }
   while (!_data.empty()) {
     if (_data.front() == nullptr) {
-      if (myCall.getOffset() > 0 || myCall.getLimit() > 0) {
-        TRI_ASSERT(skipped > 0 || result != nullptr);
+      if ((skipped > 0 || result != nullptr) &&
+          !(myCall.hasHardLimit() && myCall.getLimit() == 0)) {
         // This is a specific break point return now.
         // Sorry we can only return one block.
         // This means we have prepared the first block.
