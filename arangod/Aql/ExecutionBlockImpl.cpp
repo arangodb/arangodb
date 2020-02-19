@@ -1125,6 +1125,40 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(AqlItemBlockInputRange& 
 }
 
 /**
+ * @brief Define the variant of FastForward behaviour
+ *
+ * FULLCOUNT => Call executeSkipRowsRange and report what has been skipped.
+ * EXECUTOR => Call executeSkipRowsRange, but do not report what has been skipped.
+ *             (This instance is used to make sure Modifications are performed, or stats are correct)
+ * FETCHER => Do not bother the Executor, drop all from input, without further reporting
+ *
+ */
+enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
+
+template <class Executor>
+static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwardVariant {
+  // We only get into fastForward variant in Executors that have produced
+  // everything. However the LimitExector can do early abortion.
+  TRI_ASSERT(!(std::is_one_of<Executor, LimitExecutor>) || call.getOffset() == 0);
+  TRI_ASSERT(!(std::is_one_of<Executor, LimitExecutor>) || call.getLimit() == 0);
+  if (call.needsFullCount()) {
+    return FastForwardVariant::FULLCOUNT;
+  }
+  // TODO: We only need to do this is the executor actually require to call.
+  // e.g. Modifications will always need to be called. Limit only if it needs to report fullCount
+  if constexpr (std::is_one_of<Executor, LimitExecutor>) {
+    return FastForwardVariant::EXECUTOR;
+  }
+  return FastForwardVariant::FETCHER;
+}
+
+template <class Executor>
+auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& inputRange,
+                                                      AqlCall& call)
+    -> std::tuple<ExecutorState, typename Executor::Stats, size_t, AqlCall> {
+  TRI_ASSERT(constexpr(isNewStyleExecutor<Executor>));
+}
+/**
  * @brief This is the central function of an executor, and it acts like a
  * coroutine: It can be called multiple times and keeps state across
  * calls.
