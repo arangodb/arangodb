@@ -153,7 +153,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) FILTER i < 10 FILTER i > 2 RETURN result",
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) FILTER i < 2 LIMIT 1 RETURN result",
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) LIMIT 1 RETURN result",
-        "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) LET test = (RETURN result + 1) LIMIT 1 RETURN test",
+        "FOR i IN 1..10 LET result = IS_STRING(i) LET test = (RETURN result + 1) LIMIT 1 RETURN test",
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) SORT i RETURN result",
         "FOR i IN 1..10 LET result = (RETURN i + 1) LET test = (FOR j IN 1..2 RETURN j) RETURN result IN test",
         "FOR i IN 1..10 LET v = (RETURN i * 2) LIMIT 2 LET result = (RETURN v < 5) RETURN v"
@@ -182,7 +182,7 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) FILTER i < 10 FILTER i > 2 RETURN result", [ "SingletonNode","CalculationNode","EnumerateListNode","CalculationNode","FilterNode","CalculationNode","FilterNode","SubqueryNode","ReturnNode" ] ],
         [ "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) FILTER i < 2 LIMIT 1 RETURN result", [ "SingletonNode","CalculationNode","EnumerateListNode","CalculationNode","FilterNode","LimitNode","SubqueryNode","ReturnNode" ] ],
         [ "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) LIMIT 1 RETURN result", [ "SingletonNode","CalculationNode","EnumerateListNode","LimitNode","SubqueryNode","ReturnNode" ] ],
-        [ "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) LET test = (RETURN result + 1) LIMIT 1 RETURN test", [ "SingletonNode","CalculationNode","EnumerateListNode","LimitNode","SubqueryNode","SubqueryNode","ReturnNode" ] ] ,
+        [ "FOR i IN 1..10 LET result = IS_STRING(i) LET test = (RETURN result + 1) LIMIT 1 RETURN test", [ "SingletonNode","CalculationNode","EnumerateListNode","LimitNode","CalculationNode","SubqueryNode","ReturnNode" ] ] ,
         [ "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) SORT i RETURN result", [ "SingletonNode","CalculationNode","EnumerateListNode","SortNode","SubqueryNode","ReturnNode" ] ],
         [ "FOR i IN 1..10 LET v = (RETURN i * 2) LIMIT 2 LET result = (RETURN v < 5) RETURN v", [ "SingletonNode","CalculationNode","EnumerateListNode","LimitNode","SubqueryNode","SubqueryNode","ReturnNode" ] ]
       ];
@@ -218,7 +218,7 @@ function optimizerRuleTestSuite () {
         [ "FOR i IN 1..10 LET a = (RETURN i + 1) FILTER i < 7 FILTER i > 1 RETURN a[0]", [ 3, 4, 5, 6, 7 ] ],
         [ "FOR i IN 1..10 LET a = (RETURN i + 1) LIMIT 4 RETURN a[0]", [ 2, 3, 4, 5 ] ],
         [ "FOR i IN 1..10 LET a = (RETURN i + 1) LET b = (RETURN a[0] + 1) FILTER i < 3 RETURN b[0]", [ 3, 4 ] ],
-        [ "FOR i IN 1..10 LET a = (RETURN i + 1) LET b = (RETURN a[0] + 1) LIMIT 4 RETURN b[0]", [ 3, 4, 5, 6 ] ],
+        [ "FOR i IN 1..10 LET a = i + 1 LET b = (RETURN a + 1) LIMIT 4 RETURN b[0]", [ 3, 4, 5, 6 ] ],
         [ "FOR i IN 1..10 LET a = (RETURN i + 1) LET b = (RETURN a[0] + 1) FILTER i < 5 LIMIT 4 RETURN b[0]", [ 3, 4, 5, 6 ] ],
         [ "FOR i IN 1..10 LET a = (RETURN i + 1) LET x = (FOR j IN 1..i RETURN j) RETURN a[0] - 1 IN x ? 1 : 0", [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ] ],
         [ "FOR i IN 1..10 LET a = (RETURN i + 1) LET x = (FOR j IN 1..i RETURN j) RETURN a[0] IN x ? 1 : 0", [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ] ],
