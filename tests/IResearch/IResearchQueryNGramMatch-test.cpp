@@ -510,6 +510,58 @@ TEST_F(IResearchQueryNGramMatchTest, SysVocbase) {
     EXPECT_EQ(i, expected.size());
   }
 
+
+  // test via analyzer parameter
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[1].slice()
+    };
+    // Searching for Jack Arrow and we have Jack Sparrow which will be matched
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.5, "
+      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
+  // test via analyzer parameter
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+        insertedDocs[0].slice(),
+        insertedDocs[4].slice(),
+        insertedDocs[5].slice(),
+        insertedDocs[1].slice()
+    };
+    // Searching for Jack Arrow and set low threshold to match all Jack`s
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH nGrAm_MaTcH(d.value, 'Jack Arrow', 0.2, "
+      "'myngram') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+        resolved, true)));
+    }
+    EXPECT_EQ(i, expected.size());
+  }
+
   // test via default analyzer
   {
     std::vector<arangodb::velocypack::Slice> expected = {
