@@ -199,7 +199,7 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
-  'oneTestTimeout': 2700,
+  'oneTestTimeout': 10 * 60,
   'isAsan': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
