@@ -1295,7 +1295,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           _engine->_stats += stats;
           // The execute might have modified the client call.
           if (state == ExecutorState::DONE) {
-            _execState = ExecState::SHADOWROWS;
+            _execState = ExecState::FASTFORWARD;
           } else if (clientCall.getOffset() > 0) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
@@ -1325,10 +1325,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           // Produce might have modified the clientCall
           clientCall = _outputItemRow->getClientCall();
 
-          if (_outputItemRow->isInitialized() && _outputItemRow->allRowsUsed()) {
-            _execState = ExecState::DONE;
-          } else if (state == ExecutorState::DONE) {
+          if (state == ExecutorState::DONE) {
             _execState = ExecState::FASTFORWARD;
+          } else if (_outputItemRow->isInitialized() && _outputItemRow->allRowsUsed()) {
+            _execState = ExecState::DONE;
           } else if (clientCall.getLimit() > 0 && !_lastRange.hasDataRow()) {
             TRI_ASSERT(_upstreamState != ExecutionState::DONE);
             // We need to request more
@@ -1351,7 +1351,13 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
           localExecutorState = state;
 
           if (state == ExecutorState::DONE) {
-            _execState = ExecState::SHADOWROWS;
+            if (_outputItemRow && _outputItemRow->isInitialized() &&
+                _outputItemRow->allRowsUsed()) {
+              // We have a block with data, but no more place for a shadow row.
+              _execState = ExecState::DONE;
+            } else {
+              _execState = ExecState::SHADOWROWS;
+            }
           } else {
             // We need to request more
             _upstreamRequest = call;
