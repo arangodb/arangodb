@@ -622,6 +622,7 @@ std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Exe
   auto myCall = stack.popCall();
   TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) ||
              AqlCall::IsGetSomeCall(myCall) || AqlCall::IsFullCountCall(myCall));
+  _rowFetcher.useStack(stack);
   if (AqlCall::IsSkipSomeCall(myCall)) {
     auto const [state, skipped] = skipSome(myCall.getOffset());
     if (state != ExecutionState::WAITING) {
