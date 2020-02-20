@@ -1,6 +1,8 @@
 v3.6.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #11137: http-proxy can't pass delete method req.body to foxx.
+
 * Fixed issue #11051: AQL query wrongfully returning no results on 3.6.1.
 
   This change prevents the "late-document-materialization" optimizer rule from
