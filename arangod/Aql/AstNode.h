@@ -257,7 +257,7 @@ struct AstNode {
 
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
-  
+
   /// @brief return the string value of a node, as a arangodb::velocypack::StringRef
   arangodb::velocypack::StringRef getStringRef() const noexcept;
 
@@ -679,15 +679,21 @@ struct AstNode {
   }
 
   /// @brief whether or not a string is equal to another
-  inline bool stringEquals(char const* other, bool caseInsensitive) const {
-    if (caseInsensitive) {
-      return (strncasecmp(getStringValue(), other, getStringLength()) == 0);
-    }
-    return (strncmp(getStringValue(), other, getStringLength()) == 0);
+  inline bool stringEqualsCaseInsensitive(std::string const& other) const {
+    // Since we're not sure in how much trouble we are with unicode
+    // strings, we assert here that strings we use are 7-bit ASCII
+    TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                            [](const char c) { return c & 0x80; }));
+    return (other.size() == getStringLength() &&
+            strncasecmp(getStringValue(), other.c_str(), getStringLength()) == 0);
   }
 
   /// @brief whether or not a string is equal to another
   inline bool stringEquals(std::string const& other) const {
+    // Since we're not sure in how much trouble we are with unicode
+    // strings, we assert here that strings we use are 7-bit ASCII
+    TRI_ASSERT(std::none_of(other.begin(), other.end(),
+                            [](const char c) { return c & 0x80; }));
     return (other.size() == getStringLength() &&
             memcmp(other.c_str(), getStringValue(), getStringLength()) == 0);
   }

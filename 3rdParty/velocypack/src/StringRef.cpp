@@ -72,7 +72,7 @@ StringRef& StringRef::operator=(Slice slice) {
 }
   
 StringRef StringRef::substr(std::size_t pos, std::size_t count) const {
-  if (pos >= _length) {
+  if (pos > _length) {
     throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
   }
   if (count == std::string::npos || (count + pos >= _length)) {

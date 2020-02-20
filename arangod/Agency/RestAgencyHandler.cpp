@@ -157,21 +157,23 @@ RestStatus RestAgencyHandler::handleStores() {
       VPackObjectBuilder b(&body);
       {
         _agent->executeLockedRead([&]() {
-          body.add(VPackValue("spearhead"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->spearhead().dumpToBuilder(body);
-          }
-          body.add(VPackValue("read_db"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->readDB().dumpToBuilder(body);
-          }
-          body.add(VPackValue("transient"));
-          {
-            VPackArrayBuilder bb(&body);
-            _agent->transient().dumpToBuilder(body);
-          }
+            body.add(VPackValue("spearhead"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->spearhead().dumpToBuilder(body);
+            }
+            body.add(VPackValue("read_db"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->readDB().dumpToBuilder(body);
+            }
+        });
+        _agent->executeTransientLocked([&]() {
+            body.add(VPackValue("transient"));
+            {
+              VPackArrayBuilder bb(&body);
+              _agent->transient().dumpToBuilder(body);
+            }
         });
       }
     }
@@ -541,6 +543,14 @@ RestStatus RestAgencyHandler::handleConfig() {
       return RestStatus::DONE;
     }
   }
+  else if (_request->requestType() == rest::RequestType::PUT) {
+    try {
+      _agent->updateSomeConfigValues(_request->toVelocyPackBuilderPtr()->slice());
+    } catch (std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, e.what());
+      return RestStatus::DONE;
+    }
+  }
 
   // Respond with configuration
   auto last = _agent->lastCommitted();
@@ -603,6 +613,7 @@ RestStatus RestAgencyHandler::execute() {
         return handleTransact();
       } else if (suffixes[0] == "config") {
         if (_request->requestType() != rest::RequestType::GET &&
+            _request->requestType() != rest::RequestType::PUT &&
             _request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
         }

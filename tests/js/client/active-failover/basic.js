@@ -215,7 +215,7 @@ function checkForFailover(leader) {
   print("Waiting for failover of ", leader);
 
   let oldLeaderUUID = "";
-  let i = 5; // 5 * 5s == 25s
+  let i = 24; // 24 * 5s == 120s
   do {
     let res = readAgencyValue("/arango/Supervision/Health");
     let srvHealth = res[0].arango.Supervision.Health;
@@ -467,7 +467,9 @@ function ActiveFailoverSuite() {
       });
 
       // await failover and check that follower get in sync
+      let oldLead = currentLead;
       currentLead = checkForFailover(currentLead);
+      assertNotEqual(currentLead, oldLead);
       assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {

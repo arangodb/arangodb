@@ -56,6 +56,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
       _compactionKeepSize(50000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
+      _supervisionOkThreshold(5.0),
       _cmdLineTimings(false) {
   setOptional(true);
   startsAfter("FoxxPhase");
@@ -103,6 +104,11 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--agency.supervision-grace-period",
       "supervision time, after which a server is considered to have failed [s]",
       new DoubleParameter(&_supervisionGracePeriod));
+
+  options->addOption(
+      "--agency.supervision-ok-threshold",
+      "supervision time, after which a server is considered to be bad [s]",
+      new DoubleParameter(&_supervisionOkThreshold));
 
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",
@@ -297,7 +303,7 @@ void AgencyFeature::prepare() {
       _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
       endpoint, _agencyEndpoints, _supervision, _supervisionTouched, _waitForSync,
       _supervisionFrequency, _compactionStepSize, _compactionKeepSize,
-      _supervisionGracePeriod, _cmdLineTimings, _maxAppendSize)));
+      _supervisionGracePeriod, _supervisionOkThreshold, _cmdLineTimings, _maxAppendSize)));
 
   AGENT = _agent.get();
 }
