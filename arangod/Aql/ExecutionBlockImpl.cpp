@@ -1159,6 +1159,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
   switch (type) {
     case FastForwardVariant::FULLCOUNT:
     case FastForwardVariant::EXECUTOR: {
+      LOG_QUERY("cb135", DEBUG) << printTypeInfo() << " apply full count.";
       auto [state, stats, skippedLocal, call] = executeSkipRowsRange(_lastRange, clientCall);
       if (type == FastForwardVariant::EXECUTOR) {
         // We do not report the skip
@@ -1167,6 +1168,7 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(AqlItemBlockInputRange& in
       return {state, stats, skippedLocal, call};
     }
     case FastForwardVariant::FETCHER: {
+      LOG_QUERY("fa327", DEBUG) << printTypeInfo() << " bypass unused rows.";
       while (inputRange.hasDataRow()) {
         auto [state, row] = inputRange.nextDataRow();
         TRI_ASSERT(row.isInitialized());
