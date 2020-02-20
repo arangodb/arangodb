@@ -145,7 +145,7 @@ class EnumerateCollectionExecutor {
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& input, OutputAqlItemRow& output);
 
-  u_int64_t skipEntries(size_t toSkip, EnumerateCollectionStats& stats);
+  uint64_t skipEntries(size_t toSkip, EnumerateCollectionStats& stats);
   /**
    * @brief skip the next Row of Aql Values.
    *
