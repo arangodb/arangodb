@@ -1136,7 +1136,10 @@ enum class FastForwardVariant { FULLCOUNT, EXECUTOR, FETCHER };
 
 template <class Executor>
 static auto fastForwardType(AqlCall const& call, Executor const& e) -> FastForwardVariant {
-  if (call.needsFullCount()) {
+  if (call.needsFullCount() && call.getOffset() == 0 && call.getLimit() == 0) {
+    // Only start fullCount after the original call is fulfilled. Otherwise
+    // do fast-forward variant
+    TRI_ASSERT(call.hasHardLimit());
     return FastForwardVariant::FULLCOUNT;
   }
   // TODO: We only need to do this is the executor actually require to call.
