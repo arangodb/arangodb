@@ -132,10 +132,6 @@ struct AqlCall {
     return limit;
   }
 
-  bool skipNow() const {
-    return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
-  }
-
   void didSkip(std::size_t n) noexcept {
     if (n <= offset) {
       offset -= n;
@@ -179,15 +175,7 @@ struct AqlCall {
   bool needsFullCount() const { return fullCount; }
 
   bool shouldSkip() const {
-    if (getOffset() > 0) {
-      // Still need to skip.
-      return true;
-    }
-    if (getLimit() > 0) {
-      // Still need to produce.
-      return false;
-    }
-    return needsFullCount();
+    return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
   }
 };
 
